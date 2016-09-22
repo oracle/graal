@@ -401,7 +401,7 @@ graal_unit_test_runs = [
 _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
 
 graal_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertions', ['-esa', '-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true'], tags=GraalTags.bootstraplite),
+    BootstrapTest('BootstrapWithSystemAssertions', ['-esa', '-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true', '-Dgraal.VerifyNodeCostOnAccess=true'], tags=GraalTags.bootstraplite),
     BootstrapTest('BootstrapWithSystemAssertionsNoCoop', ['-esa', '-XX:-UseCompressedOops', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
     BootstrapTest('BootstrapWithGCVerification', ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.bootstrap], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
     BootstrapTest('BootstrapWithG1GCVerification', ['-XX:+UnlockDiagnosticVMOptions', '-XX:-UseSerialGC', '-XX:+UseG1GC', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC', '-Dgraal.ExitVMOnException=true'], tags=[GraalTags.bootstrap], suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
