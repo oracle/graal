@@ -55,7 +55,7 @@ public interface Constant extends Symbol {
         }
 
         if (type instanceof FloatingPointType) {
-            return new FloatingPointConstant((FloatingPointType) type, datum);
+            return FloatingPointConstant.create((FloatingPointType) type, new long[]{datum});
         }
 
         throw new RuntimeException("No datum constant implementation for " + type);

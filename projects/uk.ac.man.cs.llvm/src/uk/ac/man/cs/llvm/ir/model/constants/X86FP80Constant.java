@@ -27,38 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package uk.ac.man.cs.llvm.ir;
+package uk.ac.man.cs.llvm.ir.model.constants;
 
-import java.math.BigInteger;
-import uk.ac.man.cs.llvm.ir.types.Type;
+import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 
-public interface ConstantGenerator {
+import java.util.Arrays;
 
-    void createBinaryOperationExpression(Type type, int opcode, int lhs, int rhs);
+public final class X86FP80Constant extends FloatingPointConstant {
 
-    void createBlockAddress(Type type, int function, int block);
+    private final byte[] value;
 
-    void createCastExpression(Type type, int opcodee, int value);
+    private X86FP80Constant(byte[] value) {
+        super(FloatingPointType.X86_FP80);
+        this.value = value;
+    }
 
-    void createCompareExpression(Type type, int opcode, int lhs, int rhs);
+    public byte[] getValue() {
+        return value;
+    }
 
-    void createFloatingPoint(Type type, long[] value);
+    @Override
+    public String toString() {
+        return Arrays.toString(value);
+    }
 
-    void createFromData(Type type, long[] data);
-
-    void creatFromString(Type type, String string, boolean isCString);
-
-    void createFromValues(Type type, int[] values);
-
-    void createGetElementPointerExpression(Type type, int pointer, int[] indices, boolean isInbounds);
-
-    void createInlineASM(Type type, long[] args);
-
-    void createInteger(Type type, long value);
-
-    void createInteger(Type type, BigInteger value);
-
-    void createNull(Type type);
-
-    void createUndefined(Type type);
+    public static X86FP80Constant create(byte[] value) {
+        return new X86FP80Constant(value);
+    }
 }

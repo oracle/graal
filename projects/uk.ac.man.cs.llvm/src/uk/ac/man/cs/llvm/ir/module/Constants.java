@@ -100,7 +100,7 @@ public class Constants implements ParserListener {
                 return;
             }
             case FLOAT:
-                generator.createFloatingPoint(type, args[0]);
+                generator.createFloatingPoint(type, args);
                 break;
 
             case AGGREGATE: {

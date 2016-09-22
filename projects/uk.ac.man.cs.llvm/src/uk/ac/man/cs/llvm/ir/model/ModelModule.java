@@ -129,8 +129,8 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public void createFloatingPoint(Type type, long value) {
-        symbols.addSymbol(new FloatingPointConstant((FloatingPointType) type, value));
+    public void createFloatingPoint(Type type, long[] value) {
+        symbols.addSymbol(FloatingPointConstant.create((FloatingPointType) type, value));
     }
 
     @Override
