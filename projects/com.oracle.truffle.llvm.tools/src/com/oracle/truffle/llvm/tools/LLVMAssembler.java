@@ -45,6 +45,9 @@ public final class LLVMAssembler {
     }
 
     public static void assembleToBitcodeFile(File irFile, File destFile) {
+        if (!irFile.getAbsolutePath().endsWith(".ll")) {
+            throw new IllegalArgumentException("Can only assemble .ll files!");
+        }
         final String args = " -o=" + destFile.getAbsolutePath() + " " + irFile.getAbsolutePath();
         final String compilationCommand = LLVMToolPaths.getLLVMProgram(LLVMTool.ASSEMBLER) + args;
         ProcessUtil.executeNativeCommandZeroReturn(compilationCommand);

@@ -53,7 +53,7 @@ public class GCCBCTestSuite extends TestSuiteBase {
         File configFile = LLVMPaths.GCCBC_TEST_SUITE_CONFIG;
         File testSuite = LLVMPaths.GCCBC_TEST_SUITE;
         LLVMLogger.info("...start to read and compile files");
-        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(false));
+        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(false), false);
         LLVMLogger.info("...finished reading and compiling files!");
         return files;
     }
