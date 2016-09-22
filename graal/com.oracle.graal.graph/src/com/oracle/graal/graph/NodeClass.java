@@ -256,14 +256,14 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
              */
             NodeCycles c = info.cycles();
             if (c == NodeCycles.CYCLES_UNSET) {
-                cycles = superNodeClass != null ? superNodeClass.cycles(false) : NodeCycles.CYCLES_UNSET;
+                cycles = superNodeClass != null ? superNodeClass.cycles : NodeCycles.CYCLES_UNSET;
             } else {
                 cycles = c;
             }
             assert cycles != null;
             NodeSize s = info.size();
             if (s == NodeSize.SIZE_UNSET) {
-                size = superNodeClass != null ? superNodeClass.size(false) : NodeSize.SIZE_UNSET;
+                size = superNodeClass != null ? superNodeClass.size : NodeSize.SIZE_UNSET;
             } else {
                 size = s;
             }
@@ -276,26 +276,18 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final NodeCycles cycles;
     private final NodeSize size;
 
-    public NodeCycles cycles(boolean assertSanity) {
-        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity && cycles == NodeCycles.CYCLES_UNSET) {
+    public NodeCycles cycles() {
+        if (Options.VerifyNodeCostOnAccess.getValue() && cycles == NodeCycles.CYCLES_UNSET) {
             throw new GraalError("Missing NodeCycles specification in the @NodeInfo annotation of the node %s", this);
         }
         return cycles;
     }
 
-    public NodeCycles cycles() {
-        return cycles(true);
-    }
-
-    public NodeSize size(boolean assertSanity) {
-        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity && size == NodeSize.SIZE_UNSET) {
+    public NodeSize size() {
+        if (Options.VerifyNodeCostOnAccess.getValue() && size == NodeSize.SIZE_UNSET) {
             throw new GraalError("Missing NodeSize specification in the @NodeInfo annotation of the node %s", this);
         }
         return size;
-    }
-
-    public NodeSize size() {
-        return size(true);
     }
 
     public static long computeIterationMask(Type type, int directCount, long[] offsets) {

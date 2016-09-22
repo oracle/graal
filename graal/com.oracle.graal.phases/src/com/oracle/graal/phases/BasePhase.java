@@ -169,7 +169,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 if (context instanceof PhaseContext) {
                     if (!before.isCurrent()) {
                         int sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
-                        NodeCostUtil.phaseAdheresSizeContract(graph, sizeBefore, sizeAfter, this);
+                        NodeCostUtil.phaseFulfillsSizeContract(graph, sizeBefore, sizeAfter, this);
                     }
                 }
             }
