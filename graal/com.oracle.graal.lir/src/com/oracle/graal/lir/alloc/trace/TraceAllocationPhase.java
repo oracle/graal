@@ -98,6 +98,11 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
         return name;
     }
 
+    @Override
+    public final String toString() {
+        return getName().toString();
+    }
+
     public final void apply(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, C context) {
         apply(target, lirGenRes, trace, context, true);
     }
