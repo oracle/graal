@@ -111,7 +111,7 @@ public class NodeCostUtil {
      */
     private static final double DELTA = 0.001D;
 
-    public static void phaseAdheresSizeContract(StructuredGraph graph, int codeSizeBefore, int codeSizeAfter, PhaseSizeContract contract) {
+    public static void phaseFulfillsSizeContract(StructuredGraph graph, int codeSizeBefore, int codeSizeAfter, PhaseSizeContract contract) {
         sizeVerificationCount.increment();
         final double codeSizeIncrease = contract.codeSizeIncrease();
         final double graphSizeDelta = codeSizeBefore * DELTA;
