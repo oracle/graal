@@ -1394,6 +1394,8 @@ public class PolyglotEngine {
 }
 
 class PolyglotEngineSnippets {
+    static final boolean loaded = true;
+
     abstract class YourLang extends TruffleLanguage<Object> {
         public static final String MIME_TYPE = "application/my-test-lang";
     }
@@ -1435,4 +1437,14 @@ class PolyglotEngineSnippets {
     }
     // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#configureJavaInterop
     // @formatter:on
+
+    static PolyglotEngine configureJavaInteropWithMul() {
+        PolyglotEngineSnippets.Multiply multi = new PolyglotEngineSnippets.Multiply() {
+            @Override
+            public int mul(int x, int y) {
+                return x * y;
+            }
+        };
+        return configureJavaInterop(multi);
+    }
 }
