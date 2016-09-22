@@ -70,6 +70,7 @@ import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.StableOptionValue;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -84,14 +85,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public static class Options {
         // @formatter:off
         @Option(help = "Verifies that receivers of NodeInfo#size() and NodeInfo#cycles() do not have UNSET values.")
-        public static final OptionValue<Boolean> VerifyNodeCostOnAccess = new OptionValue<Boolean>(){
-          @SuppressWarnings("all")
-          protected Boolean defaultValue() {
-              boolean assertionsEnabled = false;
-              assert assertionsEnabled = true;
-              return assertionsEnabled;
-          }
-        };
+        public static final OptionValue<Boolean> VerifyNodeCostOnAccess = new StableOptionValue<>(false);
         // @formatter:on
     }
 
@@ -283,9 +277,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final NodeSize size;
 
     public NodeCycles cycles(boolean assertSanity) {
-        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
-            GraalError.guarantee(superNodeClass != null && cycles != NodeCycles.CYCLES_UNSET,
-                            "Missing NodeCycles specification in the @NodeInfo annotation of the node %s", this);
+        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity && cycles == NodeCycles.CYCLES_UNSET) {
+            throw new GraalError("Missing NodeCycles specification in the @NodeInfo annotation of the node %s", this);
         }
         return cycles;
     }
@@ -295,9 +288,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public NodeSize size(boolean assertSanity) {
-        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity) {
-            GraalError.guarantee(superNodeClass != null && size != NodeSize.SIZE_UNSET,
-                            "Missing NodeSize specification in the @NodeInfo annotation of the node %s", this);
+        if (Options.VerifyNodeCostOnAccess.getValue() && assertSanity && size == NodeSize.SIZE_UNSET) {
+            throw new GraalError("Missing NodeSize specification in the @NodeInfo annotation of the node %s", this);
         }
         return size;
     }
