@@ -409,6 +409,19 @@ public abstract class Message {
     public static final Message IS_BOXED = IsBoxed.INSTANCE;
 
     /**
+     * Obtains list of property names. Checks the properties of a {@link TruffleObject foreign
+     * objects} and obtains list of its property names. Those names can then be used in
+     * {@link #READ} and {@link #WRITE} messages to obtain/assign real values.
+     * <p>
+     * The return value from using this message is another {@link TruffleObject} that responds to
+     * {@link #HAS_SIZE} message and its indexes 0 to {@link #GET_SIZE} - 1 contain {@link String}
+     * names of individual properties.
+     *
+     * @since 0.18
+     */
+    public static final Message KEYS = Keys.INSTANCE;
+
+    /**
      * Compares types of two messages. Messages are encouraged to implement this method. All
      * standard ones ({@link #IS_NULL}, {@link #READ}, etc.) do so. Messages obtained via the same
      * {@link #createExecute(int) method} are equal, messages obtained by different methods or
@@ -477,6 +490,9 @@ public abstract class Message {
         }
         if (Message.IS_EXECUTABLE == message) {
             return "IS_EXECUTABLE"; // NOI18N
+        }
+        if (Message.KEYS == message) {
+            return "KEYS"; // NOI18N
         }
         if (message instanceof Execute) {
             return ((Execute) message).name();

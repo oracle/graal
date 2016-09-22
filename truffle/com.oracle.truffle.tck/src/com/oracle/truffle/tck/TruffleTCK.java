@@ -24,14 +24,6 @@
  */
 package com.oracle.truffle.tck;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
@@ -50,7 +42,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory10;
+import com.oracle.truffle.api.interop.ForeignAccess.Factory18;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
@@ -61,6 +53,15 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.tck.Schema.Type;
+import java.util.HashMap;
+import java.util.Map;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import com.oracle.truffle.tck.impl.LongBinaryOperation;
 import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
 import com.oracle.truffle.tck.impl.TestObject;
@@ -113,7 +114,7 @@ import com.oracle.truffle.tck.impl.TestObject;
  * interop package} defines what types of data can be interchanged between the languages and the
  * <em>TCK</em> does its best to make sure all these data are really accepted as an input on a
  * boundary of your {@link TruffleLanguage language implementation}. That doesn't mean such data
- * need to be used internally, many languages do conversions in their {@link Factory10 foreign
+ * need to be used internally, many languages do conversions in their {@link Factory18 foreign
  * access} {@link RootNode nodes} to more suitable internal representation. Such conversion is fully
  * acceptable as nobody prescribes what is the actual type of output after executing a function/code
  * snippet in your language.
@@ -1424,6 +1425,30 @@ public abstract class TruffleTCK {
 
         assertDouble("The same value returned", 42.0, a.get(ComplexNumber.REAL_IDENTIFIER));
         assertDouble("The same value returned", 42.0, a.get(ComplexNumber.IMAGINARY_IDENTIFIER));
+    }
+
+    /** @since 0.13 */
+    @Test
+    public void testPropertiesInteropMessage() throws Exception {
+        PolyglotEngine.Value values = findGlobalSymbol(valuesObject());
+        Map<?, ?> res = values.execute().as(Map.class);
+
+        Map<String, Object> expected = new HashMap<>();
+        expected.put("intValue", 0);
+        expected.put("byteValue", 0);
+        expected.put("doubleValue", 0.0);
+
+        for (Map.Entry<? extends Object, ? extends Object> entry : res.entrySet()) {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
+
+            Object expValue = expected.remove(key);
+            if (expValue != null) {
+                assertEquals("For key " + key, ((Number) expValue).doubleValue(), ((Number) value).doubleValue(), 0.01);
+            }
+        }
+
+        assertTrue("All expected properties found: " + expected, expected.isEmpty());
     }
 
     /** @since 0.8 or earlier */

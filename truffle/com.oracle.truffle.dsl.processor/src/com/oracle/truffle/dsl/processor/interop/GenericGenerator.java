@@ -86,12 +86,10 @@ public final class GenericGenerator extends MessageGenerator {
             String index = String.valueOf(i);
             w.append("              Object arg").append(index).append(" = arguments.get(").append(index).append(");\n");
         }
-        w.append("              return node.executeWithTarget(frame, receiver, ");
-        String sep = "";
+        w.append("              return node.executeWithTarget(frame, receiver");
         for (int i = 0; i < getParameterCount() - 1; i++) {
             String index = String.valueOf(i);
-            w.append(sep).append("arg").append(index);
-            sep = ", ";
+            w.append(", ").append("arg").append(index);
         }
         w.append(");\n");
 

@@ -120,12 +120,9 @@ public abstract class MessageGenerator {
     abstract String getTargetableNodeName();
 
     void appendExecuteWithTarget(Writer w) throws IOException {
-        String sep = "";
-        w.append("    public abstract Object executeWithTarget(VirtualFrame frame, ");
-        sep = "";
+        w.append("    public abstract Object executeWithTarget(VirtualFrame frame");
         for (int i = 0; i < getParameterCount(); i++) {
-            w.append(sep).append("Object ").append("o").append(String.valueOf(i));
-            sep = ", ";
+            w.append(", ").append("Object ").append("o").append(String.valueOf(i));
         }
         w.append(");\n");
     }
@@ -188,7 +185,8 @@ public abstract class MessageGenerator {
                 return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
                             Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
-                            Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName)) {
+                            Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
+                            Message.KEYS.toString().equalsIgnoreCase(messageName)) {
                 return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
                             Message.createNew(0).toString().equalsIgnoreCase(messageName)) {

@@ -76,7 +76,7 @@ public final class ForeignAccessFactoryGenerator {
         appendImports(w);
         Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
         w.append("final class ").append(simpleClassName);
-        w.append(" implements Factory10, Factory {\n");
+        w.append(" implements Factory18, Factory {\n");
 
         appendSingletonAndGetter(w);
         appendPrivateConstructor(w);
@@ -93,6 +93,7 @@ public final class ForeignAccessFactoryGenerator {
         appendFactoryAccessExecute(w);
         appendFactoryAccessInvoke(w);
         appendFactoryAccessNew(w);
+        appendFactoryAccessKeys(w);
         appendFactoryAccessMessage(w);
 
         w.append("}\n");
@@ -104,8 +105,7 @@ public final class ForeignAccessFactoryGenerator {
     }
 
     private void appendImports(Writer w) throws IOException {
-        w.append("import com.oracle.truffle.api.interop.UnsupportedMessageException;").append("\n");
-        w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory10;").append("\n");
+        w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory18;").append("\n");
         w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory;").append("\n");
         w.append("import com.oracle.truffle.api.interop.Message;").append("\n");
         w.append("import com.oracle.truffle.api.interop.ForeignAccess;").append("\n");
@@ -125,7 +125,7 @@ public final class ForeignAccessFactoryGenerator {
         if (hasLanguageCheckNode()) {
             allocation = "ForeignAccess.create(new " + simpleClassName + "(), " + languageCheckFactoryInvokation + ");";
         } else {
-            allocation = "ForeignAccess.create(null, new " + simpleClassName + "());";
+            allocation = "ForeignAccess.create(new " + simpleClassName + "(), null);";
         }
         w.append("  public static final ForeignAccess ACCESS = ").append(allocation).append("\n");
         w.append("  public static ForeignAccess createAccess() { return ").append(allocation).append(" }\n");
@@ -188,55 +188,62 @@ public final class ForeignAccessFactoryGenerator {
     private void appendFactoryAccessGetSize(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessGetSize() {").append("\n");
-        appendOptionalHandlerBody(w, Message.GET_SIZE, "Message.GET_SIZE");
+        appendOptionalHandlerBody(w, Message.GET_SIZE);
+        w.append("    }").append("\n");
+    }
+
+    private void appendFactoryAccessKeys(Writer w) throws IOException {
+        w.append("    @Override").append("\n");
+        w.append("    public CallTarget accessKeys() {").append("\n");
+        appendOptionalHandlerBody(w, Message.KEYS);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessUnbox(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessUnbox() {").append("\n");
-        appendOptionalHandlerBody(w, Message.UNBOX, "Message.UNBOX");
+        appendOptionalHandlerBody(w, Message.UNBOX);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessRead(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessRead() {").append("\n");
-        appendOptionalHandlerBody(w, Message.READ, "Message.READ");
+        appendOptionalHandlerBody(w, Message.READ);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessWrite(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessWrite() {").append("\n");
-        appendOptionalHandlerBody(w, Message.WRITE, "Message.WRITE");
+        appendOptionalHandlerBody(w, Message.WRITE);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessExecute(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessExecute(int argumentsLength) {").append("\n");
-        appendOptionalHandlerBody(w, Message.createExecute(0), "Message.createExecute(argumentsLength)");
+        appendOptionalHandlerBody(w, Message.createExecute(0));
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessInvoke(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessInvoke(int argumentsLength) {").append("\n");
-        appendOptionalHandlerBody(w, Message.createInvoke(0), "Message.createInvoke(argumentsLength)");
+        appendOptionalHandlerBody(w, Message.createInvoke(0));
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessNew(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessNew(int argumentsLength) {").append("\n");
-        appendOptionalHandlerBody(w, Message.createNew(0), "Message.createNew(argumentsLength)");
+        appendOptionalHandlerBody(w, Message.createNew(0));
         w.append("    }").append("\n");
     }
 
-    private void appendOptionalHandlerBody(Writer w, Message message, String messageObjectAsString) throws IOException {
+    private void appendOptionalHandlerBody(Writer w, Message message) throws IOException {
         if (!messageHandlers.containsKey(message)) {
-            w.append("      throw UnsupportedMessageException.raise(").append(messageObjectAsString).append(");").append("\n");
+            w.append("      return null;\n");
         } else {
             w.append("      return com.oracle.truffle.api.Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(message)).append(");").append("\n");
         }
@@ -253,7 +260,7 @@ public final class ForeignAccessFactoryGenerator {
                 w.append("      }").append("\n");
             }
         }
-        w.append("      throw UnsupportedMessageException.raise(unknown);").append("\n");
+        w.append("      return null;\n");
         w.append("    }").append("\n");
     }
 

@@ -62,8 +62,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 @SuppressWarnings("deprecation")
 public final class InteropProcessor extends AbstractProcessor {
 
-    private static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{Message.READ, Message.WRITE, Message.IS_NULL, Message.IS_EXECUTABLE, Message.IS_BOXED, Message.HAS_SIZE,
-                    Message.GET_SIZE, Message.UNBOX, Message.createExecute(0), Message.createInvoke(0), Message.createNew(0)});
+    private static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{
+                    Message.READ, Message.WRITE, Message.IS_NULL, Message.IS_EXECUTABLE, Message.IS_BOXED, Message.HAS_SIZE,
+                    Message.GET_SIZE, Message.UNBOX, Message.KEYS, Message.createExecute(0), Message.createInvoke(0), Message.createNew(0)});
     private final Map<String, FactoryGenerator> factoryGenerators = new HashMap<>();
 
     @Override
@@ -140,7 +141,8 @@ public final class InteropProcessor extends AbstractProcessor {
                     currentGenerator = new WriteGenerator(processingEnv, e, pkg, clazzName, fqn, messageName, ((TypeElement) e).getSimpleName().toString(), truffleLanguageFullClazzName);
                 } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
                                 Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
-                                Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName)) {
+                                Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
+                                Message.KEYS.toString().equalsIgnoreCase(messageName)) {
                     currentGenerator = new UnaryGenerator(processingEnv, e, pkg, clazzName, fqn, messageName, ((TypeElement) e).getSimpleName().toString(), truffleLanguageFullClazzName);
                 } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
                                 Message.createNew(0).toString().equalsIgnoreCase(messageName)) {
@@ -500,7 +502,7 @@ public final class InteropProcessor extends AbstractProcessor {
     }
 
     // IsNull IsExecutable IsBoxed HasSize
-    // GetSize Unbox
+    // GetSize Unbox Properties
     private static class UnaryGenerator extends MessageGenerator {
 
         private static final int NUMBER_OF_UNARY = 2; // VirtualFrame frame, TruffleObject receiver
@@ -910,23 +912,24 @@ public final class InteropProcessor extends AbstractProcessor {
                 Writer w = factoryFile.openWriter();
                 w.append("package ").append(packageName).append(";\n");
                 appendImports(w);
-                w.append("final class ").append(className).append(" implements Factory10, Factory {\n");
+                w.append("final class ").append(className).append(" implements Factory18, Factory {\n");
 
                 appendSingletonAndGetter(w);
                 appendPrivateConstructor(w);
                 appendFactoryCanHandle(w);
 
-                appendFactory10accessIsNull(w);
-                appendFactory10accessIsExecutable(w);
-                appendFactory10accessIsBoxed(w);
-                appendFactory10accessHasSize(w);
-                appendFactory10accessGetSize(w);
-                appendFactory10accessUnbox(w);
-                appendFactory10accessRead(w);
-                appendFactory10accessWrite(w);
-                appendFactory10accessExecute(w);
-                appendFactory10accessInvoke(w);
-                appendFactory10accessNew(w);
+                appendFactory18accessIsNull(w);
+                appendFactory18accessIsExecutable(w);
+                appendFactory18accessIsBoxed(w);
+                appendFactory18accessHasSize(w);
+                appendFactory18accessGetSize(w);
+                appendFactory18accessUnbox(w);
+                appendFactory18accessRead(w);
+                appendFactory18accessWrite(w);
+                appendFactory18accessExecute(w);
+                appendFactory18accessInvoke(w);
+                appendFactory18accessNew(w);
+                appendFactory18accessKeys(w);
                 appendFactoryAccessMessage(w);
 
                 w.append("}\n");
@@ -937,8 +940,7 @@ public final class InteropProcessor extends AbstractProcessor {
         }
 
         private static void appendImports(Writer w) throws IOException {
-            w.append("import com.oracle.truffle.api.interop.UnsupportedMessageException;").append("\n");
-            w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory10;").append("\n");
+            w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory18;").append("\n");
             w.append("import com.oracle.truffle.api.interop.ForeignAccess.Factory;").append("\n");
             w.append("import com.oracle.truffle.api.interop.Message;").append("\n");
             w.append("import com.oracle.truffle.api.interop.ForeignAccess;").append("\n");
@@ -949,8 +951,8 @@ public final class InteropProcessor extends AbstractProcessor {
         }
 
         private void appendSingletonAndGetter(Writer w) throws IOException {
-            w.append("  public static final ForeignAccess ACCESS = ForeignAccess.create(null, new ").append(className).append("());").append("\n");
-            w.append("  public static ForeignAccess createAccess() { return ForeignAccess.create(null, new ").append(className).append("());}").append("\n");
+            w.append("  public static final ForeignAccess ACCESS = ForeignAccess.create(new ").append(className).append("(), null);").append("\n");
+            w.append("  public static ForeignAccess createAccess() { return ForeignAccess.create(new ").append(className).append("(), null);}").append("\n");
             w.append("\n");
         }
 
@@ -966,25 +968,25 @@ public final class InteropProcessor extends AbstractProcessor {
             w.append("\n");
         }
 
-        private void appendFactory10accessIsNull(Writer w) throws IOException {
+        private void appendFactory18accessIsNull(Writer w) throws IOException {
             w.append("    public CallTarget accessIsNull() {").append("\n");
             appendOptionalDefaultHandlerBody(w, Message.IS_NULL);
             w.append("    }").append("\n");
         }
 
-        private void appendFactory10accessIsExecutable(Writer w) throws IOException {
+        private void appendFactory18accessIsExecutable(Writer w) throws IOException {
             w.append("    public CallTarget accessIsExecutable() {").append("\n");
             appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE);
             w.append("    }").append("\n");
         }
 
-        private void appendFactory10accessIsBoxed(Writer w) throws IOException {
+        private void appendFactory18accessIsBoxed(Writer w) throws IOException {
             w.append("    public CallTarget accessIsBoxed() {").append("\n");
             appendOptionalDefaultHandlerBody(w, Message.IS_BOXED);
             w.append("    }").append("\n");
         }
 
-        private void appendFactory10accessHasSize(Writer w) throws IOException {
+        private void appendFactory18accessHasSize(Writer w) throws IOException {
             w.append("    public CallTarget accessHasSize() {").append("\n");
             appendOptionalDefaultHandlerBody(w, Message.HAS_SIZE);
             w.append("    }").append("\n");
@@ -998,51 +1000,57 @@ public final class InteropProcessor extends AbstractProcessor {
             }
         }
 
-        private void appendFactory10accessGetSize(Writer w) throws IOException {
+        private void appendFactory18accessGetSize(Writer w) throws IOException {
             w.append("    public CallTarget accessGetSize() {").append("\n");
-            appendOptionalHandlerBody(w, Message.GET_SIZE, "Message.GET_SIZE");
+            appendOptionalHandlerBody(w, Message.GET_SIZE);
             w.append("    }").append("\n");
         }
 
-        private void appendFactory10accessUnbox(Writer w) throws IOException {
+        private void appendFactory18accessUnbox(Writer w) throws IOException {
             w.append("    public CallTarget accessUnbox() {").append("\n");
-            appendOptionalHandlerBody(w, Message.UNBOX, "Message.UNBOX");
+            appendOptionalHandlerBody(w, Message.UNBOX);
             w.append("    }").append("\n");
         }
 
-        private void appendFactory10accessRead(Writer w) throws IOException {
+        private void appendFactory18accessRead(Writer w) throws IOException {
             w.append("    public CallTarget accessRead() {").append("\n");
-            appendOptionalHandlerBody(w, Message.READ, "Message.READ");
+            appendOptionalHandlerBody(w, Message.READ);
             w.append("    }").append("\n");
         }
 
-        private void appendFactory10accessWrite(Writer w) throws IOException {
+        private void appendFactory18accessWrite(Writer w) throws IOException {
             w.append("    public CallTarget accessWrite() {").append("\n");
-            appendOptionalHandlerBody(w, Message.WRITE, "Message.WRITE");
+            appendOptionalHandlerBody(w, Message.WRITE);
             w.append("    }").append("\n");
         }
 
-        private void appendFactory10accessExecute(Writer w) throws IOException {
+        private void appendFactory18accessExecute(Writer w) throws IOException {
             w.append("    public CallTarget accessExecute(int argumentsLength) {").append("\n");
-            appendOptionalHandlerBody(w, Message.createExecute(0), "Message.createExecute(argumentsLength)");
+            appendOptionalHandlerBody(w, Message.createExecute(0));
             w.append("    }").append("\n");
         }
 
-        private void appendFactory10accessInvoke(Writer w) throws IOException {
+        private void appendFactory18accessInvoke(Writer w) throws IOException {
             w.append("    public CallTarget accessInvoke(int argumentsLength) {").append("\n");
-            appendOptionalHandlerBody(w, Message.createInvoke(0), "Message.createInvoke(argumentsLength)");
+            appendOptionalHandlerBody(w, Message.createInvoke(0));
             w.append("    }").append("\n");
         }
 
-        private void appendFactory10accessNew(Writer w) throws IOException {
+        private void appendFactory18accessNew(Writer w) throws IOException {
             w.append("    public CallTarget accessNew(int argumentsLength) {").append("\n");
-            appendOptionalHandlerBody(w, Message.createNew(0), "Message.createNew(argumentsLength)");
+            appendOptionalHandlerBody(w, Message.createNew(0));
             w.append("    }").append("\n");
         }
 
-        private void appendOptionalHandlerBody(Writer w, Message message, String messageObjectAsString) throws IOException {
+        private void appendFactory18accessKeys(Writer w) throws IOException {
+            w.append("    public CallTarget accessKeys() {").append("\n");
+            appendOptionalHandlerBody(w, Message.KEYS);
+            w.append("    }").append("\n");
+        }
+
+        private void appendOptionalHandlerBody(Writer w, Message message) throws IOException {
             if (!messageHandlers.containsKey(message)) {
-                w.append("      throw UnsupportedMessageException.raise(").append(messageObjectAsString).append(");").append("\n");
+                w.append("      return null;\n");
             } else {
                 w.append("      return com.oracle.truffle.api.Truffle.getRuntime().createCallTarget(").append(messageHandlers.get(message)).append(");").append("\n");
             }
@@ -1058,7 +1066,7 @@ public final class InteropProcessor extends AbstractProcessor {
                     w.append("      }").append("\n");
                 }
             }
-            w.append("      throw UnsupportedMessageException.raise(unknown);").append("\n");
+            w.append("      return null;\n");
             w.append("    }").append("\n");
         }
 
