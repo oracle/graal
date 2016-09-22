@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,9 +52,11 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     /**
      * Don't allow probability values to be become too small or too high as this makes frequency
      * calculations over- or underflow the range of a double. This commonly happens with infinite
-     * loops within infinite loops.
+     * loops within infinite loops. The value is chosen a bit lower than half the maximum exponent
+     * supported by double. That way we can never overflow to infinity when multiplying two
+     * probability values.
      */
-    public static final double MIN_PROBABILITY = 0.000001;
+    public static final double MIN_PROBABILITY = 0x1.0p-500;
     public static final double MAX_PROBABILITY = 1 / MIN_PROBABILITY;
 
     public final StructuredGraph graph;
