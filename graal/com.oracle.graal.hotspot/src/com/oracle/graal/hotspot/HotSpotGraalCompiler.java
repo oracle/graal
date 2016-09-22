@@ -83,14 +83,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         public static class Options {
             // @formatter:off
             @Option(help = "Enable Compilation counters. Compilation counters count the number of compilations for each method.", type = OptionType.Debug)
-            public static final OptionValue<Boolean> EnableCompilationCounters = new StableOptionValue<>(true);
+            public static final OptionValue<Boolean> EnableCompilationCounters = new StableOptionValue<>(false);
             @Option(help = "An upper bound for the number of compilations of a method to fail.", type = OptionType.Debug)
             public static final OptionValue<Integer> CompilationCountersUpperBound = new StableOptionValue<>(256);
             @Option(help = "Reaching the upper bound for the number of compilations of a method is considered fatal and will exit the VM.", type = OptionType.Debug)
             public static final OptionValue<Boolean> CompilationCountersExceededIsFatal = new StableOptionValue<>(true);
             @Option(help = "Enable a watchdog thread for each compiler thread. " +
                            "A watchdog threads reports long running compilations and kills the VM if a certain time bound is reached.", type = OptionType.Debug)
-            public static final OptionValue<Boolean> MonitorCompilerThreads = new StableOptionValue<>(true);
+            public static final OptionValue<Boolean> MonitorCompilerThreads = new StableOptionValue<>(false);
             @Option(help = "Kill a Compiler Thread and exit the VM if the FatalNumberOfCompilerThreadStackTraces last stack traces are the equal.", type = OptionType.Debug)
             public static final OptionValue<Boolean> StaleCompilerThreadsAreFatal = new StableOptionValue<>(true);
             @Option(help = "Number of equal stack traces for the compiler thread until it is killed", type = OptionType.Debug)
@@ -176,7 +176,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                  */
                 WATCHING_NO_STACK_INSPECTION,
                 /**
-                 * The watchdog thread is fully monitoring the compiler thread. It takes stake
+                 * The watchdog thread is fully monitoring the compiler thread. It takes stack
                  * traces periodically and sleeps again until the next period. If the number of
                  * stack traces reaches a certain upper bound and those stack traces are equal it
                  * will shut down the entire VM with an error.
@@ -312,7 +312,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                                             ellapsedWatchingTime = 0;
                                             if (Options.StaleCompilerThreadsAreFatal.getValue()) {
                                                 if (nrOfStackTraces > Options.FatalNumberOfCompilerThreadStackTraces.getValue()) {
-                                                    TTY.println("%s took N stack traces, which is considered fatal, we quit now [compiling method %s]. Printing Stack Trace...", getTracePrefix(),
+                                                    TTY.println("%s took N stack traces, which is considered fatal, VM will quit now [compiling method %s]. Printing Stack Trace...", getTracePrefix(),
                                                                     lastSet);
                                                     printStackTraceTTY();
                                                     System.exit(-1);
