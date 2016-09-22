@@ -30,6 +30,7 @@ import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -604,30 +605,48 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         FixedNode invokeNode = invoke.asNode();
 
         ValueNode exceptionValue = null;
-        if (inlineScope.unwindNode != null) {
-            exceptionValue = inlineScope.unwindNode.exception();
+        List<UnwindNode> unwindNodes = inlineScope.unwindNodes;
+        Iterator<UnwindNode> iter = unwindNodes.iterator();
+        while (iter.hasNext()) {
+            if (iter.next().isDeleted()) {
+                iter.remove();
+            }
         }
-        UnwindNode unwindNode = inlineScope.unwindNode;
 
-        if (invoke instanceof InvokeWithExceptionNode) {
-            InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
-            assert invokeWithException.next() == null;
-            assert invokeWithException.exceptionEdge() == null;
-
-            if (unwindNode != null) {
-                assert unwindNode.predecessor() != null;
-                Node n = makeStubNode(methodScope, loopScope, invokeData.exceptionNextOrderId);
-                unwindNode.replaceAndDelete(n);
+        if (!unwindNodes.isEmpty()) {
+            FixedNode unwindReplacement;
+            if (invoke instanceof InvokeWithExceptionNode) {
+                /* Decoding continues for the exception handler. */
+                unwindReplacement = makeStubNode(methodScope, loopScope, invokeData.exceptionNextOrderId);
+            } else {
+                /* No exception handler available, so the only thing we can do is deoptimize. */
+                unwindReplacement = methodScope.graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
             }
 
-        } else {
-            if (unwindNode != null && !unwindNode.isDeleted()) {
-                DeoptimizeNode deoptimizeNode = methodScope.graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
-                unwindNode.replaceAndDelete(deoptimizeNode);
+            if (unwindNodes.size() == 1) {
+                /* Only one UnwindNode, we can use the exception directly. */
+                UnwindNode unwindNode = unwindNodes.get(0);
+                exceptionValue = unwindNode.exception();
+                unwindNode.replaceAndDelete(unwindReplacement);
+
+            } else {
+                /*
+                 * More than one UnwindNode. This can happen with the loop explosion strategy
+                 * FULL_EXPLODE_UNTIL_RETURN, where we keep exploding after the loop and therefore
+                 * also explode exception paths. Merge the exception in a similar way as multiple
+                 * return values.
+                 */
+                MergeNode unwindMergeNode = methodScope.graph.add(new MergeNode());
+                exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, unwindNodes, null, unwindNode -> unwindNode.exception());
+                unwindMergeNode.setNext(unwindReplacement);
+
+                ensureExceptionStateDecoded(inlineScope);
+                unwindMergeNode.setStateAfter(inlineScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionValue));
             }
         }
 
         assert invoke.next() == null;
+        assert !(invoke instanceof InvokeWithExceptionNode) || ((InvokeWithExceptionNode) invoke).exceptionEdge() == null;
 
         ValueNode returnValue;
         List<ReturnNode> returnNodes = inlineScope.returnNodes;

@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.function.Function;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -56,6 +57,7 @@ import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.BeginNode;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.ControlSinkNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.FixedGuardNode;
@@ -637,44 +639,49 @@ public class InliningUtil {
     }
 
     public static ValueNode mergeReturns(AbstractMergeNode merge, List<? extends ReturnNode> returnNodes, List<Node> canonicalizedNodes) {
-        ValueNode singleReturnValue = null;
-        PhiNode returnValuePhi = null;
-        for (ReturnNode returnNode : returnNodes) {
-            ValueNode result = returnNode.result();
-            if (result != null) {
-                if (returnValuePhi == null && (singleReturnValue == null || singleReturnValue == result)) {
-                    /* Only one return value, so no need yet for a phi node. */
-                    singleReturnValue = result;
+        return mergeValueProducers(merge, returnNodes, canonicalizedNodes, returnNode -> returnNode.result());
+    }
 
-                } else if (returnValuePhi == null) {
-                    /* Found a second return value, so create phi node. */
-                    returnValuePhi = merge.graph().addWithoutUnique(new ValuePhiNode(result.stamp().unrestricted(), merge));
+    public static <T extends ControlSinkNode> ValueNode mergeValueProducers(AbstractMergeNode merge, List<? extends T> valueProducers, List<Node> canonicalizedNodes,
+                    Function<T, ValueNode> valueFunction) {
+        ValueNode singleResult = null;
+        PhiNode phiResult = null;
+        for (T valueProducer : valueProducers) {
+            ValueNode result = valueFunction.apply(valueProducer);
+            if (result != null) {
+                if (phiResult == null && (singleResult == null || singleResult == result)) {
+                    /* Only one result value, so no need yet for a phi node. */
+                    singleResult = result;
+
+                } else if (phiResult == null) {
+                    /* Found a second result value, so create phi node. */
+                    phiResult = merge.graph().addWithoutUnique(new ValuePhiNode(result.stamp().unrestricted(), merge));
                     if (canonicalizedNodes != null) {
-                        canonicalizedNodes.add(returnValuePhi);
+                        canonicalizedNodes.add(phiResult);
                     }
                     for (int i = 0; i < merge.forwardEndCount(); i++) {
-                        returnValuePhi.addInput(singleReturnValue);
+                        phiResult.addInput(singleResult);
                     }
-                    returnValuePhi.addInput(result);
+                    phiResult.addInput(result);
 
                 } else {
                     /* Multiple return values, just add to existing phi node. */
-                    returnValuePhi.addInput(result);
+                    phiResult.addInput(result);
                 }
             }
 
             // create and wire up a new EndNode
             EndNode endNode = merge.graph().add(new EndNode());
             merge.addForwardEnd(endNode);
-            returnNode.replaceAndDelete(endNode);
+            valueProducer.replaceAndDelete(endNode);
         }
 
-        if (returnValuePhi != null) {
-            assert returnValuePhi.verify();
-            returnValuePhi.inferStamp();
-            return returnValuePhi;
+        if (phiResult != null) {
+            assert phiResult.verify();
+            phiResult.inferStamp();
+            return phiResult;
         } else {
-            return singleReturnValue;
+            return singleResult;
         }
     }
 
