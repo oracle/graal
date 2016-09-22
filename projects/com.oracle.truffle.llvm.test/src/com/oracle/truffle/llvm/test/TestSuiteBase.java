@@ -246,6 +246,10 @@ public abstract class TestSuiteBase {
     }
 
     protected static List<TestCaseFiles[]> getTestCasesFromConfigFile(File configFile, File testSuite, TestCaseGenerator gen) throws IOException, AssertionError {
+        return getTestCasesFromConfigFile(configFile, testSuite, gen, LLVMBaseOptionFacade.testBinaryParser());
+    }
+
+    protected static List<TestCaseFiles[]> getTestCasesFromConfigFile(File configFile, File testSuite, TestCaseGenerator gen, boolean assembleToBC) throws IOException, AssertionError {
         TestSpecification testSpecification = SpecificationFileReader.readSpecificationFolder(configFile, testSuite);
         List<SpecificationEntry> includedFiles = testSpecification.getIncludedFiles();
         List<TestCaseFiles[]> testCaseFiles;
@@ -280,7 +284,8 @@ public abstract class TestSuiteBase {
             testCaseFiles = includedFileTestCases;
         }
         // compile to *.bc files to test the binary parser
-        if (LLVMBaseOptionFacade.testBinaryParser()) {
+        if (assembleToBC) {
+            LLVMLogger.info("\t-Dsulong.TestBinaryParser=true was set, assembling tests to bitcode files");
             List<TestCaseFiles[]> allLLVMBitcodeFiles = testCaseFiles.stream().map(t -> {
                 TestCaseFiles[] llvmBinaryFiles = Arrays.copyOf(t, t.length);
                 for (int i = 0; i < llvmBinaryFiles.length; i++) {

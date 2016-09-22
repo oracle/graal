@@ -113,6 +113,7 @@ import uk.ac.man.cs.llvm.ir.model.elements.StoreInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.SwitchInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.SwitchOldInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
+import uk.ac.man.cs.llvm.ir.model.elements.ValueInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
 import uk.ac.man.cs.llvm.ir.types.AggregateType;
 import uk.ac.man.cs.llvm.ir.types.ArrayType;
@@ -157,7 +158,12 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     public void visit(AllocateInstruction allocate) {
         final Type type = allocate.getPointeeType();
         final int size = typeHelper.getByteSize(type);
-        int alignment = typeHelper.getAlignment(type);
+        int alignment = 0;
+        if (allocate.getAlign() == 0) {
+            typeHelper.getAlignment(type);
+        } else {
+            alignment = 1 << (allocate.getAlign() - 1);
+        }
         if (alignment == 0) {
             alignment = LLVMStack.NO_ALIGNMENT_REQUIREMENTS;
         }
@@ -190,8 +196,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
         }
 
-        LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(LLVMBitcodeTypeHelper.getLLVMBaseType(allocate.getType()), result, method.getFrame().findFrameSlot(allocate.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, allocate);
     }
 
     @Override
@@ -210,16 +215,14 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMArithmeticInstructionType opA = LLVMBitcodeTypeHelper.toArithmeticInstructionType(operation.getOperator());
         if (opA != null) {
             final LLVMExpressionNode result = LLVMArithmeticFactory.createArithmeticOperation(lhs, rhs, opA, type, target);
-            final LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(type, result, method.getFrame().findFrameSlot(operation.getName()));
-            method.addInstruction(node);
+            createFrameWrite(result, operation);
             return;
         }
 
         final LLVMLogicalInstructionType opL = LLVMBitcodeTypeHelper.toLogicalInstructionType(operation.getOperator());
         if (opL != null) {
             final LLVMExpressionNode result = LLVMLogicalFactory.createLogicalOperation(lhs, rhs, opL, type, target);
-            final LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(type, result, method.getFrame().findFrameSlot(operation.getName()));
-            method.addInstruction(node);
+            createFrameWrite(result, operation);
             return;
         }
 
@@ -265,8 +268,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             result = (LLVMExpressionNode) LLVMFunctionFactory.createFunctionCall(function, argNodes, targetLLVMType);
         }
 
-        LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(targetLLVMType, result, method.getFrame().findFrameSlot(call.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, call);
     }
 
     @Override
@@ -282,9 +284,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
 
         LLVMExpressionNode result = LLVMCastsFactory.cast(fromNode, to, from, type, bits);
-
-        LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(to, result, method.getFrame().findFrameSlot(cast.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, cast);
     }
 
     @Override
@@ -311,8 +311,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                             symbols.resolve(compare.getRHS()));
         }
 
-        LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(LLVMBitcodeTypeHelper.getLLVMBaseType(compare.getType()), result, method.getFrame().findFrameSlot(compare.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, compare);
     }
 
     @Override
@@ -354,8 +353,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         LLVMExpressionNode result = LLVMVectorFactory.createExtractElement(resultType, vector, index);
 
-        LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(resultType, result, method.getFrame().findFrameSlot(extract.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, extract);
     }
 
     @Override
@@ -384,15 +382,13 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
 
         final LLVMExpressionNode result = LLVMAggregateFactory.createExtractValue(resultType, targetAddress);
-        final LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(resultType, result, method.getFrame().findFrameSlot(extract.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, extract);
     }
 
     @Override
     public void visit(GetElementPointerInstruction gep) {
         final LLVMExpressionNode targetAddress = symbols.resolveElementPointer(gep.getBasePointer(), gep.getIndices());
-        LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(LLVMBitcodeTypeHelper.getLLVMBaseType(gep.getType()), targetAddress, method.getFrame().findFrameSlot(gep.getName()));
-        method.addInstruction(node);
+        createFrameWrite(targetAddress, gep);
     }
 
     @Override
@@ -419,8 +415,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final LLVMExpressionNode result = LLVMVectorFactory.createInsertElement(resultType, target, vector, element, index);
 
-        final LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(resultType, result, method.getFrame().findFrameSlot(insert.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, insert);
     }
 
     @Override
@@ -441,8 +436,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode result = LLVMAggregateFactory.createInsertValue((LLVMAddressNode) resultAggregate, (LLVMAddressNode) sourceAggregate,
                         typeHelper.getByteSize(sourceType), offset, valueToInsert, valueType);
 
-        LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(LLVMBitcodeTypeHelper.getLLVMBaseType(insert.getType()), result, method.getFrame().findFrameSlot(insert.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, insert);
     }
 
     @Override
@@ -462,8 +456,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             result = LLVMMemoryReadWriteFactory.createLoad(resultType, source, bits);
         }
 
-        LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(LLVMBitcodeTypeHelper.getLLVMBaseType(load.getType()), result, method.getSlot(load.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, load);
     }
 
     @Override
@@ -548,8 +541,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             result = LLVMSelectFactory.createSelect(llvmType, (LLVMI1Node) condition, trueValue, falseValue);
         }
 
-        final LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(llvmType, result, method.getSlot(select.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, select);
     }
 
     @Override
@@ -558,15 +550,13 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode vector2 = symbols.resolve(shuffle.getVector2());
         final LLVMI32VectorNode mask = (LLVMI32VectorNode) symbols.resolve(shuffle.getMask());
 
-        final LLVMBaseType type = LLVMBitcodeTypeHelper.getLLVMBaseType(shuffle.getType());
-
         final LLVMAddressNode destination = LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(shuffle.getType()), typeHelper.getAlignment(shuffle.getType()), method.getContext(),
                         method.getStackSlot());
 
+        final LLVMBaseType type = LLVMBitcodeTypeHelper.getLLVMBaseType(shuffle.getType());
         final LLVMExpressionNode result = LLVMVectorFactory.createShuffleVector(type, destination, vector1, vector2, mask);
 
-        final LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(type, result, method.getSlot(shuffle.getName()));
-        method.addInstruction(node);
+        createFrameWrite(result, shuffle);
     }
 
     @Override
@@ -657,6 +647,11 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             node = LLVMFunctionFactory.createFunctionCall(function, args, LLVMBitcodeTypeHelper.getLLVMBaseType(call.getType()));
         }
 
+        method.addInstruction(node);
+    }
+
+    private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source) {
+        final LLVMNode node = LLVMFrameReadWriteFactory.createFrameWrite(LLVMBitcodeTypeHelper.getLLVMBaseType(source.getType()), result, method.getSlot(source.getName()));
         method.addInstruction(node);
     }
 }

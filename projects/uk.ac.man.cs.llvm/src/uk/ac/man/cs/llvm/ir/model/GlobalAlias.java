@@ -33,8 +33,8 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class GlobalAlias extends GlobalValueSymbol {
 
-    public GlobalAlias(Type type, int aliasedValue) {
-        super(type, aliasedValue, 0);
+    public GlobalAlias(Type type, int aliasedValue, long linkage) {
+        super(type, aliasedValue, 0, linkage);
     }
 
     @Override

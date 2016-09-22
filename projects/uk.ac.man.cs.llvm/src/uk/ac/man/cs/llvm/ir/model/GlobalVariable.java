@@ -33,8 +33,8 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class GlobalVariable extends GlobalValueSymbol {
 
-    public GlobalVariable(Type type, int initialiser, int align) {
-        super(type, initialiser, align);
+    public GlobalVariable(Type type, int initialiser, int align, long linkage) {
+        super(type, initialiser, align, linkage);
     }
 
     @Override

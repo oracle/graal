@@ -35,7 +35,7 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public interface ModuleGenerator extends SymbolGenerator {
 
-    void createAlias(Type type, int aliasedValue);
+    void createAlias(Type type, int aliasedValue, long linkage);
 
     void createFunction(FunctionType type, boolean isPrototype);
 
@@ -43,7 +43,7 @@ public interface ModuleGenerator extends SymbolGenerator {
 
     void createType(Type type);
 
-    void createGlobal(Type type, boolean isConstant, int initialiser, int align);
+    void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage);
 
     void exitModule();
 

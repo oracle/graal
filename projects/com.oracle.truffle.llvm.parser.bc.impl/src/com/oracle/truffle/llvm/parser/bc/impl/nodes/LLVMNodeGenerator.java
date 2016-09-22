@@ -385,7 +385,7 @@ public final class LLVMNodeGenerator {
             return resolveFloatingPointConstant((FloatingPointConstant) symbol);
 
         } else if (symbol instanceof NullConstant || symbol instanceof UndefinedConstant) {
-            return LLVMConstantGenerator.toConstantZeroNode(symbol.getType(), symbol.getType().getAlignment(), method.getContext(), method.getStackSlot(), typeHelper);
+            return LLVMConstantGenerator.toConstantZeroNode(symbol.getType(), method.getContext(), method.getStackSlot(), typeHelper);
 
         } else if (symbol instanceof StructureConstant) {
             return resolveStructureConstant((StructureConstant) symbol);

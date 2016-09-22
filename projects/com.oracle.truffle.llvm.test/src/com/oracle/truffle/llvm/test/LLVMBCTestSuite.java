@@ -66,7 +66,7 @@ public class LLVMBCTestSuite extends RemoteTestSuiteBase {
     public static List<TestCaseFiles[]> getTestFiles() throws IOException {
         File configFile = LLVMPaths.LLVMBC_TEST_SUITE_CONFIG;
         File testSuite = LLVMPaths.LLVMBC_TEST_SUITE;
-        return getTestCasesFromConfigFile(configFile, testSuite, new LLVMSuiteTestCaseGenerator(false));
+        return getTestCasesFromConfigFile(configFile, testSuite, new LLVMSuiteTestCaseGenerator(false), false);
     }
 
     @Test(timeout = TEST_TIMEOUT_TIME)

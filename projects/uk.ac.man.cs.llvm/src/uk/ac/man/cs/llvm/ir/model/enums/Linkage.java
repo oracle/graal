@@ -43,7 +43,10 @@ public enum Linkage {
     PRIVATE,
     WEAK_ODR,
     LINKONCE_ODR,
-    AVAILABLE_EXTERNALLY;
+    AVAILABLE_EXTERNALLY,
+    LINKERPRIVATE,
+    LINKERPRIVATE_WEAK,
+    LINKONCEODRAUTOHIDE;
 
     public static Linkage decode(long value) {
         return values()[(int) value];
