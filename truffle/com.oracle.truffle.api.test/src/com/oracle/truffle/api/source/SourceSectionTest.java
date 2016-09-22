@@ -234,7 +234,6 @@ public class SourceSectionTest {
         assertEquals(1, section.getEndLine());
         assertSame(longSource, section.getSource());
         assertFalse(section.isAvailable());
-        assertFalse(section.isValid());
 
         assertEquals("", section.getCode());
         assertNotNull(section.toString());
