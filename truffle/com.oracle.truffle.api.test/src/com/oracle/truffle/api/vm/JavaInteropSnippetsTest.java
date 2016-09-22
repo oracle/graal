@@ -25,45 +25,27 @@ package com.oracle.truffle.api.vm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class JavaInteropSnippetsTest {
-    private static boolean loadedOK;
-
     private PolyglotEngine engine;
-
-    @BeforeClass
-    public static void isAvailable() {
-        try {
-            loadedOK = PolyglotEngineSnippets.loaded;
-        } catch (LinkageError ex) {
-            // ignore
-        }
-    }
 
     @Before
     public void initializeEngine() {
-        if (!loadedOK) {
-            return;
+        try {
+            initializeEngineImpl();
+        } catch (LinkageError err) {
+            // OK, let's surive that
         }
-        initializeEngineImpl();
     }
 
     private void initializeEngineImpl() {
-        PolyglotEngineSnippets.Multiply multi = new PolyglotEngineSnippets.Multiply() {
-            @Override
-            public int mul(int x, int y) {
-                return x * y;
-            }
-        };
-
-        engine = PolyglotEngineSnippets.configureJavaInterop(multi);
+        engine = PolyglotEngineSnippets.configureJavaInteropWithMul();
     }
 
     @Test
     public void accessStaticJavaClass() {
-        if (!loadedOK) {
+        if (engine == null) {
             return;
         }
         Operation staticMul = engine.findGlobalSymbol("mul").as(Operation.class);
@@ -74,7 +56,7 @@ public class JavaInteropSnippetsTest {
 
     @Test
     public void accessInstanceMethod() {
-        if (!loadedOK) {
+        if (engine == null) {
             return;
         }
         Operation staticMul = engine.findGlobalSymbol("compose").as(Operation.class);

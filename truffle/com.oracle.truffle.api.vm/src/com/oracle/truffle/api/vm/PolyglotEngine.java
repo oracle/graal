@@ -1437,4 +1437,14 @@ class PolyglotEngineSnippets {
     }
     // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#configureJavaInterop
     // @formatter:on
+
+    static PolyglotEngine configureJavaInteropWithMul() {
+        PolyglotEngineSnippets.Multiply multi = new PolyglotEngineSnippets.Multiply() {
+            @Override
+            public int mul(int x, int y) {
+                return x * y;
+            }
+        };
+        return configureJavaInterop(multi);
+    }
 }
