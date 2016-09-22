@@ -28,11 +28,13 @@ import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
-import com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase.Options;
 import com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPolicy.AllocationStrategy;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.StableOptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -41,6 +43,13 @@ import jdk.vm.ci.meta.AllocatableValue;
  * Manages the selection of allocation strategies.
  */
 public final class DefaultTraceRegisterAllocationPolicy {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Use special allocator for trivial blocks.", type = OptionType.Debug)
+        public static final StableOptionValue<Boolean> TraceRAtrivialBlockAllocator = new StableOptionValue<>(true);
+        // @formatter:on
+    }
 
     public static final class TrivialTraceStrategy extends AllocationStrategy {
 
