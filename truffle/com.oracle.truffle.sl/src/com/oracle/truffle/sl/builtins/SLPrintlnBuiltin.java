@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.sl.builtins;
 
+import java.io.PrintWriter;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
-
-import java.io.PrintWriter;
 
 /**
  * Builtin function to write a value to the {@link SLContext#getOutput() standard output}. The
@@ -60,10 +58,6 @@ import java.io.PrintWriter;
  */
 @NodeInfo(shortName = "println")
 public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
-
-    public SLPrintlnBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "println"));
-    }
 
     @Specialization
     public long println(long value) {

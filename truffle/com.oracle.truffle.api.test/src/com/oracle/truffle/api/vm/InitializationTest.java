@@ -24,8 +24,6 @@ package com.oracle.truffle.api.vm;
 
 import static org.junit.Assert.assertNull;
 
-import java.io.IOException;
-
 import org.junit.After;
 
 import com.oracle.truffle.api.CallTarget;
@@ -38,6 +36,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 /**
  * Bug report validating test.
@@ -57,7 +59,23 @@ public class InitializationTest {
     public void dispose() {
         if (vm != null) {
             vm.dispose();
+            vm = null;
         }
+    }
+
+    @Test
+    public void checkPostInitializationInRunMethod() throws Exception {
+        vm = PolyglotEngine.newBuilder().build();
+
+        Source source = Source.newBuilder("accessProbeForAbstractLanguage text").mimeType("application/x-abstrlang").name("sample.txt").build();
+
+        assertEquals("Properly evaluated", 42, vm.eval(source).get());
+
+        Object global = vm.findGlobalSymbol("MyEnv").get();
+        assertNotNull(global);
+        assertTrue(global instanceof MyEnv);
+        MyEnv env = (MyEnv) global;
+        assertEquals("Post initialization hook called", 1, env.cnt);
     }
 
     private static final class MMRootNode extends RootNode {
@@ -92,39 +110,15 @@ public class InitializationTest {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    private static class ANodeWrapper extends ANode implements com.oracle.truffle.api.instrument.WrapperNode {
-        @Child ANode child;
-        @Child private com.oracle.truffle.api.instrument.EventHandlerNode eventHandlerNode;
+    private static final class MyEnv {
+        int cnt;
 
-        ANodeWrapper(ANode node) {
-            super(1);  // dummy
-            this.child = node;
-        }
-
-        @Override
-        public Node getChild() {
-            return child;
-        }
-
-        @Override
-        public com.oracle.truffle.api.instrument.Probe getProbe() {
-            return eventHandlerNode.getProbe();
-        }
-
-        @Override
-        public void insertEventHandlerNode(com.oracle.truffle.api.instrument.EventHandlerNode eventHandler) {
-            this.eventHandlerNode = eventHandler;
-        }
-
-        @Override
-        public String instrumentationInfo() {
-            throw new UnsupportedOperationException();
+        void doInit() {
+            cnt++;
         }
     }
 
-    private abstract static class AbstractLanguage extends TruffleLanguage<Object> {
+    private abstract static class AbstractLanguage extends TruffleLanguage<MyEnv> {
     }
 
     @TruffleLanguage.Registration(mimeType = "application/x-abstrlang", name = "AbstrLang", version = "0.1")
@@ -132,23 +126,31 @@ public class InitializationTest {
         public static final TestLanguage INSTANCE = new TestLanguage();
 
         @Override
-        protected Object createContext(Env env) {
+        protected MyEnv createContext(Env env) {
             assertNull("Not defined symbol", env.importSymbol("unknown"));
-            return env;
+            return new MyEnv();
         }
 
         @Override
-        protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-            return Truffle.getRuntime().createCallTarget(new MMRootNode(code.createSection("1st line", 1)));
+        protected void initializeContext(MyEnv context) throws Exception {
+            context.doInit();
         }
 
         @Override
-        protected Object findExportedSymbol(Object context, String globalName, boolean onlyExplicit) {
+        protected CallTarget parse(Source code, Node context, String... argumentNames) {
+            return Truffle.getRuntime().createCallTarget(new MMRootNode(code.createSection(1)));
+        }
+
+        @Override
+        protected Object findExportedSymbol(MyEnv context, String globalName, boolean onlyExplicit) {
+            if ("MyEnv".equals(globalName)) {
+                return context;
+            }
             return null;
         }
 
         @Override
-        protected Object getLanguageGlobal(Object context) {
+        protected Object getLanguageGlobal(MyEnv context) {
             throw new UnsupportedOperationException();
         }
 
@@ -162,25 +164,5 @@ public class InitializationTest {
             throw new UnsupportedOperationException();
         }
 
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        public com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-            throw new UnsupportedOperationException();
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return node instanceof ANode;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-            return node instanceof ANode ? new ANodeWrapper((ANode) node) : null;
-        }
     }
 }

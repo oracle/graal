@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl.nodes.local;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -48,7 +47,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
 /**
@@ -59,10 +57,6 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 @NodeField(name = "slot", type = FrameSlot.class)
 public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
-    public SLWriteLocalVariableNode(SourceSection src) {
-        super(src);
-    }
-
     /**
      * Returns the descriptor of the accessed local variable. The implementation of this method is
      * created by the Truffle DSL based on the {@link NodeField} annotation on the class.
@@ -71,17 +65,23 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     /**
      * Specialized method to write a primitive {@code long} value. This is only possible if the
-     * local variable also has currently the type {@code long}, therefore a Truffle DSL
-     * {@link #isLongKind(VirtualFrame) custom guard} is specified.
+     * local variable also has currently the type {@code long} or was never written before,
+     * therefore a Truffle DSL {@link #isLongOrIllegal(VirtualFrame) custom guard} is specified.
      */
-    @Specialization(guards = "isLongKind(frame)")
+    @Specialization(guards = "isLongOrIllegal(frame)")
     protected long writeLong(VirtualFrame frame, long value) {
+        /* Initialize type on first write of the local variable. No-op if kind is already Long. */
+        getSlot().setKind(FrameSlotKind.Long);
+
         frame.setLong(getSlot(), value);
         return value;
     }
 
-    @Specialization(guards = "isBooleanKind(frame)")
+    @Specialization(guards = "isBooleanOrIllegal(frame)")
     protected boolean writeBoolean(VirtualFrame frame, boolean value) {
+        /* Initialize type on first write of the local variable. No-op if kind is already Long. */
+        getSlot().setKind(FrameSlotKind.Boolean);
+
         frame.setBoolean(getSlot(), value);
         return value;
     }
@@ -98,51 +98,32 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      */
     @Specialization(contains = {"writeLong", "writeBoolean"})
     protected Object write(VirtualFrame frame, Object value) {
-        if (getSlot().getKind() != FrameSlotKind.Object) {
-            /*
-             * The local variable has still a primitive type, we need to change it to Object. Since
-             * the variable type is important when the compiler optimizes a method, we also discard
-             * compiled code.
-             */
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getSlot().setKind(FrameSlotKind.Object);
-        }
+        /*
+         * Regardless of the type before, the new and final type of the local variable is Object.
+         * Changing the slot kind also discards compiled code, because the variable type is
+         * important when the compiler optimizes a method.
+         *
+         * No-op if kind is already Object.
+         */
+        getSlot().setKind(FrameSlotKind.Object);
+
         frame.setObject(getSlot(), value);
         return value;
     }
 
     /**
      * Guard function that the local variable has the type {@code long}.
+     *
+     * @param frame The parameter seems unnecessary, but it is required: Without the parameter, the
+     *            Truffle DSL would not check the guard on every execution of the specialization.
+     *            Guards without parameters are assumed to be pure, but our guard depends on the
+     *            slot kind which can change.
      */
-    @SuppressWarnings("unused")
-    protected boolean isLongKind(VirtualFrame frame) {
-        return isKind(FrameSlotKind.Long);
+    protected boolean isLongOrIllegal(VirtualFrame frame) {
+        return getSlot().getKind() == FrameSlotKind.Long || getSlot().getKind() == FrameSlotKind.Illegal;
     }
 
-    @SuppressWarnings("unused")
-    protected boolean isBooleanKind(VirtualFrame frame) {
-        return isKind(FrameSlotKind.Boolean);
-    }
-
-    private boolean isKind(FrameSlotKind kind) {
-        if (getSlot().getKind() == kind) {
-            /* Success: the frame slot has the expected kind. */
-            return true;
-        } else if (getSlot().getKind() == FrameSlotKind.Illegal) {
-            /*
-             * This is the first write to this local variable. We can set the type to the one we
-             * expect. Since the variable type is important when the compiler optimizes a method, we
-             * also discard compiled code.
-             */
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getSlot().setKind(kind);
-            return true;
-        } else {
-            /*
-             * Failure: the frame slot has the wrong kind, the Truffle DSL generated code will
-             * choose a different specialization.
-             */
-            return false;
-        }
+    protected boolean isBooleanOrIllegal(@SuppressWarnings("unused") VirtualFrame frame) {
+        return getSlot().getKind() == FrameSlotKind.Boolean || getSlot().getKind() == FrameSlotKind.Illegal;
     }
 }

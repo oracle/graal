@@ -44,9 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLContext;
@@ -61,24 +59,30 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
  */
 @NodeInfo(shortName = "func")
 public final class SLFunctionLiteralNode extends SLExpressionNode {
-    private final String value;
-    private final Node contextNode;
-    @CompilationFinal private SLFunction cachedFunction;
-    @CompilationFinal private SLContext cachedContext;
 
-    public SLFunctionLiteralNode(SourceSection src, String value) {
-        super(src);
-        this.value = value;
-        contextNode = SLLanguage.INSTANCE.createFindContextNode0();
+    /** The name of the function. */
+    private final String functionName;
+
+    /**
+     * The resolved function. During parsing (in the constructor of this node), we do not have the
+     * {@link SLContext} available yet, so the lookup can only be done at {@link #executeGeneric
+     * first execution}. The {@link CompilationFinal} annotation ensures that the function can still
+     * be constant folded during compilation.
+     */
+    @CompilationFinal private SLFunction cachedFunction;
+
+    public SLFunctionLiteralNode(String functionName) {
+        this.functionName = functionName;
     }
 
     @Override
     public SLFunction executeGeneric(VirtualFrame frame) {
-        SLContext context = SLLanguage.INSTANCE.findContext0(contextNode);
-        if (context != cachedContext) {
+        if (cachedFunction == null) {
+            /* We are about to change a @CompilationFinal field. */
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.cachedContext = context;
-            this.cachedFunction = context.getFunctionRegistry().lookup(value);
+            /* First execution of the node: lookup the function in the function registry. */
+            SLContext context = SLLanguage.INSTANCE.findContext();
+            cachedFunction = context.getFunctionRegistry().lookup(functionName, true);
         }
         return cachedFunction;
     }

@@ -44,21 +44,21 @@ import java.util.Set;
  * registering {@link ClassLoader}(s) that contain implementations and {@link Registration
  * registration}s of the {@link TruffleLanguage languages}.
  *
- * @since 0.14
+ * @since 0.18
  */
 public interface PolyglotLocator {
     /**
      * Called to locate languages and other parts of the system.
      *
      * @param response the response to fill in with found languages
-     * @since 0.14
+     * @since 0.18
      */
     void locate(Response response);
 
     /**
      * Callback to register languages.
-     * 
-     * @since 0.14
+     *
+     * @since 0.18
      */
     final class Response {
         private final Set<ClassLoader> loaders;
@@ -72,7 +72,7 @@ public interface PolyglotLocator {
          * multiple times to register as many classloaders as necessary.
          *
          * @param languageLoader the classloader to use
-         * @since 0.14
+         * @since 0.18
          */
         public void registerClassLoader(ClassLoader languageLoader) {
             loaders.add(languageLoader);

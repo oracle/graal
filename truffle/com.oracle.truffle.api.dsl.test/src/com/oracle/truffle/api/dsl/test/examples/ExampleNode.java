@@ -32,6 +32,7 @@ import com.oracle.truffle.api.dsl.test.TestingLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 @TypeSystemReference(ExampleTypes.class)
 @NodeChild(value = "args", type = ExampleNode[].class)
@@ -40,6 +41,14 @@ public abstract class ExampleNode extends Node {
     public Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
         // will get implemented by the DSL.
         throw new UnsupportedOperationException();
+    }
+
+    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        return ExampleTypesGen.expectInteger(execute(frame));
+    }
+
+    public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+        return ExampleTypesGen.expectDouble(execute(frame));
     }
 
     @Override

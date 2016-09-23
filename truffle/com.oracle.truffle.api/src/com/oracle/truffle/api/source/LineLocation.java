@@ -28,9 +28,11 @@ package com.oracle.truffle.api.source;
  * A specification for a location in guest language source, expressed as a line number in a specific
  * instance of {@link Source}, suitable for hash table keys with equality defined in terms of
  * content.
- * 
+ *
  * @since 0.8 or earlier
+ * @deprecated without replacement
  */
+@Deprecated
 public final class LineLocation implements Comparable<LineLocation> {
     private final Source source;
     private final int line;
@@ -58,7 +60,7 @@ public final class LineLocation implements Comparable<LineLocation> {
 
     /** @since 0.8 or earlier */
     public String getShortDescription() {
-        return source.getShortName() + ":" + line;
+        return source.getName() + ":" + line;
     }
 
     /** @since 0.8 or earlier */

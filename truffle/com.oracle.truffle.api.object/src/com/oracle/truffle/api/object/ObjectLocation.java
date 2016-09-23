@@ -31,7 +31,7 @@ public interface ObjectLocation extends TypedLocation {
 
     /**
      * If {@code true}, this location does not accept {@code null} values.
-     * 
+     *
      * @since 0.8 or earlier
      */
     boolean isNonNull();

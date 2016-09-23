@@ -28,7 +28,7 @@ import com.oracle.truffle.api.nodes.SlowPathException;
 
 /**
  * This exception is thrown on an attempt to assign an incompatible value to a location.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class IncompatibleLocationException extends SlowPathException {
@@ -36,7 +36,7 @@ public final class IncompatibleLocationException extends SlowPathException {
 
     /**
      * Default constructor.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public IncompatibleLocationException() {

@@ -70,6 +70,7 @@ meth public abstract com.oracle.truffle.api.CallTarget accessUnbox()
 meth public abstract com.oracle.truffle.api.CallTarget accessWrite()
 
 CLSS public abstract com.oracle.truffle.api.interop.InteropException
+meth public final java.lang.RuntimeException raise()
 supr java.lang.Exception
 hfds serialVersionUID
 

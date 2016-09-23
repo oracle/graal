@@ -40,7 +40,12 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import java.io.BufferedReader;
+import java.io.PrintWriter;
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -54,13 +59,15 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.builtins.SLAssertFalseBuiltinFactory;
-import com.oracle.truffle.sl.builtins.SLAssertTrueBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLEvalBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLGetSizeBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLHasSizeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLHelloEqualsWorldBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLImportBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLIsExecutableBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLIsNullBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLNewObjectBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
@@ -71,25 +78,18 @@ import com.oracle.truffle.sl.builtins.SLStackTraceBuiltinFactory;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
-import com.oracle.truffle.sl.parser.Parser;
-import com.oracle.truffle.sl.parser.SLNodeFactory;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.math.BigInteger;
 
 /**
- * The run-time state of SL during execution. One context is instantiated before any source code is
- * parsed, and this context is passed around to all methods that need access to it. For example, the
- * context is used during {@link SLNodeFactory parsing} and by {@link SLBuiltinNode#getContext()
- * builtin functions}.
+ * The run-time state of SL during execution. The context is created by the {@link SLLanguage}. It
+ * is used, for example, by {@link SLBuiltinNode#getContext() builtin functions}.
  * <p>
  * It would be an error to have two different context instances during the execution of one script.
  * However, if two separate scripts run in one Java VM at the same time, they have a different
  * context. Therefore, the context is not a singleton.
  */
 public final class SLContext extends ExecutionContext {
+
+    private static final Source BUILTIN_SOURCE = Source.newBuilder("").name("SL builtin").mimeType(SLLanguage.MIME_TYPE).build();
     private static final Layout LAYOUT = Layout.createLayout();
 
     private final BufferedReader input;
@@ -99,21 +99,13 @@ public final class SLContext extends ExecutionContext {
     private final TruffleLanguage.Env env;
 
     public SLContext(TruffleLanguage.Env env, BufferedReader input, PrintWriter output) {
-        this(env, input, output, true);
-    }
-
-    public SLContext() {
-        this(null, null, null, false);
-    }
-
-    private SLContext(TruffleLanguage.Env env, BufferedReader input, PrintWriter output, boolean installBuiltins) {
         this.input = input;
         this.output = output;
         this.env = env;
         this.functionRegistry = new SLFunctionRegistry();
-        installBuiltins(installBuiltins);
+        installBuiltins();
 
-        this.emptyShape = LAYOUT.createShape(new SLObjectType());
+        this.emptyShape = LAYOUT.createShape(SLObjectType.SINGLETON);
     }
 
     /**
@@ -143,21 +135,23 @@ public final class SLContext extends ExecutionContext {
      * Adds all builtin functions to the {@link SLFunctionRegistry}. This method lists all
      * {@link SLBuiltinNode builtin implementation classes}.
      */
-    private void installBuiltins(boolean registerRootNodes) {
-        installBuiltin(SLReadlnBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLPrintlnBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLNanoTimeBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLDefineFunctionBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLStackTraceBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLHelloEqualsWorldBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLAssertTrueBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLAssertFalseBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLNewObjectBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLEvalBuiltinFactory.getInstance(), registerRootNodes);
-        installBuiltin(SLImportBuiltinFactory.getInstance(), registerRootNodes);
+    private void installBuiltins() {
+        installBuiltin(SLReadlnBuiltinFactory.getInstance());
+        installBuiltin(SLPrintlnBuiltinFactory.getInstance());
+        installBuiltin(SLNanoTimeBuiltinFactory.getInstance());
+        installBuiltin(SLDefineFunctionBuiltinFactory.getInstance());
+        installBuiltin(SLStackTraceBuiltinFactory.getInstance());
+        installBuiltin(SLHelloEqualsWorldBuiltinFactory.getInstance());
+        installBuiltin(SLNewObjectBuiltinFactory.getInstance());
+        installBuiltin(SLEvalBuiltinFactory.getInstance());
+        installBuiltin(SLImportBuiltinFactory.getInstance());
+        installBuiltin(SLGetSizeBuiltinFactory.getInstance());
+        installBuiltin(SLHasSizeBuiltinFactory.getInstance());
+        installBuiltin(SLIsExecutableBuiltinFactory.getInstance());
+        installBuiltin(SLIsNullBuiltinFactory.getInstance());
     }
 
-    public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory, boolean registerRootNodes) {
+    public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {
         /*
          * The builtin node factory is a class that is automatically generated by the Truffle DSL.
          * The signature returned by the factory reflects the signature of the @Specialization
@@ -171,24 +165,21 @@ public final class SLContext extends ExecutionContext {
          * from this array.
          */
         for (int i = 0; i < argumentCount; i++) {
-            argumentNodes[i] = new SLReadArgumentNode(null, i);
+            argumentNodes[i] = new SLReadArgumentNode(i);
         }
         /* Instantiate the builtin node. This node performs the actual functionality. */
         SLBuiltinNode builtinBodyNode = factory.createNode(argumentNodes, this);
+        builtinBodyNode.addRootTag();
         /* The name of the builtin function is specified via an annotation on the node class. */
         String name = lookupNodeInfo(builtinBodyNode.getClass()).shortName();
+        final SourceSection srcSection = BUILTIN_SOURCE.createUnavailableSection();
+        builtinBodyNode.setSourceSection(srcSection);
 
-        final SourceSection srcSection = SourceSection.createUnavailable(SLLanguage.builtinKind, name);
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
-        SLRootNode rootNode = new SLRootNode(this, new FrameDescriptor(), builtinBodyNode, srcSection, name);
+        SLRootNode rootNode = new SLRootNode(new FrameDescriptor(), builtinBodyNode, srcSection, name);
 
-        if (registerRootNodes) {
-            /* Register the builtin function in our function registry. */
-            getFunctionRegistry().register(name, rootNode);
-        } else {
-            // make sure the function is known
-            getFunctionRegistry().lookup(name);
-        }
+        /* Register the builtin function in our function registry. */
+        getFunctionRegistry().register(name, rootNode);
     }
 
     public static NodeInfo lookupNodeInfo(Class<?> clazz) {
@@ -203,48 +194,50 @@ public final class SLContext extends ExecutionContext {
         }
     }
 
-    /**
-     * Evaluate a source, causing any definitions to be registered (but not executed).
-     *
-     * @param source The {@link Source} to parse.
+    /*
+     * Methods for object creation / object property access.
      */
-    public void evalSource(Source source) {
-        Parser.parseSL(this, source);
-    }
 
     /**
-     * Allocate an empty object.
+     * Allocate an empty object. All new objects initially have no properties. Properties are added
+     * when they are first stored, i.e., the store triggers a shape change of the object.
      */
     public DynamicObject createObject() {
         return emptyShape.newInstance();
     }
 
     public static boolean isSLObject(TruffleObject value) {
-        return value instanceof DynamicObject && isSLObject((DynamicObject) value);
+        /*
+         * LAYOUT.getType() returns a concrete implementation class, i.e., a class that is more
+         * precise than the base class DynamicObject. This makes the type check faster.
+         */
+        return LAYOUT.getType().isInstance(value) && LAYOUT.getType().cast(value).getShape().getObjectType() == SLObjectType.SINGLETON;
     }
 
-    public static boolean isSLObject(DynamicObject value) {
-        return value.getShape().getObjectType() instanceof SLObjectType;
-    }
-
-    public static DynamicObject castSLObject(Object value) {
-        return LAYOUT.getType().cast(value);
-    }
+    /*
+     * Methods for language interoperability.
+     */
 
     public static Object fromForeignValue(Object a) {
         if (a instanceof Long || a instanceof BigInteger || a instanceof String) {
             return a;
         } else if (a instanceof Number) {
-            return ((Number) a).longValue();
+            return fromForeignNumber(a);
         } else if (a instanceof TruffleObject) {
             return a;
         } else if (a instanceof SLContext) {
             return a;
         }
+        CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException(a + " is not a Truffle value");
     }
 
-    public CallTarget parse(Source source) throws IOException {
+    @TruffleBoundary
+    private static long fromForeignNumber(Object a) {
+        return ((Number) a).longValue();
+    }
+
+    public CallTarget parse(Source source) throws Exception {
         return env.parse(source);
     }
 

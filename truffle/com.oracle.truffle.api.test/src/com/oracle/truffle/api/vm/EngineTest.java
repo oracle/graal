@@ -26,11 +26,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 
-import java.io.IOException;
 import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.ImplicitExplicitExportTest.Ctx;
 import static com.oracle.truffle.api.vm.ImplicitExplicitExportTest.L1;
@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import org.junit.After;
+
 import static org.junit.Assert.assertSame;
 
 public class EngineTest {
@@ -70,15 +71,34 @@ public class EngineTest {
 
         PolyglotEngine.Language language1 = tvm.getLanguages().get("application/x-test-import-export-1");
         PolyglotEngine.Language language2 = tvm.getLanguages().get("application/x-test-import-export-2");
-        language2.eval(Source.fromText("explicit.value=42", "define 42"));
+        language2.eval(Source.newBuilder("explicit.value=42").name("define 42").mimeType("content/unknown").build());
 
-        PolyglotEngine.Value value = language1.eval(Source.fromText("return=value", "42.value"));
+        PolyglotEngine.Value value = language1.eval(Source.newBuilder("return=value").name("42.value").mimeType("content/unknown").build());
         String res = value.as(String.class);
         assertNotNull(res);
     }
 
     @Test
-    public void checkCachingOfNodes() throws IOException {
+    public void testPassingThroughInteropException() throws Exception {
+        PolyglotEngine tvm = createBuilder().build();
+        register(tvm);
+
+        PolyglotEngine.Language language1 = tvm.getLanguages().get("application/x-test-import-export-1");
+        try {
+            PolyglotEngine.Value value = language1.eval(Source.newBuilder("throwInteropException").name("interopTest").mimeType("content/unknown").build());
+            value.as(Object.class);
+        } catch (Exception e) {
+            while (e instanceof RuntimeException) {
+                e = (Exception) e.getCause();
+            }
+            assertEquals("Expecting UnsupportedTypeException", UnsupportedTypeException.class, e.getClass());
+            return;
+        }
+        fail("Expected UnsupportedTypeException, got none");
+    }
+
+    @Test
+    public void checkCachingOfNodes() {
         PolyglotEngine vm1 = createBuilder().build();
         register(vm1);
         PolyglotEngine vm2 = createBuilder().executor(Executors.newSingleThreadExecutor()).build();
@@ -88,7 +108,7 @@ public class EngineTest {
         PolyglotEngine.Language language2 = vm2.getLanguages().get("application/x-test-hash");
         PolyglotEngine.Language alt1 = vm1.getLanguages().get("application/x-test-hash-alt");
         PolyglotEngine.Language alt2 = vm2.getLanguages().get("application/x-test-hash-alt");
-        final Source sharedSource = Source.fromText("anything", "something");
+        final Source sharedSource = Source.newBuilder("anything").name("something").mimeType("content/unknown").build();
 
         Object hashIn1Round1 = language1.eval(sharedSource).get();
         Object hashIn2Round1 = language2.eval(sharedSource).get();
@@ -133,7 +153,7 @@ public class EngineTest {
         register(tvm);
 
         PolyglotEngine.Language language1 = tvm.getLanguages().get("application/x-test-import-export-1");
-        AccessArray access = language1.eval(Source.fromText("return=arr", "get the array")).as(AccessArray.class);
+        AccessArray access = language1.eval(Source.newBuilder("return=arr").name("get the array").mimeType("content/unknown").build()).as(AccessArray.class);
         assertNotNull("Array converted to list", access);
         access = access.dupl();
         List<? extends Number> list = access.get(0);
@@ -149,7 +169,7 @@ public class EngineTest {
     }
 
     @Test
-    public void engineConfigBasicAccess() throws IOException {
+    public void engineConfigBasicAccess() {
         Builder builder = createBuilder();
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
@@ -178,7 +198,7 @@ public class EngineTest {
     }
 
     @Test
-    public void engineConfigShouldBeReadOnly() throws IOException {
+    public void engineConfigShouldBeReadOnly() {
         Builder builder = createBuilder();
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
@@ -198,7 +218,7 @@ public class EngineTest {
     }
 
     @Test
-    public void secondValueWins() throws IOException {
+    public void secondValueWins() {
         Builder builder = createBuilder();
         builder.config("application/x-test-import-export-2", "hello", "truffle");
         builder.config("application/x-test-import-export-2", "hello", "world");
@@ -211,7 +231,7 @@ public class EngineTest {
     }
 
     @Test
-    public void secondValueWins2() throws IOException {
+    public void secondValueWins2() {
         Builder builder = createBuilder();
         builder.config("application/x-test-import-export-2", "hello", "world");
         builder.config("application/x-test-import-export-2", "hello", "truffle");
@@ -224,7 +244,7 @@ public class EngineTest {
     }
 
     @Test
-    public void altValueWins() throws IOException {
+    public void altValueWins() {
         Builder builder = createBuilder();
         builder.config(L1, "hello", "truffle");
         builder.config(L1_ALT, "hello", "world");
@@ -237,7 +257,7 @@ public class EngineTest {
     }
 
     @Test
-    public void altValueWins2() throws IOException {
+    public void altValueWins2() {
         Builder builder = createBuilder();
         builder.config(L1_ALT, "hello", "truffle");
         builder.config(L1, "hello", "world");
@@ -250,7 +270,7 @@ public class EngineTest {
     }
 
     @Test
-    public void configIsNeverNull() throws IOException {
+    public void configIsNeverNull() {
         Builder builder = createBuilder();
         PolyglotEngine vm = builder.build();
         register(vm);
@@ -265,7 +285,7 @@ public class EngineTest {
     }
 
     @Test
-    public void exampleOfConfiguration() throws IOException {
+    public void exampleOfConfiguration() {
         // @formatter:off
         String[] args = {"--kernel", "Kernel.som", "--instrument", "dyn-metrics"};
         Builder builder = PolyglotEngine.newBuilder();

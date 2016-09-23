@@ -41,25 +41,12 @@
 package com.oracle.truffle.sl.nodes.call;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * The node for function invocation in SL. Since SL has first class functions, the {@link SLFunction
@@ -69,20 +56,23 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * inline cache.
  */
 @NodeInfo(shortName = "invoke")
-@NodeChildren({@NodeChild(value = "functionNode", type = SLExpressionNode.class)})
-public abstract class SLInvokeNode extends SLExpressionNode {
+public final class SLInvokeNode extends SLExpressionNode {
+
+    @Child private SLExpressionNode functionNode;
     @Children private final SLExpressionNode[] argumentNodes;
     @Child private SLDispatchNode dispatchNode;
 
-    SLInvokeNode(SourceSection src, SLExpressionNode[] argumentNodes) {
-        super(src);
+    public SLInvokeNode(SLExpressionNode functionNode, SLExpressionNode[] argumentNodes) {
+        this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
         this.dispatchNode = SLDispatchNodeGen.create();
     }
 
-    @Specialization
     @ExplodeLoop
-    public Object executeGeneric(VirtualFrame frame, SLFunction function) {
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        Object function = functionNode.executeGeneric(frame);
+
         /*
          * The number of arguments is constant for one invoke node. During compilation, the loop is
          * unrolled and the execute methods of all arguments are inlined. This is triggered by the
@@ -98,34 +88,6 @@ public abstract class SLInvokeNode extends SLExpressionNode {
         return dispatchNode.executeDispatch(frame, function, argumentValues);
     }
 
-    @Child private Node crossLanguageCall;
-
-    @Specialization
-    @ExplodeLoop
-    protected Object executeGeneric(VirtualFrame frame, TruffleObject function) {
-        /*
-         * The number of arguments is constant for one invoke node. During compilation, the loop is
-         * unrolled and the execute methods of all arguments are inlined. This is triggered by the
-         * ExplodeLoop annotation on the method. The compiler assertion below illustrates that the
-         * array length is really constant.
-         */
-        CompilerAsserts.compilationConstant(argumentNodes.length);
-
-        Object[] argumentValues = new Object[argumentNodes.length];
-        for (int i = 0; i < argumentNodes.length; i++) {
-            argumentValues[i] = argumentNodes[i].executeGeneric(frame);
-        }
-        if (crossLanguageCall == null) {
-            crossLanguageCall = insert(Message.createExecute(argumentValues.length).createNode());
-        }
-        try {
-            Object res = ForeignAccess.sendExecute(crossLanguageCall, frame, function, argumentValues);
-            return SLContext.fromForeignValue(res);
-        } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
-            return SLNull.SINGLETON;
-        }
-    }
-
     @Override
     protected boolean isTaggedWith(Class<?> tag) {
         if (tag == StandardTags.CallTag.class) {
@@ -133,5 +95,4 @@ public abstract class SLInvokeNode extends SLExpressionNode {
         }
         return super.isTaggedWith(tag);
     }
-
 }

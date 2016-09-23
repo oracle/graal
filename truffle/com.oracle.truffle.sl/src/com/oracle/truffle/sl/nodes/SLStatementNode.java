@@ -54,38 +54,23 @@ import com.oracle.truffle.api.source.SourceSection;
  * statements, i.e., without returning a value. The {@link VirtualFrame} provides access to the
  * local variables.
  */
-@NodeInfo(language = "Simple Language", description = "The abstract base node for all statements")
+@NodeInfo(language = "SL", description = "The abstract base node for all SL statements")
 @Instrumentable(factory = SLStatementNodeWrapper.class)
 public abstract class SLStatementNode extends Node {
 
-    private static final int STATEMENT_BIT = 0;
-    private static final int ROOT_BIT = 1;
+    private SourceSection sourceSection;
 
-    private final SourceSection section;
-    /*
-     * Bitmask 0bSR, S = node is tagged as statement, R = node is tagged as root
-     */
-    private byte tags;
-
-    public SLStatementNode(SourceSection src) {
-        section = src;
-    }
+    private boolean hasStatementTag;
+    private boolean hasRootTag;
 
     @Override
     public final SourceSection getSourceSection() {
-        return section;
+        return sourceSection;
     }
 
-    protected SLStatementNode(SLStatementNode delegate) {
-        this(delegate.getSourceSection());
-        tags = delegate.tags;
-    }
-
-    @Override
-    public Node copy() {
-        SLStatementNode statementNode = (SLStatementNode) super.copy();
-        statementNode.tags = tags;
-        return statementNode;
+    public void setSourceSection(SourceSection section) {
+        assert this.sourceSection == null : "overwriting existing SourceSection";
+        this.sourceSection = section;
     }
 
     /**
@@ -93,36 +78,26 @@ public abstract class SLStatementNode extends Node {
      */
     public abstract void executeVoid(VirtualFrame frame);
 
-    public SLStatementNode getNonWrapperNode() {
-        return this;
+    /**
+     * Marks this node as being a {@link StandardTags.StatementTag} for instrumentation purposes.
+     */
+    public final void addStatementTag() {
+        hasStatementTag = true;
     }
 
-    public void setStatementTagged(boolean isStatementTagged) {
-        setTagBit(STATEMENT_BIT, isStatementTagged);
-    }
-
-    public void setRootTagged(boolean isRootTagged) {
-        setTagBit(ROOT_BIT, isRootTagged);
-    }
-
-    private void setTagBit(int pos, boolean value) {
-        if (value) {
-            tags = (byte) (tags | (1 << pos));
-        } else {
-            tags = (byte) (tags & ~(1 << pos));
-        }
-    }
-
-    private boolean isTagBit(int pos) {
-        return (tags & 1 << pos) != 0;
+    /**
+     * Marks this node as being a {@link StandardTags.RootTag} for instrumentation purposes.
+     */
+    public final void addRootTag() {
+        hasRootTag = true;
     }
 
     @Override
     protected boolean isTaggedWith(Class<?> tag) {
         if (tag == StandardTags.StatementTag.class) {
-            return isTagBit(STATEMENT_BIT);
+            return hasStatementTag;
         } else if (tag == StandardTags.RootTag.class) {
-            return isTagBit(ROOT_BIT);
+            return hasRootTag;
         }
         return false;
     }

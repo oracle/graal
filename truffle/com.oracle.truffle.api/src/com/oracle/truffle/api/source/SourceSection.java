@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,105 +24,100 @@
  */
 package com.oracle.truffle.api.source;
 
-import java.util.Arrays;
-
-import com.oracle.truffle.api.nodes.Node;
-
 /**
- * Description of contiguous section of text within a {@link Source} of program code; supports
- * multiple modes of access to the text and its location. A special
- * {@link #createUnavailable(java.lang.String, java.lang.String) null value} should be used for code
- * that is not available from source, e.g language builtins.
+ * Description of contiguous section of text within a {@link Source} of program code.; supports
+ * multiple modes of access to the text and its location.
  * <p>
- * Equality of instances is defined in terms of equivalent locations: the same start and length in
- * equal source code instances.
+ * Two source sections are considered equal if their sources, start and length are equal.
+ * {@link #isAvailable() Unavailable} source sections are never equal with available ones. Source
+ * sections can be used as keys in hash maps. Unavailable source sections are equal if their sources
+ * are equal.
  *
- *
- * @see Source#createSection(String, int, int, int, int)
  * @see Source#createSection(String, int, int, int)
  * @see Source#createSection(String, int, int)
  * @see Source#createSection(String, int)
- * @see #createUnavailable
+ * @see Source#createUnavailableSection()
  * @since 0.8 or earlier
  */
 public final class SourceSection {
 
-    static final String[] EMTPY_TAGS = new String[0];
-
+    private static final String UNKNOWN = "<unknown>"; // deprecated
     private final Source source;
-    private final String identifier;
-    private final int startLine;
-    private final int startColumn;
     private final int charIndex;
-    private final int charLength;
-    private final String kind;
-    private final String[] tags;
+    private final int charLength; // -1 indicates unavailable
 
-    /**
-     * Creates a new object representing a contiguous text section within the source code of a guest
-     * language program's text.
-     * <p>
-     * The starting location of the section is specified using two different coordinate:
-     * <ul>
-     * <li><b>(row, column)</b>: rows and columns are 1-based, so the first character in a source
-     * file is at position {@code (1,1)}.</li>
-     * <li><b>character index</b>: 0-based offset of the character from the beginning of the source,
-     * so the first character in a file is at index {@code 0}.</li>
-     * </ul>
-     * The <b>newline</b> that terminates each line counts as a single character for the purpose of
-     * a character index. The (row,column) coordinates of a newline character should never appear in
-     * a text section.
-     * <p>
-     * Equality of instances is defined in terms of equivalent locations: the same start and length
-     * in equal source code instances.
-     *
-     * @param source object representing the complete source program that contains this section
-     * @param identifier an identifier used when printing the section
-     * @param startLine the 1-based number of the start line of the section
-     * @param startColumn the 1-based number of the start column of the section
-     * @param charIndex the 0-based index of the first character of the section
-     * @param charLength the length of the section in number of characters
-     * @param tags the assigned tags for the source section
-     */
-    SourceSection(String kind, Source source, String identifier, int startLine, int startColumn, int charIndex, int charLength, String[] tags) {
-        this.kind = kind;
+    private final String identifier; // deprecated
+    private final int startLine; // deprecated
+    private final int startColumn; // deprecated
+    private final String kind; // deprecated
+
+    SourceSection(Source source, String identifier, int startLine, int startColumn, int charIndex, int charLength) {
+        this.kind = null;
         this.source = source;
         this.identifier = identifier;
         this.startLine = startLine;
         this.startColumn = startColumn;
         this.charIndex = charIndex;
         this.charLength = charLength;
-        this.tags = tags;
-        assert tagsAreNonNullAndInterned(tags) : "All tags set for a source section must be interned and non-null.";
     }
 
-    @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
-    private static boolean tagsAreNonNullAndInterned(String[] tags) {
-        for (int i = 0; i < tags.length; i++) {
-            if (tags[i] == null) {
-                return false;
-            }
-            if (tags[i].intern() != tags[i]) {
-                return false;
-            }
-        }
-        return true;
+    SourceSection(Source source, int charIndex, int charLength) {
+        this.source = source;
+        this.charIndex = charIndex;
+        this.charLength = charLength;
+        // legacy support
+        this.kind = null;
+        this.identifier = null;
+        this.startLine = -1;
+        this.startColumn = -1;
+    }
+
+    SourceSection(Source source) {
+        this.source = source;
+        this.charIndex = 0;
+        this.charLength = -1;
+        // legacy support
+        this.kind = null;
+        this.identifier = null;
+        this.startLine = -1;
+        this.startColumn = -1;
+    }
+
+    /** Special representation for unknown source. */
+    private SourceSection(String kind, String identifier) {
+        this.source = null;
+        this.kind = kind;
+        this.identifier = identifier;
+        this.startLine = -1;
+        this.startColumn = -1;
+        this.charIndex = -1;
+        this.charLength = -1;
     }
 
     /**
-     * @deprecated tags are now determined by {@link Node#isTaggedWith(Class)}
-     * @since 0.12
+     * Returns whether this is a special instance that signifies that source information is
+     * available. Unavailable source sections can be created using
+     * {@link Source#createUnavailableSection()}. Available source sections are never equal to
+     * unavailable source sections. Unavailable source sections return the same indices and lengths
+     * as empty source sections starting at character index <code>0</code>.
+     *
+     * @see Source#createUnavailableSection()
+     * @since 0.18
      */
-    @Deprecated
-    @SuppressFBWarnings("ES_COMPARING_PARAMETER_STRING_WITH_EQ")
-    public boolean hasTag(String tag) {
-        assert tag.intern() == tag;
-        for (int i = 0; i < tags.length; i++) {
-            if (tags[i] == tag) {
-                return true;
-            }
-        }
-        return false;
+    public boolean isAvailable() {
+        // TODO this check can be simplified when the deprecated method #createUnavailable was
+        // removed. then source cannot become null anymore
+        return charLength != -1 && source != null;
+    }
+
+    /**
+     * Returns whether the source section is in bounds of the {@link #getSource() source}
+     * {@link Source#getCode() code}. Please note that calling this method causes the
+     * {@link Source#getCode() code} of the {@link #getSource() source} to be loaded if it was not
+     * yet loaded.
+     */
+    boolean isValid() {
+        return isAvailable() ? (charIndex + charLength <= getSource().getCode().length()) : false;
     }
 
     /**
@@ -136,57 +131,111 @@ public final class SourceSection {
     }
 
     /**
-     * Returns 1-based line number of the first character in this section (inclusive).
+     * Returns 1-based line number of the first character in this section (inclusive). Returns
+     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
+     * Please note that calling this method causes the {@link Source#getCode() code} of the
+     * {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return the starting line number
      * @since 0.8 or earlier
      */
     public int getStartLine() {
+        if (source == null) {
+            return -1;
+        }
+        if (!isValid()) {
+            return 1;
+        }
+        if (startLine == -1) {
+            return source.getLineNumber(getCharIndex());
+        }
         return startLine;
     }
 
     /**
-     * Gets a representation of the first line of the section, suitable for a hash key.
+     * Gets a representation of the {@link #getStartLine() first line} of the section, suitable for
+     * a hash key. Please note that calling this method causes the {@link Source#getCode() code} of
+     * the {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return first line of the section
      * @since 0.8 or earlier
+     * @deprecated without replacement
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public LineLocation getLineLocation() {
-        return source.createLineLocation(startLine);
+        if (!isValid()) {
+            return null;
+        }
+        return source.createLineLocation(getStartLine());
     }
 
     /**
-     * Returns the 1-based column number of the first character in this section (inclusive).
+     * Returns the 1-based column number of the first character in this section (inclusive). Returns
+     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
+     * Please note that calling this method causes the {@link Source#getCode() code} of the
+     * {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return the starting column number
      * @since 0.8 or earlier
      */
     public int getStartColumn() {
+        if (source == null) {
+            return -1;
+        }
+        if (!isValid()) {
+            return 1;
+        }
+        if (startColumn == -1) {
+            return source.getColumnNumber(getCharIndex());
+        }
         return startColumn;
     }
 
     /**
-     * Returns 1-based line number of the last character in this section (inclusive).
+     * Returns 1-based line number of the last character in this section (inclusive). Returns
+     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
+     * Please note that calling this method causes the {@link Source#getCode() code} of the
+     * {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return the starting line number
      * @since 0.8 or earlier
      */
     public int getEndLine() {
-        return source.getLineNumber(charIndex + charLength - 1);
+        if (source == null) {
+            return -1;
+        }
+        if (!isValid()) {
+            return 1;
+        }
+        return source.getLineNumber(getCharIndex() + Math.max(0, getCharLength() - 1));
     }
 
     /**
-     * Returns the 1-based column number of the last character in this section (inclusive).
+     * Returns the 1-based column number of the last character in this section (inclusive). Returns
+     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
+     * Please note that calling this method causes the {@link Source#getCode() code} of the
+     * {@link #getSource() source} to be loaded if it was not yet loaded.
      *
      * @return the starting column number
      * @since 0.8 or earlier
      */
     public int getEndColumn() {
-        return source.getColumnNumber(charIndex + charLength - 1);
+        if (source == null) {
+            return -1;
+        }
+        if (!isValid()) {
+            return 1;
+        }
+        return source.getColumnNumber(getCharIndex() + Math.max(0, getCharLength() - 1));
     }
 
     /**
-     * Returns the 0-based index of the first character in this section.
+     * Returns the 0-based index of the first character in this section. Returns <code>0</code> for
+     * {@link #isAvailable() unavailable} source sections. Please note that calling this method does
+     * not cause the {@link Source#getCode() code} of the {@link #getSource() source} to be loaded.
+     * The returned index might be out of bounds of the source code if assertions (-ea) are not
+     * enabled.
      *
      * @return the starting character index
      * @since 0.8 or earlier
@@ -196,24 +245,37 @@ public final class SourceSection {
     }
 
     /**
-     * Returns the length of this section in characters.
+     * Returns the length of this section in characters. Returns <code>0</code> for
+     * {@link #isAvailable() unavailable} source sections. Please note that calling this method does
+     * not cause the {@link Source#getCode() code} of the {@link #getSource() source} to be loaded.
+     * The returned length might be out of bounds of the source code if assertions (-ea) are not
+     * enabled.
      *
      * @return the number of characters in the section
      * @since 0.8 or earlier
      */
     public int getCharLength() {
-        return charLength;
+        if (source == null) {
+            return -1;
+        }
+        return charLength == -1 ? 0 : charLength;
     }
 
     /**
      * Returns the index of the text position immediately following the last character in the
-     * section.
+     * section. Returns <code>0</code> for {@link #isAvailable() unavailable} source sections.
+     * Please note that calling this method does not cause the {@link Source#getCode() code} of the
+     * {@link #getSource() source} to be loaded. The returned index might be out of bounds of the
+     * source code if assertions (-ea) are not enabled.
      *
      * @return the end position of the section
      * @since 0.8 or earlier
      */
     public int getCharEndIndex() {
-        return charIndex + charLength;
+        if (source == null) {
+            return -1;
+        }
+        return getCharIndex() + getCharLength();
     }
 
     /**
@@ -221,20 +283,32 @@ public final class SourceSection {
      *
      * @return the identifier of the section
      * @since 0.8 or earlier
+     * @deprecated without replacement
      */
+    @Deprecated
     public String getIdentifier() {
         return identifier;
     }
 
     /**
-     * Returns the source code fragment described by this section.
+     * Returns the source code fragment described by this section. Returns an empty string for out
+     * of bounds or {@link #isAvailable() unavailable} source sections. Please note that calling
+     * this method causes the {@link Source#getCode() code} of the {@link #getSource() source} to be
+     * loaded if it was not yet loaded.
      *
-     * @return the code as a string, or {@code "<unavailable>"} if the SourceSection was created
-     *         using {@link #createUnavailable}.
+     * @return the code as a string
      * @since 0.8 or earlier
+     * @see Source#getCode(int, int)
      */
     public String getCode() {
-        return source == null ? "<unavailable>" : source.getCode(charIndex, charLength);
+        // TODO remove check for source == null if #createUnavailableSourceSection is removed.
+        if (source == null) {
+            return "<unavailable>";
+        }
+        if (!isValid()) {
+            return "";
+        }
+        return source.getCode(getCharIndex(), getCharLength());
     }
 
     /**
@@ -243,12 +317,15 @@ public final class SourceSection {
      *
      * @return a short description of the source section formatted as {@code <filename>:<line>}.
      * @since 0.8 or earlier
+     * @deprecated replace with <code>String.format("%s:%d", sourceSection.getSource().getName(),
+     *             sourceSection.getStartLine())</code>
      */
+    @Deprecated
     public String getShortDescription() {
         if (source == null) {
-            return kind + ": " + identifier;
+            return kind == null ? UNKNOWN : kind;
         }
-        return String.format("%s:%d", source.getShortName(), startLine);
+        return String.format("%s:%d", source.getName(), getStartLine());
     }
 
     /**
@@ -262,38 +339,24 @@ public final class SourceSection {
     @Override
     public String toString() {
         if (source == null) {
-            return kind + ": " + identifier;
+            return kind == null ? UNKNOWN : kind;
         } else {
-
-            return "source=" + source.getShortName() + " pos=" + charIndex + " len=" + charLength + " line=" + startLine + " col=" + startColumn +
-                            (identifier != null ? " identifier=" + identifier : "") + " code=" + getCode().replaceAll("\\n", "\\\\n");
-        }
-    }
-
-    /**
-     * @deprecated tags are now determined by {@link Node#isTaggedWith(Class)}
-     * @since 0.12
-     */
-    @Deprecated
-    public SourceSection withTags(@SuppressWarnings("hiding") String... tags) {
-        if (sameTags(tags)) {
-            // optimize copying of tags if tags are unchanged
-            return this;
-        }
-        return new SourceSection(kind, source, identifier, startLine, startColumn, charIndex, charLength, tags);
-    }
-
-    @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
-    private boolean sameTags(String... t) {
-        if (t.length == tags.length) {
-            for (int i = 0; i < tags.length; i++) {
-                if (t[i] != tags[i]) {
-                    return false;
+            StringBuilder b = new StringBuilder();
+            b.append("SourceSection(source=").append(getSource().getName());
+            if (isAvailable()) {
+                b.append(", index=").append(getCharIndex());
+                b.append(", length=").append(getCharLength());
+                if (isValid()) {
+                    b.append(", code=").append(getCode().replaceAll("\\n", "\\\\n"));
+                } else {
+                    b.append(", valid=false");
                 }
+            } else {
+                b.append(" available=false");
             }
-            return true;
+            b.append(")");
+            return b.toString();
         }
-        return false;
     }
 
     /** @since 0.8 or earlier */
@@ -303,11 +366,9 @@ public final class SourceSection {
         int result = 1;
         result = prime * result + charIndex;
         result = prime * result + charLength;
-        result = prime * result + ((identifier == null) ? 0 : identifier.hashCode());
         result = prime * result + ((source == null) ? 0 : source.hashCode());
         result = prime * result + startColumn;
         result = prime * result + startLine;
-        result = prime * result + Arrays.hashCode(tags);
         return result;
     }
 
@@ -331,13 +392,6 @@ public final class SourceSection {
         if (charLength != other.charLength) {
             return false;
         }
-        if (identifier == null) {
-            if (other.identifier != null) {
-                return false;
-            }
-        } else if (!identifier.equals(other.identifier)) {
-            return false;
-        }
         if (source == null) {
             if (other.source != null) {
                 return false;
@@ -350,16 +404,6 @@ public final class SourceSection {
         }
         if (startLine != other.startLine) {
             return false;
-        }
-
-        String[] otherTags = other.tags;
-        if (tags.length != otherTags.length) {
-            return false;
-        }
-        for (int i = 0; i < tags.length; i++) {
-            if (tags[i] != otherTags[i]) {
-                return false;
-            }
         }
         return true;
     }
@@ -375,8 +419,12 @@ public final class SourceSection {
      * @param name specific name for this section
      * @return source section which is mostly <em>empty</em>
      * @since 0.8 or earlier
+     * @deprecated use a dedicated named source for unavailable sources and call
+     *             {@link Source#createUnavailableSection()} instead.
      */
+    @Deprecated
     public static SourceSection createUnavailable(String kind, String name) {
-        return new SourceSection(kind, null, name == null ? "<unknown>" : name, -1, -1, -1, -1, EMTPY_TAGS);
+        return new SourceSection(kind, name == null ? UNKNOWN : name);
     }
+
 }

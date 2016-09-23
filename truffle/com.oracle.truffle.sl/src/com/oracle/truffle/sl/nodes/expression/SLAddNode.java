@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
-import java.math.BigInteger;
 
 /**
  * SL node that performs the "+" operation, which performs addition on arbitrary precision numbers,
@@ -62,10 +62,6 @@ import java.math.BigInteger;
  */
 @NodeInfo(shortName = "+")
 public abstract class SLAddNode extends SLBinaryNode {
-
-    public SLAddNode(SourceSection src) {
-        super(src);
-    }
 
     /**
      * Specialization for primitive {@code long} values. This is the fast path of the

@@ -24,11 +24,16 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Provides the capabilities to attach {@link ExecutionEventNodeFactory} and
@@ -59,6 +64,66 @@ public abstract class Instrumenter {
      * @since 0.12
      */
     public abstract <T extends ExecutionEventListener> EventBinding<T> attachListener(SourceSectionFilter filter, T listener);
+
+    /**
+     * Starts notifications for each newly loaded {@link Source} and returns a
+     * {@linkplain EventBinding binding} that can be used to terminate notifications. Only
+     * subsequent loads will be notified unless {@code includeExistingSources} is true, in which
+     * case a notification for each previous load will be delivered before this method returns.
+     * <p>
+     * <strong>Note:</strong> the provided {@link SourceSectionFilter} must only contain filters on
+     * {@link SourceSectionFilter.Builder#sourceIs(Source...) sources} or
+     * {@link SourceSectionFilter.Builder#mimeTypeIs(String...) mime types}.
+     *
+     * @param filter a filter on which sources trigger events. Only filters are allowed.
+     * @param listener a listener that gets notified if a source was loaded
+     * @param includeExistingSources whether or not this listener should be notified for sources
+     *            which were already loaded at the time when this listener was attached.
+     * @return a handle for stopping the notification stream
+     *
+     * @see LoadSourceListener#onLoad(LoadSourceEvent)
+     *
+     * @since 0.15
+     */
+    public abstract <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean includeExistingSources);
+
+    /**
+     * Starts notifications for each {@link SourceSection} in every newly loaded {@link Source} and
+     * returns a {@linkplain EventBinding binding} that can be used to terminate notifications. Only
+     * subsequent loads will be notified unless {@code includeExistingSourceSections} is true, in
+     * which case a notification for each previous load will be delivered before this method
+     * returns.
+     *
+     * @param filter a filter on which sources sections trigger events
+     * @param listener a listener that gets notified if a source section was loaded
+     * @param includeExistingSourceSections whether or not this listener should be notified for
+     *            sources which were already loaded at the time when this listener was attached.
+     * @return a handle for stopping the notification stream
+     *
+     * @see LoadSourceSectionListener#onLoad(LoadSourceSectionEvent)
+     *
+     * @since 0.15
+     */
+    public abstract <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean includeExistingSourceSections);
+
+    /**
+     * Returns a filtered list of loaded {@link SourceSection} instances.
+     *
+     * @param filter criterion for inclusion
+     * @return unmodifiable list of instances that pass the filter
+     *
+     * @since 0.18
+     */
+    public final List<SourceSection> querySourceSections(SourceSectionFilter filter) {
+        final List<SourceSection> sourceSectionList = new ArrayList<>();
+        EventBinding<?> binding = attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
+            public void onLoad(LoadSourceSectionEvent event) {
+                sourceSectionList.add(event.getSourceSection());
+            }
+        }, true);
+        binding.dispose();
+        return Collections.unmodifiableList(sourceSectionList);
+    }
 
     /**
      * Returns an unmodifiable {@link Set} of tag classes which where associated with this node. If

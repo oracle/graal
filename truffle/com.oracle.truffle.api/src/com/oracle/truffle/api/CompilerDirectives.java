@@ -34,7 +34,7 @@ import java.util.concurrent.Callable;
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
  * no effect when executed in the Truffle interpreter.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class CompilerDirectives {
@@ -58,7 +58,7 @@ public final class CompilerDirectives {
     /**
      * Directive for the compiler to discontinue compilation at this code position and instead
      * insert a transfer to the interpreter.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static void transferToInterpreter() {
@@ -70,7 +70,7 @@ public final class CompilerDirectives {
     /**
      * Directive for the compiler to discontinue compilation at this code position and instead
      * insert a transfer to the interpreter, invalidating the currently executing machine code.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static void transferToInterpreterAndInvalidate() {
@@ -206,17 +206,34 @@ public final class CompilerDirectives {
      * Marks fields that should be considered final for a Truffle compilation although they are not
      * final while executing in the interpreter. If the field type is an array type, the compiler
      * considers reads with a constant index as constants.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
     public @interface CompilationFinal {
+        /**
+         * Specifies the number of array dimensions to be marked as compilation final.
+         *
+         * This value should be specified for all array-typed compilation-final fields and should be
+         * left unspecified for other field types for which it has no meaning.
+         *
+         * The allowed range is from 0 to the number of declared array dimensions (inclusive).
+         * Specifically, a {@code dimensions} value of 0 marks only the reference to the (outermost)
+         * array as final but not its elements, a value of 1 marks the outermost array and all its
+         * elements as final but not the elements of any nested arrays.
+         *
+         * For compatibility reasons, array-typed fields without an explicit {@code dimensions}
+         * parameter default to the number of array dimensions declared in the field type.
+         *
+         * @since 0.14
+         */
+        int dimensions() default -1;
     }
 
     /**
      * Marks a method that it is considered as a boundary for Truffle partial evaluation.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -231,7 +248,7 @@ public final class CompilerDirectives {
     /**
      * Marks classes as value types. Reference comparisons (==) between instances of those classes
      * have undefined semantics and can either return true or false.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -252,7 +269,7 @@ public final class CompilerDirectives {
     /**
      * Ensures that the given object will be virtual (escape analyzed) at all points that are
      * dominated by the current position.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static void ensureVirtualized(@SuppressWarnings("unused") Object object) {
@@ -260,7 +277,7 @@ public final class CompilerDirectives {
 
     /**
      * Ensures that the given object will be virtual at the current position.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static void ensureVirtualizedHere(@SuppressWarnings("unused") Object object) {

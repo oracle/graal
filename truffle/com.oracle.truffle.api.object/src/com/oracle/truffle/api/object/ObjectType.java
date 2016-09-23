@@ -32,13 +32,13 @@ import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
  * An extensible object type descriptor for {@link DynamicObject}s.
- * 
+ *
  * @since 0.8 or earlier
  */
 public class ObjectType {
     /**
      * Default constructor.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public ObjectType() {
@@ -46,7 +46,7 @@ public class ObjectType {
 
     /**
      * Delegate method for {@link DynamicObject#equals(Object)}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public boolean equals(DynamicObject object, Object other) {
@@ -55,7 +55,7 @@ public class ObjectType {
 
     /**
      * Delegate method for {@link DynamicObject#hashCode()}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public int hashCode(DynamicObject object) {
@@ -64,7 +64,7 @@ public class ObjectType {
 
     /**
      * Delegate method for {@link DynamicObject#toString()}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     @TruffleBoundary

@@ -32,9 +32,11 @@ import subprocess
 
 import mx
 
+from mx_graaltest import testgraal
 from mx_unittest import unittest
 from mx_sigtest import sigtest
 from mx_gate import Task
+from mx_javamodules import as_java_module, get_java_module_info
 import mx_gate
 
 _suite = mx.suite('truffle')
@@ -48,15 +50,42 @@ def build(args, vm=None):
     opts2 = mx.build(['--source', '1.7'] + args)
     assert len(opts2.remainder) == 0
 
+def _path_args(depNames=None):
+    """
+    Gets the VM args for putting the dependencies named in `depNames` on the
+    class path and module path (if running on JDK9 or later).
+
+    :param names: a Dependency, str or list containing Dependency/str objects. If None,
+           then all registered dependencies are used.
+    """
+    jdk = mx.get_jdk()
+    if jdk.javaCompliance >= '1.9':
+        modules = [as_java_module(dist, jdk) for dist in _suite.dists if get_java_module_info(dist)]
+        if modules:
+            # Partition resources between the class path and module path
+            modulepath = []
+            classpath = []
+            cpEntryToModule = {m.dist.path : m for m in modules}
+
+            for e in mx.classpath(depNames).split(os.pathsep):
+                if cpEntryToModule.has_key(e):
+                    modulepath.append(cpEntryToModule[e].jarpath)
+                else:
+                    classpath.append(e)
+            # The Truffle modules must be eagerly loaded as they could be referenced from
+            # the main class hence the --add-modules argument
+            return ['--add-modules=' + ','.join([m.name for m in modules]), '--module-path=' + os.pathsep.join(modulepath), '-cp', os.pathsep.join(classpath)]
+    return ['-cp', mx.classpath(depNames)]
+
 def sl(args):
     """run an SL program"""
     vmArgs, slArgs = mx.extract_VM_args(args)
-    mx.run_java(vmArgs + ['-cp', mx.classpath(["TRUFFLE_API", "com.oracle.truffle.sl"]), "com.oracle.truffle.sl.SLLanguage"] + slArgs)
+    mx.run_java(vmArgs + _path_args(["TRUFFLE_API", "com.oracle.truffle.sl"]) + ["com.oracle.truffle.sl.SLMain"] + slArgs)
 
 def repl(args):
     """run a simple command line debugger for Truffle-implemented languages on the class path"""
     vmArgs, slArgs = mx.extract_VM_args(args, useDoubleDash=True)
-    mx.run_java(vmArgs + ['-cp', mx.classpath(), "com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient"] + slArgs)
+    mx.run_java(vmArgs + _path_args() + ["com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient"] + slArgs)
 
 def testdownstream(args):
     """test downstream users of the Truffle API"""
@@ -71,16 +100,16 @@ def testdownstream(args):
         git.clone(jruby_repo, jruby_dir)
         git.run(['git', 'checkout', jruby_branch], nonZeroIsFatal=True, cwd=jruby_dir)
     dev_version = _suite.release_version(snapshotSuffix='SNAPSHOT')
-    subprocess.check_call(['tool/truffle/set_truffle_version.sh', dev_version], cwd=jruby_dir)
     mx.build([])
     mx.maven_install([])
-    subprocess.check_call(['./mvnw', '-X', 'clean'], cwd=jruby_dir)
-    subprocess.check_call(['./mvnw', '-X', ], cwd=jruby_dir)
+    subprocess.check_call(['./mvnw', '-q', '-Dtruffle.version=' + dev_version], cwd=jruby_dir)
     subprocess.check_call(['bin/jruby', 'tool/jt.rb', 'test', 'fast'], cwd=jruby_dir)
 
 def _truffle_gate_runner(args, tasks):
-    with Task('Truffle Javadoc', tasks) as t:
-        if t: mx.javadoc(['--unified'])
+    jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
+    if jdk.javaCompliance < '9':
+        with Task('Truffle Javadoc', tasks) as t:
+            if t: mx.javadoc(['--unified'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Truffle Signature Tests', tasks) as t:
@@ -93,6 +122,7 @@ mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'repl' : [repl, '[REPL Debugger args|@VM options]'],
     'testdownstream' : [testdownstream, ''],
+    'testgraal' : [testgraal, ''],
 })
 
 """

@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.builtins;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
@@ -64,10 +63,6 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 @NodeField(name = "context", type = SLContext.class)
 @GenerateNodeFactory
 public abstract class SLBuiltinNode extends SLExpressionNode {
-
-    public SLBuiltinNode(SourceSection src) {
-        super(src);
-    }
 
     /**
      * Accessor for the {@link SLContext}. The implementation of this method is generated

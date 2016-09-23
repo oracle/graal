@@ -39,8 +39,9 @@ public final class GenericGenerator extends MessageGenerator {
     private final String targetableExecuteNode;
     private final String executeRootNode;
 
-    public GenericGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element) {
-        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element);
+    public GenericGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator containingForeignAccessFactory) {
+        super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         String mName = messageName.substring(messageName.lastIndexOf('.') + 1);
         this.targetableExecuteNode = (new StringBuilder(mName)).replace(0, 1, mName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
         this.executeRootNode = (new StringBuilder(mName)).replace(0, 1, mName.substring(0, 1).toUpperCase()).append("RootNode").toString();
@@ -69,7 +70,7 @@ public final class GenericGenerator extends MessageGenerator {
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append("    private final static class ").append(executeRootNode).append(" extends RootNode {\n");
+        w.append("    private static final class ").append(executeRootNode).append(" extends RootNode {\n");
         w.append("        protected ").append(executeRootNode).append("(Class<? extends TruffleLanguage<?>> language) {\n");
         w.append("            super(language, null, null);\n");
         w.append("        }\n");
@@ -85,12 +86,10 @@ public final class GenericGenerator extends MessageGenerator {
             String index = String.valueOf(i);
             w.append("              Object arg").append(index).append(" = arguments.get(").append(index).append(");\n");
         }
-        w.append("              return node.executeWithTarget(frame, receiver, ");
-        String sep = "";
+        w.append("              return node.executeWithTarget(frame, receiver");
         for (int i = 0; i < getParameterCount() - 1; i++) {
             String index = String.valueOf(i);
-            w.append(sep).append("arg").append(index);
-            sep = ", ";
+            w.append(", ").append("arg").append(index);
         }
         w.append(");\n");
 

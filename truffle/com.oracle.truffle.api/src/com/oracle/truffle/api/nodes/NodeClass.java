@@ -31,7 +31,7 @@ import java.util.Iterator;
 /**
  * Information about a {@link Node} class. A single instance of this class is allocated for every
  * subclass of {@link Node} that is used.
- * 
+ *
  * @since 0.8 or earlier
  */
 public abstract class NodeClass {
@@ -59,26 +59,37 @@ public abstract class NodeClass {
     }
 
     /** @since 0.8 or earlier */
-    @SuppressWarnings("unused")
-    public NodeClass(Class<? extends Node> clazz) {
+    public NodeClass(@SuppressWarnings("unused") Class<? extends Node> clazz) {
     }
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public abstract NodeFieldAccessor getNodeClassField();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public abstract NodeFieldAccessor[] getCloneableFields();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public abstract NodeFieldAccessor[] getFields();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public abstract NodeFieldAccessor getParentField();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public abstract NodeFieldAccessor[] getChildFields();
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public abstract NodeFieldAccessor[] getChildrenFields();
 
     /** @since 0.8 or earlier */
@@ -87,9 +98,50 @@ public abstract class NodeClass {
     /**
      * The {@link Class} this <code>NodeClass</code> has been {@link #NodeClass(java.lang.Class)
      * created for}.
-     * 
+     *
      * @return the clazz of node this <code>NodeClass</code> describes
      * @since 0.8 or earlier
      */
     public abstract Class<? extends Node> getType();
+
+    /** @since 0.14 */
+    protected abstract Iterable<? extends Object> getNodeFields();
+
+    /** @since 0.14 */
+    protected abstract void putFieldObject(Object field, Node receiver, Object value);
+
+    /** @since 0.14 */
+    protected abstract Object getFieldObject(Object field, Node receiver);
+
+    /** @since 0.14 */
+    protected abstract Object getFieldValue(Object field, Node receiver);
+
+    /** @since 0.14 */
+    protected abstract Class<?> getFieldType(Object field);
+
+    /** @since 0.14 */
+    protected abstract String getFieldName(Object field);
+
+    /** @since 0.14 */
+    protected abstract boolean isChildField(Object field);
+
+    /** @since 0.14 */
+    protected abstract boolean isChildrenField(Object field);
+
+    /** @since 0.14 */
+    protected abstract boolean isCloneableField(Object field);
+
+    /**
+     * If and only if this method returns {@code true}, {@link #getNodeFields()} adheres to the
+     * following iteration order.
+     * <ul>
+     * <li>{@link Node.Child @Child} fields
+     * <li>{@link Node.Children @Children} fields
+     * <li>{@link NodeCloneable} fields
+     * <li>Other fields
+     * </ul>
+     */
+    boolean nodeFieldsOrderedByKind() {
+        return false;
+    }
 }

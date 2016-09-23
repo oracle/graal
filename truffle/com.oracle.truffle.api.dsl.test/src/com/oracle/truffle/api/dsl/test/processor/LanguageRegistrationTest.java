@@ -75,29 +75,8 @@ public class LanguageRegistrationTest {
             return false;
         }
 
-        @SuppressWarnings("deprecation")
-        @Deprecated
         @Override
-        protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-            return null;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-            return null;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 
@@ -135,29 +114,8 @@ public class LanguageRegistrationTest {
             return false;
         }
 
-        @SuppressWarnings("deprecation")
-        @Deprecated
         @Override
-        protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-            return null;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-            return null;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 
@@ -191,29 +149,8 @@ public class LanguageRegistrationTest {
             return false;
         }
 
-        @SuppressWarnings("deprecation")
-        @Deprecated
         @Override
-        protected com.oracle.truffle.api.instrument.Visualizer getVisualizer() {
-            return null;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected boolean isInstrumentable(Node node) {
-            return false;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Deprecated
-        @Override
-        protected com.oracle.truffle.api.instrument.WrapperNode createWrapperNode(Node node) {
-            return null;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
             return null;
         }
 

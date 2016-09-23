@@ -32,7 +32,10 @@ import java.util.List;
 
 /**
  * This is NOT public API. Do not use directly. This code may change without notice.
+ * 
+ * @deprecated to be removed
  */
+@Deprecated
 public abstract class NodeFactoryBase<T> implements NodeFactory<T> {
 
     private final Class<T> nodeClass;

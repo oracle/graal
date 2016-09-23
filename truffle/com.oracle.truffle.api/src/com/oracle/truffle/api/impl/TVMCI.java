@@ -25,6 +25,8 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -55,6 +57,18 @@ public abstract class TVMCI {
     protected abstract void onLoopCount(Node source, int iterations);
 
     /**
+     * Reports when a new root node is loaded into the system.
+     *
+     * @since 0.15
+     */
+    protected void onLoad(RootNode rootNode) {
+        InstrumentSupport support = Accessor.instrumentAccess();
+        if (support != null) {
+            support.onLoad(rootNode);
+        }
+    }
+
+    /**
      * Makes sure the <code>rootNode</code> is initialized.
      *
      * @param rootNode
@@ -79,4 +93,21 @@ public abstract class TVMCI {
         return Accessor.nodesAccess().findLanguage(root);
     }
 
+    /**
+     * Accessor for non-public state in {@link FrameDescriptor}.
+     *
+     * @since 0.14
+     */
+    protected void markFrameMaterializeCalled(FrameDescriptor descriptor) {
+        Accessor.framesAccess().markMaterializeCalled(descriptor);
+    }
+
+    /**
+     * Accessor for non-public state in {@link FrameDescriptor}.
+     *
+     * @since 0.14
+     */
+    protected boolean getFrameMaterializeCalled(FrameDescriptor descriptor) {
+        return Accessor.framesAccess().getMaterializeCalled(descriptor);
+    }
 }

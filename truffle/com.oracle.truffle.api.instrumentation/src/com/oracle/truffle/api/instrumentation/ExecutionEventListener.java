@@ -28,7 +28,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * A listener attached by an {@link Instrumenter} to specific locations of a guest language program
- * to listen to instrumentation events.
+ * to listen to execution events.
  *
  * @since 0.12
  */

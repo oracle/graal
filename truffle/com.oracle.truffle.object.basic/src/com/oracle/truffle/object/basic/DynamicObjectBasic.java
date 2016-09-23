@@ -209,6 +209,7 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
         return clone;
     }
 
+    @Override
     protected final void reshape(ShapeImpl newShape) {
         reshapeCount.inc();
 

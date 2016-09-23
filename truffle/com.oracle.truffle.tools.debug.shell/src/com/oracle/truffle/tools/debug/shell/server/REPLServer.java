@@ -38,9 +38,7 @@ import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.debug.Breakpoint;
-import com.oracle.truffle.api.debug.Breakpoint.State;
 import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.ExecutionEvent;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -50,10 +48,8 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.EventConsumer;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
@@ -102,7 +98,7 @@ public final class REPLServer {
         }
     });
 
-    /** MAP: language name => Language. */
+    /** MAP: language name => Language (case insensitive). */
     private final Map<String, Language> nameToLanguage = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
     // TODO (mlvdv) Language-specific
@@ -119,13 +115,13 @@ public final class REPLServer {
         engineLanguages.addAll(engine.getLanguages().values());
 
         for (Language language : engineLanguages) {
-            nameToLanguage.put(language.getName(), language);
+            nameToLanguage.put(language.getName().toLowerCase(), language);
         }
         astPrinter = new REPLASTPrinter(engine);
         statusPrefix = "";
     }
 
-    private final EventConsumer<SuspendedEvent> onHalted = new EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
+    private final com.oracle.truffle.api.vm.EventConsumer<SuspendedEvent> onHalted = new com.oracle.truffle.api.vm.EventConsumer<SuspendedEvent>(SuspendedEvent.class) {
         @Override
         protected void on(SuspendedEvent ev) {
             if (TRACE) {
@@ -138,9 +134,10 @@ public final class REPLServer {
         }
     };
 
-    private final EventConsumer<ExecutionEvent> onExec = new EventConsumer<ExecutionEvent>(ExecutionEvent.class) {
+    private final com.oracle.truffle.api.vm.EventConsumer<com.oracle.truffle.api.debug.ExecutionEvent> onExec = new com.oracle.truffle.api.vm.EventConsumer<com.oracle.truffle.api.debug.ExecutionEvent>(
+                    com.oracle.truffle.api.debug.ExecutionEvent.class) {
         @Override
-        protected void on(ExecutionEvent event) {
+        protected void on(com.oracle.truffle.api.debug.ExecutionEvent event) {
             if (TRACE) {
                 trace("BEGIN onExecutionEvent()");
             }
@@ -334,7 +331,7 @@ public final class REPLServer {
             }
         }
 
-        void eval(Source source, boolean stepInto) throws IOException {
+        void eval(Source source, boolean stepInto) {
             this.steppingInto = stepInto;
             try {
                 engine.eval(source);
@@ -364,7 +361,7 @@ public final class REPLServer {
                 this.steppingInto = stepInto;
                 final String mimeType = defaultMIME(currentLanguage);
                 try {
-                    return engine.eval(Source.fromText(code, "eval(\"" + code + "\")").withMimeType(mimeType)).get();
+                    return engine.eval(Source.newBuilder(code).name("eval(\"" + code + "\")").mimeType(mimeType).build()).get();
                 } finally {
                     this.steppingInto = false;
                 }
@@ -376,13 +373,23 @@ public final class REPLServer {
                     event.prepareStepInto(1);
                 }
                 try {
-                    FrameInstance frame = frameNumber == 0 ? null : event.getStack().get(frameNumber);
-                    final Object result = event.eval(code, frame);
+                    FrameInstance frameInstance = frameNumber == 0 ? null : event.getStack().get(frameNumber);
+                    final Object result = event.eval(code, frameInstance);
                     return (result instanceof Value) ? ((Value) result).get() : result;
                 } finally {
                     event.prepareContinue();
                 }
             }
+        }
+
+        public String displayValue(Integer frameNumber, Object value, int trim) {
+            if (frameNumber == null) {
+                throw new IllegalStateException("displayValue in halted context requires a frame number");
+            }
+            if (value == null) {
+                return "<empty>";
+            }
+            return trim(event.toString(value, event.getStack().get(frameNumber)), trim);
         }
 
         /**
@@ -444,7 +451,7 @@ public final class REPLServer {
          */
         String setLanguage(String name) throws IOException {
             assert name != null;
-            final Language language = nameToLanguage.get(name);
+            final Language language = nameToLanguage.get(name.toLowerCase());
             if (language == null) {
                 throw new IOException("Language \"" + name + "\" not supported");
             }
@@ -523,15 +530,8 @@ public final class REPLServer {
         return language.getMimeTypes().iterator().next();
     }
 
-    BreakpointInfo setLineBreakpoint(int ignoreCount, LineLocation lineLocation, boolean oneShot) throws IOException {
+    BreakpointInfo setLineBreakpoint(int ignoreCount, com.oracle.truffle.api.source.LineLocation lineLocation, boolean oneShot) throws IOException {
         final BreakpointInfo info = new LineBreakpointInfo(lineLocation, ignoreCount, oneShot);
-        info.activate();
-        return info;
-    }
-
-    @Deprecated
-    BreakpointInfo setTagBreakpoint(int ignoreCount, com.oracle.truffle.api.instrument.StandardSyntaxTag tag, boolean oneShot) throws IOException {
-        final BreakpointInfo info = new TagBreakpointInfo(tag, ignoreCount, oneShot);
         info.activate();
         return info;
     }
@@ -559,9 +559,9 @@ public final class REPLServer {
 
     final class LineBreakpointInfo extends BreakpointInfo {
 
-        private final LineLocation lineLocation;
+        private final com.oracle.truffle.api.source.LineLocation lineLocation;
 
-        private LineBreakpointInfo(LineLocation lineLocation, int ignoreCount, boolean oneShot) {
+        private LineBreakpointInfo(com.oracle.truffle.api.source.LineLocation lineLocation, int ignoreCount, boolean oneShot) {
             super(ignoreCount, oneShot);
             this.lineLocation = lineLocation;
         }
@@ -583,38 +583,13 @@ public final class REPLServer {
 
     }
 
-    final class TagBreakpointInfo extends BreakpointInfo {
-        private final com.oracle.truffle.api.instrument.StandardSyntaxTag tag;
-
-        private TagBreakpointInfo(com.oracle.truffle.api.instrument.StandardSyntaxTag tag, int ignoreCount, boolean oneShot) {
-            super(ignoreCount, oneShot);
-            this.tag = tag;
-        }
-
-        @Override
-        protected void activate() throws IOException {
-            breakpoint = db.setTagBreakpoint(ignoreCount, tag, oneShot);
-            // TODO (mlvdv) check if resolved
-            breakpoints.put(uid, this);
-
-        }
-
-        @Override
-        String describeLocation() {
-            if (breakpoint == null) {
-                return "Tag: " + tag;
-            }
-            return breakpoint.getLocationDescription();
-        }
-    }
-
     abstract class BreakpointInfo {
 
         protected final int uid;
         protected final boolean oneShot;
         protected final int ignoreCount;
 
-        protected State state = State.ENABLED_UNRESOLVED;
+        protected Breakpoint.State state = Breakpoint.State.ENABLED_UNRESOLVED;
         protected Breakpoint breakpoint;
         protected Source conditionSource;
 
@@ -641,12 +616,12 @@ public final class REPLServer {
                 switch (state) {
                     case ENABLED_UNRESOLVED:
                         if (!enabled) {
-                            state = State.DISABLED_UNRESOLVED;
+                            state = Breakpoint.State.DISABLED_UNRESOLVED;
                         }
                         break;
                     case DISABLED_UNRESOLVED:
                         if (enabled) {
-                            state = State.ENABLED_UNRESOLVED;
+                            state = Breakpoint.State.ENABLED_UNRESOLVED;
                         }
                         break;
                     case DISPOSED:
@@ -660,12 +635,12 @@ public final class REPLServer {
         }
 
         boolean isEnabled() {
-            return breakpoint == null ? (state == State.ENABLED_UNRESOLVED) : breakpoint.isEnabled();
+            return breakpoint == null ? (state == Breakpoint.State.ENABLED_UNRESOLVED) : breakpoint.isEnabled();
         }
 
         void setCondition(String expr) throws IOException {
             if (breakpoint == null) {
-                conditionSource = expr == null ? null : Source.fromText(expr, "breakpoint condition from text: " + expr);
+                conditionSource = expr == null ? null : Source.newBuilder(expr).name("breakpoint condition from text: " + expr).mimeType("content/unknown").build();
             } else {
                 breakpoint.setCondition(expr);
             }
@@ -686,14 +661,14 @@ public final class REPLServer {
 
         void dispose() {
             if (breakpoint == null) {
-                if (state == State.DISPOSED) {
+                if (state == Breakpoint.State.DISPOSED) {
                     throw new IllegalStateException("Breakpoint already disposed");
                 }
             } else {
                 breakpoint.dispose();
                 breakpoint = null;
             }
-            state = State.DISPOSED;
+            state = Breakpoint.State.DISPOSED;
             breakpoints.remove(uid);
             conditionSource = null;
         }
@@ -736,10 +711,10 @@ public final class REPLServer {
                 return null;
             }
             RootNode root = node.getRootNode();
-            if (root == null) {
-                return "unknown";
+            if (root != null && root.getName() != null) {
+                return root.getName();
             }
-            return root.getCallTarget().toString();
+            return "??";
         }
 
         /**
@@ -767,29 +742,6 @@ public final class REPLServer {
          */
         String displayIdentifier(FrameSlot slot) {
             return slot.getIdentifier().toString();
-        }
-
-        /**
-         * Trims text if {@code trim > 0} to the shorter of {@code trim} or the length of the first
-         * line of test. Identity if {@code trim <= 0}.
-         */
-        protected String trim(String text, int trim) {
-            if (trim == 0) {
-                return text;
-            }
-            final String[] lines = text.split("\n");
-            String result = lines[0];
-            if (lines.length == 1) {
-                if (result.length() <= trim) {
-                    return result;
-                }
-                if (trim <= 3) {
-                    return result.substring(0, Math.min(result.length() - 1, trim - 1));
-                } else {
-                    return result.substring(0, trim - 4) + "...";
-                }
-            }
-            return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
         }
     }
 
@@ -819,5 +771,28 @@ public final class REPLServer {
             }
             return "";
         }
+    }
+
+    /**
+     * Trims text if {@code trim > 0} to the shorter of {@code trim} or the length of the first line
+     * of test. Identity if {@code trim <= 0}.
+     */
+    protected static String trim(String text, int trim) {
+        if (trim == 0) {
+            return text;
+        }
+        final String[] lines = text.split("\n");
+        String result = lines[0];
+        if (lines.length == 1) {
+            if (result.length() <= trim) {
+                return result;
+            }
+            if (trim <= 3) {
+                return result.substring(0, Math.min(result.length() - 1, trim - 1));
+            } else {
+                return result.substring(0, trim - 4) + "...";
+            }
+        }
+        return (result.length() < trim - 3 ? result : result.substring(0, trim - 4)) + "...";
     }
 }

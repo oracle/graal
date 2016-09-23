@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.debug.shell.client;
 
+import java.io.File;
 import java.io.IOException;
 
 import com.oracle.truffle.api.source.Source;
@@ -34,8 +35,8 @@ final class REPLineLocation {
     private final int lineNumber;
 
     /**
-     * Attempts to extract description of a source line from {@code arg[1]}, either
-     * "<source name>:<n>" or just "<n>".
+     * Attempts to extract description of a source line from {@code arg[1]}, either "<source name>:
+     * <n>" or just "<n>".
      */
     static REPLineLocation parse(REPLClientContext context, String[] args) throws IllegalArgumentException {
         if (args.length == 1) {
@@ -66,7 +67,11 @@ final class REPLineLocation {
             final String fileName = split[0];
             lineNumberText = split[1];
             try {
-                source = Source.fromFileName(fileName);
+                final File file = new File(fileName);
+                if (!file.canRead()) {
+                    throw new IllegalArgumentException("Can't read file " + fileName);
+                }
+                source = Source.newBuilder(file.getCanonicalFile()).build();
             } catch (IOException e1) {
                 throw new IllegalArgumentException("Can't find file \"" + fileName + "\"");
             }

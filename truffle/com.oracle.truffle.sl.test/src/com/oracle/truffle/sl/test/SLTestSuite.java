@@ -55,4 +55,10 @@ public @interface SLTestSuite {
      */
     String[] value();
 
+    /**
+     * A class in the same project (or .jar file) that contains the {@link #value test case
+     * directory}. If the property is not specified, the class that declares the annotation is used,
+     * i.e., the test cases must be in the same project as the test class.
+     */
+    Class<?> testCaseDirectory() default SLTestSuite.class;
 }

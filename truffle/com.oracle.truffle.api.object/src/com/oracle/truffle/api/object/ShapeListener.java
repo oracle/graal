@@ -26,7 +26,7 @@ package com.oracle.truffle.api.object;
 
 /**
  * A listener to be notified of property transitions.
- * 
+ *
  * @since 0.8 or earlier
  */
 public interface ShapeListener {

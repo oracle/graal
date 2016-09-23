@@ -42,18 +42,12 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.sl.SLLanguage;
 
 /**
  * Built-in function to create a new object. Objects in SL are simply made up of name/value pairs.
  */
 @NodeInfo(shortName = "new")
 public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
-
-    public SLNewObjectBuiltin() {
-        super(SourceSection.createUnavailable(SLLanguage.builtinKind, "new"));
-    }
 
     @Specialization
     public Object newObject() {

@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
@@ -39,21 +38,18 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * {@link IllegalStateException}. One can however obtain reference to {@link Debugger} instance and
  * keep it to further manipulate with debugging capabilities of the
  * {@link com.oracle.truffle.api.vm.PolyglotEngine} when it is running.
- * 
+ *
+ * @deprecated Use {@link Debugger#startSession(SuspendedCallback)} instead to step into the next
+ *             execution.
  * @since 0.9
  */
 @SuppressWarnings("javadoc")
+@Deprecated
 public final class ExecutionEvent {
-    private final Object[] debugger;
     private final PolyglotEngine engine;
-    private final int currentDepth;
-    private final Source source;
 
-    ExecutionEvent(PolyglotEngine engine, int currentDepth, Object[] debugger, Source source) {
-        this.debugger = debugger;
+    ExecutionEvent(PolyglotEngine engine) {
         this.engine = engine;
-        this.currentDepth = currentDepth;
-        this.source = source;
     }
 
     /**
@@ -66,17 +62,7 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public Debugger getDebugger() {
-        if (debugger[0] instanceof Debugger) {
-            return (Debugger) debugger[0];
-        }
-        try {
-            final Debugger dbg = Debugger.find(engine, true);
-            dbg.executionStarted(currentDepth, source);
-            debugger[0] = dbg;
-        } catch (Exception ex) {
-            throw new IllegalStateException(ex);
-        }
-        return (Debugger) debugger[0];
+        return Debugger.find(engine);
     }
 
     /**
@@ -90,11 +76,11 @@ public final class ExecutionEvent {
      * <li>execution completes.</li>
      * </ol>
      * </ul>
-     * 
+     *
      * @since 0.9
      */
     public void prepareContinue() {
-        getDebugger().prepareContinue(-1);
+        getDebugger().getLegacySession().resumeAll();
     }
 
     /**
@@ -115,6 +101,7 @@ public final class ExecutionEvent {
      * @since 0.9
      */
     public void prepareStepInto() {
-        getDebugger().prepareStepInto(1);
+        getDebugger().getLegacySession().suspendNextExecution();
     }
+
 }

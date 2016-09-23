@@ -46,6 +46,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.tck.TruffleTCK;
 
 /**
@@ -57,7 +58,7 @@ public class SLTckTest extends TruffleTCK {
     @Test
     public void testVerifyPresence() {
         PolyglotEngine vm = PolyglotEngine.newBuilder().build();
-        assertTrue("Our language is present", vm.getLanguages().containsKey("application/x-sl"));
+        assertTrue("Our language is present", vm.getLanguages().containsKey(SLLanguage.MIME_TYPE));
         vm.dispose();
     }
 
@@ -65,64 +66,173 @@ public class SLTckTest extends TruffleTCK {
     protected PolyglotEngine prepareVM(PolyglotEngine.Builder builder) throws Exception {
         PolyglotEngine vm = builder.build();
         // @formatter:off
-        vm.eval(
-            Source.fromText(
-                "function fourtyTwo() {\n" +
-                "  return 42;\n" + //
-                "}\n" +
-                "function plus(a, b) {\n" +
-                "  return a + b;\n" +
-                "}\n" +
-                "function identity(x) {\n" +
-                "  return x;\n" +
-                "}\n" +
-                "function apply(f) {\n" +
-                "  return f(18, 32) + 10;\n" +
-                "}\n" +
-                "function cnt() {\n" +
-                "  return 0;\n" +
-                "}\n" +
-                "function count() {\n" +
-                "  n = cnt() + 1;\n" +
-                "  defineFunction(\"function cnt() { return \" + n + \"; }\");\n" +
-                "  return n;\n" +
-                "}\n" +
-                "function returnsNull() {\n" +
-                "}\n" +
-                "function complexAdd(a, b) {\n" +
-                "  a.real = a.real + b.real;\n" +
-                "  a.imaginary = a.imaginary + b.imaginary;\n" +
-                "}\n" +
-                "function compoundObject() {\n" +
-                "  obj = new();\n" +
-                "  obj.fourtyTwo = fourtyTwo;\n" +
-                "  obj.plus = plus;\n" +
-                "  obj.returnsNull = returnsNull;\n" +
-                "  obj.returnsThis = obj;\n" +
-                "  return obj;\n" +
-                "}\n" +
-                "function valuesObject() {\n" +
-                "  obj = new();\n" +
-                "  obj.byteValue = 0;\n" +
-                "  obj.shortValue = 0;\n" +
-                "  obj.intValue = 0;\n" +
-                "  obj.longValue = 0;\n" +
-                "  obj.floatValue = 0;\n" +
-                "  obj.doubleValue = 0;\n" +
-                "  obj.charValue = \"0\";\n" +
-                "  obj.booleanValue = (1 == 0);\n" +
-                "  return obj;\n" +
-                "}\n",
-                "SL TCK"
-            ).withMimeType("application/x-sl")
+        vm.eval(Source.newBuilder("function fourtyTwo() {\n" +
+                    "  return 42;\n" + //
+                    "}\n" +
+                    "function plus(a, b) {\n" +
+                    "  return a + b;\n" +
+                    "}\n" +
+                    "function identity(x) {\n" +
+                    "  return x;\n" +
+                    "}\n" +
+                    "function apply(f) {\n" +
+                    "  return f(18, 32) + 10;\n" +
+                    "}\n" +
+                    "function cnt() {\n" +
+                    "  return 0;\n" +
+                    "}\n" +
+                    "function count() {\n" +
+                    "  n = cnt() + 1;\n" +
+                    "  defineFunction(\"function cnt() { return \" + n + \"; }\");\n" +
+                    "  return n;\n" +
+                    "}\n" +
+                    "function returnsNull() {\n" +
+                    "}\n" +
+                    "function complexAdd(a, b) {\n" +
+                    "  a.real = a.real + b.real;\n" +
+                    "  a.imaginary = a.imaginary + b.imaginary;\n" +
+                    "}\n" +
+                    "function compoundObject() {\n" +
+                    "  obj = new();\n" +
+                    "  obj.fourtyTwo = fourtyTwo;\n" +
+                    "  obj.plus = plus;\n" +
+                    "  obj.returnsNull = returnsNull;\n" +
+                    "  obj.returnsThis = obj;\n" +
+                    "  return obj;\n" +
+                    "}\n" +
+                    "function whileLoop(fn) {\n" +
+                    "  cnt = 0;\n" +
+                    "  while (fn(cnt)) {\n" +
+                    "    cnt = cnt + 1;\n" +
+                    "  }\n" +
+                    "}\n" +
+                    "function valuesObject() {\n" +
+                    "  obj = new();\n" +
+                    "  obj.byteValue = 0;\n" +
+                    "  obj.shortValue = 0;\n" +
+                    "  obj.intValue = 0;\n" +
+                    "  obj.longValue = 0;\n" +
+                    "  obj.floatValue = 0;\n" +
+                    "  obj.doubleValue = 0;\n" +
+                    "  obj.charValue = \"0\";\n" +
+                    "  obj.booleanValue = (1 == 0);\n" +
+                    "  return obj;\n" +
+                    "}\n" +
+                    "function add(a, b) { return a + b; }\n" +
+                    "function addNumbersFunction() {\n" +
+                    "  return add;\n" +
+                    "}\n" +
+                    "function objectWithValueProperty() {\n" +
+                    "  obj = new();\n" +
+                    "  obj.value = 42;\n" +
+                    "  return obj;\n" +
+                    "}\n" +
+                    "function callFunction(f) {\n" +
+                    "  return f(41, 42);\n" +
+                    "}\n" +
+                    "function readValueFromForeign(o) {\n" +
+                    "  return o.value;\n" +
+                    "}\n" +
+                    "function writeValueToForeign(o) {\n" +
+                    "  o.value = 42;\n" +
+                    "}\n" +
+                    "function getSizeOfForeign(o) {\n" +
+                    "  return getSize(o);\n" +
+                    "}\n" +
+                    "function isNullOfForeign(o) {\n" +
+                    "  return isNull(o);\n" +
+                    "}\n" +
+                    "function hasSizeOfForeign(o) {\n" +
+                    "  return hasSize(o);\n" +
+                    "}\n" +
+                    "function isExecutableOfForeign(o) {\n" +
+                    "  return isExecutable(o);\n" +
+                    "}\n"
+                        ).name("SL TCK").mimeType(SLLanguage.MIME_TYPE
+            ).build()
         );
         // @formatter:on
         return vm;
     }
 
     @Override
+    protected String getSizeOfForeign() {
+        return "getSizeOfForeign";
+    }
+
+    @Override
+    protected String isNullForeign() {
+        return "isNullOfForeign";
+    }
+
+    @Override
+    protected String hasSizeOfForeign() {
+        return "hasSizeOfForeign";
+    }
+
+    @Override
+    protected String isExecutableOfForeign() {
+        return "isExecutableOfForeign";
+    }
+
+    @Override
+    protected String readValueFromForeign() {
+        return "readValueFromForeign";
+    }
+
+    @Override
+    protected String writeValueToForeign() {
+        return "writeValueToForeign";
+    }
+
+    @Override
+    protected String callFunction() {
+        return "callFunction";
+    }
+
+    @Override
+    protected String objectWithElement() {
+        // skip these tests; SL doesn't have objects with size / array-like objects
+        return null;
+    }
+
+    @Override
+    protected String objectWithValueAndAddProperty() {
+        // skip these tests; SL doesn't have objects with methods
+        return null;
+    }
+
+    @Override
+    protected String callMethod() {
+        // skip these tests; SL doesn't have objects with methods
+        return null;
+    }
+
+    @Override
+    protected String readElementFromForeign() {
+        // skip these tests; SL doesn't have objects with size / array-like objects
+        return null;
+    }
+
+    @Override
+    protected String writeElementToForeign() {
+        // skip these tests; SL doesn't have objects with size / array-like objects
+        return null;
+    }
+
+    @Override
+    protected String objectWithValueProperty() {
+        return "objectWithValueProperty";
+    }
+
+    @Override
+    protected String functionAddNumbers() {
+        return "addNumbersFunction";
+    }
+
+    @Override
     protected String mimeType() {
-        return "application/x-sl";
+        return SLLanguage.MIME_TYPE;
     }
 
     @Override
@@ -179,7 +289,7 @@ public class SLTckTest extends TruffleTCK {
     protected String multiplyCode(String firstName, String secondName) {
         // @formatter:off
         return
-            "function multiply(" + firstName + ", " + secondName + ") {\n" +
+            "function main(" + firstName + ", " + secondName + ") {\n" +
             "  return " + firstName + " * " + secondName + ";\n" +
             "}\n";
         // @formatter:on
@@ -216,6 +326,17 @@ public class SLTckTest extends TruffleTCK {
     protected String complexSumReal() {
         // skip these tests; SL doesn't have arrays
         return null;
+    }
+
+    @Override
+    protected String addToArray() {
+        // skip these tests; SL doesn't have arrays
+        return null;
+    }
+
+    @Override
+    protected String countUpWhile() {
+        return "whileLoop";
     }
 
     @Override

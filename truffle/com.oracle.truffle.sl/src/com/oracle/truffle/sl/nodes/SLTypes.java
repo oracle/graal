@@ -40,16 +40,18 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.TypeCast;
 import com.oracle.truffle.api.dsl.TypeCheck;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
-import java.math.BigInteger;
 
 /**
  * The type system of SL, as explained in {@link SLLanguage}. Based on the {@link TypeSystem}
@@ -58,7 +60,7 @@ import java.math.BigInteger;
  * generated ones would not be sufficient.
  */
 @TypeSystem({long.class, BigInteger.class, boolean.class, String.class, SLFunction.class, SLNull.class})
-@DSLOptions
+@DSLOptions(defaultGenerator = DSLGenerator.FLAT)
 public abstract class SLTypes {
 
     /**

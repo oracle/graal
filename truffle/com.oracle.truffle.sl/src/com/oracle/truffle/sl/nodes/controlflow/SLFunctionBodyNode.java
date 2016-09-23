@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.nodes.controlflow;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -70,9 +69,9 @@ public final class SLFunctionBodyNode extends SLExpressionNode {
     private final BranchProfile exceptionTaken = BranchProfile.create();
     private final BranchProfile nullTaken = BranchProfile.create();
 
-    public SLFunctionBodyNode(SourceSection src, SLStatementNode bodyNode) {
-        super(src);
+    public SLFunctionBodyNode(SLStatementNode bodyNode) {
         this.bodyNode = bodyNode;
+        addRootTag();
     }
 
     @Override

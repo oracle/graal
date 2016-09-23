@@ -66,7 +66,7 @@ public class GraphvizShapeVisitor extends DebugShapeVisitor<GraphvizShapeVisitor
             assert drawn.contains(dst);
 
             sb.append(prefix).append(getId(shape)).append("->").append(prefix).append(getId(dst));
-            sb.append(" [label=\"").append(escapeString(entry.getKey().getShortName())).append("\"]");
+            sb.append(" [label=\"").append(escapeString(entry.getKey().toString())).append("\"]");
             sb.append(";");
         }
 

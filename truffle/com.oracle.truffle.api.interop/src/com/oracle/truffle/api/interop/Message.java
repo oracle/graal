@@ -33,7 +33,7 @@ import com.oracle.truffle.api.nodes.Node;
  * Inter-operability is based on sending messages. Standard messages are defined as as constants
  * like {@link #IS_NULL} or factory methods in this class, but one can always define their own,
  * specialized messages.
- * 
+ *
  * @since 0.8 or earlier
  */
 public abstract class Message {
@@ -43,7 +43,7 @@ public abstract class Message {
      * {@link #hashCode()} methods will operate on the class equivalence. Only then the subclass
      * will work properly with {@link #valueOf(java.lang.String)} and
      * {@link #toString(com.oracle.truffle.api.interop.Message)} methods.
-     * 
+     *
      * @since 0.8 or earlier
      */
     protected Message() {
@@ -55,11 +55,19 @@ public abstract class Message {
      * message accepts (in addition to a
      * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) a single
      * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) argument} identifying a
-     * field to read - e.g. either {@link String} or an {@link Integer} - if access to an array at
-     * particular index is requested. The code that wants to send this message should use:
+     * field to read - e.g. either {@link String} or a {@link Number} - if access to an array at
+     * particular index is requested.
+     * <p>
+     * If the object does not support the {@link #READ} message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     *
+     * If the object does not allow reading a property for a given identifier, an
+     * {@link UnknownIdentifierException} has to be thrown.
+     * <p>
+     * The code that wants to send this message should use:
      *
      * <pre>
-     * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     * {@link ForeignAccess}.{@link ForeignAccess#sendRead(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendRead}(
      *   {@link Message#READ}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver, nameOfTheField
      * );
      * </pre>
@@ -69,7 +77,7 @@ public abstract class Message {
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final Message READ = Read.INSTANCE;
@@ -78,10 +86,15 @@ public abstract class Message {
      * Converts {@link TruffleObject truffle value} to Java primitive type. Primitive types are
      * subclasses of {@link Number}, {@link Boolean}, {@link Character} and {@link String}. Before
      * sending the {@link #UNBOX} message, it is desirable to send the {@link #IS_BOXED} one and
-     * verify that the object can really be unboxed. To unbox an object, use:
+     * verify that the object can really be unboxed.
+     * <p>
+     * If the object does not support the {@link #UNBOX} message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     * <p>
+     * To unbox an object, use:
      *
      * <pre>
-     * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     * {@link ForeignAccess}.{@link ForeignAccess#sendUnbox(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject) sendUnbox}(
      *   {@link Message#UNBOX}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToUnbox
      * );
      * </pre>
@@ -91,7 +104,7 @@ public abstract class Message {
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final Message UNBOX = Unbox.INSTANCE;
@@ -103,10 +116,21 @@ public abstract class Message {
      * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) arguments}. The first
      * one identifies a field to read - e.g. either {@link String} or an {@link Integer} - if access
      * to an array at particular index is requested. The second one is the value to assign to such
-     * field. Use following style to construct field modification message:
+     * field.
+     * <p>
+     * If the object does not support the {@link #WRITE} message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     *
+     * If the object does not allow writing a property for a given identifier, an
+     * {@link UnknownIdentifierException} has to be thrown.
+     *
+     * If the provided value has an unsupported type and cannot be written, an
+     * {@link UnsupportedTypeException} has to be thrown.
+     * <p>
+     * Use following style to construct field modification message:
      *
      * <pre>
-     * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     * {@link ForeignAccess}.{@link ForeignAccess#sendWrite(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object, java.lang.Object) sendWrite}(
      *   {@link Message#WRITE}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver, nameOfTheField, newValue
      * );
      * </pre>
@@ -117,7 +141,7 @@ public abstract class Message {
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final Message WRITE = Write.INSTANCE;
@@ -140,10 +164,21 @@ public abstract class Message {
      * One can obtain reference to the <em>add</em> function (for example by
      * {@link Env#importSymbol(java.lang.String) importing it as a global symbol}) and store it into
      * variable <code>addFunction</code>. Then it's time to check the object is executable by
-     * sending it the {@link #IS_EXECUTABLE} message. If the answer is <code>true</code> one can:
+     * sending it the {@link #IS_EXECUTABLE} message.
+     * <p>
+     * If the object does not support the <code>EXECUTE</code> message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     *
+     * If the caller provides a wrong number of arguments, an {@link ArityException} has to be
+     * thrown.
+     *
+     * If one of the provided argument values has an unsupported type, an
+     * {@link UnsupportedTypeException} has to be thrown.
+     * <p>
+     * Use following style to construct execution message:
      *
      * <pre>
-     * {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     * {@link ForeignAccess}.{@link ForeignAccess#sendExecute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) sendExecute}(
      *   {@link Message#createExecute(int) Message.createExecute}(2).{@link Message#createNode()}, {@link VirtualFrame currentFrame}, addFunction, valueOfA, valueOfB
      * );
      * </pre>
@@ -185,14 +220,14 @@ public abstract class Message {
      * otherwise. This is the way to send the <code>IS_EXECUTABLE</code> message:
      *
      * <pre>
-     * {@link Boolean} canBeExecuted = ({@link Boolean}) {@link ForeignAccess}.execute(
+     * {@link Boolean} canBeExecuted = ({@link Boolean}) {@link ForeignAccess}.sendIsExecutable(
      *   {@link Message#IS_EXECUTABLE}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, receiver
      * );
      * </pre>
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final Message IS_EXECUTABLE = IsExecutable.INSTANCE;
@@ -236,12 +271,25 @@ public abstract class Message {
      * }
      * Arith obj = <b>new</b> Arith();
      * </pre>
+     * <p>
+     * If the object does not support the <code>INVOKE</code> message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     *
+     * If the object does not allow invoking a member with the given identifier, an
+     * {@link UnknownIdentifierException} has to be thrown.
+     *
+     * If the caller provides a wrong number of arguments, an {@link ArityException} has to be
+     * thrown.
+     *
+     * If one of the provided argument values has an unsupported type, an
+     * {@link UnsupportedTypeException} has to be thrown.
+     * <p>
      *
      * To access <code>obj</code>'s <code>add</code> method one should use:
      *
      * <pre>
      * <b>try</b> {
-     *   {@link ForeignAccess}.{@link ForeignAccess#execute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) execute}(
+     *   {@link ForeignAccess}.{@link ForeignAccess#sendInvoke(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject, java.lang.String, java.lang.Object...) sendInvoke}(
      *     {@link Message#createInvoke(int) Message.createInvoke}(2).{@link Message#createNode()}, {@link VirtualFrame currentFrame}, obj, "add", valueOfA, valueOfB
      *   );
      * } <b>catch</b> ({@link IllegalArgumentException} ex) {
@@ -272,6 +320,16 @@ public abstract class Message {
      * <code>argumentsLength</code>. The expected behavior of this message is to allocate a new
      * instance of the {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame)
      * receiver} and then perform its constructor with appropriate number of arguments.
+     * <p>
+     * If the object does not support the <code>NEW</code> message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     *
+     * If the caller provides a wrong number of arguments, an {@link ArityException} has to be
+     * thrown.
+     *
+     * If one of the provided argument values has an unsupported type, an
+     * {@link UnsupportedTypeException} has to be thrown.
+     * <p>
      *
      * @param argumentsLength number of parameters to pass to the target
      * @return new instance message
@@ -288,7 +346,7 @@ public abstract class Message {
      * this message is a way to recognize such <code>null</code> representing values:
      *
      * <pre>
-     * {@link Boolean} isNull = ({@link Boolean}) {@link ForeignAccess}.execute(
+     * {@link Boolean} isNull = ({@link Boolean}) {@link ForeignAccess}.sendIsNull(
      *   {@link Message#IS_NULL}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheckForNull
      * );
      * </pre>
@@ -299,7 +357,7 @@ public abstract class Message {
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final Message IS_NULL = IsNull.INSTANCE;
@@ -309,7 +367,7 @@ public abstract class Message {
      * <p>
      * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
      * this message should yield value of {@link Boolean}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final Message HAS_SIZE = HasSize.INSTANCE;
@@ -320,7 +378,11 @@ public abstract class Message {
      * <p>
      * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
      * this message should yield value of {@link Integer}.
-     * 
+     * <p>
+     * If the object does not support the {@link #GET_SIZE} message, an
+     * {@link UnsupportedMessageException} has to be thrown.
+     * <p>
+     *
      * @since 0.8 or earlier
      */
     public static final Message GET_SIZE = GetSize.INSTANCE;
@@ -333,7 +395,7 @@ public abstract class Message {
      * object is boxed is:
      *
      * <pre>
-     * {@link Boolean} isBoxed = ({@link Boolean}) {@link ForeignAccess}.execute(
+     * {@link Boolean} isBoxed = ({@link Boolean}) {@link ForeignAccess}.sendIsBoxed(
      *   {@link Message#IS_BOXED}.{@link Message#createNode()}, {@link VirtualFrame currentFrame}, objectToCheck
      * );
      * </pre>
@@ -341,10 +403,23 @@ public abstract class Message {
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
      * created for this message should yield value of {@link Boolean}. If the object responds with
      * {@link Boolean#TRUE}, it is safe to continue by sending it {@link #UNBOX} message.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final Message IS_BOXED = IsBoxed.INSTANCE;
+
+    /**
+     * Obtains list of property names. Checks the properties of a {@link TruffleObject foreign
+     * objects} and obtains list of its property names. Those names can then be used in
+     * {@link #READ} and {@link #WRITE} messages to obtain/assign real values.
+     * <p>
+     * The return value from using this message is another {@link TruffleObject} that responds to
+     * {@link #HAS_SIZE} message and its indexes 0 to {@link #GET_SIZE} - 1 contain {@link String}
+     * names of individual properties.
+     *
+     * @since 0.18
+     */
+    public static final Message KEYS = Keys.INSTANCE;
 
     /**
      * Compares types of two messages. Messages are encouraged to implement this method. All
@@ -415,6 +490,9 @@ public abstract class Message {
         }
         if (Message.IS_EXECUTABLE == message) {
             return "IS_EXECUTABLE"; // NOI18N
+        }
+        if (Message.KEYS == message) {
+            return "KEYS"; // NOI18N
         }
         if (message instanceof Execute) {
             return ((Execute) message).name();

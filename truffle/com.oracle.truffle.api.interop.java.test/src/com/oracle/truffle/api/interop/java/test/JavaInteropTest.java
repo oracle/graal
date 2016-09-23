@@ -37,6 +37,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -46,53 +47,60 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.Iterator;
+import java.util.Map;
 
 public class JavaInteropTest {
-    public int x;
-    public double y;
-    public String[] arr;
-    public Object value;
+    public class Data {
+        public int x;
+        public double y;
+        public String[] arr;
+        public Object value;
+        public Object map;
+
+        public double plus(double a, double b) {
+            return a + b;
+        }
+
+        public Object assertThis(Object param) {
+            assertSame("When a Java object is passed into Truffle and back, it is again the same object", this, param);
+            assertThisCalled = true;
+            return this;
+        }
+    }
 
     private TruffleObject obj;
+    private Data data;
     private XYPlus xyp;
     private boolean assertThisCalled;
 
-    public double plus(double a, double b) {
-        return a + b;
-    }
-
-    public Object assertThis(Object param) {
-        assertSame("When a Java object is passed into Truffle and back, it is again the same object", this, param);
-        assertThisCalled = true;
-        return this;
-    }
-
     @Before
     public void initObjects() {
-        obj = JavaInterop.asTruffleObject(this);
+        data = new Data();
+        obj = JavaInterop.asTruffleObject(data);
         xyp = JavaInterop.asJavaObject(XYPlus.class, obj);
     }
 
     @Test
     public void doubleWrap() {
-        x = 32;
-        y = 10.1;
+        data.x = 32;
+        data.y = 10.1;
         assertEquals("Assume delegated", 42.1d, xyp.plus(xyp.x(), xyp.y()), 0.05);
     }
 
     @Test
     public void writeX() {
         xyp.x(10);
-        assertEquals("Changed", 10, x);
+        assertEquals("Changed", 10, data.x);
     }
 
     @Test
     public void assertThisIsSame() {
         assertThisCalled = false;
-        XYPlus anotherThis = xyp.assertThis(this);
+        XYPlus anotherThis = xyp.assertThis(data);
         assertTrue(assertThisCalled);
 
-        x = 44;
+        data.x = 44;
         assertEquals(44, anotherThis.x());
 
         assertEquals("The two proxies are equal", anotherThis, xyp);
@@ -107,7 +115,7 @@ public class JavaInteropTest {
 
     @Test
     public void arrayHasSize() {
-        arr = new String[]{"Hello", "World", "!"};
+        data.arr = new String[]{"Hello", "World", "!"};
         Object arrObj = message(Message.READ, obj, "arr");
         assertTrue("It's obj: " + arrObj, arrObj instanceof TruffleObject);
         TruffleObject truffleArr = (TruffleObject) arrObj;
@@ -120,7 +128,7 @@ public class JavaInteropTest {
 
     @Test
     public void arrayAsList() {
-        arr = new String[]{"Hello", "World", "!"};
+        data.arr = new String[]{"Hello", "World", "!"};
         List<String> list = xyp.arr();
         assertEquals("Three elements", 3, list.size());
         assertEquals("Hello", list.get(0));
@@ -129,7 +137,38 @@ public class JavaInteropTest {
 
         list.set(1, "there");
 
-        assertEquals("there", arr[1]);
+        assertEquals("there", data.arr[1]);
+    }
+
+    @Test
+    public void objectsAsMap() {
+        data.x = 10;
+        data.y = 33.3;
+        data.map = data;
+        Map<String, Object> map = xyp.map();
+
+        assertEquals("x", map.get("x"), 10);
+        assertEquals("y", map.get("y"), 33.3);
+
+        map.put("x", 13);
+        assertEquals("x changed", data.x, 13);
+
+        boolean foundX = false;
+        boolean foundY = false;
+        Iterator<Map.Entry<String, Object>> it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, Object> entry = it.next();
+            if ("x".equals(entry.getKey())) {
+                assertEquals("x value found", data.x, entry.getValue());
+                foundX = true;
+            }
+            if ("y".equals(entry.getKey())) {
+                assertEquals("y value found", data.y, entry.getValue());
+                foundY = true;
+            }
+        }
+        assertTrue(foundX);
+        assertTrue(foundY);
     }
 
     @Test
@@ -139,12 +178,33 @@ public class JavaInteropTest {
 
     @Test
     public void integerCanBeConvertedFromAnObjectField() {
-        value = 42;
+        data.value = 42;
         assertEquals((Integer) 42, xyp.value());
+    }
+
+    @Test
+    public void indexJavaArrayWithNumberTypes() throws Exception {
+        int[] a = new int[]{1, 2, 3};
+        TruffleObject truffleObject = JavaInterop.asTruffleObject(a);
+
+        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1));
+        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1.0));
+        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1L));
+
+        ForeignAccess.sendWrite(Message.WRITE.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1, 42);
+        ForeignAccess.sendWrite(Message.WRITE.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1.0, 42);
+        ForeignAccess.sendWrite(Message.WRITE.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1L, 42);
+
+        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1));
+        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1.0));
+        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1L));
+
     }
 
     public interface XYPlus {
         List<String> arr();
+
+        Map<String, Object> map();
 
         int x();
 

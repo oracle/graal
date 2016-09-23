@@ -35,7 +35,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class BoxedValue implements TruffleObject, ForeignAccess.Factory10 {
+final class BoxedValue implements TruffleObject, ForeignAccess.Factory18 {
     private final Object value;
 
     BoxedValue(Object v) {
@@ -112,4 +112,10 @@ final class BoxedValue implements TruffleObject, ForeignAccess.Factory10 {
     public CallTarget accessMessage(Message unknown) {
         return null;
     }
+
+    @Override
+    public CallTarget accessKeys() {
+        return null;
+    }
+
 }
