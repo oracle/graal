@@ -1,0 +1,14 @@
+x32.default : ${commonLinux} {
+  capabilities: [linux, x32]
+  environment : {
+    XMX         : "8g"
+    XMS         : "8g"
+    JVM_CONFIG  : ${jvm-config.default}
+    JVM         : "server"
+    MACHINE_NAME: "x32"
+  }
+}
+
+builds += [
+  ${x32.default} ${bench-renaissance}         { name: "bench-renaissance-linux-x32" }
+]
