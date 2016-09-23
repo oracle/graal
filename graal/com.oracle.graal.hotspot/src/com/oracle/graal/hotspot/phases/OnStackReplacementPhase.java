@@ -49,6 +49,7 @@ import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class OnStackReplacementPhase extends Phase {
@@ -63,26 +64,21 @@ public class OnStackReplacementPhase extends Phase {
         }
         Debug.dump(Debug.INFO_LOG_LEVEL, graph, "OnStackReplacement initial");
         EntryMarkerNode osr;
+        int maxIterations = -1;
+        int iterations = 0;
         do {
-            NodeIterable<EntryMarkerNode> osrNodes = graph.getNodes(EntryMarkerNode.TYPE);
-            osr = osrNodes.first();
-            if (osr == null) {
-                throw new BailoutException("No OnStackReplacementNode generated");
-            }
-            if (osrNodes.count() > 1) {
-                throw new GraalError("Multiple OnStackReplacementNodes generated");
-            }
-            if (osr.stateAfter().locksSize() != 0) {
-                throw new BailoutException("OSR with locks not supported");
-            }
-            if (osr.stateAfter().stackSize() != 0) {
-                throw new BailoutException("OSR with stack entries not supported: %s", osr.stateAfter().toString(Verbosity.Debugger));
-            }
+            osr = getEntryMarker(graph);
             LoopsData loops = new LoopsData(graph);
             // Find the loop that contains the EntryMarker
             Loop<Block> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
             if (l == null) {
                 break;
+            }
+            iterations++;
+            if (maxIterations == -1) {
+                maxIterations = l.getDepth();
+            } else if (iterations > maxIterations) {
+                throw JVMCIError.shouldNotReachHere();
             }
             // Peel the outermost loop first
             while (l.getParent() != null) {
@@ -129,6 +125,24 @@ public class OnStackReplacementPhase extends Phase {
 
         Debug.dump(Debug.INFO_LOG_LEVEL, graph, "OnStackReplacement result");
         new DeadCodeEliminationPhase(Required).apply(graph);
+    }
+
+    private static EntryMarkerNode getEntryMarker(StructuredGraph graph) {
+        NodeIterable<EntryMarkerNode> osrNodes = graph.getNodes(EntryMarkerNode.TYPE);
+        EntryMarkerNode osr = osrNodes.first();
+        if (osr == null) {
+            throw new BailoutException("No OnStackReplacementNode generated");
+        }
+        if (osrNodes.count() > 1) {
+            throw new GraalError("Multiple OnStackReplacementNodes generated");
+        }
+        if (osr.stateAfter().locksSize() != 0) {
+            throw new BailoutException("OSR with locks not supported");
+        }
+        if (osr.stateAfter().stackSize() != 0) {
+            throw new BailoutException("OSR with stack entries not supported: %s", osr.stateAfter().toString(Verbosity.Debugger));
+        }
+        return osr;
     }
 
     @Override
