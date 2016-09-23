@@ -273,7 +273,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
              * If the target may contain FP ops, and it is not compiled by us, we may have an
              * AVX-SSE transition.
              */
-            append(new AMD64VZeroUpper());
+            append(new AMD64VZeroUpper(arguments));
         }
         super.emitForeignCallOp(linkage, result, arguments, temps, info);
     }
