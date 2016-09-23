@@ -272,6 +272,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             /*
              * If the target may contain FP ops, and it is not compiled by us, we may have an
              * AVX-SSE transition.
+             *
+             * We exclude the argument registers from the zeroing LIR instruction since it violates
+             * the LIR semantics of @Temp that values must not be live. Note that the emitted
+             * machine instruction actually zeros _all_ XMM registers which is fine since we know
+             * that their upper half is not used.
              */
             append(new AMD64VZeroUpper(arguments));
         }
