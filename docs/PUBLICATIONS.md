@@ -17,7 +17,8 @@ and [Graal and Truffle papers](https://wiki.openjdk.java.net/display/Graal/Publi
 
 ## Presentations
 
-* [Using LLVM and Sulong for Language C Extensions](http://chrisseaton.com/rubytruffle/llvm-cauldron-16/llvm-cauldron-sulong.pdf)<br>LLVM Cauldron 2016, September 8, 2016, Hebden Bridge, The United Kingdom<br>
+* [Using LLVM and Sulong for Language C Extensions](http://chrisseaton.com/rubytruffle/llvm-cauldron-16/llvm-cauldron-sulong.pdf)<br>
+LLVM Cauldron 2016, September 8, 2016, Hebden Bridge, The United Kingdom<br>
 [Download slides](http://chrisseaton.com/rubytruffle/llvm-cauldron-16/llvm-cauldron-sulong.pdf)<br>
 [Watch video](https://www.youtube.com/watch?v=bJzMfYX6n9A)
 * [Sulong: Fast LLVM IR Execution on the JVM with Truffle and Graal](https://fosdem.org/2016/schedule/event/llvm_sulong/)<br>
