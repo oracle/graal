@@ -37,4 +37,6 @@ public interface PhaseSizeContract {
     default boolean checkContract() {
         return true;
     }
+
+    String contractorName();
 }

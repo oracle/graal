@@ -32,6 +32,7 @@ import com.oracle.graal.debug.DebugMemUseTracker;
 import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.graph.Graph;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
@@ -51,14 +52,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public static class PhaseOptions {
         // @formatter:off
         @Option(help = "Verify before - after relation of the relative, computed, code size of a graph", type = OptionType.Debug)
-        public static final OptionValue<Boolean> VerifyGraalPhasesSize = new StableOptionValue<Boolean>(){
-            @SuppressWarnings("all")
-            protected Boolean defaultValue() {
-                boolean assertionsEnabled = false;
-                assert assertionsEnabled = true;
-                return assertionsEnabled;
-            }
-          };
+        public static final OptionValue<Boolean> VerifyGraalPhasesSize = new StableOptionValue<>(false);
         // @formatter:on
     }
 
@@ -157,10 +151,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     @SuppressWarnings("try")
     protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         try (DebugCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start()) {
-            double sizeBefore = 0.0D;
+            int sizeBefore = 0;
+            Mark before = null;
             if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
                 if (context instanceof PhaseContext) {
                     sizeBefore = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
+                    before = graph.getMark();
                 }
             }
             if (dumpGraph && Debug.isDumpEnabled(Debug.VERBOSE_LOG_LEVEL)) {
@@ -171,9 +167,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             executionCount.increment();
             if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
                 if (context instanceof PhaseContext) {
-                    double sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
-                    Debug.log("Graph size before %f and after %f phase %s", sizeBefore, sizeAfter, getName());
-                    NodeCostUtil.phaseAdheresSizeContract(graph, sizeBefore, sizeAfter, this, getName().toString());
+                    if (!before.isCurrent()) {
+                        int sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
+                        NodeCostUtil.phaseFulfillsSizeContract(graph, sizeBefore, sizeAfter, this);
+                    }
                 }
             }
             if (dumpGraph && Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
@@ -209,6 +206,11 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     protected abstract void run(StructuredGraph graph, C context);
+
+    @Override
+    public String contractorName() {
+        return (String) getName();
+    }
 
     @Override
     public float codeSizeIncrease() {

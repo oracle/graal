@@ -42,10 +42,12 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.TargetDescription;
 
 public class AMD64HotSpotNodeCostProvider extends HotSpotNodeCostProvider {
-    private final TargetDescription target;
+    private final boolean avx2;
+    private final boolean sse41;
 
     public AMD64HotSpotNodeCostProvider(TargetDescription target) {
-        this.target = target;
+        this.avx2 = ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX2);
+        this.sse41 = ((AMD64) target.arch).getFeatures().contains(CPUFeature.SSE4_1);
     }
 
     @Override
@@ -62,10 +64,9 @@ public class AMD64HotSpotNodeCostProvider extends HotSpotNodeCostProvider {
         } else if (n instanceof ReturnNode) {
             return CYCLES_6;
         } else if (n instanceof ArrayEqualsNode) {
-            AMD64 amd64 = (AMD64) target.arch;
-            if (amd64.getFeatures().contains(CPUFeature.AVX2)) {
+            if (avx2) {
                 return CYCLES_50;
-            } else if (amd64.getFeatures().contains(CPUFeature.SSE4_1)) {
+            } else if (sse41) {
                 return CYCLES_80;
             }
         }

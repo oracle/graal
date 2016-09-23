@@ -67,23 +67,10 @@ public enum NodeSize {
     SIZE_100(100),
     SIZE_200(200);
 
-    final int estimatedCodeSize;
+    public final int estimatedCodeSize;
 
     NodeSize(int estimatedCodeSize) {
         this.estimatedCodeSize = estimatedCodeSize;
-    }
-
-    public static int getEstimatedCodeSize(NodeSizeSupplier supplier) {
-        /*
-         * Note: We prohibit the access on the raw estimated code size value as custom node cost
-         * providers or architecture specific ones might override the default values.
-         */
-        return supplier.getNodeSize().estimatedCodeSize;
-    }
-
-    @FunctionalInterface
-    public interface NodeSizeSupplier {
-        NodeSize getNodeSize();
     }
 
     public static final int IGNORE_SIZE_CONTRACT_FACTOR = 0xFFFF;
