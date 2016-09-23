@@ -63,5 +63,6 @@ def testgraal(args):
     else:
         git.clone(cloneFrom, sanityDir)
 
-    commands = [sys.executable, join(mx._mx_home, 'mx.py'), '-p', sanityDir, '--java-home=' + mx.get_jdk().home]
-    return mx.run(commands + ['build'], cwd=sanityDir) + mx.run(commands + ['unittest', 'truffle'], cwd=sanityDir)
+    r1 = mx.run_mx(['--java-home=' + mx.get_jdk().home, 'build'], sanityDir)
+    r2 = mx.run_mx(['--java-home=' + mx.get_jdk().home, 'unittest', 'truffle'], sanityDir)
+    return r1 + r2
