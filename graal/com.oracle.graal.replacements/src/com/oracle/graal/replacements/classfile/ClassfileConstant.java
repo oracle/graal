@@ -120,13 +120,13 @@ abstract class ClassfileConstant {
         }
     }
 
-    static ResolvedJavaMethod lookupInterfaceMethod(ResolvedJavaType c, String name, String descriptor) {
-        ResolvedJavaMethod method = ClassfileBytecodeProvider.findMethod(c, name, descriptor, false);
+    static ResolvedJavaMethod lookupInterfaceMethod(ClassfileBytecodeProvider context, ResolvedJavaType c, String name, String descriptor) {
+        ResolvedJavaMethod method = context.findMethod(c, name, descriptor, false);
         if (method != null) {
             return method;
         }
         for (ResolvedJavaType i : c.getInterfaces()) {
-            method = lookupInterfaceMethod(i, name, descriptor);
+            method = lookupInterfaceMethod(context, i, name, descriptor);
             if (method != null) {
                 return method;
             }
@@ -134,20 +134,20 @@ abstract class ClassfileConstant {
         return null;
     }
 
-    static ResolvedJavaMethod lookupVirtualMethod(ResolvedJavaType c, String name, String descriptor) {
+    static ResolvedJavaMethod lookupVirtualMethod(ClassfileBytecodeProvider context, ResolvedJavaType c, String name, String descriptor) {
         assert !c.isInterface();
-        ResolvedJavaMethod method = ClassfileBytecodeProvider.findMethod(c, name, descriptor, false);
+        ResolvedJavaMethod method = context.findMethod(c, name, descriptor, false);
         if (method != null) {
             return method;
         }
         if (!c.isJavaLangObject()) {
-            method = lookupVirtualMethod(c.getSuperclass(), name, descriptor);
+            method = lookupVirtualMethod(context, c.getSuperclass(), name, descriptor);
             if (method != null) {
                 return method;
             }
         }
         for (ResolvedJavaType i : c.getInterfaces()) {
-            method = lookupInterfaceMethod(i, name, descriptor);
+            method = lookupInterfaceMethod(context, i, name, descriptor);
             if (method != null) {
                 return method;
             }
@@ -155,19 +155,19 @@ abstract class ClassfileConstant {
         return null;
     }
 
-    static ResolvedJavaMethod lookupStaticMethod(ResolvedJavaType c, String name, String descriptor) {
-        ResolvedJavaMethod method = ClassfileBytecodeProvider.findMethod(c, name, descriptor, true);
+    static ResolvedJavaMethod lookupStaticMethod(ClassfileBytecodeProvider context, ResolvedJavaType c, String name, String descriptor) {
+        ResolvedJavaMethod method = context.findMethod(c, name, descriptor, true);
         if (method != null) {
             return method;
         }
         if (!c.isJavaLangObject()) {
-            method = lookupStaticMethod(c.getSuperclass(), name, descriptor);
+            method = lookupStaticMethod(context, c.getSuperclass(), name, descriptor);
             if (method != null) {
                 return method;
             }
         }
         for (ResolvedJavaType i : c.getInterfaces()) {
-            method = lookupStaticMethod(i, name, descriptor);
+            method = lookupStaticMethod(context, i, name, descriptor);
             if (method != null) {
                 return method;
             }
@@ -175,19 +175,19 @@ abstract class ClassfileConstant {
         return null;
     }
 
-    static ResolvedJavaField lookupField(ResolvedJavaType c, String name, String fieldType, boolean isStatic) {
-        ResolvedJavaField field = ClassfileBytecodeProvider.findField(c, name, fieldType, isStatic);
+    static ResolvedJavaField lookupField(ClassfileBytecodeProvider context, ResolvedJavaType c, String name, String fieldType, boolean isStatic) {
+        ResolvedJavaField field = context.findField(c, name, fieldType, isStatic);
         if (field != null) {
             return field;
         }
         if (!c.isJavaLangObject()) {
-            field = lookupField(c.getSuperclass(), name, fieldType, isStatic);
+            field = lookupField(context, c.getSuperclass(), name, fieldType, isStatic);
             if (field != null) {
                 return field;
             }
         }
         for (ResolvedJavaType i : c.getInterfaces()) {
-            field = lookupField(i, name, fieldType, isStatic);
+            field = lookupField(context, i, name, fieldType, isStatic);
             if (field != null) {
                 return field;
             }
@@ -208,22 +208,22 @@ abstract class ClassfileConstant {
                 NameAndType nameAndType = cp.get(NameAndType.class, nameAndTypeIndex);
                 String name = nameAndType.getName(cp);
                 String type = nameAndType.getType(cp);
-
+                ClassfileBytecodeProvider context = cp.context;
                 if (opcode == Bytecodes.INVOKEINTERFACE) {
-                    method = lookupInterfaceMethod(cls, name, type);
+                    method = lookupInterfaceMethod(context, cls, name, type);
                     if (method == null) {
                         throw new NoSuchMethodError(cls.toJavaName() + "." + name + type);
                     }
                     assert method.isPublic() && !method.isStatic() && (method.getDeclaringClass().isInterface() || method.getDeclaringClass().isJavaLangObject());
                 } else if (opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKESPECIAL) {
-                    method = lookupVirtualMethod(cls, name, type);
+                    method = lookupVirtualMethod(context, cls, name, type);
                     if (method == null) {
                         throw new NoSuchMethodError(cls.toJavaName() + "." + name + type);
                     }
                     assert !method.isStatic() : method;
                 } else {
                     assert opcode == Bytecodes.INVOKESTATIC;
-                    method = lookupStaticMethod(cls, name, type);
+                    method = lookupStaticMethod(context, cls, name, type);
                     if (method == null) {
                         throw new NoSuchMethodError(cls.toJavaName() + "." + name + type);
                     }
@@ -261,7 +261,7 @@ abstract class ClassfileConstant {
                 String name = nameAndType.getName(cp);
                 String type = nameAndType.getType(cp);
                 assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC : opcode;
-                field = lookupField(cls, name, type, opcode == GETSTATIC || opcode == PUTSTATIC);
+                field = lookupField(cp.context, cls, name, type, opcode == GETSTATIC || opcode == PUTSTATIC);
                 if (field == null) {
                     throw new NoSuchFieldError(cls.toJavaName() + "." + name + " " + type);
                 }

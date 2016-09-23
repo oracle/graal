@@ -40,12 +40,14 @@ import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 class ClassfileConstantPool implements ConstantPool {
 
     final ClassfileConstant[] entries;
     final ClassfileBytecodeProvider context;
+    final ResolvedJavaType type;
 
     public static class Bytecodes {
         public static final int GETSTATIC = 178; // 0xB2
@@ -59,7 +61,8 @@ class ClassfileConstantPool implements ConstantPool {
         public static final int INVOKEDYNAMIC = 186; // 0xBA
     }
 
-    ClassfileConstantPool(DataInputStream stream, ClassfileBytecodeProvider context) throws IOException {
+    ClassfileConstantPool(ResolvedJavaType type, DataInputStream stream, ClassfileBytecodeProvider context) throws IOException {
+        this.type = type;
         this.context = context;
         byte tag;
 
@@ -188,5 +191,10 @@ class ClassfileConstantPool implements ConstantPool {
             return null;
         }
         throw GraalError.shouldNotReachHere();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "<" + type.toJavaName() + ">";
     }
 }

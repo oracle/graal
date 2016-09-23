@@ -53,7 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * assumes the class files are well formed and thus does not perform any class file validation
  * checks.
  */
-public final class ClassfileBytecodeProvider implements BytecodeProvider {
+public class ClassfileBytecodeProvider implements BytecodeProvider {
 
     private final ClassLoader loader;
     private final Map<Class<?>, Classfile> classfiles = new HashMap<>();
@@ -71,6 +71,20 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
     @Override
     public Bytecode getBytecode(ResolvedJavaMethod method) {
         return getCodeAttributeFor(method);
+    }
+
+    /**
+     * Determines if {@code name} and {@code descriptor} match {@code method}.
+     */
+    protected boolean matchesMethod(String name, String descriptor, ResolvedJavaMethod method) {
+        return method.getName().equals(name) && method.getSignature().toMethodDescriptor().equals(descriptor);
+    }
+
+    /**
+     * Determines if {@code name} and {@code descriptor} match {@code field}.
+     */
+    protected boolean matchesField(String name, String fieldType, ResolvedJavaField field) {
+        return field.getName().equals(name) && field.getType().getName().equals(fieldType);
     }
 
     @Override
@@ -118,7 +132,7 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
      *
      * @throws NoClassDefFoundError if the class file cannot be found
      */
-    private synchronized Classfile getClassfile(Class<?> c) {
+    protected synchronized Classfile getClassfile(Class<?> c) {
         assert !c.isPrimitive() && !c.isArray() : c;
         Classfile classfile = classfiles.get(c);
         if (classfile == null) {
@@ -143,12 +157,12 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
      * Gets a {@link ClassfileBytecode} representing the bytecode for {@code method} read from a
      * class file.
      */
-    public ClassfileBytecode getCodeAttributeFor(ResolvedJavaMethod method) {
+    protected ClassfileBytecode getCodeAttributeFor(ResolvedJavaMethod method) {
         Classfile classfile = getClassfile(resolveToClass(method.getDeclaringClass().getName()));
-        return classfile.getCode(method.getName(), method.getSignature().toMethodDescriptor());
+        return classfile.getCode(this, method.getName(), method.getSignature().toMethodDescriptor());
     }
 
-    synchronized Class<?> resolveToClass(String descriptor) {
+    protected synchronized Class<?> resolveToClass(String descriptor) {
         Class<?> c = classes.get(descriptor);
         if (c == null) {
             if (descriptor.length() == 1) {
@@ -175,7 +189,7 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
         return c;
     }
 
-    static ResolvedJavaMethod findMethod(ResolvedJavaType type, String name, String descriptor, boolean isStatic) {
+    protected ResolvedJavaMethod findMethod(ResolvedJavaType type, String name, String descriptor, boolean isStatic) {
         if (isStatic && name.equals("<clinit>")) {
             ResolvedJavaMethod method = type.getClassInitializer();
             if (method != null) {
@@ -184,20 +198,21 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
         }
         ResolvedJavaMethod[] methodsToSearch = name.equals("<init>") ? type.getDeclaredConstructors() : type.getDeclaredMethods();
         for (ResolvedJavaMethod method : methodsToSearch) {
-            if (method.isStatic() == isStatic && method.getName().equals(name) && method.getSignature().toMethodDescriptor().equals(descriptor)) {
+            if (method.isStatic() == isStatic && matchesMethod(name, descriptor, method)) {
                 return method;
             }
         }
         return null;
     }
 
-    static ResolvedJavaField findField(ResolvedJavaType type, String name, String fieldType, boolean isStatic) {
+    protected ResolvedJavaField findField(ResolvedJavaType type, String name, String fieldType, boolean isStatic) {
         ResolvedJavaField[] fields = isStatic ? type.getStaticFields() : type.getInstanceFields(false);
         for (ResolvedJavaField field : fields) {
-            if (field.getName().equals(name) && field.getType().getName().equals(fieldType)) {
+            if (matchesField(name, fieldType, field)) {
                 return field;
             }
         }
         return null;
     }
+
 }
