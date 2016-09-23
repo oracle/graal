@@ -130,4 +130,20 @@ public class MetadataDerivedType implements MetadataBaseNode {
         return builder.toString();
     }
 
+    public boolean isOnlyReference() {
+        if (size != 0) {
+            return false;
+        }
+        if (align != 0) {
+            return false;
+        }
+        if (offset != 0) {
+            return false;
+        }
+        if (flags != 0) {
+            return false;
+        }
+        return true;
+    }
+
 }
