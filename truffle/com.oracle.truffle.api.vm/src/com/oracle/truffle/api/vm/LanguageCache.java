@@ -69,7 +69,6 @@ final class LanguageCache {
      * @param loader The classloader to be used for finding languages.
      * @return A map of initialized languages.
      */
-    @SuppressWarnings("unused")
     private static Map<String, LanguageCache> initializeLanguages(final ClassLoader loader) {
         Map<String, LanguageCache> map;
 

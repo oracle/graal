@@ -64,19 +64,6 @@ final class InstrumentCache {
         PRELOAD = CACHE != null;
     }
 
-    private static ClassLoader loader() {
-        ClassLoader l;
-        if (PolyglotEngine.JDK8OrEarlier) {
-            l = PolyglotEngine.class.getClassLoader();
-            if (l == null) {
-                l = ClassLoader.getSystemClassLoader();
-            }
-        } else {
-            l = ModuleResourceLocator.createLoader();
-        }
-        return l;
-    }
-
     InstrumentCache(String prefix, Properties info, ClassLoader loader) {
         this.loader = loader;
         this.className = info.getProperty(prefix + "className");
