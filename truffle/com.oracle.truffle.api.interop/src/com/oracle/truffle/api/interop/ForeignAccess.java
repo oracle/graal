@@ -501,6 +501,32 @@ public final class ForeignAccess {
     }
 
     /**
+     * Sends a {@link Message#KEYS} message to the foreign receiver object.
+     *
+     * @param keysNode the createNode created by {@link Message#createNode()}
+     * @param frame the call frame
+     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
+     *            method
+     * @return return an instance of {@link TruffleObject} that responds to {@link Message#HAS_SIZE}
+     *         and {@link Message#GET_SIZE} and its 0 to {@link Message#GET_SIZE size - 1} indexes
+     *         contain {@link String} names of the properties of the <code>receiver</code> object
+     * @throws UnsupportedTypeException if the receiver isn't recognized
+     * @throws UnsupportedMessageException if the message isn't handled
+     * @throws ClassCastException if the createNode has not been created by
+     *             {@link Message#createNode()} method.
+     * @since 0.18
+     */
+    public static TruffleObject sendKeys(Node keysNode, VirtualFrame frame, TruffleObject receiver) throws UnsupportedTypeException, UnsupportedMessageException {
+        try {
+            return (TruffleObject) send(keysNode, frame, receiver);
+        } catch (UnsupportedMessageException | UnsupportedTypeException ex) {
+            throw ex;
+        } catch (InteropException e) {
+            throw new AssertionError("Unexpected exception catched.", e);
+        }
+    }
+
+    /**
      * Read only access to foreign call arguments inside of a frame.
      *
      * @param frame the frame that was called via

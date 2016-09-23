@@ -107,6 +107,33 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void assertKeysAndProperties() {
+        final Node keysNode = Message.KEYS.createNode();
+        class SendKeys extends RootNode {
+            SendKeys() {
+                super(TruffleLanguage.class, null, null);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                try {
+                    return ForeignAccess.sendKeys(keysNode, frame, obj);
+                } catch (InteropException ex) {
+                    throw ex.raise();
+                }
+            }
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new SendKeys());
+        final TruffleObject ret = (TruffleObject) callTarget.call();
+        List<?> list = JavaInterop.asJavaObject(List.class, ret);
+        assertTrue("Contains x " + list, list.contains("x"));
+        assertTrue("Contains y " + list, list.contains("y"));
+        assertTrue("Contains arr " + list, list.contains("arr"));
+        assertTrue("Contains value " + list, list.contains("value"));
+        assertTrue("Contains map " + list, list.contains("map"));
+    }
+
+    @Test
     public void javaObjectsWrappedForTruffle() {
         Object ret = message(Message.createInvoke(1), obj, "assertThis", obj);
         assertTrue("Expecting truffle wrapper: " + ret, ret instanceof TruffleObject);
