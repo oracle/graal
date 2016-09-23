@@ -49,7 +49,6 @@ import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class OnStackReplacementPhase extends Phase {
@@ -78,7 +77,7 @@ public class OnStackReplacementPhase extends Phase {
             if (maxIterations == -1) {
                 maxIterations = l.getDepth();
             } else if (iterations > maxIterations) {
-                throw JVMCIError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere();
             }
             // Peel the outermost loop first
             while (l.getParent() != null) {
