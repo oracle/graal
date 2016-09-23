@@ -28,8 +28,10 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.Instrumentation;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -92,15 +94,16 @@ public class ClassfileBytecodeProvider implements BytecodeProvider {
         return false;
     }
 
-    // Use reflection so that this compiles on Java 8
-    private static final Method getModule;
-    private static final Method getResourceAsStream;
+    // Use MethodHandles so that this compiles on Java 8
+    private static final MethodHandle getModule;
+    private static final MethodHandle getResourceAsStream;
     static {
         if (JAVA_SPECIFICATION_VERSION >= 9) {
             try {
-                getModule = Class.class.getMethod("getModule");
-                getResourceAsStream = getModule.getReturnType().getMethod("getResourceAsStream", String.class);
-            } catch (NoSuchMethodException | SecurityException e) {
+                Lookup lookup = MethodHandles.lookup();
+                getModule = lookup.unreflect(Class.class.getMethod("getModule"));
+                getResourceAsStream = lookup.unreflect(getModule.type().returnType().getMethod("getResourceAsStream", String.class));
+            } catch (NoSuchMethodException | SecurityException | IllegalAccessException e) {
                 throw new GraalError(e);
             }
         } else {
@@ -113,9 +116,9 @@ public class ClassfileBytecodeProvider implements BytecodeProvider {
         String classfilePath = c.getName().replace('.', '/') + ".class";
         if (JAVA_SPECIFICATION_VERSION >= 9) {
             try {
-                Object module = getModule.invoke(c);
-                return (InputStream) getResourceAsStream.invoke(module, classfilePath);
-            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | SecurityException e) {
+                Object module = getModule.invokeExact(c);
+                return (InputStream) getResourceAsStream.invokeExact(module, classfilePath);
+            } catch (Throwable e) {
                 throw new GraalError(e);
             }
         } else {

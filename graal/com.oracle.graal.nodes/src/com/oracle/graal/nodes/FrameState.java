@@ -277,10 +277,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         return code != null && code.getCode() == code.getMethod().getCode();
     }
 
-    public ResolvedJavaMethod method() {
-        return code == null ? null : code.getMethod();
-    }
-
     public void addVirtualObjectMapping(EscapeObjectState virtualObject) {
         if (virtualObjectMappings == null) {
             virtualObjectMappings = new NodeInputList<>(this);

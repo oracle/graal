@@ -48,9 +48,9 @@ import jdk.vm.ci.meta.TriState;
  */
 public class ClassfileBytecode implements Bytecode {
 
-    private static final int ExceptionHandlerTableEntrySizeInBytes = 8;
-    private static final int LineNumberTableEntrySizeInBytes = 4;
-    private static final int LocalVariableTableEntrySizeInBytes = 10;
+    private static final int EXCEPTION_HANDLER_TABLE_SIZE_IN_BYTES = 8;
+    private static final int LINE_NUMBER_TABLE_ENTRY_SIZE_IN_BYTES = 4;
+    private static final int LOCAL_VARIABLE_TABLE_SIZE_IN_BYTES = 10;
 
     private final ResolvedJavaMethod method;
 
@@ -73,7 +73,7 @@ public class ClassfileBytecode implements Bytecode {
         code = new byte[codeLength];
         stream.readFully(code);
         int exceptionTableLength = stream.readUnsignedShort();
-        exceptionTableBytes = new byte[exceptionTableLength * ExceptionHandlerTableEntrySizeInBytes];
+        exceptionTableBytes = new byte[exceptionTableLength * EXCEPTION_HANDLER_TABLE_SIZE_IN_BYTES];
         stream.readFully(exceptionTableBytes);
         readCodeAttributes(stream);
     }
@@ -86,13 +86,13 @@ public class ClassfileBytecode implements Bytecode {
             switch (attributeName) {
                 case "LocalVariableTable": {
                     int length = stream.readUnsignedShort();
-                    localVariableTableBytes = new byte[length * LocalVariableTableEntrySizeInBytes];
+                    localVariableTableBytes = new byte[length * LOCAL_VARIABLE_TABLE_SIZE_IN_BYTES];
                     stream.readFully(localVariableTableBytes);
                     break;
                 }
                 case "LineNumberTable": {
                     int length = stream.readUnsignedShort();
-                    lineNumberTableBytes = new byte[length * LineNumberTableEntrySizeInBytes];
+                    lineNumberTableBytes = new byte[length * LINE_NUMBER_TABLE_ENTRY_SIZE_IN_BYTES];
                     stream.readFully(lineNumberTableBytes);
                     break;
                 }
@@ -130,7 +130,7 @@ public class ClassfileBytecode implements Bytecode {
             return new ExceptionHandler[0];
         }
 
-        final int exceptionTableLength = exceptionTableBytes.length / ExceptionHandlerTableEntrySizeInBytes;
+        final int exceptionTableLength = exceptionTableBytes.length / EXCEPTION_HANDLER_TABLE_SIZE_IN_BYTES;
         ExceptionHandler[] handlers = new ExceptionHandler[exceptionTableLength];
         DataInputStream stream = new DataInputStream(new ByteArrayInputStream(exceptionTableBytes));
 
@@ -180,7 +180,7 @@ public class ClassfileBytecode implements Bytecode {
             return null;
         }
 
-        final int lineNumberTableLength = lineNumberTableBytes.length / LineNumberTableEntrySizeInBytes;
+        final int lineNumberTableLength = lineNumberTableBytes.length / LINE_NUMBER_TABLE_ENTRY_SIZE_IN_BYTES;
         DataInputStream stream = new DataInputStream(new ByteArrayInputStream(lineNumberTableBytes));
         int[] bci = new int[lineNumberTableLength];
         int[] line = new int[lineNumberTableLength];
@@ -203,7 +203,7 @@ public class ClassfileBytecode implements Bytecode {
             return null;
         }
 
-        final int localVariableTableLength = localVariableTableBytes.length / LocalVariableTableEntrySizeInBytes;
+        final int localVariableTableLength = localVariableTableBytes.length / LOCAL_VARIABLE_TABLE_SIZE_IN_BYTES;
         DataInputStream stream = new DataInputStream(new ByteArrayInputStream(localVariableTableBytes));
         Local[] locals = new Local[localVariableTableLength];
 

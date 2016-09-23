@@ -46,6 +46,9 @@ public class Classfile {
     private final ResolvedJavaType type;
     private final List<ClassfileBytecode> codeAttributes;
 
+    private static final int MAJOR_VERSION_JAVA8 = 52;
+    private static final int MAJOR_VERSION_JAVA9 = 53;
+
     /**
      * Creates a {@link Classfile} by parsing the class file bytes for {@code type} loadable from
      * {@code context}.
@@ -59,8 +62,11 @@ public class Classfile {
         int magic = stream.readInt();
         assert magic == 0xCAFEBABE;
 
-        // minor_version, major_version
-        stream.skipBytes(4);
+        int minor = stream.readUnsignedShort();
+        int major = stream.readUnsignedShort();
+        if (major < MAJOR_VERSION_JAVA8 || major > MAJOR_VERSION_JAVA9) {
+            throw new IOException("Unsupported class file version: " + major + "." + minor);
+        }
 
         ClassfileConstantPool cp = new ClassfileConstantPool(type, stream, context);
 
