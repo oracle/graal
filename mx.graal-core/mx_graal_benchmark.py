@@ -80,12 +80,17 @@ def createBenchmarkShortcut(benchSuite, args):
 
 
 # dacapo suite parsers.
+def _create_dacapo_parser():
+    parser = ArgumentParser(add_help=False, usage=mx_benchmark._mx_benchmark_usage_example + " -- <options> -- ...")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--keep-scratch", action="store_true", help="Do not delete scratch directory after benchmark execution.")
+    group.add_argument("--no-scratch", action="store_true", help="Do not execute benchmark in scratch directory.")
+    return parser
+
 mx_benchmark.parsers["dacapo_benchmark_suite"] = ParserEntry(
-    ArgumentParser(add_help=False, usage=mx_benchmark._mx_benchmark_usage_example + " -- <options> -- ..."),
+    _create_dacapo_parser(),
     "\n\nFlags for DaCapo-style benchmark suites:\n"
 )
-mx_benchmark.parsers["dacapo_benchmark_suite"].parser.add_argument("--keep-scratch", action="store_true", help="Do not delete scratch directory after benchmark execution.")
-
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args):
@@ -299,7 +304,14 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return "graal-compiler"
 
     def before(self, bmSuiteArgs):
-        self.workdir = mkdtemp(prefix='dacapo-work.', dir='.')
+        parser = mx_benchmark.parsers["dacapo_benchmark_suite"].parser
+        bmArgs, _ = parser.parse_known_args(bmSuiteArgs)
+        self.keepScratchDir = bmArgs.keep_scratch
+        if not bmArgs.no_scratch:
+            self.workdir = mkdtemp(prefix='dacapo-work.', dir='.')
+        else:
+            mx.warn("NO scratch directory created! (--no-scratch)")
+            self.workdir = None
 
     def workingDirectory(self, benchmarks, bmSuiteArgs):
         return self.workdir
@@ -307,7 +319,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def after(self, bmSuiteArgs):
         if hasattr(self, "keepScratchDir") and self.keepScratchDir:
             mx.warn("Scratch directory NOT deleted (--keep-scratch): {0}".format(self.workdir))
-        else:
+        elif self.workdir:
             rmtree(self.workdir)
 
     def daCapoClasspathEnvVarName(self):
@@ -358,8 +370,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def vmArgs(self, bmSuiteArgs):
         parser = mx_benchmark.parsers["dacapo_benchmark_suite"].parser
-        bmArgs, remainingBmSuiteArgs = parser.parse_known_args(bmSuiteArgs)
-        self.keepScratchDir = bmArgs.keep_scratch
+        _, remainingBmSuiteArgs = parser.parse_known_args(bmSuiteArgs)
         vmArgs = super(BaseDaCapoBenchmarkSuite, self).vmArgs(remainingBmSuiteArgs)
         return vmArgs
 
