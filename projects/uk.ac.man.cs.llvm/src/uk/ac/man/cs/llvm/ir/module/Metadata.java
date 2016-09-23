@@ -185,7 +185,7 @@ public class Metadata implements ParserListener {
 
             default:
                 metadata.add(null);
-                System.out.println("! - TODO: #" + record + ": " + Arrays.toString(args));
+                LLVMLogger.info("! - TODO: #" + record + ": " + Arrays.toString(args));
                 break;
         }
 
@@ -238,7 +238,7 @@ public class Metadata implements ParserListener {
     protected void createDistinctNode(long[] args) {
         // [n x md num]
         metadata.add(null);
-        System.out.println("! - " + MetadataRecord.DISTINCT_NODE + " - " + Arrays.toString(args));
+        LLVMLogger.info("! - " + MetadataRecord.DISTINCT_NODE + " - " + Arrays.toString(args));
     }
 
     protected void createKind(long[] args) {
@@ -259,7 +259,7 @@ public class Metadata implements ParserListener {
         // long scope = args[i++];
         // long inlineAt = args[i++];
         metadata.add(null);
-        System.out.println("! - " + MetadataRecord.LOCATION + " - " + Arrays.toString(args));
+        LLVMLogger.info("! - " + MetadataRecord.LOCATION + " - " + Arrays.toString(args));
     }
 
     protected void createNamedNode(long[] args) {
@@ -275,7 +275,7 @@ public class Metadata implements ParserListener {
     protected void createAttachment(long[] args) {
         // [n x mdnodes]
         metadata.add(null);
-        System.out.println("! - " + MetadataRecord.ATTACHMENT + " - " + Arrays.toString(args));
+        LLVMLogger.info("! - " + MetadataRecord.ATTACHMENT + " - " + Arrays.toString(args));
     }
 
     protected void createGenericDebug(long[] args) {
@@ -287,7 +287,7 @@ public class Metadata implements ParserListener {
         // long header = args[i++];
         // TODO: args[4] // n x md num
         metadata.add(null);
-        System.out.println("! - " + MetadataRecord.GENERIC_DEBUG + " - " + Arrays.toString(args));
+        LLVMLogger.info("! - " + MetadataRecord.GENERIC_DEBUG + " - " + Arrays.toString(args));
     }
 
     protected void createSubrange(long[] args) {

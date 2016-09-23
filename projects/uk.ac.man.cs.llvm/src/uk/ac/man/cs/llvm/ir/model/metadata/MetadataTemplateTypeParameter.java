@@ -32,15 +32,9 @@ package uk.ac.man.cs.llvm.ir.model.metadata;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock;
 import uk.ac.man.cs.llvm.ir.model.MetadataBlock.MetadataReference;
 
-public class MetadataDerivedType implements MetadataBaseNode {
+public class MetadataTemplateTypeParameter implements MetadataBaseNode {
 
     private MetadataReference name = MetadataBlock.voidRef;
-    private MetadataReference file = MetadataBlock.voidRef;
-    private long line;
-    private long size;
-    private long align;
-    private long offset;
-    private long flags;
     private MetadataReference baseType = MetadataBlock.voidRef;
 
     public MetadataReference getName() {
@@ -49,54 +43,6 @@ public class MetadataDerivedType implements MetadataBaseNode {
 
     public void setName(MetadataReference name) {
         this.name = name;
-    }
-
-    public MetadataReference getFile() {
-        return file;
-    }
-
-    public void setFile(MetadataReference file) {
-        this.file = file;
-    }
-
-    public long getLine() {
-        return line;
-    }
-
-    public void setLine(long line) {
-        this.line = line;
-    }
-
-    public long getSize() {
-        return size;
-    }
-
-    public void setSize(long size) {
-        this.size = size;
-    }
-
-    public long getAlign() {
-        return align;
-    }
-
-    public void setAlign(long align) {
-        this.align = align;
-    }
-
-    public long getOffset() {
-        return offset;
-    }
-
-    public void setOffset(long offset) {
-        this.offset = offset;
-    }
-
-    public long getFlags() {
-        return flags;
-    }
-
-    public void setFlags(long flags) {
-        this.flags = flags;
     }
 
     public MetadataReference getBaseType() {
@@ -109,41 +55,7 @@ public class MetadataDerivedType implements MetadataBaseNode {
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("MetadataDerivedType [name=");
-        builder.append(name);
-        builder.append(", file=");
-        builder.append(file);
-        builder.append(", line=");
-        builder.append(line);
-        builder.append(", size=");
-        builder.append(size);
-        builder.append(", align=");
-        builder.append(align);
-        builder.append(", offset=");
-        builder.append(offset);
-        builder.append(", flags=");
-        builder.append(flags);
-        builder.append(", baseType=");
-        builder.append(baseType);
-        builder.append("]");
-        return builder.toString();
-    }
-
-    public boolean isOnlyReference() {
-        if (size != 0) {
-            return false;
-        }
-        if (align != 0) {
-            return false;
-        }
-        if (offset != 0) {
-            return false;
-        }
-        if (flags != 0) {
-            return false;
-        }
-        return true;
+        return "MetadataTemplateTypeParameter [name=" + name + ", baseType=" + baseType + "]";
     }
 
 }

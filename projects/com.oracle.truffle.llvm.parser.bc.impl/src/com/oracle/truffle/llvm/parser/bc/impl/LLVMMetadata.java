@@ -70,6 +70,8 @@ import uk.ac.man.cs.llvm.ir.model.elements.UnreachableInstruction;
 import uk.ac.man.cs.llvm.ir.model.elements.VoidCallInstruction;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataFnNode;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataLocalVariable;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBaseNode;
+import uk.ac.man.cs.llvm.ir.model.metadata.MetadataBasicType;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataCompositeType;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataDerivedType;
 import uk.ac.man.cs.llvm.ir.model.metadata.MetadataNode;
@@ -174,7 +176,17 @@ public final class LLVMMetadata implements ModelVisitor {
 
                             // TODO: other variables than localVar should be possible here
                             MetadataLocalVariable localVar = (MetadataLocalVariable) metadata.getReference(metadataId).get();
-                            metadataRefType.setValidatedMetadataReference(localVar.getType());
+                            MetadataReference typeReference = localVar.getType();
+                            while (typeReference.get() instanceof MetadataDerivedType) {
+                                MetadataDerivedType derivedType = (MetadataDerivedType) typeReference.get();
+
+                                if (!derivedType.isOnlyReference()) {
+                                    break;
+                                }
+
+                                typeReference = derivedType.getBaseType();
+                            }
+                            metadataRefType.setValidatedMetadataReference(typeReference);
                         }
                     }
                 }
@@ -213,24 +225,125 @@ public final class LLVMMetadata implements ModelVisitor {
         public void visit(ExtractValueInstruction extract) {
         }
 
+        private static void setElementPointerName(GetElementPointerInstruction gep, MetadataDerivedType element) {
+            if (element.getName().isPresent()) {
+                gep.setReferenceName(((MetadataString) element.getName().get()).getString());
+            }
+        }
+
+        private static void setElementPointerName(GetElementPointerInstruction gep, MetadataCompositeType element) {
+            if (element.getName().isPresent()) {
+                gep.setReferenceName(((MetadataString) element.getName().get()).getString());
+            }
+        }
+
+        private static void setElementPointerName(GetElementPointerInstruction gep, MetadataBaseNode element) {
+            if (element instanceof MetadataDerivedType) {
+                setElementPointerName(gep, (MetadataDerivedType) element);
+            } else if (element instanceof MetadataCompositeType) {
+                setElementPointerName(gep, (MetadataCompositeType) element);
+            }
+        }
+
+        private static long getOffset(MetadataBaseNode element) {
+            // TODO: simplify design by using interfaces/abstract classes
+            if (element instanceof MetadataDerivedType) {
+                return ((MetadataDerivedType) element).getOffset();
+            } else if (element instanceof MetadataCompositeType) {
+                return ((MetadataCompositeType) element).getOffset();
+            }
+            throw new AssertionError("unknow node type: " + element);
+        }
+
+        private static void parseCompositeTypeStruct(GetElementPointerInstruction gep, StructureType struct, MetadataCompositeType node) {
+            struct.setName(((MetadataString) node.getName().get()).getString());
+
+            MetadataNode elements = (MetadataNode) node.getMemberDescriptors().get();
+
+            Symbol idx = gep.getIndices().get(1);
+            int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
+
+            long elementOffset = struct.getElementOffset(parsedIndex);
+            for (MetadataReference element : elements) {
+                if (getOffset(element.get()) == elementOffset) {
+                    setElementPointerName(gep, element.get());
+                    break;
+                }
+            }
+        }
+
+        private static void parseCompositeTypeStructBitcast(GetElementPointerInstruction gep, CastInstruction cast, MetadataCompositeType node) {
+            MetadataNode elements = (MetadataNode) node.getMemberDescriptors().get();
+
+            Symbol idx = gep.getIndices().get(0);
+            int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
+
+            // TODO: correct sizeof?
+            int elementOffset = parsedIndex * cast.getType().sizeof();
+
+            for (int i = 0; i < elements.size(); i++) {
+                MetadataBaseNode element = elements.get(i).get();
+
+                if (getOffset(element) == elementOffset) {
+                    setElementPointerName(gep, element);
+                    break;
+                }
+            }
+        }
+
         @Override
         public void visit(GetElementPointerInstruction gep) {
             Type t1 = ((PointerType) (gep.getBasePointer().getType())).getPointeeType();
             if (t1 instanceof StructureType) {
                 StructureType thisStruct = (StructureType) t1;
                 // TODO: should always be this type?
-                if (thisStruct.getMetadataReference().isPresent()) {
-                    MetadataCompositeType metaStruct = (MetadataCompositeType) thisStruct.getMetadataReference().get();
-                    thisStruct.setName(((MetadataString) metaStruct.getName().get()).getString());
+                if (!thisStruct.getMetadataReference().isPresent()) {
+                    return;
+                }
+                MetadataBaseNode node = thisStruct.getMetadataReference().get();
 
-                    MetadataNode elements = (MetadataNode) metaStruct.getMemberDescriptors().get();
+                if (node instanceof MetadataCompositeType) {
+                    parseCompositeTypeStruct(gep, thisStruct, (MetadataCompositeType) node);
+                } else if (node instanceof MetadataBasicType) {
+                    // TODO: implement?
+                } else if (node instanceof MetadataDerivedType) {
+                    // TODO: type check
+                    MetadataCompositeType compNode = (MetadataCompositeType) ((MetadataDerivedType) node).getBaseType().get();
+                    parseCompositeTypeStruct(gep, thisStruct, compNode);
+                } else {
+                    throw new AssertionError("unknow node type: " + node);
+                }
 
-                    Symbol idx = gep.getIndices().get(1);
-                    int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
-                    MetadataReference element = elements.get(parsedIndex);
+            } else if (gep.getBasePointer() instanceof CastInstruction) {
+                CastInstruction cast = (CastInstruction) gep.getBasePointer();
+                Symbol value = cast.getValue();
 
-                    MetadataDerivedType derivedType = (MetadataDerivedType) element.get();
-                    gep.setReferenceName(((MetadataString) derivedType.getName().get()).getString());
+                if (!(value instanceof AllocateInstruction)) {
+                    return;
+                }
+                AllocateInstruction allocate = (AllocateInstruction) value;
+
+                Type symType = allocate.getPointeeType();
+                if (!(symType instanceof StructureType)) {
+                    return;
+                }
+                StructureType thisStruct = (StructureType) symType;
+
+                if (!thisStruct.getMetadataReference().isPresent()) {
+                    return;
+                }
+                MetadataBaseNode node = thisStruct.getMetadataReference().get();
+
+                if (node instanceof MetadataCompositeType) {
+                    parseCompositeTypeStructBitcast(gep, cast, (MetadataCompositeType) node);
+                } else if (node instanceof MetadataBasicType) {
+                    // TODO: implement?
+                } else if (node instanceof MetadataDerivedType) {
+                    // TODO: type check
+                    MetadataCompositeType compNode = (MetadataCompositeType) ((MetadataDerivedType) node).getBaseType().get();
+                    parseCompositeTypeStructBitcast(gep, cast, compNode);
+                } else {
+                    throw new AssertionError("unknow node type: " + node);
                 }
             }
         }
