@@ -1,11 +1,16 @@
 ## Publications
 
+* Rigger, M.; Grimmer, M.; Wimmer, C.; Würthinger, T.; Mössenböck, H.:<br>
+[Bringing Low-Level Languages to the JVM: Efficient Execution of LLVM IR on Truffle](http://conf.researchr.org/event/vmil2016/vmil2016-bringing-low-level-languages-to-the-jvm-efficient-execution-of-llvm-ir-on-truffle)<br>
+Workshop on Virtual Machines and Intermediate Languages (VMIL'16),
+Amsterdam, Netherlands, Oct. 31, 2016 (accepted for publication)<br>
+
 * Rigger, M.:<br>
 [Sulong: Memory Safe and Efficient Execution of LLVM-Based Languages](http://2016.ecoop.org/track/ecoop-2016-doctoral-symposium)<br>
 ECOOP 2016 Doctoral Symposium, July 18, 2016, Rome, Italy<br>
 [Download paper](http://ssw.jku.at/General/Staff/ManuelRigger/ECOOP16-DS.pdf)
 
-* Rigger, M.; Matthias, G.; Mössenböck, H.:<br>
+* Rigger, M.; Grimmer, M.; Mössenböck, H.:<br>
 [Sulong - Execution of LLVM-Based Languages on the JVM](http://2016.ecoop.org/event/icooolps-2016-sulong-execution-of-llvm-based-languages-on-the-jvm)<br>
 Int. Workshop on Implementation, Compilation, Optimization of
 Object-Oriented Languages, Programs and Systems (ICOOOLPS'16),
