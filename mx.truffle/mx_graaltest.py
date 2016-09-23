@@ -26,7 +26,6 @@
 # ----------------------------------------------------------------------------------------------------
 #
 
-import sys
 import mx
 import os
 import shutil
@@ -63,6 +62,7 @@ def testgraal(args):
     else:
         git.clone(cloneFrom, sanityDir)
 
-    r1 = mx.run_mx(['--java-home=' + mx.get_jdk().home, 'build'], sanityDir)
-    r2 = mx.run_mx(['--java-home=' + mx.get_jdk().home, 'unittest', 'truffle'], sanityDir)
-    return r1 + r2
+    result = mx.run_mx(['--java-home=' + mx.get_jdk().home, 'build'], sanityDir)
+    if result != 0:
+        return result
+    return mx.run_mx(['--java-home=' + mx.get_jdk().home, 'unittest', 'truffle'], sanityDir)
