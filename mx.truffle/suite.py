@@ -60,6 +60,7 @@ suite = {
     "com.oracle.truffle.api.vm" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
+      "uses" : ["com.oracle.truffle.api.vm.PolyglotLocator"],
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.profiles",
