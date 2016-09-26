@@ -32,17 +32,15 @@ package uk.ac.man.cs.llvm.ir.model.constants;
 import uk.ac.man.cs.llvm.bc.records.Records;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.Symbols;
-import uk.ac.man.cs.llvm.ir.types.ArrayType;
 import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
 import uk.ac.man.cs.llvm.ir.types.IntegerType;
 import uk.ac.man.cs.llvm.ir.types.Type;
-import uk.ac.man.cs.llvm.ir.types.VectorType;
 
 public interface Constant extends Symbol {
 
     static Constant createFromData(Type type, long datum) {
         if (type instanceof IntegerType) {
-            IntegerType t = (IntegerType) type;
+            final IntegerType t = (IntegerType) type;
 
             // Sign extend for everything except i1 (boolean)
             int bits = t.getBitCount();
@@ -52,40 +50,21 @@ public interface Constant extends Symbol {
             }
 
             return new IntegerConstant(t, d);
-        }
 
-        if (type instanceof FloatingPointType) {
+        } else if (type instanceof FloatingPointType) {
+
             return FloatingPointConstant.create((FloatingPointType) type, new long[]{datum});
-        }
 
-        throw new RuntimeException("No datum constant implementation for " + type);
+        } else {
+            throw new RuntimeException("No datum constant implementation for " + type);
+        }
     }
 
     static Constant createFromData(Type type, long[] data) {
-        if (type instanceof ArrayType) {
-            ArrayType array = (ArrayType) type;
-            Type subtype = array.getElementType();
-            Constant[] elements = new Constant[data.length];
-            for (int i = 0; i < data.length; i++) {
-                elements[i] = createFromData(subtype, data[i]);
-            }
-            return new ArrayConstant(array, elements);
-        }
-
-        if (type instanceof VectorType) {
-            VectorType vector = (VectorType) type;
-            Type subtype = vector.getElementType();
-            Constant[] elements = new Constant[data.length];
-            for (int i = 0; i < data.length; i++) {
-                elements[i] = createFromData(subtype, data[i]);
-            }
-            return new VectorConstant(vector, elements);
-        }
-
-        throw new RuntimeException("No data constant implementation for " + type);
+        return AggregateConstant.fromData(type, data);
     }
 
     static Constant createFromValues(Type type, Symbols symbols, int[] valueIndices) {
-        return symbols.createAggregate(type, valueIndices);
+        return AggregateConstant.fromSymbols(symbols, type, valueIndices);
     }
 }
