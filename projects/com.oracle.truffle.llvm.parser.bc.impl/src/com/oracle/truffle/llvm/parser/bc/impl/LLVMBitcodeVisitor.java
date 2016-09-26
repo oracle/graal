@@ -186,7 +186,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                         frames.getDescriptor(name),
                         frames.getSlots(name),
                         labels.labels(name),
-                        phis.getPhiMap(name));
+                        phis.getPhiMap(name),
+                        method.getParameters().size());
 
         method.accept(visitor);
 

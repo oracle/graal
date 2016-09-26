@@ -635,7 +635,9 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final LLVMNode node;
         if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@llvm.")) {
-            node = LLVMIntrinsicFactory.create(((ValueSymbol) target).getName(), args, args.length, method.getStackSlot());
+            // number of arguments of the caller so llvm intrinsics can distinguish varargs
+            final int parentArgCount = method.getArgCount();
+            node = LLVMIntrinsicFactory.create(((ValueSymbol) target).getName(), args, parentArgCount, method.getStackSlot());
 
         } else if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@truffle_")) {
             node = LLVMTruffleIntrinsicFactory.create(((ValueSymbol) target).getName(), args);
