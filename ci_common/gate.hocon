@@ -45,6 +45,15 @@ gateBootstrapLite : {
   ]
 }
 
+gateBootstrapFullVerify : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,bootstrapfullverify"]
+  ]
+}
+
 gateTest8               : ${gateTest} ${java8Downloads}
 gateTestCTW8            : ${gateTestCTW} ${java8Downloads}
 gateTest8Debug          : ${gateTest} ${java8DownloadsDebug}
@@ -54,6 +63,7 @@ gateTestBenchmark8Debug : ${gateTestBenchmark} ${java8DownloadsDebug}
 gateTestBenchmark9      : ${gateTestBenchmark} ${java9Downloads}
 gateBootstrap8          : ${gateBootstrap} ${java8Downloads}
 gateBootstrap9          : ${gateBootstrap} ${java9Downloads}
+gateBootstrap8FullVerify: ${gateBootstrapFullVerify} ${java8Downloads}
 gateBootstrapLite8      : ${gateBootstrapLite} ${java8Downloads}
 gateBootstrapLite9      : ${gateBootstrapLite} ${java9Downloads}
 
