@@ -311,7 +311,10 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             descriptor = context.getGlobalVaraibleRegistry().lookupOrAdd(name, nativeResolver);
         }
 
-        if (!descriptor.isDeclared()) {
+        // if the global does not have an associated value the compiler did not initialize it, in
+        // this case we assume memory has already been allocated elsewhere
+        final boolean allocateMemory = !descriptor.isDeclared() && global.getValue() != null;
+        if (allocateMemory) {
             final int byteSize = typeHelper.getByteSize(((PointerType) global.getType()).getPointeeType());
             final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             final LLVMAddressNode addressLiteralNode = new LLVMAddressLiteralNode(nativeStorage);
