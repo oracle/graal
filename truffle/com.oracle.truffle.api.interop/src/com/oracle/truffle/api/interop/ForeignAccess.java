@@ -227,7 +227,7 @@ public final class ForeignAccess {
         } catch (UnknownIdentifierException e) {
             throw e;
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -259,7 +259,7 @@ public final class ForeignAccess {
         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
             throw e;
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -285,7 +285,7 @@ public final class ForeignAccess {
         } catch (UnsupportedMessageException e) {
             throw e;
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -318,7 +318,7 @@ public final class ForeignAccess {
             throw e;
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -339,7 +339,7 @@ public final class ForeignAccess {
         try {
             return (boolean) send(isExecutableNode, frame, receiver);
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -376,7 +376,7 @@ public final class ForeignAccess {
         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
             throw e;
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -407,7 +407,7 @@ public final class ForeignAccess {
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw e;
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -428,7 +428,7 @@ public final class ForeignAccess {
         try {
             return (boolean) send(isNullNode, frame, receiver);
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -449,7 +449,7 @@ public final class ForeignAccess {
         try {
             return (boolean) send(hasSizeNode, frame, receiver);
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -475,7 +475,7 @@ public final class ForeignAccess {
         } catch (UnsupportedMessageException e) {
             throw e;
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -496,7 +496,7 @@ public final class ForeignAccess {
         try {
             return (boolean) send(isBoxedNode, frame, receiver);
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
@@ -522,7 +522,7 @@ public final class ForeignAccess {
         } catch (UnsupportedMessageException | UnsupportedTypeException ex) {
             throw ex;
         } catch (InteropException e) {
-            throw new AssertionError("Unexpected exception catched.", e);
+            throw new AssertionError("Unexpected exception caught.", e);
         }
     }
 
