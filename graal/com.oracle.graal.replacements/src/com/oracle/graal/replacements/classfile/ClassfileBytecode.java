@@ -241,6 +241,6 @@ public class ClassfileBytecode implements Bytecode {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + method.format("<%H.%n(%p)>");
+        return getClass().getName() + method.format("<%H.%n(%p)>");
     }
 }

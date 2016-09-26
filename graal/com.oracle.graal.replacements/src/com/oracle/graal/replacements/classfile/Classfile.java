@@ -68,7 +68,7 @@ public class Classfile {
             throw new IOException("Unsupported class file version: " + major + "." + minor);
         }
 
-        ClassfileConstantPool cp = new ClassfileConstantPool(type, stream, context);
+        ClassfileConstantPool cp = new ClassfileConstantPool(stream, context);
 
         // access_flags, this_class, super_class
         stream.skipBytes(6);
@@ -86,10 +86,10 @@ public class Classfile {
         skipAttributes(stream);
     }
 
-    public ClassfileBytecode getCode(ClassfileBytecodeProvider context, String name, String descriptor) {
+    public ClassfileBytecode getCode(String name, String descriptor) {
         for (ClassfileBytecode code : codeAttributes) {
             ResolvedJavaMethod method = code.getMethod();
-            if (context.matchesMethod(name, descriptor, method)) {
+            if (method.getName().equals(name) && method.getSignature().toMethodDescriptor().equals(descriptor)) {
                 return code;
             }
         }
@@ -114,7 +114,7 @@ public class Classfile {
             String attributeName = cp.get(Utf8.class, stream.readUnsignedShort()).value;
             int attributeLength = stream.readInt();
             if (code == null && attributeName.equals("Code")) {
-                ResolvedJavaMethod method = cp.context.findMethod(type, name, descriptor, isStatic);
+                ResolvedJavaMethod method = ClassfileBytecodeProvider.findMethod(type, name, descriptor, isStatic);
                 code = new ClassfileBytecode(method, stream, cp);
                 if (method == null) {
                     // This must be a method hidden from reflection
