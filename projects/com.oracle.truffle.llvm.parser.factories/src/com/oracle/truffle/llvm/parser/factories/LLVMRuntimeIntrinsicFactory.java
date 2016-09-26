@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFacto
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMRintFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMSqrtFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMExitFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMSignalFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrCmpFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMTruffleOnlyIntrinsicsFactory.LLVMStrlenFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMTruffleReadBytesFactory;
@@ -230,6 +231,7 @@ public class LLVMRuntimeIntrinsicFactory {
         // C
         intrinsics.put("@abort", LLVMAbortFactory.getInstance());
         intrinsics.put("@exit", LLVMExitFactory.getInstance());
+        intrinsics.put("@signal", LLVMSignalFactory.getInstance());
 
         intrinsics.put("@strlen", LLVMStrlenFactory.getInstance());
         intrinsics.put("@strcmp", LLVMStrCmpFactory.getInstance());

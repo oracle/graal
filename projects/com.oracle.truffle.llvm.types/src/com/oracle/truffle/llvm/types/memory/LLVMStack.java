@@ -76,6 +76,10 @@ public final class LLVMStack extends LLVMMemory {
         isFreed = true;
     }
 
+    public static long allocate(long size) {
+        return UNSAFE.allocateMemory(size);
+    }
+
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
     public static class AllocationResult {
