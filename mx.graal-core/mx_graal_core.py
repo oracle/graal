@@ -258,6 +258,8 @@ class BootstrapTest:
         self.args = args
         self.suppress = suppress
         self.tags = tags
+        if tags is not None and (type(tags) is not list or all(not isinstance(x, basestring) for x in tags)):
+            mx.abort("Gate tag argument must be a list of strings, tag argument:" + str(tags))
 
     def run(self, tasks, extraVMarguments=None):
         with Task(self.name, tasks, tags=self.tags) as t:
@@ -422,7 +424,7 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithG1GCVerification', _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
     BootstrapTest('BootstrapWithSystemAssertionsEconomy', _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
     BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithWithSystemAssertionsRegisterPressure', _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
     BootstrapTest('BootstrapWithSystemAssertionsImmutableCode', _assertionFlags + _immutableCodeFlags + ['-Dgraal.VerifyPhases=true'] + _graalErrorFlags, tags=GraalTags.bootstrap)
 ]
 
