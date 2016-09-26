@@ -29,7 +29,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 @ServiceProvider(CompilerConfigurationFactory.class)
 public class CoreCompilerConfigurationFactory extends CompilerConfigurationFactory {
 
-    public static final String NAME = "basic";
+    public static final String NAME = "core";
 
     public static final int AUTO_SELECTION_PRIORITY = 2;
 
