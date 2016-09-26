@@ -510,16 +510,15 @@ public final class ForeignAccess {
      * @return return an instance of {@link TruffleObject} that responds to {@link Message#HAS_SIZE}
      *         and {@link Message#GET_SIZE} and its 0 to {@link Message#GET_SIZE size - 1} indexes
      *         contain {@link String} names of the properties of the <code>receiver</code> object
-     * @throws UnsupportedTypeException if the receiver isn't recognized
      * @throws UnsupportedMessageException if the message isn't handled
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.18
      */
-    public static TruffleObject sendKeys(Node keysNode, VirtualFrame frame, TruffleObject receiver) throws UnsupportedTypeException, UnsupportedMessageException {
+    public static TruffleObject sendKeys(Node keysNode, VirtualFrame frame, TruffleObject receiver) throws UnsupportedMessageException {
         try {
             return (TruffleObject) send(keysNode, frame, receiver);
-        } catch (UnsupportedMessageException | UnsupportedTypeException ex) {
+        } catch (UnsupportedMessageException ex) {
             throw ex;
         } catch (InteropException e) {
             throw new AssertionError("Unexpected exception caught.", e);
