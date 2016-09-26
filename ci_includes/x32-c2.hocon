@@ -1,0 +1,15 @@
+x32.c2 : {
+  targets: [weekly]
+  capabilities: [linux, x32]
+  environment : {
+    XMX         : "8g"
+    XMS         : "8g"
+    JVM_CONFIG  : "default"
+    JVM         : "server"
+    MACHINE_NAME: "x32"
+  }
+}
+
+builds += [
+  ${bench-renaissance}        ${x32.c2} { name: "bench-renaissance-linux-x32-c2" }
+]
