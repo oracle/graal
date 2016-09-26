@@ -180,6 +180,10 @@ public class MethodFilter {
         }
     }
 
+    public boolean hasSignature() {
+        return signature != null;
+    }
+
     /**
      * Determines if the class part of this filter matches a given class name.
      */
@@ -195,20 +199,36 @@ public class MethodFilter {
         if (clazz != null && !clazz.matcher(o.getDeclaringClass().toJavaName()).matches()) {
             return false;
         }
-        if (signature != null) {
-            Signature sig = o.getSignature();
-            if (sig.getParameterCount(false) != signature.length) {
+        return matchesSignature(o.getSignature());
+    }
+
+    private boolean matchesSignature(Signature sig) {
+        if (signature == null) {
+            return true;
+        }
+        if (sig.getParameterCount(false) != signature.length) {
+            return false;
+        }
+        for (int i = 0; i < signature.length; i++) {
+            JavaType type = sig.getParameterType(i, null);
+            String javaName = type.toJavaName();
+            if (signature[i] != null && !signature[i].matcher(javaName).matches()) {
                 return false;
-            }
-            for (int i = 0; i < signature.length; i++) {
-                JavaType type = sig.getParameterType(i, null);
-                String javaName = type.toJavaName();
-                if (signature[i] != null && !signature[i].matcher(javaName).matches()) {
-                    return false;
-                }
             }
         }
         return true;
+    }
+
+    public boolean matches(String javaClassName, String name, Signature sig) {
+        assert sig != null || signature == null;
+        // check method name first, since MetaUtil.toJavaName is expensive
+        if (methodName != null && !methodName.matcher(name).matches()) {
+            return false;
+        }
+        if (clazz != null && !clazz.matcher(javaClassName).matches()) {
+            return false;
+        }
+        return matchesSignature(sig);
     }
 
     @Override
