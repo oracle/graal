@@ -268,7 +268,6 @@ class BootstrapTest:
                     out = mx.DuplicateSuppressingStream(self.suppress).write
                 else:
                     out = None
-                mx.log("Executing " + self.name + '[' + ','.join(str(x)[len('-Dgraal.') if str(x).startswith('-Dgraal.') else 0:] for x in self.args) + ']')
                 run_vm(self.args + ['-XX:+UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments) + ['-XX:-TieredCompilation', '-XX:+BootstrapJVMCI', '-version'], out=out)
 
 class MicrobenchRun:
