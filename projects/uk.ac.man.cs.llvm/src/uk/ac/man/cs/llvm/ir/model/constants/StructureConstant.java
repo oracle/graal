@@ -34,12 +34,8 @@ import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class StructureConstant extends AggregateConstant {
 
-    public StructureConstant(StructureType type, Constant[] values) {
-        super(type, values);
-    }
-
-    public StructureConstant(StructureType type, int valueCount) {
-        this(type, new Constant[valueCount]);
+    StructureConstant(StructureType type, int valueCount) {
+        super(type, valueCount);
     }
 
     public Type getElementType(int index) {
@@ -52,15 +48,6 @@ public final class StructureConstant extends AggregateConstant {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{ ");
-        for (int i = 0; i < getElementCount(); i++) {
-            if (i > 0) {
-                sb.append(", ");
-            }
-            Constant value = getElement(i);
-            sb.append(value.getType()).append(" ").append(value);
-        }
-        return sb.append("}").toString();
+        return String.format("{%s}", super.toString());
     }
 }

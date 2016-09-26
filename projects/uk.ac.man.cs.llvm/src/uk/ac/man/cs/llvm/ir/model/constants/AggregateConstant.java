@@ -29,21 +29,31 @@
  */
 package uk.ac.man.cs.llvm.ir.model.constants;
 
+import uk.ac.man.cs.llvm.ir.model.GlobalValueSymbol;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
+import uk.ac.man.cs.llvm.ir.model.Symbols;
+import uk.ac.man.cs.llvm.ir.types.ArrayType;
+import uk.ac.man.cs.llvm.ir.types.StructureType;
 import uk.ac.man.cs.llvm.ir.types.Type;
+import uk.ac.man.cs.llvm.ir.types.VectorType;
 
 import java.util.Arrays;
 
 public abstract class AggregateConstant extends AbstractConstant {
 
-    private final Constant[] elements;
+    private final Symbol[] elements;
 
-    public AggregateConstant(Type type, Constant[] elements) {
+    AggregateConstant(Type type, Symbol[] elements) {
         super(type);
         this.elements = elements;
     }
 
-    public Constant getElement(int idx) {
+    AggregateConstant(Type type, int size) {
+        super(type);
+        this.elements = new Symbol[size];
+    }
+
+    public Symbol getElement(int idx) {
         return elements[idx];
     }
 
@@ -55,14 +65,80 @@ public abstract class AggregateConstant extends AbstractConstant {
         Arrays.fill(elements, element);
     }
 
-    public Constant[] getElements() {
+    public Symbol[] getElements() {
         return Arrays.copyOf(elements, elements.length);
     }
 
     public void replaceElement(int index, Symbol replacement) {
-        if (!(replacement instanceof Constant)) {
-            throw new IllegalStateException("Constants can only be replaced by Constants!");
+        if (!(replacement instanceof Constant || replacement instanceof GlobalValueSymbol)) {
+            throw new IllegalStateException("Values can only be replaced by Constants or Globals!");
         }
-        elements[index] = (Constant) replacement;
+        elements[index] = replacement;
+    }
+
+    protected String getContent() {
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < getElementCount(); i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            Symbol value = getElement(i);
+            sb.append(value.getType()).append(" ").append(value);
+        }
+        return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < getElementCount(); i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            Symbol value = getElement(i);
+            sb.append(value.getType()).append(" ").append(value);
+        }
+        return sb.toString();
+    }
+
+    static AggregateConstant fromData(Type type, long[] data) {
+        final AggregateConstant aggregateConstant;
+        final Type elementType;
+        if (type instanceof ArrayType) {
+            final ArrayType arrayType = (ArrayType) type;
+            elementType = arrayType.getElementType();
+            aggregateConstant = new ArrayConstant(arrayType, data.length);
+        } else if (type instanceof VectorType) {
+            final VectorType vectorType = (VectorType) type;
+            elementType = vectorType.getElementType();
+            aggregateConstant = new VectorConstant((VectorType) type, data.length);
+        } else {
+            throw new RuntimeException("Cannot create constant from data: " + type);
+        }
+
+        for (int i = 0; i < data.length; i++) {
+            aggregateConstant.replaceElement(i, Constant.createFromData(elementType, data[i]));
+        }
+
+        return aggregateConstant;
+    }
+
+    static AggregateConstant fromSymbols(Symbols symbols, Type type, int[] valueIndices) {
+        final AggregateConstant aggregateConstant;
+        if (type instanceof ArrayType) {
+            aggregateConstant = new ArrayConstant((ArrayType) type, valueIndices.length);
+        } else if (type instanceof StructureType) {
+            aggregateConstant = new StructureConstant((StructureType) type, valueIndices.length);
+        } else if (type instanceof VectorType) {
+            aggregateConstant = new VectorConstant((VectorType) type, valueIndices.length);
+        } else {
+            throw new RuntimeException("No value constant implementation for " + type);
+        }
+
+        for (int elementIndex = 0; elementIndex < valueIndices.length; elementIndex++) {
+            aggregateConstant.replaceElement(elementIndex, symbols.getSymbol(valueIndices[elementIndex], aggregateConstant, elementIndex));
+        }
+
+        return aggregateConstant;
     }
 }

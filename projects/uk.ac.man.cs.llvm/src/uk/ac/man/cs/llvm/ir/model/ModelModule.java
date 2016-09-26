@@ -200,9 +200,9 @@ public final class ModelModule implements ModuleGenerator {
     public void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage) {
         final GlobalValueSymbol global;
         if (isConstant) {
-            global = new GlobalConstant(type, initialiser, align, linkage);
+            global = GlobalConstant.create(type, initialiser, align, linkage);
         } else {
-            global = new GlobalVariable(type, initialiser, align, linkage);
+            global = GlobalVariable.create(type, initialiser, align, linkage);
         }
         symbols.addSymbol(global);
         globals.add(global);

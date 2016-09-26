@@ -31,14 +31,18 @@ package uk.ac.man.cs.llvm.ir.model;
 
 import uk.ac.man.cs.llvm.ir.types.Type;
 
-public class GlobalConstant extends GlobalValueSymbol {
+public final class GlobalConstant extends GlobalValueSymbol {
 
-    public GlobalConstant(Type type, int initialiser, int align, long linkage) {
+    private GlobalConstant(Type type, int initialiser, int align, long linkage) {
         super(type, initialiser, align, linkage);
     }
 
     @Override
     public void accept(ModelVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public static GlobalConstant create(Type type, int initialiser, int align, long linkage) {
+        return new GlobalConstant(type, initialiser, align, linkage);
     }
 }
