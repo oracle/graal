@@ -23,7 +23,7 @@
 package com.oracle.graal.replacements.test;
 
 import org.junit.Assert;
-import org.junit.Ignore;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -37,7 +37,10 @@ import com.oracle.graal.phases.common.inlining.InliningPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.replacements.nodes.BitScanReverseNode;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.sparc.SPARC;
 
 public class BitOpNodesTest extends GraalCompilerTest {
 
@@ -74,8 +77,11 @@ public class BitOpNodesTest extends GraalCompilerTest {
     }
 
     @Test
-    @Ignore("Only works on hardware with popcnt at the moment")
     public void testBitCountInt() {
+        Architecture arch = getBackend().getTarget().arch;
+        boolean isAmd64WithPopCount = arch instanceof AMD64 && ((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT);
+        boolean isSparc = arch instanceof SPARC;
+        Assume.assumeTrue("Only works on hardware with popcnt at the moment", isAmd64WithPopCount || isSparc);
         ValueNode result = parseAndInline("bitCountIntSnippet");
         Assert.assertEquals(StampFactory.forInteger(JavaKind.Int, 8, 24), result.stamp());
     }
@@ -85,8 +91,11 @@ public class BitOpNodesTest extends GraalCompilerTest {
     }
 
     @Test
-    @Ignore("Only works on hardware with popcnt at the moment")
     public void testBitCountIntEmpty() {
+        Architecture arch = getBackend().getTarget().arch;
+        boolean isAmd64WithPopCount = arch instanceof AMD64 && ((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT);
+        boolean isSparc = arch instanceof SPARC;
+        Assume.assumeTrue("Only works on hardware with popcnt at the moment", isAmd64WithPopCount || isSparc);
         ValueNode result = parseAndInline("bitCountIntEmptySnippet");
         Assert.assertEquals(StampFactory.forInteger(JavaKind.Int, 0, 24), result.stamp());
     }
@@ -102,8 +111,11 @@ public class BitOpNodesTest extends GraalCompilerTest {
     }
 
     @Test
-    @Ignore("Only works on hardware with popcnt at the moment")
     public void testBitCountLong() {
+        Architecture arch = getBackend().getTarget().arch;
+        boolean isAmd64WithPopCount = arch instanceof AMD64 && ((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT);
+        boolean isSparc = arch instanceof SPARC;
+        Assume.assumeTrue("Only works on hardware with popcnt at the moment", isAmd64WithPopCount || isSparc);
         ValueNode result = parseAndInline("bitCountLongSnippet");
         Assert.assertEquals(StampFactory.forInteger(JavaKind.Int, 8, 40), result.stamp());
     }
@@ -113,8 +125,11 @@ public class BitOpNodesTest extends GraalCompilerTest {
     }
 
     @Test
-    @Ignore("Only works on hardware with popcnt at the moment")
     public void testBitCountLongEmpty() {
+        Architecture arch = getBackend().getTarget().arch;
+        boolean isAmd64WithPopCount = arch instanceof AMD64 && ((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT);
+        boolean isSparc = arch instanceof SPARC;
+        Assume.assumeTrue("Only works on hardware with popcnt at the moment", isAmd64WithPopCount || isSparc);
         ValueNode result = parseAndInline("bitCountLongEmptySnippet");
         Assert.assertEquals(StampFactory.forInteger(JavaKind.Int, 0, 40), result.stamp());
     }
