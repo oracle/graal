@@ -408,7 +408,6 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapEconomyWithSystemAssertions', ['-esa', '-Dgraal.CompilerConfiguration=economy', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
     BootstrapTest('BootstrapWithExceptionEdges', ['-esa', '-Dgraal.StressInvokeWithExceptionNode=true', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
     BootstrapTest('BootstrapWithRegisterPressure', ['-esa', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapTraceRAWithRegisterPressure', ['-esa', '-Dgraal.TraceRA=true', '-Dgraal.RegisterPressure=' + _registers, '-Dgraal.ExitVMOnException=true', '-Dgraal.LIRUnlockBackendRestart=true'], tags=GraalTags.bootstrap),
     BootstrapTest('BootstrapWithImmutableCode', ['-esa', '-Dgraal.ImmutableCode=true', '-Dgraal.VerifyPhases=true', '-Dgraal.ExitVMOnException=true'], tags=GraalTags.bootstrap),
 ]
 
