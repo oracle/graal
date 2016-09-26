@@ -386,6 +386,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void visit(FunctionDefinition method) {
         FrameDescriptor frame = frames.getDescriptor(method.getName());
 
@@ -396,7 +397,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         LLVMNode[] beforeFunction = parameters.toArray(new LLVMNode[parameters.size()]);
         LLVMNode[] afterFunction = new LLVMNode[0];
 
-        final SourceSection sourceSection = null;
+        final SourceSection sourceSection = source.createSection(method.getName(), 1);
         LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(body, beforeFunction, afterFunction, sourceSection, frame, method.getName());
         if (LLVMBaseOptionFacade.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
