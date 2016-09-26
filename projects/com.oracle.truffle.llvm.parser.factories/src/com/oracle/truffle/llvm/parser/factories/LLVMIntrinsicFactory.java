@@ -178,6 +178,22 @@ public final class LLVMIntrinsicFactory {
                     }
 
                 };
+            } else if (functionName.startsWith("@llvm.dbg.value")) {
+                return new LLVMNode() {
+
+                    @Override
+                    public void executeVoid(VirtualFrame frame) {
+                        /*
+                         * TODO: implement
+                         *
+                         * it seems like this call is used when the project was build with higher
+                         * optimization levels.
+                         *
+                         * $ opt -O3 mycode.ll -S -o mycode.opt.ll
+                         */
+                    }
+
+                };
             } else {
                 throw new IllegalStateException("llvm intrinsic " + functionName + " not yet supported!");
             }

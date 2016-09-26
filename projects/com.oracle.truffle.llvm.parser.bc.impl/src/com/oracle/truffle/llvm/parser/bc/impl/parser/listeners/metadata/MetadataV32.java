@@ -304,25 +304,38 @@ public class MetadataV32 extends Metadata {
     protected void createDwCompositeType(MetadataArgumentParser args) {
         MetadataCompositeType node = new MetadataCompositeType();
 
-        node.setContext(metadata.getReference(args.next()));
-        node.setName(metadata.getReference(args.next()));
-        node.setFile(metadata.getReference(args.next()));
-        node.setLine(asInt32(args.next()));
-        node.setSize(asInt64(args.next()));
-        node.setAlign(asInt64(args.next()));
-        node.setOffset(asInt64(args.next()));
-        node.setFlags(asInt32(args.next()));
-        node.setDerivedFrom(metadata.getReference(args.next()));
         if (args.hasNext()) {
-            node.setMemberDescriptors(metadata.getReference(args.next()));
-            node.setRuntimeLanguage(asInt32(args.next()));
+            node.setContext(metadata.getReference(args.next()));
+            node.setName(metadata.getReference(args.next()));
+            node.setFile(metadata.getReference(args.next()));
+            node.setLine(asInt32(args.next()));
+            node.setSize(asInt64(args.next()));
+            node.setAlign(asInt64(args.next()));
+            node.setOffset(asInt64(args.next()));
+            node.setFlags(asInt32(args.next()));
+            node.setDerivedFrom(metadata.getReference(args.next()));
+            if (args.hasNext()) {
+                node.setMemberDescriptors(metadata.getReference(args.next()));
+                node.setRuntimeLanguage(asInt32(args.next()));
+            } else {
+                /*
+                 * I don't know why, but there is the possibility for an pre ended
+                 * DwTagComposizeType
+                 *
+                 * example file which reproduces this special case:
+                 *
+                 * - test-suite-3.2.src/SingleSource/Regression/C++/2003-06-08-VirtualFunctions.cpp
+                 */
+            }
         } else {
             /*
-             * I don't know why, but there is the possibility for an pre ended DwTagComposizeType
+             * I don't know why, but there is the possibility for an empty DwTagCompositeType
              *
-             * example file which reproduces this special case:
+             * int main(void) {int a = 1; return 0; }
              *
-             * - test-suite-3.2.src/SingleSource/Regression/C++/2003-06-08-VirtualFunctions.cpp
+             * compiled with optimization:
+             *
+             * $ opt -O3 mycode.ll -S -o mycode.opt.ll
              */
         }
 
