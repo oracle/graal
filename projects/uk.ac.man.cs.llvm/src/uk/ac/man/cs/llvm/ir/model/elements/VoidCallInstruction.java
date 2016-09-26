@@ -36,18 +36,26 @@ import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.Symbols;
 import uk.ac.man.cs.llvm.ir.model.constants.MetadataConstant;
+import uk.ac.man.cs.llvm.ir.model.enums.Linkage;
+import uk.ac.man.cs.llvm.ir.model.enums.Visibility;
 import uk.ac.man.cs.llvm.ir.types.FunctionType;
 import uk.ac.man.cs.llvm.ir.types.MetaType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class VoidCallInstruction implements Call, VoidInstruction {
 
+    private final Linkage linkage;
+
+    private final Visibility visibility;
+
     private Symbol target;
 
     private final List<Symbol> arguments;
 
-    private VoidCallInstruction() {
+    private VoidCallInstruction(Linkage linkage, Visibility visibility) {
         arguments = new ArrayList<>();
+        this.linkage = linkage;
+        this.visibility = visibility;
     }
 
     @Override
@@ -71,6 +79,16 @@ public final class VoidCallInstruction implements Call, VoidInstruction {
     }
 
     @Override
+    public Linkage getLinkage() {
+        return linkage;
+    }
+
+    @Override
+    public Visibility getVisibility() {
+        return visibility;
+    }
+
+    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -82,8 +100,8 @@ public final class VoidCallInstruction implements Call, VoidInstruction {
         }
     }
 
-    public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments) {
-        final VoidCallInstruction inst = new VoidCallInstruction();
+    public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, long visibility, long linkage) {
+        final VoidCallInstruction inst = new VoidCallInstruction(Linkage.decode(linkage), Visibility.decode(visibility));
         inst.target = symbols.getSymbol(targetIndex, inst);
         if (inst.target instanceof FunctionType) {
             Type[] types = ((FunctionType) (inst.target)).getArgumentTypes();
