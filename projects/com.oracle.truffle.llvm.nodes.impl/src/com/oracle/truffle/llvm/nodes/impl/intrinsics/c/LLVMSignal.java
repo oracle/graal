@@ -31,8 +31,10 @@ package com.oracle.truffle.llvm.nodes.impl.intrinsics.c;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
@@ -65,8 +67,13 @@ import sun.misc.SignalHandler;
 @NodeChildren({@NodeChild(type = LLVMI32Node.class, value = "signal"), @NodeChild(type = LLVMFunctionNode.class, value = "handler")})
 public abstract class LLVMSignal extends LLVMFunctionNode {
 
+    // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
     private static final LLVMFunctionDescriptor LLVM_SIG_DFL = LLVMFunctionDescriptor.create(0);
+
+    // # define SIG_IGN ((__sighandler_t) 1) /* Ignore signal. */
     private static final LLVMFunctionDescriptor LLVM_SIG_IGN = LLVMFunctionDescriptor.create(1);
+
+    // #define SIG_ERR ((__sighandler_t) -1) /* Error return. */
     private static final LLVMFunctionDescriptor LLVM_SIG_ERR = LLVMFunctionDescriptor.create(-1);
 
     @Specialization
@@ -74,16 +81,15 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
         return setSignalHandler(signal, handler);
     }
 
-    @TruffleBoundary
     private static LLVMFunctionDescriptor setSignalHandler(int signalId, LLVMFunctionDescriptor function) {
-        Signals decodedSignal = Signals.decode(signalId);
-
-        if (decodedSignal == null) {
-            LLVMLogger.error("unknown signal: " + signalId);
+        try {
+            Signals decodedSignal = Signals.decode(signalId);
+            return setSignalHandler(decodedSignal.signal(), function);
+        } catch (NoSuchElementException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            LLVMLogger.error(e.getMessage());
             return LLVM_SIG_ERR;
         }
-
-        return setSignalHandler(decodedSignal.signal(), function);
     }
 
     private static final Map<Integer, LLVMSignalHandler> registeredSignals = new HashMap<>();
@@ -215,13 +221,13 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
         SIG_WINCH("WINCH"),
         SIG_UNUSED("UNUSED");
 
-        public static Signals decode(int code) {
+        public static Signals decode(int code) throws NoSuchElementException {
             for (Signals currentSignal : values()) {
                 if (currentSignal.signal() != null && currentSignal.signal().getNumber() == code) {
                     return currentSignal;
                 }
             }
-            return null;
+            throw new NoSuchElementException("signal with the id " + code + " not found");
         }
 
         private final Signal signal;
