@@ -90,7 +90,7 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
         for (int i = 0; i < count; i++) {
             blocks[i] = new InstructionBlock(this, i);
         }
-        blocks[0].setName("");
+        blocks[0].setName("0");
     }
 
     @Override

@@ -75,14 +75,17 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final LLVMNodeGenerator symbolResolver;
 
+    private final int argCount;
+
     public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<InstructionBlock, List<FrameSlot>> slotsToNull, Map<String, Integer> labels,
-                    Map<InstructionBlock, List<Phi>> phis) {
+                    Map<InstructionBlock, List<Phi>> phis, int argCount) {
         this.module = module;
         this.frame = frame;
         this.slotsToNull = slotsToNull;
         this.labels = labels;
         this.phis = phis;
         this.symbolResolver = new LLVMNodeGenerator(this);
+        this.argCount = argCount;
     }
 
     public void addInstruction(LLVMNode node) {
@@ -92,6 +95,10 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     public void addTerminatingInstruction(LLVMTerminatorNode node, int blockId, String blockName) {
         blocks.add(new LLVMBasicBlockNode(getBlock(), node, blockId, blockName));
         instructions.add(node);
+    }
+
+    public int getArgCount() {
+        return argCount;
     }
 
     public LLVMNode[] getBlock() {

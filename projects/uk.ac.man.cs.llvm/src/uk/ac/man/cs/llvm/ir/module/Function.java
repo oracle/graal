@@ -283,23 +283,22 @@ public class Function implements ParserListener {
     }
 
     protected void createCall(long[] args) {
-        int i = 2;
+        int i = 0;
+        final long linkage = args[i++];
+        final long visibility = args[i++];
+        final FunctionType function = (FunctionType) types.get(args[i++]);
+        final int target = getIndex(args[i++]);
 
-        FunctionType function = (FunctionType) types.get(args[i++]);
-
-        int target = getIndex(args[i++]);
-        int[] arguments = new int[args.length - i];
-        int j = 0;
-        while (j < arguments.length) {
-            arguments[j++] = getIndex(args[i++]);
+        final int[] arguments = new int[args.length - i];
+        for (int j = 0; i < args.length; i++, j++) {
+            arguments[j] = getIndex(args[i]);
         }
 
-        Type type = function.getReturnType();
+        final Type returnType = function.getReturnType();
+        code.createCall(returnType, target, arguments, visibility, linkage);
 
-        code.createCall(type, target, arguments);
-
-        if (type != MetaType.VOID) {
-            symbols.add(type);
+        if (returnType != MetaType.VOID) {
+            symbols.add(returnType);
         }
     }
 

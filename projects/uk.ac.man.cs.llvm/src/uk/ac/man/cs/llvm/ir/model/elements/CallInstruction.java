@@ -35,16 +35,24 @@ import java.util.List;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.Symbols;
+import uk.ac.man.cs.llvm.ir.model.enums.Linkage;
+import uk.ac.man.cs.llvm.ir.model.enums.Visibility;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class CallInstruction extends ValueInstruction implements Call {
+
+    private final Linkage linkage;
+
+    private final Visibility visibility;
 
     private Symbol target;
 
     private final List<Symbol> arguments = new ArrayList<>();
 
-    private CallInstruction(Type type) {
+    private CallInstruction(Type type, Linkage linkage, Visibility visibility) {
         super(type);
+        this.linkage = linkage;
+        this.visibility = visibility;
     }
 
     @Override
@@ -68,6 +76,16 @@ public final class CallInstruction extends ValueInstruction implements Call {
     }
 
     @Override
+    public Linkage getLinkage() {
+        return linkage;
+    }
+
+    @Override
+    public Visibility getVisibility() {
+        return visibility;
+    }
+
+    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;
@@ -79,8 +97,8 @@ public final class CallInstruction extends ValueInstruction implements Call {
         }
     }
 
-    public static CallInstruction fromSymbols(Symbols symbols, Type type, int targetIndex, int[] arguments) {
-        final CallInstruction inst = new CallInstruction(type);
+    public static CallInstruction fromSymbols(Symbols symbols, Type type, int targetIndex, int[] arguments, long visibility, long linkage) {
+        final CallInstruction inst = new CallInstruction(type, Linkage.decode(linkage), Visibility.decode(visibility));
         inst.target = symbols.getSymbol(targetIndex, inst);
         for (int argument : arguments) {
             inst.arguments.add(symbols.getSymbol(argument, inst));

@@ -58,23 +58,22 @@ public class FunctionV32 extends FunctionV38 {
 
     @Override
     protected void createCall(long[] args) {
-        int i = 2;
-        int target = getIndex(args[i++]);
-        int[] arguments = new int[args.length - i];
-        int j = 0;
-        while (j < arguments.length) {
-            arguments[j++] = getIndex(args[i++]);
+        int i = 0;
+        final long linkage = args[i++];
+        final long visibility = args[i++];
+        final int target = getIndex(args[i++]);
+        final int[] arguments = new int[args.length - i];
+        for (int j = 0; i < args.length; j++, i++) {
+            arguments[j] = getIndex(args[i]);
         }
 
         Type type = symbols.get(target).getType();
-
         if (type instanceof PointerType) {
             type = ((PointerType) type).getPointeeType();
         }
 
-        Type returnType = ((FunctionType) type).getReturnType();
-
-        code.createCall(returnType, target, arguments);
+        final Type returnType = ((FunctionType) type).getReturnType();
+        code.createCall(returnType, target, arguments, visibility, linkage);
 
         if (returnType != MetaType.VOID) {
             symbols.add(returnType);

@@ -41,7 +41,7 @@ public interface InstructionGenerator {
 
     void createBranch(int condition, int blockTrue, int blockFalse);
 
-    void createCall(Type type, int target, int[] arguments);
+    void createCall(Type type, int target, int[] arguments, long visibility, long linkage);
 
     void createCast(Type type, int opcode, int value);
 
