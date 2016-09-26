@@ -117,8 +117,9 @@ public class NodeCostUtil {
         final double graphSizeDelta = codeSizeBefore * DELTA;
         if (deltaCompare(codeSizeAfter, codeSizeBefore * codeSizeIncrease, graphSizeDelta) > 0) {
             ResolvedJavaMethod method = graph.method();
-            throw new VerificationError("Phase %s expects to increase code size by at most a factor of %.2f but an increase of %.2f was seen (code size before: %.2f, after: %.2f)%s",
-                            contract.contractorName(), codeSizeIncrease, (codeSizeAfter / codeSizeBefore), codeSizeBefore, codeSizeAfter,
+            double increase = (double) codeSizeAfter / (double) codeSizeBefore;
+            throw new VerificationError("Phase %s expects to increase code size by at most a factor of %.2f but an increase of %.2f was seen (code size before: %d, after: %d)%s",
+                            contract.contractorName(), codeSizeIncrease, increase, codeSizeBefore, codeSizeAfter,
                             method != null ? " when compiling method " + method.format("%H.%n(%p)") + "." : ".");
         }
     }
