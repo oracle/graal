@@ -23,6 +23,7 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
+import static com.oracle.graal.compiler.common.LocationIdentity.ANY_LOCATION;
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.debug.Debug.applyFormattingFlagsAndWidth;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
@@ -42,6 +43,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -834,16 +836,51 @@ public class SnippetTemplate {
 
             this.snippet = snippetCopy;
 
-            Debug.dump(Debug.INFO_LOG_LEVEL, snippet, "SnippetTemplate after fixing memory anchoring");
-
             StartNode entryPointNode = snippet.start();
             if (anchor.hasNoUsages()) {
                 anchor.safeDelete();
                 this.memoryAnchor = null;
             } else {
-                snippetCopy.addAfterFixed(snippetCopy.start(), anchor);
-                this.memoryAnchor = anchor;
+                // Find out if all the return memory maps point to the anchor (i.e., there's no kill
+                // anywhere)
+                boolean needsMemoryMaps = false;
+                int foundAnchorUsages = 0;
+                for (ReturnNode retNode : snippet.getNodes(ReturnNode.TYPE)) {
+                    MemoryMapNode memoryMap = retNode.getMemoryMap();
+                    if (memoryMap.getLocations().size() > 1 || memoryMap.getLastLocationAccess(ANY_LOCATION) != anchor) {
+                        needsMemoryMaps = true;
+                        break;
+                    }
+                    foundAnchorUsages++;
+                }
+                boolean needsAnchor;
+                if (needsMemoryMaps) {
+                    needsAnchor = true;
+                } else {
+                    // Check that all those memory maps where the only usages of the anchor
+                    needsAnchor = foundAnchorUsages != anchor.getUsageCount();
+                    // Remove the useless memory map
+                    MemoryMapNode memoryMap = null;
+                    for (ReturnNode retNode : snippet.getNodes(ReturnNode.TYPE)) {
+                        if (memoryMap == null) {
+                            memoryMap = retNode.getMemoryMap();
+                        } else {
+                            assert memoryMap == retNode.getMemoryMap();
+                        }
+                        retNode.setMemoryMap(null);
+                    }
+                    memoryMap.safeDelete();
+                }
+                if (needsAnchor) {
+                    snippetCopy.addAfterFixed(snippetCopy.start(), anchor);
+                    this.memoryAnchor = anchor;
+                } else {
+                    anchor.safeDelete();
+                    this.memoryAnchor = null;
+                }
             }
+            Debug.dump(Debug.INFO_LOG_LEVEL, snippet, "SnippetTemplate after fixing memory anchoring");
+
             List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
             if (returnNodes.isEmpty()) {
                 this.returnNode = null;
@@ -851,16 +888,18 @@ public class SnippetTemplate {
                 this.returnNode = returnNodes.get(0);
             } else {
                 AbstractMergeNode merge = snippet.add(new MergeNode());
-                List<MemoryMapNode> memMaps = returnNodes.stream().map(n -> n.getMemoryMap()).collect(Collectors.toList());
+                List<MemoryMapNode> memMaps = returnNodes.stream().map(ReturnNode::getMemoryMap).filter(Objects::nonNull).collect(Collectors.toList());
                 ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
                 this.returnNode = snippet.add(new ReturnNode(returnValue));
-                MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
-                MemoryMapNode memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
-                this.returnNode.setMemoryMap(memoryMap);
-                for (MemoryMapNode mm : memMaps) {
-                    if (mm != memoryMap && mm.isAlive()) {
-                        assert mm.hasNoUsages();
-                        GraphUtil.killWithUnusedFloatingInputs(mm);
+                if (!memMaps.isEmpty()) {
+                    MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
+                    MemoryMapNode memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
+                    this.returnNode.setMemoryMap(memoryMap);
+                    for (MemoryMapNode mm : memMaps) {
+                        if (mm != memoryMap && mm.isAlive()) {
+                            assert mm.hasNoUsages();
+                            GraphUtil.killWithUnusedFloatingInputs(mm);
+                        }
                     }
                 }
                 merge.setNext(this.returnNode);
@@ -1211,9 +1250,13 @@ public class SnippetTemplate {
 
             if (returnNode != null) {
                 ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
-                MemoryMapNode memoryMap = ret.getMemoryMap();
-                ret.setMemoryMap(null);
-                memoryMap.safeDelete();
+                if (ret != null) {
+                    MemoryMapNode memoryMap = ret.getMemoryMap();
+                    if (memoryMap != null) {
+                        ret.setMemoryMap(null);
+                        memoryMap.safeDelete();
+                    }
+                }
             }
             if (memoryAnchor != null) {
                 // rewire incoming memory edges
@@ -1221,7 +1264,13 @@ public class SnippetTemplate {
                 replaceMemoryUsages(memoryDuplicate, new MemoryInputMap(replacee));
 
                 if (memoryDuplicate.hasNoUsages()) {
-                    memoryDuplicate.graph().removeFixed(memoryDuplicate);
+                    if (memoryDuplicate.next() != null) {
+                        memoryDuplicate.graph().removeFixed(memoryDuplicate);
+                    } else {
+                        // this was a dummy memory node used when instantiating pure data-flow
+                        // snippets: it was not attached to the control flow.
+                        memoryDuplicate.safeDelete();
+                    }
                 }
             }
         }
@@ -1291,13 +1340,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
             replacee.replaceAtPredecessor(firstCFGNodeDuplicate);
 
-            if (replacee instanceof StateSplit) {
-                for (StateSplit sideEffectNode : sideEffectNodes) {
-                    assert ((StateSplit) replacee).hasSideEffect();
-                    Node sideEffectDup = duplicates.get(sideEffectNode);
-                    ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
-                }
-            }
+            rewireFrameStates(replacee, duplicates);
 
             if (replacee instanceof DeoptimizingNode) {
                 DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
@@ -1427,6 +1470,7 @@ public class SnippetTemplate {
      * @param metaAccess
      * @param replacee the node that will be replaced
      * @param replacer object that replaces the usages of {@code replacee}
+     * @param tool lowering tool used to insert the snippet into the control-flow
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
     @SuppressWarnings("try")
@@ -1437,15 +1481,13 @@ public class SnippetTemplate {
             instantiationCounter.increment();
 
             // Inline the snippet nodes, replacing parameters with the given args in the process
-            String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
-            StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method(), AllowAssumptions.NO);
             StartNode entryPointNode = snippet.start();
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
             Map<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, tool.getCurrentGuardAnchor().asNode());
             Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
-            Debug.dump(Debug.INFO_LOG_LEVEL, replaceeGraph, "After inlining snippet %s", snippetCopy.method());
+            Debug.dump(Debug.INFO_LOG_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
             FixedWithNextNode lastFixedNode = tool.lastFixedNode();
             assert lastFixedNode != null && lastFixedNode.isAlive() : replaceeGraph + " lastFixed=" + lastFixedNode;
@@ -1454,13 +1496,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
             replaceeGraph.addAfterFixed(lastFixedNode, firstCFGNodeDuplicate);
 
-            if (replacee instanceof StateSplit) {
-                for (StateSplit sideEffectNode : sideEffectNodes) {
-                    assert ((StateSplit) replacee).hasSideEffect();
-                    Node sideEffectDup = duplicates.get(sideEffectNode);
-                    ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
-                }
-            }
+            rewireFrameStates(replacee, duplicates);
             updateStamps(replacee, duplicates);
 
             rewireMemoryGraph(replacee, duplicates);
@@ -1476,6 +1512,66 @@ public class SnippetTemplate {
             }
 
             Debug.dump(Debug.INFO_LOG_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
+        }
+    }
+
+    /**
+     * Replaces a given floating node with this specialized snippet.
+     *
+     * This snippet must be pure data-flow
+     *
+     * @param metaAccess
+     * @param replacee the node that will be replaced
+     * @param replacer object that replaces the usages of {@code replacee}
+     * @param args the arguments to be bound to the flattened positional parameters of the snippet
+     */
+    @SuppressWarnings("try")
+    public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, Arguments args) {
+        assert assertSnippetKills(replacee);
+        try (DebugCloseable a = args.info.instantiationTimer.start()) {
+            args.info.instantiationCounter.increment();
+            instantiationCounter.increment();
+
+            // Inline the snippet nodes, replacing parameters with the given args in the process
+            StartNode entryPointNode = snippet.start();
+            assert entryPointNode.next() == (memoryAnchor == null ? returnNode : memoryAnchor) : entryPointNode.next();
+            StructuredGraph replaceeGraph = replacee.graph();
+            Map<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
+            MemoryAnchorNode anchorDuplicate = null;
+            if (memoryAnchor != null) {
+                anchorDuplicate = replaceeGraph.add(new MemoryAnchorNode());
+                replacements.put(memoryAnchor, anchorDuplicate);
+            }
+            List<Node> floatingNodes = new ArrayList<>(nodes.size() - 2);
+            for (Node n : nodes) {
+                if (n != entryPointNode && n != returnNode) {
+                    floatingNodes.add(n);
+                }
+            }
+            Map<Node, Node> duplicates = replaceeGraph.addDuplicates(floatingNodes, snippet, floatingNodes.size(), replacements);
+            Debug.dump(Debug.INFO_LOG_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
+
+            rewireFrameStates(replacee, duplicates);
+            updateStamps(replacee, duplicates);
+
+            rewireMemoryGraph(replacee, duplicates);
+            assert anchorDuplicate == null || anchorDuplicate.isDeleted();
+
+            // Replace all usages of the replacee with the value returned by the snippet
+            ValueNode returnValue = (ValueNode) duplicates.get(returnNode.result());
+            replacer.replace(replacee, returnValue);
+
+            Debug.dump(Debug.INFO_LOG_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
+        }
+    }
+
+    protected void rewireFrameStates(ValueNode replacee, Map<Node, Node> duplicates) {
+        if (replacee instanceof StateSplit) {
+            for (StateSplit sideEffectNode : sideEffectNodes) {
+                assert ((StateSplit) replacee).hasSideEffect();
+                Node sideEffectDup = duplicates.get(sideEffectNode);
+                ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
+            }
         }
     }
 
