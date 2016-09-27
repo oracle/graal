@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentat
 import static com.oracle.graal.compiler.common.LocationIdentity.ANY_LOCATION;
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
 import static com.oracle.graal.debug.Debug.applyFormattingFlagsAndWidth;
+import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
@@ -844,21 +845,19 @@ public class SnippetTemplate {
                 // Find out if all the return memory maps point to the anchor (i.e., there's no kill
                 // anywhere)
                 boolean needsMemoryMaps = false;
-                int foundAnchorUsages = 0;
                 for (ReturnNode retNode : snippet.getNodes(ReturnNode.TYPE)) {
                     MemoryMapNode memoryMap = retNode.getMemoryMap();
                     if (memoryMap.getLocations().size() > 1 || memoryMap.getLastLocationAccess(ANY_LOCATION) != anchor) {
                         needsMemoryMaps = true;
                         break;
                     }
-                    foundAnchorUsages++;
                 }
                 boolean needsAnchor;
                 if (needsMemoryMaps) {
                     needsAnchor = true;
                 } else {
                     // Check that all those memory maps where the only usages of the anchor
-                    needsAnchor = foundAnchorUsages != anchor.getUsageCount();
+                    needsAnchor = anchor.usages().filter(isNotA(MemoryMapNode.class)).isNotEmpty();
                     // Remove the useless memory map
                     MemoryMapNode memoryMap = null;
                     for (ReturnNode retNode : snippet.getNodes(ReturnNode.TYPE)) {
