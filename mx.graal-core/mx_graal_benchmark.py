@@ -1057,6 +1057,7 @@ _allRenaissanceBenches = [
     "FoldLeftSumRare",
     "StandardDeviation",
     "ForeachSumRare",
+    "ScalaFutureChain",
     "Reduce",
     "Accumulator",
     "SimpleScan",
@@ -1071,7 +1072,8 @@ _allRenaissanceBenches = [
     "LogRegression",
     "KMeansClustering",
     "MultinomialNaiveBayes",
-    "PrincipalComponentAnalysis"
+    "PrincipalComponentAnalysis",
+    "FinagleLoadBalancer"
 ]
 
 
