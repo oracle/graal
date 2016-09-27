@@ -29,7 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.bc.impl;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;

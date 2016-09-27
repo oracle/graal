@@ -35,6 +35,10 @@ public interface InstructionGenerator {
 
     void createAllocation(Type type, int count, int align);
 
+    void createAtomicLoad(Type type, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope);
+
+    void createAtomicStore(int destination, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope);
+
     void createBinaryOperation(Type type, int opcode, int flags, int lhs, int rhs);
 
     void createBranch(int block);

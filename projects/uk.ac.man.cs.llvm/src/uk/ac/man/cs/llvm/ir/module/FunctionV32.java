@@ -57,6 +57,26 @@ public class FunctionV32 extends FunctionV38 {
     }
 
     @Override
+    protected void createAtomicLoad(long[] args) {
+        int i = 0;
+        final int source = getIndex(args[i++]);
+        final Type type;
+        if (source < symbols.size()) {
+            type = ((PointerType) symbols.get(source).getType()).getPointeeType();
+        } else {
+            type = ((PointerType) types.get(args[i++])).getPointeeType();
+        }
+        final int align = getAlign(args[i++]);
+        final boolean isVolatile = args[i++] != 0;
+        final long atomicOrdering = args[i++];
+        final long synchronizationScope = args[i];
+
+        code.createAtomicLoad(type, source, align, isVolatile, atomicOrdering, synchronizationScope);
+
+        symbols.add(type);
+    }
+
+    @Override
     protected void createCall(long[] args) {
         int i = 0;
         final long linkage = args[i++];

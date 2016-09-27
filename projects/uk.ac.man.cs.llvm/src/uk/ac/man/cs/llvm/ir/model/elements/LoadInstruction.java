@@ -32,21 +32,39 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.Symbols;
+import uk.ac.man.cs.llvm.ir.model.enums.AtomicOrdering;
+import uk.ac.man.cs.llvm.ir.model.enums.SynchronizationScope;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class LoadInstruction extends ValueInstruction {
 
     private final int align;
-
+    private final AtomicOrdering atomicOrdering;
     private final boolean isVolatile;
-
+    private final SynchronizationScope synchronizationScope;
     private Symbol source;
 
-    private LoadInstruction(Type type, int align, boolean isVolatile) {
+    private LoadInstruction(Type type, int align, boolean isVolatile, AtomicOrdering ordering, SynchronizationScope scope) {
         super(type);
         this.align = align;
         this.isVolatile = isVolatile;
+        this.atomicOrdering = ordering;
+        this.synchronizationScope = scope;
+    }
+
+    private static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile, AtomicOrdering atomicOrdering, SynchronizationScope synchronizationScope) {
+        final LoadInstruction inst = new LoadInstruction(type, align, isVolatile, atomicOrdering, synchronizationScope);
+        inst.source = symbols.getSymbol(source, inst);
+        return inst;
+    }
+
+    public static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile) {
+        return fromSymbols(symbols, type, source, align, isVolatile, AtomicOrdering.NOTATOMIC, SynchronizationScope.CROSSTHREAD);
+    }
+
+    public static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+        return fromSymbols(symbols, type, source, align, isVolatile, AtomicOrdering.decode(atomicOrdering), SynchronizationScope.decode(synchronizationScope));
     }
 
     @Override
@@ -59,12 +77,20 @@ public final class LoadInstruction extends ValueInstruction {
         return align;
     }
 
+    public AtomicOrdering getAtomicOrdering() {
+        return atomicOrdering;
+    }
+
     public PointerType getPointer() {
         return (PointerType) super.getType();
     }
 
     public Symbol getSource() {
         return source;
+    }
+
+    public SynchronizationScope getSynchronizationScope() {
+        return synchronizationScope;
     }
 
     public boolean isVolatile() {
@@ -76,11 +102,5 @@ public final class LoadInstruction extends ValueInstruction {
         if (source == original) {
             source = replacement;
         }
-    }
-
-    public static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile) {
-        final LoadInstruction inst = new LoadInstruction(type, align, isVolatile);
-        inst.source = symbols.getSymbol(source, inst);
-        return inst;
     }
 }

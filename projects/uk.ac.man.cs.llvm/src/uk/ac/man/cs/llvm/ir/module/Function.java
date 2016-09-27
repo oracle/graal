@@ -235,10 +235,52 @@ public class Function implements ParserListener {
                 createStore(args);
                 break;
 
-            default:
-                System.out.printf("BLOCK #12-FUNCTION: INSTRUCTION %s%n", record);
+            case LOADATOMIC:
+                createAtomicLoad(args);
                 break;
+
+            case STOREATOMIC:
+                createAtomicStore(args);
+                break;
+
+            default:
+                throw new UnsupportedOperationException("Unsupported Record: " + record);
         }
+    }
+
+    protected void createAtomicLoad(long[] args) {
+        int i = 0;
+        final int source = getIndex(args[i++]);
+        final Type type = types.get(args[i++]);
+        final int align = getAlign(args[i++]);
+        final boolean isVolatile = args[i++] != 0;
+        final long atomicOrdering = args[i++];
+        final long synchronizationScope = args[i];
+
+        code.createAtomicLoad(type, source, align, isVolatile, atomicOrdering, synchronizationScope);
+
+        symbols.add(type);
+    }
+
+    protected void createAtomicStore(long[] args) {
+        int i = 0;
+
+        final int destination = getIndex(args[i++]);
+        if (destination > symbols.size()) {
+            i++;
+        }
+
+        final int source = getIndex(args[i++]);
+        if (source > symbols.size()) {
+            i++;
+        }
+
+        final int align = getAlign(args[i++]);
+        final boolean isVolatile = args[i++] != 0;
+        final long atomicOrdering = args[i++];
+        final long synchronizationScope = args[i];
+
+        code.createAtomicStore(destination, source, align, isVolatile, atomicOrdering, synchronizationScope);
     }
 
     protected void createAllocation(long[] args) {

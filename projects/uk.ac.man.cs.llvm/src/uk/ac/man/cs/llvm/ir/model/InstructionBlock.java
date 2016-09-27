@@ -95,6 +95,16 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
     }
 
     @Override
+    public void createAtomicLoad(Type type, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+        addInstruction(LoadInstruction.fromSymbols(function.getSymbols(), type, source, align, isVolatile, atomicOrdering, synchronizationScope));
+    }
+
+    @Override
+    public void createAtomicStore(int destination, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+        addInstruction(StoreInstruction.fromSymbols(function.getSymbols(), destination, source, align, isVolatile, atomicOrdering, synchronizationScope));
+    }
+
+    @Override
     public void createBinaryOperation(Type type, int opcode, int flags, int lhs, int rhs) {
         addInstruction(BinaryOperationInstruction.fromSymbols(function.getSymbols(), type, opcode, flags, lhs, rhs));
     }

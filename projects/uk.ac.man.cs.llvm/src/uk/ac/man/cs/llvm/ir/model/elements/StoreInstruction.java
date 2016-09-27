@@ -32,20 +32,39 @@ package uk.ac.man.cs.llvm.ir.model.elements;
 import uk.ac.man.cs.llvm.ir.model.InstructionVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.Symbols;
+import uk.ac.man.cs.llvm.ir.model.enums.AtomicOrdering;
+import uk.ac.man.cs.llvm.ir.model.enums.SynchronizationScope;
 
 public final class StoreInstruction implements VoidInstruction {
 
     private final int align;
-
+    private final AtomicOrdering atomicOrdering;
     private final boolean isVolatile;
+    private final SynchronizationScope synchronizationScope;
 
     private Symbol destination;
-
     private Symbol source;
 
-    private StoreInstruction(int align, boolean isVolatile) {
+    private StoreInstruction(int align, boolean isVolatile, AtomicOrdering ordering, SynchronizationScope scope) {
         this.align = align;
         this.isVolatile = isVolatile;
+        this.atomicOrdering = ordering;
+        this.synchronizationScope = scope;
+    }
+
+    public static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile, AtomicOrdering atomicOrdering, SynchronizationScope synchronizationScope) {
+        final StoreInstruction inst = new StoreInstruction(align, isVolatile, atomicOrdering, synchronizationScope);
+        inst.destination = symbols.getSymbol(destination, inst);
+        inst.source = symbols.getSymbol(source, inst);
+        return inst;
+    }
+
+    public static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+        return fromSymbols(symbols, destination, source, align, isVolatile, AtomicOrdering.decode(atomicOrdering), SynchronizationScope.decode(synchronizationScope));
+    }
+
+    public static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile) {
+        return fromSymbols(symbols, destination, source, align, isVolatile, AtomicOrdering.NOTATOMIC, SynchronizationScope.CROSSTHREAD);
     }
 
     @Override
@@ -57,12 +76,20 @@ public final class StoreInstruction implements VoidInstruction {
         return align;
     }
 
+    public AtomicOrdering getAtomicOrdering() {
+        return atomicOrdering;
+    }
+
     public Symbol getDestination() {
         return destination;
     }
 
     public Symbol getSource() {
         return source;
+    }
+
+    public SynchronizationScope getSynchronizationScope() {
+        return synchronizationScope;
     }
 
     public boolean isVolatile() {
@@ -77,12 +104,5 @@ public final class StoreInstruction implements VoidInstruction {
         if (source == original) {
             source = replacement;
         }
-    }
-
-    public static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile) {
-        final StoreInstruction inst = new StoreInstruction(align, isVolatile);
-        inst.destination = symbols.getSymbol(destination, inst);
-        inst.source = symbols.getSymbol(source, inst);
-        return inst;
     }
 }
