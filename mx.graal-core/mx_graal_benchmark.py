@@ -1046,42 +1046,8 @@ class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
 
 
-_allRenaissanceBenches = [
-    "FindNegativeRare",
-    "FindNegative",
-    "CharacterHistogram",
-    "CharacterHistogramRare",
-    "StandardDeviationRare",
-    "FoldLeftSum",
-    "ForeachSum",
-    "FoldLeftSumRare",
-    "StandardDeviation",
-    "ForeachSumRare",
-    "ScalaFutureChain",
-    "Reduce",
-    "Accumulator",
-    "SimpleScan",
-    "TextSearchRDD",
-    "TextSearchDF",
-    "WordCount",
-    "SortRDD",
-    "CharCount",
-    "ClassificationDecisionTree",
-    "PageRank",
-    "AlternatingLeastSquares",
-    "LogRegression",
-    "KMeansClustering",
-    "MultinomialNaiveBayes",
-    "PrincipalComponentAnalysis",
-    "FinagleLoadBalancer"
-]
-
-
 class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     """Renaissance benchmark suite implementation.
-
-    This suite has only a single benchmark, and does not allow setting a specific
-    benchmark in the command line.
     """
     def name(self):
         return "renaissance"
@@ -1112,6 +1078,10 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def workingDirectory(self, benchmarks, bmSuiteArgs):
         return self.workdir
 
+    def classpathAndMainClass(self):
+        mainClass = "org.scala.RenaissanceSuite"
+        return ["-cp", self.renaissancePath() + "/*", mainClass]
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         benchArg = ""
         if benchmarks is None:
@@ -1122,13 +1092,13 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             benchArg = ",".join(benchmarks)
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
-        mainClass = "org.scala.RenaissanceSuite"
         return (
-            vmArgs + ["-cp", self.renaissancePath() + "/*"] + [mainClass] +
-            runArgs + [benchArg])
+            vmArgs + self.classpathAndMainClass() + runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
-        return _allRenaissanceBenches
+        out = mx.OutputCapture()
+        mx.run_java(self.classpathAndMainClass() + ["listraw"], out=out)
+        return str.splitlines(out.data)
 
     def successPatterns(self):
         return []
