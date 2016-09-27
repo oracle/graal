@@ -194,4 +194,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
         return hasInvoke;
     }
 
+    @Override
+    public boolean checkContract() {
+        return false;
+    }
+
 }
