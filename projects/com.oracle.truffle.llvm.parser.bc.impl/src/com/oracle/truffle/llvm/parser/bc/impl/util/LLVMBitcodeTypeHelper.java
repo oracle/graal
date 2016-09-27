@@ -171,6 +171,10 @@ public class LLVMBitcodeTypeHelper {
                     throw new RuntimeException("Unsupported type " + type);
             }
 
+        } else if (type == MetaType.OPAQUE) {
+            // named generic Type
+            return new LLVMType(LLVMBaseType.ADDRESS, new LLVMType(LLVMBaseType.VOID));
+
         } else {
             throw new RuntimeException("Unsupported type " + type);
         }
