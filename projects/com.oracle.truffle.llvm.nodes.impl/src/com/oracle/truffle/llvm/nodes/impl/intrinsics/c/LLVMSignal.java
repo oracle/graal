@@ -55,7 +55,6 @@ import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMAddressLiteralNode;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
@@ -115,19 +114,20 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
     }
 
     // TODO: stack handling should work without predefined sizes,...
-    private static final long TMP_SIGNAL_STACK_SIZE_BYTE = 1 * 1024;
+    private static final long TMP_SIGNAL_STACK_SIZE_KB = 512;
+    private static final long TMP_SIGNAL_STACK_SIZE_BYTE = TMP_SIGNAL_STACK_SIZE_KB * 1024;
 
     private static final class LLVMSignalHandler implements SignalHandler {
 
         private final LLVMFunctionDescriptor function;
         private RootCallTarget callTarget;
+        private final LLVMStack stack = new LLVMStack();
 
         private LLVMSignalHandler(Signal signal, LLVMFunctionDescriptor function) throws IllegalArgumentException {
             this.function = function;
             LLVMFunctionNode functionNode = LLVMFunctionLiteralNodeGen.create(function);
 
-            // TODO: currently we create a new stack with a specific size, this has to be changed
-            LLVMAddressLiteralNode signalStack = new LLVMAddressLiteralNode(LLVMAddress.fromLong(LLVMStack.allocate(TMP_SIGNAL_STACK_SIZE_BYTE)));
+            LLVMAddressLiteralNode signalStack = new LLVMAddressLiteralNode(stack.allocate(TMP_SIGNAL_STACK_SIZE_BYTE));
             LLVMI32LiteralNode sigNumArg = new LLVMI32LiteralNode(signal.getNumber());
             LLVMExpressionNode[] args = {signalStack, sigNumArg};
 

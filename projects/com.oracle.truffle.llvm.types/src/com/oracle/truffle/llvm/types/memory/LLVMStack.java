@@ -51,13 +51,20 @@ public final class LLVMStack extends LLVMMemory {
      * Allocates the stack memory.
      */
     public LLVMAddress allocate() {
+        return allocate(STACK_SIZE_BYTE);
+    }
+
+    /**
+     * Allocates the stack memory.
+     */
+    public LLVMAddress allocate(final long stackSize) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         if (!isFreed) {
             throw new AssertionError("previously not deallocated");
         }
-        final long stackAllocation = UNSAFE.allocateMemory(STACK_SIZE_BYTE);
+        final long stackAllocation = UNSAFE.allocateMemory(stackSize);
         lowerBounds = stackAllocation;
-        upperBounds = stackAllocation + STACK_SIZE_BYTE;
+        upperBounds = stackAllocation + stackSize;
         isFreed = false;
         return LLVMAddress.fromLong(upperBounds);
     }
@@ -74,10 +81,6 @@ public final class LLVMStack extends LLVMMemory {
         lowerBounds = 0;
         upperBounds = 0;
         isFreed = true;
-    }
-
-    public static long allocate(long size) {
-        return UNSAFE.allocateMemory(size);
     }
 
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
