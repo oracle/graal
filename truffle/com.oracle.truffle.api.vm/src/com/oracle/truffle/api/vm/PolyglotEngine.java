@@ -62,6 +62,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.Collection;
 
 /**
  * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #buildNew()
@@ -1404,6 +1405,11 @@ public class PolyglotEngine {
                 PolyglotEngine engine = (PolyglotEngine) vm;
                 assert engine.debugger()[0] == null || engine.debugger()[0] == debugger;
                 engine.debugger()[0] = debugger;
+            }
+
+            @Override
+            public Collection<ClassLoader> allLoaders() {
+                return PolyglotLocator.Response.loaders(null);
             }
         }
 

@@ -39,6 +39,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.Collection;
 
 /**
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
@@ -84,6 +85,8 @@ public abstract class Accessor {
 
         @SuppressWarnings("rawtypes")
         public abstract Object findLanguage(Class<? extends TruffleLanguage> language);
+
+        public abstract Collection<ClassLoader> allLoaders();
     }
 
     public abstract static class LanguageSupport {
@@ -140,6 +143,7 @@ public abstract class Accessor {
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
     private static Accessor.DebugSupport DEBUG;
     private static Accessor.Frames FRAMES;
+    private static Accessor SOURCE;
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
@@ -222,6 +226,8 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             FRAMES = this.framesSupport();
+        } else if (this.getClass().getSimpleName().endsWith("SourceAccessor")) {
+            SOURCE = this;
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();
