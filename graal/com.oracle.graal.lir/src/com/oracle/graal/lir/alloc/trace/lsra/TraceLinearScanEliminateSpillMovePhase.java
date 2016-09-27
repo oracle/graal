@@ -41,7 +41,8 @@ import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.StandardOp.ValueMoveOp;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan.IntervalPredicate;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.IntervalPredicate;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -49,7 +50,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 
 final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAllocationPhase {
 
-    private static final IntervalPredicate spilledIntervals = new TraceLinearScan.IntervalPredicate() {
+    private static final IntervalPredicate spilledIntervals = new TraceLinearScanPhase.IntervalPredicate() {
 
         @Override
         public boolean apply(TraceInterval i) {
@@ -72,7 +73,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
     // called once before assignment of register numbers
     @SuppressWarnings("try")
     private static void eliminateSpillMoves(TraceLinearScan allocator, boolean shouldEliminateSpillMoves, TraceBuilderResult traceBuilderResult) {
-        try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves: Trace%d", traceBuilderResult.getTraceForBlock(allocator.blockAt(0)))) {
+        try (Indent indent = Debug.logAndIndent("Eliminating unnecessary spill moves: Trace%d", traceBuilderResult.getTraceForBlock(allocator.blockAt(0)).getId())) {
             allocator.sortIntervalsBySpillPos();
 
             /*
@@ -147,7 +148,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
                                     if (!interval.canMaterialize() && interval.spillState() != SpillState.StartInMemory) {
 
                                         AllocatableValue fromLocation = interval.getSplitChildAtOpId(opId, OperandMode.DEF).location();
-                                        AllocatableValue toLocation = TraceLinearScan.canonicalSpillOpr(interval);
+                                        AllocatableValue toLocation = allocator.canonicalSpillOpr(interval);
                                         if (!fromLocation.equals(toLocation)) {
 
                                             if (!insertionBuffer.initialized()) {

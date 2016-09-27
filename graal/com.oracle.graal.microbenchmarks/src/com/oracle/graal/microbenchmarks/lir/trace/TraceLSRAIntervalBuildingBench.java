@@ -31,9 +31,10 @@ import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
 import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase.Analyser;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
@@ -61,9 +62,9 @@ public class TraceLSRAIntervalBuildingBench extends GraalBenchmark {
             MoveFactory spillMoveFactory = context.spillMoveFactory;
             RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
             TraceBuilderResult resultTraces = context.contextLookup(TraceBuilderResult.class);
-
+            TraceLinearScanPhase phase = new TraceLinearScanPhase(target, lirGenRes, spillMoveFactory, registerAllocationConfig, resultTraces, false, null);
             for (Trace trace : resultTraces.getTraces()) {
-                allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false, null);
+                allocator = phase.createAllocator(trace);
                 Analyser a = new TraceLinearScanLifetimeAnalysisPhase.Analyser(allocator, resultTraces);
                 a.analyze();
             }

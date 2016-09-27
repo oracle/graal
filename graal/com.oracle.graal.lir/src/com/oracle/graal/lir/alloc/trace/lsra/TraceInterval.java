@@ -43,6 +43,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.RegisterValue;

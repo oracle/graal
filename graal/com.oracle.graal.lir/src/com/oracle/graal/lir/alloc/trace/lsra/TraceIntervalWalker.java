@@ -28,6 +28,7 @@ import com.oracle.graal.lir.alloc.trace.lsra.FixedInterval.FixedList;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.AnyList;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterBinding;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.State;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 
 /**
  */

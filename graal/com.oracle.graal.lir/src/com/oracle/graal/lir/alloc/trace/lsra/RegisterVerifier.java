@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.alloc.trace.lsra;
 
+import static com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.isVariableOrRegister;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
@@ -33,12 +34,13 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.ArrayMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
@@ -215,7 +217,7 @@ final class RegisterVerifier {
             @Override
             public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                 // we skip spill moves inserted by the spill position optimization
-                if (TraceLinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand) && op.id() != TraceLinearScan.DOMINATOR_SPILL_MOVE_ID) {
+                if (isVariableOrRegister(operand) && allocator.isProcessed(operand) && op.id() != TraceLinearScanPhase.DOMINATOR_SPILL_MOVE_ID) {
                     TraceInterval interval = intervalAt(operand);
                     if (op.id() != -1) {
                         interval = interval.getSplitChildAtOpId(op.id(), mode);
@@ -227,7 +229,7 @@ final class RegisterVerifier {
         };
 
         InstructionValueConsumer defConsumer = (op, operand, mode, flags) -> {
-            if (TraceLinearScan.isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
+            if (isVariableOrRegister(operand) && allocator.isProcessed(operand)) {
                 TraceInterval interval = intervalAt(operand);
                 if (op.id() != -1) {
                     interval = interval.getSplitChildAtOpId(op.id(), mode);

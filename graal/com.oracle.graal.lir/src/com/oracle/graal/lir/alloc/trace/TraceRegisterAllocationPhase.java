@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.lir.alloc.trace;
 
-import static com.oracle.graal.lir.alloc.trace.TraceBuilderPhase.TRACE_DUMP_LEVEL;
-import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
-
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
@@ -36,7 +33,6 @@ import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScan;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase;
@@ -50,9 +46,9 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
- * An implementation of a Trace Register Allocator as described in
- * <a href="http://dx.doi.org/10.1145/2814189.2814199">"Trace Register Allocation"</a> by Josef
- * Eisl.
+ * Implements the Trace Register Allocation approach as described in
+ * <a href="http://dx.doi.org/10.1145/2972206.2972211">"Trace-based Register Allocation in a JIT
+ * Compiler"</a> by Josef Eisl et al.
  */
 public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
@@ -60,8 +56,6 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         // @formatter:off
         @Option(help = "Use inter-trace register hints.", type = OptionType.Debug)
         public static final StableOptionValue<Boolean> TraceRAuseInterTraceHints = new StableOptionValue<>(true);
-        @Option(help = "Use special allocator for trivial blocks.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAtrivialBlockAllocator = new StableOptionValue<>(true);
         @Option(help = "Share information about spilled values to other traces.", type = OptionType.Debug)
         public static final StableOptionValue<Boolean> TraceRAshareSpillInformation = new StableOptionValue<>(true);
         @Option(help = "Reuse spill slots for global move resolution cycle breaking.", type = OptionType.Debug)
@@ -72,10 +66,11 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     }
 
     private static final TraceGlobalMoveResolutionPhase TRACE_GLOBAL_MOVE_RESOLUTION_PHASE = new TraceGlobalMoveResolutionPhase();
-    private static final TraceTrivialAllocator TRACE_TRIVIAL_ALLOCATOR = new TraceTrivialAllocator();
 
-    private static final DebugCounter trivialTracesCounter = Debug.counter("TraceRA[trivialTraces]");
     private static final DebugCounter tracesCounter = Debug.counter("TraceRA[traces]");
+
+    public static final DebugCounter globalStackSlots = Debug.counter("TraceRA[GlobalStackSlots]");
+    public static final DebugCounter allocatedStackSlots = Debug.counter("TraceRA[AllocatedStackSlots]");
 
     @Override
     @SuppressWarnings("try")
@@ -89,22 +84,19 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
         AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
 
+        // currently this is not supported
+        boolean neverSpillConstant = false;
+
+        final TraceRegisterAllocationPolicy plan = DefaultTraceRegisterAllocationPolicy.defaultAllocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots,
+                        resultTraces, neverSpillConstant);
+
         Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {
             for (Trace trace : resultTraces.getTraces()) {
-                try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s", trace.getId(), trace); Scope s = Debug.scope("AllocateTrace", trace)) {
-                    tracesCounter.increment();
-                    if (trivialTracesCounter.isEnabled() && isTrivialTrace(lir, trace)) {
-                        trivialTracesCounter.increment();
-                    }
-                    Debug.dump(TRACE_DUMP_LEVEL, trace, "Trace%s: %s", trace.getId(), trace);
-                    if (Options.TraceRAtrivialBlockAllocator.getValue() && isTrivialTrace(lir, trace)) {
-                        TRACE_TRIVIAL_ALLOCATOR.apply(target, lirGenRes, trace, traceContext, false);
-                    } else {
-                        TraceLinearScan allocator = new TraceLinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, trace, resultTraces, false, cachedStackSlots);
-                        allocator.allocate(target, lirGenRes, trace, spillMoveFactory, registerAllocationConfig);
-                    }
-                    Debug.dump(TRACE_DUMP_LEVEL, trace, "After  Trace%s: %s", trace.getId(), trace);
+                tracesCounter.increment();
+                TraceAllocationPhase<TraceAllocationContext> allocator = plan.selectStrategy(trace);
+                try (Indent i = Debug.logAndIndent("Allocating Trace%d: %s (%s)", trace.getId(), trace, allocator); Scope s = Debug.scope("AllocateTrace", trace)) {
+                    allocator.apply(target, lirGenRes, trace, traceContext);
                 }
             }
         } catch (Throwable e) {
