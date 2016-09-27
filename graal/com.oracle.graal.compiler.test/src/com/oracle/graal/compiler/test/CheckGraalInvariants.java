@@ -134,8 +134,6 @@ public class CheckGraalInvariants extends GraalTest {
         String bootclasspath = System.getProperty(propertyName);
         Assert.assertNotNull("Cannot find value of " + propertyName, bootclasspath);
 
-        bootclasspath.split(File.pathSeparator);
-
         final List<String> classNames = new ArrayList<>();
         for (String path : bootclasspath.split(File.pathSeparator)) {
             if (shouldProcess(path)) {

@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import com.oracle.graal.bytecode.Bytecode;
-import com.oracle.graal.bytecode.DefaultBytecode;
+import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
@@ -116,7 +116,7 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param graph the target graph of Graal nodes created by the builder
      */
     public FrameStateBuilder(GraphBuilderTool tool, ResolvedJavaMethod method, StructuredGraph graph) {
-        this(tool, new DefaultBytecode(method), graph);
+        this(tool, new ResolvedJavaMethodBytecode(method), graph);
     }
 
     /**
@@ -987,14 +987,14 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     public void traceState() {
-        Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", localsSize(), stackSize(), getMethod()));
+        Debug.log("|   state [nr locals = %d, stack depth = %d, method = %s]", localsSize(), stackSize(), getMethod());
         for (int i = 0; i < localsSize(); ++i) {
             ValueNode value = locals[i];
-            Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value));
+            Debug.log("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value);
         }
         for (int i = 0; i < stackSize(); ++i) {
             ValueNode value = stack[i];
-            Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value));
+            Debug.log("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value);
         }
     }
 }

@@ -40,7 +40,7 @@ import com.oracle.graal.api.replacements.MethodSubstitution;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.api.replacements.SnippetTemplateCache;
 import com.oracle.graal.bytecode.BytecodeProvider;
-import com.oracle.graal.bytecode.DefaultBytecode;
+import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
@@ -257,7 +257,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 assert graph.isFrozen();
                 result = graph;
             } else {
-                DefaultBytecode code = new DefaultBytecode(method);
+                ResolvedJavaMethodBytecode code = new ResolvedJavaMethodBytecode(method);
                 ConstantReflectionProvider constantReflection = providers.getConstantReflection();
                 ConstantFieldProvider constantFieldProvider = providers.getConstantFieldProvider();
                 StampProvider stampProvider = providers.getStampProvider();

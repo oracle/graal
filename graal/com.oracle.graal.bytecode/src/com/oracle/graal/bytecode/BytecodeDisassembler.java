@@ -127,10 +127,7 @@ public class BytecodeDisassembler {
      * @return {@code null} if {@code method} has no bytecode (e.g., it is native or abstract)
      */
     public String disassemble(ResolvedJavaMethod method, int startBci, int endBci) {
-        if (method.getCode() == null) {
-            return null;
-        }
-        return disassemble(new DefaultBytecode(method), startBci, endBci);
+        return disassemble(new ResolvedJavaMethodBytecode(method), startBci, endBci);
     }
 
     /**
@@ -144,6 +141,9 @@ public class BytecodeDisassembler {
      * Disassembles {@code code} in a {@code javap}-like format.
      */
     public String disassemble(Bytecode code, int startBci, int endBci) {
+        if (code.getCode() == null) {
+            return null;
+        }
         ResolvedJavaMethod method = code.getMethod();
         ConstantPool cp = code.getConstantPool();
         BytecodeStream stream = new BytecodeStream(code.getCode());

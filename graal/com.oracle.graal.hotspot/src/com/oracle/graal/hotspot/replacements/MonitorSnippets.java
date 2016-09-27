@@ -60,7 +60,7 @@ import java.util.List;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.bytecode.Bytecode;
-import com.oracle.graal.bytecode.DefaultBytecode;
+import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
@@ -641,7 +641,7 @@ public class MonitorSnippets implements Snippets {
                         returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnStamp, null));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
-                        Bytecode code = new DefaultBytecode(graph.method());
+                        Bytecode code = new ResolvedJavaMethodBytecode(graph.method());
                         FrameState stateAfter = new FrameState(null, code, BytecodeFrame.AFTER_BCI, new ValueNode[0], new ValueNode[0], 0, new ValueNode[0], null, false, false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);

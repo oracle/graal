@@ -464,6 +464,6 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     }
 
     private static BailoutException bailout(GraphBuilderContext b, String msg) {
-        throw b.bailout(msg + "\nat " + b.getMethod().asStackTraceElement(b.bci()));
+        throw b.bailout(msg + "\nat " + b.getCode().asStackTraceElement(b.bci()));
     }
 }

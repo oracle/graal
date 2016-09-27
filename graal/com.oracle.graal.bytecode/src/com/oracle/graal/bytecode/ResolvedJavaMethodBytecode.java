@@ -29,11 +29,15 @@ import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class DefaultBytecode implements Bytecode {
+/**
+ * Direct access to the bytecode of a {@link ResolvedJavaMethod} that will reflect any
+ * instrumentation and rewriting performed on the {@link ResolvedJavaMethod}.
+ */
+public class ResolvedJavaMethodBytecode implements Bytecode {
 
     private final ResolvedJavaMethod method;
 
-    public DefaultBytecode(ResolvedJavaMethod method) {
+    public ResolvedJavaMethodBytecode(ResolvedJavaMethod method) {
         this.method = method;
     }
 

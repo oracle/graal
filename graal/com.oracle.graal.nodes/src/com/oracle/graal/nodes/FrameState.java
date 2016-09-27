@@ -269,7 +269,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * Determines if this frame state can be converted to a {@link BytecodeFrame}.
      *
      * Since a {@link BytecodeFrame} encodes {@link #getMethod()} and {@link #bci}, it does not
-     * preserve {@link #getCode()}. If {@link #bci} is only guaranteed to be valid in terms of
+     * preserve {@link #getCode()}. {@link #bci} is only guaranteed to be valid in terms of
      * {@code getCode().getCode()} which may be different from {@code getMethod().getCode()} if the
      * latter has been subject to instrumentation.
      */

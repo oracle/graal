@@ -49,9 +49,17 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * parsed from a class file. This avoids all {@linkplain Instrumentation instrumentation} and any
  * bytecode rewriting performed by the VM.
  *
- * Since this class retrieves class file content based on existing {@link Class} instances, it
- * assumes the class files are well formed and thus does not perform any class file validation
- * checks.
+ * This mechanism retrieves class files based on the name and {@link ClassLoader} of existing
+ * {@link Class} instances. It bypasses all VM parsing and verification of the class file and
+ * assumes the class files are well formed. As such, it should only be used to parse classes from a
+ * trusted source such the class path or module path accessible to JVMCI.
+ *
+ * A combination of {@link Class#forName(String)} and an existing {@link MetaAccessProvider} is used
+ * to resolve constant pool references. This opens up the opportunity for linkage errors if the
+ * referee is structurally changed through redefinition (e.g., a referred to method is renamed or
+ * deleted). This will result in an appropriate {@link LinkageError} being thrown. The only way to
+ * avoid this is to have a completely isolated {@code jdk.vm.ci.meta} implementation for parsing
+ * snippet/intrinsic bytecodes.
  */
 public final class ClassfileBytecodeProvider implements BytecodeProvider {
 
@@ -70,7 +78,8 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
 
     @Override
     public Bytecode getBytecode(ResolvedJavaMethod method) {
-        return getCodeAttributeFor(method);
+        Classfile classfile = getClassfile(resolveToClass(method.getDeclaringClass().getName()));
+        return classfile.getCode(method.getName(), method.getSignature().toMethodDescriptor());
     }
 
     @Override
@@ -137,15 +146,6 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
             }
         }
         return classfile;
-    }
-
-    /**
-     * Gets a {@link ClassfileBytecode} representing the bytecode for {@code method} read from a
-     * class file.
-     */
-    public ClassfileBytecode getCodeAttributeFor(ResolvedJavaMethod method) {
-        Classfile classfile = getClassfile(resolveToClass(method.getDeclaringClass().getName()));
-        return classfile.getCode(method.getName(), method.getSignature().toMethodDescriptor());
     }
 
     synchronized Class<?> resolveToClass(String descriptor) {

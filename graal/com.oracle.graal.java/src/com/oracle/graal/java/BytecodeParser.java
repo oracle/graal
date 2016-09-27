@@ -264,7 +264,7 @@ import com.oracle.graal.bytecode.BytecodeStream;
 import com.oracle.graal.bytecode.BytecodeSwitch;
 import com.oracle.graal.bytecode.BytecodeTableSwitch;
 import com.oracle.graal.bytecode.Bytecodes;
-import com.oracle.graal.bytecode.DefaultBytecode;
+import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
@@ -589,7 +589,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
                     int entryBCI, IntrinsicContext intrinsicContext) {
-        this.code = intrinsicContext == null ? new DefaultBytecode(method) : intrinsicContext.getBytecodeProvider().getBytecode(method);
+        this.code = intrinsicContext == null ? new ResolvedJavaMethodBytecode(method) : intrinsicContext.getBytecodeProvider().getBytecode(method);
         this.method = code.getMethod();
         this.graphBuilderInstance = graphBuilderInstance;
         this.graph = graph;
@@ -864,7 +864,7 @@ public class BytecodeParser implements GraphBuilderContext {
             int stackSize = 0;
             ValueNode[] locks = {};
             List<MonitorIdNode> monitorIds = Collections.emptyList();
-            stateAfterStart = graph.add(new FrameState(null, new DefaultBytecode(original), 0, locals, stack, stackSize, locks, monitorIds, false, false));
+            stateAfterStart = graph.add(new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, locals, stack, stackSize, locks, monitorIds, false, false));
         }
         return stateAfterStart;
     }

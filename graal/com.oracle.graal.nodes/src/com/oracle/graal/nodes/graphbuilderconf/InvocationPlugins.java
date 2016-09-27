@@ -337,7 +337,7 @@ public class InvocationPlugins {
          */
         @Override
         public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, String substituteName, Type... argumentTypes) {
-            assert methodSubstitutionBytecodeProvider != null : "Registration used for method subsitutions requires a non-null methodSubstitutionBytecodeProvider";
+            assert methodSubstitutionBytecodeProvider != null : "Registration used for method substitutions requires a non-null methodSubstitutionBytecodeProvider";
             MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(methodSubstitutionBytecodeProvider, substituteDeclaringClass, substituteName, argumentTypes);
             plugins.register(plugin, false, allowOverwrite, declaringType, name, argumentTypes);
         }

@@ -46,7 +46,7 @@ public class Classfile {
     private final ResolvedJavaType type;
     private final List<ClassfileBytecode> codeAttributes;
 
-    private static final int MAJOR_VERSION_JAVA8 = 52;
+    private static final int MAJOR_VERSION_JAVA7 = 51;
     private static final int MAJOR_VERSION_JAVA9 = 53;
 
     /**
@@ -64,8 +64,8 @@ public class Classfile {
 
         int minor = stream.readUnsignedShort();
         int major = stream.readUnsignedShort();
-        if (major < MAJOR_VERSION_JAVA8 || major > MAJOR_VERSION_JAVA9) {
-            throw new IOException("Unsupported class file version: " + major + "." + minor);
+        if (major < MAJOR_VERSION_JAVA7 || major > MAJOR_VERSION_JAVA9) {
+            throw new UnsupportedClassVersionError("Unsupported class file version: " + major + "." + minor);
         }
 
         ClassfileConstantPool cp = new ClassfileConstantPool(stream, context);
@@ -115,9 +115,11 @@ public class Classfile {
             int attributeLength = stream.readInt();
             if (code == null && attributeName.equals("Code")) {
                 ResolvedJavaMethod method = ClassfileBytecodeProvider.findMethod(type, name, descriptor, isStatic);
+                // Even if we will discard the Code attribute (see below), we still
+                // need to parse it to reach the following class file content.
                 code = new ClassfileBytecode(method, stream, cp);
                 if (method == null) {
-                    // This must be a method hidden from reflection
+                    // This is a method hidden from reflection
                     // (see sun.reflect.Reflection.filterMethods)
                     code = null;
                 }

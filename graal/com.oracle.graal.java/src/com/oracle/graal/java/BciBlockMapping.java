@@ -426,7 +426,6 @@ public final class BciBlockMapping {
      */
     private BciBlock[] blocks;
     public final Bytecode code;
-    // public final ResolvedJavaMethod method;
     public boolean hasJsrBytecodes;
 
     private final ExceptionHandler[] exceptionHandlers;
