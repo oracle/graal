@@ -29,10 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.bc.impl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -49,6 +46,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMFreeFactory;
@@ -67,6 +65,8 @@ import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.parser.factories.LLVMBlockFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFunctionFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMGetElementPtrFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMLiteralFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMMemoryReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMRootNodeFactory;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
@@ -89,10 +89,11 @@ import uk.ac.man.cs.llvm.ir.model.ModelModule;
 import uk.ac.man.cs.llvm.ir.model.ModelVisitor;
 import uk.ac.man.cs.llvm.ir.model.Symbol;
 import uk.ac.man.cs.llvm.ir.model.constants.ArrayConstant;
-import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
 import uk.ac.man.cs.llvm.ir.module.ModuleVersion;
 import uk.ac.man.cs.llvm.ir.module.TargetDataLayout;
+import uk.ac.man.cs.llvm.ir.types.FunctionType;
 import uk.ac.man.cs.llvm.ir.types.PointerType;
+import uk.ac.man.cs.llvm.ir.types.StructureType;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public class LLVMBitcodeVisitor implements ModelVisitor {
@@ -120,15 +121,16 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         FrameDescriptor frame = new FrameDescriptor();
         FrameSlot stack = frame.addFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID);
 
-        List<RootCallTarget> constructorFunctions = module.getGlobalConstructorFunctions();
-        List<RootCallTarget> destructorFunctions = module.getGlobalDestructorFunctions();
-
         LLVMNode[] globals = module.getGobalVariables(stack).toArray(new LLVMNode[0]);
         RootNode globalVarInits = new LLVMStaticInitsBlockNode(globals, frame, context, stack);
         RootCallTarget globalVarInitsTarget = Truffle.getRuntime().createCallTarget(globalVarInits);
         LLVMNode[] deallocs = module.getDeallocations();
         RootNode globalVarDeallocs = new LLVMStaticInitsBlockNode(deallocs, frame, context, stack);
         RootCallTarget globalVarDeallocsTarget = Truffle.getRuntime().createCallTarget(globalVarDeallocs);
+
+        final List<RootCallTarget> constructorFunctions = module.getStructor("@llvm.global_ctors", frame, stack);
+        final List<RootCallTarget> destructorFunctions = module.getStructor("@llvm.global_dtors", frame, stack);
+
         if (mainFunction == null) {
             return new LLVMBitcodeParserResult(Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(stack)), globalVarInitsTarget, globalVarDeallocsTarget, module.getFunctions(),
                             constructorFunctions, destructorFunctions);
@@ -301,6 +303,50 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         }
     }
 
+    public List<RootCallTarget> getStructor(String name, FrameDescriptor frame, FrameSlot stack) {
+        for (GlobalValueSymbol globalValueSymbol : globals.keySet()) {
+            if (globalValueSymbol.getName().equals(name)) {
+                final LLVMNode[] targets = resolveStructor(globalValueSymbol, stack);
+                final RootCallTarget constructorFunctionsRootCallTarget = Truffle.getRuntime().createCallTarget(new LLVMStaticInitsBlockNode(targets, frame, context, stack));
+                final List<RootCallTarget> targetList = new ArrayList<>(1);
+                targetList.add(constructorFunctionsRootCallTarget);
+                return targetList;
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private LLVMNode[] resolveStructor(GlobalValueSymbol globalVar, FrameSlot stack) {
+        final LLVMGlobalVariableDescriptor globalVariableDescriptor = globalVariableScope.get(globalVar.getName());
+        final ArrayConstant arrayConstant = (ArrayConstant) globalVar.getValue();
+        final int elemCount = arrayConstant.getElementCount();
+
+        final StructureType elementType = (StructureType) arrayConstant.getType().getElementType();
+        final int structSize = typeHelper.getByteSize(elementType);
+
+        final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
+        final int indexedTypeLength = typeHelper.getAlignment(functionType);
+
+        final LLVMNode[] structors = new LLVMNode[elemCount];
+        for (int i = 0; i < elemCount; i++) {
+            final LLVMExpressionNode globalVarAddress = LLVMLiteralFactory.createLiteral(globalVariableDescriptor, LLVMBaseType.ADDRESS);
+            final LLVMExpressionNode iNode = LLVMLiteralFactory.createLiteral(i, LLVMBaseType.I32);
+            final LLVMAddressNode structPointer = LLVMGetElementPtrFactory.create(LLVMBaseType.I32, (LLVMAddressNode) globalVarAddress, iNode, structSize);
+            final LLVMExpressionNode loadedStruct = LLVMMemoryReadWriteFactory.createLoad(LLVMBitcodeTypeHelper.getLLVMBaseType(elementType), structPointer, 0);
+
+            final LLVMExpressionNode oneLiteralNode = LLVMLiteralFactory.createLiteral(1, LLVMBaseType.I32);
+            final LLVMExpressionNode functionLoadTarget = LLVMGetElementPtrFactory.create(LLVMBaseType.I32, (LLVMAddressNode) loadedStruct, oneLiteralNode, indexedTypeLength);
+            final LLVMExpressionNode loadedFunction = LLVMMemoryReadWriteFactory.createLoad(LLVMBitcodeTypeHelper.getLLVMBaseType(functionType), (LLVMAddressNode) functionLoadTarget, 0);
+            final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{LLVMFrameReadWriteFactory.createFrameRead(LLVMBaseType.ADDRESS, stack)};
+            final LLVMNode functionCall = LLVMFunctionFactory.createFunctionCall((LLVMFunctionNode) loadedFunction, argNodes, LLVMBaseType.VOID);
+            structors[i] = functionCall;
+        }
+
+        return structors;
+    }
+
+    private final Map<String, LLVMGlobalVariableDescriptor> globalVariableScope = new HashMap<>();
+
     // NativeLookup expects a NodeFactoryFacade but does not use it for our purpose
     private final NativeLookup nativeLookup = new NativeLookup(null);
 
@@ -327,6 +373,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             descriptor.declare(nativeStorage);
         }
 
+        globalVariableScope.put(global.getName(), descriptor);
+
         return LLVMAccessGlobalVariableStorageNodeGen.create(descriptor);
     }
 
@@ -339,32 +387,6 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             }
         }
         return globalNodes;
-    }
-
-    private List<RootCallTarget> getStructors(String name) {
-        final List<RootCallTarget> structors = new ArrayList<>();
-        for (GlobalValueSymbol global : globals.keySet()) {
-            if (name.equals(global.getName())) {
-                ArrayConstant arrayConstant = (ArrayConstant) global.getValue();
-                for (int i = 0; i < arrayConstant.getElementCount(); i++) {
-                    StructureConstant constant = (StructureConstant) arrayConstant.getElement(i);
-                    FunctionDefinition functionDefinition = (FunctionDefinition) constant.getElement(1);
-                    String functionName = functionDefinition.getName();
-                    LLVMFunctionDescriptor functionDescriptor = getFunction(functionName);
-                    structors.add(functions.get(functionDescriptor));
-                }
-                break;
-            }
-        }
-        return structors;
-    }
-
-    public List<RootCallTarget> getGlobalConstructorFunctions() {
-        return getStructors("@llvm.global_ctors");
-    }
-
-    public List<RootCallTarget> getGlobalDestructorFunctions() {
-        return getStructors("@llvm.global_dtors");
     }
 
     @Override
