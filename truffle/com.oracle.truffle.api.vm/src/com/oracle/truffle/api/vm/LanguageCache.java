@@ -189,7 +189,7 @@ final class LanguageCache {
         if (PRELOAD) {
             return language;
         }
-        return loadLanguage(name, className, loader());
+        return loadLanguage(name, className, loader);
     }
 
     private static TruffleLanguage<?> loadLanguage(String name, String className, ClassLoader loader) {
