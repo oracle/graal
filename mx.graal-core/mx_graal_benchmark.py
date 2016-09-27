@@ -1070,7 +1070,8 @@ _allRenaissanceBenches = [
     "AlternatingLeastSquares",
     "LogRegression",
     "KMeansClustering",
-    "MultinomialNaiveBayes"
+    "MultinomialNaiveBayes",
+    "PrincipalComponentAnalysis"
 ]
 
 
