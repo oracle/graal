@@ -60,20 +60,13 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      * The name of this factory. This must be unique across all factory instances and is used when
      * selecting a factory based on the value of {@link Options#CompilerConfiguration}.
      */
-    protected final String name;
+    private final String name;
 
     /**
      * The priority of this factory. This must be unique across all factory instances and is used
      * when selecting a factory when {@link Options#CompilerConfiguration} is omitted
      */
-    protected final int autoSelectionPriority;
-
-    /**
-     * The set of available {@linkplain HotSpotBackendFactory backends} that are
-     * {@linkplain HotSpotBackendFactory#isAssociatedWith(CompilerConfigurationFactory) associated}
-     * with this factory.
-     */
-    private final IdentityHashMap<Class<? extends Architecture>, HotSpotBackendFactory> backends = new IdentityHashMap<>();
+    private final int autoSelectionPriority;
 
     protected CompilerConfigurationFactory(String name, int autoSelectionPriority) {
         this.name = name;
@@ -81,11 +74,43 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         assert checkAndAddNewFactory(this);
     }
 
-    protected final HotSpotBackendFactory getBackendFactory(Architecture arch) {
-        return backends.get(arch.getClass());
+    public abstract CompilerConfiguration createCompilerConfiguration();
+
+    /**
+     * Collect the set of available {@linkplain HotSpotBackendFactory backends} for this compiler
+     * configuration.
+     */
+    public BackendMap createBackendMap() {
+        // default to backend with the same name as the compiler configuration
+        return new DefaultBackendMap(name);
     }
 
-    protected abstract CompilerConfiguration createCompilerConfiguration();
+    public interface BackendMap {
+        HotSpotBackendFactory getBackendFactory(Architecture arch);
+    }
+
+    public static class DefaultBackendMap implements BackendMap {
+
+        private final IdentityHashMap<Class<? extends Architecture>, HotSpotBackendFactory> backends = new IdentityHashMap<>();
+
+        @SuppressWarnings("try")
+        public DefaultBackendMap(String backendName) {
+            try (InitTimer t = timer("HotSpotBackendFactory.register")) {
+                for (HotSpotBackendFactory backend : GraalServices.load(HotSpotBackendFactory.class)) {
+                    if (backend.getName().equals(backendName)) {
+                        Class<? extends Architecture> arch = backend.getArchitecture();
+                        HotSpotBackendFactory oldEntry = backends.put(arch, backend);
+                        assert oldEntry == null || oldEntry == backend : "duplicate Graal backend";
+                    }
+                }
+            }
+        }
+
+        @Override
+        public final HotSpotBackendFactory getBackendFactory(Architecture arch) {
+            return backends.get(arch.getClass());
+        }
+    }
 
     @Override
     public int compareTo(CompilerConfigurationFactory o) {
@@ -144,7 +169,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      * @param name the name of the compiler configuration to select (optional)
      */
     @SuppressWarnings("try")
-    static CompilerConfigurationFactory selectFactory(String name) {
+    public static CompilerConfigurationFactory selectFactory(String name) {
         CompilerConfigurationFactory factory = null;
         try (InitTimer t = timer("CompilerConfigurationFactory.selectFactory")) {
             String value = name == null ? Options.CompilerConfiguration.getValue() : name;
@@ -171,16 +196,6 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                     throw new GraalError("No %s providers found", CompilerConfigurationFactory.class.getName());
                 }
                 factory = candidates.get(0);
-            }
-        }
-
-        try (InitTimer t = timer("HotSpotBackendFactory.register")) {
-            for (HotSpotBackendFactory backend : GraalServices.load(HotSpotBackendFactory.class)) {
-                if (backend.isAssociatedWith(factory)) {
-                    Class<? extends Architecture> arch = backend.getArchitecture();
-                    HotSpotBackendFactory oldEntry = factory.backends.put(arch, backend);
-                    assert oldEntry == null || oldEntry == backend : "duplicate Graal backend";
-                }
             }
         }
         return factory;

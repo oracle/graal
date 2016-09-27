@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.api.runtime.GraalRuntime;
+import com.oracle.graal.hotspot.CompilerConfigurationFactory;
 import com.oracle.graal.hotspot.HotSpotGraalCompilerFactory;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionValue;
@@ -80,7 +81,8 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                     return (GraalJVMCICompiler) compiler;
                 }
             }
-            return HotSpotGraalCompilerFactory.createCompiler(JVMCI.getRuntime(), Options.TruffleCompilerConfiguration.getValue());
+            CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue());
+            return HotSpotGraalCompilerFactory.createCompiler(JVMCI.getRuntime(), compilerConfigurationFactory);
         }
     }
 }

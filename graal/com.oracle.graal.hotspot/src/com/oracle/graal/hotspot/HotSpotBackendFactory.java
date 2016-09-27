@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,15 +30,17 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 public interface HotSpotBackendFactory {
 
     /**
-     * Gets the class describing the architecture the backend created by this factor is associated
+     * Gets the name of this backend factory. This should not include the {@link #getArchitecture()
+     * architecture}. The {@link CompilerConfigurationFactory} can select alternative backends based
+     * on this name.
+     */
+    String getName();
+
+    /**
+     * Gets the class describing the architecture the backend created by this factory is associated
      * with.
      */
     Class<? extends Architecture> getArchitecture();
-
-    /**
-     * Determines if this backend factory is associated with a given compiler configuration factory.
-     */
-    boolean isAssociatedWith(CompilerConfigurationFactory factory);
 
     HotSpotBackend createBackend(HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotBackend host);
 }

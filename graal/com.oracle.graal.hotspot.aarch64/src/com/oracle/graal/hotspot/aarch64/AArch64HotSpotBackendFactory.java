@@ -28,9 +28,6 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.aarch64.AArch64AddressLowering;
 import com.oracle.graal.compiler.aarch64.AArch64SuitesProvider;
-import com.oracle.graal.hotspot.CompilerConfigurationFactory;
-import com.oracle.graal.hotspot.EconomyCompilerConfigurationFactory;
-import com.oracle.graal.hotspot.CoreCompilerConfigurationFactory;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotBackendFactory;
@@ -76,13 +73,13 @@ import jdk.vm.ci.runtime.JVMCIBackend;
 public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
 
     @Override
-    public Class<? extends Architecture> getArchitecture() {
-        return AArch64.class;
+    public String getName() {
+        return "core";
     }
 
     @Override
-    public boolean isAssociatedWith(CompilerConfigurationFactory factory) {
-        return factory instanceof CoreCompilerConfigurationFactory || factory instanceof EconomyCompilerConfigurationFactory;
+    public Class<? extends Architecture> getArchitecture() {
+        return AArch64.class;
     }
 
     @Override
