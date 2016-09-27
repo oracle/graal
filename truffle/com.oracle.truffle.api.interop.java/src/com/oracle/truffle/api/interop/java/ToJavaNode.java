@@ -39,6 +39,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -48,29 +50,61 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Map;
 
-final class ToJavaNode extends Node {
+abstract class ToJavaNode extends Node {
     private static final Object[] EMPTY = {};
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
 
-    public Object convert(VirtualFrame frame, Object value, Class<?> type) {
+    public abstract Object execute(VirtualFrame frame, Object value, Class<?> type);
+
+    @Specialization(guards = "operand == null")
+    @SuppressWarnings("unused")
+    protected Object doNull(Object operand, Class<?> type) {
+        return null;
+    }
+
+    @Specialization(guards = {"operand != null", "operand.getClass() == cachedOperandType", "targetType == cachedTargetType"})
+    protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") Class<?> targetType,
+                    @Cached("operand.getClass()") Class<?> cachedOperandType,
+                    @Cached("targetType") Class<?> cachedTargetType) {
+        return convertImpl(frame, cachedOperandType.cast(operand), cachedTargetType, cachedOperandType);
+    }
+
+    private Object convertImpl(VirtualFrame frame, Object value, Class<?> targetType, Class<?> cachedOperandType) {
         Object convertedValue;
-        if (value == null) {
-            return null;
-        }
-        if (isPrimitiveType(value.getClass())) {
-            convertedValue = toPrimitive(value, type);
+        if (isPrimitiveType(cachedOperandType)) {
+            convertedValue = toPrimitive(value, targetType);
             assert convertedValue != null;
-        } else if (value instanceof JavaObject && type.isInstance(((JavaObject) value).obj)) {
+        } else if (value instanceof JavaObject && targetType.isInstance(((JavaObject) value).obj)) {
             convertedValue = ((JavaObject) value).obj;
-        } else if (value instanceof TruffleObject && isJavaFunctionInterface(type) && isExecutable(frame, (TruffleObject) value)) {
-            convertedValue = asJavaFunction(type, (TruffleObject) value);
+        } else if (value instanceof TruffleObject && isJavaFunctionInterface(targetType) && isExecutable(frame, (TruffleObject) value)) {
+            convertedValue = asJavaFunction(targetType, (TruffleObject) value);
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject(type, null, (TruffleObject) value);
+            convertedValue = asJavaObject(targetType, null, (TruffleObject) value);
         } else {
-            assert type.isAssignableFrom(value.getClass());
+            assert targetType.isAssignableFrom(value.getClass());
             convertedValue = value;
         }
         return convertedValue;
+    }
+
+    @Specialization(guards = "operand != null", contains = "doCached")
+    protected Object doGeneric(VirtualFrame frame, Object operand, Class<?> type) {
+        // TODO this specialization should be a TruffleBoundary because it produces too much code.
+        // It can't be because a frame is passed in. We need extract all uses of frame out of
+        // convertImpl.
+        return convertImpl(frame, operand, type, operand.getClass());
+    }
+
+    private static boolean isPrimitiveType(Class<?> clazz) {
+        return clazz == int.class || clazz == Integer.class ||
+                        clazz == boolean.class || clazz == Boolean.class ||
+                        clazz == byte.class || clazz == Byte.class ||
+                        clazz == short.class || clazz == Short.class ||
+                        clazz == long.class || clazz == Long.class ||
+                        clazz == float.class || clazz == Float.class ||
+                        clazz == double.class || clazz == Double.class ||
+                        clazz == char.class || clazz == Character.class ||
+                        CharSequence.class.isAssignableFrom(clazz);
     }
 
     private boolean isExecutable(VirtualFrame frame, TruffleObject object) {
@@ -347,18 +381,6 @@ final class ToJavaNode extends Node {
             }
         }
         return ret;
-    }
-
-    private static boolean isPrimitiveType(Class<?> clazz) {
-        return clazz == int.class || clazz == Integer.class ||
-                        clazz == boolean.class || clazz == Boolean.class ||
-                        clazz == byte.class || clazz == Byte.class ||
-                        clazz == short.class || clazz == Short.class ||
-                        clazz == long.class || clazz == Long.class ||
-                        clazz == float.class || clazz == Float.class ||
-                        clazz == double.class || clazz == Double.class ||
-                        clazz == char.class || clazz == Character.class ||
-                        CharSequence.class.isAssignableFrom(clazz);
     }
 
     static boolean isPrimitive(Object attr) {
