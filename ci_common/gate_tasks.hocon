@@ -18,6 +18,7 @@ builds += [
   ${gateTestBenchmark8}        ${gateLinuxAMD64}   {name: "gate-benchmarktest-8-linux-amd64"}
 # ${gateTestBenchmark8Debug}   ${gateLinuxAMD64}   {name: "gate-benchmarktest-8-linux-amd64-fastdebug"}
   ${gateBootstrap8}            ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrap-8-linux-amd64"}
+  ${gateBootstrap8FullVerify}  ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrapfullverify-8-linux-amd64"}
   ${gateBootstrap9}            ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrap-9-linux-amd64"}
   ${gateStyle}                 ${gateLinuxAMD64}   {name: "gate-style-linux-amd64"}
 
@@ -34,4 +35,5 @@ builds += [
   # TraceRA
   ${gateTest8}                 ${gateLinuxAMD64TraceRA} {name: "gate-test-8-linux-amd64-tracera"}
   ${gateBootstrap8}            ${gateLinuxAMD64TraceRABootstrap} {name: "gate-bootstrap-8-linux-amd64-tracera"}
+  ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABootstrap} {name: "gate-bootstrapfullverify-8-linux-amd64-tracera"}
 ]
