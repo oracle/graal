@@ -27,19 +27,20 @@ function timing(n) {
 }
 
 function run(n) {
-  firstResult = calcLoop(n);
-  println("** first: " + firstResult);
+  previousResult = calcLoop(n);
+  println("** first: " + previousResult);
   i = 0;
-  while (i < 100) {
-    calcLoop(n);
+  nextResult = 0;
+  while (i < 101) {
+    nextResult = calcLoop(n);
+    if (nextResult != previousResult) {
+        println("ERROR: result not stable iteration: " + i + " currentResult: " + nextResult + " : previousResult " + previousResult);
+        break;
+    }
+    previousResult = nextResult;
     i = i + 1;
   }
-  lastResult = calcLoop(n);
-  println("** last:  " + lastResult);
-  
-  if (firstResult != lastResult) {
-    println("ERROR: result not stable");
-  }
+  println("** last:  " + nextResult);
 }  
 
 function help() {
