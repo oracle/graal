@@ -132,6 +132,7 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
         Lock lock = new ReentrantLock();
         private AtomicBoolean isRunning = new AtomicBoolean(true);
 
+        @TruffleBoundary
         private LLVMSignalHandler(Signal signal, LLVMFunctionDescriptor function) throws IllegalArgumentException {
             this.signal = signal;
             this.function = function;
@@ -164,6 +165,7 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
         }
 
         @Override
+        @TruffleBoundary
         protected void finalize() throws Throwable {
             super.finalize();
             stop();
