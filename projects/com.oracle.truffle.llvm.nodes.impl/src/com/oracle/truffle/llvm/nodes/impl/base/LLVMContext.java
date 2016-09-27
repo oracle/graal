@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.impl.base;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +41,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMThreadNode;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
@@ -50,6 +52,7 @@ public class LLVMContext extends ExecutionContext {
     private final List<RootCallTarget> globalVarDeallocs = new ArrayList<>();
     private final List<RootCallTarget> constructorFunctions = new ArrayList<>();
     private final List<RootCallTarget> destructorFunctions = new ArrayList<>();
+    private final List<LLVMThreadNode> runningThreads = new ArrayList<>();
 
     private final LLVMFunctionRegistry functionRegistry;
     private final LLVMGlobalVariableRegistry globalVariableRegistry = new LLVMGlobalVariableRegistry();
@@ -150,6 +153,27 @@ public class LLVMContext extends ExecutionContext {
         globalVarInits.add(globalVarInit);
     }
 
+    public synchronized void registerThread(LLVMThreadNode thread) {
+        runningThreads.add(thread);
+    }
+
+    public synchronized void unregisterThread(LLVMThreadNode thread) {
+        runningThreads.remove(thread);
+    }
+
+    public synchronized void shutdownThreads() {
+        for (LLVMThreadNode node : runningThreads) {
+            node.stop();
+        }
+    }
+
+    public synchronized void awaitThreadTermination() {
+        shutdownThreads();
+        for (LLVMThreadNode node : runningThreads) {
+            node.awaitFinish();
+        }
+    }
+
     public List<RootCallTarget> getGlobalVarDeallocs() {
         return globalVarDeallocs;
     }
@@ -164,6 +188,10 @@ public class LLVMContext extends ExecutionContext {
 
     public List<RootCallTarget> getGlobalVarInits() {
         return globalVarInits;
+    }
+
+    public synchronized List<LLVMThreadNode> getRunningThreads() {
+        return Collections.unmodifiableList(runningThreads);
     }
 
     public void setParseOnly(boolean parseOnly) {

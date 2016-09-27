@@ -32,6 +32,9 @@ package com.oracle.truffle.llvm.nodes.impl.intrinsics.c;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -45,6 +48,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMThreadNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
@@ -117,13 +121,19 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
     private static final long TMP_SIGNAL_STACK_SIZE_KB = 512;
     private static final long TMP_SIGNAL_STACK_SIZE_BYTE = TMP_SIGNAL_STACK_SIZE_KB * 1024;
 
-    private static final class LLVMSignalHandler implements SignalHandler {
+    private static final class LLVMSignalHandler implements SignalHandler, LLVMThreadNode {
 
+        private final Signal signal;
         private final LLVMFunctionDescriptor function;
+        private final LLVMContext context;
         private RootCallTarget callTarget;
         private final LLVMStack stack = new LLVMStack();
 
+        Lock lock = new ReentrantLock();
+        private AtomicBoolean isRunning = new AtomicBoolean(true);
+
         private LLVMSignalHandler(Signal signal, LLVMFunctionDescriptor function) throws IllegalArgumentException {
+            this.signal = signal;
             this.function = function;
             LLVMFunctionNode functionNode = LLVMFunctionLiteralNodeGen.create(function);
 
@@ -131,7 +141,7 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
             LLVMI32LiteralNode sigNumArg = new LLVMI32LiteralNode(signal.getNumber());
             LLVMExpressionNode[] args = {signalStack, sigNumArg};
 
-            LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
+            context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
 
             LLVMUnresolvedCallNode callNode = new LLVMUnresolvedCallNode(functionNode, args, LLVMRuntimeType.VOID, context);
 
@@ -142,6 +152,8 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
                                             SourceSection.createUnavailable("", null),
                                             new FrameDescriptor(), ""));
 
+            context.registerThread(this);
+
             if (function.equals(LLVM_SIG_DFL)) {
                 Signal.handle(signal, SignalHandler.SIG_DFL);
             } else if (function.equals(LLVM_SIG_IGN)) {
@@ -149,6 +161,15 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
             } else {
                 Signal.handle(signal, this);
             }
+        }
+
+        @Override
+        protected void finalize() throws Throwable {
+            super.finalize();
+            stop();
+            // TODO: wait for finish of running handle?
+            context.unregisterThread(this);
+            stack.free();
         }
 
         @Override
@@ -162,13 +183,39 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
              * @note I made such a program, and I had to delete the handler manually, so this
              * sentence is probably not true
              */
-            callTarget.call();
+
+            lock.lock();
+            try {
+                if (isRunning.get()) {
+                    callTarget.call();
+                }
+            } finally {
+                lock.unlock();
+            }
         }
 
         public LLVMFunctionDescriptor getFunction() {
             return function;
         }
 
+        @Override
+        public void stop() {
+            isRunning.set(false);
+        }
+
+        @Override
+        public void awaitFinish() {
+            stop();
+
+            // wait until handle is finished
+            lock.lock();
+            lock.unlock();
+        }
+
+        @Override
+        public String toString() {
+            return "LLVMSignalHandler [signal=" + signal + ", lock=" + lock + ", isRunning=" + isRunning + "]";
+        }
     }
 
     /**
