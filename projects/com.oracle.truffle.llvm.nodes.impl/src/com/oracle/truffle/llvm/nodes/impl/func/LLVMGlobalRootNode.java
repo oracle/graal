@@ -46,6 +46,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMSignal;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
@@ -83,17 +84,25 @@ public class LLVMGlobalRootNode extends RootNode {
         try {
             Object result = null;
             for (int i = 0; i < executionCount; i++) {
+                assert (LLVMSignal.getNumberOfRegisteredSignals() == 0);
+
                 frame.setObject(stackPointerSlot, stackPointer);
                 Object[] realArgs = new Object[arguments.length + LLVMCallNode.ARG_START_INDEX];
                 realArgs[0] = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
                 System.arraycopy(arguments, 0, realArgs, LLVMCallNode.ARG_START_INDEX, arguments.length);
                 result = executeIteration(frame, i, realArgs);
+
+                context.awaitThreadTermination();
+                assert (LLVMSignal.getNumberOfRegisteredSignals() == 0);
             }
             return result;
         } catch (LLVMExitException e) {
+            context.awaitThreadTermination();
+            assert (LLVMSignal.getNumberOfRegisteredSignals() == 0);
             return e.getReturnCode();
         } finally {
-            context.awaitThreadTermination();
+            // if not done already, we want at least call a shutdown command
+            context.shutdownThreads();
             if (printNativeStats) {
                 printNativeCallStats(context);
             }
