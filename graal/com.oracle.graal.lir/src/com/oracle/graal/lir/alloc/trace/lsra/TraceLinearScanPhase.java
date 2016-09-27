@@ -81,7 +81,9 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
- * An implementation of the linear scan register allocator algorithm described in
+ * Implementation of the Linear Scan allocation approach for traces described in
+ * <a href="http://dx.doi.org/10.1145/2972206.2972211">"Trace-based Register Allocation in a JIT
+ * Compiler"</a> by Josef Eisl et al. It is derived from
  * <a href="http://doi.acm.org/10.1145/1064979.1064998" > "Optimized Interval Splitting in a Linear
  * Scan Register Allocator"</a> by Christian Wimmer and Hanspeter Moessenboeck.
  */

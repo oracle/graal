@@ -46,9 +46,9 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
- * An implementation of a Trace Register Allocator as described in
- * <a href="http://dx.doi.org/10.1145/2814189.2814199">"Trace Register Allocation"</a> by Josef
- * Eisl.
+ * Implements the Trace Register Allocation approach as described in
+ * <a href="http://dx.doi.org/10.1145/2972206.2972211">"Trace-based Register Allocation in a JIT
+ * Compiler"</a> by Josef Eisl et al.
  */
 public final class TraceRegisterAllocationPhase extends AllocationPhase {
 
