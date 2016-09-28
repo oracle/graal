@@ -165,6 +165,7 @@ public final class LLVMFrameDescriptors {
             LLVMFrameDescriptorsFunctionVisitor visitor = new LLVMFrameDescriptorsFunctionVisitor(frame, cfg.dependencies(method.getName()));
 
             method.accept(visitor);
+            visitor.finish();
 
             descriptors.put(method.getName(), frame);
             slots.put(method.getName(), visitor.getSlotMap());
@@ -185,9 +186,20 @@ public final class LLVMFrameDescriptors {
 
         private InstructionBlock entry = null;
 
+        private final List<InstructionBlock> unvisited = new ArrayList<>();
+
         LLVMFrameDescriptorsFunctionVisitor(FrameDescriptor frame, LLVMControlFlow cfg) {
             this.frame = frame;
             this.cfg = cfg;
+        }
+
+        void finish() {
+            // if a program terminates execution solely by invoking 'exit()' some blocks may
+            // otherwise never get visited, this is just a dirty fix for now since we will need to
+            // rewrite stack allocation for lifetime analysis later anyways
+            for (final InstructionBlock block : unvisited) {
+                block.accept(this);
+            }
         }
 
         private List<InstructionBlock> getNondominatingBlocks(InstructionBlock block) {
@@ -214,6 +226,7 @@ public final class LLVMFrameDescriptors {
         public List<FrameSlot> getSlots(InstructionBlock block) {
             int count = frame.getSize();
 
+            unvisited.remove(block);
             block.accept(this);
 
             return new ArrayList<>(frame.getSlots().subList(count, frame.getSize()));
@@ -231,6 +244,7 @@ public final class LLVMFrameDescriptors {
             if (entry == null) {
                 entry = block;
             }
+            unvisited.add(block);
             List<InstructionBlock> processed = new ArrayList<>();
             List<FrameSlot> slots = new ArrayList<>();
             Deque<InstructionBlock> currentQueue = new ArrayDeque<>();
