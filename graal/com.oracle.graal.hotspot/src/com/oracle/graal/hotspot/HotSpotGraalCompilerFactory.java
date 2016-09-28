@@ -99,7 +99,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         public static final OptionValue<Boolean> CompileGraalWithC1Only = new OptionValue<>(true);
 
         @Option(help = "Hook into VM-level mechanism for denoting compilations to be performed in first tier.", type = OptionType.Expert)
-        public static final OptionValue<Boolean> UseTrivialPrefixes = new OptionValue<>(true);
+        public static final OptionValue<Boolean> UseTrivialPrefixes = new OptionValue<>(false);
 
         @Option(help = "A method filter selecting what should be compiled by Graal.  All other requests will be reduced to CompilationLevel.Simple.", type = OptionType.Expert)
         public static final OptionValue<String> GraalCompileOnly = new OptionValue<>(null);
