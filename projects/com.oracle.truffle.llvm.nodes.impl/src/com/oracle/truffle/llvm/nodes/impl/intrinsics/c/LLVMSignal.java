@@ -298,7 +298,7 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
         }
 
         /**
-         * Unregister this SignalHandler from context
+         * Unregister this SignalHandler from context.
          */
         private void unregisterFromContext() {
             assert !isRunning.get();
@@ -313,14 +313,17 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
             }
 
             lock.lock();
-            if (!stack.isFreed()) {
-                stack.free();
+            try {
+                if (!stack.isFreed()) {
+                    stack.free();
+                }
+            } finally {
+                lock.unlock();
             }
-            lock.unlock();
         }
 
         /**
-         * Only unregister this SignalHandler, if there is currently no lock held
+         * Only unregister this SignalHandler, if there is currently no lock held.
          */
         private boolean tryUnregisterFromContext() {
             assert !isRunning.get();
