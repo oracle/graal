@@ -65,7 +65,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  *
  * This can be used as debug or deoptimization information.
  */
-@NodeInfo(nameTemplate = "@{p#method/s}:{p#bci}", cycles = CYCLES_0, size = SIZE_1)
+@NodeInfo(nameTemplate = "@{p#code/s}:{p#bci}", cycles = CYCLES_0, size = SIZE_1)
 public final class FrameState extends VirtualState implements IterableNodeType {
     public static final NodeClass<FrameState> TYPE = NodeClass.create(FrameState.class);
 
