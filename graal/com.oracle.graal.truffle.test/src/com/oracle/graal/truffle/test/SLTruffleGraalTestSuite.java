@@ -53,7 +53,6 @@ public class SLTruffleGraalTestSuite {
 
     @BeforeClass
     public static void setupTestRunner() {
-        SLTestRunner.setRepeats(1);
         SLTestRunner.installBuiltin(SLGetOptionBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLSetOptionBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLIsOptimizedBuiltinFactory.getInstance());
