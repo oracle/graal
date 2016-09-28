@@ -30,14 +30,14 @@
 package uk.ac.man.cs.llvm.ir.model.enums;
 
 public enum AtomicOrdering {
-    NOTATOMIC,
+    NOT_ATOMIC,
     UNORDERED,
     MONOTONIC,
     CONSUME,
     ACQUIRE,
     RELEASE,
-    ACQUIRERELEASE,
-    SEQUENTIALLYCONSISTENT;
+    ACQUIRE_RELEASE,
+    SEQUENTIALLY_CONSISTENT;
 
     public static AtomicOrdering decode(long id) {
         return values()[(int) id];

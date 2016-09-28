@@ -30,8 +30,8 @@
 package uk.ac.man.cs.llvm.ir.model.enums;
 
 public enum SynchronizationScope {
-    SINGLETHREAD,
-    CROSSTHREAD;
+    SINGLE_THREAD,
+    CROSS_THREAD;
 
     public static SynchronizationScope decode(long id) {
         return values()[(int) id];

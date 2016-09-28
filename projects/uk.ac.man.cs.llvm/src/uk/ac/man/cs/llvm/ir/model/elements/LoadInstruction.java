@@ -60,7 +60,7 @@ public final class LoadInstruction extends ValueInstruction {
     }
 
     public static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile) {
-        return fromSymbols(symbols, type, source, align, isVolatile, AtomicOrdering.NOTATOMIC, SynchronizationScope.CROSSTHREAD);
+        return fromSymbols(symbols, type, source, align, isVolatile, AtomicOrdering.NOT_ATOMIC, SynchronizationScope.CROSS_THREAD);
     }
 
     public static LoadInstruction fromSymbols(Symbols symbols, Type type, int source, int align, boolean isVolatile, long atomicOrdering, long synchronizationScope) {

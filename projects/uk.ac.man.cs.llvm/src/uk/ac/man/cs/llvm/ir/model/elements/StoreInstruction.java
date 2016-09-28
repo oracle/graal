@@ -64,7 +64,7 @@ public final class StoreInstruction implements VoidInstruction {
     }
 
     public static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile) {
-        return fromSymbols(symbols, destination, source, align, isVolatile, AtomicOrdering.NOTATOMIC, SynchronizationScope.CROSSTHREAD);
+        return fromSymbols(symbols, destination, source, align, isVolatile, AtomicOrdering.NOT_ATOMIC, SynchronizationScope.CROSS_THREAD);
     }
 
     @Override
