@@ -22,15 +22,16 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
+import static com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
-import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
-import static com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
 import com.oracle.graal.nodes.ValueNode;
@@ -62,23 +63,23 @@ import sun.misc.Unsafe;
 
 public class AMD64GraphBuilderPlugins {
 
-    public static void register(Plugins plugins, AMD64 arch, boolean arithmeticStubs) {
+    public static void register(Plugins plugins, BytecodeProvider replacementsBytecodeProvider, AMD64 arch, boolean arithmeticStubs) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
-                registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch);
-                registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch);
-                registerUnsafePlugins(invocationPlugins);
-                registerMathPlugins(invocationPlugins, arch, arithmeticStubs);
+                registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch, replacementsBytecodeProvider);
+                registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch, replacementsBytecodeProvider);
+                registerUnsafePlugins(invocationPlugins, replacementsBytecodeProvider);
+                registerMathPlugins(invocationPlugins, arch, arithmeticStubs, replacementsBytecodeProvider);
             }
         });
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind, AMD64 arch) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind, AMD64 arch, BytecodeProvider bytecodeProvider) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
-        Registration r = new Registration(plugins, declaringClass);
+        Registration r = new Registration(plugins, declaringClass, bytecodeProvider);
         if (arch.getFeatures().contains(AMD64.CPUFeature.LZCNT) && arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
             r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
                 @Override
@@ -123,8 +124,8 @@ public class AMD64GraphBuilderPlugins {
         }
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, AMD64 arch, boolean arithmeticStubs) {
-        Registration r = new Registration(plugins, Math.class);
+    private static void registerMathPlugins(InvocationPlugins plugins, AMD64 arch, boolean arithmeticStubs, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, Math.class, bytecodeProvider);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
         registerUnaryMath(r, "exp", EXP);
@@ -176,12 +177,12 @@ public class AMD64GraphBuilderPlugins {
         });
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins) {
+    private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
         Registration r;
         if (Java8OrEarlier) {
             r = new Registration(plugins, Unsafe.class);
         } else {
-            r = new Registration(plugins, "jdk.internal.misc.Unsafe");
+            r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider);
         }
         for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();

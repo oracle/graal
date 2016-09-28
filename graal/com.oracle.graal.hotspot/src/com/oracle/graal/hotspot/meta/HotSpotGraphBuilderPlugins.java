@@ -32,6 +32,7 @@ import java.lang.invoke.VolatileCallSite;
 import java.util.zip.CRC32;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
@@ -129,17 +130,18 @@ public class HotSpotGraphBuilderPlugins {
 
             @Override
             public void run() {
-                registerObjectPlugins(invocationPlugins);
-                registerClassPlugins(plugins, config);
+                BytecodeProvider replacementBytecodeProvider = replacements.getReplacementBytecodeProvider();
+                registerObjectPlugins(invocationPlugins, replacementBytecodeProvider);
+                registerClassPlugins(plugins, config, replacementBytecodeProvider);
                 registerSystemPlugins(invocationPlugins, foreignCalls);
-                registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config);
+                registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config, replacementBytecodeProvider);
                 registerCallSitePlugins(invocationPlugins);
-                registerReflectionPlugins(invocationPlugins);
-                registerConstantPoolPlugins(invocationPlugins, wordTypes, config);
+                registerReflectionPlugins(invocationPlugins, replacementBytecodeProvider);
+                registerConstantPoolPlugins(invocationPlugins, wordTypes, config, replacementBytecodeProvider);
                 registerStableOptionPlugins(invocationPlugins, snippetReflection);
-                registerAESPlugins(invocationPlugins, config);
-                registerCRC32Plugins(invocationPlugins, config);
-                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, true);
+                registerAESPlugins(invocationPlugins, config, replacementBytecodeProvider);
+                registerCRC32Plugins(invocationPlugins, config, replacementBytecodeProvider);
+                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacementBytecodeProvider, true);
 
                 for (NodeIntrinsicPluginFactory factory : GraalServices.load(NodeIntrinsicPluginFactory.class)) {
                     factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
@@ -149,8 +151,8 @@ public class HotSpotGraphBuilderPlugins {
         return plugins;
     }
 
-    private static void registerObjectPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Object.class);
+    private static void registerObjectPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, Object.class, bytecodeProvider);
         r.register1("clone", Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -167,8 +169,8 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
     }
 
-    private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config) {
-        Registration r = new Registration(plugins.getInvocationPlugins(), Class.class);
+    private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins.getInvocationPlugins(), Class.class, bytecodeProvider);
 
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getModifiers", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isInterface", Receiver.class);
@@ -225,8 +227,8 @@ public class HotSpotGraphBuilderPlugins {
         plugins.register(plugin, VolatileCallSite.class, "getTarget", Receiver.class);
     }
 
-    private static void registerReflectionPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, reflectionClass);
+    private static void registerReflectionPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, reflectionClass, bytecodeProvider);
         r.register0("getCallerClass", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -279,8 +281,8 @@ public class HotSpotGraphBuilderPlugins {
         return true;
     }
 
-    private static void registerConstantPoolPlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config) {
-        Registration r = new Registration(plugins, constantPoolClass);
+    private static void registerConstantPoolPlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, constantPoolClass, bytecodeProvider);
 
         r.register2("getSize0", Receiver.class, Object.class, new InvocationPlugin() {
             @Override
@@ -350,8 +352,8 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, GraalHotSpotVMConfig config) {
-        Registration r = new Registration(plugins, Thread.class);
+    private static void registerThreadPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, WordTypes wordTypes, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, Thread.class, bytecodeProvider);
         r.register0("currentThread", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -411,7 +413,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
+    private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
         if (config.useAESIntrinsics) {
             assert config.aescryptEncryptBlockStub != 0L;
             assert config.aescryptDecryptBlockStub != 0L;
@@ -419,19 +421,19 @@ public class HotSpotGraphBuilderPlugins {
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
             String arch = config.osArch;
             String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
-            Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining");
+            Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", bytecodeProvider);
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
                             int.class);
-            r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt");
+            r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", bytecodeProvider);
             r.registerMethodSubstitution(AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(AESCryptSubstitutions.class, aesDecryptName, aesDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, byte[].class, int.class);
         }
     }
 
-    private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
+    private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
         if (config.useCRC32Intrinsics) {
-            Registration r = new Registration(plugins, CRC32.class);
+            Registration r = new Registration(plugins, CRC32.class, bytecodeProvider);
             r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
             if (Java8OrEarlier) {
                 r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);

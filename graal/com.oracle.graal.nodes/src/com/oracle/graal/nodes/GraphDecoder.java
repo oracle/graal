@@ -671,7 +671,7 @@ public class GraphDecoder {
                 }
             }
 
-            FrameState newFrameState = methodScope.graph.add(new FrameState(frameState.outerFrameState(), frameState.method(), frameState.bci, newFrameStateValues, frameState.localsSize(),
+            FrameState newFrameState = methodScope.graph.add(new FrameState(frameState.outerFrameState(), frameState.getCode(), frameState.bci, newFrameStateValues, frameState.localsSize(),
                             frameState.stackSize(), frameState.rethrowException(), frameState.duringCall(), frameState.monitorIds(), frameState.virtualObjectMappings()));
 
             frameState.replaceAtUsages(newFrameState);
@@ -1637,7 +1637,7 @@ class LoopDetector implements Runnable {
             }
         }
 
-        FrameState newState = new FrameState(oldState.outerFrameState(), oldState.method(), oldState.bci, newValues, oldState.localsSize(), oldState.stackSize(), oldState.rethrowException(),
+        FrameState newState = new FrameState(oldState.outerFrameState(), oldState.getCode(), oldState.bci, newValues, oldState.localsSize(), oldState.stackSize(), oldState.rethrowException(),
                         oldState.duringCall(), oldState.monitorIds(), oldState.virtualObjectMappings());
 
         assert loopExit.stateAfter() == null;
@@ -1730,8 +1730,10 @@ class LoopDetector implements Runnable {
                     newFrameStateValues.add(explosionHeadValues.get(i));
                 }
             }
-            FrameState newFrameState = methodScope.graph.add(new FrameState(oldFrameState.outerFrameState(), oldFrameState.method(), oldFrameState.bci, newFrameStateValues, oldFrameState.localsSize(),
-                            oldFrameState.stackSize(), oldFrameState.rethrowException(), oldFrameState.duringCall(), oldFrameState.monitorIds(), oldFrameState.virtualObjectMappings()));
+            FrameState newFrameState = methodScope.graph.add(
+                            new FrameState(oldFrameState.outerFrameState(), oldFrameState.getCode(), oldFrameState.bci, newFrameStateValues, oldFrameState.localsSize(),
+                                            oldFrameState.stackSize(), oldFrameState.rethrowException(), oldFrameState.duringCall(), oldFrameState.monitorIds(),
+                                            oldFrameState.virtualObjectMappings()));
             oldFrameState.replaceAtUsages(newFrameState);
 
             /*

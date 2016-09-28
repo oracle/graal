@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -133,10 +134,13 @@ public class ReplacementsParseTest extends GraalCompilerTest {
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
-        Registration r = new Registration(invocationPlugins, TestMethods.class);
+        BytecodeProvider replacementBytecodeProvider = getReplacements().getReplacementBytecodeProvider();
+        Registration r = new Registration(invocationPlugins, TestMethods.class, replacementBytecodeProvider);
         r.registerMethodSubstitution(TestMethodsSubstitutions.class, "nextAfter", double.class, double.class);
         r.registerMethodSubstitution(TestMethodsSubstitutions.class, "stringize", Object.class);
-        r.registerMethodSubstitution(TestMethodsSubstitutions.class, "identity", String.class);
+        if (replacementBytecodeProvider.supportsInvokedynamic()) {
+            r.registerMethodSubstitution(TestMethodsSubstitutions.class, "identity", String.class);
+        }
         return super.editGraphBuilderConfiguration(conf);
     }
 

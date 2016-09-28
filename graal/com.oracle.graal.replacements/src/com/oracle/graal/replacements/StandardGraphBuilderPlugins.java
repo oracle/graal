@@ -38,6 +38,7 @@ import java.util.Arrays;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.calc.UnsignedMath;
@@ -122,7 +123,8 @@ import sun.misc.Unsafe;
  */
 public class StandardGraphBuilderPlugins {
 
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean allowDeoptimization) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, BytecodeProvider bytecodeProvider,
+                    boolean allowDeoptimization) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization);
@@ -134,17 +136,17 @@ public class StandardGraphBuilderPlugins {
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
         if (Java8OrEarlier) {
-            registerStringPlugins(plugins);
+            registerStringPlugins(plugins, bytecodeProvider);
         }
-        registerArraysPlugins(plugins);
-        registerArrayPlugins(plugins);
-        registerUnsafePlugins(plugins);
+        registerArraysPlugins(plugins, bytecodeProvider);
+        registerArrayPlugins(plugins, bytecodeProvider);
+        registerUnsafePlugins(plugins, bytecodeProvider);
         registerEdgesPlugins(metaAccess, plugins);
         registerGraalDirectivesPlugins(plugins);
         registerBoxingPlugins(plugins);
-        registerJMHBlackholePlugins(plugins);
-        registerJFRThrowablePlugins(plugins);
-        registerMethodHandleImplPlugins(plugins, snippetReflection);
+        registerJMHBlackholePlugins(plugins, bytecodeProvider);
+        registerJFRThrowablePlugins(plugins, bytecodeProvider);
+        registerMethodHandleImplPlugins(plugins, snippetReflection, bytecodeProvider);
     }
 
     private static final Field STRING_VALUE_FIELD;
@@ -157,8 +159,8 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerStringPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, String.class);
+    private static void registerStringPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, String.class, bytecodeProvider);
         r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
 
         r = new Registration(plugins, StringSubstitutions.class);
@@ -172,8 +174,8 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerArraysPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Arrays.class);
+    private static void registerArraysPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, Arrays.class, bytecodeProvider);
         r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", boolean[].class, boolean[].class);
         r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", byte[].class, byte[].class);
         r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", short[].class, short[].class);
@@ -184,8 +186,8 @@ public class StandardGraphBuilderPlugins {
         r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", double[].class, double[].class);
     }
 
-    private static void registerArrayPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Array.class);
+    private static void registerArrayPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, Array.class, bytecodeProvider);
         r.register2("newInstance", Class.class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
@@ -196,12 +198,12 @@ public class StandardGraphBuilderPlugins {
         r.registerMethodSubstitution(ArraySubstitutions.class, "getLength", Object.class);
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins) {
+    private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
         Registration r;
         if (Java8OrEarlier) {
             r = new Registration(plugins, Unsafe.class);
         } else {
-            r = new Registration(plugins, "jdk.internal.misc.Unsafe");
+            r = new Registration(plugins, "jdk.internal.misc.Unsafe", bytecodeProvider);
         }
 
         for (JavaKind kind : JavaKind.values()) {
@@ -843,7 +845,7 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerJMHBlackholePlugins(InvocationPlugins plugins) {
+    private static void registerJMHBlackholePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
         InvocationPlugin blackholePlugin = new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver blackhole, ValueNode value) {
@@ -854,7 +856,7 @@ public class StandardGraphBuilderPlugins {
         };
         String[] names = {"org.openjdk.jmh.infra.Blackhole", "org.openjdk.jmh.logic.BlackHole"};
         for (String name : names) {
-            Registration r = new Registration(plugins, name);
+            Registration r = new Registration(plugins, name, bytecodeProvider);
             for (JavaKind kind : JavaKind.values()) {
                 if ((kind.isPrimitive() && kind != JavaKind.Void) || kind == JavaKind.Object) {
                     Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
@@ -865,8 +867,8 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerJFRThrowablePlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, "oracle.jrockit.jfr.jdkevents.ThrowableTracer");
+    private static void registerJFRThrowablePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, "oracle.jrockit.jfr.jdkevents.ThrowableTracer", bytecodeProvider);
         r.register2("traceThrowable", Throwable.class, String.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode throwable, ValueNode message) {
@@ -881,8 +883,8 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerMethodHandleImplPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
-        Registration r = new Registration(plugins, "java.lang.invoke.MethodHandleImpl");
+    private static void registerMethodHandleImplPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, "java.lang.invoke.MethodHandleImpl", bytecodeProvider);
         r.register2("profileBoolean", boolean.class, int[].class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode counters) {

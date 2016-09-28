@@ -27,9 +27,10 @@ import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.Compilati
 
 import java.lang.reflect.Method;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.java.GraphBuilderPhase;
@@ -49,7 +50,6 @@ import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.Snippets;
-
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -102,8 +102,10 @@ public abstract class SnippetStub extends Stub implements Snippets {
     protected StructuredGraph getGraph() {
         Plugins defaultPlugins = providers.getGraphBuilderPlugins();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
+        SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
+
         Plugins plugins = new Plugins(defaultPlugins);
-        plugins.prependParameterPlugin(new ConstantBindingParameterPlugin(makeConstArgs(), metaAccess, providers.getSnippetReflection()));
+        plugins.prependParameterPlugin(new ConstantBindingParameterPlugin(makeConstArgs(), metaAccess, snippetReflection));
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         // Stubs cannot have optimistic assumptions since they have
@@ -118,9 +120,12 @@ public abstract class SnippetStub extends Stub implements Snippets {
             }
 
             try {
-                IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, INLINE_AFTER_PARSING);
-                new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config, OptimisticOptimizations.NONE,
-                                initialIntrinsicContext).apply(graph);
+                IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, providers.getReplacements().getReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
+                GraphBuilderPhase.Instance instance = new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(),
+                                providers.getConstantReflection(), providers.getConstantFieldProvider(),
+                                config, OptimisticOptimizations.NONE,
+                                initialIntrinsicContext);
+                instance.apply(graph);
 
             } finally {
                 if (SnippetGraphUnderConstruction != null) {

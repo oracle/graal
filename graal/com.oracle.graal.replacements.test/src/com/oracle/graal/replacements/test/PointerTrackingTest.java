@@ -122,7 +122,7 @@ public class PointerTrackingTest extends GraalCompilerTest implements Snippets {
         r.register1(fnName, Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                return b.intrinsify(targetMethod, intrinsic, receiver, new ValueNode[]{arg});
+                return b.intrinsify(getReplacements().getReplacementBytecodeProvider(), targetMethod, intrinsic, receiver, new ValueNode[]{arg});
             }
         });
     }

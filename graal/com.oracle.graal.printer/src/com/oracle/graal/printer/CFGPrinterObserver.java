@@ -178,8 +178,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             if (object instanceof BciBlockMapping) {
                 BciBlockMapping blockMap = (BciBlockMapping) object;
                 cfgPrinter.printCFG(message, blockMap);
-                if (blockMap.method.getCode() != null) {
-                    cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.method));
+                if (blockMap.code.getCode() != null) {
+                    cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.code));
                 }
 
             } else if (object instanceof LIR) {

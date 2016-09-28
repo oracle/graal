@@ -24,6 +24,7 @@ package com.oracle.graal.replacements;
 
 import static com.oracle.graal.compiler.common.GraalOptions.TrivialInliningSize;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
+import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
@@ -42,13 +43,13 @@ public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
 
             // Test force inlining first
             if (method.shouldBeInlined()) {
-                return new InlineInfo(method, false);
+                return createStandardInlineInfo(method);
             }
 
             if (!method.isSynchronized() &&
                 checkSize(method, args) &&
                 b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
-                return new InlineInfo(method, false);
+                return createStandardInlineInfo(method);
             }
         }
         // @formatter:on

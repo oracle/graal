@@ -50,7 +50,6 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.phases.OptimisticOptimizations;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -133,7 +132,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
                     StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES, NO_PROFILING_INFO);
                     Plugins plugins = new Plugins(((HotSpotProviders) getProviders()).getGraphBuilderPlugins());
                     GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
-                    IntrinsicContext initialReplacementContext = new IntrinsicContext(installedCodeOwner, substMethod, ROOT_COMPILATION);
+                    IntrinsicContext initialReplacementContext = new IntrinsicContext(installedCodeOwner, substMethod, getReplacements().getReplacementBytecodeProvider(), ROOT_COMPILATION);
                     new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getConstantReflection(), getProviders().getConstantFieldProvider(), config,
                                     OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
                     Assert.assertNotNull(getCode(installedCodeOwner, graph, true));

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+
 import java.lang.reflect.Method;
 
 import com.oracle.graal.api.directives.GraalDirectives;
@@ -47,7 +49,7 @@ public final class InlineGraalDirectivesPlugin implements InlineInvokePlugin {
     @Override
     public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         if (method.equals(b.getMetaAccess().lookupJavaMethod(ROOTNAME))) {
-            return new InlineInfo(method, false);
+            return createStandardInlineInfo(method);
         }
         return null;
     }

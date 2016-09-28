@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.bytecode;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.bytecode.BytecodeProvider;
-import com.oracle.graal.hotspot.word.HotSpotOperation;
-import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.ReplacementsImpl;
-
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Filters certain method substitutions based on whether there is underlying hardware support for
- * them.
+ * {@link BytecodeProvider} that returns {@link ResolvedJavaMethodBytecode} objects.
  */
-public class HotSpotReplacementsImpl extends ReplacementsImpl {
+public class ResolvedJavaMethodBytecodeProvider implements BytecodeProvider {
 
-    public HotSpotReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
-        super(providers, snippetReflection, bytecodeProvider, target);
+    @Override
+    public Bytecode getBytecode(ResolvedJavaMethod method) {
+        return new ResolvedJavaMethodBytecode(method);
     }
 
     @Override
-    protected boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method) {
-        return method.getAnnotation(HotSpotOperation.class) != null || super.hasGenericInvocationPluginAnnotation(method);
+    public boolean supportsInvokedynamic() {
+        return true;
     }
 }

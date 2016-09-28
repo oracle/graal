@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle;
 
 import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
+import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 
 import java.lang.invoke.MethodHandle;
@@ -242,12 +243,12 @@ public class PartialEvaluator {
                     if (decision != null && decision.isInline()) {
                         inlining.push(decision);
                         builder.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) decision.getTarget().getNodeRewritingAssumption()));
-                        return new InlineInfo(callInlinedMethod, false);
+                        return createStandardInlineInfo(callInlinedMethod);
                     }
                 }
             }
 
-            return new InlineInfo(original, false);
+            return createStandardInlineInfo(original);
         }
 
         @Override
@@ -305,7 +306,7 @@ public class PartialEvaluator {
                  * We want to inline invokes that have a constant MethodHandle parameter to remove
                  * invokedynamic related calls as early as possible.
                  */
-                return new InlineInfo(original, false);
+                return createStandardInlineInfo(original);
             }
             return null;
         }

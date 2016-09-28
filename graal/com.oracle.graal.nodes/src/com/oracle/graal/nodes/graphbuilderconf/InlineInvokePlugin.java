@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.graphbuilderconf;
 
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.ValueNode;
 
@@ -38,26 +39,34 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
     /**
      * Result of a {@link #shouldInlineInvoke inlining decision}.
      */
-    class InlineInfo {
+    final class InlineInfo {
 
         /**
          * Denotes a call site that must not be inlined and should be implemented by a node that
          * does not speculate on the call not raising an exception.
          */
-        public static final InlineInfo DO_NOT_INLINE_WITH_EXCEPTION = new InlineInfo(null, false);
+        public static final InlineInfo DO_NOT_INLINE_WITH_EXCEPTION = new InlineInfo(null, null);
 
         /**
          * Denotes a call site must not be inlined and can be implemented by a node that speculates
          * the call will not throw an exception.
          */
-        public static final InlineInfo DO_NOT_INLINE_NO_EXCEPTION = new InlineInfo(null, false);
+        public static final InlineInfo DO_NOT_INLINE_NO_EXCEPTION = new InlineInfo(null, null);
 
         private final ResolvedJavaMethod methodToInline;
-        private final boolean isIntrinsic;
+        private final BytecodeProvider intrinsicBytecodeProvider;
 
-        public InlineInfo(ResolvedJavaMethod methodToInline, boolean isIntrinsic) {
+        public static InlineInfo createStandardInlineInfo(ResolvedJavaMethod methodToInline) {
+            return new InlineInfo(methodToInline, null);
+        }
+
+        public static InlineInfo createIntrinsicInlineInfo(ResolvedJavaMethod methodToInline, BytecodeProvider intrinsicBytecodeProvider) {
+            return new InlineInfo(methodToInline, intrinsicBytecodeProvider);
+        }
+
+        private InlineInfo(ResolvedJavaMethod methodToInline, BytecodeProvider intrinsicBytecodeProvider) {
             this.methodToInline = methodToInline;
-            this.isIntrinsic = isIntrinsic;
+            this.intrinsicBytecodeProvider = intrinsicBytecodeProvider;
         }
 
         /**
@@ -68,11 +77,13 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
         }
 
         /**
-         * Specifies if {@link #methodToInline} is an intrinsic for the original method (i.e., the
-         * {@code method} passed to {@link InlineInvokePlugin#shouldInlineInvoke}).
+         * Gets the provider of bytecode to be parsed for {@link #getMethodToInline()} if is is an
+         * intrinsic for the original method (i.e., the {@code method} passed to
+         * {@link InlineInvokePlugin#shouldInlineInvoke}). A {@code null} return value indicates
+         * that this is not an intrinsic inlining.
          */
-        public boolean isIntrinsic() {
-            return isIntrinsic;
+        public BytecodeProvider getIntrinsicBytecodeProvider() {
+            return intrinsicBytecodeProvider;
         }
     }
 

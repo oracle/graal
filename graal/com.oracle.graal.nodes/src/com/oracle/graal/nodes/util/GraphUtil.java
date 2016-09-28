@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
+import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.code.SourceStackTrace;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.graph.Node;
@@ -394,9 +395,9 @@ public class GraphUtil {
         ArrayList<StackTraceElement> elements = new ArrayList<>();
         FrameState state = frameState;
         while (state != null) {
-            ResolvedJavaMethod method = state.method();
-            if (method != null) {
-                elements.add(method.asStackTraceElement(state.bci - 1));
+            Bytecode code = state.getCode();
+            if (code != null) {
+                elements.add(code.asStackTraceElement(state.bci - 1));
             }
             state = state.outerFrameState();
         }

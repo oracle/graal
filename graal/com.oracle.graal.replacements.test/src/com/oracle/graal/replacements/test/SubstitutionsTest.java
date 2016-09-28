@@ -33,6 +33,7 @@ import org.junit.Test;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
 import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.NodeClass;
@@ -120,7 +121,8 @@ public class SubstitutionsTest extends GraalCompilerTest {
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
-        Registration r = new Registration(invocationPlugins, TestMethod.class);
+        BytecodeProvider replacementBytecodeProvider = getReplacements().getReplacementBytecodeProvider();
+        Registration r = new Registration(invocationPlugins, TestMethod.class, replacementBytecodeProvider);
         r.registerMethodSubstitution(TestMethodSubstitution.class, "test");
         return super.editGraphBuilderConfiguration(conf);
     }

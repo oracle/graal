@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.sparc.SPARCAddressLowering;
 import com.oracle.graal.compiler.sparc.SPARCSuitesProvider;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
@@ -48,8 +49,10 @@ import com.oracle.graal.hotspot.word.HotSpotWordTypes;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.NodeCostProvider;
+import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.replacements.classfile.ClassfileBytecodeProvider;
 import com.oracle.graal.replacements.sparc.SPARCGraphBuilderPlugins;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
@@ -98,10 +101,11 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         NodeCostProvider nodeCostProvider = new SPARCHotSpotNodeCostProvider();
         Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, nodeCostProvider);
         HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime, constantReflection, wordTypes);
-        HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, target);
+        BytecodeProvider bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
+        HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, snippetReflection, bytecodeProvider, target);
         Plugins plugins = createGraphBuilderPlugins(config, metaAccess, constantReflection, foreignCalls, stampProvider, snippetReflection, replacements, wordTypes);
         replacements.setGraphBuilderPlugins(plugins);
-        HotSpotSuitesProvider suites = createSuites(config, runtime, compilerConfiguration, plugins);
+        HotSpotSuitesProvider suites = createSuites(config, runtime, compilerConfiguration, plugins, replacements);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, nodeCostProvider, suites, registers,
                         snippetReflection,
                         wordTypes, plugins);
@@ -113,11 +117,15 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
                     HotSpotForeignCallsProvider foreignCalls, HotSpotStampProvider stampProvider, HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements,
                     HotSpotWordTypes wordTypes) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(config, wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, stampProvider, replacements);
-        SPARCGraphBuilderPlugins.register(plugins);
+        SPARCGraphBuilderPlugins.register(plugins, replacements.getReplacementBytecodeProvider());
         return plugins;
     }
 
-    protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins) {
+    /**
+     * @param replacements
+     */
+    protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
+                    Replacements replacements) {
         return new HotSpotSuitesProvider(new SPARCSuitesProvider(compilerConfiguration, plugins), config, runtime, new SPARCAddressLowering());
     }
 

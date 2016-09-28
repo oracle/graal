@@ -93,7 +93,7 @@ public final class ReflectionGetCallerClassNode extends MacroStateSplitNode impl
         // NOTE: Start the loop at depth 1 because the current frame state does
         // not include the Reflection.getCallerClass() frame.
         for (int n = 1; state != null; state = state.outerFrameState(), n++) {
-            HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) state.method();
+            HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) state.getMethod();
             switch (n) {
                 case 0:
                     throw GraalError.shouldNotReachHere("current frame state does not include the Reflection.getCallerClass frame");

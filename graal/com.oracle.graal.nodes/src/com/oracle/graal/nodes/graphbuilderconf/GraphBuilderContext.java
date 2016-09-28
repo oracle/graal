@@ -26,6 +26,8 @@ import static com.oracle.graal.compiler.common.type.StampFactory.objectNonNull;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 
+import com.oracle.graal.bytecode.Bytecode;
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -123,13 +125,15 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * Intrinsifies an invocation of a given method by inlining the bytecodes of a given
      * substitution method.
      *
+     * @param bytecodeProvider used to get the bytecodes to parse for the substitution method
      * @param targetMethod the method being intrinsified
      * @param substitute the intrinsic implementation
      * @param receiver the receiver, or null for static methods
      * @param argsIncludingReceiver the arguments with which to inline the invocation
+     *
      * @return whether the intrinsification was successful
      */
-    boolean intrinsify(ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver);
+    boolean intrinsify(BytecodeProvider bytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver);
 
     /**
      * Creates a snap shot of the current frame state with the BCI of the instruction after the one
@@ -156,6 +160,11 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         }
         return ancestor;
     }
+
+    /**
+     * Gets the code being parsed.
+     */
+    Bytecode getCode();
 
     /**
      * Gets the method being parsed by this context.

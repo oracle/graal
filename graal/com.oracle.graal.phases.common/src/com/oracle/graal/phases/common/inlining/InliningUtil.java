@@ -211,7 +211,7 @@ public class InliningUtil {
             sb.append(methodName(frameState.outerFrameState(), frameState.outerFrameState().bci));
             sb.append("->");
         }
-        sb.append(frameState.method().format("%h.%n"));
+        sb.append(frameState.getMethod().format("%h.%n"));
         sb.append("@").append(bci);
         return sb.toString();
     }
@@ -511,7 +511,7 @@ public class InliningUtil {
 
         if (frameState.bci == BytecodeFrame.AFTER_BCI) {
             FrameState stateAfterReturn = stateAtReturn;
-            if (frameState.method() == null) {
+            if (frameState.getCode() == null) {
                 // This is a frame state for a side effect within an intrinsic
                 // that was parsed for post-parse intrinsification
                 for (Node usage : frameState.usages()) {
@@ -573,10 +573,11 @@ public class InliningUtil {
         assert frameState.bci != BytecodeFrame.UNKNOWN_BCI : frameState;
         assert frameState.bci != BytecodeFrame.UNWIND_BCI : frameState;
         if (frameState.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            if (frameState.method().equals(inlinedMethod)) {
+            ResolvedJavaMethod method = frameState.getMethod();
+            if (method.equals(inlinedMethod)) {
                 // Normal inlining expects all outermost inlinee frame states to
                 // denote the inlinee method
-            } else if (frameState.method().equals(invoke.callTarget().targetMethod())) {
+            } else if (method.equals(invoke.callTarget().targetMethod())) {
                 // This occurs when an intrinsic calls back to the original
                 // method to handle a slow path. During parsing of such a
                 // partial intrinsic, these calls are given frame states
@@ -585,10 +586,10 @@ public class InliningUtil {
                 assert inlinedMethod.getAnnotation(
                                 MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
                                                 frameState;
-            } else if (frameState.method().getName().equals(inlinedMethod.getName())) {
+            } else if (method.getName().equals(inlinedMethod.getName())) {
                 // This can happen for method substitutions.
             } else {
-                throw new AssertionError(String.format("inlinedMethod=%s frameState.method=%s frameState=%s invoke.method=%s", inlinedMethod, frameState.method(), frameState,
+                throw new AssertionError(String.format("inlinedMethod=%s frameState.method=%s frameState=%s invoke.method=%s", inlinedMethod, method, frameState,
                                 invoke.callTarget().targetMethod()));
             }
         }
@@ -598,7 +599,7 @@ public class InliningUtil {
     private static final ValueNode[] NO_ARGS = {};
 
     private static boolean isStateAfterException(FrameState frameState) {
-        return frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.method().isSynchronized());
+        return frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.getMethod().isSynchronized());
     }
 
     public static FrameState handleMissingAfterExceptionFrameState(FrameState nonReplaceableFrameState) {

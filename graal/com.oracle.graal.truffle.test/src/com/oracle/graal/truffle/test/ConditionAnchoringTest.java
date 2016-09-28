@@ -24,14 +24,11 @@ package com.oracle.graal.truffle.test;
 
 import static com.oracle.graal.graph.test.matchers.NodeIterableCount.hasCount;
 import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
+import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
-
-import sun.misc.Unsafe;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.graph.iterators.NodeIterable;
@@ -56,6 +53,10 @@ import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 import com.oracle.graal.truffle.nodes.ObjectLocationIdentity;
 import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.misc.Unsafe;
 
 public class ConditionAnchoringTest extends GraalCompilerTest {
     private static final long offset;
@@ -156,7 +157,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
             assert method.hasBytecodes();
-            return new InlineInfo(method, false);
+            return createStandardInlineInfo(method);
         }
     }
 

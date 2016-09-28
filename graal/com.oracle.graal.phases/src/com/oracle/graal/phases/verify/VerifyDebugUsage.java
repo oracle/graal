@@ -44,11 +44,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  *
- * Verifies that callsites calling one of the methods in {@link Debug} use them correctly. Correct
- * usage of the methods in {@link Debug} requires callsites to not eagerly evaluate their arguments.
- * Additionally this phase verifies that no argument is the result of a call to
+ * Verifies that call sites calling one of the methods in {@link Debug} use them correctly. Correct
+ * usage of the methods in {@link Debug} requires call sites to not eagerly evaluate their
+ * arguments. Additionally this phase verifies that no argument is the result of a call to
  * {@link StringBuilder#toString()} or {@link StringBuffer#toString()}. Ideally the parameters at
- * callsites of {@link Debug} are eliminated, and do not produce additional allocations, if
+ * call sites of {@link Debug} are eliminated, and do not produce additional allocations, if
  * {@link Debug#isDumpEnabled(int)} (or {@link Debug#isLogEnabled(int)}, ...) is {@code false}.
  *
  * Methods in {@link Debug} checked by this phase are various different versions of
@@ -135,6 +135,11 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
                         int nonVarArgIdx = reportVarArgs ? argIdx - varArgsElementIndex : argIdx;
                         verifyStringConcat(callerGraph, verifiedCallee, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1, m);
                         verifyToStringCall(callerGraph, verifiedCallee, stringType, m, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
+                    } else if (m.getName().equals("format")) {
+                        int bci = invoke.bci();
+                        int nonVarArgIdx = reportVarArgs ? argIdx - varArgsElementIndex : argIdx;
+                        verifyFormatCall(callerGraph, verifiedCallee, stringType, m, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
+
                     }
                 }
             }
@@ -145,6 +150,10 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
         }
     }
 
+    /**
+     * Checks that a given call is not to {@link StringBuffer#toString()} or
+     * {@link StringBuilder#toString()}.
+     */
     private static void verifyStringConcat(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, int bci, int argIdx, int varArgsElementIndex, ResolvedJavaMethod callee) {
         if (callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuilder;") || callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuffer;")) {
             StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
@@ -159,6 +168,9 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
         }
     }
 
+    /**
+     * Checks that a given call is not to {@link Object#toString()}.
+     */
     private static void verifyToStringCall(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, ResolvedJavaType stringType, ResolvedJavaMethod callee, int bci, int argIdx,
                     int varArgsElementIndex) {
         if (callee.getSignature().getParameterCount(false) == 0 && callee.getSignature().getReturnType(callee.getDeclaringClass()).equals(stringType)) {
@@ -170,6 +182,26 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
             } else {
                 throw new VerificationError("In %s: parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.", e, argIdx,
                                 verifiedCallee.format("%H.%n(%p)"));
+            }
+        }
+    }
+
+    /**
+     * Checks that a given call is not to {@link String#format(String, Object...)} or
+     * {@link String#format(java.util.Locale, String, Object...)}.
+     */
+    private static void verifyFormatCall(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, ResolvedJavaType stringType, ResolvedJavaMethod callee, int bci, int argIdx,
+                    int varArgsElementIndex) {
+        if (callee.getDeclaringClass().equals(stringType) && callee.getSignature().getReturnType(callee.getDeclaringClass()).equals(stringType)) {
+            StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
+            if (varArgsElementIndex >= 0) {
+                throw new VerificationError(
+                                "In %s: element %d of parameter %d of call to %s is a call to String.format() which is redundant (%s does formatting) and forces unnecessary eager evaluation.",
+                                e, varArgsElementIndex, argIdx, verifiedCallee.format("%H.%n(%p)"), verifiedCallee.format("%h.%n"));
+            } else {
+                throw new VerificationError("In %s: parameter %d of call to %s is a call to String.format() which is redundant (%s does formatting) and forces unnecessary eager evaluation.", e,
+                                argIdx,
+                                verifiedCallee.format("%H.%n(%p)"), verifiedCallee.format("%h.%n"));
             }
         }
     }

@@ -29,6 +29,7 @@ import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOp
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 
+import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
@@ -47,22 +48,22 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SPARCGraphBuilderPlugins {
 
-    public static void register(Plugins plugins) {
+    public static void register(Plugins plugins, BytecodeProvider bytecodeProvider) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
-                registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int);
-                registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long);
+                registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, bytecodeProvider);
+                registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, bytecodeProvider);
                 registerMathPlugins(invocationPlugins);
             }
         });
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, Class<?> substituteDeclaringClass, JavaKind kind, BytecodeProvider bytecodeProvider) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
-        Registration r = new Registration(plugins, declaringClass);
+        Registration r = new Registration(plugins, declaringClass, bytecodeProvider);
         r.registerMethodSubstitution(substituteDeclaringClass, "numberOfLeadingZeros", type);
         r.registerMethodSubstitution(substituteDeclaringClass, "numberOfTrailingZeros", type);
 

@@ -40,6 +40,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.graal.bytecode.Bytecode;
+import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
@@ -83,7 +85,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     private final BytecodeParser parser;
     private final GraphBuilderTool tool;
-    private final ResolvedJavaMethod method;
+    private final Bytecode code;
     private int stackSize;
     protected final ValueNode[] locals;
     protected final ValueNode[] stack;
@@ -114,15 +116,26 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param graph the target graph of Graal nodes created by the builder
      */
     public FrameStateBuilder(GraphBuilderTool tool, ResolvedJavaMethod method, StructuredGraph graph) {
+        this(tool, new ResolvedJavaMethodBytecode(method), graph);
+    }
+
+    /**
+     * Creates a new frame state builder for the given code attribute, method and the given target
+     * graph.
+     *
+     * @param code the bytecode in which the frame exists
+     * @param graph the target graph of Graal nodes created by the builder
+     */
+    public FrameStateBuilder(GraphBuilderTool tool, Bytecode code, StructuredGraph graph) {
         this.tool = tool;
         if (tool instanceof BytecodeParser) {
             this.parser = (BytecodeParser) tool;
         } else {
             this.parser = null;
         }
-        this.method = method;
-        this.locals = allocateArray(method.getMaxLocals());
-        this.stack = allocateArray(Math.max(1, method.getMaxStackSize()));
+        this.code = code;
+        this.locals = allocateArray(code.getMaxLocals());
+        this.stack = allocateArray(Math.max(1, code.getMaxStackSize()));
         this.lockedObjects = allocateArray(0);
 
         assert graph != null;
@@ -140,14 +153,14 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         int javaIndex = 0;
         int index = 0;
-        if (!method.isStatic()) {
+        if (!getMethod().isStatic()) {
             // set the receiver
             locals[javaIndex] = arguments[index];
             javaIndex = 1;
             index = 1;
             constantReceiver = locals[0].asJavaConstant();
         }
-        Signature sig = method.getSignature();
+        Signature sig = getMethod().getSignature();
         int max = sig.getParameterCount(false);
         for (int i = 0; i < max; i++) {
             JavaKind kind = sig.getParameterKind(i);
@@ -165,6 +178,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         int javaIndex = 0;
         int index = 0;
+        ResolvedJavaMethod method = getMethod();
         ResolvedJavaType originalType = method.getDeclaringClass();
         if (!method.isStatic()) {
             // add the receiver
@@ -236,7 +250,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     private FrameStateBuilder(FrameStateBuilder other) {
         this.parser = other.parser;
         this.tool = other.tool;
-        this.method = other.method;
+        this.code = other.code;
         this.stackSize = other.stackSize;
         this.locals = other.locals.clone();
         this.stack = other.stack.clone();
@@ -244,15 +258,15 @@ public final class FrameStateBuilder implements SideEffectsState {
         this.rethrowException = other.rethrowException;
         this.canVerifyKind = other.canVerifyKind;
 
-        assert locals.length == method.getMaxLocals();
-        assert stack.length == Math.max(1, method.getMaxStackSize());
+        assert locals.length == code.getMaxLocals();
+        assert stack.length == Math.max(1, code.getMaxStackSize());
 
         assert other.graph != null;
         graph = other.graph;
         monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
 
-        assert locals.length == method.getMaxLocals();
-        assert stack.length == Math.max(1, method.getMaxStackSize());
+        assert locals.length == code.getMaxLocals();
+        assert stack.length == Math.max(1, code.getMaxStackSize());
         assert lockedObjects.length == monitorIds.length;
     }
 
@@ -261,7 +275,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     public ResolvedJavaMethod getMethod() {
-        return method;
+        return code.getMethod();
     }
 
     @Override
@@ -319,7 +333,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             for (int i = 0; i < pushedValues.length; i++) {
                 push(pushedSlotKinds[i], pushedValues[i]);
             }
-            FrameState res = graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+            FrameState res = graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
             stackSize = stackSizeToRestore;
             return res;
         } else {
@@ -327,7 +341,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 assert outerFrameState == null;
                 clearLocals();
             }
-            return graph.add(new FrameState(outerFrameState, method, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+            return graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
         }
     }
 
@@ -355,7 +369,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw shouldNotReachHere();
         }
-        return new NodeSourcePosition(receiver, outer, method, bci);
+        return new NodeSourcePosition(receiver, outer, code.getMethod(), bci);
     }
 
     public FrameStateBuilder copy() {
@@ -363,7 +377,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     public boolean isCompatibleWith(FrameStateBuilder other) {
-        assert method.equals(other.method) && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
+        assert code.equals(other.code) && graph == other.graph && localsSize() == other.localsSize() : "Can only compare frame states of the same method";
         assert lockedObjects.length == monitorIds.length && other.lockedObjects.length == other.monitorIds.length : "mismatch between lockedObjects and monitorIds";
 
         if (stackSize() != other.stackSize()) {
@@ -925,7 +939,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     public boolean equals(Object otherObject) {
         if (otherObject instanceof FrameStateBuilder) {
             FrameStateBuilder other = (FrameStateBuilder) otherObject;
-            if (!other.method.equals(method)) {
+            if (!other.code.equals(code)) {
                 return false;
             }
             if (other.stackSize != stackSize) {
@@ -973,14 +987,14 @@ public final class FrameStateBuilder implements SideEffectsState {
     }
 
     public void traceState() {
-        Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", localsSize(), stackSize(), method));
+        Debug.log("|   state [nr locals = %d, stack depth = %d, method = %s]", localsSize(), stackSize(), getMethod());
         for (int i = 0; i < localsSize(); ++i) {
             ValueNode value = locals[i];
-            Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value));
+            Debug.log("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value);
         }
         for (int i = 0; i < stackSize(); ++i) {
             ValueNode value = stack[i];
-            Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value));
+            Debug.log("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value == TWO_SLOT_MARKER ? "second" : value.getStackKind().getJavaName(), value);
         }
     }
 }

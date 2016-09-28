@@ -52,7 +52,7 @@ public class TruffleExpansionLogger {
     }
 
     public void preExpand(MethodCallTargetNode callTarget, StructuredGraph inliningGraph) {
-        ResolvedJavaMethod sourceMethod = callTarget.invoke().stateAfter().method();
+        ResolvedJavaMethod sourceMethod = callTarget.invoke().stateAfter().getMethod();
 
         int sourceMethodBci = callTarget.invoke().bci();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
