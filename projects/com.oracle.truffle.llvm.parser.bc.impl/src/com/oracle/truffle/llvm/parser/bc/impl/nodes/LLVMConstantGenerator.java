@@ -81,6 +81,7 @@ import uk.ac.man.cs.llvm.ir.model.constants.NullConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.StringConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
+import uk.ac.man.cs.llvm.ir.model.constants.VectorConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.X86FP80Constant;
 import uk.ac.man.cs.llvm.ir.types.ArrayType;
 import uk.ac.man.cs.llvm.ir.types.FloatingPointType;
@@ -191,9 +192,27 @@ public final class LLVMConstantGenerator {
         } else if (value instanceof BlockAddressConstant) {
             return toBlockAddressConstant((BlockAddressConstant) value, labels);
 
+        } else if (value instanceof VectorConstant) {
+            return toVectorConstant((VectorConstant) value, align, variables, context, stackSlot, labels, typeHelper);
+
         } else {
             throw new UnsupportedOperationException("Unsupported Constant: " + value);
         }
+    }
+
+    private static LLVMExpressionNode toVectorConstant(VectorConstant constant, int align, Function<GlobalValueSymbol, LLVMExpressionNode> variables, LLVMContext context, FrameSlot stackSlot,
+                    LLVMLabelList labels,
+                    LLVMBitcodeTypeHelper typeHelper) {
+        final List<LLVMExpressionNode> values = new ArrayList<>();
+        for (int i = 0; i < constant.getLength(); i++) {
+            values.add(toConstantNode(constant.getElement(i), align, variables, context, stackSlot, labels, typeHelper));
+        }
+
+        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(constant.getType()), typeHelper.getAlignment(constant.getType()),
+                        context,
+                        stackSlot);
+
+        return LLVMLiteralFactory.createVectorLiteralNode(values, target, LLVMBitcodeTypeHelper.getLLVMBaseType(constant.getType()));
     }
 
     private static LLVMExpressionNode toArrayConstant(ArrayConstant array, int align, Function<GlobalValueSymbol, LLVMExpressionNode> variables, LLVMContext context, FrameSlot stackSlot,
