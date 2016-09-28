@@ -131,7 +131,7 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testJarLoading() {
+    public void test() {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -149,7 +149,7 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                     for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
                         final ZipEntry zipEntry = entry.nextElement();
                         String name = zipEntry.getName();
-                        if (name.endsWith(".class") && !name.equals("module-info")) {
+                        if (name.endsWith(".class") && !name.equals("module-info.class")) {
                             String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
                             try {
                                 checkClass(metaAccess, getSnippetReflection(), className);
