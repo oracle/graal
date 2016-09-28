@@ -298,7 +298,7 @@ abstract class ClassfileConstant {
         if (field != null) {
             return field;
         }
-        if (!c.isJavaLangObject()) {
+        if (!c.isJavaLangObject() && !c.isInterface()) {
             field = resolveField(c.getSuperclass(), name, fieldType, isStatic);
             if (field != null) {
                 return field;
