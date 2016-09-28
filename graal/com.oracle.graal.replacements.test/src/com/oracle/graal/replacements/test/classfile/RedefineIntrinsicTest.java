@@ -56,24 +56,24 @@ import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Tests that snippets/intrinsics are isolated from bytecode instrumentation.
+ * Tests that intrinsics (and snippets) are isolated from bytecode instrumentation.
  */
 public class RedefineIntrinsicTest extends GraalCompilerTest {
 
-    public static class Foo {
+    public static class Original {
 
-        // Intrinsified by FooIntrinsic.getName
-        public static String getName() {
-            return "foo";
+        // Intrinsified by Intrinsic.getValue
+        public static String getValue() {
+            return "original";
         }
     }
 
-    @ClassSubstitution(Foo.class)
-    private static class FooIntrinsic {
+    @ClassSubstitution(Original.class)
+    private static class Intrinsic {
 
         @MethodSubstitution
-        public static String getName() {
-            return "bar";
+        public static String getValue() {
+            return "intrinsic";
         }
     }
 
@@ -81,19 +81,19 @@ public class RedefineIntrinsicTest extends GraalCompilerTest {
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
         BytecodeProvider replacementBytecodeProvider = getReplacements().getReplacementBytecodeProvider();
-        Registration r = new Registration(invocationPlugins, Foo.class, replacementBytecodeProvider);
-        r.registerMethodSubstitution(FooIntrinsic.class, "getName");
+        Registration r = new Registration(invocationPlugins, Original.class, replacementBytecodeProvider);
+        r.registerMethodSubstitution(Intrinsic.class, "getValue");
         return super.editGraphBuilderConfiguration(conf);
     }
 
-    public static String callFooGetName() {
+    public static String callOriginalGetValue() {
         // This call will be intrinsified when compiled by Graal
-        return Foo.getName();
+        return Original.getValue();
     }
 
-    public static String callFooIntrinsicGetName() {
+    public static String callIntrinsicGetValue() {
         // This call will *not* be intrinsified when compiled by Graal
-        return FooIntrinsic.getName();
+        return Intrinsic.getValue();
     }
 
     @Test
@@ -101,32 +101,32 @@ public class RedefineIntrinsicTest extends GraalCompilerTest {
         Object receiver = null;
         Object[] args = {};
 
-        // Prior to redefinition, both Foo and FooIntrinsic
+        // Prior to redefinition, both Original and Intrinsic
         // should behave as per their Java source code
-        Assert.assertEquals("foo", Foo.getName());
-        Assert.assertEquals("bar", FooIntrinsic.getName());
+        Assert.assertEquals("original", Original.getValue());
+        Assert.assertEquals("intrinsic", Intrinsic.getValue());
 
-        ResolvedJavaMethod callFooGetName = getResolvedJavaMethod("callFooGetName");
-        ResolvedJavaMethod callFooIntrinsicGetName = getResolvedJavaMethod("callFooIntrinsicGetName");
+        ResolvedJavaMethod callOriginalGetValue = getResolvedJavaMethod("callOriginalGetValue");
+        ResolvedJavaMethod callIntrinsicGetValue = getResolvedJavaMethod("callIntrinsicGetValue");
 
-        // Expect intrinsification to change "foo" to "bar"
-        testAgainstExpected(callFooGetName, new Result("bar", null), receiver, args);
+        // Expect intrinsification to change "original" to "intrinsic"
+        testAgainstExpected(callOriginalGetValue, new Result("intrinsic", null), receiver, args);
 
         // Expect no intrinsification
-        testAgainstExpected(callFooIntrinsicGetName, new Result("bar", null), receiver, args);
+        testAgainstExpected(callIntrinsicGetValue, new Result("intrinsic", null), receiver, args);
 
         // Apply redefinition of intrinsic bytecode
-        redefineFooIntrinsic();
+        redefineIntrinsic();
 
         // Expect redefinition to have no effect
-        Assert.assertEquals("foo", Foo.getName());
+        Assert.assertEquals("original", Original.getValue());
 
-        // Expect redefinition to change "bar" to "BAR"
-        Assert.assertEquals("BAR", FooIntrinsic.getName());
+        // Expect redefinition to change "intrinsic" to "redefined"
+        Assert.assertEquals("redefined", Intrinsic.getValue());
 
         // Expect redefinition to have no effect on intrinsification (i.e.,
-        // "foo" is still changed to "bar", not "BAR"
-        testAgainstExpected(callFooGetName, new Result("bar", null), receiver, args);
+        // "original" is still changed to "intrinsic", not "redefined"
+        testAgainstExpected(callOriginalGetValue, new Result("intrinsic", null), receiver, args);
     }
 
     /**
@@ -148,19 +148,19 @@ public class RedefineIntrinsicTest extends GraalCompilerTest {
         jar.closeEntry();
     }
 
-    static void redefineFooIntrinsic() throws Exception {
+    static void redefineIntrinsic() throws Exception {
         Manifest manifest = new Manifest();
         manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
         Attributes mainAttrs = manifest.getMainAttributes();
-        mainAttrs.putValue("Agent-Class", MyAgent.class.getName());
+        mainAttrs.putValue("Agent-Class", RedefinerAgent.class.getName());
         mainAttrs.putValue("Can-Redefine-Classes", "true");
         mainAttrs.putValue("Can-Retransform-Classes", "true");
 
         Path jar = Files.createTempFile("myagent", ".jar");
         try {
             JarOutputStream jarStream = new JarOutputStream(new FileOutputStream(jar.toFile()), manifest);
-            add(jarStream, MyAgent.class);
-            add(jarStream, MyTransformer.class);
+            add(jarStream, RedefinerAgent.class);
+            add(jarStream, Redefiner.class);
             jarStream.close();
 
             loadAgent(jar);
@@ -184,15 +184,15 @@ public class RedefineIntrinsicTest extends GraalCompilerTest {
         detach.invoke(vm);
     }
 
-    public static class MyAgent {
+    public static class RedefinerAgent {
 
         public static void agentmain(@SuppressWarnings("unused") String args, Instrumentation inst) throws Exception {
             if (inst.isRedefineClassesSupported() && inst.isRetransformClassesSupported()) {
-                inst.addTransformer(new MyTransformer(), true);
+                inst.addTransformer(new Redefiner(), true);
                 Class<?>[] allClasses = inst.getAllLoadedClasses();
                 for (int i = 0; i < allClasses.length; i++) {
                     Class<?> c = allClasses[i];
-                    if (c == FooIntrinsic.class) {
+                    if (c == Intrinsic.class) {
                         inst.retransformClasses(new Class<?>[]{c});
                     }
                 }
@@ -201,20 +201,18 @@ public class RedefineIntrinsicTest extends GraalCompilerTest {
     }
 
     /**
-     * This transformer replaces the first instance of the constant "bar" in the class file for
-     * {@link FooIntrinsic} with "BAR".
+     * This transformer replaces the first instance of the constant "intrinsic" in the class file
+     * for {@link Intrinsic} with "redefined".
      */
-    static class MyTransformer implements ClassFileTransformer {
+    static class Redefiner implements ClassFileTransformer {
 
         @Override
         public byte[] transform(ClassLoader cl, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
-            if (FooIntrinsic.class.equals(classBeingRedefined)) {
+            if (Intrinsic.class.equals(classBeingRedefined)) {
                 String cf = new String(classfileBuffer);
-                int i = cf.indexOf("bar");
-                Assert.assertTrue("cannot find \"bar\" constant in " + FooIntrinsic.class.getSimpleName() + "'s class file", i > 0);
-                classfileBuffer[i] = 'B';
-                classfileBuffer[i + 1] = 'A';
-                classfileBuffer[i + 2] = 'R';
+                int i = cf.indexOf("intrinsic");
+                Assert.assertTrue("cannot find \"intrinsic\" constant in " + Intrinsic.class.getSimpleName() + "'s class file", i > 0);
+                System.arraycopy("redefined".getBytes(), 0, classfileBuffer, i, "redefined".length());
             }
             return classfileBuffer;
         }

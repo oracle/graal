@@ -45,14 +45,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * A {@link BytecodeProvider} that provide bytecode properties of a {@link ResolvedJavaMethod} as
+ * A {@link BytecodeProvider} that provides bytecode properties of a {@link ResolvedJavaMethod} as
  * parsed from a class file. This avoids all {@linkplain Instrumentation instrumentation} and any
  * bytecode rewriting performed by the VM.
  *
  * This mechanism retrieves class files based on the name and {@link ClassLoader} of existing
  * {@link Class} instances. It bypasses all VM parsing and verification of the class file and
- * assumes the class files are well formed. As such, it should only be used to parse classes from a
- * trusted source such the class path or module path accessible to JVMCI.
+ * assumes the class files are well formed. As such, it should only be used for classes from a
+ * trusted source such as the boot class (or module) path.
  *
  * A combination of {@link Class#forName(String)} and an existing {@link MetaAccessProvider} is used
  * to resolve constant pool references. This opens up the opportunity for linkage errors if the
