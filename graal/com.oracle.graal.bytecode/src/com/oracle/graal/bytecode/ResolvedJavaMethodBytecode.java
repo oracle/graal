@@ -98,6 +98,6 @@ public class ResolvedJavaMethodBytecode implements Bytecode {
 
     @Override
     public String toString() {
-        return getClass().getName() + method.format("<%H.%n(%p)>");
+        return getClass().getSimpleName() + method.format("<%h.%n(%p)>");
     }
 }
