@@ -438,6 +438,9 @@ public class LLVMBitcodeTypeHelper {
         } else if (type == MetaType.X86_MMX || type == MetaType.OPAQUE) {
             return 0;
 
+        } else if (type instanceof MetaType) {
+            return type.sizeof();
+
         } else {
             throw new AssertionError("Cannot compute size of type: " + type);
         }
@@ -480,7 +483,7 @@ public class LLVMBitcodeTypeHelper {
         } else if (type instanceof VectorType) {
             return getAlignment(((VectorType) type).getElementType());
 
-        } else if (targetDataLayout != null) {
+        } else if (targetDataLayout != null && !(type instanceof MetaType)) {
             return targetDataLayout.getBitAlignment(getLLVMBaseType(type)) / Byte.SIZE;
 
         } else {
