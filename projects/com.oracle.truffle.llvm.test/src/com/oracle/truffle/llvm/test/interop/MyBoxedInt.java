@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.Factory10;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.api.interop.Message;
@@ -44,7 +43,7 @@ public final class MyBoxedInt implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(MyBoxedInt.class, new Factory10() {
+        return ForeignAccess.create(MyBoxedInt.class, new ForeignAccess.Factory18() {
 
             @Override
             public CallTarget accessWrite() {
@@ -69,6 +68,11 @@ public final class MyBoxedInt implements TruffleObject {
 
             @Override
             public CallTarget accessNew(int argumentsLength) {
+                return null;
+            }
+
+            @Override
+            public CallTarget accessKeys() {
                 return null;
             }
 
