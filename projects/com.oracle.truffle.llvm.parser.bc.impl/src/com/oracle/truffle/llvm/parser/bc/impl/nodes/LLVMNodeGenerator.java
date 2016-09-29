@@ -122,7 +122,7 @@ public final class LLVMNodeGenerator {
             if (constant.getType() == IntegerType.LONG) {
                 LLVMLogger.info("GEP index overflow (still parse as int");
             }
-            return Math.toIntExact(((IntegerConstant) constant).getValue());
+            return (int) ((IntegerConstant) constant).getValue();
 
         } else if (constant instanceof BigIntegerConstant) {
             LLVMLogger.info("GEP index overflow (still parse as int");
