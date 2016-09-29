@@ -1112,7 +1112,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
           mx_benchmark.StdOutRule(
-            r"====== (?P<benchmark>[a-zA-Z0-9_]+), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
+            r"====== (?P<benchmark>[a-zA-Z0-9_]+) \((?P<benchgroup>[a-zA-Z0-9_]+)\), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
             {
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
@@ -1123,11 +1123,12 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
               "metric.type": "numeric",
               "metric.score-function": "id",
               "metric.better": "lower",
-              "metric.iteration": ("<iteration>", int)
+              "metric.iteration": ("<iteration>", int),
+              "extra.benchmark-group": ("<benchgroup>", str)
             }
           ),
           mx_benchmark.StdOutRule(
-            r"====== (?P<benchmark>[a-zA-Z0-9_]+), final iteration completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
+            r"====== (?P<benchmark>[a-zA-Z0-9_]+) \((?P<benchgroup>[a-zA-Z0-9_]+)\), final iteration completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
             {
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
@@ -1138,7 +1139,8 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
               "metric.type": "numeric",
               "metric.score-function": "id",
               "metric.better": "lower",
-              "metric.iteration": 0
+              "metric.iteration": 0,
+              "extra.benchmark-group": ("<benchgroup>", str)
             }
           )
         ]
