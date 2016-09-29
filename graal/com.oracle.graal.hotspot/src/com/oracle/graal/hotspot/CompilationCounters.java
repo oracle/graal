@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.hotspot.HotSpotGraalCompiler.fmt;
+import static com.oracle.graal.hotspot.HotSpotGraalCompiler.str;
+
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -59,22 +62,21 @@ class CompilationCounters {
      * {@link CompilationRequest}. If the number of compilations exceeds
      * {@link Options#CompilationCountLimit} this method prints an error message and exits the VM.
      *
-     * @param request the compilation request that is about to be compiled
+     * @param method the method about to be compiled
      */
-    synchronized void countCompilation(CompilationRequest request) {
-        final ResolvedJavaMethod method = request.getMethod();
+    synchronized void countCompilation(ResolvedJavaMethod method) {
         Integer val = counters.get(method);
         val = val != null ? val + 1 : 1;
         counters.put(method, val);
         if (val > Options.CompilationCountLimit.getValue()) {
-            TTY.printf("Error. Method %s was compiled too many times. Number of compilations = %d\n", request.getMethod().format("%H.%n(%p)"),
+            TTY.printf("Error. Method %s was compiled too many times. Number of compilations: %d\n", fmt(method),
                             CompilationCounters.Options.CompilationCountLimit.getValue());
-            TTY.println("==================================== High compilation counts ====================================");
+            TTY.println("==================================== High compilation counters ====================================");
             SortedSet<Map.Entry<ResolvedJavaMethod, Integer>> sortedCounters = new TreeSet<>(new CounterComparator());
             sortedCounters.addAll(counters.entrySet());
             for (Map.Entry<ResolvedJavaMethod, Integer> entry : sortedCounters) {
                 if (entry.getValue() >= Options.CompilationCountLimit.getValue() / 2) {
-                    TTY.out.printf("%d\t%s%n", entry.getValue(), entry.getKey().format("%H.%n(%p)"));
+                    TTY.out.printf("%d\t%s%n", entry.getValue(), str(entry.getKey()));
                 }
             }
             TTY.flush();
@@ -91,8 +93,7 @@ class CompilationCounters {
             if (o1.getValue() > o2.getValue()) {
                 return 1;
             }
-            return o1.getKey().format("%H.%n(%p)").compareTo(o2.getKey().format("%H.%n(%p)"));
+            return str(o1.getKey()).compareTo(str(o2.getKey()));
         }
     }
-
 }

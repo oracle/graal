@@ -28,6 +28,11 @@ import static com.oracle.graal.hotspot.CompilationWatchDogThread.notifyWatchdogC
 import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.util.Formattable;
+import java.util.Formatter;
+
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.GraalCompiler;
@@ -62,6 +67,7 @@ import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
+import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -79,6 +85,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         this.graalRuntime = graalRuntime;
         // It is sufficient to have one compilation counter object per Graal compiler object.
         this.compilationCounters = Options.CompilationCountLimit.getValue() > 0 ? new CompilationCounters() : null;
+
     }
 
     @Override
@@ -89,10 +96,11 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     @Override
     @SuppressWarnings("try")
     public CompilationRequestResult compileMethod(CompilationRequest request) {
-        notifyWatchdogCompilationStart(request);
+        ResolvedJavaMethod method = request.getMethod();
+        notifyWatchdogCompilationStart(method);
         try {
             if (compilationCounters != null) {
-                compilationCounters.countCompilation(request);
+                compilationCounters.countCompilation(method);
             }
             // Ensure a debug configuration for this thread is initialized
             if (Debug.isEnabled() && DebugScope.getConfig() == null) {
@@ -101,7 +109,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             CompilationTask task = new CompilationTask(jvmciRuntime, this, (HotSpotCompilationRequest) request, true, true);
             CompilationRequestResult r = null;
             try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig());
-                            Debug.Scope s = Debug.methodMetricsScope("HotSpotGraalCompiler", MethodMetricsRootScopeInfo.create(request.getMethod()), true, request.getMethod())) {
+                            Debug.Scope s = Debug.methodMetricsScope("HotSpotGraalCompiler", MethodMetricsRootScopeInfo.create(method), true, method)) {
                 r = task.runCompilation();
             }
             assert r != null;
@@ -224,5 +232,37 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             return newGbs;
         }
         return suite;
+    }
+
+    /**
+     * Converts {@code method} to a String with {@link JavaMethod#format(String)} and the format
+     * string {@code "%H.%n(%p)"}
+     */
+    static String str(JavaMethod method) {
+        return method.format("%H.%n(%p)");
+    }
+
+    /**
+     * Wraps {@code obj} in a {@link Formatter} that standardizes formatting for certain objects.
+     */
+    static Formattable fmt(Object obj) {
+        return new Formattable() {
+            @Override
+            public void formatTo(Formatter buf, int flags, int width, int precision) {
+                if (obj instanceof Throwable) {
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    ((Throwable) obj).printStackTrace(new PrintStream(baos));
+                    buf.format("%s", baos.toString());
+                } else if (obj instanceof StackTraceElement[]) {
+                    for (StackTraceElement e : (StackTraceElement[]) obj) {
+                        buf.format("\t%s%n", e);
+                    }
+                } else if (obj instanceof JavaMethod) {
+                    buf.format("%s", str((JavaMethod) obj));
+                } else {
+                    buf.format("%s", obj);
+                }
+            }
+        };
     }
 }
