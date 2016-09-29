@@ -49,7 +49,10 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
       ],
-      "uses" : ["com.oracle.truffle.api.TruffleRuntimeAccess"],
+      "uses" : [
+        "com.oracle.truffle.api.TruffleRuntimeAccess",
+        "java.nio.file.spi.FileTypeDetector"
+      ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
