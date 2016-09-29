@@ -143,7 +143,7 @@ public abstract class Accessor {
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
     private static Accessor.DebugSupport DEBUG;
     private static Accessor.Frames FRAMES;
-    private static Accessor SOURCE;
+    @SuppressWarnings("unused") private static Accessor SOURCE;
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
