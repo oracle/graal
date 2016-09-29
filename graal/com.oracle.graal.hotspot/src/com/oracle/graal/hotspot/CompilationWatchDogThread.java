@@ -30,6 +30,7 @@ import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.StableOptionValue;
 
+import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 class CompilationWatchDogThread extends Thread {
@@ -242,5 +243,31 @@ class CompilationWatchDogThread extends Thread {
             TTY.printf("\t%s\n", e.toString());
         }
 
+    }
+
+    private static final ThreadLocal<CompilationWatchDogThread> WATCHDOGS = Options.MonitorCompilerThreads.getValue() ? new ThreadLocal<>() : null;
+
+    static void notifyWatchdogCompilationFinished() {
+        if (Options.MonitorCompilerThreads.getValue()) {
+            assert WATCHDOGS != null;
+            CompilationWatchDogThread watchdog = WATCHDOGS.get();
+            assert watchdog != null;
+            watchdog.stopCompilation();
+        }
+    }
+
+    static void notifyWatchdogCompilationStart(CompilationRequest request) {
+        if (Options.MonitorCompilerThreads.getValue()) {
+            // Lazily get a watch dog thread for the current compiler thread
+            CompilationWatchDogThread watchdog = WATCHDOGS.get();
+            if (watchdog == null) {
+                Thread currentThread = currentThread();
+                watchdog = new CompilationWatchDogThread(currentThread);
+                TTY.printf("Warning: Compiler thread watchdog enabled. Creating watchdog %s for compiler thread %s!%n", watchdog, currentThread);
+                WATCHDOGS.set(watchdog);
+                watchdog.start();
+            }
+            watchdog.startCompilation(request.getMethod());
+        }
     }
 }
