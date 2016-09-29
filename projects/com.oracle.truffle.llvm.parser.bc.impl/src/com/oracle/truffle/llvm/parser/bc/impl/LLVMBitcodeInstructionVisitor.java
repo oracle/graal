@@ -242,11 +242,11 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final int argumentCount = call.getArgumentCount() + (targetType instanceof StructureType ? 2 : 1);
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
         int argIndex = 0;
+        argNodes[argIndex++] = LLVMFrameReadWriteFactory.createFrameRead(LLVMBaseType.ADDRESS, method.getStackSlot());
         if (targetType instanceof StructureType) {
             // TODO use LLVMAllocFactory instead to free the memory after return
             argNodes[argIndex++] = LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(targetType), typeHelper.getAlignment(targetType), method.getContext(), method.getStackSlot());
         }
-        argNodes[argIndex++] = LLVMFrameReadWriteFactory.createFrameRead(LLVMBaseType.ADDRESS, method.getStackSlot());
         for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
             argNodes[argIndex] = symbols.resolve(call.getArgument(i));
         }
@@ -522,10 +522,9 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                     node = LLVMRetNodeFactory.LLVMVectorRetNodeGen.create((LLVMVectorNode) value, slot);
                     break;
                 case STRUCT:
-                    // final int size = typeHelper.getByteSize(type);
-                    // node = LLVMRetNodeFactory.LLVMStructRetNodeGen.create((LLVMAddressNode)
-                    // value, slot, size);
-                    // break;
+                    final int size = typeHelper.getByteSize(type);
+                    node = LLVMRetNodeFactory.LLVMStructRetNodeGen.create((LLVMAddressNode) value, slot, size);
+                    break;
                 default:
                     throw new UnsupportedOperationException("Unsupported Return Type: " + type);
             }

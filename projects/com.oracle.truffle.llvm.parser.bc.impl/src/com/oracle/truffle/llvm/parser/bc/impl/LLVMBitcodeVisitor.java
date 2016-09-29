@@ -205,28 +205,28 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                         new LLVMStackFrameNuller[basicBlocks.length][0], visitor.getNullers());
     }
 
-    private static List<LLVMNode> createParameters(FrameDescriptor frame, List<FunctionParameter> parameters) {
-        List<LLVMNode> parameterNodes = new ArrayList<>();
+    private static List<LLVMNode> createParameters(FrameDescriptor frame, FunctionDefinition method) {
+        final List<FunctionParameter> parameters = method.getParameters();
+        final List<LLVMNode> formalParamInits = new ArrayList<>();
 
-        LLVMExpressionNode stack = LLVMFunctionFactory.createFunctionArgNode(0, LLVMBaseType.ADDRESS);
-        parameterNodes.add(LLVMFrameReadWriteFactory.createFrameWrite(LLVMBaseType.ADDRESS, stack, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID)));
+        final LLVMExpressionNode stackPointerNode = LLVMFunctionFactory.createFunctionArgNode(0, LLVMBaseType.ADDRESS);
+        formalParamInits.add(LLVMFrameReadWriteFactory.createFrameWrite(LLVMBaseType.ADDRESS, stackPointerNode, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID)));
 
         int argIndex = LLVMCallNode.ARG_START_INDEX;
-        // if (resolve(functionHeader.getRettype()).isStruct()) {
-        // LLVMExpressionNode functionRetParNode =
-        // LLVMFunctionFactory.createFunctionArgNode(argIndex, paramType)e(argIndex++,
-        // LLVMBaseType.STRUCT);
-        // LLVMNode retValue = createAssignment((String) retSlot.getIdentifier(),
-        // functionRetParNode, functionHeader.getRettype());
-        // formalParamInits.add(retValue);
-        // }
-        for (FunctionParameter parameter : parameters) {
-            LLVMBaseType llvmtype = LLVMBitcodeTypeHelper.getLLVMBaseType(parameter.getType());
-            LLVMExpressionNode parameterNode = LLVMFunctionFactory.createFunctionArgNode(argIndex++, llvmtype);
-            FrameSlot slot = frame.findFrameSlot(parameter.getName());
-            parameterNodes.add(LLVMFrameReadWriteFactory.createFrameWrite(llvmtype, parameterNode, slot));
+        if (method.getReturnType() instanceof StructureType) {
+            final LLVMExpressionNode functionReturnParameterNode = LLVMFunctionFactory.createFunctionArgNode(argIndex++, LLVMBaseType.STRUCT);
+            final FrameSlot returnSlot = frame.findOrAddFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
+            final LLVMBaseType baseType = LLVMBitcodeTypeHelper.getLLVMBaseType(method.getReturnType());
+            final LLVMNode returnValue = LLVMFrameReadWriteFactory.createFrameWrite(baseType, functionReturnParameterNode, returnSlot);
+            formalParamInits.add(returnValue);
         }
-        return parameterNodes;
+        for (final FunctionParameter parameter : parameters) {
+            final LLVMBaseType paramType = LLVMBitcodeTypeHelper.getLLVMBaseType(parameter.getType());
+            final LLVMExpressionNode parameterNode = LLVMFunctionFactory.createFunctionArgNode(argIndex++, paramType);
+            final FrameSlot slot = frame.findFrameSlot(parameter.getName());
+            formalParamInits.add(LLVMFrameReadWriteFactory.createFrameWrite(paramType, parameterNode, slot));
+        }
+        return formalParamInits;
     }
 
     private LLVMNode createGlobal(GlobalValueSymbol global, FrameSlot stack) {
@@ -417,7 +417,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
     public void visit(FunctionDefinition method) {
         FrameDescriptor frame = frames.getDescriptor(method.getName());
 
-        List<LLVMNode> parameters = createParameters(frame, method.getParameters());
+        List<LLVMNode> parameters = createParameters(frame, method);
 
         LLVMExpressionNode body = createFunction(method);
 
