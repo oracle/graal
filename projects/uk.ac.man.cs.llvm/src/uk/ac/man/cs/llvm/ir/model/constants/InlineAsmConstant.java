@@ -29,6 +29,7 @@
  */
 package uk.ac.man.cs.llvm.ir.model.constants;
 
+import uk.ac.man.cs.llvm.ir.model.enums.AsmDialect;
 import uk.ac.man.cs.llvm.ir.types.Type;
 
 public final class InlineAsmConstant extends AbstractConstant {
@@ -39,10 +40,19 @@ public final class InlineAsmConstant extends AbstractConstant {
 
     private final String asmFlags;
 
-    private InlineAsmConstant(Type type, String asmExpression, String asmFlags) {
+    private final AsmDialect dialect;
+
+    private final boolean hasSideEffects;
+
+    private final boolean stackAlign;
+
+    private InlineAsmConstant(Type type, String asmExpression, String asmFlags, boolean hasSideEffects, boolean stackAlign, AsmDialect dialect) {
         super(type);
         this.asmExpression = asmExpression;
         this.asmFlags = asmFlags;
+        this.hasSideEffects = hasSideEffects;
+        this.stackAlign = stackAlign;
+        this.dialect = dialect;
     }
 
     public String getAsmExpression() {
@@ -53,6 +63,18 @@ public final class InlineAsmConstant extends AbstractConstant {
         return asmFlags;
     }
 
+    public AsmDialect getDialect() {
+        return dialect;
+    }
+
+    public boolean hasSideEffects() {
+        return hasSideEffects;
+    }
+
+    public boolean needsAlignedStack() {
+        return stackAlign;
+    }
+
     @Override
     public String toString() {
         return "asm";
@@ -61,15 +83,10 @@ public final class InlineAsmConstant extends AbstractConstant {
     public static InlineAsmConstant generate(Type type, long[] args) {
         int argIndex = 0;
 
-        int flagCount = (int) args[argIndex++];
-        if (flagCount != 0) {
-            // LLVM inline assembler expressions support flags indicating that the assembler
-            // instructions contain possible side-effects, that the stack must be aligned in a
-            // certain way and to use the intel assembly dialect instead of the default ATT. We
-            // currently do not support them in either parser.
-            // TODO implement inline assembler constraint flags
-            throw new UnsupportedOperationException("Keywords \'sideffect\', \'alignstack\' and \'inteldialect\' are not supported yet!");
-        }
+        final int flags = (int) args[argIndex++];
+        final boolean hasSideEffects = (flags & 0x1) == 0x1;
+        final boolean stackAlign = (flags & 0x2) == 0x2;
+        final long asmDialect = flags >> 2;
 
         int expressionStringLength = (int) args[argIndex++];
         final StringBuilder asmExpressionBuilder = new StringBuilder(expressionStringLength + 2);
@@ -90,6 +107,6 @@ public final class InlineAsmConstant extends AbstractConstant {
         final String asmExpression = asmExpressionBuilder.toString();
         final String asmFlags = asmFlagsBuilder.toString();
 
-        return new InlineAsmConstant(type, asmExpression, asmFlags);
+        return new InlineAsmConstant(type, asmExpression, asmFlags, hasSideEffects, stackAlign, AsmDialect.decode(asmDialect));
     }
 }

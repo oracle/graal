@@ -96,6 +96,7 @@ import uk.ac.man.cs.llvm.ir.model.constants.StructureConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.UndefinedConstant;
 import uk.ac.man.cs.llvm.ir.model.constants.VectorConstant;
 import uk.ac.man.cs.llvm.ir.model.elements.ValueInstruction;
+import uk.ac.man.cs.llvm.ir.model.enums.AsmDialect;
 import uk.ac.man.cs.llvm.ir.model.enums.BinaryOperator;
 import uk.ac.man.cs.llvm.ir.model.enums.CompareOperator;
 import uk.ac.man.cs.llvm.ir.types.FunctionType;
@@ -174,6 +175,16 @@ public final class LLVMNodeGenerator {
     }
 
     public static LLVMExpressionNode resolveInlineAsmConstant(InlineAsmConstant asmConstant, LLVMExpressionNode[] argNodes, LLVMBaseType targetType) {
+        if (asmConstant.hasSideEffects()) {
+            LLVMLogger.info("Parsing Inline Assembly Constant with Sideeffects!");
+        }
+        if (asmConstant.needsAlignedStack()) {
+            throw new UnsupportedOperationException("Assembly Expressions that require an aligned Stack are not supported yet!");
+        }
+        if (asmConstant.getDialect() != AsmDialect.AT_T) {
+            throw new UnsupportedOperationException("Unsupported Assembly Dialect: " + asmConstant.getDialect());
+        }
+
         final Parser asmParser = new Parser(asmConstant.getAsmExpression(), asmConstant.getAsmFlags(), argNodes, targetType);
         final LLVMInlineAssemblyRootNode assemblyRootNode = asmParser.Parse();
         final CallTarget callTarget = Truffle.getRuntime().createCallTarget(assemblyRootNode);
