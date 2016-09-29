@@ -36,12 +36,13 @@ import java.util.Map;
 
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMThreadNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMThread;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
@@ -52,7 +53,7 @@ public class LLVMContext extends ExecutionContext {
     private final List<RootCallTarget> globalVarDeallocs = new ArrayList<>();
     private final List<RootCallTarget> constructorFunctions = new ArrayList<>();
     private final List<RootCallTarget> destructorFunctions = new ArrayList<>();
-    private final List<LLVMThreadNode> runningThreads = new ArrayList<>();
+    private final List<LLVMThread> runningThreads = new ArrayList<>();
 
     private final LLVMFunctionRegistry functionRegistry;
     private final LLVMGlobalVariableRegistry globalVariableRegistry = new LLVMGlobalVariableRegistry();
@@ -153,30 +154,32 @@ public class LLVMContext extends ExecutionContext {
         globalVarInits.add(globalVarInit);
     }
 
-    public synchronized void registerThread(LLVMThreadNode thread) {
-        assert (!runningThreads.contains(thread));
+    public synchronized void registerThread(LLVMThread thread) {
+        assert !runningThreads.contains(thread);
         runningThreads.add(thread);
     }
 
-    public synchronized void unregisterThread(LLVMThreadNode thread) {
+    public synchronized void unregisterThread(LLVMThread thread) {
         runningThreads.remove(thread);
-        assert (!runningThreads.contains(thread));
+        assert !runningThreads.contains(thread);
     }
 
+    @TruffleBoundary
     public synchronized void shutdownThreads() {
         // we need to iterate over a copy of the list, because stop() can modify the original list
-        for (LLVMThreadNode node : new ArrayList<>(runningThreads)) {
+        for (LLVMThread node : new ArrayList<>(runningThreads)) {
             node.stop();
         }
     }
 
+    @TruffleBoundary
     public synchronized void awaitThreadTermination() {
         shutdownThreads();
 
         while (!runningThreads.isEmpty()) {
-            LLVMThreadNode node = runningThreads.get(0);
+            LLVMThread node = runningThreads.get(0);
             node.awaitFinish();
-            assert (!runningThreads.contains(node)); // should be unregistered by LLVMThreadNode
+            assert !runningThreads.contains(node); // should be unregistered by LLVMThreadNode
         }
     }
 
@@ -196,7 +199,7 @@ public class LLVMContext extends ExecutionContext {
         return globalVarInits;
     }
 
-    public synchronized List<LLVMThreadNode> getRunningThreads() {
+    public synchronized List<LLVMThread> getRunningThreads() {
         return Collections.unmodifiableList(runningThreads);
     }
 

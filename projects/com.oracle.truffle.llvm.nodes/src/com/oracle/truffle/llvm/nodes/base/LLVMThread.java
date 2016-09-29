@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.base;
 
-public interface LLVMThreadNode {
+public interface LLVMThread {
     void stop();
 
     void awaitFinish();

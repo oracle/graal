@@ -84,7 +84,7 @@ public class LLVMGlobalRootNode extends RootNode {
         try {
             Object result = null;
             for (int i = 0; i < executionCount; i++) {
-                assert (LLVMSignal.getNumberOfRegisteredSignals() == 0);
+                assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
 
                 frame.setObject(stackPointerSlot, stackPointer);
                 Object[] realArgs = new Object[arguments.length + LLVMCallNode.ARG_START_INDEX];
@@ -93,12 +93,12 @@ public class LLVMGlobalRootNode extends RootNode {
                 result = executeIteration(frame, i, realArgs);
 
                 context.awaitThreadTermination();
-                assert (LLVMSignal.getNumberOfRegisteredSignals() == 0);
+                assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
             }
             return result;
         } catch (LLVMExitException e) {
             context.awaitThreadTermination();
-            assert (LLVMSignal.getNumberOfRegisteredSignals() == 0);
+            assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
             return e.getReturnCode();
         } finally {
             // if not done already, we want at least call a shutdown command

@@ -49,7 +49,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMThreadNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMThread;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
@@ -100,6 +100,7 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
 
     private static final Map<Integer, LLVMSignalHandler> registeredSignals = new HashMap<>();
 
+    @TruffleBoundary
     public static int getNumberOfRegisteredSignals() {
         return registeredSignals.size();
     }
@@ -138,8 +139,8 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
     }
 
     // TODO: stack handling should work without predefined sizes,...
-    private static final long TMP_SIGNAL_STACK_SIZE_KB = 512;
-    private static final long TMP_SIGNAL_STACK_SIZE_BYTE = TMP_SIGNAL_STACK_SIZE_KB * 1024;
+    private static final long SIGNAL_STACK_SIZE_KB = 512;
+    private static final long SIGNAL_STACK_SIZE_BYTE = SIGNAL_STACK_SIZE_KB * 1024;
 
     /**
      * Registers a signal handler using sun.misc.SignalHandler. Unfortunately, using signals in java
@@ -154,7 +155,7 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
      * wait until the signal was handled (which is not guaranteed because of the asynchronous
      * behavior in our implementation).
      */
-    private static final class LLVMSignalHandler implements SignalHandler, LLVMThreadNode {
+    private static final class LLVMSignalHandler implements SignalHandler, LLVMThread {
 
         private final Signal signal;
         private final LLVMFunctionDescriptor function;
@@ -169,40 +170,44 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
         private LLVMSignalHandler(Signal signal, LLVMFunctionDescriptor function) throws IllegalArgumentException {
             this.signal = signal;
             this.function = function;
-            LLVMFunctionNode functionNode = LLVMFunctionLiteralNodeGen.create(function);
 
-            LLVMAddressLiteralNode signalStack = new LLVMAddressLiteralNode(stack.allocate(TMP_SIGNAL_STACK_SIZE_BYTE));
-            LLVMI32LiteralNode sigNumArg = new LLVMI32LiteralNode(signal.getNumber());
-            LLVMExpressionNode[] args = {signalStack, sigNumArg};
-
-            context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-
-            LLVMUnresolvedCallNode callNode = new LLVMUnresolvedCallNode(functionNode, args, LLVMRuntimeType.VOID, context);
-
-            callTarget = Truffle.getRuntime().createCallTarget(
-                            new LLVMFunctionStartNode(callNode,
-                                            new LLVMNode[]{},
-                                            new LLVMNode[]{},
-                                            SourceSection.createUnavailable("", null),
-                                            new FrameDescriptor(), ""));
+            this.context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
 
             lock.lock();
             try {
                 if (function.equals(LLVM_SIG_DFL)) {
                     Signal.handle(signal, SignalHandler.SIG_DFL);
-                    stack.free();
+                    isRunning.set(true);
+                    context.registerThread(this);
+                    return;
                 } else if (function.equals(LLVM_SIG_IGN)) {
                     Signal.handle(signal, SignalHandler.SIG_IGN);
-                    stack.free();
-                } else {
-                    Signal.handle(signal, this);
+                    isRunning.set(true);
+                    context.registerThread(this);
+                    return;
                 }
 
+                Signal.handle(signal, this);
+
                 // only when we reach this point, the signal handler was registered successfully
+                LLVMAddressLiteralNode signalStack = new LLVMAddressLiteralNode(stack.allocate(SIGNAL_STACK_SIZE_BYTE));
+                LLVMI32LiteralNode sigNumArg = new LLVMI32LiteralNode(signal.getNumber());
+                LLVMExpressionNode[] args = {signalStack, sigNumArg};
+
+                LLVMFunctionNode functionNode = LLVMFunctionLiteralNodeGen.create(function);
+
+                LLVMUnresolvedCallNode callNode = new LLVMUnresolvedCallNode(functionNode, args, LLVMRuntimeType.VOID, context);
+
+                callTarget = Truffle.getRuntime().createCallTarget(
+                                new LLVMFunctionStartNode(callNode,
+                                                new LLVMNode[]{},
+                                                new LLVMNode[]{},
+                                                SourceSection.createUnavailable("", null),
+                                                new FrameDescriptor(), ""));
+
                 isRunning.set(true);
                 context.registerThread(this);
             } catch (IllegalArgumentException e) {
-                stack.free();
                 throw e;
             } finally {
                 lock.unlock();
@@ -231,7 +236,7 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
                     return;
                 }
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                throw new AssertionError(e);
             }
             lock.lock();
             try {
