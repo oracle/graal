@@ -653,6 +653,11 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             if (node == null) {
                 throw new UnsupportedOperationException("Unknown Truffle Intrinsic: " + ((ValueSymbol) target).getName());
             }
+
+        } else if (target instanceof InlineAsmConstant) {
+            final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
+            node = LLVMNodeGenerator.resolveInlineAsmConstant(inlineAsmConstant, args, LLVMBitcodeTypeHelper.getLLVMBaseType(call.getType()));
+
         } else {
             LLVMFunctionNode function = (LLVMFunctionNode) symbols.resolve(target);
             node = LLVMFunctionFactory.createFunctionCall(function, args, LLVMBitcodeTypeHelper.getLLVMBaseType(call.getType()));
