@@ -139,8 +139,12 @@ meth public abstract int hashCode()
 meth public boolean canSet(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
 meth public boolean canSet(java.lang.Object)
 meth public boolean canStore(java.lang.Object)
+meth public boolean isAssumedFinal()
 meth public boolean isConstant()
+meth public boolean isDeclared()
 meth public boolean isFinal()
+meth public boolean isValue()
+meth public com.oracle.truffle.api.Assumption getFinalAssumption()
 meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObject)
 meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
 meth public final void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
@@ -250,6 +254,8 @@ meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getP
 meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getPropertyListInternal(boolean)
 meth public abstract java.util.List<java.lang.Object> getKeyList()
 meth public abstract java.util.List<java.lang.Object> getKeyList(com.oracle.truffle.api.object.Shape$Pred<com.oracle.truffle.api.object.Property>)
+meth public boolean isShared()
+meth public com.oracle.truffle.api.object.Shape makeSharedShape()
 supr java.lang.Object
 
 CLSS public abstract static com.oracle.truffle.api.object.Shape$Allocator

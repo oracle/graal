@@ -439,6 +439,7 @@ intf java.lang.Cloneable
 meth protected boolean isTaggedWith(java.lang.Class<?>)
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
+meth protected final java.lang.Object getAtomicLock()
 meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.Node deepCopy()
@@ -660,6 +661,7 @@ supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
 
 CLSS public final com.oracle.truffle.api.source.LineLocation
+ anno 0 java.lang.Deprecated()
 intf java.lang.Comparable<com.oracle.truffle.api.source.LineLocation>
 meth public boolean equals(java.lang.Object)
 meth public com.oracle.truffle.api.source.Source getSource()
@@ -684,12 +686,14 @@ innr public final Builder
 meth public boolean isInternal()
 meth public com.oracle.truffle.api.source.Source subSource(int,int)
 meth public final com.oracle.truffle.api.source.LineLocation createLineLocation(int)
+ anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.Source withMimeType(java.lang.String)
  anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int)
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int)
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int,int)
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int,int,int)
+ anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int)
  anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int,int)
@@ -698,6 +702,7 @@ meth public final com.oracle.truffle.api.source.SourceSection createSection(java
  anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int,int,int,int)
  anno 0 java.lang.Deprecated()
+meth public final com.oracle.truffle.api.source.SourceSection createUnavailableSection()
 meth public final int getColumnNumber(int)
 meth public final int getLength()
 meth public final int getLineCount()
@@ -768,7 +773,9 @@ hfds content,internal,mime,name,origin,path,uri
 
 CLSS public final com.oracle.truffle.api.source.SourceSection
 meth public boolean equals(java.lang.Object)
+meth public boolean isAvailable()
 meth public com.oracle.truffle.api.source.LineLocation getLineLocation()
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.source.Source getSource()
 meth public int getCharEndIndex()
 meth public int getCharIndex()
@@ -782,8 +789,10 @@ meth public java.lang.String getCode()
 meth public java.lang.String getIdentifier()
  anno 0 java.lang.Deprecated()
 meth public java.lang.String getShortDescription()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.source.SourceSection createUnavailable(java.lang.String,java.lang.String)
+ anno 0 java.lang.Deprecated()
 supr java.lang.Object
 hfds UNKNOWN,charIndex,charLength,identifier,kind,source,startColumn,startLine
 

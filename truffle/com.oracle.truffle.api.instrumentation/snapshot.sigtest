@@ -55,6 +55,7 @@ meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.Executio
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
 meth public abstract <%0 extends com.oracle.truffle.api.instrumentation.LoadSourceSectionListener> com.oracle.truffle.api.instrumentation.EventBinding<{%%0}> attachLoadSourceSectionListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter,{%%0},boolean)
 meth public abstract java.util.Set<java.lang.Class<?>> queryTags(com.oracle.truffle.api.nodes.Node)
+meth public final java.util.List<com.oracle.truffle.api.source.SourceSection> querySourceSections(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 supr java.lang.Object
 
 CLSS public final com.oracle.truffle.api.instrumentation.LoadSourceEvent
@@ -90,6 +91,7 @@ intf java.lang.annotation.Annotation
 meth public abstract java.lang.Class<?>[] value()
 
 CLSS public final com.oracle.truffle.api.instrumentation.SourceSectionFilter
+fld public final static com.oracle.truffle.api.instrumentation.SourceSectionFilter ANY
 innr public abstract interface static SourcePredicate
 innr public final Builder
 innr public final static IndexRange
@@ -190,6 +192,7 @@ intf java.lang.Cloneable
 meth protected boolean isTaggedWith(java.lang.Class<?>)
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
+meth protected final java.lang.Object getAtomicLock()
 meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.Node deepCopy()

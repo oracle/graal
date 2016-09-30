@@ -137,6 +137,7 @@ meth public void testPrimitiveidentityInt() throws java.lang.Exception
 meth public void testPrimitiveidentityLong() throws java.lang.Exception
 meth public void testPrimitiveidentityShort() throws java.lang.Exception
 meth public void testPrimitiveidentityString() throws java.lang.Exception
+meth public void testPropertiesInteropMessage() throws java.lang.Exception
 meth public void testReadElementFromForeign() throws java.lang.Exception
 meth public void testReadFromObjectWithElement() throws java.lang.Exception
 meth public void testReadFromObjectWithValueProperty() throws java.lang.Exception
