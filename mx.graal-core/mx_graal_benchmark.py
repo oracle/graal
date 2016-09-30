@@ -1124,7 +1124,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
               "metric.score-function": "id",
               "metric.better": "lower",
               "metric.iteration": ("<iteration>", int),
-              "extra.benchmark-group": ("<benchgroup>", str)
             }
           ),
           mx_benchmark.StdOutRule(
@@ -1140,7 +1139,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
               "metric.score-function": "id",
               "metric.better": "lower",
               "metric.iteration": 0,
-              "extra.benchmark-group": ("<benchgroup>", str)
             }
           )
         ]
