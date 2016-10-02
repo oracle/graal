@@ -202,6 +202,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         assert checkArrayIndexScaleInvariants();
 
         runtimeStartTime = System.nanoTime();
+        bootstrapJVMCI = config.getFlag("BootstrapJVMCI", Boolean.class);
     }
 
     private HotSpotBackend registerBackend(HotSpotBackend backend) {
@@ -287,6 +288,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         }
     }
 
+    private final boolean bootstrapJVMCI;
     private boolean bootstrapFinished;
 
     public void notifyBootstrapFinished() {
@@ -295,9 +297,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     @Override
     public boolean isBootstrapping() {
-        if (config.getFlag("BootstrapJVMCI", Boolean.class)) {
-            return !bootstrapFinished;
-        }
-        return false;
+        return bootstrapJVMCI && !bootstrapFinished;
     }
 }
