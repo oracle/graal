@@ -23,8 +23,6 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
-import static com.oracle.graal.hotspot.CompilationWatchDogThread.notifyWatchdogCompilationFinished;
-import static com.oracle.graal.hotspot.CompilationWatchDogThread.notifyWatchdogCompilationStart;
 import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
@@ -65,6 +63,7 @@ import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.JavaMethod;
@@ -79,13 +78,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final CompilationCounters compilationCounters;
+    private final BootstrapWatchDog bootstrapWatchDog;
 
     HotSpotGraalCompiler(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalRuntimeProvider graalRuntime) {
         this.jvmciRuntime = jvmciRuntime;
         this.graalRuntime = graalRuntime;
         // It is sufficient to have one compilation counter object per Graal compiler object.
         this.compilationCounters = Options.CompilationCountLimit.getValue() > 0 ? new CompilationCounters() : null;
-
+        this.bootstrapWatchDog = graalRuntime.isBootstrapping() ? BootstrapWatchDog.maybeCreate() : null;
     }
 
     @Override
@@ -96,9 +96,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     @Override
     @SuppressWarnings("try")
     public CompilationRequestResult compileMethod(CompilationRequest request) {
+        if (bootstrapWatchDog != null && graalRuntime.isBootstrapping()) {
+            if (bootstrapWatchDog.hitCriticalCompilationRate()) {
+                // Drain the compilation queue to expedite completion of the bootstrap
+                return HotSpotCompilationRequestResult.failure("hit critical bootstrap compilation rate", true);
+            }
+        }
         ResolvedJavaMethod method = request.getMethod();
-        notifyWatchdogCompilationStart(method);
-        try {
+        try (CompilationWatchDog compilationWatchDog = CompilationWatchDog.startingCompilation(method)) {
             if (compilationCounters != null) {
                 compilationCounters.countCompilation(method);
             }
@@ -115,7 +120,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             assert r != null;
             return r;
         } finally {
-            notifyWatchdogCompilationFinished();
+            if (bootstrapWatchDog != null) {
+                bootstrapWatchDog.notifyCompilationFinished();
+            }
         }
     }
 
