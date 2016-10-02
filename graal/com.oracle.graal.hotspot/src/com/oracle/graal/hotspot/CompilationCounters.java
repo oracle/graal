@@ -73,7 +73,9 @@ class CompilationCounters {
                             CompilationCounters.Options.CompilationCountLimit.getValue());
             TTY.println("==================================== High compilation counters ====================================");
             SortedSet<Map.Entry<ResolvedJavaMethod, Integer>> sortedCounters = new TreeSet<>(new CounterComparator());
-            sortedCounters.addAll(counters.entrySet());
+            for (Map.Entry<ResolvedJavaMethod, Integer> e : counters.entrySet()) {
+                sortedCounters.add(e);
+            }
             for (Map.Entry<ResolvedJavaMethod, Integer> entry : sortedCounters) {
                 if (entry.getValue() >= Options.CompilationCountLimit.getValue() / 2) {
                     TTY.out.printf("%d\t%s%n", entry.getValue(), str(entry.getKey()));
