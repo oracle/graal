@@ -2,12 +2,17 @@
 
 ### How can I get started understanding Sulong?
 
-A good starting point to understand any Truffle language is to read the papers
-[Self-optimizing AST interpreters](http://dl.acm.org/citation.cfm?id=2384587) and
-[One VM to rule them all](http://dl.acm.org/citation.cfm?id=2509581).
+A good starting point is to read and look through the
+[papers and presentations about Sulong](PUBLICATIONS.md). The paper
+[Sulong - Execution of LLVM-Based Languages on the JVM](http://2016.ecoop.org/event/icooolps-2016-sulong-execution-of-llvm-based-languages-on-the-jvm)
+provides a minimal description of Sulong and describes its main goals.
+
+To understand more about Truffle, on which Sulong is implemented, is to
+read the papers [Self-optimizing AST interpreters](http://dl.acm.org/citation.cfm?id=2384587)
+and [One VM to rule them all](http://dl.acm.org/citation.cfm?id=2509581).
 A heavily documented Truffle language sample implementation is
-[SimpleLanguage](https://github.com/graalvm/simplelanguage). To
-understand how Sulong calls native functions you can read the paper
+[SimpleLanguage](https://github.com/graalvm/simplelanguage).
+To understand how Sulong calls native functions you can read the paper
 [An efficient native function interface for Java](http://dl.acm.org/citation.cfm?id=2500832).
 
 To start working with the code you can try to tackle one of the
