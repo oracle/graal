@@ -1,5 +1,9 @@
 ## Distribution specific installation tasks
 
+### Mac
+
+* How to install GCC: [#116](https://github.com/graalvm/sulong/issues/116), [#106](https://github.com/graalvm/sulong/issues/106)
+
 ### Ubuntu
 
 #### 14.04
