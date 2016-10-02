@@ -1,6 +1,7 @@
 # Documentation
 
 * [Short architecture description](ARCHITECTURE.md)
+* [Executing benchmarks](BENCHMARKING.md)
 * [Sulong's Continuous integration](CI.md)
 * [Guidelines for contributing to the project](CONTRIBUTING.md)
 * [Mapping of LLVM IR types to Java types](DATATYPES.md)
