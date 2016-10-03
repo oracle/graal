@@ -144,7 +144,7 @@ public class OptionsParser {
             } else {
                 throw new IllegalArgumentException("Boolean option '" + name + "' must have value \"true\" or \"false\", not \"" + valueString + "\"");
             }
-        } else if (optionType == String.class) {
+        } else if (optionType == String.class || Enum.class.isAssignableFrom(optionType)) {
             value = valueString;
         } else {
             if (valueString.isEmpty()) {
@@ -249,13 +249,19 @@ public class OptionsParser {
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             OptionDescriptor desc = e.getValue();
             Object value = desc.getOptionValue().getValue();
-            List<String> helpLines = wrap(desc.getHelp(), 70);
+            String help = desc.getHelp();
+            if (desc.getOptionValue() instanceof EnumOptionValue) {
+                EnumOptionValue<?> eoption = (EnumOptionValue<?>) desc.getOptionValue();
+                help += "  Valid values are " + eoption.getOptionValues();
+            }
+            List<String> helpLines = wrap(help, 70);
             String name = e.getKey();
             String assign = explicitlyAssigned.contains(name) ? ":=" : " =";
             out.printf("%9s %-40s %s %-14s %s%n", desc.getType().getSimpleName(), name, assign, value, helpLines.get(0));
             for (int i = 1; i < helpLines.size(); i++) {
                 out.printf("%67s %s%n", " ", helpLines.get(i));
             }
+
         }
     }
 

@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import java.util.EnumSet;
-
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets.ProfileContext;
+import com.oracle.graal.options.EnumOptionValue;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
@@ -53,17 +52,7 @@ public class HotspotSnippetsOptions {
     public static final OptionValue<Boolean> ProfileAllocations = new OptionValue<>(false);
 
     @Option(help = "Control the naming of the counters when using ProfileAllocations.", type = OptionType.Debug)
-    public static final OptionValue<String> ProfileAllocationsContext = new OptionValue<String>("AllocatingMethods") {
-      @Override
-      public void setValue(Object v) {
-          try {
-          ProfileContext.valueOf((String) v);
-          } catch (IllegalArgumentException e) {
-              throw new IllegalArgumentException("\"" + v + "\" is not a valid option for " + getName() + ".  Valid values are " + EnumSet.allOf(ProfileContext.class));
-          }
-          super.setValue(v);
-      }
-    };
+    public static final EnumOptionValue<ProfileContext> ProfileAllocationsContext = new EnumOptionValue<>(ProfileContext.class, ProfileContext.AllocatingMethod);
 
     @Option(help = "Enable profiling of monitor operations.", type = OptionType.Debug)
     public static final OptionValue<Boolean> ProfileMonitors = new OptionValue<>(false);

@@ -52,7 +52,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.useT
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeTlabTop;
-import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Lazy.PROFILE_CONTEXT;
 import static com.oracle.graal.nodes.PiArrayNode.piArrayCast;
 import static com.oracle.graal.nodes.PiNode.piCast;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
@@ -138,13 +137,9 @@ public class NewObjectSnippets implements Snippets {
         Total
     }
 
-    static class Lazy {
-        static final ProfileContext PROFILE_CONTEXT = ProfileContext.valueOf(HotspotSnippetsOptions.ProfileAllocationsContext.getValue());
-    }
-
     @Fold
     static String createName(String path, String typeContext) {
-        switch (PROFILE_CONTEXT) {
+        switch (HotspotSnippetsOptions.ProfileAllocationsContext.getValue()) {
             case AllocatingMethod:
                 return "";
             case InstanceOrArray:
@@ -164,11 +159,17 @@ public class NewObjectSnippets implements Snippets {
         return HotspotSnippetsOptions.ProfileAllocations.getValue();
     }
 
+    @Fold
+    static boolean withContext() {
+        ProfileContext context = HotspotSnippetsOptions.ProfileAllocationsContext.getValue();
+        return context == ProfileContext.AllocatingMethod || context == ProfileContext.AllocatedTypesInMethod;
+    }
+
     protected static void profileAllocation(String path, long size, String typeContext) {
         if (doProfile()) {
             String name = createName(path, typeContext);
 
-            boolean context = PROFILE_CONTEXT == ProfileContext.AllocatingMethod || PROFILE_CONTEXT == ProfileContext.AllocatedTypesInMethod;
+            boolean context = withContext();
             DynamicCounterNode.counter(name, "number of bytes allocated", size, context);
             DynamicCounterNode.counter(name, "number of allocations", 1, context);
         }
