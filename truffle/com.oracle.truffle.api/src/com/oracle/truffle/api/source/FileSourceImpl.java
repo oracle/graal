@@ -113,6 +113,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
                 }
             }
         }
-        return Files.probeContentType(filePath);
+        String found = Files.probeContentType(filePath);
+        return found == null ? "content/unknown" : found;
     }
 }

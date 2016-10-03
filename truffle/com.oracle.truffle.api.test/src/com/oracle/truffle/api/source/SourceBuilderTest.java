@@ -154,6 +154,34 @@ public class SourceBuilderTest {
     }
 
     @Test
+    public void mimeTypeIsDetectedRandomBytes() throws IOException {
+        File file = File.createTempFile("Hello", ".bin").getCanonicalFile();
+        file.deleteOnExit();
+
+        try (FileOutputStream w = new FileOutputStream(file)) {
+            w.write(0x04);
+            w.write(0x05);
+        }
+
+        Source source = Source.newBuilder(file).build();
+        assertEither(source.getMimeType(), "content/unknown", "application/octet-stream", "text/plain", "application/macbinary");
+    }
+
+    @Test
+    public void mimeTypeIsDetectedRandomBytesForURI() throws IOException {
+        File file = File.createTempFile("Hello", ".bin").getCanonicalFile();
+        file.deleteOnExit();
+
+        try (FileOutputStream w = new FileOutputStream(file)) {
+            w.write(0x04);
+            w.write(0x05);
+        }
+
+        Source source = Source.newBuilder(file.toURI().toURL()).build();
+        assertEither(source.getMimeType(), "content/unknown", "application/octet-stream", "text/plain", "application/macbinary");
+    }
+
+    @Test
     public void ioExceptionWhenFileDoesntExist() throws Exception {
         File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.delete();
@@ -482,5 +510,14 @@ public class SourceBuilderTest {
     public void succeedsWithBothNameAndMIME() {
         Source src = Source.newBuilder("Hi").mimeType("content/unknown").name("unknown.txt").build();
         assertNotNull(src);
+    }
+
+    private static void assertEither(String mimeType, String... expected) {
+        for (String e : expected) {
+            if (mimeType.equals(e)) {
+                return;
+            }
+        }
+        fail("Unexpected MIME type: " + mimeType);
     }
 }
