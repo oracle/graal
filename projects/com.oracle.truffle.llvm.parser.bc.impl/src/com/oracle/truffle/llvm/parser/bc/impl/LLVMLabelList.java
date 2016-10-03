@@ -32,16 +32,16 @@ package com.oracle.truffle.llvm.parser.bc.impl;
 import java.util.HashMap;
 import java.util.Map;
 
-import uk.ac.man.cs.llvm.ir.model.InstructionBlock;
-import uk.ac.man.cs.llvm.ir.model.FunctionDeclaration;
-import uk.ac.man.cs.llvm.ir.model.FunctionDefinition;
-import uk.ac.man.cs.llvm.ir.model.FunctionVisitor;
-import uk.ac.man.cs.llvm.ir.model.GlobalAlias;
-import uk.ac.man.cs.llvm.ir.model.GlobalConstant;
-import uk.ac.man.cs.llvm.ir.model.GlobalVariable;
-import uk.ac.man.cs.llvm.ir.model.Model;
-import uk.ac.man.cs.llvm.ir.model.ModelVisitor;
-import uk.ac.man.cs.llvm.ir.types.Type;
+import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.base.model.visitors.FunctionVisitor;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalAlias;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalConstant;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.base.model.Model;
+import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
 
 public final class LLVMLabelList {
 

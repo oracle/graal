@@ -211,18 +211,6 @@ suite = {
 
   "projects" : {
 
-    "uk.ac.man.cs.llvm" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.llvm.runtime",
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle, LLVM",
-      "license" : "",
-    },
-
     "com.oracle.truffle.llvm.test" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
@@ -440,8 +428,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.parser.factories",
-        "com.oracle.truffle.llvm.parser.base",
-        "uk.ac.man.cs.llvm",
+        "com.oracle.truffle.llvm.parser.base"
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
