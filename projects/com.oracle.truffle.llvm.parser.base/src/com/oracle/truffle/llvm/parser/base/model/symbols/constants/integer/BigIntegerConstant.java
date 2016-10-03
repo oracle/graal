@@ -27,8 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer;
 
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
 
 import java.math.BigInteger;

@@ -27,27 +27,49 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer;
 
-import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.AbstractConstant;
+import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
 
-public final class VectorConstant extends AggregateConstant {
+public final class IntegerConstant extends AbstractConstant {
 
-    VectorConstant(VectorType type, int elemCount) {
-        super(type, elemCount);
+    private final long value;
+
+    public IntegerConstant(IntegerType type, long value) {
+        super(type);
+        this.value = value;
     }
 
-    public Type getElementType() {
-        return ((VectorType) getType()).getElementType();
-    }
-
-    public int getLength() {
-        return getElementCount();
+    public long getValue() {
+        return value;
     }
 
     @Override
     public String toString() {
-        return String.format("<%s>", super.toString());
+        if (((IntegerType) getType()).getBitCount() == 1) {
+            return value == 0 ? "false" : "true";
+        }
+        return String.valueOf(value);
+    }
+
+    public static IntegerConstant fromDatum(IntegerType type, long datum) {
+        // Sign extend for everything except i1 (boolean)
+        final int bits = type.getBitCount();
+        long d = datum;
+        if (bits > 1 && bits < Long.SIZE) {
+            d = extendSign(bits, d);
+        }
+
+        return new IntegerConstant(type, d);
+    }
+
+    private static long extendSign(int bits, long value) {
+        long v = value;
+        long mask = (~((1L << (bits)) - 1)) >> 1;
+        if ((v & mask) != 0) {
+            v |= mask;
+        }
+        return v;
     }
 }

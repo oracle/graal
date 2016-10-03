@@ -27,30 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate;
 
-import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
+import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 
-public final class FloatConstant extends FloatingPointConstant {
+public final class ArrayConstant extends AggregateConstant {
 
-    private final float value;
-
-    private FloatConstant(float value) {
-        super(FloatingPointType.FLOAT);
-        this.value = value;
+    ArrayConstant(ArrayType type, int valueCount) {
+        super(type, valueCount);
     }
 
-    public float getFloat() {
-        return value;
+    @Override
+    public ArrayType getType() {
+        return (ArrayType) super.getType();
     }
 
     @Override
     public String toString() {
-        return String.format("%.6f", value);
+        return String.format("[%s]", super.toString());
     }
-
-    public static FloatConstant create(float value) {
-        return new FloatConstant(value);
-    }
-
 }

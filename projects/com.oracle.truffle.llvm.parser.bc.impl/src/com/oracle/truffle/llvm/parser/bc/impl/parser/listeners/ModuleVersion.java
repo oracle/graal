@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module;
+package com.oracle.truffle.llvm.parser.bc.impl.parser.listeners;
 
 import java.util.List;
 
@@ -36,7 +36,6 @@ import com.oracle.truffle.llvm.parser.base.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.base.model.generators.ModuleGenerator;
 import com.oracle.truffle.llvm.parser.base.model.generators.SymbolGenerator;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.*;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.constants.Constants;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.constants.ConstantsV32;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.constants.ConstantsV38;

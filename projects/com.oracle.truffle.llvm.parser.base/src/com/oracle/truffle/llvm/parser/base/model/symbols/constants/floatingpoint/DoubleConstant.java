@@ -27,31 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.floatingpoint;
 
 import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
 
-import java.util.Arrays;
+public final class DoubleConstant extends FloatingPointConstant {
 
-public final class X86FP80Constant extends FloatingPointConstant {
+    private final double value;
 
-    private final byte[] value;
-
-    private X86FP80Constant(byte[] value) {
-        super(FloatingPointType.X86_FP80);
+    private DoubleConstant(double value) {
+        super(FloatingPointType.DOUBLE);
         this.value = value;
     }
 
-    public byte[] getValue() {
+    public double getValue() {
         return value;
     }
 
     @Override
     public String toString() {
-        return Arrays.toString(value);
+        return String.format("%.6f", value);
     }
 
-    public static X86FP80Constant create(byte[] value) {
-        return new X86FP80Constant(value);
+    public static DoubleConstant create(double value) {
+        return new DoubleConstant(value);
     }
 }

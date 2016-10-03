@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module;
+package com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.function;
 
 import java.util.List;
 
@@ -37,6 +37,8 @@ import com.oracle.truffle.llvm.parser.base.model.types.MetaType;
 import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.records.Records;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ModuleVersion;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.Types;
 
 public class FunctionV32 extends FunctionV38 {
 

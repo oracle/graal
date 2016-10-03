@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.symbols;
 
-import com.oracle.truffle.llvm.parser.base.model.symbols.constants.AggregateConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.AggregateConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.base.model.types.MetaType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;

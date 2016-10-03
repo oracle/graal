@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module;
+package com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.function;
 
 import java.util.List;
 
@@ -43,10 +43,14 @@ import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.ParserListener;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ModuleVersion;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.blocks.Block;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.records.Records;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.records.FunctionRecord;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ParserListener;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.Types;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ValueSymbolTable;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public class Function implements ParserListener {
 
@@ -88,7 +92,7 @@ public class Function implements ParserListener {
                 return version.createMetadata(types, symbols, generator); // TODO
 
             default:
-                System.out.printf("ENTER #12-FUNCTION-BLOCK: %s%n", block);
+                LLVMLogger.info("Entering Unknown Block inside Function: " + block);
                 return ParserListener.DEFAULT;
         }
     }

@@ -27,29 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.floatingpoint;
 
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
 
-public final class DoubleConstant extends FloatingPointConstant {
+import java.nio.ByteBuffer;
 
-    private final double value;
+public abstract class FloatingPointConstant extends AbstractConstant {
 
-    private DoubleConstant(double value) {
-        super(FloatingPointType.DOUBLE);
-        this.value = value;
+    FloatingPointConstant(FloatingPointType type) {
+        super(type);
     }
 
-    public double getValue() {
-        return value;
-    }
+    public static FloatingPointConstant create(FloatingPointType type, long[] bits) {
+        switch (type) {
+            case FLOAT:
+                return FloatConstant.create(Float.intBitsToFloat((int) bits[0]));
 
-    @Override
-    public String toString() {
-        return String.format("%.6f", value);
-    }
+            case DOUBLE:
+                return DoubleConstant.create(Double.longBitsToDouble(bits[0]));
 
-    public static DoubleConstant create(double value) {
-        return new DoubleConstant(value);
+            case X86_FP80:
+                return X86FP80Constant.create(ByteBuffer.allocate(type.sizeof()).putLong(bits[0]).putShort((short) bits[1]).array());
+
+            default:
+                throw new UnsupportedOperationException("Unsupported Floating Point Type: " + type);
+        }
     }
 }

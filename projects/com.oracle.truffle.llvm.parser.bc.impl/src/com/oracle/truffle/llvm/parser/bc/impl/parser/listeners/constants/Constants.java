@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module;
+package com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.constants;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -37,9 +37,10 @@ import com.oracle.truffle.llvm.parser.base.model.types.BigIntegerConstantType;
 import com.oracle.truffle.llvm.parser.base.model.types.IntegerConstantType;
 import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.ParserListener;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.records.Records;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.records.ConstantsRecord;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ParserListener;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.Types;
 
 public class Constants implements ParserListener {
 

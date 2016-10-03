@@ -90,7 +90,7 @@ import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.InlineAsmConstant;
-import com.oracle.truffle.llvm.parser.base.model.symbols.constants.IntegerConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.BinaryOperationInstruction;

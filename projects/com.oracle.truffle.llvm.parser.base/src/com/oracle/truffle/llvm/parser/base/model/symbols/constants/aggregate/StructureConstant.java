@@ -27,31 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate;
 
-import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
+import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
 
-import java.nio.ByteBuffer;
+public final class StructureConstant extends AggregateConstant {
 
-public abstract class FloatingPointConstant extends AbstractConstant {
-
-    FloatingPointConstant(FloatingPointType type) {
-        super(type);
+    StructureConstant(StructureType type, int valueCount) {
+        super(type, valueCount);
     }
 
-    public static FloatingPointConstant create(FloatingPointType type, long[] bits) {
-        switch (type) {
-            case FLOAT:
-                return FloatConstant.create(Float.intBitsToFloat((int) bits[0]));
+    public Type getElementType(int index) {
+        return getElement(index).getType();
+    }
 
-            case DOUBLE:
-                return DoubleConstant.create(Double.longBitsToDouble(bits[0]));
+    public boolean isPacked() {
+        return ((StructureType) getType()).isPacked();
+    }
 
-            case X86_FP80:
-                return X86FP80Constant.create(ByteBuffer.allocate(type.sizeof()).putLong(bits[0]).putShort((short) bits[1]).array());
-
-            default:
-                throw new UnsupportedOperationException("Unsupported Floating Point Type: " + type);
-        }
+    @Override
+    public String toString() {
+        return String.format("{%s}", super.toString());
     }
 }

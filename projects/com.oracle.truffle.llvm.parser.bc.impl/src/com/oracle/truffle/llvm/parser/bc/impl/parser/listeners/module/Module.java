@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module;
+package com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.module;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,10 +40,15 @@ import com.oracle.truffle.llvm.parser.base.model.target.TargetTriple;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.ParserListener;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ModuleVersion;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.blocks.Block;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.records.Records;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.records.ModuleRecord;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.Identification;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ParserListener;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.Types;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ValueSymbolTable;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public class Module implements ParserListener {
 
@@ -103,6 +108,7 @@ public class Module implements ParserListener {
                 return version.createMetadata(types, symbols, generator);
 
             default:
+                LLVMLogger.info("Entering Unknown Block inside Module: " + block);
                 return ParserListener.DEFAULT;
         }
     }
@@ -114,8 +120,7 @@ public class Module implements ParserListener {
 
     @Override
     public void record(long id, long[] args) {
-        ModuleRecord record = ModuleRecord.decode(id);
-
+        final ModuleRecord record = ModuleRecord.decode(id);
         switch (record) {
             case VERSION:
                 mode = (int) args[0];
@@ -144,6 +149,7 @@ public class Module implements ParserListener {
                 break;
 
             default:
+                LLVMLogger.info("Unknown Top-Level Record: " + Records.describe(id, args));
                 break;
         }
     }

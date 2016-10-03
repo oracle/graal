@@ -27,9 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.impl.parser.bc;
+package com.oracle.truffle.llvm.parser.bc.impl.parser.listeners;
 
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.blocks.Block;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.records.Records;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public interface ParserListener {
 
@@ -42,15 +44,5 @@ public interface ParserListener {
 
     void record(long id, long[] args);
 
-    ParserListener DEFAULT = new DefaultListener();
-
-    class DefaultListener implements ParserListener {
-
-        public DefaultListener() {
-        }
-
-        @Override
-        public void record(long id, long[] args) {
-        }
-    }
+    ParserListener DEFAULT = (id, args) -> LLVMLogger.info("Unknown Record: " + Records.describe(id, args));
 }

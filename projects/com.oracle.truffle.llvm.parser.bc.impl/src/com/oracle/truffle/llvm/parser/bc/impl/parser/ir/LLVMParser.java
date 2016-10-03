@@ -35,8 +35,8 @@ import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.Operation;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.Parser;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.ParserResult;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.blocks.Block;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.Module;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.ModuleVersion;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.module.Module;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ModuleVersion;
 
 public final class LLVMParser {
 

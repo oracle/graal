@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.bc.impl.parser.bc.blocks;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.Bitstream;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.Operation;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.Parser;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.ParserListener;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ParserListener;
 
 public final class InformationBlockParser extends Parser {
 

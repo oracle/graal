@@ -27,23 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.floatingpoint;
 
-import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
+import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
 
-public final class ArrayConstant extends AggregateConstant {
+import java.util.Arrays;
 
-    ArrayConstant(ArrayType type, int valueCount) {
-        super(type, valueCount);
+public final class X86FP80Constant extends FloatingPointConstant {
+
+    private final byte[] value;
+
+    private X86FP80Constant(byte[] value) {
+        super(FloatingPointType.X86_FP80);
+        this.value = value;
     }
 
-    @Override
-    public ArrayType getType() {
-        return (ArrayType) super.getType();
+    public byte[] getValue() {
+        return value;
     }
 
     @Override
     public String toString() {
-        return String.format("[%s]", super.toString());
+        return Arrays.toString(value);
+    }
+
+    public static X86FP80Constant create(byte[] value) {
+        return new X86FP80Constant(value);
     }
 }

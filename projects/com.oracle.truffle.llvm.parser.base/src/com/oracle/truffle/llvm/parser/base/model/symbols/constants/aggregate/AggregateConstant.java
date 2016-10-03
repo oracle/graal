@@ -27,11 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate;
 
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbols;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.AbstractConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
@@ -101,7 +103,7 @@ public abstract class AggregateConstant extends AbstractConstant {
         return sb.toString();
     }
 
-    static AggregateConstant fromData(Type type, long[] data) {
+    public static AggregateConstant fromData(Type type, long[] data) {
         final AggregateConstant aggregateConstant;
         final Type elementType;
         if (type instanceof ArrayType) {
@@ -123,7 +125,7 @@ public abstract class AggregateConstant extends AbstractConstant {
         return aggregateConstant;
     }
 
-    static AggregateConstant fromSymbols(Symbols symbols, Type type, int[] valueIndices) {
+    public static AggregateConstant fromSymbols(Symbols symbols, Type type, int[] valueIndices) {
         final AggregateConstant aggregateConstant;
         if (type instanceof ArrayType) {
             aggregateConstant = new ArrayConstant((ArrayType) type, valueIndices.length);

@@ -27,48 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.floatingpoint;
 
-import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
+import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
 
-public final class IntegerConstant extends AbstractConstant {
+public final class FloatConstant extends FloatingPointConstant {
 
-    private final long value;
+    private final float value;
 
-    public IntegerConstant(IntegerType type, long value) {
-        super(type);
+    private FloatConstant(float value) {
+        super(FloatingPointType.FLOAT);
         this.value = value;
     }
 
-    public long getValue() {
+    public float getFloat() {
         return value;
     }
 
     @Override
     public String toString() {
-        if (((IntegerType) getType()).getBitCount() == 1) {
-            return value == 0 ? "false" : "true";
-        }
-        return String.valueOf(value);
+        return String.format("%.6f", value);
     }
 
-    public static IntegerConstant fromDatum(IntegerType type, long datum) {
-        // Sign extend for everything except i1 (boolean)
-        final int bits = type.getBitCount();
-        long d = datum;
-        if (bits > 1 && bits < Long.SIZE) {
-            d = extendSign(bits, d);
-        }
-
-        return new IntegerConstant(type, d);
+    public static FloatConstant create(float value) {
+        return new FloatConstant(value);
     }
 
-    private static long extendSign(int bits, long value) {
-        long v = value;
-        long mask = (~((1L << (bits)) - 1)) >> 1;
-        if ((v & mask) != 0) {
-            v |= mask;
-        }
-        return v;
-    }
 }

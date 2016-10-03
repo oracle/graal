@@ -27,10 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module;
+package com.oracle.truffle.llvm.parser.bc.impl.parser.listeners;
 
 import com.oracle.truffle.llvm.parser.base.model.generators.SymbolGenerator;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.ParserListener;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.records.Records;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.records.ValueSymbolTableRecord;
 

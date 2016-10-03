@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module;
+package com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.metadata;
 
 import com.oracle.truffle.llvm.parser.base.model.types.BigIntegerConstantType;
 import com.oracle.truffle.llvm.parser.base.model.types.IntegerConstantType;
@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.MetadataConstantPointerTy
 import com.oracle.truffle.llvm.parser.base.model.types.MetadataConstantType;
 import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.Types;
 
 import java.util.Iterator;
 import java.util.List;

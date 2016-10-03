@@ -27,27 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate;
 
-import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
 
-public final class StructureConstant extends AggregateConstant {
+public final class VectorConstant extends AggregateConstant {
 
-    StructureConstant(StructureType type, int valueCount) {
-        super(type, valueCount);
+    VectorConstant(VectorType type, int elemCount) {
+        super(type, elemCount);
     }
 
-    public Type getElementType(int index) {
-        return getElement(index).getType();
+    public Type getElementType() {
+        return ((VectorType) getType()).getElementType();
     }
 
-    public boolean isPacked() {
-        return ((StructureType) getType()).isPacked();
+    public int getLength() {
+        return getElementCount();
     }
 
     @Override
     public String toString() {
-        return String.format("{%s}", super.toString());
+        return String.format("<%s>", super.toString());
     }
 }

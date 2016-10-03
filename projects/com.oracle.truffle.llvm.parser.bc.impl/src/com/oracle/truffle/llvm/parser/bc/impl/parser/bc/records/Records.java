@@ -34,17 +34,17 @@ public final class Records {
     private Records() {
     }
 
-    public static long extendSign(int bits, long value) {
-        long v = value;
-        long mask = (((1L << (bits)) - 1) ^ -1L) >> 1;
-        if ((v & mask) != 0) {
-            v |= mask;
+    public static String describe(long id, long[] args) {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("<id=").append(id).append(" - ");
+        for (int i = 0; i < args.length; i++) {
+            builder.append("op").append(i).append('=').append(args[i]);
+            if (i != args.length - 1) {
+                builder.append(", ");
+            }
         }
-        return v;
-    }
-
-    public static int toAlignment(long value) {
-        return value > 0 ? 1 << (value - 1) : 0;
+        builder.append('>');
+        return builder.toString();
     }
 
     public static int[] toIntegers(long[] args) {
