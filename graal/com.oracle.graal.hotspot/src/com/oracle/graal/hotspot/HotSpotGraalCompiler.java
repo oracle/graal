@@ -85,7 +85,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         this.graalRuntime = graalRuntime;
         // It is sufficient to have one compilation counter object per Graal compiler object.
         this.compilationCounters = Options.CompilationCountLimit.getValue() > 0 ? new CompilationCounters() : null;
-        this.bootstrapWatchDog = graalRuntime.isBootstrapping() ? BootstrapWatchDog.maybeCreate() : null;
+        this.bootstrapWatchDog = graalRuntime.isBootstrapping() ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
     }
 
     @Override
@@ -97,13 +97,13 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     @SuppressWarnings("try")
     public CompilationRequestResult compileMethod(CompilationRequest request) {
         if (bootstrapWatchDog != null && graalRuntime.isBootstrapping()) {
-            if (bootstrapWatchDog.hitCriticalCompilationRate()) {
+            if (bootstrapWatchDog.hitCriticalCompilationRateOrTimeout()) {
                 // Drain the compilation queue to expedite completion of the bootstrap
-                return HotSpotCompilationRequestResult.failure("hit critical bootstrap compilation rate", true);
+                return HotSpotCompilationRequestResult.failure("hit critical bootstrap compilation rate or timeout", true);
             }
         }
         ResolvedJavaMethod method = request.getMethod();
-        try (CompilationWatchDog compilationWatchDog = CompilationWatchDog.startingCompilation(method)) {
+        try (CompilationWatchDog w1 = CompilationWatchDog.watch(method); BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request)) {
             if (compilationCounters != null) {
                 compilationCounters.countCompilation(method);
             }
@@ -119,10 +119,6 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             }
             assert r != null;
             return r;
-        } finally {
-            if (bootstrapWatchDog != null) {
-                bootstrapWatchDog.notifyCompilationFinished();
-            }
         }
     }
 
