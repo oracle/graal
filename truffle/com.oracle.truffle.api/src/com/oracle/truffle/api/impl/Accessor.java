@@ -182,12 +182,26 @@ public abstract class Accessor {
         }.getRootNode();
 
         conditionallyInitDebugger();
+        conditionallyInitEngine();
     }
 
     @SuppressWarnings("all")
     private static void conditionallyInitDebugger() throws IllegalStateException {
         try {
             Class.forName("com.oracle.truffle.api.debug.Debugger", true, Accessor.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            boolean assertOn = false;
+            assert assertOn = true;
+            if (!assertOn) {
+                throw new IllegalStateException(ex);
+            }
+        }
+    }
+
+    @SuppressWarnings("all")
+    private static void conditionallyInitEngine() throws IllegalStateException {
+        try {
+            Class.forName("com.oracle.truffle.api.vm.PolyglotEngine", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             boolean assertOn = false;
             assert assertOn = true;
