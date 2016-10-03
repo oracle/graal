@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.types;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -85,7 +84,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     }
 
     public static LLVMFunctionDescriptor create(String name, LLVMRuntimeType llvmReturnType, LLVMRuntimeType[] llvmParamTypes, boolean varArgs, int functionId) {
-        CompilerAsserts.neverPartOfCompilation();
         LLVMFunctionDescriptor func = new LLVMFunctionDescriptor(name, llvmReturnType, llvmParamTypes, varArgs, functionId);
         return func;
     }
