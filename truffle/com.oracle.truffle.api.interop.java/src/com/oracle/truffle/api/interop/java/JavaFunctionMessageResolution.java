@@ -59,7 +59,7 @@ class JavaFunctionMessageResolution {
             DoExecuteNode(int argsLength) {
                 this.toJava = new ToJavaNode[argsLength];
                 for (int i = 0; i < argsLength; i++) {
-                    this.toJava[i] = new ToJavaNode();
+                    this.toJava[i] = ToJavaNodeGen.create();
                 }
             }
 
@@ -72,7 +72,7 @@ class JavaFunctionMessageResolution {
                 Object[] convertedArguments = new Object[toJava.length];
                 Class<?>[] types = getTypes(method, toJava.length);
                 for (int i = 0; i < toJava.length; i++) {
-                    convertedArguments[i] = toJava[i].convert(frame, args[i], types[i]);
+                    convertedArguments[i] = toJava[i].execute(frame, args[i], types[i]);
                 }
                 return doInvoke(method, obj, convertedArguments);
             }

@@ -26,7 +26,6 @@
 # ----------------------------------------------------------------------------------------------------
 #
 
-import sys
 import mx
 import os
 import shutil
@@ -38,6 +37,7 @@ def testgraal(args):
     cloneFrom = mx.get_env("GRAAL_URL")
     if not cloneFrom:
         cloneFrom = "http://github.com/graalvm/graal-core"
+    graalSuiteSubDir = mx.get_env("GRAAL_SUITE_SUBDIR")
 
     suite = mx.suite('truffle')
     suiteDir = suite.dir
@@ -63,5 +63,8 @@ def testgraal(args):
     else:
         git.clone(cloneFrom, sanityDir)
 
-    commands = [sys.executable, join(mx._mx_home, 'mx.py'), '-p', sanityDir, '--java-home=' + mx.get_jdk().home]
-    return mx.run(commands + ['build'], cwd=sanityDir) + mx.run(commands + ['unittest', 'truffle'], cwd=sanityDir)
+    sanitySuiteDir = sanityDir if graalSuiteSubDir is None else join(sanityDir, graalSuiteSubDir)
+    result = mx.run_mx(['--java-home=' + mx.get_jdk().home, 'build'], sanitySuiteDir)
+    if result != 0:
+        return result
+    return mx.run_mx(['--java-home=' + mx.get_jdk().home, 'unittest', 'truffle'], sanitySuiteDir)

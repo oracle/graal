@@ -346,6 +346,7 @@ public abstract class Shape {
      * Shared shapes will not reuse storage locations for other fields. In combination with careful
      * synchronization on writes, this can prevent reading out-of-thin-air values.
      *
+     * @return a cached and shared variant of this shape
      * @since 0.18
      */
     public Shape makeSharedShape() {
