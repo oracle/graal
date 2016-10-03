@@ -134,6 +134,7 @@ public class LLVMRuntimeIntrinsicFactory {
         if (LLVMBaseOptionFacade.intrinsifyCLibraryFunctions()) {
             intrinsifyMathFunctions();
         }
+        intrinsifyTruffleOnlyIntrinsics();
         intrinsifyInteropIntrinsics();
         return intrinsics;
     }
@@ -232,7 +233,13 @@ public class LLVMRuntimeIntrinsicFactory {
         intrinsics.put("@abort", LLVMAbortFactory.getInstance());
         intrinsics.put("@exit", LLVMExitFactory.getInstance());
         intrinsics.put("@signal", LLVMSignalFactory.getInstance());
+    }
 
+    /**
+     * Intrinsifies functions that provide an implementation for <code>TruffleObject</code>s but use
+     * the Graal NFI if the arguments are not <code>TruffleObject</code>s.
+     */
+    protected void intrinsifyTruffleOnlyIntrinsics() {
         intrinsics.put("@strlen", LLVMStrlenFactory.getInstance());
         intrinsics.put("@strcmp", LLVMStrCmpFactory.getInstance());
     }
