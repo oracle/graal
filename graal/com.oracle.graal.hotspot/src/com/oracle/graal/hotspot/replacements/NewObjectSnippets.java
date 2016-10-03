@@ -52,6 +52,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.useT
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeTlabTop;
+import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Lazy.PROFILE_CONTEXT;
 import static com.oracle.graal.nodes.PiArrayNode.piArrayCast;
 import static com.oracle.graal.nodes.PiNode.piCast;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
@@ -79,12 +80,12 @@ import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.nodes.DimensionsNode;
-import com.oracle.graal.nodes.PrefetchAllocateNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.nodes.PrefetchAllocateNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
@@ -129,25 +130,27 @@ public class NewObjectSnippets implements Snippets {
 
     public static final LocationIdentity INIT_LOCATION = NamedLocationIdentity.mutable("Initialization");
 
-    enum ProfileMode {
-        AllocatingMethods,
+    enum ProfileContext {
+        AllocatingMethod,
         InstanceOrArray,
-        AllocatedTypes,
-        AllocatedTypesInMethods,
+        AllocatedType,
+        AllocatedTypesInMethod,
         Total
     }
 
-    public static final ProfileMode PROFILE_MODE = ProfileMode.AllocatedTypes;
+    static class Lazy {
+        static final ProfileContext PROFILE_CONTEXT = ProfileContext.valueOf(HotspotSnippetsOptions.ProfileAllocationsContext.getValue());
+    }
 
     @Fold
     static String createName(String path, String typeContext) {
-        switch (PROFILE_MODE) {
-            case AllocatingMethods:
+        switch (PROFILE_CONTEXT) {
+            case AllocatingMethod:
                 return "";
             case InstanceOrArray:
                 return path;
-            case AllocatedTypes:
-            case AllocatedTypesInMethods:
+            case AllocatedType:
+            case AllocatedTypesInMethod:
                 return typeContext;
             case Total:
                 return "bytes";
@@ -165,7 +168,7 @@ public class NewObjectSnippets implements Snippets {
         if (doProfile()) {
             String name = createName(path, typeContext);
 
-            boolean context = PROFILE_MODE == ProfileMode.AllocatingMethods || PROFILE_MODE == ProfileMode.AllocatedTypesInMethods;
+            boolean context = PROFILE_CONTEXT == ProfileContext.AllocatingMethod || PROFILE_CONTEXT == ProfileContext.AllocatedTypesInMethod;
             DynamicCounterNode.counter(name, "number of bytes allocated", size, context);
             DynamicCounterNode.counter(name, "number of allocations", 1, context);
         }
