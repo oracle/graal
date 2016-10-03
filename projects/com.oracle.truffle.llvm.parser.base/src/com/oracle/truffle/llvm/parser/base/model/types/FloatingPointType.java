@@ -29,27 +29,37 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
+
 public enum FloatingPointType implements Type {
 
-    HALF(16, 2),
-    FLOAT(32, 4),
-    DOUBLE(64, 8),
-    X86_FP80(80, 16),
-    FP128(128, 16),
-    PPC_FP128(128, 16);
-
-    private final int width;
+    HALF(16, 2, LLVMBaseType.HALF),
+    FLOAT(32, 4, LLVMBaseType.FLOAT),
+    DOUBLE(64, 8, LLVMBaseType.DOUBLE),
+    X86_FP80(80, 16, LLVMBaseType.X86_FP80),
+    FP128(128, 16, LLVMBaseType.F128),
+    PPC_FP128(128, 16, LLVMBaseType.PPC_FP128);
 
     private final int alignment;
 
-    FloatingPointType(int width, int alignment) {
-        this.width = width;
+    private final int width;
+
+    private final LLVMBaseType llvmBaseType;
+
+    FloatingPointType(int width, int alignment, LLVMBaseType llvmBaseType) {
         this.alignment = alignment;
+        this.width = width;
+        this.llvmBaseType = llvmBaseType;
     }
 
     @Override
     public int getAlignment() {
         return alignment;
+    }
+
+    @Override
+    public LLVMBaseType getLLVMBaseType() {
+        return llvmBaseType;
     }
 
     @Override

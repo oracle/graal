@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.parser.base.util;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
@@ -97,86 +95,6 @@ public class LLVMBitcodeTypeHelper {
                 return LLVMArithmeticInstructionType.REMAINDER;
             default:
                 return null;
-        }
-    }
-
-    private static LLVMType toBaseType(final Type type) {
-        if (type == MetaType.VOID) {
-            return new LLVMType(LLVMBaseType.VOID);
-
-        } else if (type instanceof IntegerType) {
-            switch (((IntegerType) type).getBitCount()) {
-                case 1:
-                    return new LLVMType(LLVMBaseType.I1);
-                case Byte.SIZE:
-                    return new LLVMType(LLVMBaseType.I8);
-                case Short.SIZE:
-                    return new LLVMType(LLVMBaseType.I16);
-                case Integer.SIZE:
-                    return new LLVMType(LLVMBaseType.I32);
-                case Long.SIZE:
-                    return new LLVMType(LLVMBaseType.I64);
-                default:
-                    return new LLVMType(LLVMBaseType.I_VAR_BITWIDTH);
-            }
-
-        } else if (type instanceof FloatingPointType) {
-            switch (((FloatingPointType) type)) {
-                case HALF:
-                    return new LLVMType(LLVMBaseType.HALF);
-                case FLOAT:
-                    return new LLVMType(LLVMBaseType.FLOAT);
-                case DOUBLE:
-                    return new LLVMType(LLVMBaseType.DOUBLE);
-                case X86_FP80:
-                    return new LLVMType(LLVMBaseType.X86_FP80);
-                default:
-                    throw new RuntimeException("Unsupported type " + type);
-            }
-
-        } else if (type instanceof PointerType) {
-            Type pointee = ((PointerType) type).getPointeeType();
-            if (pointee instanceof FunctionType) {
-                return new LLVMType(LLVMBaseType.FUNCTION_ADDRESS);
-            }
-            return new LLVMType(LLVMBaseType.ADDRESS, toBaseType(pointee));
-
-        } else if (type instanceof StructureType) {
-            return new LLVMType(LLVMBaseType.STRUCT);
-
-        } else if (type instanceof ArrayType) {
-            return new LLVMType(LLVMBaseType.ARRAY);
-
-        } else if (type instanceof FunctionType) {
-            return new LLVMType(LLVMBaseType.FUNCTION_ADDRESS);
-
-        } else if (type instanceof VectorType) {
-            Type base = ((VectorType) type).getElementType();
-            switch (toBaseType(base).getType()) {
-                case I1:
-                    return new LLVMType(LLVMBaseType.I1_VECTOR);
-                case I8:
-                    return new LLVMType(LLVMBaseType.I8_VECTOR);
-                case I16:
-                    return new LLVMType(LLVMBaseType.I16_VECTOR);
-                case I32:
-                    return new LLVMType(LLVMBaseType.I32_VECTOR);
-                case I64:
-                    return new LLVMType(LLVMBaseType.I64_VECTOR);
-                case FLOAT:
-                    return new LLVMType(LLVMBaseType.FLOAT_VECTOR);
-                case DOUBLE:
-                    return new LLVMType(LLVMBaseType.DOUBLE_VECTOR);
-                default:
-                    throw new RuntimeException("Unsupported type " + type);
-            }
-
-        } else if (type == MetaType.OPAQUE) {
-            // named generic Type
-            return new LLVMType(LLVMBaseType.ADDRESS, new LLVMType(LLVMBaseType.VOID));
-
-        } else {
-            throw new RuntimeException("Unsupported type " + type);
         }
     }
 
@@ -484,7 +402,7 @@ public class LLVMBitcodeTypeHelper {
             return getAlignment(((VectorType) type).getElementType());
 
         } else if (targetDataLayout != null && !(type instanceof MetaType)) {
-            return targetDataLayout.getBitAlignment(getLLVMBaseType(type)) / Byte.SIZE;
+            return targetDataLayout.getBitAlignment(type.getLLVMBaseType()) / Byte.SIZE;
 
         } else {
             return type.getAlignment();
@@ -497,10 +415,6 @@ public class LLVMBitcodeTypeHelper {
             largestAlignment = Math.max(largestAlignment, getAlignment(structureType.getElementType(i)));
         }
         return largestAlignment;
-    }
-
-    public static LLVMBaseType getLLVMBaseType(Type type) {
-        return toBaseType(type).getType();
     }
 
     public int goIntoTypeGetLength(Type type, int index) {

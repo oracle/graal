@@ -29,17 +29,25 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
+
 public final class IntegerType implements Type {
 
-    public static final IntegerType BOOLEAN = new IntegerType(1);
+    private static final int BOOLEAN_BITS = 1;
+    private static final int BYTE_BITS = 8;
+    private static final int SHORT_BITS = 16;
+    private static final int INTEGER_BITS = 32;
+    private static final int LONG_BITS = 64;
 
-    public static final IntegerType BYTE = new IntegerType(8);
+    public static final IntegerType BOOLEAN = new IntegerType(BOOLEAN_BITS);
 
-    public static final IntegerType SHORT = new IntegerType(16);
+    public static final IntegerType BYTE = new IntegerType(BYTE_BITS);
 
-    public static final IntegerType INTEGER = new IntegerType(32);
+    public static final IntegerType SHORT = new IntegerType(SHORT_BITS);
 
-    public static final IntegerType LONG = new IntegerType(64);
+    public static final IntegerType INTEGER = new IntegerType(INTEGER_BITS);
+
+    public static final IntegerType LONG = new IntegerType(LONG_BITS);
 
     private final int bits;
 
@@ -61,11 +69,26 @@ public final class IntegerType implements Type {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof IntegerType) {
-            return bits == ((IntegerType) obj).bits;
+    public LLVMBaseType getLLVMBaseType() {
+        switch (bits) {
+            case BOOLEAN_BITS:
+                return LLVMBaseType.I1;
+            case BYTE_BITS:
+                return LLVMBaseType.I8;
+            case SHORT_BITS:
+                return LLVMBaseType.I16;
+            case INTEGER_BITS:
+                return LLVMBaseType.I32;
+            case LONG_BITS:
+                return LLVMBaseType.I64;
+            default:
+                return LLVMBaseType.I_VAR_BITWIDTH;
         }
-        return false;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof IntegerType && bits == ((IntegerType) obj).bits;
     }
 
     public int getBitCount() {

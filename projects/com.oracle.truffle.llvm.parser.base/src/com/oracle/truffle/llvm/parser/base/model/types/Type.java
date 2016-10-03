@@ -29,10 +29,16 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
+
 public interface Type {
 
     default int getAlignment() {
         return Long.BYTES;
+    }
+
+    default LLVMBaseType getLLVMBaseType() {
+        throw new AssertionError("Cannot resolve to LLVMBaseType: " + this);
     }
 
     default Type getType() {

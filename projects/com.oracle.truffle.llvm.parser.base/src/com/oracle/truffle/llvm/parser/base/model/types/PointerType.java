@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
+
 public final class PointerType implements Type {
 
     /* This must be mutable to handle circular references */
@@ -44,6 +46,18 @@ public final class PointerType implements Type {
             return type.equals(((PointerType) obj).type);
         }
         return false;
+    }
+
+    @Override
+    public LLVMBaseType getLLVMBaseType() {
+        // if the pointeetype is also a pointer it will not resolve to LLVMBaseType.ADDRESS but to
+        // its own pointeetype's LLVMBaseType, so we cannot just use type.getLLVMBaseType() but
+        // instead have to use instanceof
+        if (type instanceof FunctionType) {
+            return LLVMBaseType.FUNCTION_ADDRESS;
+        } else {
+            return LLVMBaseType.ADDRESS;
+        }
     }
 
     @Override

@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
+
 public enum MetaType implements Type {
 
     UNKNOWN,
@@ -42,6 +44,18 @@ public enum MetaType implements Type {
     @Override
     public String toString() {
         return name().toLowerCase();
+    }
+
+    @Override
+    public LLVMBaseType getLLVMBaseType() {
+        switch (this) {
+            case VOID:
+                return LLVMBaseType.VOID;
+            case OPAQUE:
+                return LLVMBaseType.ADDRESS;
+            default:
+                throw new AssertionError("Cannot resolve to LLVMBaseType: " + this);
+        }
     }
 
     @Override

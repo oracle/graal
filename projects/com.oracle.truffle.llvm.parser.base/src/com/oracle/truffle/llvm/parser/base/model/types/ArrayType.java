@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.base.model.types;
 
 import java.util.Objects;
 
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
 
@@ -74,6 +75,11 @@ public class ArrayType implements AggregateType {
     @Override
     public int getElementCount() {
         return size;
+    }
+
+    @Override
+    public LLVMBaseType getLLVMBaseType() {
+        return LLVMBaseType.ARRAY;
     }
 
     @Override

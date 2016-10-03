@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
+
 public class FunctionType implements Type {
 
     private final Type type;
@@ -45,6 +47,11 @@ public class FunctionType implements Type {
 
     public Type[] getArgumentTypes() {
         return args;
+    }
+
+    @Override
+    public LLVMBaseType getLLVMBaseType() {
+        return LLVMBaseType.FUNCTION_ADDRESS;
     }
 
     public Type getReturnType() {

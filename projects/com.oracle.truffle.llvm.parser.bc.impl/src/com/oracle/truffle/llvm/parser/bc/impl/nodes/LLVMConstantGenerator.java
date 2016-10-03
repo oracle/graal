@@ -128,9 +128,9 @@ public final class LLVMConstantGenerator {
                 values.add(new LLVMSimpleLiteralNode.LLVMI8LiteralNode((byte) 0));
             }
 
-            final int size = typeHelper.getByteSize(new IntegerType(Byte.SIZE)) * values.size();
+            final int size = typeHelper.getByteSize(IntegerType.BYTE) * values.size();
             final LLVMAllocInstruction.LLVMAllocaInstruction target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(size, 1, context, stackSlot);
-            return LLVMStoreNodeFactory.LLVMI8ArrayLiteralNodeGen.create(values.toArray(new LLVMI8Node[values.size()]), typeHelper.getByteSize(new IntegerType(Byte.SIZE)), target);
+            return LLVMStoreNodeFactory.LLVMI8ArrayLiteralNodeGen.create(values.toArray(new LLVMI8Node[values.size()]), typeHelper.getByteSize(IntegerType.BYTE), target);
 
         } else if (value instanceof ArrayConstant) {
             return toArrayConstant((ArrayConstant) value, align, variables, context, stackSlot, labels, typeHelper);
@@ -148,15 +148,15 @@ public final class LLVMConstantGenerator {
             final BinaryOperationConstant operation = (BinaryOperationConstant) value;
             final LLVMExpressionNode lhs = toConstantNode(operation.getLHS(), align, variables, context, stackSlot, labels, typeHelper);
             final LLVMExpressionNode rhs = toConstantNode(operation.getRHS(), align, variables, context, stackSlot, labels, typeHelper);
-            final LLVMBaseType type = LLVMBitcodeTypeHelper.getLLVMBaseType(operation.getType());
+            final LLVMBaseType type = operation.getType().getLLVMBaseType();
             return LLVMNodeGenerator.generateBinaryOperatorNode(operation.getOperator(), type, lhs, rhs);
 
         } else if (value instanceof CastConstant) {
             final CastConstant cast = (CastConstant) value;
             final LLVMConversionType type = LLVMBitcodeTypeHelper.toConversionType(cast.getOperator());
             final LLVMExpressionNode fromNode = toConstantNode(cast.getValue(), align, variables, context, stackSlot, labels, typeHelper);
-            final LLVMBaseType from = LLVMBitcodeTypeHelper.getLLVMBaseType(cast.getValue().getType());
-            final LLVMBaseType to = LLVMBitcodeTypeHelper.getLLVMBaseType(cast.getType());
+            final LLVMBaseType from = cast.getValue().getType().getLLVMBaseType();
+            final LLVMBaseType to = cast.getType().getLLVMBaseType();
             return LLVMCastsFactory.cast(fromNode, to, from, type);
 
         } else if (value instanceof CompareConstant) {
@@ -212,13 +212,13 @@ public final class LLVMConstantGenerator {
                         context,
                         stackSlot);
 
-        return LLVMLiteralFactory.createVectorLiteralNode(values, target, LLVMBitcodeTypeHelper.getLLVMBaseType(constant.getType()));
+        return LLVMLiteralFactory.createVectorLiteralNode(values, target, constant.getType().getLLVMBaseType());
     }
 
     private static LLVMExpressionNode toArrayConstant(ArrayConstant array, int align, Function<GlobalValueSymbol, LLVMExpressionNode> variables, LLVMContext context, FrameSlot stackSlot,
                     LLVMLabelList labels, LLVMBitcodeTypeHelper typeHelper) {
         final Type elementType = array.getType().getElementType();
-        final LLVMBaseType llvmElementType = LLVMBitcodeTypeHelper.getLLVMBaseType(elementType);
+        final LLVMBaseType llvmElementType = elementType.getLLVMBaseType();
         final int stride = typeHelper.getByteSize(elementType);
         final LLVMAllocInstruction.LLVMAllocaInstruction allocation = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(array.getType()),
                         typeHelper.getAlignment(array.getType()), context, stackSlot);
@@ -407,7 +407,7 @@ public final class LLVMConstantGenerator {
             offsets[i] = currentOffset;
             final int byteSize = typeHelper.getByteSize(elementType);
             final LLVMExpressionNode resolvedConstant = toConstantNode(constant.getElement(i), align, variables, context, stackSlot, labels, typeHelper);
-            nodes[i] = createStructWriteNode(resolvedConstant, LLVMBitcodeTypeHelper.getLLVMBaseType(elementType), byteSize);
+            nodes[i] = createStructWriteNode(resolvedConstant, elementType.getLLVMBaseType(), byteSize);
             currentOffset += byteSize;
         }
 
@@ -485,7 +485,7 @@ public final class LLVMConstantGenerator {
                             stack);
             final LLVMExpressionNode[] zeroes = new LLVMExpressionNode[vectorType.getElementCount()];
             Arrays.fill(zeroes, toConstantZeroNode(vectorType.getElementType(), context, stack, typeHelper));
-            return LLVMLiteralFactory.createVectorLiteralNode(Arrays.asList(zeroes), target, LLVMBitcodeTypeHelper.getLLVMBaseType(vectorType));
+            return LLVMLiteralFactory.createVectorLiteralNode(Arrays.asList(zeroes), target, vectorType.getLLVMBaseType());
 
         } else if (type instanceof FunctionType) {
             final LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<zero function>", LLVMFunctionDescriptor.LLVMRuntimeType.ILLEGAL,

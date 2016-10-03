@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.base.model.types;
 
 import java.util.Objects;
 
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
 
@@ -68,6 +69,29 @@ public class VectorType implements AggregateType {
     @Override
     public Type getElementType(int index) {
         return type;
+    }
+
+    @Override
+    public LLVMBaseType getLLVMBaseType() {
+        final LLVMBaseType elementType = type.getLLVMBaseType();
+        switch (elementType) {
+            case I1:
+                return LLVMBaseType.I1_VECTOR;
+            case I8:
+                return LLVMBaseType.I8_VECTOR;
+            case I16:
+                return LLVMBaseType.I16_VECTOR;
+            case I32:
+                return LLVMBaseType.I32_VECTOR;
+            case I64:
+                return LLVMBaseType.I64_VECTOR;
+            case FLOAT:
+                return LLVMBaseType.FLOAT_VECTOR;
+            case DOUBLE:
+                return LLVMBaseType.DOUBLE_VECTOR;
+            default:
+                throw new AssertionError("Unsupported Vector Element Type: " + type);
+        }
     }
 
     @Override

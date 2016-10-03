@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
@@ -78,6 +79,11 @@ public final class StructureType implements AggregateType, ValueSymbol {
     @Override
     public int getElementCount() {
         return types.length;
+    }
+
+    @Override
+    public LLVMBaseType getLLVMBaseType() {
+        return LLVMBaseType.STRUCT;
     }
 
     @Override
