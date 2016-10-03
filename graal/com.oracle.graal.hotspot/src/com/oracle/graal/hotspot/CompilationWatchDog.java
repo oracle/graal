@@ -143,7 +143,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
     /**
      * Set to true to debug the watch dog.
      */
-    static final boolean DEBUG = false;
+    private static final boolean DEBUG = Boolean.getBoolean("debug.graal.CompilationWatchDog");
 
     private void trace(String format, Object... args) {
         if (DEBUG) {
