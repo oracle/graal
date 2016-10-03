@@ -55,6 +55,13 @@ import com.oracle.truffle.llvm.asm.amd64.Parser;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMAddressNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMByteNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
+import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
@@ -457,6 +464,37 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public Optional<Boolean> hasStackPointerArgument() {
         return Optional.of(true);
+    }
+
+    @Override
+    public LLVMStackFrameNuller createFrameNuller(String identifier, ResolvedType type, FrameSlot slot) {
+        switch (slot.getKind()) {
+            case Boolean:
+                return new LLVMBooleanNuller(slot);
+            case Byte:
+                return new LLVMByteNuller(slot);
+            case Int:
+                return new LLVMIntNuller(slot);
+            case Long:
+                return new LLVMLongNuller(slot);
+            case Float:
+                return new LLVMFloatNuller(slot);
+            case Double:
+                return new LLVMDoubleNuller(slot);
+            case Object:
+                /**
+                 * It would be cleaner to not distinguish between the frame slot kinds, and use the
+                 * variable type instead. We cannot simply set the object to null, because phis that
+                 * have null and other Objects inside escape and are allocated. We set a null
+                 * address here, since other Sulong data types that use Object are implemented
+                 * inefficiently anyway. In the long term, they should have their own stack nuller.
+                 */
+                return new LLVMAddressNuller(slot);
+            case Illegal:
+                throw new AssertionError("illegal");
+            default:
+                throw new AssertionError();
+        }
     }
 
 }

@@ -127,13 +127,6 @@ import com.oracle.truffle.llvm.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMAddressNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMByteNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -177,6 +170,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private Map<FunctionHeader, Map<String, Integer>> functionToLabelMapping;
     private final Map<LLVMFunctionDescriptor, RootCallTarget> functionCallTargets = new HashMap<>();
     private Map<String, Object> globalVariableScope = new HashMap<>();
+    private final Map<String, ResolvedType> variableTypes = new HashMap<>();
     private Map<String, Integer> labelList;
     private FrameSlot retSlot;
     private FrameSlot stackPointerSlot;
@@ -295,7 +289,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     public Map<LLVMFunctionDescriptor, RootCallTarget> visit(Model model, NodeFactoryFacade facade) {
         this.factoryFacade = facade;
         this.nativeLookup = new NativeLookup(facade);
-        this.nativeLookup = new NativeLookup(facade);
         List<EObject> objects = model.eContents();
         List<LLVMFunctionDescriptor> functions = new ArrayList<>();
         globalNodes = new ArrayList<>();
@@ -388,6 +381,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             if (object instanceof GlobalVariable) {
                 GlobalVariable globalVar = (GlobalVariable) object;
                 globalVariableScope.put(globalVar.getName(), findOrAllocateGlobal(globalVar));
+                variableTypes.put(globalVar.getName(), resolve(globalVar.getType()));
             }
         }
     }
@@ -565,7 +559,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         return factoryFacade.createFunctionBlockNode(retSlot, allFunctionNodes, slotNullerBeginNodes, slotNullerAfterNodes);
     }
 
-    private static LLVMStackFrameNuller[][] getSlotNuller(FunctionDef def, int size, int[] basicBlockIndices, Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock) {
+    private LLVMStackFrameNuller[][] getSlotNuller(FunctionDef def, int size, int[] basicBlockIndices, Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock) {
         LLVMStackFrameNuller[][] indexToSlotNuller = new LLVMStackFrameNuller[size][];
         int i = 0;
         for (BasicBlock basicBlock : def.getBasicBlocks()) {
@@ -578,7 +572,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         return indexToSlotNuller;
     }
 
-    private static LLVMStackFrameNuller[] getSlotNullerNode(FrameSlot[] deadSlots) {
+    private LLVMStackFrameNuller[] getSlotNullerNode(FrameSlot[] deadSlots) {
         if (deadSlots == null) {
             return new LLVMStackFrameNuller[0];
         }
@@ -591,34 +585,10 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         return nullers;
     }
 
-    private static LLVMStackFrameNuller getNullerNode(FrameSlot slot) {
-        switch (slot.getKind()) {
-            case Boolean:
-                return new LLVMBooleanNuller(slot);
-            case Byte:
-                return new LLVMByteNuller(slot);
-            case Int:
-                return new LLVMIntNuller(slot);
-            case Long:
-                return new LLVMLongNuller(slot);
-            case Float:
-                return new LLVMFloatNuller(slot);
-            case Double:
-                return new LLVMDoubleNuller(slot);
-            case Object:
-                /**
-                 * It would be cleaner do not distinct between the frame slot kinds but the variable
-                 * type. We cannot simply set the object to null, since phis that have null and
-                 * other Object's inside escape and are allocated. We set a null address here, since
-                 * other Sulong data types that use Object are implement inefficiently anyway. In
-                 * the long term, they should have their own stack nuller.
-                 */
-                return new LLVMAddressNuller(slot);
-            case Illegal:
-                throw new AssertionError("illegal");
-            default:
-                throw new AssertionError();
-        }
+    private LLVMStackFrameNuller getNullerNode(FrameSlot slot) {
+        String identifier = (String) slot.getIdentifier();
+        ResolvedType type = variableTypes.get(identifier);
+        return factoryFacade.createFrameNuller(identifier, type, slot);
     }
 
     private boolean needsStackPointerArgument() {
@@ -1390,6 +1360,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private FrameSlot findOrAddFrameSlot(String name, EObject obj) {
         ResolvedType type = resolve(obj);
         FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(name);
+        variableTypes.put(name, type);
         if (frameSlot == null) {
             throw new AssertionError("frame slot is null!");
         }
