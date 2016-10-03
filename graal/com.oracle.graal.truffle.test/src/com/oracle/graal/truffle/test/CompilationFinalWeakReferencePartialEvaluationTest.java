@@ -36,6 +36,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class CompilationFinalWeakReferencePartialEvaluationTest extends PartialEvaluationTest {
     public static Object constant42() {
@@ -164,6 +165,8 @@ public class CompilationFinalWeakReferencePartialEvaluationTest extends PartialE
         assertTrue(callTarget.isValid());
         assert data != null;
 
+        clearDebugScopeTL();
+
         WeakReference<IntSupplier> witness = new WeakReference<>(data);
         data = null;
         boolean cleared = false;
@@ -180,5 +183,13 @@ public class CompilationFinalWeakReferencePartialEvaluationTest extends PartialE
 
     private static IntSupplier generateTestData() {
         return IntStream.range(0, 42).mapToObj(i -> new TestData()).reduce((l, r) -> new TestData(l, r)).get();
+    }
+
+    /**
+     * Perform a dummy compilation to ensure compilation result data of the last compilation kept
+     * alive through DebugScope thread locals are freed.
+     */
+    private void clearDebugScopeTL() {
+        compileHelper("dummy", RootNode.createConstantNode(null), new Object[]{});
     }
 }
