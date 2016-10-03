@@ -10,7 +10,6 @@ int main() {
   volatile __uint128_t val = -1;
   volatile __uint128_t val2 = val << 30;
   volatile struct asdf *ptr = (struct asdf *)&val2;
-  printf("%ld %ld\n", ptr->a, ptr->b);
   if (ptr->a != -1073741824 || ptr->b != -1) {
     abort();
   }

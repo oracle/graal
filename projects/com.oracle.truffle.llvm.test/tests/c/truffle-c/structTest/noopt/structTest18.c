@@ -18,6 +18,5 @@ int main() {
   test.uni.b[2] = 1;
   test.uni.b[3] = 1;
   int sum = test.a + test.c + test.uni.a + a;
-  printf("vals: %d %d %d %d", test.a, test.c, test.uni.a, a);
   return sum % 256;
 }
