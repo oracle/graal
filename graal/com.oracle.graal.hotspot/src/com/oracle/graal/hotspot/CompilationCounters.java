@@ -22,10 +22,17 @@
  */
 package com.oracle.graal.hotspot;
 
-import java.io.PrintStream;
-import java.util.IdentityHashMap;
-import java.util.Map;
+import static com.oracle.graal.hotspot.HotSpotGraalCompiler.fmt;
+import static com.oracle.graal.hotspot.HotSpotGraalCompiler.str;
 
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import com.oracle.graal.debug.TTY;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
@@ -44,36 +51,51 @@ class CompilationCounters {
         // @formatter:on
     }
 
-    static boolean compilationCountersEnabled() {
-        return Options.CompilationCountLimit.getValue() > 0;
+    CompilationCounters() {
+        TTY.println("Warning: Compilation counters enabled, excessive recompilation of a method will cause a failure!");
     }
 
-    private final IdentityHashMap<ResolvedJavaMethod, Integer> counters = new IdentityHashMap<>();
+    private final Map<ResolvedJavaMethod, Integer> counters = new HashMap<>();
 
     /**
      * Counts the number of compilations for the {@link ResolvedJavaMethod} of the
-     * {@link CompilationRequest}. If the number of compilations exceeds the limit determined by
-     * {@link Options#CompilationCountLimit} this method will return {@code false}.
+     * {@link CompilationRequest}. If the number of compilations exceeds
+     * {@link Options#CompilationCountLimit} this method prints an error message and exits the VM.
      *
-     * @param request the compilation request that is about to be compiled
-     * @return {@code true} if the method was compiled less often than the compilation limit,
-     *         {@code false} otherwise
+     * @param method the method about to be compiled
      */
-    synchronized boolean countCompilation(CompilationRequest request) {
-        final ResolvedJavaMethod method = request.getMethod();
+    synchronized void countCompilation(ResolvedJavaMethod method) {
         Integer val = counters.get(method);
         val = val != null ? val + 1 : 1;
         counters.put(method, val);
         if (val > Options.CompilationCountLimit.getValue()) {
-            return false;
+            TTY.printf("Error. Method %s was compiled too many times. Number of compilations: %d\n", fmt(method),
+                            CompilationCounters.Options.CompilationCountLimit.getValue());
+            TTY.println("==================================== High compilation counters ====================================");
+            SortedSet<Map.Entry<ResolvedJavaMethod, Integer>> sortedCounters = new TreeSet<>(new CounterComparator());
+            for (Map.Entry<ResolvedJavaMethod, Integer> e : counters.entrySet()) {
+                sortedCounters.add(e);
+            }
+            for (Map.Entry<ResolvedJavaMethod, Integer> entry : sortedCounters) {
+                if (entry.getValue() >= Options.CompilationCountLimit.getValue() / 2) {
+                    TTY.out.printf("%d\t%s%n", entry.getValue(), str(entry.getKey()));
+                }
+            }
+            TTY.flush();
+            System.exit(-1);
         }
-        return true;
     }
 
-    synchronized void dumpCounters(PrintStream s) {
-        for (Map.Entry<ResolvedJavaMethod, Integer> entry : counters.entrySet()) {
-            s.printf("Method %s compiled %d times.%n", entry.getKey(), entry.getValue());
+    static final class CounterComparator implements Comparator<Map.Entry<ResolvedJavaMethod, Integer>> {
+        @Override
+        public int compare(Entry<ResolvedJavaMethod, Integer> o1, Entry<ResolvedJavaMethod, Integer> o2) {
+            if (o1.getValue() < o2.getValue()) {
+                return -1;
+            }
+            if (o1.getValue() > o2.getValue()) {
+                return 1;
+            }
+            return str(o1.getKey()).compareTo(str(o2.getKey()));
         }
     }
-
 }

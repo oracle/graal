@@ -421,7 +421,7 @@ public class LogStream {
             int next = s.indexOf(LINE_SEPARATOR, index);
             while (index < s.length()) {
                 indent();
-                if (next > index) {
+                if (next > index || next == 0) {
                     lineBuffer.append(s.substring(index, next));
                     flushLine(true);
                     index = next + LINE_SEPARATOR.length();
