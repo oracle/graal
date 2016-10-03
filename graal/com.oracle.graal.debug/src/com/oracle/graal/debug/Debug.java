@@ -616,7 +616,7 @@ public class Debug {
     }
 
     public static void logv(String format, Object... args) {
-        logv(INFO_LOG_LEVEL, format, args);
+        logv(BASIC_LOG_LEVEL, format, args);
     }
 
     /**
