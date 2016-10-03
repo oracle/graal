@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java;
+package com.oracle.truffle.api.interop.java.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -32,6 +32,8 @@ import java.net.URLClassLoader;
 
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
+
+import com.oracle.truffle.api.interop.java.JavaInterop;
 
 public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner {
     public SeparateClassloaderTestRunner(Class<?> clazz) throws InitializationError {

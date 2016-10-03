@@ -22,23 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java;
+package com.oracle.truffle.api.interop.java.test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
 import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.MethodMessage;
 
 @RunWith(SeparateClassloaderTestRunner.class)
 public class JavaInteropSnippetsTest {
+
+    private static class Snippet {
+        interface IsNullChecker {
+            @MethodMessage(message = "IS_NULL")
+            boolean isNull();
+        }
+
+        public static boolean isNullValue(TruffleObject obj) {
+            IsNullChecker check = JavaInterop.asJavaFunction(IsNullChecker.class, obj);
+            return check.isNull();
+        }
+
+        public static boolean loaded = true;
+    }
+
     private static boolean loadedOK;
 
     @BeforeClass
     public static void isAvailable() {
         try {
-            loadedOK = JavaInteropSnippets.loaded;
+            loadedOK = Snippet.loaded;
         } catch (LinkageError ex) {
             // ignore
         }
@@ -50,9 +69,9 @@ public class JavaInteropSnippetsTest {
             return;
         }
 
-        assertTrue("Yes, it is null", JavaInteropSnippets.isNullValue(JavaObject.NULL));
+        assertTrue("Yes, it is null", Snippet.isNullValue(JavaInterop.asTruffleObject(null)));
 
         TruffleObject nonNullValue = JavaInterop.asTruffleObject(this);
-        assertFalse("No, it is not null", JavaInteropSnippets.isNullValue(nonNullValue));
+        assertFalse("No, it is not null", Snippet.isNullValue(nonNullValue));
     }
 }
