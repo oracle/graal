@@ -246,6 +246,17 @@ public class OptionsParser {
             }
         }
         out.println("[List of " + prefix + " options]");
+        int typeWidth = 0;
+        int nameWidth = 0;
+        int valueWidth = 0;
+        for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
+            OptionDescriptor desc = e.getValue();
+            Object value = desc.getOptionValue().getValue();
+            String name = e.getKey();
+            typeWidth = Math.max(typeWidth, desc.getType().getSimpleName().length());
+            nameWidth = Math.max(nameWidth, name.length());
+            valueWidth = Math.max(valueWidth, String.valueOf(value).length());
+        }
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             OptionDescriptor desc = e.getValue();
             Object value = desc.getOptionValue().getValue();
@@ -254,14 +265,21 @@ public class OptionsParser {
                 EnumOptionValue<?> eoption = (EnumOptionValue<?>) desc.getOptionValue();
                 help += "  Valid values are " + eoption.getOptionValues();
             }
-            List<String> helpLines = wrap(help, 70);
             String name = e.getKey();
             String assign = explicitlyAssigned.contains(name) ? ":=" : " =";
-            out.printf("%9s %-40s %s %-14s %s%n", desc.getType().getSimpleName(), name, assign, value, helpLines.get(0));
-            for (int i = 1; i < helpLines.size(); i++) {
-                out.printf("%67s %s%n", " ", helpLines.get(i));
+            String format = "%" + (typeWidth + 1) + "s %-" + (nameWidth + 1) + "s %s %-" + valueWidth + "s %s%n";
+            out.printf(format, desc.getType().getSimpleName(), name, assign, value, "");
+            if (help.length() != 0) {
+                /*
+                 * Write any help information aligned with name of the option and wrapped at column
+                 * 70
+                 */
+                List<String> helpLines = wrap(help, 70);
+                for (int i = 0; i < helpLines.size(); i++) {
+                    String helpFormat = "%" + (typeWidth + 1) + "s %s%n";
+                    out.printf(helpFormat, "", helpLines.get(i));
+                }
             }
-
         }
     }
 
