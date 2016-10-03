@@ -22,13 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.instrumentation.test.examples;
 
-import com.oracle.truffle.api.nodes.Node;
+import java.io.IOException;
 
-/**
- * Class is used for testing compile errors only. If you add this factory you will get error
- * messages without getting the 'class not found' error message.
- */
-abstract class TestErrorFactory implements InstrumentableFactory<Node> {
+import org.junit.Before;
+import org.junit.Test;
+
+import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
+
+public class CoverageExampleTest extends AbstractInstrumentationTest {
+
+    @Before
+    public void setupInstrument() {
+        engine.getInstruments().get(CoverageExample.ID).setEnabled(true);
+    }
+
+    @Test
+    public void testExpressionCoverage() throws IOException {
+        assertEvalOut("STATEMENT(EXPRESSION,EXPRESSION)", "10 21 ");
+        assertEvalOut("EXPRESSION(STATEMENT,BLOCK)", "0 ");
+        assertEvalOut("EXPRESSION", "0 ");
+    }
+
 }

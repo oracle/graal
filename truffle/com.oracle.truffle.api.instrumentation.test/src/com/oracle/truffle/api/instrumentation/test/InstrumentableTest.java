@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.instrumentation.test;
 
 import java.io.IOException;
 
@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;

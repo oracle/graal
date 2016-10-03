@@ -22,21 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.instrumentation.test.examples;
 
-import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.FILENAME_EXTENSION;
-import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.MIME_TYPE;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.vm.PolyglotEngine;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
-
-public final class InstrumentationTestLanguageFileDetector extends FileTypeDetector {
-    @Override
-    public String probeContentType(Path path) throws IOException {
-        if (path.getFileName().toString().endsWith(FILENAME_EXTENSION)) {
-            return MIME_TYPE;
-        }
-        return null;
+/**
+ * Publicly exposed API of a debugger. Provides operations that its clients can use to control the
+ * execution. Put this class into an API package of your instrument. The clients shall use
+ * {@link PolyglotEngine.Instrument#lookup(java.lang.Class)} with
+ * <code>DebuggerController.<b>class</b></code> parameter to obtain the interface.
+ */
+// BEGIN: DebuggerController
+public abstract class DebuggerController {
+    DebuggerController() {
     }
+
+    public abstract void installBreakpoint(int i, Callback callback);
+
+    public abstract void stepInto(Callback callback);
+
+    public abstract void stepOut(Callback callback);
+
+    public abstract void stepOver(Callback callback);
+
+    public interface Callback {
+
+        void halted(DebuggerController debugger, EventContext haltedAt);
+
+    }
+
 }
+// END: DebuggerController

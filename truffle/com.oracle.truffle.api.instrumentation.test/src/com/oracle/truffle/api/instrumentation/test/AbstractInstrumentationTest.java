@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.instrumentation.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

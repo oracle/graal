@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.instrumentation.test;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -42,9 +42,12 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.BlockNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.DefineNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.ExpressionNode;
+import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockNode;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineNode;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ExpressionNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;

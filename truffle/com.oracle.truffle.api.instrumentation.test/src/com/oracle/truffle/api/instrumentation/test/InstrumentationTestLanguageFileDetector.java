@@ -22,27 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation.examples;
+package com.oracle.truffle.api.instrumentation.test;
+
+import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FILENAME_EXTENSION;
+import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.MIME_TYPE;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.spi.FileTypeDetector;
 
-import org.junit.Before;
-import org.junit.Test;
-
-import com.oracle.truffle.api.instrumentation.AbstractInstrumentationTest;
-
-public class CoverageExampleTest extends AbstractInstrumentationTest {
-
-    @Before
-    public void setupInstrument() {
-        engine.getInstruments().get(CoverageExample.ID).setEnabled(true);
+public final class InstrumentationTestLanguageFileDetector extends FileTypeDetector {
+    @Override
+    public String probeContentType(Path path) throws IOException {
+        if (path.getFileName().toString().endsWith(FILENAME_EXTENSION)) {
+            return MIME_TYPE;
+        }
+        return null;
     }
-
-    @Test
-    public void testExpressionCoverage() throws IOException {
-        assertEvalOut("STATEMENT(EXPRESSION,EXPRESSION)", "10 21 ");
-        assertEvalOut("EXPRESSION(STATEMENT,BLOCK)", "0 ");
-        assertEvalOut("EXPRESSION", "0 ");
-    }
-
 }

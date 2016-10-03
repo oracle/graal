@@ -36,7 +36,7 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.Source;
 
 public class SuspendedEventTest extends AbstractDebugTest {

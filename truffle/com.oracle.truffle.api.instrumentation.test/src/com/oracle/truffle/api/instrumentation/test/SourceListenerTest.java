@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.instrumentation.test;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,6 +31,10 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.source.Source;

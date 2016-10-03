@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation.examples;
+package com.oracle.truffle.api.instrumentation.test.examples;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -34,10 +34,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.instrumentation.AbstractInstrumentationTest;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.examples.DebuggerController.Callback;
+import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
+import com.oracle.truffle.api.instrumentation.test.examples.DebuggerController.Callback;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine.Instrument;
 

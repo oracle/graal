@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.instrumentation.test;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -32,6 +32,7 @@ import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;

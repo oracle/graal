@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation.examples;
+package com.oracle.truffle.api.instrumentation.test.examples;
 
 import java.io.IOException;
 import java.util.Map;
@@ -32,9 +32,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.instrumentation.AbstractInstrumentationTest;
-import com.oracle.truffle.api.instrumentation.examples.StatementProfilerExample.Counter;
-import com.oracle.truffle.api.instrumentation.examples.StatementProfilerExample.ProfilerFrontEnd;
+import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
+import com.oracle.truffle.api.instrumentation.test.examples.StatementProfilerExample.Counter;
+import com.oracle.truffle.api.instrumentation.test.examples.StatementProfilerExample.ProfilerFrontEnd;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 

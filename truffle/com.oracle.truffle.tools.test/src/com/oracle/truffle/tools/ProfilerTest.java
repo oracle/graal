@@ -32,8 +32,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.instrumentation.AbstractInstrumentationTest;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage;
+import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.Profiler.Counter;
