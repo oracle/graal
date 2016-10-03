@@ -22,10 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools;
+package com.oracle.truffle.tools.test;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Map;
 
 import org.junit.Assert;
@@ -36,6 +38,7 @@ import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.Profiler;
 import com.oracle.truffle.tools.Profiler.Counter;
 
 public class ProfilerTest extends AbstractInstrumentationTest {
@@ -372,10 +375,14 @@ public class ProfilerTest extends AbstractInstrumentationTest {
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testDisposeError() {
+    public void testDisposeError() throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 
         profiler.setCollecting(true);
-        profiler.dispose();
+
+        Method m = Profiler.class.getDeclaredMethod("dispose");
+        m.setAccessible(true);
+        m.invoke(profiler);
+
         profiler.setCollecting(false);
     }
 }
