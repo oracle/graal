@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
@@ -38,17 +41,25 @@ public class CountingConditionProfileTest {
 
     @DataPoints public static boolean[] data = new boolean[]{true, false};
 
-    private ConditionProfile.Counting profile;
+    private ConditionProfile profile;
 
     @Before
     public void create() {
-        profile = (ConditionProfile.Counting) ConditionProfile.Counting.create();
+        profile = (ConditionProfile) invokeStatic(loadRelative(CountingConditionProfileTest.class, "ConditionProfile$Counting"), "create");
+    }
+
+    private static int getTrueCount(ConditionProfile profile) {
+        return (int) invoke(profile, "getTrueCount");
+    }
+
+    private static int getFalseCount(ConditionProfile profile) {
+        return (int) invoke(profile, "getFalseCount");
     }
 
     @Test
     public void testInitial() {
-        assertThat(profile.getTrueCount(), is(0));
-        assertThat(profile.getFalseCount(), is(0));
+        assertThat(getTrueCount(profile), is(0));
+        assertThat(getFalseCount(profile), is(0));
         profile.toString();
     }
 
@@ -57,8 +68,8 @@ public class CountingConditionProfileTest {
         boolean result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertThat(profile.getTrueCount(), is(value ? 1 : 0));
-        assertThat(profile.getFalseCount(), is(!value ? 1 : 0));
+        assertThat(getTrueCount(profile), is(value ? 1 : 0));
+        assertThat(getFalseCount(profile), is(!value ? 1 : 0));
         profile.toString();
     }
 
@@ -69,8 +80,8 @@ public class CountingConditionProfileTest {
 
         assertThat(result0, is(value0));
         assertThat(result1, is(value1));
-        assertThat(profile.getTrueCount(), is((value0 ? 1 : 0) + (value1 ? 1 : 0)));
-        assertThat(profile.getFalseCount(), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0)));
+        assertThat(getTrueCount(profile), is((value0 ? 1 : 0) + (value1 ? 1 : 0)));
+        assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0)));
         profile.toString();
     }
 
@@ -83,8 +94,8 @@ public class CountingConditionProfileTest {
         assertThat(result0, is(value0));
         assertThat(result1, is(value1));
         assertThat(result2, is(value2));
-        assertThat(profile.getTrueCount(), is((value0 ? 1 : 0) + (value1 ? 1 : 0) + (value2 ? 1 : 0)));
-        assertThat(profile.getFalseCount(), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0) + (!value2 ? 1 : 0)));
+        assertThat(getTrueCount(profile), is((value0 ? 1 : 0) + (value1 ? 1 : 0) + (value2 ? 1 : 0)));
+        assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0) + (!value2 ? 1 : 0)));
         profile.toString();
     }
 

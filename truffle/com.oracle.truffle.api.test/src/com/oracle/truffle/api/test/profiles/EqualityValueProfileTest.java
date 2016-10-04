@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
@@ -45,17 +48,29 @@ public class EqualityValueProfileTest {
     @DataPoint public static final Integer O5 = new Integer(1);
     @DataPoint public static final Integer O6 = null;
 
-    private ValueProfile.Equality profile;
+    private ValueProfile profile;
 
     @Before
     public void create() {
-        profile = (ValueProfile.Equality) ValueProfile.Equality.create();
+        profile = (ValueProfile) invokeStatic(loadRelative(EqualityValueProfileTest.class, "ValueProfile$Equality"), "create");
+    }
+
+    private static boolean isGeneric(ValueProfile profile) {
+        return (boolean) invoke(profile, "isGeneric");
+    }
+
+    private static boolean isUninitialized(ValueProfile profile) {
+        return (boolean) invoke(profile, "isUninitialized");
+    }
+
+    private static Object getCachedValue(ValueProfile profile) {
+        return invoke(profile, "getCachedValue");
     }
 
     @Test
     public void testInitial() throws Exception {
-        assertThat(profile.isGeneric(), is(false));
-        assertThat(profile.isUninitialized(), is(true));
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
@@ -64,12 +79,12 @@ public class EqualityValueProfileTest {
         Object result = profile.profile(value);
         assertThat(result, is(equalTo(value)));
         if (value == null) {
-            assertThat(profile.isUninitialized(), is(false));
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isUninitialized(profile), is(false));
+            assertThat(isGeneric(profile), is(true));
         } else {
-            assertEquals(profile.getCachedValue(), value);
-            assertThat(profile.isUninitialized(), is(false));
-            assertThat(profile.isGeneric(), is(false));
+            assertEquals(getCachedValue(profile), value);
+            assertThat(isUninitialized(profile), is(false));
+            assertThat(isGeneric(profile), is(false));
         }
         profile.toString(); // test that it is not crashing
     }
@@ -83,12 +98,12 @@ public class EqualityValueProfileTest {
         assertThat(result1, is(equalTo(value1)));
 
         if (value0 != null && value0.equals(value1)) {
-            assertThat(profile.getCachedValue(), is(equalTo(value0)));
-            assertThat(profile.isGeneric(), is(false));
+            assertThat(getCachedValue(profile), is(equalTo(value0)));
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -103,12 +118,12 @@ public class EqualityValueProfileTest {
         assertThat(result2, is(equalTo(value2)));
 
         if (value0 != null && value0.equals(value1) && value1 != null && value1.equals(value2)) {
-            assertThat(profile.getCachedValue(), is(equalTo(value0)));
-            assertThat(profile.isGeneric(), is(false));
+            assertThat(getCachedValue(profile), is(equalTo(value0)));
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 

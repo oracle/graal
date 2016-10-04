@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
@@ -38,17 +41,25 @@ public class BinaryConditionProfileTest {
 
     @DataPoints public static boolean[] data = new boolean[]{true, false};
 
-    private ConditionProfile.Binary profile;
+    private ConditionProfile profile;
 
     @Before
     public void create() {
-        profile = (ConditionProfile.Binary) ConditionProfile.Binary.create();
+        profile = (ConditionProfile) invokeStatic(loadRelative(BinaryConditionProfileTest.class, "ConditionProfile$Binary"), "create");
+    }
+
+    private static boolean wasTrue(ConditionProfile profile) {
+        return (boolean) invoke(profile, "wasTrue");
+    }
+
+    private static boolean wasFalse(ConditionProfile profile) {
+        return (boolean) invoke(profile, "wasFalse");
     }
 
     @Test
     public void testInitial() {
-        assertThat(profile.wasTrue(), is(false));
-        assertThat(profile.wasFalse(), is(false));
+        assertThat(wasTrue(profile), is(false));
+        assertThat(wasFalse(profile), is(false));
         profile.toString();
     }
 
@@ -57,8 +68,8 @@ public class BinaryConditionProfileTest {
         boolean result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertThat(profile.wasTrue(), is(value));
-        assertThat(profile.wasFalse(), is(!value));
+        assertThat(wasTrue(profile), is(value));
+        assertThat(wasFalse(profile), is(!value));
         profile.toString();
     }
 
@@ -69,8 +80,8 @@ public class BinaryConditionProfileTest {
 
         assertThat(result0, is(value0));
         assertThat(result1, is(value1));
-        assertThat(profile.wasTrue(), is(value0 || value1));
-        assertThat(profile.wasFalse(), is(!value0 || !value1));
+        assertThat(wasTrue(profile), is(value0 || value1));
+        assertThat(wasFalse(profile), is(!value0 || !value1));
         profile.toString();
     }
 
@@ -83,8 +94,8 @@ public class BinaryConditionProfileTest {
         assertThat(result0, is(value0));
         assertThat(result1, is(value1));
         assertThat(result2, is(value2));
-        assertThat(profile.wasTrue(), is(value0 || value1 || value2));
-        assertThat(profile.wasFalse(), is(!value0 || !value1 || !value2));
+        assertThat(wasTrue(profile), is(value0 || value1 || value2));
+        assertThat(wasFalse(profile), is(!value0 || !value1 || !value2));
         profile.toString();
     }
 

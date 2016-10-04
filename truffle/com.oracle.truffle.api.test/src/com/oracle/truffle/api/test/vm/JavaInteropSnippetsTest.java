@@ -22,16 +22,20 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngineSnippets;
 
 public class JavaInteropSnippetsTest {
     private PolyglotEngine engine;
+
+    private static final Class<?> SNIPPETS = loadRelative(JavaInteropSnippetsTest.class, "PolyglotEngineSnippets");
 
     @Before
     public void initializeEngine() {
@@ -43,7 +47,7 @@ public class JavaInteropSnippetsTest {
     }
 
     private void initializeEngineImpl() {
-        engine = PolyglotEngineSnippets.configureJavaInteropWithMul();
+        engine = (PolyglotEngine) invokeStatic(SNIPPETS, "configureJavaInteropWithMul");
     }
 
     @Test

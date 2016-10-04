@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -47,7 +50,7 @@ public class ExactClassValueProfileTest {
     @DataPoint public static final TestBaseClass O6 = new TestBaseClass();
     @DataPoint public static final TestSubClass O7 = new TestSubClass();
 
-    private ValueProfile.ExactClass profile;
+    private ValueProfile profile;
 
     private static class TestBaseClass {
     }
@@ -57,7 +60,19 @@ public class ExactClassValueProfileTest {
 
     @Before
     public void create() {
-        profile = (ValueProfile.ExactClass) ValueProfile.ExactClass.create();
+        profile = (ValueProfile) invokeStatic(loadRelative(ExactClassValueProfileTest.class, "ValueProfile$ExactClass"), "create");
+    }
+
+    private static boolean isGeneric(ValueProfile profile) {
+        return (boolean) invoke(profile, "isGeneric");
+    }
+
+    private static boolean isUninitialized(ValueProfile profile) {
+        return (boolean) invoke(profile, "isUninitialized");
+    }
+
+    private static Object getCachedClass(ValueProfile profile) {
+        return invoke(profile, "getCachedClass");
     }
 
     @Test
@@ -116,15 +131,4 @@ public class ExactClassValueProfileTest {
         return value == null ? Object.class : value.getClass();
     }
 
-    private static Object getCachedClass(ValueProfile.ExactClass profile) throws Exception {
-        return profile.getCachedClass();
-    }
-
-    private static boolean isUninitialized(ValueProfile.ExactClass profile) throws Exception {
-        return profile.isUninitialized();
-    }
-
-    private static boolean isGeneric(ValueProfile.ExactClass profile) throws Exception {
-        return profile.isGeneric();
-    }
 }

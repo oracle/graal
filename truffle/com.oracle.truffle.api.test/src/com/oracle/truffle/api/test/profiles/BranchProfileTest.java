@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -34,14 +36,14 @@ public class BranchProfileTest {
 
     @Test
     public void testEnter() {
-        BranchProfile profile = BranchProfile.Enabled.create0();
+        BranchProfile profile = (BranchProfile) invokeStatic(loadRelative(CountingConditionProfileTest.class, "BranchProfile$Enabled"), "create0");
         profile.enter();
         profile.enter();
     }
 
     @Test
     public void testToString() {
-        BranchProfile profile = BranchProfile.Enabled.create0();
+        BranchProfile profile = (BranchProfile) invokeStatic(loadRelative(CountingConditionProfileTest.class, "BranchProfile$Enabled"), "create0");
         assertTrue(profile.toString().contains(BranchProfile.class.getSimpleName()));
         assertTrue(profile.toString().contains("UNINITIALIZED"));
         assertTrue(profile.toString().contains(Integer.toHexString(profile.hashCode())));

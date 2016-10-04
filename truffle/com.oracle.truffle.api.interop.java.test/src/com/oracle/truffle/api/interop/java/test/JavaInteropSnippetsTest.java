@@ -27,51 +27,51 @@ package com.oracle.truffle.api.interop.java.test;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Method;
+
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.MethodMessage;
 
 @RunWith(SeparateClassloaderTestRunner.class)
 public class JavaInteropSnippetsTest {
-
-    private static class Snippet {
-        interface IsNullChecker {
-            @MethodMessage(message = "IS_NULL")
-            boolean isNull();
-        }
-
-        public static boolean isNullValue(TruffleObject obj) {
-            IsNullChecker check = JavaInterop.asJavaFunction(IsNullChecker.class, obj);
-            return check.isNull();
-        }
-
-        public static boolean loaded = true;
-    }
-
     private static boolean loadedOK;
 
-    @BeforeClass
-    public static void isAvailable() {
+    private static final Class<?> INTEROP_SNIPPETS;
+
+    static {
+        Class<?> clazz = null;
         try {
-            loadedOK = Snippet.loaded;
+            clazz = Class.forName("com.oracle.truffle.api.interop.java.JavaInteropSnippets");
+        } catch (ClassNotFoundException e) {
+        }
+        INTEROP_SNIPPETS = clazz;
+    }
+
+    @BeforeClass
+    public static void isAvailable() throws Throwable {
+        try {
+            loadedOK = INTEROP_SNIPPETS != null;
         } catch (LinkageError ex) {
             // ignore
         }
     }
 
     @Test
-    public void showHowToCheckForNull() {
+    public void showHowToCheckForNull() throws Throwable {
         if (!loadedOK) {
             return;
         }
 
-        assertTrue("Yes, it is null", Snippet.isNullValue(JavaInterop.asTruffleObject(null)));
+        Method m = INTEROP_SNIPPETS.getDeclaredMethod("isNullValue", TruffleObject.class);
+        m.setAccessible(true);
+
+        assertTrue("Yes, it is null", (boolean) m.invoke(null, JavaInterop.asTruffleObject(null)));
 
         TruffleObject nonNullValue = JavaInterop.asTruffleObject(this);
-        assertFalse("No, it is not null", Snippet.isNullValue(nonNullValue));
+        assertFalse("No, it is not null", (boolean) m.invoke(null, nonNullValue));
     }
 }

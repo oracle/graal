@@ -46,6 +46,9 @@ public class LazyProfileLoadingTest {
 
     @Test
     public void testLazyLoading() {
+        BranchProfile.create();
+        assertDefaultProfile(BranchProfile.class);
+
         IntValueProfile.createIdentityProfile();
         assertDefaultProfile(IntValueProfile.class);
 
@@ -63,9 +66,6 @@ public class LazyProfileLoadingTest {
 
         LoopConditionProfile.createCountingProfile();
         assertDefaultProfile(LoopConditionProfile.class);
-
-        BranchProfile.create();
-        assertDefaultProfile(BranchProfile.class);
 
         PrimitiveValueProfile.createEqualityProfile();
         assertDefaultProfile(PrimitiveValueProfile.class);

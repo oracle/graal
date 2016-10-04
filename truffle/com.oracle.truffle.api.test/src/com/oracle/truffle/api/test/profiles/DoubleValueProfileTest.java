@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -29,13 +33,14 @@ import static org.junit.Assert.assertThat;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
+import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 
-@RunWith(SeparateClassloaderTestRunner.Theories.class)
+@RunWith(Theories.class)
 public class DoubleValueProfileTest {
 
     @DataPoint public static final double VALUE0 = Double.MIN_VALUE;
@@ -46,17 +51,29 @@ public class DoubleValueProfileTest {
 
     private static final double FLOAT_DELTA = 0.00001f;
 
-    private DoubleValueProfile.Enabled profile;
+    private DoubleValueProfile profile;
 
     @Before
     public void create() {
-        profile = (DoubleValueProfile.Enabled) DoubleValueProfile.Enabled.create();
+        profile = (DoubleValueProfile) invokeStatic(loadRelative(DoubleValueProfileTest.class, "DoubleValueProfile$Enabled"), "create");
+    }
+
+    private static boolean isGeneric(DoubleValueProfile profile) {
+        return (boolean) invoke(profile, "isGeneric");
+    }
+
+    private static boolean isUninitialized(DoubleValueProfile profile) {
+        return (boolean) invoke(profile, "isUninitialized");
+    }
+
+    private static double getCachedValue(DoubleValueProfile profile) {
+        return (double) invoke(profile, "getCachedValue");
     }
 
     @Test
     public void testInitial() {
-        assertThat(profile.isGeneric(), is(false));
-        assertThat(profile.isUninitialized(), is(true));
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
@@ -65,8 +82,8 @@ public class DoubleValueProfileTest {
         double result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value, FLOAT_DELTA);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value, FLOAT_DELTA);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -80,12 +97,12 @@ public class DoubleValueProfileTest {
         assertEquals(result1, value1, FLOAT_DELTA);
 
         if (PrimitiveValueProfile.exactCompare(value0, value1)) {
-            assertEquals(profile.getCachedValue(), value0, FLOAT_DELTA);
-            assertThat(profile.isGeneric(), is(false));
+            assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -101,18 +118,18 @@ public class DoubleValueProfileTest {
         assertEquals(result2, value2, FLOAT_DELTA);
 
         if (PrimitiveValueProfile.exactCompare(value0, value1) && PrimitiveValueProfile.exactCompare(value1, value2)) {
-            assertEquals(profile.getCachedValue(), value0, FLOAT_DELTA);
-            assertThat(profile.isGeneric(), is(false));
+            assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
     @Test
     public void testDisabled() {
-        DoubleValueProfile.Disabled p = (DoubleValueProfile.Disabled) DoubleValueProfile.Disabled.INSTANCE;
+        DoubleValueProfile p = (DoubleValueProfile) getStaticField(loadRelative(DoubleValueProfileTest.class, "DoubleValueProfile$Disabled"), "INSTANCE");
         assertThat(p.profile(VALUE0), is(VALUE0));
         assertThat(p.profile(VALUE1), is(VALUE1));
         assertThat(p.profile(VALUE2), is(VALUE2));

@@ -22,55 +22,75 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import java.util.concurrent.Executors;
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
+import static com.oracle.truffle.api.test.ReflectionUtils.newInstance;
 import static org.junit.Assert.assertEquals;
+
+import java.util.concurrent.Executors;
+
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
-import com.oracle.truffle.api.test.profiles.SeparateClassloaderTestRunner;
-import com.oracle.truffle.api.vm.ContextStore;
-import com.oracle.truffle.api.vm.ContextStoreProfile;
-
-@RunWith(SeparateClassloaderTestRunner.class)
 public class ContextStoreProfileTest {
+
+    private static final Class<?> CONTEXT_STORE_PROFILE = loadRelative(ContextStoreProfileTest.class, "ContextStoreProfile");
+    private static final Class<?> CONTEXT_STORE = loadRelative(ContextStoreProfileTest.class, "ContextStore");
+
     @Test
     public void switchFromConstantToMultipleThreads() throws Exception {
-        final ContextStoreProfile profile = new ContextStoreProfile(null);
-        ContextStore store1 = new ContextStore(null, 0);
-        final ContextStore store2 = new ContextStore(null, 0);
-        profile.enter(store1);
-        assertEquals("Store associated", store1, profile.get());
-        final ContextStore[] check = {null};
+        final Object profile = newContextStoreProfile();
+        Object store1 = newContextStore();
+        final Object store2 = newContextStore();
+        enter(profile, store1);
+        assertEquals("Store associated", store1, get(profile));
+        final Object[] check = {null};
         Executors.newSingleThreadExecutor().submit(new Runnable() {
             @Override
             public void run() {
-                profile.enter(store2);
-                check[0] = profile.get();
+                enter(profile, store2);
+                check[0] = get(profile);
             }
         }).get();
         assertEquals("Store on other thread associated", store2, check[0]);
-        assertEquals("1st thread store is still there", store1, profile.get());
+        assertEquals("1st thread store is still there", store1, get(profile));
     }
 
     @Test
     public void switchFromDynamicToMultipleThreads() throws Exception {
-        final ContextStoreProfile profile = new ContextStoreProfile(null);
-        ContextStore store1 = new ContextStore(null, 0);
-        ContextStore store2 = new ContextStore(null, 0);
-        final ContextStore store3 = new ContextStore(null, 0);
-        profile.enter(store1);
-        assertEquals("Store associated", store1, profile.get());
-        profile.enter(store2);
-        assertEquals("Store associated", store2, profile.get());
-        final ContextStore[] check = {null};
+        final Object profile = newContextStoreProfile();
+        Object store1 = newContextStore();
+        final Object store2 = newContextStore();
+        final Object store3 = newContextStore();
+        enter(profile, store1);
+        assertEquals("Store associated", store1, get(profile));
+        enter(profile, store2);
+        assertEquals("Store associated", store2, get(profile));
+        final Object[] check = {null};
         Executors.newSingleThreadExecutor().submit(new Runnable() {
             @Override
             public void run() {
-                profile.enter(store3);
-                check[0] = profile.get();
+                enter(profile, store3);
+                check[0] = get(profile);
             }
         }).get();
         assertEquals("Store on other thread associated", store3, check[0]);
-        assertEquals("1st thread store is still there", store2, profile.get());
+        assertEquals("1st thread store is still there", store2, get(profile));
     }
+
+    private static void enter(Object profile, Object store) {
+        invoke(profile, "enter", store);
+    }
+
+    private static Object newContextStore() {
+        return newInstance(CONTEXT_STORE, new Class[]{Object.class, int.class}, null, 0);
+    }
+
+    private static Object newContextStoreProfile() {
+        return newInstance(CONTEXT_STORE_PROFILE, new Class[]{CONTEXT_STORE}, (Object) null);
+    }
+
+    private static Object get(Object profile) {
+        return invoke(profile, "get");
+    }
+
 }

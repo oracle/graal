@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -46,17 +50,29 @@ public class FloatValueProfileTest {
 
     private static final float FLOAT_DELTA = 0.00001f;
 
-    private FloatValueProfile.Enabled profile;
+    private FloatValueProfile profile;
 
     @Before
     public void create() {
-        profile = (FloatValueProfile.Enabled) FloatValueProfile.Enabled.create();
+        profile = (FloatValueProfile) invokeStatic(loadRelative(FloatValueProfileTest.class, "FloatValueProfile$Enabled"), "create");
+    }
+
+    private static boolean isGeneric(FloatValueProfile profile) {
+        return (boolean) invoke(profile, "isGeneric");
+    }
+
+    private static boolean isUninitialized(FloatValueProfile profile) {
+        return (boolean) invoke(profile, "isUninitialized");
+    }
+
+    private static float getCachedValue(FloatValueProfile profile) {
+        return (float) invoke(profile, "getCachedValue");
     }
 
     @Test
     public void testInitial() {
-        assertThat(profile.isGeneric(), is(false));
-        assertThat(profile.isUninitialized(), is(true));
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
@@ -65,8 +81,8 @@ public class FloatValueProfileTest {
         float result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value, FLOAT_DELTA);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value, FLOAT_DELTA);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -80,12 +96,12 @@ public class FloatValueProfileTest {
         assertEquals(result1, value1, FLOAT_DELTA);
 
         if (PrimitiveValueProfile.exactCompare(value0, value1)) {
-            assertEquals(profile.getCachedValue(), value0, FLOAT_DELTA);
-            assertThat(profile.isGeneric(), is(false));
+            assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -101,18 +117,18 @@ public class FloatValueProfileTest {
         assertEquals(result2, value2, FLOAT_DELTA);
 
         if (PrimitiveValueProfile.exactCompare(value0, value1) && PrimitiveValueProfile.exactCompare(value1, value2)) {
-            assertEquals(profile.getCachedValue(), value0, FLOAT_DELTA);
-            assertThat(profile.isGeneric(), is(false));
+            assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
     @Test
     public void testDisabled() {
-        FloatValueProfile.Disabled p = (FloatValueProfile.Disabled) FloatValueProfile.Disabled.INSTANCE;
+        FloatValueProfile p = (FloatValueProfile) getStaticField(loadRelative(FloatValueProfileTest.class, "FloatValueProfile$Disabled"), "INSTANCE");
         assertThat(p.profile(VALUE0), is(VALUE0));
         assertThat(p.profile(VALUE1), is(VALUE1));
         assertThat(p.profile(VALUE2), is(VALUE2));

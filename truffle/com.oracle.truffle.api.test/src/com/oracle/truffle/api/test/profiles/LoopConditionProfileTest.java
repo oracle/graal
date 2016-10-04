@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
@@ -39,23 +43,31 @@ public class LoopConditionProfileTest {
     @DataPoints public static boolean[] data = new boolean[]{true, false};
     @DataPoints public static long[] lengthes = new long[]{Long.MAX_VALUE, 0L, Long.MAX_VALUE / 2L, Long.MAX_VALUE / 2 + 1L, 1L};
 
-    private LoopConditionProfile.Enabled profile;
+    private LoopConditionProfile profile;
 
     @Before
     public void create() {
-        profile = (LoopConditionProfile.Enabled) LoopConditionProfile.Enabled.create();
+        profile = (LoopConditionProfile) invokeStatic(loadRelative(PrimitiveValueProfileTest.class, "LoopConditionProfile$Enabled"), "create");
+    }
+
+    private static long getTrueCount(LoopConditionProfile profile) {
+        return (long) invoke(profile, "getTrueCount");
+    }
+
+    private static int getFalseCount(LoopConditionProfile profile) {
+        return (int) invoke(profile, "getFalseCount");
     }
 
     @Test
     public void testInitial() {
-        assertThat(profile.getTrueCount(), is(0L));
-        assertThat(profile.getFalseCount(), is(0));
+        assertThat(getTrueCount(profile), is(0L));
+        assertThat(getFalseCount(profile), is(0));
         profile.toString(); // not crashing
     }
 
     @Theory
     public void testDisabled(boolean value, long length) {
-        LoopConditionProfile.Disabled p = (LoopConditionProfile.Disabled) LoopConditionProfile.Disabled.INSTANCE;
+        LoopConditionProfile p = (LoopConditionProfile) getStaticField(loadRelative(PrimitiveValueProfileTest.class, "LoopConditionProfile$Disabled"), "INSTANCE");
         p.profileCounted(length); // not crashing
         assertThat(p.profile(value), is(value));
         assertThat(p.inject(value), is(value));
@@ -67,8 +79,8 @@ public class LoopConditionProfileTest {
         boolean result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertThat(profile.getTrueCount(), is(value ? 1L : 0L));
-        assertThat(profile.getFalseCount(), is(!value ? 1 : 0));
+        assertThat(getTrueCount(profile), is(value ? 1L : 0L));
+        assertThat(getFalseCount(profile), is(!value ? 1 : 0));
         profile.toString(); // not crashing
     }
 
@@ -79,8 +91,8 @@ public class LoopConditionProfileTest {
 
         assertThat(result0, is(value0));
         assertThat(result1, is(value1));
-        assertThat(profile.getTrueCount(), is((value0 ? 1L : 0L) + (value1 ? 1L : 0L)));
-        assertThat(profile.getFalseCount(), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0)));
+        assertThat(getTrueCount(profile), is((value0 ? 1L : 0L) + (value1 ? 1L : 0L)));
+        assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0)));
         profile.toString(); // not crashing
     }
 
@@ -93,8 +105,8 @@ public class LoopConditionProfileTest {
         assertThat(result0, is(value0));
         assertThat(result1, is(value1));
         assertThat(result2, is(value2));
-        assertThat(profile.getTrueCount(), is((value0 ? 1L : 0L) + (value1 ? 1L : 0L) + (value2 ? 1L : 0L)));
-        assertThat(profile.getFalseCount(), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0) + (!value2 ? 1 : 0)));
+        assertThat(getTrueCount(profile), is((value0 ? 1L : 0L) + (value1 ? 1L : 0L) + (value2 ? 1L : 0L)));
+        assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0) + (!value2 ? 1 : 0)));
         profile.toString(); // not crashing
     }
 
@@ -106,34 +118,34 @@ public class LoopConditionProfileTest {
         profile.profileCounted(length1);
         profile.toString(); // not crashing
         long expectedLength = length1;
-        assertThat(profile.getTrueCount(), is(expectedLength));
-        assertThat(profile.getFalseCount(), is(1));
+        assertThat(getTrueCount(profile), is(expectedLength));
+        assertThat(getFalseCount(profile), is(1));
         assertThat(profile.inject(false), is(false));
 
         profile.profileCounted(length2);
         profile.toString(); // not crashing
         expectedLength += length2;
         if (expectedLength < 0) {
-            assertThat(profile.getTrueCount(), is(length1));
-            assertThat(profile.getFalseCount(), is(1));
+            assertThat(getTrueCount(profile), is(length1));
+            assertThat(getFalseCount(profile), is(1));
             assertThat(profile.inject(false), is(false));
 
             profile.profileCounted(length3);
             expectedLength = length1 + length3;
 
             if (expectedLength < 0) {
-                assertThat(profile.getTrueCount(), is(length1));
-                assertThat(profile.getFalseCount(), is(1));
+                assertThat(getTrueCount(profile), is(length1));
+                assertThat(getFalseCount(profile), is(1));
                 assertThat(profile.inject(false), is(false));
             } else {
-                assertThat(profile.getTrueCount(), is(expectedLength));
-                assertThat(profile.getFalseCount(), is(2));
+                assertThat(getTrueCount(profile), is(expectedLength));
+                assertThat(getFalseCount(profile), is(2));
                 assertThat(profile.inject(false), is(false));
             }
             return;
         } else {
-            assertThat(profile.getTrueCount(), is(expectedLength));
-            assertThat(profile.getFalseCount(), is(2));
+            assertThat(getTrueCount(profile), is(expectedLength));
+            assertThat(getFalseCount(profile), is(2));
             assertThat(profile.inject(false), is(false));
         }
 
@@ -142,12 +154,12 @@ public class LoopConditionProfileTest {
         expectedLength += length3;
 
         if (expectedLength < 0) {
-            assertThat(profile.getTrueCount(), is(length1 + length2));
-            assertThat(profile.getFalseCount(), is(2));
+            assertThat(getTrueCount(profile), is(length1 + length2));
+            assertThat(getFalseCount(profile), is(2));
             assertThat(profile.inject(false), is(false));
         } else {
-            assertThat(profile.getTrueCount(), is(expectedLength));
-            assertThat(profile.getFalseCount(), is(3));
+            assertThat(getTrueCount(profile), is(expectedLength));
+            assertThat(getFalseCount(profile), is(3));
             assertThat(profile.inject(false), is(false));
         }
         profile.toString(); // not crashing

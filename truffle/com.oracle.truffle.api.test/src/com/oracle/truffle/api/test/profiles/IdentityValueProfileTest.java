@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -43,23 +47,35 @@ public class IdentityValueProfileTest {
     @DataPoint public static final Integer O4 = new Integer(1);
     @DataPoint public static final Integer O5 = null;
 
-    private ValueProfile.Identity profile;
+    private ValueProfile profile;
 
     @Before
     public void create() {
-        profile = (ValueProfile.Identity) ValueProfile.Identity.create();
+        profile = (ValueProfile) invokeStatic(loadRelative(IdentityValueProfileTest.class, "ValueProfile$Identity"), "create");
+    }
+
+    private static boolean isGeneric(ValueProfile profile) {
+        return (boolean) invoke(profile, "isGeneric");
+    }
+
+    private static boolean isUninitialized(ValueProfile profile) {
+        return (boolean) invoke(profile, "isUninitialized");
+    }
+
+    private static Object getCachedValue(ValueProfile profile) {
+        return invoke(profile, "getCachedValue");
     }
 
     @Test
     public void testInitial() throws Exception {
-        assertThat(profile.isGeneric(), is(false));
-        assertThat(profile.isUninitialized(), is(true));
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
     @Theory
     public void testDisabled(Object value) {
-        ValueProfile.Disabled p = (ValueProfile.Disabled) ValueProfile.Disabled.INSTANCE;
+        ValueProfile p = (ValueProfile) getStaticField(loadRelative(IdentityValueProfileTest.class, "ValueProfile$Disabled"), "INSTANCE");
         assertThat(p.profile(value), is(value));
         p.toString(); // test that it is not crashing
     }
@@ -69,8 +85,8 @@ public class IdentityValueProfileTest {
         Object result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -83,12 +99,12 @@ public class IdentityValueProfileTest {
         assertThat(result1, is(value1));
 
         if (value0 == value1) {
-            assertThat(profile.getCachedValue(), is(value0));
-            assertThat(profile.isGeneric(), is(false));
+            assertThat(getCachedValue(profile), is(value0));
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -103,12 +119,12 @@ public class IdentityValueProfileTest {
         assertThat(result2, is(value2));
 
         if (value0 == value1 && value1 == value2) {
-            assertThat(profile.getCachedValue(), is(value0));
-            assertThat(profile.isGeneric(), is(false));
+            assertThat(getCachedValue(profile), is(value0));
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 

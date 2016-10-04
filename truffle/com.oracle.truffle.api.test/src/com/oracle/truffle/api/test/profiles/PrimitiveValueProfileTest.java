@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static com.oracle.truffle.api.test.ReflectionUtils.getStaticField;
+import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
+import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
+import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -37,8 +41,8 @@ import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 
-@SuppressWarnings("deprecation")
 @RunWith(SeparateClassloaderTestRunner.Theories.class)
+@SuppressWarnings("deprecation")
 public class PrimitiveValueProfileTest {
 
     @DataPoint public static final String O1 = new String();
@@ -89,17 +93,29 @@ public class PrimitiveValueProfileTest {
     private static final float FLOAT_DELTA = 0.00001f;
     private static final double DOUBLE_DELTA = 0.00001;
 
-    private PrimitiveValueProfile.Enabled profile;
+    private PrimitiveValueProfile profile;
 
     @Before
     public void create() {
-        profile = (PrimitiveValueProfile.Enabled) PrimitiveValueProfile.Enabled.create();
+        profile = (PrimitiveValueProfile) invokeStatic(loadRelative(PrimitiveValueProfileTest.class, "PrimitiveValueProfile$Enabled"), "create");
+    }
+
+    private static boolean isGeneric(PrimitiveValueProfile profile) {
+        return (boolean) invoke(profile, "isGeneric");
+    }
+
+    private static boolean isUninitialized(PrimitiveValueProfile profile) {
+        return (boolean) invoke(profile, "isUninitialized");
+    }
+
+    private static Object getCachedValue(PrimitiveValueProfile profile) {
+        return invoke(profile, "getCachedValue");
     }
 
     @Test
     public void testInitial() {
-        assertThat(profile.isGeneric(), is(false));
-        assertThat(profile.isUninitialized(), is(true));
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
@@ -108,8 +124,8 @@ public class PrimitiveValueProfileTest {
         Object result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -122,12 +138,12 @@ public class PrimitiveValueProfileTest {
         assertThat(result1, is(value1));
 
         if (value0 == value1) {
-            assertThat(profile.getCachedValue(), is(value0));
-            assertThat(profile.isGeneric(), is(false));
+            assertThat(getCachedValue(profile), is(value0));
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -142,12 +158,12 @@ public class PrimitiveValueProfileTest {
         assertThat(result2, is(value2));
 
         if (value0 == value1 && value1 == value2) {
-            assertThat(profile.getCachedValue(), is(value0));
-            assertThat(profile.isGeneric(), is(false));
+            assertThat(getCachedValue(profile), is(value0));
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -156,8 +172,8 @@ public class PrimitiveValueProfileTest {
         byte result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -170,13 +186,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1);
 
         if (value0 == value1) {
-            assertTrue(profile.getCachedValue() instanceof Byte);
-            assertEquals((byte) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Byte);
+            assertEquals((byte) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -191,13 +207,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result2, value2);
 
         if (value0 == value1 && value1 == value2) {
-            assertTrue(profile.getCachedValue() instanceof Byte);
-            assertEquals((byte) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Byte);
+            assertEquals((byte) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -206,8 +222,8 @@ public class PrimitiveValueProfileTest {
         short result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -220,13 +236,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1);
 
         if (value0 == value1) {
-            assertTrue(profile.getCachedValue() instanceof Short);
-            assertEquals((short) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Short);
+            assertEquals((short) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -241,13 +257,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result2, value2);
 
         if (value0 == value1 && value1 == value2) {
-            assertTrue(profile.getCachedValue() instanceof Short);
-            assertEquals((short) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Short);
+            assertEquals((short) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -256,8 +272,8 @@ public class PrimitiveValueProfileTest {
         int result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -270,13 +286,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1);
 
         if (value0 == value1) {
-            assertTrue(profile.getCachedValue() instanceof Integer);
-            assertEquals((int) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Integer);
+            assertEquals((int) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -291,13 +307,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result2, value2);
 
         if (value0 == value1 && value1 == value2) {
-            assertTrue(profile.getCachedValue() instanceof Integer);
-            assertEquals((int) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Integer);
+            assertEquals((int) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -306,8 +322,8 @@ public class PrimitiveValueProfileTest {
         long result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -320,13 +336,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1);
 
         if (value0 == value1) {
-            assertTrue(profile.getCachedValue() instanceof Long);
-            assertEquals((long) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Long);
+            assertEquals((long) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -341,13 +357,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result2, value2);
 
         if (value0 == value1 && value1 == value2) {
-            assertTrue(profile.getCachedValue() instanceof Long);
-            assertEquals((long) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Long);
+            assertEquals((long) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -356,8 +372,8 @@ public class PrimitiveValueProfileTest {
         float result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -370,13 +386,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1, FLOAT_DELTA);
 
         if (PrimitiveValueProfile.exactCompare(value0, value1)) {
-            assertTrue(profile.getCachedValue() instanceof Float);
-            assertEquals((float) profile.getCachedValue(), value0, FLOAT_DELTA);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Float);
+            assertEquals((float) getCachedValue(profile), value0, FLOAT_DELTA);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -391,13 +407,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result2, value2, FLOAT_DELTA);
 
         if (PrimitiveValueProfile.exactCompare(value0, value1) && PrimitiveValueProfile.exactCompare(value1, value2)) {
-            assertTrue(profile.getCachedValue() instanceof Float);
-            assertEquals((float) profile.getCachedValue(), value0, FLOAT_DELTA);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Float);
+            assertEquals((float) getCachedValue(profile), value0, FLOAT_DELTA);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -406,8 +422,8 @@ public class PrimitiveValueProfileTest {
         double result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -420,13 +436,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1, DOUBLE_DELTA);
 
         if (PrimitiveValueProfile.exactCompare(value0, value1)) {
-            assertTrue(profile.getCachedValue() instanceof Double);
-            assertEquals((double) profile.getCachedValue(), value0, DOUBLE_DELTA);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Double);
+            assertEquals((double) getCachedValue(profile), value0, DOUBLE_DELTA);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -441,13 +457,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result2, value2, DOUBLE_DELTA);
 
         if (PrimitiveValueProfile.exactCompare(value0, value1) && PrimitiveValueProfile.exactCompare(value1, value2)) {
-            assertTrue(profile.getCachedValue() instanceof Double);
-            assertEquals((double) profile.getCachedValue(), value0, DOUBLE_DELTA);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Double);
+            assertEquals((double) getCachedValue(profile), value0, DOUBLE_DELTA);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -456,8 +472,8 @@ public class PrimitiveValueProfileTest {
         boolean result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -470,13 +486,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1);
 
         if (value0 == value1) {
-            assertTrue(profile.getCachedValue() instanceof Boolean);
-            assertEquals((boolean) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Boolean);
+            assertEquals((boolean) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -491,13 +507,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result2, value2);
 
         if (value0 == value1 && value1 == value2) {
-            assertTrue(profile.getCachedValue() instanceof Boolean);
-            assertEquals((boolean) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Boolean);
+            assertEquals((boolean) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -506,8 +522,8 @@ public class PrimitiveValueProfileTest {
         char result = profile.profile(value);
 
         assertThat(result, is(value));
-        assertEquals(profile.getCachedValue(), value);
-        assertThat(profile.isUninitialized(), is(false));
+        assertEquals(getCachedValue(profile), value);
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -520,13 +536,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result1, value1);
 
         if (value0 == value1) {
-            assertTrue(profile.getCachedValue() instanceof Character);
-            assertEquals((char) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Character);
+            assertEquals((char) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -541,13 +557,13 @@ public class PrimitiveValueProfileTest {
         assertEquals(result2, value2);
 
         if (value0 == value1 && value1 == value2) {
-            assertTrue(profile.getCachedValue() instanceof Character);
-            assertEquals((char) profile.getCachedValue(), value0);
-            assertThat(profile.isGeneric(), is(false));
+            assertTrue(getCachedValue(profile) instanceof Character);
+            assertEquals((char) getCachedValue(profile), value0);
+            assertThat(isGeneric(profile), is(false));
         } else {
-            assertThat(profile.isGeneric(), is(true));
+            assertThat(isGeneric(profile), is(true));
         }
-        assertThat(profile.isUninitialized(), is(false));
+        assertThat(isUninitialized(profile), is(false));
         profile.toString(); // test that it is not crashing
     }
 
@@ -560,8 +576,8 @@ public class PrimitiveValueProfileTest {
         assertEquals((byte) result0, value);
         assertTrue(result1 instanceof Byte);
         assertEquals((byte) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -572,8 +588,8 @@ public class PrimitiveValueProfileTest {
         assertEquals(result0, value);
         assertTrue(result1 instanceof Byte);
         assertEquals((byte) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -584,8 +600,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(result0 instanceof Byte);
         assertEquals((byte) result0, value);
         assertEquals(result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -597,8 +613,8 @@ public class PrimitiveValueProfileTest {
         assertEquals((short) result0, value);
         assertTrue(result1 instanceof Short);
         assertEquals((short) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -609,8 +625,8 @@ public class PrimitiveValueProfileTest {
         assertEquals(result0, value);
         assertTrue(result1 instanceof Short);
         assertEquals((short) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -621,8 +637,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(result0 instanceof Short);
         assertEquals((short) result0, value);
         assertEquals(result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -634,8 +650,8 @@ public class PrimitiveValueProfileTest {
         assertEquals((int) result0, value);
         assertTrue(result1 instanceof Integer);
         assertEquals((int) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -646,8 +662,8 @@ public class PrimitiveValueProfileTest {
         assertEquals(result0, value);
         assertTrue(result1 instanceof Integer);
         assertEquals((int) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -658,8 +674,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(result0 instanceof Integer);
         assertEquals((int) result0, value);
         assertEquals(result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -671,8 +687,8 @@ public class PrimitiveValueProfileTest {
         assertEquals((long) result0, value);
         assertTrue(result1 instanceof Long);
         assertEquals((long) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -683,8 +699,8 @@ public class PrimitiveValueProfileTest {
         assertEquals(result0, value);
         assertTrue(result1 instanceof Long);
         assertEquals((long) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -695,8 +711,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(result0 instanceof Long);
         assertEquals((long) result0, value);
         assertEquals(result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -708,8 +724,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(PrimitiveValueProfile.exactCompare((float) result0, value));
         assertTrue(result1 instanceof Float);
         assertTrue(PrimitiveValueProfile.exactCompare((float) result1, value));
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -720,8 +736,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(PrimitiveValueProfile.exactCompare(result0, value));
         assertTrue(result1 instanceof Float);
         assertTrue(PrimitiveValueProfile.exactCompare((float) result1, value));
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -732,8 +748,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(result0 instanceof Float);
         assertTrue(PrimitiveValueProfile.exactCompare((float) result0, value));
         assertTrue(PrimitiveValueProfile.exactCompare(result1, value));
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -745,8 +761,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(PrimitiveValueProfile.exactCompare((double) result0, value));
         assertTrue(result1 instanceof Double);
         assertTrue(PrimitiveValueProfile.exactCompare((double) result1, value));
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -757,8 +773,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(PrimitiveValueProfile.exactCompare(result0, value));
         assertTrue(result1 instanceof Double);
         assertTrue(PrimitiveValueProfile.exactCompare((double) result1, value));
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -769,8 +785,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(result0 instanceof Double);
         assertTrue(PrimitiveValueProfile.exactCompare((double) result0, value));
         assertTrue(PrimitiveValueProfile.exactCompare(result1, value));
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -782,8 +798,8 @@ public class PrimitiveValueProfileTest {
         assertEquals((boolean) result0, value);
         assertTrue(result1 instanceof Boolean);
         assertEquals((boolean) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -794,8 +810,8 @@ public class PrimitiveValueProfileTest {
         assertEquals(result0, value);
         assertTrue(result1 instanceof Boolean);
         assertEquals((boolean) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -806,8 +822,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(result0 instanceof Boolean);
         assertEquals((boolean) result0, value);
         assertEquals(result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -819,8 +835,8 @@ public class PrimitiveValueProfileTest {
         assertEquals((char) result0, value);
         assertTrue(result1 instanceof Character);
         assertEquals((char) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -831,8 +847,8 @@ public class PrimitiveValueProfileTest {
         assertEquals(result0, value);
         assertTrue(result1 instanceof Character);
         assertEquals((char) result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -843,8 +859,8 @@ public class PrimitiveValueProfileTest {
         assertTrue(result0 instanceof Character);
         assertEquals((char) result0, value);
         assertEquals(result1, value);
-        assertFalse(profile.isUninitialized());
-        assertFalse(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertFalse(isGeneric(profile));
     }
 
     @Theory
@@ -854,8 +870,8 @@ public class PrimitiveValueProfileTest {
 
         assertEquals(result0, value0);
         assertSame(result1, value1);
-        assertFalse(profile.isUninitialized());
-        assertTrue(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertTrue(isGeneric(profile));
     }
 
     @Theory
@@ -865,8 +881,8 @@ public class PrimitiveValueProfileTest {
 
         assertEquals(result0, value0);
         assertSame(result1, value1);
-        assertFalse(profile.isUninitialized());
-        assertTrue(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertTrue(isGeneric(profile));
     }
 
     @Theory
@@ -876,8 +892,8 @@ public class PrimitiveValueProfileTest {
 
         assertEquals(result0, value0);
         assertSame(result1, value1);
-        assertFalse(profile.isUninitialized());
-        assertTrue(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertTrue(isGeneric(profile));
     }
 
     @Theory
@@ -887,8 +903,8 @@ public class PrimitiveValueProfileTest {
 
         assertEquals(result0, value0);
         assertSame(result1, value1);
-        assertFalse(profile.isUninitialized());
-        assertTrue(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertTrue(isGeneric(profile));
     }
 
     @Theory
@@ -898,8 +914,8 @@ public class PrimitiveValueProfileTest {
 
         assertTrue(PrimitiveValueProfile.exactCompare(result0, value0));
         assertSame(result1, value1);
-        assertFalse(profile.isUninitialized());
-        assertTrue(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertTrue(isGeneric(profile));
     }
 
     @Theory
@@ -909,8 +925,8 @@ public class PrimitiveValueProfileTest {
 
         assertTrue(PrimitiveValueProfile.exactCompare(result0, value0));
         assertSame(result1, value1);
-        assertFalse(profile.isUninitialized());
-        assertTrue(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertTrue(isGeneric(profile));
     }
 
     @Theory
@@ -920,8 +936,8 @@ public class PrimitiveValueProfileTest {
 
         assertEquals(result0, value0);
         assertSame(result1, value1);
-        assertFalse(profile.isUninitialized());
-        assertTrue(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertTrue(isGeneric(profile));
     }
 
     @Theory
@@ -931,27 +947,27 @@ public class PrimitiveValueProfileTest {
 
         assertEquals(result0, value0);
         assertSame(result1, value1);
-        assertFalse(profile.isUninitialized());
-        assertTrue(profile.isGeneric());
+        assertFalse(isUninitialized(profile));
+        assertTrue(isGeneric(profile));
     }
 
     @Test
     public void testNegativeZeroFloat() {
         profile.profile(-0.0f);
         profile.profile(+0.0f);
-        assertThat(profile.isGeneric(), is(true));
+        assertThat(isGeneric(profile), is(true));
     }
 
     @Test
     public void testNegativeZeroDouble() {
         profile.profile(-0.0);
         profile.profile(+0.0);
-        assertThat(profile.isGeneric(), is(true));
+        assertThat(isGeneric(profile), is(true));
     }
 
     @Test
     public void testDisabled() {
-        PrimitiveValueProfile.Disabled p = (PrimitiveValueProfile.Disabled) PrimitiveValueProfile.Disabled.INSTANCE;
+        PrimitiveValueProfile p = (PrimitiveValueProfile) getStaticField(loadRelative(PrimitiveValueProfileTest.class, "PrimitiveValueProfile$Disabled"), "INSTANCE");
         assertThat(p.profile(O1), is(O1));
         assertThat(p.profile(B1), is(B1));
         assertThat(p.profile(S1), is(S1));
