@@ -56,7 +56,7 @@ public final class IntegerConstantType implements Type {
 
     @Override
     public String toString() {
-        if (getType().getBitCount() == 1) {
+        if (getType().getBits() == 1) {
             return value == 0 ? "i1 false" : "i1 true";
         }
         return String.format("%s %d", type, value);

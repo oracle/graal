@@ -47,6 +47,11 @@ public class MetadataConstantType implements Type {
     }
 
     @Override
+    public int getBits() {
+        return getType().getBits();
+    }
+
+    @Override
     public int sizeof() {
         return getType().sizeof();
     }

@@ -152,12 +152,12 @@ public final class LLVMNodeGenerator {
     }
 
     private static LLVMExpressionNode resolveBigIntegerConstant(BigIntegerConstant constant) {
-        final int bits = ((IntegerType) constant.getType()).getBitCount();
+        final int bits = ((IntegerType) constant.getType()).getBits();
         return new LLVMSimpleLiteralNode.LLVMIVarBitLiteralNode(LLVMIVarBit.create(bits, constant.getValue().toByteArray()));
     }
 
     private static LLVMExpressionNode resolveIntegerConstant(IntegerConstant constant) {
-        final int bits = ((IntegerType) constant.getType()).getBitCount();
+        final int bits = ((IntegerType) constant.getType()).getBits();
         switch (bits) {
             case 1:
                 return new LLVMSimpleLiteralNode.LLVMI1LiteralNode(constant.getValue() != 0);

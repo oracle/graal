@@ -91,7 +91,8 @@ public final class IntegerType implements Type {
         return obj instanceof IntegerType && bits == ((IntegerType) obj).bits;
     }
 
-    public int getBitCount() {
+    @Override
+    public int getBits() {
         return bits;
     }
 

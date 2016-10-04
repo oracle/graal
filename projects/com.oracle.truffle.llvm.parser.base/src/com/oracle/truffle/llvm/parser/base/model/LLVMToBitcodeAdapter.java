@@ -60,7 +60,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
 
-public class LLVMToBitcodeAdapter {
+public final class LLVMToBitcodeAdapter {
 
     private LLVMToBitcodeAdapter() {
     }
@@ -251,7 +251,7 @@ public class LLVMToBitcodeAdapter {
     }
 
     public static ResolvedType unresolveType(IntegerType type) {
-        return new ResolvedIntegerType(type.getBitCount());
+        return new ResolvedIntegerType(type.getBits());
     }
 
     public static ResolvedType unresolveType(MetaType type) {

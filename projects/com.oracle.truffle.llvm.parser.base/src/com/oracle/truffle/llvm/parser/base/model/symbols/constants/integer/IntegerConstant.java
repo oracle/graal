@@ -47,7 +47,7 @@ public final class IntegerConstant extends AbstractConstant {
 
     @Override
     public String toString() {
-        if (((IntegerType) getType()).getBitCount() == 1) {
+        if (((IntegerType) getType()).getBits() == 1) {
             return value == 0 ? "false" : "true";
         }
         return String.valueOf(value);
@@ -55,7 +55,7 @@ public final class IntegerConstant extends AbstractConstant {
 
     public static IntegerConstant fromDatum(IntegerType type, long datum) {
         // Sign extend for everything except i1 (boolean)
-        final int bits = type.getBitCount();
+        final int bits = type.getBits();
         long d = datum;
         if (bits > 1 && bits < Long.SIZE) {
             d = extendSign(bits, d);

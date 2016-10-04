@@ -45,6 +45,10 @@ public interface Type {
         return this;
     }
 
+    default int getBits() {
+        return sizeof() * Byte.SIZE;
+    }
+
     int sizeof();
 
     default int sizeof(@SuppressWarnings("unused") int alignment) {

@@ -63,6 +63,11 @@ public enum FloatingPointType implements Type {
     }
 
     @Override
+    public int getBits() {
+        return width;
+    }
+
+    @Override
     public int sizeof() {
         return width / Byte.SIZE;
     }

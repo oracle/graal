@@ -52,13 +52,18 @@ public final class BigIntegerConstantType implements Type {
     }
 
     @Override
+    public int getBits() {
+        return type.getBits();
+    }
+
+    @Override
     public int sizeof() {
         return type.sizeof();
     }
 
     @Override
     public String toString() {
-        if (getType().getBitCount() == 1) {
+        if (getType().getBits() == 1) {
             return value.equals(BigInteger.ZERO) ? "i1 false" : "i1 true";
         }
         return String.format("%s %s", type, value);

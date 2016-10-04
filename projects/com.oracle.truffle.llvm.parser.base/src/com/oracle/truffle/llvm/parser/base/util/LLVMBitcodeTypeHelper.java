@@ -128,7 +128,7 @@ public class LLVMBitcodeTypeHelper {
             throw new LLVMUnsupportedException(LLVMUnsupportedException.UnsupportedReason.PARSER_ERROR_VOID_SLOT);
 
         } else if (type instanceof IntegerType) {
-            switch (((IntegerType) type).getBitCount()) {
+            switch (((IntegerType) type).getBits()) {
                 case 1:
                     return FrameSlotKind.Boolean;
                 case Byte.SIZE:
@@ -180,7 +180,7 @@ public class LLVMBitcodeTypeHelper {
             return LLVMFunctionDescriptor.LLVMRuntimeType.VOID;
 
         } else if (type instanceof IntegerType) {
-            switch (((IntegerType) type).getBitCount()) {
+            switch (((IntegerType) type).getBits()) {
                 case 1:
                     return LLVMFunctionDescriptor.LLVMRuntimeType.I1;
                 case Byte.SIZE:
@@ -215,7 +215,7 @@ public class LLVMBitcodeTypeHelper {
                 return LLVMFunctionDescriptor.LLVMRuntimeType.FUNCTION_ADDRESS;
 
             } else if (pointee instanceof IntegerType) {
-                switch (((IntegerType) pointee).getBitCount()) {
+                switch (((IntegerType) pointee).getBits()) {
                     case 1:
                         return LLVMFunctionDescriptor.LLVMRuntimeType.I1_POINTER;
                     case Byte.SIZE:
@@ -312,7 +312,7 @@ public class LLVMBitcodeTypeHelper {
 
     public int getByteSize(Type type) {
         if (type instanceof IntegerType) {
-            return Math.max(1, ((IntegerType) type).getBitCount() / Byte.SIZE);
+            return Math.max(1, ((IntegerType) type).getBits() / Byte.SIZE);
 
         } else if (type instanceof FloatingPointType) {
             return Math.max(1, ((FloatingPointType) type).width() / Byte.SIZE);

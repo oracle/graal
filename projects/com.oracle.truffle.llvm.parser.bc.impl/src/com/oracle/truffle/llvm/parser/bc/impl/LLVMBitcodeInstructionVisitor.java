@@ -281,7 +281,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         int bits = 0;
         if (cast.getType() instanceof IntegerType) {
-            bits = ((IntegerType) cast.getType()).getBitCount();
+            bits = ((IntegerType) cast.getType()).getBits();
         }
 
         LLVMExpressionNode result = LLVMCastsFactory.cast(fromNode, to, from, type, bits);
@@ -451,7 +451,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             result = LLVMMemoryReadWriteFactory.createLoadVector(resultType, source, type.getElementCount());
         } else {
             int bits = load.getType() instanceof IntegerType
-                            ? ((IntegerType) load.getType()).getBitCount()
+                            ? ((IntegerType) load.getType()).getBits()
                             : 0;
 
             result = LLVMMemoryReadWriteFactory.createLoad(resultType, source, bits);

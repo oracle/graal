@@ -170,7 +170,7 @@ public final class LLVMConstantGenerator {
 
         } else if (value instanceof IntegerConstant) {
             final IntegerConstant constant = (IntegerConstant) value;
-            final int bits = ((IntegerType) (constant).getType()).getBitCount();
+            final int bits = ((IntegerType) (constant).getType()).getBits();
             switch (bits) {
                 case 1:
                     return new LLVMSimpleLiteralNode.LLVMI1LiteralNode(constant.getValue() != 0);
@@ -440,7 +440,7 @@ public final class LLVMConstantGenerator {
 
     public static LLVMExpressionNode toConstantZeroNode(Type type, LLVMContext context, FrameSlot stack, LLVMBitcodeTypeHelper typeHelper) {
         if (type instanceof IntegerType) {
-            final int vbr = ((IntegerType) type).getBitCount();
+            final int vbr = ((IntegerType) type).getBits();
             switch (vbr) {
                 case 1:
                     return new LLVMSimpleLiteralNode.LLVMI1LiteralNode(false);
