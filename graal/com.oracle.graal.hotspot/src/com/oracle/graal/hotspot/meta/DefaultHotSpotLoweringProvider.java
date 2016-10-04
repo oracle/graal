@@ -347,7 +347,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 AddNode add = graph.addOrUnique(new AddNode(address, n.getOffset()));
                 graph.replaceFixedWithFloating(n, add);
             } else {
-                throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode");
+                throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode " + n);
             }
         }
     }

@@ -363,7 +363,7 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
             }
 
             @SuppressWarnings("try")
-            private Pair<InfoElement, Stamp> foldFromConstLoadField(LoadFieldNode loadFieldNode, InfoElementProvider info) {
+            protected Pair<InfoElement, Stamp> foldFromConstLoadField(LoadFieldNode loadFieldNode, InfoElementProvider info) {
                 ValueNode object = loadFieldNode.object();
                 if (!loadFieldNode.field().isStatic()) {
                     // look if we got stamp info for the object and return the constant stamp
@@ -823,7 +823,7 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
         }
     }
 
-    static class Pair<F, S> {
+    protected static class Pair<F, S> {
         public final F first;
         public final S second;
 
