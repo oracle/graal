@@ -33,7 +33,6 @@ import java.io.IOException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.truffle.api.source.LineLocation;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.profiles.SeparateClassloaderTestRunner;
 
@@ -44,8 +43,8 @@ public class LineLocationTest {
     @Test
     public void lineLocationLiteralTest() {
         final Source source = Source.newBuilder("line 1\nline2\n").name("lineLocationTest").mimeType("content/unknown").build();
-        final LineLocation line1 = source.createLineLocation(1);
-        final LineLocation line2 = source.createLineLocation(2);
+        final com.oracle.truffle.api.source.LineLocation line1 = source.createLineLocation(1);
+        final com.oracle.truffle.api.source.LineLocation line2 = source.createLineLocation(2);
         assertEquals(line1.getLineNumber(), 1);
         assertNotEquals(line1, line2);
         assertEquals(line1, source.createLineLocation(1));
@@ -59,9 +58,9 @@ public class LineLocationTest {
         final Source s2 = createSourceFile("Hello2 line 1\nline2\n", "LineLocation2");
         assertNotNull(s1);
         assertNotNull(s2);
-        final LineLocation s1l1 = s1.createLineLocation(1);
-        final LineLocation s1l2 = s1.createLineLocation(2);
-        final LineLocation s2l1 = s2.createLineLocation(1);
+        final com.oracle.truffle.api.source.LineLocation s1l1 = s1.createLineLocation(1);
+        final com.oracle.truffle.api.source.LineLocation s1l2 = s1.createLineLocation(2);
+        final com.oracle.truffle.api.source.LineLocation s2l1 = s2.createLineLocation(1);
         assertEquals(s1l1.compareTo(s1l2), -1);
         assertEquals(s1l1.compareTo(s2l1), -1);
         assertEquals(s1l2.compareTo(s2l1), -1);
@@ -71,8 +70,8 @@ public class LineLocationTest {
     public void lineLocationMixedTest() throws IOException {
         final Source s1 = createSourceFile("same contents", "Testfile");
         final Source s2 = Source.newBuilder("same contents").name("literal test source").mimeType("content/unknown").build();
-        final LineLocation s1l1 = s1.createLineLocation(1);
-        final LineLocation s2l1 = s2.createLineLocation(1);
+        final com.oracle.truffle.api.source.LineLocation s1l1 = s1.createLineLocation(1);
+        final com.oracle.truffle.api.source.LineLocation s2l1 = s2.createLineLocation(1);
         assertEquals(s1l1.compareTo(s2l1), 0);
         assertEquals(s2l1.compareTo(s1l1), 0);
     }
