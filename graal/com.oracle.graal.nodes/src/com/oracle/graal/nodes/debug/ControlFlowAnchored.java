@@ -23,8 +23,8 @@
 package com.oracle.graal.nodes.debug;
 
 /**
- * Marker interface for nodes that prevent control flow optimizations. It is never duplicated or
- * merged with other control flow anchors.
+ * Marker interface for nodes that prevents control flow optimizations. The node should never be
+ * duplicated.
  */
 public interface ControlFlowAnchored {
 
