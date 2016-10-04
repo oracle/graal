@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.util.Map;
+
 import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
@@ -83,5 +85,9 @@ public interface LLVMParserRuntime {
     long getNativeHandle(String name);
 
     LLVMTypeHelper getTypeHelper();
+
+    Map<String, ResolvedType> getVariableNameTypesMapping();
+
+    NodeFactoryFacade getNodeFactoryFacade();
 
 }

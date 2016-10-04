@@ -37,6 +37,7 @@ import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.BitwiseBinaryInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
+import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.intel.llvm.ireditor.types.ResolvedType;
@@ -95,12 +96,16 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerN
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI8UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
+import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
@@ -354,8 +359,23 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor,
-                    String functionName) {
-        return new LLVMFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, sourceSection, frameDescriptor, functionName);
+                    FunctionHeader functionHeader) {
+        LLVMStackFrameNuller[] nullers = new LLVMStackFrameNuller[frameDescriptor.getSlots().size()];
+        int i = 0;
+        for (FrameSlot slot : frameDescriptor.getSlots()) {
+            String identifier = (String) slot.getIdentifier();
+            ResolvedType slotType = runtime.getVariableNameTypesMapping().get(identifier);
+            if (slot.equals(runtime.getReturnSlot())) {
+                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelper.getLLVMType(runtime.resolve(functionHeader.getRettype())), slot);
+            } else if (slot.equals(runtime.getStackPointerSlot())) {
+                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, new LLVMType(LLVMBaseType.ADDRESS), slot);
+            } else {
+                assert slotType != null : identifier;
+                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelper.getLLVMType(slotType), slot);
+            }
+            i++;
+        }
+        return new LLVMFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, sourceSection, frameDescriptor, functionHeader.getName(), nullers);
     }
 
     @Override
@@ -467,7 +487,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMStackFrameNuller createFrameNuller(String identifier, ResolvedType type, FrameSlot slot) {
+    public LLVMStackFrameNuller createFrameNuller(String identifier, LLVMType llvmType, FrameSlot slot) {
         switch (slot.getKind()) {
             case Boolean:
                 return new LLVMBooleanNuller(slot);
@@ -491,7 +511,10 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
                  */
                 return new LLVMAddressNuller(slot);
             case Illegal:
-                throw new AssertionError("illegal");
+                if (LLVMBaseOptionFacade.debugEnabled()) {
+                    LLVMLogger.info("illegal frame slot at stack nuller: " + identifier);
+                }
+                return new LLVMAddressNuller(slot);
             default:
                 throw new AssertionError();
         }

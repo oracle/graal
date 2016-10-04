@@ -37,6 +37,7 @@ import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.BitwiseBinaryInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
+import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.intel.llvm.ireditor.types.ResolvedType;
@@ -293,7 +294,7 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
 
     @Override
     public RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor,
-                    String functionName) {
+                    FunctionHeader functionHeader) {
         return null;
     }
 
@@ -343,7 +344,7 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMStackFrameNuller createFrameNuller(String identifier, ResolvedType type, FrameSlot slot) {
+    public LLVMStackFrameNuller createFrameNuller(String identifier, LLVMType type, FrameSlot slot) {
         return null;
     }
 

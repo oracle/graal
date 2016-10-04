@@ -424,7 +424,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         LLVMNode[] afterFunction = new LLVMNode[0];
 
         final SourceSection sourceSection = source.createSection(method.getName(), 1);
-        LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(body, beforeFunction, afterFunction, sourceSection, frame, method.getName());
+        LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(body, beforeFunction, afterFunction, sourceSection, frame, method.getName(), getInitNullers(frame));
         if (LLVMBaseOptionFacade.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
             System.out.flush();
@@ -435,6 +435,43 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         LLVMFunctionDescriptor function = context.getFunctionRegistry().createFunctionDescriptor(method.getName(), llvmReturnType, llvmParamTypes, method.isVarArg());
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         functions.put(function, callTarget);
+    }
+
+    /**
+     * Initializes the tags of the frame.
+     */
+    private static LLVMStackFrameNuller[] getInitNullers(FrameDescriptor frameDescriptor) throws AssertionError {
+        List<LLVMStackFrameNuller> initNullers = new ArrayList<>();
+        for (FrameSlot slot : frameDescriptor.getSlots()) {
+            switch (slot.getKind()) {
+                case Boolean:
+                    initNullers.add(new LLVMStackFrameNuller.LLVMBooleanNuller(slot));
+                    break;
+                case Byte:
+                    initNullers.add(new LLVMStackFrameNuller.LLVMByteNuller(slot));
+                    break;
+                case Int:
+                    initNullers.add(new LLVMStackFrameNuller.LLVMIntNuller(slot));
+                    break;
+                case Long:
+                    initNullers.add(new LLVMStackFrameNuller.LLVMLongNuller(slot));
+                    break;
+                case Float:
+                    initNullers.add(new LLVMStackFrameNuller.LLVMFloatNuller(slot));
+                    break;
+                case Double:
+                    initNullers.add(new LLVMStackFrameNuller.LLVMDoubleNuller(slot));
+                    break;
+                case Object:
+                    initNullers.add(new LLVMStackFrameNuller.LLVMAddressNuller(slot));
+                    break;
+                case Illegal:
+                    break;
+                default:
+                    throw new AssertionError(slot);
+            }
+        }
+        return initNullers.toArray(new LLVMStackFrameNuller[initNullers.size()]);
     }
 
     @Override

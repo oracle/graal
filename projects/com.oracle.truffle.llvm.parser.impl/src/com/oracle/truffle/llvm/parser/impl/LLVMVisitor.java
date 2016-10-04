@@ -381,7 +381,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             if (object instanceof GlobalVariable) {
                 GlobalVariable globalVar = (GlobalVariable) object;
                 globalVariableScope.put(globalVar.getName(), findOrAllocateGlobal(globalVar));
-                variableTypes.put(globalVar.getName(), resolve(globalVar.getType()));
             }
         }
     }
@@ -522,7 +521,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         String functionName = def.getHeader().getName();
         LLVMNode[] beforeFunction = formalParameters.toArray(new LLVMNode[formalParameters.size()]);
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
-        RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, sourceFile.createSection(functionName, 1), frameDescriptor, functionName);
+        RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, sourceFile.createSection(functionName, 1), frameDescriptor, def.getHeader());
         if (LLVMBaseOptionFacade.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }
@@ -587,7 +586,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
 
     private LLVMStackFrameNuller getNullerNode(FrameSlot slot) {
         String identifier = (String) slot.getIdentifier();
-        ResolvedType type = variableTypes.get(identifier);
+        LLVMType type = LLVMTypeHelper.getLLVMType(variableTypes.get(identifier));
         return factoryFacade.createFrameNuller(identifier, type, slot);
     }
 
@@ -750,7 +749,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         EObject instr = namedMiddleInstr.getInstruction();
         String name = namedMiddleInstr.getName();
         LLVMExpressionNode result;
-        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(name);
+        FrameSlot frameSlot = findOrAddFrameSlot(name, namedMiddleInstr);
         if (instr instanceof BinaryInstruction) {
             BinaryInstruction binaryInstruction = (BinaryInstruction) instr;
             result = visitBinaryArithmeticInstruction(binaryInstruction);
@@ -1434,7 +1433,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             if (!phiRefs.get(currentBasicBlock).isEmpty()) {
                 List<Phi> phiValues = phiRefs.get(currentBasicBlock);
                 for (Phi phi : phiValues) {
-                    FrameSlot phiSlot = frameDescriptor.findOrAddFrameSlot(phi.getAssignTo());
+                    FrameSlot phiSlot = findOrAddFrameSlot(phi.getAssignTo(), phi.getType());
                     LLVMExpressionNode phiValueNode = visitValueRef(phi.getValueRef(), phi.getType());
                     boolean isTrueCondition = brInstruction.getTrue().getRef() == phi.getStartingInstr().eContainer();
                     LLVMNode phiWriteNode = getWriteNode(phiValueNode, phiSlot, phi.getType());
@@ -1461,7 +1460,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         if (!phiRefs.get(currentBasicBlock).isEmpty()) {
             List<Phi> phiValues = phiRefs.get(currentBasicBlock);
             for (Phi phi : phiValues) {
-                FrameSlot phiSlot = frameDescriptor.findOrAddFrameSlot(phi.getAssignTo());
+                FrameSlot phiSlot = findOrAddFrameSlot(phi.getAssignTo(), phi.getType());
                 LLVMExpressionNode phiValueNode = visitValueRef(phi.getValueRef(), phi.getType());
                 LLVMNode phiWriteNode = getWriteNode(phiValueNode, phiSlot, phi.getType());
                 unconditionalPhiWriteNode.add(phiWriteNode);
@@ -1556,6 +1555,16 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     @Override
     public LLVMTypeHelper getTypeHelper() {
         return typeHelper;
+    }
+
+    @Override
+    public Map<String, ResolvedType> getVariableNameTypesMapping() {
+        return variableTypes;
+    }
+
+    @Override
+    public NodeFactoryFacade getNodeFactoryFacade() {
+        return factoryFacade;
     }
 
 }
