@@ -49,7 +49,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  * </p>
  *
  * <p>
- * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.test.FrameTest} .
+ * The next part of the Truffle API introduction is at {@link com.oracle.truffle.api.test.FrameTest}
+ * .
  * </p>
  */
 public class ArgumentsTest {
