@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMI32I
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMI64Intrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 public final class LLVMTruffleOnlyIntrinsics {
 
@@ -185,6 +186,40 @@ public final class LLVMTruffleOnlyIntrinsics {
             }
         }
 
+        @Specialization
+        public int executeIntrinsic(VirtualFrame frame, LLVMAddress str1, TruffleObject str2) {
+            try {
+                return execute(frame, str1, str2);
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        private int execute(VirtualFrame frame, LLVMAddress str1, TruffleObject str2) throws UnsupportedMessageException, UnknownIdentifierException {
+            long size2 = toLLVMSize2.convert(frame, ForeignAccess.sendGetSize(getSize2, frame, str2), long.class);
+            int i;
+            for (i = 0; true; i++) {
+                char c1 = (char) LLVMMemory.getI8(str1.increment(i));
+                if (c1 == '\0') {
+                    break;
+                }
+                if (i >= size2) {
+                    return c1;
+                }
+                Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
+                char c2 = toLLVM2.convert(frame, s2, char.class);
+                if (c1 != c2) {
+                    return c1 - c2;
+                }
+            }
+            if (i < size2) {
+                Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
+                char c2 = toLLVM2.convert(frame, s2, char.class);
+                return -c2;
+            } else {
+                return 0;
+            }
+        }
     }
 
 }

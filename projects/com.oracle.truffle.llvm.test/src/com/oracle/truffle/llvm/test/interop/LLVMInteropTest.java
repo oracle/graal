@@ -571,16 +571,16 @@ public final class LLVMInteropTest {
     public void testStrcmp() throws Exception {
         Runner runner = new Runner("strcmp");
         try {
-            Value strlenFunction = runner.findGlobalSymbol("func");
-            Value test1 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{}), JavaInterop.asTruffleObject(new char[]{}));
-            Value test2 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a'}), JavaInterop.asTruffleObject(new char[]{}));
-            Value test3 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{}), JavaInterop.asTruffleObject(new char[]{'a'}));
-            Value test4 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a'}), JavaInterop.asTruffleObject(new char[]{'d'}));
-            Value test5 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'d'}), JavaInterop.asTruffleObject(new char[]{'a'}));
-            Value test6 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'d'}), JavaInterop.asTruffleObject(new char[]{'d'}));
-            Value test7 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c'}), JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}));
-            Value test8 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}), JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c'}));
-            Value test9 = strlenFunction.execute(JavaInterop.asTruffleObject(new char[]{'A', 'B', 'C', 'D'}), JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}));
+            Value strcmpFunction = runner.findGlobalSymbol("func");
+            Value test1 = strcmpFunction.execute(JavaInterop.asTruffleObject(new char[]{}), JavaInterop.asTruffleObject(new char[]{}));
+            Value test2 = strcmpFunction.execute(JavaInterop.asTruffleObject(new char[]{'a'}), JavaInterop.asTruffleObject(new char[]{}));
+            Value test3 = strcmpFunction.execute(JavaInterop.asTruffleObject(new char[]{}), JavaInterop.asTruffleObject(new char[]{'a'}));
+            Value test4 = strcmpFunction.execute(JavaInterop.asTruffleObject(new char[]{'a'}), JavaInterop.asTruffleObject(new char[]{'d'}));
+            Value test5 = strcmpFunction.execute(JavaInterop.asTruffleObject(new char[]{'d'}), JavaInterop.asTruffleObject(new char[]{'a'}));
+            Value test6 = strcmpFunction.execute(JavaInterop.asTruffleObject(new char[]{'d'}), JavaInterop.asTruffleObject(new char[]{'d'}));
+            Value test7 = strcmpFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c'}), JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}));
+            Value test8 = strcmpFunction.execute(JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}), JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c'}));
+            Value test9 = strcmpFunction.execute(JavaInterop.asTruffleObject(new char[]{'A', 'B', 'C', 'D'}), JavaInterop.asTruffleObject(new char[]{'a', 'b', 'c', 'd'}));
             Assert.assertEquals(0, test1.get());
             Assert.assertEquals(97, test2.get());
             Assert.assertEquals(-97, test3.get());
@@ -590,6 +590,15 @@ public final class LLVMInteropTest {
             Assert.assertEquals(-100, test7.get());
             Assert.assertEquals(100, test8.get());
             Assert.assertEquals(-32, test9.get());
+            Value strcmpWithNativeFunction = runner.findGlobalSymbol("compare_with_native");
+            Value test10 = strcmpWithNativeFunction.execute(JavaInterop.asTruffleObject(new char[]{}));
+            Value test11 = strcmpWithNativeFunction.execute(JavaInterop.asTruffleObject(new char[]{'f', 'o', 'o'}));
+            Value test12 = strcmpWithNativeFunction.execute(JavaInterop.asTruffleObject(new char[]{'e'}));
+            Value test13 = strcmpWithNativeFunction.execute(JavaInterop.asTruffleObject(new char[]{'g'}));
+            Assert.assertEquals((int) 'f', test10.get());
+            Assert.assertEquals(0, test11.get());
+            Assert.assertEquals(1, test12.get());
+            Assert.assertEquals(-1, test13.get());
         } finally {
             runner.dispose();
         }
