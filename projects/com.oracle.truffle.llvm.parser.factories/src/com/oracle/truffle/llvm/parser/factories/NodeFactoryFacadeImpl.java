@@ -149,12 +149,12 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createLoad(ResolvedType resolvedResultType, LLVMExpressionNode loadTarget) {
-        return LLVMMemoryReadWriteFactory.createLoad(resolvedResultType, (LLVMAddressNode) loadTarget);
+        return LLVMMemoryReadWriteFactory.createLoad(LLVMToBitcodeAdapter.resolveType(resolvedResultType), (LLVMAddressNode) loadTarget);
     }
 
     @Override
     public LLVMNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, ResolvedType type) {
-        return LLVMMemoryReadWriteFactory.createStore(runtime, (LLVMAddressNode) pointerNode, valueNode, type);
+        return LLVMMemoryReadWriteFactory.createStore(runtime, (LLVMAddressNode) pointerNode, valueNode, LLVMToBitcodeAdapter.resolveType(type));
     }
 
     @Override
