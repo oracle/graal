@@ -39,10 +39,8 @@ public class JavaInteropSnippetsTest {
 
     @Before
     public void initializeEngine() {
-        try {
+        if (SNIPPETS != null) {
             initializeEngineImpl();
-        } catch (LinkageError err) {
-            // OK, let's surive that
         }
     }
 

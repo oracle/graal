@@ -53,11 +53,7 @@ public class JavaInteropSnippetsTest {
 
     @BeforeClass
     public static void isAvailable() throws Throwable {
-        try {
-            loadedOK = INTEROP_SNIPPETS != null;
-        } catch (LinkageError ex) {
-            // ignore
-        }
+        loadedOK = INTEROP_SNIPPETS != null;
     }
 
     @Test

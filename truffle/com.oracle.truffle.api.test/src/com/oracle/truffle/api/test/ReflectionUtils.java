@@ -79,7 +79,7 @@ public class ReflectionUtils {
     }
 
     private static Class<?>[] inferTypes(Object... args) {
-        Class<?>[] argTypes = new Class[args.length];
+        Class<?>[] argTypes = new Class<?>[args.length];
         for (int i = 0; i < args.length; i++) {
             if (args[i] == null) {
                 argTypes[i] = Object.class;

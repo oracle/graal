@@ -82,11 +82,11 @@ public class ContextStoreProfileTest {
     }
 
     private static Object newContextStore() {
-        return newInstance(CONTEXT_STORE, new Class[]{Object.class, int.class}, null, 0);
+        return newInstance(CONTEXT_STORE, new Class<?>[]{Object.class, int.class}, null, 0);
     }
 
     private static Object newContextStoreProfile() {
-        return newInstance(CONTEXT_STORE_PROFILE, new Class[]{CONTEXT_STORE}, (Object) null);
+        return newInstance(CONTEXT_STORE_PROFILE, new Class<?>[]{CONTEXT_STORE}, (Object) null);
     }
 
     private static Object get(Object profile) {
