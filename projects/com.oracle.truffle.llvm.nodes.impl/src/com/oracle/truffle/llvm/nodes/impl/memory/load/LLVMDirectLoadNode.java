@@ -30,11 +30,18 @@
 package com.oracle.truffle.llvm.nodes.impl.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
@@ -95,20 +102,44 @@ public abstract class LLVMDirectLoadNode {
             return LLVMMemory.getAddress(addr);
         }
 
-        // The following specializations are simpler than supporting arbitrary foreign objects here
-
         @Specialization
-        public Object executeAddress(ManagedMallocObject addr) {
+        public Object executeManagedMalloc(ManagedMallocObject addr) {
             return addr.get(0);
         }
 
         @Specialization(guards = "objectIsManagedMalloc(addr)")
-        public Object executeAddress(LLVMTruffleObject addr) {
+        public Object executeIndirectedManagedMalloc(LLVMTruffleObject addr) {
             return ((ManagedMallocObject) addr.getObject()).get((int) (addr.getOffset() / LLVMAddressNode.BYTE_SIZE));
+        }
+
+        @Specialization(guards = "!objectIsManagedMalloc(addr)")
+        public Object executeIndirectedForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
+            try {
+                return ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), addr.getOffset());
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                throw new UnsupportedOperationException(e);
+            }
+        }
+
+        @Specialization(guards = "!isManagedMalloc(addr)")
+        public Object executeForeign(VirtualFrame frame, TruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
+            try {
+                return ForeignAccess.sendRead(foreignRead, frame, addr, 0);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         protected boolean objectIsManagedMalloc(LLVMTruffleObject addr) {
             return addr.getObject() instanceof ManagedMallocObject;
+        }
+
+        protected boolean isManagedMalloc(TruffleObject addr) {
+            return addr instanceof ManagedMallocObject;
+        }
+
+        protected Node createForeignReadNode() {
+            return Message.READ.createNode();
         }
     }
 
