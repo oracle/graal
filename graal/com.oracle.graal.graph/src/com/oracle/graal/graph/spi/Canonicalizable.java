@@ -70,8 +70,8 @@ public interface Canonicalizable {
     /**
      * This sub-interface of {@link Canonicalizable} is intended for nodes that have exactly one
      * input. It has an additional {@link #canonical(CanonicalizerTool, Node)} method that looks at
-     * the given input instead of the current input of the node - which can be used to ask
-     * "what if this input is changed to this node" - questions.
+     * the given input instead of the current input of the node - which can be used to ask "what if
+     * this input is changed to this node" - questions.
      *
      * @param <T> the common supertype of all inputs of this node
      */

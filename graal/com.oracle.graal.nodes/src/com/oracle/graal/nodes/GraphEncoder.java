@@ -66,8 +66,8 @@ import jdk.vm.ci.code.Architecture;
  * encoding-local.
  *
  * The encoded graph has the following structure: First, all nodes and their edges are serialized.
- * The start offset of every node is then known. The raw node data is followed by a
- * "table of contents" that lists the start offset for every node.
+ * The start offset of every node is then known. The raw node data is followed by a "table of
+ * contents" that lists the start offset for every node.
  *
  * The beginning of that table of contents is the return value of {@link #encode} and stored in
  * {@link EncodedGraph#getStartOffset()}. The order of nodes in the table of contents is the

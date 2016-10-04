@@ -766,8 +766,8 @@ public class InliningData {
     }
 
     /**
-     * This method checks invariants for this class. Named after shorthand for
-     * "internal representation is ok".
+     * This method checks invariants for this class. Named after shorthand for "internal
+     * representation is ok".
      */
     public boolean repOK() {
         assert topGraphsForTopInvocation();
