@@ -167,14 +167,16 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
                     graalCompileOnlyFilter = MethodFilter.parse(Options.GraalCompileOnly.getValue());
                     if (graalCompileOnlyFilter.length == 0) {
                         graalCompileOnlyFilter = null;
-                    } else {
-                        /*
-                         * Exercise this code path early to encourage loading now. This doesn't
-                         * solve problem of deadlock during class loading but seems to eliminate it
-                         * in practice.
-                         */
-                        adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.FullOptimization);
                     }
+                }
+                if (graalCompileOnlyFilter != null || !Options.UseTrivialPrefixes.getValue()) {
+                    /*
+                     * Exercise this code path early to encourage loading now. This doesn't solve
+                     * problem of deadlock during class loading but seems to eliminate it in
+                     * practice.
+                     */
+                    adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.FullOptimization);
+                    adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.Simple);
                 }
             }
             optionsInitialized = true;
