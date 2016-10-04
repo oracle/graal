@@ -38,20 +38,6 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 @NodeChildren({@NodeChild(type = LLVMI64Node.class), @NodeChild(type = LLVMI64Node.class)})
 public abstract class LLVMI64CompareNode extends LLVMI1Node {
 
-    public abstract static class LLVMI64EqNode extends LLVMI64CompareNode {
-        @Specialization
-        public boolean executeI1(long val1, long val2) {
-            return val1 == val2;
-        }
-    }
-
-    public abstract static class LLVMI64NeNode extends LLVMI64CompareNode {
-        @Specialization
-        public boolean executeI1(long val1, long val2) {
-            return val1 != val2;
-        }
-    }
-
     public abstract static class LLVMI64SltNode extends LLVMI64CompareNode {
         @Specialization
         public boolean executeI1(long val1, long val2) {
