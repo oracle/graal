@@ -263,7 +263,8 @@ public class OptionsParser {
             String help = desc.getHelp();
             if (desc.getOptionValue() instanceof EnumOptionValue) {
                 EnumOptionValue<?> eoption = (EnumOptionValue<?>) desc.getOptionValue();
-                help += "  Valid values are " + eoption.getOptionValues();
+                String evalues = eoption.getOptionValues().toString();
+                help += "  Valid values are: " + evalues.substring(1, evalues.length() - 1);
             }
             String name = e.getKey();
             String assign = explicitlyAssigned.contains(name) ? ":=" : " =";
