@@ -1,6 +1,6 @@
 This page describes how to set up Eclipse for Graal development. For convenience, `$GRAAL` denotes your local Graal repository (i.e. the directory containing `README.md`).
 
-Eclipse can be downloaded [here](http://download.eclipse.org/eclipse/downloads/). The currently supported version for Graal development is 4.4 (there are [unresolved issues](https://github.com/graalvm/mx/issues/52) adopting 4.5).
+Eclipse can be downloaded [here](http://download.eclipse.org/eclipse/downloads/). The currently supported version for Graal development is 4.5.2.
 
 Once you have installed Eclipse, if you have multiple Java versions on your computer, you should edit [eclipse.ini](http://wiki.eclipse.org/Eclipse.ini) to [specify the JVM](http://wiki.eclipse.org/Eclipse.ini#Specifying_the_JVM) that Eclipse will be run with. It must be run with a JDK 8 VM. For example:
 ```
