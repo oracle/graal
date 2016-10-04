@@ -34,12 +34,8 @@ import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
-/**
- * This node prevents control flow optimizations. It is never duplicated or merged with other
- * control flow anchors.
- */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLowerable {
+public final class ControlFlowAnchorNode extends FixedWithNextNode implements LIRLowerable, ControlFlowAnchored {
 
     public static final NodeClass<ControlFlowAnchorNode> TYPE = NodeClass.create(ControlFlowAnchorNode.class);
 
