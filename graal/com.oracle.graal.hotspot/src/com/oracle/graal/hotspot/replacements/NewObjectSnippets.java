@@ -79,12 +79,12 @@ import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.nodes.DimensionsNode;
-import com.oracle.graal.nodes.PrefetchAllocateNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.NamedLocationIdentity;
+import com.oracle.graal.nodes.PrefetchAllocateNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
@@ -129,25 +129,23 @@ public class NewObjectSnippets implements Snippets {
 
     public static final LocationIdentity INIT_LOCATION = NamedLocationIdentity.mutable("Initialization");
 
-    enum ProfileMode {
-        AllocatingMethods,
+    enum ProfileContext {
+        AllocatingMethod,
         InstanceOrArray,
-        AllocatedTypes,
-        AllocatedTypesInMethods,
+        AllocatedType,
+        AllocatedTypesInMethod,
         Total
     }
 
-    public static final ProfileMode PROFILE_MODE = ProfileMode.AllocatedTypes;
-
     @Fold
     static String createName(String path, String typeContext) {
-        switch (PROFILE_MODE) {
-            case AllocatingMethods:
+        switch (HotspotSnippetsOptions.ProfileAllocationsContext.getValue()) {
+            case AllocatingMethod:
                 return "";
             case InstanceOrArray:
                 return path;
-            case AllocatedTypes:
-            case AllocatedTypesInMethods:
+            case AllocatedType:
+            case AllocatedTypesInMethod:
                 return typeContext;
             case Total:
                 return "bytes";
@@ -161,11 +159,17 @@ public class NewObjectSnippets implements Snippets {
         return HotspotSnippetsOptions.ProfileAllocations.getValue();
     }
 
+    @Fold
+    static boolean withContext() {
+        ProfileContext context = HotspotSnippetsOptions.ProfileAllocationsContext.getValue();
+        return context == ProfileContext.AllocatingMethod || context == ProfileContext.AllocatedTypesInMethod;
+    }
+
     protected static void profileAllocation(String path, long size, String typeContext) {
         if (doProfile()) {
             String name = createName(path, typeContext);
 
-            boolean context = PROFILE_MODE == ProfileMode.AllocatingMethods || PROFILE_MODE == ProfileMode.AllocatedTypesInMethods;
+            boolean context = withContext();
             DynamicCounterNode.counter(name, "number of bytes allocated", size, context);
             DynamicCounterNode.counter(name, "number of allocations", 1, context);
         }

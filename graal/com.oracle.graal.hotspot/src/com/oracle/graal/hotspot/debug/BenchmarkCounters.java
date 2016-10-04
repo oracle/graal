@@ -41,7 +41,7 @@ import com.oracle.graal.debug.CSVUtil;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
+import com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
@@ -81,7 +81,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  * {@code -Dgraal.ProfileAllocations=true}.</li>
  * <li>The numbers will only include allocation from compiled code!</li>
  * <li>The counters can be further configured by modifying the
- * {@link NewObjectSnippets#PROFILE_MODE} field.</li>
+ * {@link HotspotSnippetsOptions#ProfileAllocationsContext} flag..</li>
  * </ul>
  */
 public class BenchmarkCounters {
