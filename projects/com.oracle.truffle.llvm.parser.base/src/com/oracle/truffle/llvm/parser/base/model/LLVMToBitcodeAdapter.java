@@ -49,7 +49,7 @@ import com.intel.llvm.ireditor.types.ResolvedUnknownType;
 import com.intel.llvm.ireditor.types.ResolvedVarargType;
 import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.intel.llvm.ireditor.types.ResolvedVoidType;
-
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
@@ -120,7 +120,8 @@ public final class LLVMToBitcodeAdapter {
                 args.add(resolveType(arg));
             }
         }
-        return new FunctionType(returnType, args.toArray(new Type[args.size()]), hasVararg);
+        FunctionType fType = new FunctionType(returnType, args.toArray(new Type[args.size()]), hasVararg);
+        return new FunctionDeclaration(fType);
     }
 
     private static final int HALF_SIZE = 16;
@@ -213,8 +214,8 @@ public final class LLVMToBitcodeAdapter {
 
     // temporary solution to convert the new type back to the old one
     public static ResolvedType unresolveType(Type type) {
-        if (type instanceof FunctionType) {
-            return unresolveType((FunctionType) type);
+        if (type instanceof FunctionDeclaration) {
+            return unresolveType((FunctionDeclaration) type);
         } else if (type instanceof FloatingPointType) {
             return unresolveType((FloatingPointType) type);
         } else if (type instanceof IntegerType) {
@@ -234,7 +235,7 @@ public final class LLVMToBitcodeAdapter {
         throw new AssertionError("Unknown type: " + type + " - " + type.getClass().getTypeName());
     }
 
-    public static ResolvedType unresolveType(FunctionType type) {
+    public static ResolvedType unresolveType(FunctionDeclaration type) {
         ResolvedType returnType = unresolveType(type.getReturnType());
         List<ResolvedType> paramTypes = new ArrayList<>();
         for (Type t : type.getArgumentTypes()) {
@@ -261,6 +262,12 @@ public final class LLVMToBitcodeAdapter {
 
             case VOID:
                 return new ResolvedVoidType();
+
+            case OPAQUE:
+                return new ResolvedOpaqueType();
+
+            case METADATA:
+                return new ResolvedMetadataType();
 
             default:
                 throw new AssertionError("Unknown type: " + type);
