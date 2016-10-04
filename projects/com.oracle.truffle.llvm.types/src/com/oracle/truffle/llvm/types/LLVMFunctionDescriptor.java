@@ -128,7 +128,11 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
 
     @Override
     public String toString() {
-        return getName() + " " + getFunctionIndex();
+        if (functionName == null) {
+            return String.format("function@%d '%s'", functionId, functionName);
+        } else {
+            return String.format("function@%d (anonymous)", functionId);
+        }
     }
 
     @Override
