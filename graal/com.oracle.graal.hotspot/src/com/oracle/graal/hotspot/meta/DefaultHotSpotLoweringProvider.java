@@ -140,6 +140,7 @@ import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.type.StampTool;
+import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.replacements.DefaultJavaLoweringProvider;
 import com.oracle.graal.replacements.nodes.AssertionNode;
 
@@ -345,11 +346,13 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 GetObjectAddressNode address = graph.add(new GetObjectAddressNode(n.getObject()));
                 graph.addBeforeFixed(fixed, address);
                 AddNode add = graph.addOrUnique(new AddNode(address, n.getOffset()));
-                graph.replaceFixedWithFloating(n, add);
+                use.replaceFirstInput(n, add);
             } else {
-                throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode");
+                throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode " + n);
             }
         }
+        GraphUtil.unlinkFixedNode(n);
+        n.safeDelete();
     }
 
     private void lowerKlassLayoutHelperNode(KlassLayoutHelperNode n, LoweringTool tool) {
