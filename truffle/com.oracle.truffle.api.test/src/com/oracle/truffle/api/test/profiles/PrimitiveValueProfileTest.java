@@ -36,12 +36,13 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
+import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
 
-@RunWith(SeparateClassloaderTestRunner.Theories.class)
+@RunWith(Theories.class)
 @SuppressWarnings("deprecation")
 public class PrimitiveValueProfileTest {
 

@@ -33,12 +33,13 @@ import static org.junit.Assert.assertThat;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
+import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 
-@RunWith(SeparateClassloaderTestRunner.Theories.class)
+@RunWith(Theories.class)
 public class ByteValueProfileTest {
 
     @DataPoint public static final byte VALUE0 = Byte.MIN_VALUE;

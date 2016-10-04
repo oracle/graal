@@ -24,25 +24,22 @@ package com.oracle.truffle.api.test.source;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.test.profiles.SeparateClassloaderTestRunner;
 
 @SuppressWarnings({"deprecation", "sourcebuilder"})
-@RunWith(SeparateClassloaderTestRunner.class)
 public class SourceTest {
     @Test
     public void assignMimeTypeAndIdentity() {

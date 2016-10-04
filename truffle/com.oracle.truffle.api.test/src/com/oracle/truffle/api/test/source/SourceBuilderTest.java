@@ -23,8 +23,12 @@
 package com.oracle.truffle.api.test.source;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -35,21 +39,14 @@ import java.io.StringReader;
 import java.net.URL;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
-import org.junit.Assert;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
+import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.source.MissingMIMETypeException;
 import com.oracle.truffle.api.source.MissingNameException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.test.profiles.SeparateClassloaderTestRunner;
 
-@RunWith(SeparateClassloaderTestRunner.class)
 public class SourceBuilderTest {
     @Test
     public void assignMimeTypeAndIdentity() {

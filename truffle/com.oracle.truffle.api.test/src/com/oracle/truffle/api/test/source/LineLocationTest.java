@@ -31,12 +31,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.test.profiles.SeparateClassloaderTestRunner;
 
-@RunWith(SeparateClassloaderTestRunner.class)
 @SuppressWarnings("deprecation")
 public class LineLocationTest {
 

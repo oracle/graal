@@ -33,12 +33,13 @@ import static org.junit.Assert.assertThat;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
+import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.ValueProfile;
 
-@RunWith(SeparateClassloaderTestRunner.Theories.class)
+@RunWith(Theories.class)
 public class IdentityValueProfileTest {
 
     @DataPoint public static final String O1 = new String();

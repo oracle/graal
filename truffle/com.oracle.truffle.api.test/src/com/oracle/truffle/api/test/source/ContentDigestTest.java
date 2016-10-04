@@ -29,11 +29,7 @@ import java.util.Random;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
-import com.oracle.truffle.api.test.profiles.SeparateClassloaderTestRunner;
-
-@RunWith(SeparateClassloaderTestRunner.class)
 public class ContentDigestTest {
     @Test
     public void emptyMD2() throws Exception {
