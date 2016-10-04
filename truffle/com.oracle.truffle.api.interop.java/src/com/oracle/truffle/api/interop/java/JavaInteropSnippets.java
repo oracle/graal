@@ -38,6 +38,4 @@ final class JavaInteropSnippets {
         return check.isNull();
     }
     // END: JavaInteropSnippets#isNullValue
-
-    public static boolean loaded = true;
 }

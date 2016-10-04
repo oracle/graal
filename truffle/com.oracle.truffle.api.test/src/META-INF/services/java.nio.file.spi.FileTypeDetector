@@ -1,1 +1,1 @@
-com.oracle.truffle.api.source.CommonMIMETypeTestDetector
+com.oracle.truffle.api.test.source.CommonMIMETypeTestDetector

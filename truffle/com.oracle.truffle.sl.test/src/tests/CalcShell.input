@@ -7,7 +7,7 @@ c
 if (i <= 2) { return 1; } else { return prev + cur; }
 r
 i
-100
+10
 r
 c
 if (i == 0) { return 1; } else { return cur * i; }
