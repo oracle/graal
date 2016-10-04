@@ -131,17 +131,14 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMAddressIntrinsic {
             throw new IllegalArgumentException("Can't truffle_managed_malloc less than zero bytes");
         }
 
-        if (size % LLVMAddressNode.BYTE_SIZE != 0) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException("Can't truffle_managed_malloc a non-multiple of 64 bits");
-        }
+        long roundedSize = size + ((LLVMAddressNode.BYTE_SIZE - size) % LLVMAddressNode.BYTE_SIZE);
 
-        if (size / LLVMAddressNode.BYTE_SIZE > Integer.MAX_VALUE) {
+        if (roundedSize / LLVMAddressNode.BYTE_SIZE > Integer.MAX_VALUE) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException("Can't truffle_managed_malloc for more than 2^31 objects");
         }
 
-        return new ManagedMallocObject((int) (size / LLVMAddressNode.BYTE_SIZE));
+        return new ManagedMallocObject((int) (roundedSize / LLVMAddressNode.BYTE_SIZE));
     }
 
 }
