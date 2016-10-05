@@ -154,6 +154,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
+import com.oracle.truffle.llvm.parser.factories.LLVMLogicalFactory;
 
 /**
  * This class traverses the LLVM IR AST as provided by the <code>com.intel.llvm.ireditor</code>
@@ -817,7 +818,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMExpressionNode right = visitValueRef(op2, instr.getType());
         LLVMBaseType llvmType = getLLVMType(instr.getType()).getType();
         LLVMExpressionNode target = allocateVectorResultIfVector(instr);
-        return factoryFacade.createLogicalOperation(left, right, instr, llvmType, target);
+        return factoryFacade.createLogicalOperation(left, right, LLVMLogicalFactory.getLogicalInstructionType(instr), llvmType, target);
     }
 
     private LLVMExpressionNode allocateVectorResultIfVector(EObject type) {

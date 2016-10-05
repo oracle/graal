@@ -121,14 +121,6 @@ public final class LLVMLogicalFactory {
         return createNode(left, right, llvmType, type, target);
     }
 
-    public static LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, BitwiseBinaryInstruction type, LLVMBaseType llvmType, LLVMAddressNode target) {
-        if (left == null || right == null) {
-            throw new AssertionError();
-        }
-        LLVMLogicalInstructionType instructionType = getLogicalInstructionType(type);
-        return createNode(left, right, llvmType, instructionType, target);
-    }
-
     private static LLVMExpressionNode createNode(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMLogicalInstructionType type, LLVMAddressNode target)
                     throws AssertionError {
         switch (llvmType) {

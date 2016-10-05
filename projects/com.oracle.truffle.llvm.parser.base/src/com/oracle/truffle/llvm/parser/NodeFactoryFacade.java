@@ -35,7 +35,6 @@ import java.util.Optional;
 
 import org.eclipse.emf.ecore.EObject;
 
-import com.intel.llvm.ireditor.lLVM_IR.BitwiseBinaryInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
@@ -86,8 +85,6 @@ public interface NodeFactoryFacade {
     LLVMNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 
     LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType opCode, LLVMBaseType llvmType, LLVMExpressionNode target);
-
-    LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, BitwiseBinaryInstruction type, LLVMBaseType llvmType, LLVMExpressionNode target);
 
     LLVMExpressionNode createUndefinedValue(EObject t);
 

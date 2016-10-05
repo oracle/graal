@@ -331,10 +331,10 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.nodes",
         "LLVM_IR_PARSER",
         "EMF_COMMON", "ECORE", "INJECT", "XTEXT", "XTEXT_XBASE", "XTEXT_XBASE_LIB", "EMF_ECORE_XMI", "XTEXT_TYPES", "XTEXT_JAVAX_INJECT", "XTEXT_LOG4J", "XTEXT_GOOGLE_GUAVA", "XTEXT_ANTLR_RUNTIME", "XTEXT_UTIL", "ECLIPSE_EQUINOX"
        ],
+      "generatedDependencies" : ["com.oracle.truffle.llvm.nodes"],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -359,8 +359,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.nativeint",
-        "com.oracle.truffle.llvm.parser.base"
+        "com.oracle.truffle.llvm.parser.factories",
       ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
@@ -401,7 +400,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.asm.amd64",
-        "com.oracle.truffle.llvm.parser.base",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
