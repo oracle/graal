@@ -25,7 +25,12 @@
 package com.oracle.truffle.api.source;
 
 import com.oracle.truffle.api.impl.Accessor;
+import java.util.Collection;
 
 final class SourceAccessor extends Accessor {
-    static final EngineSupport ENGINE = new SourceAccessor().engineSupport();
+    private static final SourceAccessor ACCESSOR = new SourceAccessor();
+
+    static Collection<ClassLoader> allLoaders() {
+        return ACCESSOR.loaders();
+    }
 }

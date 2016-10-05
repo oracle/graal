@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.api.source;
 
-import com.oracle.truffle.api.vm.PolyglotLocator;
+import com.oracle.truffle.api.impl.TruffleLocator;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
@@ -31,7 +31,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import static org.junit.Assert.assertNotNull;
 
-public final class CommonMIMETypeLocator implements PolyglotLocator {
+public final class CommonMIMETypeLocator extends TruffleLocator {
     public static final class Detector extends FileTypeDetector {
         @Override
         public String probeContentType(Path path) throws IOException {

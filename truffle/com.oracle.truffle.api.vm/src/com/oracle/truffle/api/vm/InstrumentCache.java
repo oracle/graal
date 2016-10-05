@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.vm;
 
+import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
 
 import java.io.IOException;
@@ -55,7 +56,7 @@ final class InstrumentCache {
     static {
         List<InstrumentCache> instruments = null;
         if (Boolean.getBoolean("com.oracle.truffle.aot")) { // NOI18N
-            instruments = load(null);
+            instruments = load();
             for (InstrumentCache info : instruments) {
                 info.loadClass();
             }
@@ -78,14 +79,13 @@ final class InstrumentCache {
         }
     }
 
-    static List<InstrumentCache> load(PolyglotLocator customLocator) {
+    static List<InstrumentCache> load() {
         if (PRELOAD) {
             return CACHE;
         }
-        PolyglotLocator locator = customLocator == null ? defaultLocator() : customLocator;
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
-        for (ClassLoader loader : PolyglotLocator.Response.loaders(locator)) {
+        for (ClassLoader loader : Access.loaders()) {
             loadForOne(loader, list, classNamesUsed);
         }
         return list;
@@ -158,23 +158,4 @@ final class InstrumentCache {
         }
     }
 
-    private static PolyglotLocator defaultLocator() {
-        ClassLoader l;
-        if (PolyglotEngine.JDK8OrEarlier) {
-            l = PolyglotEngine.class.getClassLoader();
-            if (l == null) {
-                l = ClassLoader.getSystemClassLoader();
-            }
-        } else {
-            l = ModuleResourceLocator.createLoader();
-        }
-
-        final ClassLoader loader = l;
-        return new PolyglotLocator() {
-            @Override
-            public void locate(PolyglotLocator.Response response) {
-                response.registerClassLoader(loader);
-            }
-        };
-    }
 }

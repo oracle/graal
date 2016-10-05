@@ -22,48 +22,85 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.vm;
+package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
 import java.util.Collections;
 import java.util.LinkedHashSet;
-import java.util.ServiceLoader;
 import java.util.Set;
 
 /**
  * Locator that allows the users of the Truffle API to find implementations of languages to be
- * available in {@link PolyglotEngine}. One can specify the locator via
- * {@link PolyglotEngine.Builder#locator(com.oracle.truffle.api.vm.PolyglotLocator)} when
- * {@link PolyglotEngine.Builder building} own instance of the engine. When there is no explicitly
- * specified locator, then the system asks the {@link ServiceLoader} and uses all registered ones to
- * find their languages.
- * <p>
- * When the locator is asked to find {@link TruffleLanguage the languages} - via call to
- * {@link #locate(com.oracle.truffle.api.vm.PolyglotLocator.Response) } method, it can respond by
- * registering {@link ClassLoader}(s) that contain implementations and {@link Registration
- * registration}s of the {@link TruffleLanguage languages}.
+ * available in {@link com.oracle.truffle.api.vm.PolyglotEngine}. A {@link TruffleRuntime} can
+ * provide the locator via its {@link TruffleRuntime#getCapability(java.lang.Class)} method.
  *
  * @since 0.18
  */
-public interface PolyglotLocator {
+public abstract class TruffleLocator {
+
+    /**
+     * Creates the set of classloaders to be used by the system.
+     *
+     * @return set of classloaders to search registrations in
+     */
+    static Set<ClassLoader> loaders() {
+        Iterable<TruffleLocator> allLocators;
+        TruffleLocator locator = Truffle.getRuntime().getCapability(TruffleLocator.class);
+        if (locator != null) {
+            allLocators = Collections.singleton(locator);
+        } else {
+            allLocators = Collections.emptyList();
+        }
+        Set<ClassLoader> found = new LinkedHashSet<>();
+        Response response = new Response(found);
+        for (TruffleLocator test : allLocators) {
+            test.locate(response);
+        }
+        if (found.isEmpty()) {
+            ClassLoader l = TruffleLocator.class.getClassLoader();
+            if (l == null) {
+                l = ClassLoader.getSystemClassLoader();
+            }
+            found.add(l);
+        }
+        return found;
+    }
+
+    /**
+     * Utility method to load a class from one of the located classloaders.
+     *
+     * @param name class to search for
+     * @return the class or <code>null</code> if none of the loaders knows the class
+     */
+    static Class<?> loadClass(String name) {
+        for (ClassLoader loader : loaders()) {
+            try {
+                return loader.loadClass(name);
+            } catch (ClassNotFoundException ex) {
+                continue;
+            }
+        }
+        return null;
+    }
+
     /**
      * Called to locate languages and other parts of the system.
      *
      * @param response the response to fill in with found languages
      * @since 0.18
      */
-    void locate(Response response);
+    protected abstract void locate(Response response);
 
     /**
      * Callback to register languages.
      *
      * @since 0.18
      */
-    final class Response {
+    public static final class Response {
         private final Set<ClassLoader> loaders;
 
-        private Response(Set<ClassLoader> loaders) {
+        Response(Set<ClassLoader> loaders) {
             this.loaders = loaders;
         }
 
@@ -78,33 +115,6 @@ public interface PolyglotLocator {
             loaders.add(languageLoader);
         }
 
-        /**
-         * Creates the set of classloaders to be used by the system.
-         *
-         * @param locator the specified locator or <code>null</code>
-         * @return set of classloaders to search registrations in
-         */
-        static Set<ClassLoader> loaders(PolyglotLocator locator) {
-            Iterable<PolyglotLocator> allLocators;
-            if (locator != null) {
-                allLocators = Collections.singleton(locator);
-            } else {
-                allLocators = ServiceLoader.load(PolyglotLocator.class);
-            }
-            LinkedHashSet<ClassLoader> found = new LinkedHashSet<>();
-            Response response = new Response(found);
-            for (PolyglotLocator test : allLocators) {
-                test.locate(response);
-            }
-            if (found.isEmpty()) {
-                ClassLoader l = PolyglotEngine.class.getClassLoader();
-                if (l == null) {
-                    l = ClassLoader.getSystemClassLoader();
-                }
-                found.add(l);
-            }
-            return found;
-        }
     }
 
 }

@@ -40,6 +40,7 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -72,14 +73,7 @@ final class LanguageCache {
     private static Map<String, LanguageCache> initializeLanguages(final ClassLoader loader) {
         Map<String, LanguageCache> map;
 
-        PolyglotLocator singleLoaderLocator = new PolyglotLocator() {
-            @Override
-            public void locate(PolyglotLocator.Response response) {
-                response.registerClassLoader(loader);
-            }
-        };
-
-        map = createLanguages(singleLoaderLocator);
+        map = createLanguages(loader);
         for (LanguageCache info : map.values()) {
             info.createLanguage();
         }
@@ -116,17 +110,20 @@ final class LanguageCache {
         return l;
     }
 
-    static Map<String, LanguageCache> languages(PolyglotLocator locator) {
+    static Map<String, LanguageCache> languages() {
         if (PRELOAD) {
             return CACHE;
         }
-        return createLanguages(locator);
+        return createLanguages(null);
     }
 
-    private static Map<String, LanguageCache> createLanguages(PolyglotLocator locator) {
+    private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
         Map<String, LanguageCache> map = new LinkedHashMap<>();
-        for (ClassLoader loader : PolyglotLocator.Response.loaders(locator)) {
+        for (ClassLoader loader : Access.loaders()) {
             createLanguages(loader, map);
+        }
+        if (additionalLoader != null) {
+            createLanguages(additionalLoader, map);
         }
         return map;
     }

@@ -46,6 +46,11 @@ import java.util.Collection;
  */
 public abstract class Accessor {
 
+    @SuppressWarnings("all")
+    protected final Collection<ClassLoader> loaders() {
+        return TruffleLocator.loaders();
+    }
+
     public abstract static class Nodes {
         @SuppressWarnings("rawtypes")
         public abstract Class<? extends TruffleLanguage> findLanguage(RootNode n);
@@ -85,8 +90,6 @@ public abstract class Accessor {
 
         @SuppressWarnings("rawtypes")
         public abstract Object findLanguage(Class<? extends TruffleLanguage> language);
-
-        public abstract Collection<ClassLoader> allLoaders();
     }
 
     public abstract static class LanguageSupport {

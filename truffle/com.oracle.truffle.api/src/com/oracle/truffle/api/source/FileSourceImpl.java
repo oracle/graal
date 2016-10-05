@@ -104,7 +104,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
     }
 
     static String findMimeType(final Path filePath) throws IOException {
-        Collection<ClassLoader> loaders = SourceAccessor.ENGINE.allLoaders();
+        Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
         for (ClassLoader l : loaders) {
             for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {
                 String mimeType = detector.probeContentType(filePath);
