@@ -40,7 +40,6 @@ import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -84,7 +83,7 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget);
 
-    LLVMNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, ResolvedType type);
+    LLVMNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 
     LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType opCode, LLVMBaseType llvmType, LLVMExpressionNode target);
 
@@ -94,7 +93,7 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createLiteral(Object value, LLVMBaseType type);
 
-    LLVMExpressionNode createSimpleConstantNoArray(String stringValue, LLVMBaseType instructionType, ResolvedType type);
+    LLVMExpressionNode createSimpleConstantNoArray(String stringValue, LLVMBaseType instructionType, Type type);
 
     LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, LLVMExpressionNode target, LLVMBaseType type);
 
@@ -112,7 +111,7 @@ public interface NodeFactoryFacade {
 
     LLVMNode createRetVoid();
 
-    LLVMNode createNonVoidRet(LLVMExpressionNode retValue, ResolvedType resolvedType);
+    LLVMNode createNonVoidRet(LLVMExpressionNode retValue, Type resolvedType);
 
     LLVMExpressionNode createFunctionArgNode(int argIndex, LLVMBaseType paramType);
 
@@ -131,13 +130,13 @@ public interface NodeFactoryFacade {
 
     LLVMNode createFrameWrite(LLVMBaseType llvmType, LLVMExpressionNode result, FrameSlot slot);
 
-    FrameSlotKind getFrameSlotKind(ResolvedType type);
+    FrameSlotKind getFrameSlotKind(Type type);
 
     LLVMExpressionNode createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType type);
 
     LLVMExpressionNode createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMFloatComparisonType type);
 
-    LLVMExpressionNode createCast(LLVMExpressionNode fromNode, ResolvedType targetType, ResolvedType fromType, LLVMConversionType type);
+    LLVMExpressionNode createCast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType type);
 
     LLVMExpressionNode createArithmeticOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMArithmeticInstructionType instr, LLVMBaseType llvmType, LLVMExpressionNode target);
 
@@ -187,7 +186,7 @@ public interface NodeFactoryFacade {
 
     LLVMNode createUnconditionalBranch(int unconditionalIndex, LLVMNode[] phiWrites);
 
-    LLVMExpressionNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType);
+    LLVMExpressionNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, Type arrayType);
 
     /**
      * Creates an <code>alloca</code> node with a certain number of elements.
@@ -201,7 +200,7 @@ public interface NodeFactoryFacade {
      *            allocated
      * @return a node that allocates the specified number of elements
      */
-    LLVMExpressionNode createAlloc(ResolvedType type, int byteSize, int alignment, LLVMBaseType numElementsType, LLVMExpressionNode numElements);
+    LLVMExpressionNode createAlloc(Type type, int byteSize, int alignment, LLVMBaseType numElementsType, LLVMExpressionNode numElements);
 
     LLVMExpressionNode createInsertValue(LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert, LLVMBaseType llvmType);
 
@@ -239,7 +238,7 @@ public interface NodeFactoryFacade {
      * @param constants the structure members
      * @return the constructed structure literal
      */
-    LLVMExpressionNode createStructureConstantNode(ResolvedType structureType, boolean packed, ResolvedType[] types, LLVMExpressionNode[] constants);
+    LLVMExpressionNode createStructureConstantNode(Type structureType, boolean packed, Type[] types, LLVMExpressionNode[] constants);
 
     /**
      * Creates a basic block node.

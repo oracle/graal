@@ -39,7 +39,6 @@ import com.intel.llvm.ireditor.lLVM_IR.BitwiseBinaryInstruction;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
-import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -154,8 +153,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, ResolvedType type) {
-        return LLVMMemoryReadWriteFactory.createStore(runtime, (LLVMAddressNode) pointerNode, valueNode, LLVMToBitcodeAdapter.resolveType(type));
+    public LLVMNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+        return LLVMMemoryReadWriteFactory.createStore(runtime, (LLVMAddressNode) pointerNode, valueNode, type);
     }
 
     @Override
@@ -174,8 +173,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createSimpleConstantNoArray(String stringValue, LLVMBaseType instructionType, ResolvedType type) {
-        return LLVMLiteralFactory.createSimpleConstantNoArray(stringValue, instructionType, LLVMToBitcodeAdapter.resolveType(type));
+    public LLVMExpressionNode createSimpleConstantNoArray(String stringValue, LLVMBaseType instructionType, Type type) {
+        return LLVMLiteralFactory.createSimpleConstantNoArray(stringValue, instructionType, type);
     }
 
     @Override
@@ -199,8 +198,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMTerminatorNode createNonVoidRet(LLVMExpressionNode retValue, ResolvedType resolvedType) {
-        return LLVMFunctionFactory.createNonVoidRet(runtime, retValue, LLVMToBitcodeAdapter.resolveType(resolvedType));
+    public LLVMTerminatorNode createNonVoidRet(LLVMExpressionNode retValue, Type resolvedType) {
+        return LLVMFunctionFactory.createNonVoidRet(runtime, retValue, resolvedType);
     }
 
     @Override
@@ -224,8 +223,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public FrameSlotKind getFrameSlotKind(ResolvedType type) {
-        return LLVMFrameReadWriteFactory.getFrameSlotKind(LLVMToBitcodeAdapter.resolveType(type));
+    public FrameSlotKind getFrameSlotKind(Type type) {
+        return LLVMFrameReadWriteFactory.getFrameSlotKind(type);
     }
 
     @Override
@@ -239,8 +238,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createCast(LLVMExpressionNode fromNode, ResolvedType targetType, ResolvedType fromType, LLVMConversionType type) {
-        return LLVMCastsFactory.cast(fromNode, LLVMToBitcodeAdapter.resolveType(targetType), LLVMToBitcodeAdapter.resolveType(fromType), type);
+    public LLVMExpressionNode createCast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType type) {
+        return LLVMCastsFactory.cast(fromNode, targetType, fromType, type);
     }
 
     @Override
@@ -305,12 +304,12 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMAddressNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, ResolvedType arrayType) {
-        return LLVMLiteralFactory.createArrayLiteral(runtime, arrayValues, (ArrayType) LLVMToBitcodeAdapter.resolveType(arrayType));
+    public LLVMAddressNode createArrayLiteral(List<LLVMExpressionNode> arrayValues, Type arrayType) {
+        return LLVMLiteralFactory.createArrayLiteral(runtime, arrayValues, (ArrayType) arrayType);
     }
 
     @Override
-    public LLVMExpressionNode createAlloc(ResolvedType type, int byteSize, int alignment, LLVMBaseType llvmType, LLVMExpressionNode numElements) {
+    public LLVMExpressionNode createAlloc(Type type, int byteSize, int alignment, LLVMBaseType llvmType, LLVMExpressionNode numElements) {
         if (numElements == null) {
             assert llvmType == null;
             return LLVMAllocFactory.createAlloc(runtime, byteSize, alignment);
@@ -346,8 +345,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createStructureConstantNode(ResolvedType structType, boolean packed, ResolvedType[] types, LLVMExpressionNode[] constants) {
-        return LLVMAggregateFactory.createStructConstantNode(runtime, LLVMToBitcodeAdapter.resolveType(structType), packed, LLVMToBitcodeAdapter.resolveTypes(types), constants);
+    public LLVMExpressionNode createStructureConstantNode(Type structType, boolean packed, Type[] types, LLVMExpressionNode[] constants) {
+        return LLVMAggregateFactory.createStructConstantNode(runtime, structType, packed, types, constants);
     }
 
     @Override
