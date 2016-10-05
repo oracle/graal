@@ -66,6 +66,10 @@ public final class LLVMToBitcodeAdapter {
     }
 
     public static Type[] resolveTypes(ResolvedType[] types) {
+        if (types == null) {
+            return null;
+        }
+
         Type[] resolvedTypes = new Type[types.length];
         for (int i = 0; i < resolvedTypes.length; i++) {
             resolvedTypes[i] = resolveType(types[i]);
@@ -74,6 +78,10 @@ public final class LLVMToBitcodeAdapter {
     }
 
     public static Type resolveType(ResolvedType type) {
+        if (type == null) {
+            return null;
+        }
+
         if (type instanceof ResolvedNamedType) {
             return resolveType((ResolvedNamedType) type);
         } else if (type.isFunction()) {
@@ -222,6 +230,10 @@ public final class LLVMToBitcodeAdapter {
 
     // temporary solution to convert the new type back to the old one
     public static ResolvedType unresolveType(Type type) {
+        if (type == null) {
+            return null;
+        }
+
         if (type instanceof FunctionDeclaration) {
             return unresolveType((FunctionDeclaration) type);
         } else if (type instanceof FloatingPointType) {
