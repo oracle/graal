@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.FILENAME_EXTENSION;
+import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FILENAME_EXTENSION;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -44,7 +44,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.DebuggerTester;
 

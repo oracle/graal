@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.FILENAME_EXTENSION;
-import static com.oracle.truffle.api.instrumentation.InstrumentationTestLanguage.MIME_TYPE;
+import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FILENAME_EXTENSION;
+import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.MIME_TYPE;
 
 import java.io.File;
 import java.io.FileWriter;
