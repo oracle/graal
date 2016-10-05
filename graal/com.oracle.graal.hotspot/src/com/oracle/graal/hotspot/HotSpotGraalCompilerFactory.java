@@ -97,9 +97,9 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     }
 
     @Override
-    public void printSystemProperties(PrintStream out) {
+    public void printProperties(PrintStream out) {
         ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
-        out.println("[Graal system properties]");
+        out.println("[Graal properties]");
         OptionsParser.printFlags(loader, out, allOptionsSettings.keySet(), GRAAL_OPTION_PROPERTY_PREFIX);
     }
 
