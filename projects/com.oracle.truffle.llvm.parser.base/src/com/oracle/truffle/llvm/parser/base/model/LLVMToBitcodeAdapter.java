@@ -65,6 +65,14 @@ public final class LLVMToBitcodeAdapter {
     private LLVMToBitcodeAdapter() {
     }
 
+    public static Type[] resolveTypes(ResolvedType[] types) {
+        Type[] resolvedTypes = new Type[types.length];
+        for (int i = 0; i < resolvedTypes.length; i++) {
+            resolvedTypes[i] = resolveType(types[i]);
+        }
+        return resolvedTypes;
+    }
+
     public static Type resolveType(ResolvedType type) {
         if (type instanceof ResolvedNamedType) {
             return resolveType((ResolvedNamedType) type);

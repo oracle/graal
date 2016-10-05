@@ -346,7 +346,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createStructureConstantNode(ResolvedType structType, boolean packed, ResolvedType[] types, LLVMExpressionNode[] constants) {
-        return LLVMAggregateFactory.createStructConstantNode(runtime, structType, packed, types, constants);
+        return LLVMAggregateFactory.createStructConstantNode(runtime, LLVMToBitcodeAdapter.resolveType(structType), packed, LLVMToBitcodeAdapter.resolveTypes(types), constants);
     }
 
     @Override
