@@ -380,10 +380,10 @@ public final class LLVMLiteralFactory {
         int nrElements = arrayValues.size();
         Type elementType = arrayType.getElementType();
         LLVMBaseType llvmElementType = elementType.getLLVMBaseType();
-        int baseTypeSize = elementType.sizeof();
+        int baseTypeSize = ((LLVMTypeHelperImpl) runtime.getTypeHelper()).getByteSize(elementType);
         int size = nrElements * baseTypeSize;
         LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(LLVMToBitcodeAdapter.unresolveType(arrayType), size,
-                        runtime.getTypeHelper().getAlignmentByte(LLVMToBitcodeAdapter.unresolveType(arrayType)));
+                        ((LLVMTypeHelperImpl) runtime.getTypeHelper()).getAlignmentByte(arrayType));
         int byteLength = elementType.sizeof();
         if (size == 0) {
             throw new AssertionError(llvmElementType + " has size of 0!");
