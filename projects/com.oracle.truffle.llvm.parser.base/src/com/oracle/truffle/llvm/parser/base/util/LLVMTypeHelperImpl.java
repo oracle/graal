@@ -155,8 +155,8 @@ public class LLVMTypeHelperImpl implements LLVMTypeHelper {
         return largestAlignment;
     }
 
-    public LLVMType getLLVMType(Type type) {
-        return getLLVMType(LLVMToBitcodeAdapter.unresolveType(type));
+    public static LLVMType getLLVMType(Type type) {
+        return new LLVMType(type.getLLVMBaseType());
     }
 
     // Checkstyle: stop magic number name check

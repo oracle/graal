@@ -367,7 +367,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         int i = 0;
         for (FrameSlot slot : frameDescriptor.getSlots()) {
             String identifier = (String) slot.getIdentifier();
-            ResolvedType slotType = runtime.getVariableNameTypesMapping().get(identifier);
+            com.oracle.truffle.llvm.parser.base.model.types.Type slotType = LLVMToBitcodeAdapter.resolveType(runtime.getVariableNameTypesMapping().get(identifier));
             if (slot.equals(runtime.getReturnSlot())) {
                 nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelperImpl.getLLVMType(runtime.resolve(functionHeader.getRettype())), slot);
             } else if (slot.equals(runtime.getStackPointerSlot())) {
@@ -461,8 +461,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         }
 
         if (!isExtern && !descriptor.isDeclared()) {
-            ResolvedType resolvedType = runtime.resolve(globalVariable.getType());
-            int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
+            com.oracle.truffle.llvm.parser.base.model.types.Type resolvedType = LLVMToBitcodeAdapter.resolveType(runtime.resolve(globalVariable.getType()));
+            int byteSize = ((LLVMTypeHelperImpl) runtime.getTypeHelper()).getByteSize(resolvedType);
             LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(nativeStorage, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
