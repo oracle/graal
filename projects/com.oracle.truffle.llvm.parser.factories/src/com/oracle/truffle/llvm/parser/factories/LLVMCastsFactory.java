@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
@@ -127,7 +126,7 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToVarINodeFactory.LLVMI64ToIV
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToVarINodeFactory.LLVMI8ToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToVarINodeFactory.LLVMIVarToIVarNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -139,14 +138,14 @@ public final class LLVMCastsFactory {
 
     private LLVMBaseType targetType;
     // TODO: we need these types later
-    private ResolvedType resolvedType;
-    @SuppressWarnings("unused") private ResolvedType fromType;
+    private Type resolvedType;
+    @SuppressWarnings("unused") private Type fromType;
     private LLVMConversionType conv;
     private int bits;
 
-    private LLVMCastsFactory(ResolvedType targetType, ResolvedType fromType, LLVMConversionType conv) {
+    private LLVMCastsFactory(Type targetType, Type fromType, LLVMConversionType conv) {
         this.fromType = fromType;
-        this.targetType = LLVMTypeHelperImpl.getLLVMType(targetType).getType();
+        this.targetType = targetType.getLLVMBaseType();
         this.resolvedType = targetType;
         this.conv = conv;
         this.bits = 0;
@@ -160,11 +159,11 @@ public final class LLVMCastsFactory {
         this.bits = bits;
     }
 
-    public static LLVMExpressionNode cast(LLVMExpressionNode fromNode, ResolvedType targetType, ResolvedType fromType, LLVMConversionType conv) {
+    public static LLVMExpressionNode cast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType conv) {
         if (fromNode == null || targetType == null || fromType == null || conv == null) {
             throw new AssertionError();
         }
-        return cast(new LLVMCastsFactory(targetType, fromType, conv), LLVMTypeHelperImpl.getLLVMType(fromType).getType(), fromNode);
+        return cast(new LLVMCastsFactory(targetType, fromType, conv), fromType.getLLVMBaseType(), fromNode);
     }
 
     public static LLVMExpressionNode cast(LLVMExpressionNode fromNode, LLVMBaseType targetType, LLVMBaseType fromType, LLVMConversionType conv) {
@@ -248,7 +247,7 @@ public final class LLVMCastsFactory {
                 case I64:
                     return LLVMAnyToI64NodeGen.create(fromNode);
                 case I_VAR_BITWIDTH:
-                    return LLVMIVarToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits().intValue() : bits);
+                    return LLVMIVarToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits() : bits);
                 default:
                     throw new AssertionError(targetType + " " + conv);
             }
@@ -374,7 +373,7 @@ public final class LLVMCastsFactory {
                 case I64:
                     return LLVMAnyToI64NodeGen.create(fromNode);
                 case I_VAR_BITWIDTH:
-                    return LLVMI16ToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits().intValue() : bits);
+                    return LLVMI16ToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits() : bits);
                 case FLOAT:
                     return LLVMI16ToFloatNodeGen.create(fromNode);
                 case DOUBLE:
@@ -456,7 +455,7 @@ public final class LLVMCastsFactory {
         } else if (conv == LLVMConversionType.ZERO_EXTENSION) {
             switch (targetType) {
                 case I_VAR_BITWIDTH:
-                    return LLVMI64ToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits().intValue() : bits);
+                    return LLVMI64ToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits() : bits);
                 case FLOAT:
                     return LLVMI64ToFloatUnsignedNodeGen.create(fromNode);
                 case DOUBLE:
@@ -496,7 +495,7 @@ public final class LLVMCastsFactory {
                 case I64:
                     return LLVMAnyToI64NodeGen.create(fromNode);
                 case I_VAR_BITWIDTH:
-                    return LLVMI8ToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits().intValue() : bits);
+                    return LLVMI8ToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits() : bits);
                 case FLOAT:
                     return LLVMI8ToFloatNodeGen.create(fromNode);
                 case DOUBLE:
@@ -587,7 +586,7 @@ public final class LLVMCastsFactory {
                 case I64:
                     return LLVMAnyToI64NodeGen.create(fromNode);
                 case I_VAR_BITWIDTH:
-                    return LLVMI32ToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits().intValue() : bits);
+                    return LLVMI32ToIVarNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits() : bits);
                 case FLOAT:
                     return LLVMI32ToFloatNodeGen.create(fromNode);
                 case DOUBLE:
@@ -600,7 +599,7 @@ public final class LLVMCastsFactory {
         } else if (conv == LLVMConversionType.ZERO_EXTENSION) {
             switch (targetType) {
                 case I_VAR_BITWIDTH:
-                    return LLVMI32ToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits().intValue() : bits);
+                    return LLVMI32ToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? resolvedType.getBits() : bits);
                 case I64:
                     return LLVMToI64ZeroExtNodeGen.create(fromNode);
                 case FLOAT:
