@@ -415,7 +415,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
-        "com.oracle.truffle.llvm.parser"
+        "com.oracle.truffle.llvm.parser.base"
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",

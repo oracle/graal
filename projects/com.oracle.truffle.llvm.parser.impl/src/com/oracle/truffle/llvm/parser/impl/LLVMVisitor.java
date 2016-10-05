@@ -134,6 +134,7 @@ import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.LLVMParserResultImpl;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
@@ -343,12 +344,12 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             LLVMExpressionNode globalVarAddress = factoryFacade.createLiteral(allocGlobalVariable, LLVMBaseType.ADDRESS);
             LLVMExpressionNode iNode = factoryFacade.createLiteral(i, LLVMBaseType.I32);
             LLVMExpressionNode structPointer = factoryFacade.createGetElementPtr(LLVMBaseType.I32, globalVarAddress, iNode, structSize);
-            LLVMExpressionNode loadedStruct = factoryFacade.createLoad(structType, structPointer);
+            LLVMExpressionNode loadedStruct = factoryFacade.createLoad(LLVMToBitcodeAdapter.resolveType(structType), structPointer);
             ResolvedType functionType = structType.getContainedType(1);
             int indexedTypeLength = typeHelper.getAlignmentByte(functionType);
             LLVMExpressionNode oneLiteralNode = factoryFacade.createLiteral(1, LLVMBaseType.I32);
             LLVMExpressionNode functionLoadTarget = factoryFacade.createGetElementPtr(LLVMBaseType.I32, loadedStruct, oneLiteralNode, indexedTypeLength);
-            LLVMExpressionNode loadedFunction = factoryFacade.createLoad(functionType, functionLoadTarget);
+            LLVMExpressionNode loadedFunction = factoryFacade.createLoad(LLVMToBitcodeAdapter.resolveType(functionType), functionLoadTarget);
             LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{factoryFacade.createFrameRead(LLVMBaseType.ADDRESS, getStackPointerSlot())};
             assert argNodes.length == factoryFacade.getArgStartIndex().get();
             LLVMNode functionCall = factoryFacade.createFunctionCall(loadedFunction, argNodes, LLVMBaseType.VOID);
@@ -923,7 +924,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMExpressionNode pointerNode = visitValueRef(pointer.getRef(), pointer.getType());
         ResolvedType resolvedResultType = resolve(instr);
         LLVMExpressionNode loadTarget = pointerNode;
-        return factoryFacade.createLoad(resolvedResultType, loadTarget);
+        return factoryFacade.createLoad(LLVMToBitcodeAdapter.resolveType(resolvedResultType), loadTarget);
     }
 
     private LLVMExpressionNode visitAllocaInstruction(Instruction_alloca instr) {
