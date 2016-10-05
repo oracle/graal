@@ -224,7 +224,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public FrameSlotKind getFrameSlotKind(ResolvedType type) {
-        return LLVMFrameReadWriteFactory.getFrameSlotKind(type);
+        return LLVMFrameReadWriteFactory.getFrameSlotKind(LLVMToBitcodeAdapter.resolveType(type));
     }
 
     @Override
