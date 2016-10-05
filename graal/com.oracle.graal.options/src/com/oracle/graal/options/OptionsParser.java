@@ -39,9 +39,6 @@ import java.util.TreeMap;
  */
 public class OptionsParser {
 
-    private static final OptionValue<Boolean> PrintFlags = new OptionValue<>(false);
-    private static final OptionValue<Boolean> ShowFlags = new OptionValue<>(false);
-
     public interface OptionConsumer {
         void set(OptionDescriptor desc, Object value);
     }
@@ -60,12 +57,6 @@ public class OptionsParser {
 
             for (Map.Entry<String, String> e : optionSettings.entrySet()) {
                 parseOption(e.getKey(), e.getValue(), setter, loader);
-            }
-            if (PrintFlags.getValue() || ShowFlags.getValue()) {
-                printFlags(loader, "Graal", System.out, optionSettings.keySet());
-                if (PrintFlags.getValue()) {
-                    System.exit(0);
-                }
             }
         }
     }
@@ -114,13 +105,6 @@ public class OptionsParser {
     private static void parseOption(String name, String valueString, OptionConsumer setter, ServiceLoader<OptionDescriptors> loader) {
 
         OptionDescriptor desc = lookup(loader, name);
-        if (desc == null) {
-            if (name.equals("PrintFlags")) {
-                desc = OptionDescriptor.create("PrintFlags", Boolean.class, "Prints all Graal flags and exits", OptionsParser.class, "PrintFlags", PrintFlags);
-            } else if (name.equals("ShowFlags")) {
-                desc = OptionDescriptor.create("ShowFlags", Boolean.class, "Prints all Graal flags and continues", OptionsParser.class, "ShowFlags", ShowFlags);
-            }
-        }
         if (desc == null) {
             List<OptionDescriptor> matches = fuzzyMatch(loader, name);
             Formatter msg = new Formatter();
@@ -236,7 +220,7 @@ public class OptionsParser {
         return lines;
     }
 
-    private static void printFlags(ServiceLoader<OptionDescriptors> loader, String prefix, PrintStream out, Set<String> explicitlyAssigned) {
+    public static void printFlags(ServiceLoader<OptionDescriptors> loader, PrintStream out, Set<String> explicitlyAssigned, String namePrefix) {
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
         for (OptionDescriptors opts : loader) {
             for (OptionDescriptor desc : opts) {
@@ -245,17 +229,15 @@ public class OptionsParser {
                 assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
             }
         }
-        out.println("[List of " + prefix + " options]");
         int typeWidth = 0;
         int nameWidth = 0;
-        int valueWidth = 0;
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             OptionDescriptor desc = e.getValue();
-            Object value = desc.getOptionValue().getValue();
-            String name = e.getKey();
-            typeWidth = Math.max(typeWidth, desc.getType().getSimpleName().length());
+            String name = namePrefix + e.getKey();
+            Class<?> type = desc.getType();
+            String typeName = desc.getOptionValue() instanceof EnumOptionValue ? "String" : type.getSimpleName();
+            typeWidth = Math.max(typeWidth, typeName.length());
             nameWidth = Math.max(nameWidth, name.length());
-            valueWidth = Math.max(valueWidth, String.valueOf(value).length());
         }
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             OptionDescriptor desc = e.getValue();
@@ -266,10 +248,15 @@ public class OptionsParser {
                 String evalues = eoption.getOptionValues().toString();
                 help += "  Valid values are: " + evalues.substring(1, evalues.length() - 1);
             }
-            String name = e.getKey();
+            String name = namePrefix + e.getKey();
             String assign = explicitlyAssigned.contains(name) ? ":=" : " =";
-            String format = "%" + (typeWidth + 1) + "s %-" + (nameWidth + 1) + "s %s %-" + valueWidth + "s %s%n";
-            out.printf(format, desc.getType().getSimpleName(), name, assign, value, "");
+            String format = "%" + (typeWidth + 1) + "s %-" + (nameWidth + 1) + "s %s %s%n";
+            Class<?> type = desc.getType();
+            String typeName = desc.getOptionValue() instanceof EnumOptionValue ? "String" : type.getSimpleName();
+            if (value instanceof String) {
+                value = '"' + String.valueOf(value) + '"';
+            }
+            out.printf(format, typeName, name, assign, value);
             if (help.length() != 0) {
                 /*
                  * Write any help information aligned with name of the option and wrapped at column
