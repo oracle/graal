@@ -2,7 +2,7 @@ Graal is a dynamic compiler written in Java that integrates with the HotSpot JVM
 
 ## Setup
 
-Working with Graal will mean cloning more than repository and so it's
+Working with Graal will mean cloning more than one repository and so it's
 recommended to create and use a separate directory:
 
 ```
@@ -23,7 +23,7 @@ export PATH=$PWD/mx:$PATH
 Graal depends on a JDK that supports JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
 JVMCI is included in JDK9 and once an [EA JDK9 binary](https://jdk9.java.net/download/) is available that works with Graal, this document will be updated.
 JVMCI enabled builds of JDK8 for selected platforms are available via [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
-If you are not on one of these platform (e.g., Windows), see [Building JVMCI JDK8](#building-jvmci-jdk8) below.
+If you are not on one of these platforms (e.g., Windows), see [Building JVMCI JDK8](#building-jvmci-jdk8) below.
 
 Once you have installed (or built) a JVMCI JDK, ensure `JAVA_HOME` is pointing at the JDK home directory (or at `<jdk_home>/Contents/Home` on Mac OS X if the JDK has this layout).
 
