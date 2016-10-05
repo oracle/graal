@@ -1380,9 +1380,9 @@ class SourceSnippets {
         return source;
     }
 
-    public static Source fromURL() throws IOException, URISyntaxException {
+    public static Source fromURL(Class<?> relativeClass) throws IOException, URISyntaxException {
         // BEGIN: SourceSnippets#fromURL
-        URL resource = SourceSnippets.class.getResource("sample.js");
+        URL resource = relativeClass.getResource("sample.js");
         Source source = Source.newBuilder(resource)
             .name("sample.js")
             .build();
@@ -1394,9 +1394,9 @@ class SourceSnippets {
         return source;
     }
 
-    public static Source fromURLWithOwnContent() {
+    public static Source fromURLWithOwnContent(Class<?> relativeClass) {
         // BEGIN: SourceSnippets#fromURLWithOwnContent
-        URL resource = SourceSnippets.class.getResource("sample.js");
+        URL resource = relativeClass.getResource("sample.js");
         Source source = Source.newBuilder(resource)
             .name("sample.js")
             .content("{}")
@@ -1410,10 +1410,10 @@ class SourceSnippets {
         return source;
     }
 
-    public static Source fromReader() throws IOException {
+    public static Source fromReader(Class<?> relativeClass) throws IOException {
         // BEGIN: SourceSnippets#fromReader
         Reader stream = new InputStreamReader(
-            SourceSnippets.class.getResourceAsStream("sample.js")
+                        relativeClass.getResourceAsStream("sample.js")
         );
         Source source = Source.newBuilder(stream)
             .name("sample.js")
