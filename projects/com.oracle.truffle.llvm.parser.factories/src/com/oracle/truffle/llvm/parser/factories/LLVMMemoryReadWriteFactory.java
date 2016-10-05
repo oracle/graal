@@ -92,7 +92,7 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
-import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public final class LLVMMemoryReadWriteFactory {
@@ -232,7 +232,7 @@ public final class LLVMMemoryReadWriteFactory {
             default:
                 break;
         }
-        if (LLVMTypeHelper.isVectorType(type)) {
+        if (LLVMTypeHelperImpl.isVectorType(type)) {
             return LLVMStoreVectorNodeGen.create(pointerNode, (LLVMVectorNode) valueNode);
         } else {
             throw new AssertionError(type);

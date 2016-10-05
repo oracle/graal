@@ -82,7 +82,7 @@ import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
@@ -102,7 +102,7 @@ public final class LLVMLiteralFactory {
     public static LLVMExpressionNode createUndefinedValue(LLVMParserRuntime runtime, EObject t) {
         Type resolvedType = LLVMToBitcodeAdapter.resolveType(runtime.resolve(t));
         LLVMBaseType type = resolvedType.getLLVMBaseType();
-        if (LLVMTypeHelper.isVectorType(type)) {
+        if (LLVMTypeHelperImpl.isVectorType(type)) {
             LLVMAddressLiteralNode addr = new LLVMAddressLiteralNode(LLVMAddress.createUndefinedAddress());
             switch (type) {
                 case I1_VECTOR:

@@ -127,8 +127,8 @@ import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToVarINodeFactory.LLVMI64ToIV
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToVarINodeFactory.LLVMI8ToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToVarINodeFactory.LLVMIVarToIVarNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 
@@ -146,7 +146,7 @@ public final class LLVMCastsFactory {
 
     private LLVMCastsFactory(ResolvedType targetType, ResolvedType fromType, LLVMConversionType conv) {
         this.fromType = fromType;
-        this.targetType = LLVMTypeHelper.getLLVMType(targetType).getType();
+        this.targetType = LLVMTypeHelperImpl.getLLVMType(targetType).getType();
         this.resolvedType = targetType;
         this.conv = conv;
         this.bits = 0;
@@ -164,7 +164,7 @@ public final class LLVMCastsFactory {
         if (fromNode == null || targetType == null || fromType == null || conv == null) {
             throw new AssertionError();
         }
-        return cast(new LLVMCastsFactory(targetType, fromType, conv), LLVMTypeHelper.getLLVMType(fromType).getType(), fromNode);
+        return cast(new LLVMCastsFactory(targetType, fromType, conv), LLVMTypeHelperImpl.getLLVMType(fromType).getType(), fromNode);
     }
 
     public static LLVMExpressionNode cast(LLVMExpressionNode fromNode, LLVMBaseType targetType, LLVMBaseType fromType, LLVMConversionType conv) {

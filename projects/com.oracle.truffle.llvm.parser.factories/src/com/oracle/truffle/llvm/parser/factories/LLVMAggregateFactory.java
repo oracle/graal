@@ -68,7 +68,7 @@ import com.oracle.truffle.llvm.nodes.impl.vector.LLVMExtractValueNodeFactory.LLV
 import com.oracle.truffle.llvm.nodes.impl.vector.LLVMExtractValueNodeFactory.LLVMExtractI8ValueNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
 
 public final class LLVMAggregateFactory {
 
@@ -135,7 +135,7 @@ public final class LLVMAggregateFactory {
 
     private static LLVMStructWriteNode createStructWriteNode(LLVMParserRuntime runtime, LLVMExpressionNode parsedConstant, ResolvedType resolvedType) {
         int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
-        LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(resolvedType).getType();
+        LLVMBaseType llvmType = LLVMTypeHelperImpl.getLLVMType(resolvedType).getType();
         switch (llvmType) {
             case I1:
                 return new LLVMI1StructWriteNode((LLVMI1Node) parsedConstant);

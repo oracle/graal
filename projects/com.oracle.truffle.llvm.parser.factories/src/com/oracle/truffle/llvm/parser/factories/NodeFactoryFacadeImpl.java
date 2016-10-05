@@ -100,12 +100,12 @@ import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
-import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMAddress;
@@ -369,12 +369,12 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
             String identifier = (String) slot.getIdentifier();
             ResolvedType slotType = runtime.getVariableNameTypesMapping().get(identifier);
             if (slot.equals(runtime.getReturnSlot())) {
-                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelper.getLLVMType(runtime.resolve(functionHeader.getRettype())), slot);
+                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelperImpl.getLLVMType(runtime.resolve(functionHeader.getRettype())), slot);
             } else if (slot.equals(runtime.getStackPointerSlot())) {
                 nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, new LLVMType(LLVMBaseType.ADDRESS), slot);
             } else {
                 assert slotType != null : identifier;
-                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelper.getLLVMType(slotType), slot);
+                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelperImpl.getLLVMType(slotType), slot);
             }
             i++;
         }
