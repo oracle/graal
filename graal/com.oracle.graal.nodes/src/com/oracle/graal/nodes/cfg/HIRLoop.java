@@ -63,4 +63,9 @@ public final class HIRLoop extends Loop<Block> {
     public boolean canKill(LocationIdentity location) {
         return getKillLocations().contains(location);
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + " header:" + getHeader().getBeginNode();
+    }
 }
