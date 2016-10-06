@@ -397,6 +397,51 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 }
             }
         }
+
+        /*
+         * Compute the loop exit blocks after FSA.
+         */
+        if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+            for (Block b : reversePostOrder) {
+                if (b.getLoop() != null) {
+                    for (Block succ : b.getSuccessors()) {
+                        // if the loop of the succ is a different one (or none)
+                        if (b.getLoop() != succ.getLoop()) {
+                            // and the succ loop is not a child loop of the curr one
+                            if (succ.getLoop() == null) {
+                                // we might exit multiple loops if b.loops is not a loop at depth 0
+                                Loop<Block> curr = b.getLoop();
+                                while (curr != null) {
+                                    curr.getExits().add(succ);
+                                    curr = curr.getParent();
+                                }
+                            } else {
+                                /*
+                                 * succ also has a loop, might be a child loop
+                                 *
+                                 * if it is a child loop we do not exit a loop. if it is a loop
+                                 * different than b.loop and not a child loop it must be a parent
+                                 * loop, thus we exit all loops between b.loop and succ.loop
+                                 *
+                                 * if we exit multiple loops immediately after each other the
+                                 * bytecode parser might generate loop exit nodes after another and
+                                 * the CFG will identify them as separate blocks, we just take the
+                                 * first one and exit all loops at this one
+                                 */
+                                if (succ.getLoop().getParent() != b.getLoop()) {
+                                    Loop<Block> curr = b.getLoop();
+                                    while (curr != null && curr != succ.getLoop()) {
+                                        curr.getExits().add(succ);
+                                        curr = curr.getParent();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     }
 
     private static void computeLoopBlocks(Block start, Loop<Block> loop, Block[] stack, boolean usePred) {
