@@ -85,6 +85,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.LayoutFactory;
+import java.util.Iterator;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -93,6 +94,7 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.services.Services;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -362,6 +364,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             return capability.cast(tvmci);
         } else if (capability == LayoutFactory.class) {
             return capability.cast(loadObjectLayoutFactory());
+        }
+        Iterator<T> services = Services.load(capability).iterator();
+        if (services.hasNext()) {
+            return services.next();
         }
         return null;
     }
