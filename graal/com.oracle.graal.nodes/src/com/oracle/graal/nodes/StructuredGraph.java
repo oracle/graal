@@ -713,7 +713,10 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
                 FrameState stateAfter = ((StateSplit) node).stateAfter();
                 if (stateAfter != null) {
                     ((StateSplit) node).setStateAfter(null);
-                    GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+                    // 2 nodes referencing the same framestate
+                    if (stateAfter.isAlive()) {
+                        GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+                    }
                 }
             }
         }
