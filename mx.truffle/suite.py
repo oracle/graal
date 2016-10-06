@@ -55,6 +55,7 @@ suite = {
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
+        "com.oracle.truffle.api.impl", # exported to graal-core
       ],
       "javaCompliance" : "1.7",
       "workingSets" : "API,Truffle",
