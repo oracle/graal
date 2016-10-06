@@ -1,1 +1,1 @@
-com.oracle.truffle.api.source.CommonMIMETypeLocator
+com.oracle.truffle.api.test.source.CommonMIMETypeLocator

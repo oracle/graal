@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.source;
+package com.oracle.truffle.api.test.source;
 
 import com.oracle.truffle.api.impl.TruffleLocator;
 import java.io.IOException;
@@ -55,7 +55,7 @@ public final class CommonMIMETypeLocator extends TruffleLocator {
         @Override
         protected URL findResource(String name) {
             if (name.equals("META-INF/services/java.nio.file.spi.FileTypeDetector")) {
-                return getResource("com/oracle/truffle/api/source/CommonMimeTypeLocator");
+                return getResource("com/oracle/truffle/api/test/source/CommonMimeTypeLocator");
             }
             return super.findResource(name);
         }
@@ -64,7 +64,7 @@ public final class CommonMIMETypeLocator extends TruffleLocator {
         protected Enumeration<URL> findResources(String name) throws IOException {
             if (name.equals("META-INF/services/java.nio.file.spi.FileTypeDetector")) {
                 URL locator = ClassLoader.getSystemClassLoader().getResource(
-                                "com/oracle/truffle/api/source/CommonMIMETypeLocator");
+                                "com/oracle/truffle/api/test/source/CommonMIMETypeLocator");
                 assertNotNull("We have to find a locator registration", locator);
                 return Collections.enumeration(Collections.singleton(locator));
             }
