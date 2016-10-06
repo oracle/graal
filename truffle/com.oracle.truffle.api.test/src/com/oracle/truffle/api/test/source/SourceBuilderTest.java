@@ -125,36 +125,6 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void mimeTypeIsDetectedFromALocator() throws IOException {
-        File file = File.createTempFile("Hello", ".locme").getCanonicalFile();
-        file.deleteOnExit();
-
-        String text;
-        try (FileWriter w = new FileWriter(file)) {
-            text = "// Hello";
-            w.write(text);
-        }
-
-        Source source = Source.newBuilder(file).build();
-        assertEquals("application/x-locator", source.getMimeType());
-    }
-
-    @Test
-    public void mimeTypeIsDetectedForURIFromALocator() throws IOException {
-        File file = File.createTempFile("Hello", ".locme").getCanonicalFile();
-        file.deleteOnExit();
-
-        String text;
-        try (FileWriter w = new FileWriter(file)) {
-            text = "// Hello";
-            w.write(text);
-        }
-
-        Source source = Source.newBuilder(file.toURI().toURL()).build();
-        assertEquals("application/x-locator", source.getMimeType());
-    }
-
-    @Test
     public void mimeTypeIsDetectedRandomBytes() throws IOException {
         File file = File.createTempFile("Hello", ".bin").getCanonicalFile();
         file.deleteOnExit();
