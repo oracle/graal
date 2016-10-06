@@ -56,6 +56,8 @@ public final class UserRecordBuilder implements Operation {
             long[] values = result.getValues();
             if (idx + values.length > ops.length) {
                 ops = Arrays.copyOf(ops, idx + values.length);
+            } else if (values.length == 0) {
+                ops = Arrays.copyOf(ops, ops.length - 1);
             }
             System.arraycopy(values, 0, ops, idx, values.length);
             idx += values.length;
