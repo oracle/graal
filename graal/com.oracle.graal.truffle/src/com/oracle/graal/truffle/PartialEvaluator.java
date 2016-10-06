@@ -405,7 +405,6 @@ public class PartialEvaluator {
         GraphBuilderConfiguration newConfig = config.copy();
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
-        invocationPlugins.closeRegistration();
         boolean mustInstrumentBranches = TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
         return newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || mustInstrumentBranches);
     }
