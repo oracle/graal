@@ -144,7 +144,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         protected FrameState outerState;
         protected FrameState exceptionState;
         protected ExceptionPlaceholderNode exceptionPlaceholderNode;
-        protected NodeSourcePosition bytecodePosition;
+        protected NodeSourcePosition callerBytecodePosition;
 
         protected PEMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method, InvokeData invokeData,
                         int inliningDepth, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
@@ -166,14 +166,17 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return caller != null;
         }
 
-        public NodeSourcePosition getBytecodePosition() {
-            if (bytecodePosition == null) {
-                ensureOuterStateDecoded(this);
-                ensureExceptionStateDecoded(this);
-                JavaConstant constantReceiver = invokeData.constantReceiver;
-                bytecodePosition = new NodeSourcePosition(constantReceiver, FrameState.toSourcePosition(outerState), method, invokeData.invoke.bci());
+        public NodeSourcePosition getCallerBytecodePosition() {
+            if (caller == null) {
+                return null;
             }
-            return bytecodePosition;
+            if (callerBytecodePosition == null) {
+                ensureOuterStateDecoded(caller);
+                ensureExceptionStateDecoded(caller);
+                JavaConstant constantReceiver = caller.invokeData == null ? null : caller.invokeData.constantReceiver;
+                callerBytecodePosition = new NodeSourcePosition(constantReceiver, FrameState.toSourcePosition(caller.outerState), caller.method, invokeData.invoke.bci());
+            }
+            return callerBytecodePosition;
         }
     }
 
@@ -189,7 +192,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public BailoutException bailout(String string) {
             BailoutException bailout = new BailoutException(string);
-            throw GraphUtil.createBailoutException(string, bailout, GraphUtil.approxSourceStackTraceElement(methodScope.getBytecodePosition()));
+            throw GraphUtil.createBailoutException(string, bailout, GraphUtil.approxSourceStackTraceElement(methodScope.getCallerBytecodePosition()));
         }
 
         @Override
@@ -330,7 +333,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         private DebugCloseable withNodeSoucePosition() {
             if (getGraph().mayHaveNodeSourcePosition()) {
-                return getGraph().withNodeSourcePosition(methodScope.getBytecodePosition());
+                return getGraph().withNodeSourcePosition(methodScope.getCallerBytecodePosition());
             }
             return null;
         }
@@ -439,7 +442,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private static RuntimeException tooManyLoopExplosionIterations(PEMethodScope methodScope) {
         String message = "too many loop explosion iterations - does the explosion not terminate for method " + methodScope.method + "?";
         RuntimeException bailout = Options.FailedLoopExplosionIsFatal.getValue() ? new RuntimeException(message) : new BailoutException(message);
-        throw GraphUtil.createBailoutException(message, bailout, GraphUtil.approxSourceStackTraceElement(methodScope.getBytecodePosition()));
+        throw GraphUtil.createBailoutException(message, bailout, GraphUtil.approxSourceStackTraceElement(methodScope.getCallerBytecodePosition()));
     }
 
     @Override
@@ -765,7 +768,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         NodeSourcePosition pos = node.getNodeSourcePosition();
         if (pos != null && methodScope.isInlinedMethod()) {
-            NodeSourcePosition newPosition = pos.addCaller(methodScope.getBytecodePosition());
+            NodeSourcePosition newPosition = pos.addCaller(methodScope.getCallerBytecodePosition());
             try (DebugCloseable scope = node.graph().withoutNodeSourcePosition()) {
                 super.handleFixedNode(s, loopScope, nodeOrderId, node);
             }
@@ -855,7 +858,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         NodeSourcePosition pos = node.getNodeSourcePosition();
         if (methodScope.isInlinedMethod()) {
             if (pos != null) {
-                NodeSourcePosition bytecodePosition = methodScope.getBytecodePosition();
+                NodeSourcePosition bytecodePosition = methodScope.getCallerBytecodePosition();
                 node.setNodeSourcePosition(pos.addCaller(bytecodePosition));
             }
         }
