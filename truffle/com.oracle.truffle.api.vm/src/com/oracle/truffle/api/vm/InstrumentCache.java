@@ -88,6 +88,9 @@ final class InstrumentCache {
         for (ClassLoader loader : Access.loaders()) {
             loadForOne(loader, list, classNamesUsed);
         }
+        if (!PolyglotEngine.JDK8OrEarlier) {
+            loadForOne(ModuleResourceLocator.createLoader(), list, classNamesUsed);
+        }
         return list;
     }
 
