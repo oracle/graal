@@ -39,11 +39,17 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.Collection;
 
 /**
  * Communication between PolyglotEngine, TruffleLanguage API/SPI, and other services.
  */
 public abstract class Accessor {
+
+    @SuppressWarnings("all")
+    protected final Collection<ClassLoader> loaders() {
+        return TruffleLocator.loaders();
+    }
 
     public abstract static class Nodes {
         @SuppressWarnings("rawtypes")
@@ -140,6 +146,7 @@ public abstract class Accessor {
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
     private static Accessor.DebugSupport DEBUG;
     private static Accessor.Frames FRAMES;
+    @SuppressWarnings("unused") private static Accessor SOURCE;
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
@@ -178,12 +185,26 @@ public abstract class Accessor {
         }.getRootNode();
 
         conditionallyInitDebugger();
+        conditionallyInitEngine();
     }
 
     @SuppressWarnings("all")
     private static void conditionallyInitDebugger() throws IllegalStateException {
         try {
             Class.forName("com.oracle.truffle.api.debug.Debugger", true, Accessor.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            boolean assertOn = false;
+            assert assertOn = true;
+            if (!assertOn) {
+                throw new IllegalStateException(ex);
+            }
+        }
+    }
+
+    @SuppressWarnings("all")
+    private static void conditionallyInitEngine() throws IllegalStateException {
+        try {
+            Class.forName("com.oracle.truffle.api.vm.PolyglotEngine", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             boolean assertOn = false;
             assert assertOn = true;
@@ -222,6 +243,8 @@ public abstract class Accessor {
                 throw new IllegalStateException();
             }
             FRAMES = this.framesSupport();
+        } else if (this.getClass().getSimpleName().endsWith("SourceAccessor")) {
+            SOURCE = this;
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();

@@ -62,6 +62,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.util.Collection;
 
 /**
  * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #buildNew()
@@ -188,7 +189,7 @@ public class PolyglotEngine {
             }
         }
         this.langs = map;
-        this.instruments = createAndAutostartDescriptors(InstrumentCache.load(JDK8OrEarlier ? getClass().getClassLoader() : null));
+        this.instruments = createAndAutostartDescriptors(InstrumentCache.load());
         this.context = ExecutionImpl.createStore(this);
     }
 
@@ -1287,6 +1288,10 @@ public class PolyglotEngine {
         static final Accessor.LanguageSupport LANGS = SPIAccessor.langs();
         static final Accessor.InstrumentSupport INSTRUMENT = SPIAccessor.instrumentAccess();
         static final Accessor.DebugSupport DEBUG = SPIAccessor.debugAccess();
+
+        static Collection<ClassLoader> loaders() {
+            return SPI.allLoaders();
+        }
     }
 
     private static class SPIAccessor extends Accessor {
@@ -1300,6 +1305,10 @@ public class PolyglotEngine {
 
         static DebugSupport debugAccess() {
             return SPI.debugSupport();
+        }
+
+        Collection<ClassLoader> allLoaders() {
+            return loaders();
         }
 
         @Override
@@ -1394,8 +1403,6 @@ public class PolyglotEngine {
 }
 
 class PolyglotEngineSnippets {
-    static final boolean loaded = true;
-
     abstract class YourLang extends TruffleLanguage<Object> {
         public static final String MIME_TYPE = "application/my-test-lang";
     }

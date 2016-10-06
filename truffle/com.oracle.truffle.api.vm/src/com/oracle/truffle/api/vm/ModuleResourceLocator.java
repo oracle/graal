@@ -49,7 +49,7 @@ import java.util.List;
  * @see "https://bugs.openjdk.java.net/browse/JDK-8149784"
  * @see "http://openjdk.java.net/projects/jigsaw/spec/issues/#ResourceEncapsulation"
  */
-class ModuleResourceLocator {
+final class ModuleResourceLocator {
 
     /**
      * Creates a class loader than can access all resources in all modules on the module path.

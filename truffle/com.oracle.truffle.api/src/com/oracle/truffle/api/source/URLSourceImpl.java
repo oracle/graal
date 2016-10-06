@@ -34,7 +34,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -128,7 +127,7 @@ final class URLSourceImpl extends Content {
         Path path;
         try {
             path = Paths.get(url.toURI());
-            String firstGuess = Files.probeContentType(path);
+            String firstGuess = FileSourceImpl.findMimeType(path);
             if (firstGuess != null) {
                 return firstGuess;
             }
