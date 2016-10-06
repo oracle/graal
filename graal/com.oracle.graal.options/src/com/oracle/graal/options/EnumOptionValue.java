@@ -27,9 +27,13 @@ import java.util.EnumSet;
 public class EnumOptionValue<T extends Enum<T>> extends OptionValue<T> {
     final Class<T> enumClass;
 
-    public EnumOptionValue(Class<T> enumClass, T value) {
+    @SuppressWarnings("unchecked")
+    public EnumOptionValue(T value) {
         super(value);
-        this.enumClass = enumClass;
+        if (value == null) {
+            throw new IllegalArgumentException("Value must not be null");
+        }
+        this.enumClass = (Class<T>) value.getClass();
     }
 
     /**
