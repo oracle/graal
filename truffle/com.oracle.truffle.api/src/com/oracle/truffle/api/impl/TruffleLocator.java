@@ -57,13 +57,7 @@ public abstract class TruffleLocator {
         for (TruffleLocator test : allLocators) {
             test.locate(response);
         }
-        if (found.isEmpty()) {
-            ClassLoader l = TruffleLocator.class.getClassLoader();
-            if (l == null) {
-                l = ClassLoader.getSystemClassLoader();
-            }
-            found.add(l);
-        }
+        found.add(ClassLoader.getSystemClassLoader());
         return found;
     }
 
