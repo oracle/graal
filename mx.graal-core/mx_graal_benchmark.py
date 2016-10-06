@@ -1096,6 +1096,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             vmArgs + self.classpathAndMainClass() + runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
+        self.validateEnvironment()
         out = mx.OutputCapture()
         mx.run_java(self.classpathAndMainClass() + ["listraw"], out=out)
         return str.splitlines(out.data)
