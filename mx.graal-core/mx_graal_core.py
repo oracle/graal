@@ -42,6 +42,8 @@ import mx_microbench
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
+import argparse
+import shlex
 
 _suite = mx.suite('graal-core')
 
@@ -430,8 +432,22 @@ graal_bootstrap_tests = [
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
 
+class ShellEscapedStringAction(argparse.Action):
+    """Turns a shell-escaped string into a list of arguments.
+       Note that it appends the result to the destination.
+    """
+    def __init__(self, option_strings, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super(ShellEscapedStringAction, self).__init__(option_strings, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        # do not override existing values
+        old_values = getattr(namespace, self.dest)
+        setattr(namespace, self.dest, (old_values if old_values else []) + shlex.split(values))
+
 mx_gate.add_gate_runner(_suite, _graal_gate_runner)
-mx_gate.add_gate_argument('--extra-vm-argument', action='append', help='add extra vm argument to gate tasks if applicable (multiple occurrences allowed)')
+mx_gate.add_gate_argument('--extra-vm-argument', action=ShellEscapedStringAction, help='add extra vm arguments to gate tasks if applicable')
 
 def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
     run_vm(vmArgs + [mainClass] + mainClassArgs)
