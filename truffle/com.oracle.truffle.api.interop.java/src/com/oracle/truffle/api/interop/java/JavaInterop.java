@@ -180,6 +180,12 @@ public final class JavaInterop {
      *
      * When the <code>obj</code> represents a {@link Class}, then the created {@link TruffleObject}
      * will allow access to <b>public</b> and <b>static</b> fields and methods from the class.
+     * <p>
+     * Do not convert primitive types (instances of {@link Number}, {@link Boolean},
+     * {@link Character} or {@link String}) to {@link TruffleObject}, all {@link TruffleLanguage}s
+     * are supposed to handle primitives. Use directly the the primitive types instead. To convert
+     * generic objects to {@link TruffleObject} while retaining primitive values unwrapped, use
+     * {@link #asTruffleValue(java.lang.Object)} instead.
      *
      * @param obj a Java object to convert into one suitable for <em>Truffle</em> languages
      * @return converted object
@@ -196,6 +202,41 @@ public final class JavaInterop {
             return JavaObject.NULL;
         }
         return new JavaObject(obj, obj.getClass());
+    }
+
+    /**
+     * Prepares a Java object for use in any {@link TruffleLanguage}. If the object is one of
+     * {@link #isPrimitive primitive} values, it is just returned, as all {@link TruffleLanguage}s
+     * are supposed to handle such object. If it is a non-primitive type of Java object, the method
+     * does exactly the same thing as {@link #asTruffleObject}.
+     *
+     * @param obj a Java object to convert into one suitable for <em>Truffle</em> languages
+     * @return converted object, or primitive
+     * @since 0.18
+     */
+    public static Object asTruffleValue(Object obj) {
+        return isPrimitive(obj) ? obj : asTruffleObject(obj);
+    }
+
+    /**
+     * Test whether the object is a primitive, which all {@link TruffleLanguage}s are supposed to
+     * handle. Primitives are instances of {@link Number}, {@link Boolean}, {@link Character} or
+     * {@link String}.
+     *
+     * @param obj a Java object to test
+     * @return <code>true</code> when the object is a primitive from {@link TruffleLanguage}s point
+     *         of view, <code>false</code> otherwise.
+     * @since 0.18
+     */
+    public static boolean isPrimitive(Object obj) {
+        if (obj instanceof TruffleObject) {
+            // Someone tried to pass a TruffleObject in
+            return false;
+        }
+        if (obj == null) {
+            return false;
+        }
+        return ToJavaNode.isPrimitive(obj);
     }
 
     /**

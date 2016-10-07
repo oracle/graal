@@ -230,6 +230,50 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void isPrimitive() {
+        assertFalse(JavaInterop.isPrimitive(null));
+        assertFalse(JavaInterop.isPrimitive(new Object()));
+        assertFalse(JavaInterop.isPrimitive(this));
+        assertTrue(JavaInterop.isPrimitive(42));
+        assertTrue(JavaInterop.isPrimitive((byte) 42));
+        assertTrue(JavaInterop.isPrimitive((short) 42));
+        assertTrue(JavaInterop.isPrimitive(424242424242L));
+        assertTrue(JavaInterop.isPrimitive(42.42f));
+        assertTrue(JavaInterop.isPrimitive(42e42));
+        assertTrue(JavaInterop.isPrimitive("42"));
+        assertTrue(JavaInterop.isPrimitive('4'));
+        assertTrue(JavaInterop.isPrimitive(true));
+        assertTrue(JavaInterop.isPrimitive(false));
+    }
+
+    @Test
+    public void truffleValue() {
+        Object object = new Object();
+        // Test that asTruffleValue() returns the same as asTruffleObject() for non-primitive types:
+        assertEquals(JavaInterop.asTruffleObject(object), JavaInterop.asTruffleValue(object));
+        assertEquals(this.obj, JavaInterop.asTruffleValue(this.data));
+        // Test that asTruffleValue() returns non-wraped primitives:
+        object = 42;
+        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        object = (byte) 42;
+        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        object = (short) 42;
+        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        object = 424242424242L;
+        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        object = 42.42;
+        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        object = true;
+        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        object = "42";
+        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        object = '4';
+        assertTrue(JavaInterop.asTruffleValue(object) == object);
+        object = true;
+        assertTrue(JavaInterop.asTruffleValue(object) == object);
+    }
+
+    @Test
     public void isNull() {
         assertTrue(JavaInterop.isNull(null));
         assertFalse(JavaInterop.isNull(JavaInterop.asTruffleObject(new Object())));
