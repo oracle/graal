@@ -141,9 +141,9 @@ public class JavaInteropTest {
     @Test
     public void accessAllProperties() {
         TruffleObject pojo = JavaInterop.asTruffleObject(new POJO());
-        Map<?,?> map = JavaInterop.asJavaObject(Map.class, pojo);
+        Map<?, ?> map = JavaInterop.asJavaObject(Map.class, pojo);
         int cnt = 0;
-        for (Map.Entry<?,?> entry : map.entrySet()) {
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object key = entry.getKey();
             Object value = entry.getValue();
             assertNotNull(key);
