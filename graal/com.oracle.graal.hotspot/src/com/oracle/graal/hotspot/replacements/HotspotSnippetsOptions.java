@@ -52,7 +52,7 @@ public class HotspotSnippetsOptions {
     public static final OptionValue<Boolean> ProfileAllocations = new OptionValue<>(false);
 
     @Option(help = "Control the naming of the counters when using ProfileAllocations.", type = OptionType.Debug)
-    public static final EnumOptionValue<ProfileContext> ProfileAllocationsContext = new EnumOptionValue<>(ProfileContext.class, ProfileContext.AllocatingMethod);
+    public static final EnumOptionValue<ProfileContext> ProfileAllocationsContext = new EnumOptionValue<>(ProfileContext.AllocatingMethod);
 
     @Option(help = "Enable profiling of monitor operations.", type = OptionType.Debug)
     public static final OptionValue<Boolean> ProfileMonitors = new OptionValue<>(false);
