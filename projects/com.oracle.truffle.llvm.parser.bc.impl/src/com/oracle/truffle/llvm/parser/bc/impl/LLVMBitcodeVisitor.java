@@ -239,7 +239,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         if (constant != null) {
             final Type type = ((PointerType) global.getType()).getPointeeType();
             final LLVMBaseType baseType = type.getLLVMBaseType();
-            final int size = typeHelper.getByteSize(type);
+            final int size = type.getSizeByte(targetDataLayout);
 
             final LLVMAddressNode globalVarAddress = (LLVMAddressNode) getGlobalVariable(global);
 
@@ -249,7 +249,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                     store = LLVMMemI32CopyFactory.create(globalVarAddress, (LLVMAddressNode) constant, new LLVMI32LiteralNode(size), new LLVMI32LiteralNode(0), new LLVMI1LiteralNode(false));
                 } else {
                     final Type t = global.getValue().getType();
-                    store = LLVMMemoryReadWriteFactory.createStore(globalVarAddress, constant, t.getLLVMBaseType(), typeHelper.getByteSize(t));
+                    store = LLVMMemoryReadWriteFactory.createStore(globalVarAddress, constant, t.getLLVMBaseType(), t.getSizeByte(targetDataLayout));
                 }
                 return store;
             }
@@ -326,7 +326,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         final int elemCount = arrayConstant.getElementCount();
 
         final StructureType elementType = (StructureType) arrayConstant.getType().getElementType();
-        final int structSize = typeHelper.getByteSize(elementType);
+        final int structSize = elementType.getSizeByte(targetDataLayout);
 
         final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
         final int indexedTypeLength = functionType.getAlignmentByte(targetDataLayout);
@@ -370,7 +370,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         // this case we assume memory has already been allocated elsewhere
         final boolean allocateMemory = !descriptor.isDeclared() && global.getValue() != null;
         if (allocateMemory) {
-            final int byteSize = typeHelper.getByteSize(((PointerType) global.getType()).getPointeeType());
+            final int byteSize = ((PointerType) global.getType()).getPointeeType().getSizeByte(targetDataLayout);
             final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             final LLVMAddressNode addressLiteralNode = new LLVMAddressLiteralNode(nativeStorage);
             deallocations.add(LLVMFreeFactory.create(addressLiteralNode));

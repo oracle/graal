@@ -310,7 +310,7 @@ public class LLVMBitcodeTypeHelper {
         return alignment == 0 ? 0 : getPadding(offset, alignment);
     }
 
-    public int getByteSize(Type type) {
+    private int getByteSize(Type type) {
         if (type instanceof IntegerType) {
             return Math.max(1, ((IntegerType) type).getBits() / Byte.SIZE);
 
@@ -395,7 +395,7 @@ public class LLVMBitcodeTypeHelper {
         return targetDataLayout;
     }
 
-    public int getAlignment(Type type) {
+    private int getAlignment(Type type) {
         if (type instanceof StructureType) {
             return getLargestAlignment((StructureType) type);
 

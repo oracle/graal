@@ -128,9 +128,9 @@ public final class LLVMConstantGenerator {
                 values.add(new LLVMSimpleLiteralNode.LLVMI8LiteralNode((byte) 0));
             }
 
-            final int size = typeHelper.getByteSize(IntegerType.BYTE) * values.size();
+            final int size = IntegerType.BYTE.getSizeByte(typeHelper.getTargetDataLayout()) * values.size();
             final LLVMAllocInstruction.LLVMAllocaInstruction target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(size, 1, context, stackSlot);
-            return LLVMStoreNodeFactory.LLVMI8ArrayLiteralNodeGen.create(values.toArray(new LLVMI8Node[values.size()]), typeHelper.getByteSize(IntegerType.BYTE), target);
+            return LLVMStoreNodeFactory.LLVMI8ArrayLiteralNodeGen.create(values.toArray(new LLVMI8Node[values.size()]), IntegerType.BYTE.getSizeByte(typeHelper.getTargetDataLayout()), target);
 
         } else if (value instanceof ArrayConstant) {
             return toArrayConstant((ArrayConstant) value, align, variables, context, stackSlot, labels, typeHelper);
@@ -208,7 +208,7 @@ public final class LLVMConstantGenerator {
             values.add(toConstantNode(constant.getElement(i), align, variables, context, stackSlot, labels, typeHelper));
         }
 
-        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(constant.getType()),
+        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getType().getSizeByte(typeHelper.getTargetDataLayout()),
                         constant.getType().getAlignmentByte(typeHelper.getTargetDataLayout()),
                         context,
                         stackSlot);
@@ -220,8 +220,8 @@ public final class LLVMConstantGenerator {
                     LLVMLabelList labels, LLVMBitcodeTypeHelper typeHelper) {
         final Type elementType = array.getType().getElementType();
         final LLVMBaseType llvmElementType = elementType.getLLVMBaseType();
-        final int stride = typeHelper.getByteSize(elementType);
-        final LLVMAllocInstruction.LLVMAllocaInstruction allocation = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(array.getType()),
+        final int stride = elementType.getSizeByte(typeHelper.getTargetDataLayout());
+        final LLVMAllocInstruction.LLVMAllocaInstruction allocation = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(array.getType().getSizeByte(typeHelper.getTargetDataLayout()),
                         array.getType().getAlignmentByte(typeHelper.getTargetDataLayout()), context, stackSlot);
         switch (llvmElementType) {
             case I8: {
@@ -395,7 +395,7 @@ public final class LLVMConstantGenerator {
         final LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[elementCount];
 
         final StructureType structureType = (StructureType) constant.getType();
-        final int structSize = typeHelper.getByteSize(structureType);
+        final int structSize = structureType.getSizeByte(typeHelper.getTargetDataLayout());
         final int structAlignment = structureType.getAlignmentByte(typeHelper.getTargetDataLayout());
         final LLVMAddressNode allocation = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(structSize, structAlignment, context, stackSlot);
 
@@ -406,7 +406,7 @@ public final class LLVMConstantGenerator {
                 currentOffset += typeHelper.getPadding(currentOffset, elementType);
             }
             offsets[i] = currentOffset;
-            final int byteSize = typeHelper.getByteSize(elementType);
+            final int byteSize = elementType.getSizeByte(typeHelper.getTargetDataLayout());
             final LLVMExpressionNode resolvedConstant = toConstantNode(constant.getElement(i), align, variables, context, stackSlot, labels, typeHelper);
             nodes[i] = createStructWriteNode(resolvedConstant, elementType.getLLVMBaseType(), byteSize);
             currentOffset += byteSize;
@@ -417,7 +417,7 @@ public final class LLVMConstantGenerator {
     }
 
     private static LLVMExpressionNode toStructZeroNode(StructureType structureType, LLVMContext context, FrameSlot stackSlot, LLVMBitcodeTypeHelper typeHelper) {
-        final int size = typeHelper.getByteSize(structureType);
+        final int size = structureType.getSizeByte(typeHelper.getTargetDataLayout());
         if (size == 0) {
             final LLVMAddress minusOneNode = LLVMAddress.fromLong(-1);
             return new LLVMSimpleLiteralNode.LLVMAddressLiteralNode(minusOneNode);
@@ -429,7 +429,7 @@ public final class LLVMConstantGenerator {
     }
 
     private static LLVMExpressionNode toArrayZeroNode(ArrayType type, LLVMContext context, FrameSlot stack, LLVMBitcodeTypeHelper typeHelper) {
-        final int size = typeHelper.getByteSize(type);
+        final int size = type.getSizeByte(typeHelper.getTargetDataLayout());
         if (size == 0) {
             return null;
         } else {
@@ -483,7 +483,7 @@ public final class LLVMConstantGenerator {
 
         } else if (type instanceof VectorType) {
             final VectorType vectorType = (VectorType) type.getType();
-            final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(type.getType()),
+            final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(type.getType().getSizeByte(typeHelper.getTargetDataLayout()),
                             type.getType().getAlignmentByte(typeHelper.getTargetDataLayout()), context,
                             stack);
             final LLVMExpressionNode[] zeroes = new LLVMExpressionNode[vectorType.getLength()];

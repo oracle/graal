@@ -404,7 +404,7 @@ public final class LLVMNodeGenerator {
 
     private LLVMExpressionNode resolveArrayConstant(ArrayConstant constant) {
 
-        final int baseTypeSize = typeHelper.getByteSize(constant.getType().getElementType());
+        final int baseTypeSize = constant.getType().getElementType().getSizeByte(typeHelper.getTargetDataLayout());
         final LLVMAddressNode arrayAlloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getElementCount() * baseTypeSize,
                         constant.getType().getAlignmentByte(method.getTargetDataLayout()),
                         method.getContext(), method.getStackSlot());
@@ -442,7 +442,7 @@ public final class LLVMNodeGenerator {
     }
 
     private LLVMExpressionNode resolveStructureConstant(StructureConstant constant) {
-        final int structSize = typeHelper.getByteSize(constant.getType());
+        final int structSize = constant.getType().getSizeByte(typeHelper.getTargetDataLayout());
         final int structAlignment = constant.getType().getAlignmentByte(method.getTargetDataLayout());
         final LLVMExpressionNode alloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(structSize, structAlignment, method.getContext(), method.getStackSlot());
 
@@ -458,7 +458,7 @@ public final class LLVMNodeGenerator {
 
             offsets[i] = currentOffset;
             nodes[i] = createStructWriteNode(resolve(constant.getElement(i)), elemType);
-            currentOffset += typeHelper.getByteSize(elemType);
+            currentOffset += elemType.getSizeByte(typeHelper.getTargetDataLayout());
         }
 
         return new StructLiteralNode(offsets, nodes, (LLVMAddressNode) alloc);
@@ -485,7 +485,7 @@ public final class LLVMNodeGenerator {
                 return new StructLiteralNode.LLVM80BitFloatStructWriteNode((LLVM80BitFloatNode) parsedConstant);
             case ARRAY:
             case STRUCT:
-                final int byteSize = typeHelper.getByteSize(type);
+                final int byteSize = type.getSizeByte(typeHelper.getTargetDataLayout());
                 if (byteSize == 0) {
                     return new StructLiteralNode.LLVMEmptyStructWriteNode();
                 } else {
@@ -569,7 +569,7 @@ public final class LLVMNodeGenerator {
             values.add(resolve(constant.getElement(i)));
         }
 
-        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(constant.getType()),
+        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getType().getSizeByte(typeHelper.getTargetDataLayout()),
                         constant.getType().getAlignmentByte(method.getTargetDataLayout()),
                         method.getContext(),
                         method.getStackSlot());
