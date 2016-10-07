@@ -1,6 +1,6 @@
 x52.tracera: ${x52.default} {
   environment : {
-    JVM_CONFIG  : ${jvm-config.tracera}
+    JVM_CONFIG  : ${jvm-config.default}"-tracera"
   }
 }
 

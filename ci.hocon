@@ -3,7 +3,6 @@ builds = []
 suite-root = "./"
 
 jvm-config.default = "graal-core"
-jvm-config.tracera = "graal-core-tracera"
 
 include "ci_common/common.hocon"
 include "ci_common/gate.hocon"
