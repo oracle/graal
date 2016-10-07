@@ -53,4 +53,8 @@ public abstract class LLVMNode extends Node {
         return object instanceof LLVMAddress;
     }
 
+    public String getSourceDescription() {
+        return null;
+    }
+
 }

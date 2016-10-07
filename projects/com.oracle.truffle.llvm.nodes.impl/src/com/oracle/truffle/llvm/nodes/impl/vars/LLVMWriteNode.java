@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.vars;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -64,29 +63,17 @@ public abstract class LLVMWriteNode extends LLVMNode {
 
     protected abstract FrameSlot getSlot();
 
-    @SuppressWarnings("deprecation")
     @Override
-    public SourceSection getSourceSection() {
-        if (sourceSection == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // No harm in racing to create the source section
-            LLVMBasicBlockNode basicBlock = NodeUtil.findParent(this, LLVMBasicBlockNode.class);
-            assert basicBlock != null : getParent().getClass();
-            LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(basicBlock, LLVMFunctionStartNode.class);
-            assert functionStartNode != null : basicBlock.getParent().getClass();
-            String identifier;
-            if (basicBlock.getBlockId() == 0) {
-                identifier = String.format("assignment of %s in first basic block in function %s", getSlot().getIdentifier(), functionStartNode.getFunctionName());
-            } else {
-                identifier = String.format("assignment of %s in basic block %s in function %s", getSlot().getIdentifier(), basicBlock.getBlockName(), functionStartNode.getFunctionName());
-            }
-            if (functionStartNode.getSourceSection() != null) {
-                sourceSection = functionStartNode.getSourceSection().getSource().createSection(identifier, 1);
-            } else {
-                sourceSection = SourceSection.createUnavailable("", null);
-            }
+    public String getSourceDescription() {
+        LLVMBasicBlockNode basicBlock = NodeUtil.findParent(this, LLVMBasicBlockNode.class);
+        assert basicBlock != null : getParent().getClass();
+        LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(basicBlock, LLVMFunctionStartNode.class);
+        assert functionStartNode != null : basicBlock.getParent().getClass();
+        if (basicBlock.getBlockId() == 0) {
+            return String.format("assignment of %s in first basic block in function %s", getSlot().getIdentifier(), functionStartNode.getFunctionName());
+        } else {
+            return String.format("assignment of %s in basic block %s in function %s", getSlot().getIdentifier(), basicBlock.getBlockName(), functionStartNode.getFunctionName());
         }
-        return sourceSection;
     }
 
     @NodeChild(value = "valueNode", type = LLVMI1Node.class)

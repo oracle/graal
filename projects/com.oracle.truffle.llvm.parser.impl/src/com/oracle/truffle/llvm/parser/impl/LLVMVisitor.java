@@ -450,7 +450,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         return factoryFacade.createArrayLiteral(arrayValues, arrayType);
     }
 
-    @SuppressWarnings("deprecation")
     private LLVMFunction visitFunction(FunctionDef def) {
         this.containingFunctionDef = def;
         isGlobalScope = false;
@@ -465,10 +464,9 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         labelList = getBlockLabelIndexMapping(def);
         List<LLVMNode> formalParameters = getFormalParametersInit(def);
         LLVMExpressionNode block = getFunctionBlockStatements(def);
-        String functionName = def.getHeader().getName();
         LLVMNode[] beforeFunction = formalParameters.toArray(new LLVMNode[formalParameters.size()]);
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
-        RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, sourceFile.createSection(functionName, 1), frameDescriptor, def.getHeader());
+        RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, sourceFile.createSection(1), frameDescriptor, def.getHeader());
         if (LLVMBaseOptionFacade.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }
