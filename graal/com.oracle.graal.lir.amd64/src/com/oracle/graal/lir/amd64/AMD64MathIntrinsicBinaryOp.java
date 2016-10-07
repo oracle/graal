@@ -1813,6 +1813,7 @@ public final class AMD64MathIntrinsicBinaryOp extends AMD64LIRInstruction {
         masm.cmpl(gpr3, 16560);
         masm.jcc(ConditionFlag.Less, bb3);
 
+        masm.leaq(gpr7, externalAddress(lTblPowPtr));
         masm.leaq(gpr8, externalAddress(coeffHPtr));
         masm.movdqu(temp4, new AMD64Address(gpr8, 0));         // 0x00000000,
                                                                // 0xbfd61a00,
@@ -1826,7 +1827,7 @@ public final class AMD64MathIntrinsicBinaryOp extends AMD64LIRInstruction {
         masm.cvtsi2sdl(temp7, gpr1);
         masm.mulpd(temp5, dest);
         masm.mulsd(temp3, dest);
-        masm.subsd(temp5, temp2);
+        masm.subsd(temp5, temp9);
         masm.pshufd(temp1, temp4, 0xE);
         masm.pshufd(temp2, temp3, 0x44);
         masm.unpcklpd(temp5, temp3);
