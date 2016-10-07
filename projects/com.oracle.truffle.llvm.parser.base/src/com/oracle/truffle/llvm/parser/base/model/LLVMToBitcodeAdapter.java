@@ -140,30 +140,23 @@ public final class LLVMToBitcodeAdapter {
         return new FunctionDeclaration(fType);
     }
 
-    private static final int HALF_SIZE = 16;
-    private static final int X86_FP80_SIZE = 80;
-    private static final int FP128_SIZE = 128;
-
     public static Type resolveType(ResolvedFloatingType type) {
-        switch (type.getBits().intValue()) {
-
-            case HALF_SIZE:
-                return FloatingPointType.HALF;
-
-            case Float.SIZE:
-                return FloatingPointType.FLOAT;
-
-            case Double.SIZE:
-                return FloatingPointType.DOUBLE;
-
-            case X86_FP80_SIZE:
-                return FloatingPointType.X86_FP80;
-
-            case FP128_SIZE:
-                return FloatingPointType.FP128;
-
-            default:
-                throw new AssertionError("Unknown bitsize: " + type.getBits());
+        // fp128 and ppc_fp128 have the same bitwidth so we can only do string comparisons
+        final String typestr = type.toString().toLowerCase();
+        if (typestr.startsWith("half")) {
+            return FloatingPointType.HALF;
+        } else if (typestr.startsWith("float")) {
+            return FloatingPointType.FLOAT;
+        } else if (typestr.startsWith("double")) {
+            return FloatingPointType.DOUBLE;
+        } else if (typestr.startsWith("x86_fp80")) {
+            return FloatingPointType.X86_FP80;
+        } else if (typestr.startsWith("fp128")) {
+            return FloatingPointType.FP128;
+        } else if (typestr.startsWith("ppc_fp128")) {
+            return FloatingPointType.PPC_FP128;
+        } else {
+            throw new AssertionError("Unknown Typestring: " + typestr);
         }
     }
 
