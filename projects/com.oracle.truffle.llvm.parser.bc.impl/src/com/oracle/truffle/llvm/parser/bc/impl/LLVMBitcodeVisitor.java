@@ -329,7 +329,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         final int structSize = typeHelper.getByteSize(elementType);
 
         final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
-        final int indexedTypeLength = typeHelper.getAlignment(functionType);
+        final int indexedTypeLength = functionType.getAlignmentByte(targetDataLayout);
 
         final LLVMNode[] structors = new LLVMNode[elemCount];
         for (int i = 0; i < elemCount; i++) {

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.base.model.types;
 
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 
 public class FunctionType implements Type {
 
@@ -56,6 +57,20 @@ public class FunctionType implements Type {
 
     public Type getReturnType() {
         return type;
+    }
+
+    @Override
+    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        if (targetDataLayout != null) {
+            return targetDataLayout.getBitAlignment(getLLVMBaseType()) / Byte.SIZE;
+        } else {
+            return Long.BYTES;
+        }
+    }
+
+    @Override
+    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return 0;
     }
 
     public boolean isVarArg() {

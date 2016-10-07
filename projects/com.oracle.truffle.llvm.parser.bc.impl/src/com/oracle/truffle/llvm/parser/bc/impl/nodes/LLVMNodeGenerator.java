@@ -405,7 +405,8 @@ public final class LLVMNodeGenerator {
     private LLVMExpressionNode resolveArrayConstant(ArrayConstant constant) {
 
         final int baseTypeSize = typeHelper.getByteSize(constant.getType().getElementType());
-        final LLVMAddressNode arrayAlloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getElementCount() * baseTypeSize, typeHelper.getAlignment(constant.getType()),
+        final LLVMAddressNode arrayAlloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getElementCount() * baseTypeSize,
+                        constant.getType().getAlignmentByte(method.getTargetDataLayout()),
                         method.getContext(), method.getStackSlot());
 
         final List<LLVMExpressionNode> arrayValues = new ArrayList<>(constant.getElementCount());
@@ -442,7 +443,7 @@ public final class LLVMNodeGenerator {
 
     private LLVMExpressionNode resolveStructureConstant(StructureConstant constant) {
         final int structSize = typeHelper.getByteSize(constant.getType());
-        final int structAlignment = typeHelper.getAlignment(constant.getType());
+        final int structAlignment = constant.getType().getAlignmentByte(method.getTargetDataLayout());
         final LLVMExpressionNode alloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(structSize, structAlignment, method.getContext(), method.getStackSlot());
 
         final int[] offsets = new int[constant.getElementCount()];
@@ -568,7 +569,8 @@ public final class LLVMNodeGenerator {
             values.add(resolve(constant.getElement(i)));
         }
 
-        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(constant.getType()), typeHelper.getAlignment(constant.getType()),
+        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(typeHelper.getByteSize(constant.getType()),
+                        constant.getType().getAlignmentByte(method.getTargetDataLayout()),
                         method.getContext(),
                         method.getStackSlot());
 

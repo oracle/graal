@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
+
 public final class IntegerConstantType implements Type {
 
     public final IntegerType type;
@@ -47,6 +49,21 @@ public final class IntegerConstantType implements Type {
 
     public long getValue() {
         return value;
+    }
+
+    @Override
+    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        if (targetDataLayout != null) {
+            return targetDataLayout.getBitAlignment(type.getLLVMBaseType()) / Byte.SIZE;
+
+        } else {
+            return type.getAlignmentByte(targetDataLayout);
+        }
+    }
+
+    @Override
+    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return type.getSizeByte(targetDataLayout);
     }
 
     @Override

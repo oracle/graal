@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
+
 import java.math.BigInteger;
 
 public final class BigIntegerConstantType implements Type {
@@ -67,5 +69,20 @@ public final class BigIntegerConstantType implements Type {
             return value.equals(BigInteger.ZERO) ? "i1 false" : "i1 true";
         }
         return String.format("%s %s", type, value);
+    }
+
+    @Override
+    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        if (targetDataLayout != null) {
+            return targetDataLayout.getBitAlignment(type.getLLVMBaseType()) / Byte.SIZE;
+
+        } else {
+            return type.getAlignmentByte(targetDataLayout);
+        }
+    }
+
+    @Override
+    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return type.getSizeByte(targetDataLayout);
     }
 }

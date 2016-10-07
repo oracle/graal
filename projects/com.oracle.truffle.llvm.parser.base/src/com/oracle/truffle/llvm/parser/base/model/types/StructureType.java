@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.base.model.types;
 
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
@@ -77,7 +78,7 @@ public final class StructureType implements AggregateType, ValueSymbol {
     }
 
     @Override
-    public int getElementCount() {
+    public int getLength() {
         return types.length;
     }
 
@@ -89,6 +90,46 @@ public final class StructureType implements AggregateType, ValueSymbol {
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override
+    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return getLargestAlignment(targetDataLayout);
+    }
+
+    @Override
+    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        int sumByte = 0;
+        for (final Type elementType : types) {
+            if (!isPacked) {
+                sumByte += getStructPaddingByteSize(sumByte, elementType, targetDataLayout);
+            }
+            sumByte += elementType.getSizeByte(targetDataLayout);
+        }
+
+        int padding = 0;
+        if (!isPacked && sumByte != 0) {
+            padding = Type.getPadding(sumByte, getLargestAlignment(targetDataLayout));
+        }
+
+        return sumByte + padding;
+    }
+
+    private int getLargestAlignment(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        int largestAlignment = 0;
+        for (final Type elementType : types) {
+            largestAlignment = Math.max(largestAlignment, elementType.getAlignmentByte(targetDataLayout));
+        }
+        return largestAlignment;
+    }
+
+    private static int getStructPaddingByteSize(int currentOffset, Type elemType, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        final int alignment = elemType.getAlignmentByte(targetDataLayout);
+        if (alignment == 0) {
+            return 0;
+        } else {
+            return Type.getPadding(currentOffset, alignment);
+        }
     }
 
     @Override

@@ -32,39 +32,40 @@ package com.oracle.truffle.llvm.parser.base.model.types;
 import java.util.Objects;
 
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
 
 public class ArrayType implements AggregateType {
 
-    public final Type type;
+    private final Type elementType;
 
-    private final int size;
+    private final int length;
 
     private MetadataReference metadata = MetadataBlock.voidRef;
 
     public ArrayType(Type type, int size) {
         super();
-        this.type = type;
-        this.size = size;
+        this.elementType = type;
+        this.length = size;
     }
 
     @Override
     public int getAlignment() {
-        return type.getAlignment();
+        return elementType.getAlignment();
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof ArrayType) {
             ArrayType other = (ArrayType) obj;
-            return size == other.size && type.equals(other.type);
+            return length == other.length && elementType.equals(other.elementType);
         }
         return false;
     }
 
     public Type getElementType() {
-        return type;
+        return elementType;
     }
 
     @Override
@@ -73,8 +74,8 @@ public class ArrayType implements AggregateType {
     }
 
     @Override
-    public int getElementCount() {
-        return size;
+    public int getLength() {
+        return length;
     }
 
     @Override
@@ -83,26 +84,36 @@ public class ArrayType implements AggregateType {
     }
 
     @Override
+    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getAlignmentByte(targetDataLayout);
+    }
+
+    @Override
+    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getSizeByte(targetDataLayout) * length;
+    }
+
+    @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.type);
-        hash = 67 * hash + this.size;
+        hash = 67 * hash + Objects.hashCode(this.elementType);
+        hash = 67 * hash + this.length;
         return hash;
     }
 
     @Override
     public int sizeof() {
-        return size * type.sizeof();
+        return length * elementType.sizeof();
     }
 
     @Override
     public int sizeof(int alignment) {
-        return size * type.sizeof(alignment);
+        return length * elementType.sizeof(alignment);
     }
 
     @Override
     public String toString() {
-        return String.format("[%d x %s]", getElementCount(), getElementType());
+        return String.format("[%d x %s]", getLength(), getElementType());
     }
 
     @Override

@@ -104,7 +104,7 @@ public final class LLVMMemoryReadWriteFactory {
         LLVMBaseType resultType = resolvedResultType.getLLVMBaseType();
 
         if (resolvedResultType instanceof VectorType) {
-            return createLoadVector(resultType, loadTarget, ((VectorType) resolvedResultType).getElementCount());
+            return createLoadVector(resultType, loadTarget, ((VectorType) resolvedResultType).getLength());
         } else {
             int bits = resultType == LLVMBaseType.I_VAR_BITWIDTH
                             ? resolvedResultType.getBits()

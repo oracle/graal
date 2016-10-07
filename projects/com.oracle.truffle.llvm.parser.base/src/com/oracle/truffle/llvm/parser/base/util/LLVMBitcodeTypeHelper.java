@@ -332,10 +332,10 @@ public class LLVMBitcodeTypeHelper {
 
         } else if (type instanceof ArrayType) {
             final ArrayType arrayType = (ArrayType) type;
-            if (arrayType.getElementCount() == 0) {
+            if (arrayType.getLength() == 0) {
                 return 0;
             } else {
-                return arrayType.getElementCount() * getByteSize(arrayType.getElementType());
+                return arrayType.getLength() * getByteSize(arrayType.getElementType());
             }
 
         } else if (type instanceof StructureType) {
@@ -343,11 +343,11 @@ public class LLVMBitcodeTypeHelper {
 
         } else if (type instanceof VectorType) {
             final VectorType vectorType = (VectorType) type;
-            if (vectorType.getElementCount() == 0) {
+            if (vectorType.getLength() == 0) {
                 return 0;
             } else {
                 int sum = 0;
-                for (int i = 0; i < vectorType.getElementCount(); i++) {
+                for (int i = 0; i < vectorType.getLength(); i++) {
                     sum += getByteSize(vectorType.getElementType(i));
                 }
                 return sum;
@@ -366,7 +366,7 @@ public class LLVMBitcodeTypeHelper {
 
     private int getStructByteSize(StructureType structureType) {
         int sumByte = 0;
-        for (int i = 0; i < structureType.getElementCount(); i++) {
+        for (int i = 0; i < structureType.getLength(); i++) {
             final Type elemType = structureType.getElementType(i);
             if (!structureType.isPacked()) {
                 sumByte += getStructPaddingByteSize(sumByte, elemType);
@@ -391,6 +391,10 @@ public class LLVMBitcodeTypeHelper {
         }
     }
 
+    public DataLayoutConverter.DataSpecConverter getTargetDataLayout() {
+        return targetDataLayout;
+    }
+
     public int getAlignment(Type type) {
         if (type instanceof StructureType) {
             return getLargestAlignment((StructureType) type);
@@ -411,7 +415,7 @@ public class LLVMBitcodeTypeHelper {
 
     private int getLargestAlignment(StructureType structureType) {
         int largestAlignment = 0;
-        for (int i = 0; i < structureType.getElementCount(); i++) {
+        for (int i = 0; i < structureType.getLength(); i++) {
             largestAlignment = Math.max(largestAlignment, getAlignment(structureType.getElementType(i)));
         }
         return largestAlignment;

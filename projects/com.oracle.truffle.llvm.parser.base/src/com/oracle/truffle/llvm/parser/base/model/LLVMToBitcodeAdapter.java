@@ -295,7 +295,7 @@ public final class LLVMToBitcodeAdapter {
 
     public static ResolvedType unresolveType(StructureType type) {
         List<ResolvedType> fieldTypes = new ArrayList<>();
-        for (int i = 0; i < type.getElementCount(); i++) {
+        for (int i = 0; i < type.getLength(); i++) {
             fieldTypes.add(unresolveType(type.getElementType(i)));
         }
         return new ResolvedStructType(fieldTypes, type.isPacked(), false);
@@ -303,11 +303,11 @@ public final class LLVMToBitcodeAdapter {
 
     public static ResolvedType unresolveType(ArrayType type) {
         ResolvedType elementType = unresolveType(type.getElementType());
-        return new ResolvedArrayType(type.getElementCount(), elementType);
+        return new ResolvedArrayType(type.getLength(), elementType);
     }
 
     public static ResolvedType unresolveType(VectorType type) {
         ResolvedType elementType = unresolveType(type.getElementType());
-        return new ResolvedVectorType(type.getElementCount(), elementType);
+        return new ResolvedVectorType(type.getLength(), elementType);
     }
 }

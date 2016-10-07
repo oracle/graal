@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.base.model.types;
 
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 
 public enum MetaType implements Type {
 
@@ -61,5 +62,15 @@ public enum MetaType implements Type {
     @Override
     public int sizeof() {
         return this == X86_MMX ? Long.BYTES : 0;
+    }
+
+    @Override
+    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return Long.BYTES;
+    }
+
+    @Override
+    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return 0;
     }
 }
