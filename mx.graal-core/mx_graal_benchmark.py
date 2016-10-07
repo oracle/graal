@@ -135,6 +135,7 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
 
 _graal_variants = [
     ('tracera', ['-Dgraal.TraceRA=true']),
+    ('tracera-bu', ['-Dgraal.TraceRA=true', '-Dgraal.TraceRAPolicy=BottomUpOnly']),
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler', '-Djvmci.Compiler=graal'], _graal_variants)
 
