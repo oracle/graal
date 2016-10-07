@@ -36,4 +36,7 @@ builds += [
   ${gateTest8}                 ${gateLinuxAMD64TraceRA} {name: "gate-test-8-linux-amd64-tracera"}
   ${gateBootstrap8}            ${gateLinuxAMD64TraceRABootstrap} {name: "gate-bootstrap-8-linux-amd64-tracera"}
   ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABootstrap} {name: "gate-bootstrapfullverify-8-linux-amd64-tracera"}
+  ${gateTest8}                 ${gateLinuxAMD64TraceRABU} {name: "gate-test-8-linux-amd64-tracera-bu"}
+  ${gateBootstrap8}            ${gateLinuxAMD64TraceRABUBootstrap} {name: "gate-bootstrap-8-linux-amd64-tracera-bu"}
+  ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABUBootstrap} {name: "gate-bootstrapfullverify-8-linux-amd64-tracera-bu"}
 ]
