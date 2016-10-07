@@ -63,7 +63,7 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
         NodeLIRBuilderTool nodeLirBuilder = context.nodeLirBuilder;
         StructuredGraph graph = context.graph;
         ScheduleResult schedule = context.schedule;
-        for (AbstractBlockBase<?> b : lirGenRes.getLIR().linearScanOrder()) {
+        for (AbstractBlockBase<?> b : lirGenRes.getLIR().getControlFlowGraph().getBlocks()) {
             emitBlock(nodeLirBuilder, lirGenRes, (Block) b, graph, schedule.getBlockToNodesMap());
         }
         context.lirGen.beforeRegisterAllocation();
@@ -71,17 +71,25 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
     }
 
     private static void emitBlock(NodeLIRBuilderTool nodeLirGen, LIRGenerationResult lirGenRes, Block b, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
-        if (lirGenRes.getLIR().getLIRforBlock(b) == null) {
-            for (Block pred : b.getPredecessors()) {
-                if (!b.isLoopHeader() || !pred.isLoopEnd()) {
-                    emitBlock(nodeLirGen, lirGenRes, pred, graph, blockMap);
-                }
-            }
-            nodeLirGen.doBlock(b, graph, blockMap);
-            if (instructionCounter.isEnabled()) {
-                instructionCounter.add(lirGenRes.getLIR().getLIRforBlock(b).size());
+        assert !isProcessed(lirGenRes, b) : "Block already processed " + b;
+        assert verifyPredecessors(lirGenRes, b);
+        nodeLirGen.doBlock(b, graph, blockMap);
+        if (instructionCounter.isEnabled()) {
+            instructionCounter.add(lirGenRes.getLIR().getLIRforBlock(b).size());
+        }
+    }
+
+    private static boolean verifyPredecessors(LIRGenerationResult lirGenRes, Block block) {
+        for (Block pred : block.getPredecessors()) {
+            if (!block.isLoopHeader() || !pred.isLoopEnd()) {
+                assert isProcessed(lirGenRes, pred) : "Predecessor not yet processed " + pred;
             }
         }
+        return true;
+    }
+
+    private static boolean isProcessed(LIRGenerationResult lirGenRes, Block b) {
+        return lirGenRes.getLIR().getLIRforBlock(b) != null;
     }
 
 }
