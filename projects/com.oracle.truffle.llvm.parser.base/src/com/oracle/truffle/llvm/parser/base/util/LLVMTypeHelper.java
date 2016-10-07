@@ -44,22 +44,20 @@ import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.intel.llvm.ireditor.types.ResolvedVoidType;
 import com.intel.llvm.ireditor.types.TypeResolver;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
-public class LLVMTypeHelperImpl implements LLVMTypeHelper {
+public class LLVMTypeHelper {
 
     private final LLVMParserRuntime runtime;
 
-    public LLVMTypeHelperImpl(LLVMParserRuntime runtime) {
+    public LLVMTypeHelper(LLVMParserRuntime runtime) {
         this.runtime = runtime;
     }
 
@@ -67,7 +65,6 @@ public class LLVMTypeHelperImpl implements LLVMTypeHelper {
         return getByteSize(LLVMToBitcodeAdapter.unresolveType(type));
     }
 
-    @Override
     public int getByteSize(ResolvedType type) {
         int bits = type.getBits().intValue();
         if (type instanceof ResolvedIntegerType || type instanceof ResolvedFloatingType) {
@@ -99,7 +96,6 @@ public class LLVMTypeHelperImpl implements LLVMTypeHelper {
         }
     }
 
-    @Override
     public int getStructureSizeByte(StructureConstant structure, TypeResolver typeResolver) {
         int sumByte = 0;
         int largestAlignment = 0;
@@ -238,7 +234,6 @@ public class LLVMTypeHelperImpl implements LLVMTypeHelper {
         return goIntoTypeGetLengthByte(LLVMToBitcodeAdapter.unresolveType(type), index);
     }
 
-    @Override
     public int goIntoTypeGetLengthByte(ResolvedType currentType, int index) {
         if (currentType == null) {
             return 0; // TODO: better throw an exception
@@ -286,7 +281,6 @@ public class LLVMTypeHelperImpl implements LLVMTypeHelper {
         return computePaddingByte(currentOffset, LLVMToBitcodeAdapter.unresolveType(type));
     }
 
-    @Override
     public int computePaddingByte(int currentOffset, ResolvedType type) {
         int alignmentByte = getAlignmentByte(type);
         if (alignmentByte == 0) {
@@ -304,7 +298,6 @@ public class LLVMTypeHelperImpl implements LLVMTypeHelper {
         return getAlignmentByte(LLVMToBitcodeAdapter.unresolveType(field));
     }
 
-    @Override
     public int getAlignmentByte(ResolvedType field) {
         if (field instanceof ResolvedNamedType) {
             return getAlignmentByte(((ResolvedNamedType) field).getReferredType());

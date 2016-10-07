@@ -76,7 +76,7 @@ import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNodeFactory.LLVMWriteIVa
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteVectorNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 
@@ -134,7 +134,7 @@ public final class LLVMFrameReadWriteFactory {
     }
 
     public static LLVMNode createFrameWrite(LLVMBaseType llvmType, LLVMExpressionNode result, FrameSlot slot) {
-        if (LLVMTypeHelperImpl.isVectorType(llvmType)) {
+        if (LLVMTypeHelper.isVectorType(llvmType)) {
             return LLVMWriteVectorNodeGen.create((LLVMVectorNode) result, slot);
         }
         switch (llvmType) {

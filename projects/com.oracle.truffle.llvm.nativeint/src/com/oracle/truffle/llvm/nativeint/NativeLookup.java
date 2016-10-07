@@ -45,7 +45,7 @@ import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeLibraryHandle;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
-import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;

@@ -88,7 +88,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeFunctionVisitor;
 import com.oracle.truffle.llvm.parser.factories.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
@@ -303,7 +303,7 @@ public final class LLVMNodeGenerator {
                 throw new RuntimeException("Missed a compare operator");
         }
 
-        if (LLVMTypeHelperImpl.isVectorType(llvmtype)) {
+        if (LLVMTypeHelper.isVectorType(llvmtype)) {
             return LLVMComparisonFactory.createVectorComparison(target, lhs, rhs, llvmtype, comparison);
         } else {
             return LLVMComparisonFactory.createIntegerComparison(lhs, rhs, llvmtype, comparison);

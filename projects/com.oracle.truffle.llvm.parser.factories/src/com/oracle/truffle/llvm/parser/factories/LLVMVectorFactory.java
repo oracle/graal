@@ -62,7 +62,7 @@ import com.oracle.truffle.llvm.nodes.impl.vector.LLVMInsertElementNodeFactory.LL
 import com.oracle.truffle.llvm.nodes.impl.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI32VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI8VectorNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 
 public final class LLVMVectorFactory {
 

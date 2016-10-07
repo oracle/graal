@@ -27,22 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.util;
+package com.oracle.truffle.llvm.parser.base.facade;
 
-import com.intel.llvm.ireditor.lLVM_IR.StructureConstant;
-import com.intel.llvm.ireditor.types.ResolvedType;
-import com.intel.llvm.ireditor.types.TypeResolver;
+public interface NodeFactoryFacadeProvider {
 
-public interface LLVMTypeHelper {
+    /**
+     * Returns the node factory which controls which Truffle nodes Sulong creates from the parser
+     * AST.
+     *
+     * @return the node factory
+     */
+    NodeFactoryFacade getNodeFactoryFacade();
 
-    int getByteSize(ResolvedType type);
-
-    int getStructureSizeByte(StructureConstant structure, TypeResolver typeResolver);
-
-    int goIntoTypeGetLengthByte(ResolvedType currentType, int index);
-
-    int computePaddingByte(int currentOffset, ResolvedType type);
-
-    int getAlignmentByte(ResolvedType field);
-
+    /**
+     * Gets the name of the node factory, which is used to let the user select which one to
+     * instantiate.
+     *
+     * @return the name of the node factory configuration
+     */
+    String getConfigurationName();
 }

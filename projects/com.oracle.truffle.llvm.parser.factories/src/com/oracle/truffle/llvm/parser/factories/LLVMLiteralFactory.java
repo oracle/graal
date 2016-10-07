@@ -33,6 +33,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import org.eclipse.emf.ecore.EObject;
 
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
@@ -78,11 +79,10 @@ import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMI64Arr
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMI8ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMAccessGlobalVariableStorageNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
@@ -102,7 +102,7 @@ public final class LLVMLiteralFactory {
     public static LLVMExpressionNode createUndefinedValue(LLVMParserRuntime runtime, EObject t) {
         Type resolvedType = LLVMToBitcodeAdapter.resolveType(runtime.resolve(t));
         LLVMBaseType type = resolvedType.getLLVMBaseType();
-        if (LLVMTypeHelperImpl.isVectorType(type)) {
+        if (LLVMTypeHelper.isVectorType(type)) {
             LLVMAddressLiteralNode addr = new LLVMAddressLiteralNode(LLVMAddress.createUndefinedAddress());
             switch (type) {
                 case I1_VECTOR:
@@ -380,10 +380,10 @@ public final class LLVMLiteralFactory {
         int nrElements = arrayValues.size();
         Type elementType = arrayType.getElementType();
         LLVMBaseType llvmElementType = elementType.getLLVMBaseType();
-        int baseTypeSize = ((LLVMTypeHelperImpl) runtime.getTypeHelper()).getByteSize(elementType);
+        int baseTypeSize = runtime.getTypeHelper().getByteSize(elementType);
         int size = nrElements * baseTypeSize;
         LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(LLVMToBitcodeAdapter.unresolveType(arrayType), size,
-                        ((LLVMTypeHelperImpl) runtime.getTypeHelper()).getAlignmentByte(arrayType));
+                        runtime.getTypeHelper().getAlignmentByte(arrayType));
         int byteLength = elementType.sizeof();
         if (size == 0) {
             throw new AssertionError(llvmElementType + " has size of 0!");

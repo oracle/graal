@@ -102,11 +102,11 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMVoid
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNode.LLVMIntrinsicVoidNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.LLVMType;
-import com.oracle.truffle.llvm.parser.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelperImpl;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
@@ -125,7 +125,7 @@ public final class LLVMFunctionFactory {
             throw new AssertionError();
         }
         LLVMBaseType type = resolvedType.getLLVMBaseType();
-        if (LLVMTypeHelperImpl.isVectorType(type)) {
+        if (LLVMTypeHelper.isVectorType(type)) {
             return LLVMVectorRetNodeGen.create((LLVMVectorNode) retValue, retSlot);
         } else {
             switch (type) {
@@ -152,7 +152,7 @@ public final class LLVMFunctionFactory {
                 case FUNCTION_ADDRESS:
                     return LLVMFunctionRetNodeGen.create((LLVMFunctionNode) retValue, retSlot);
                 case STRUCT:
-                    int size = ((LLVMTypeHelperImpl) runtime.getTypeHelper()).getByteSize(resolvedType);
+                    int size = runtime.getTypeHelper().getByteSize(resolvedType);
                     return LLVMStructRetNodeGen.create((LLVMAddressNode) retValue, retSlot, size);
                 default:
                     throw new AssertionError(type);
@@ -218,14 +218,14 @@ public final class LLVMFunctionFactory {
     }
 
     public static LLVMNode createFunctionCall(LLVMFunctionNode functionNode, LLVMExpressionNode[] argNodes, LLVMBaseType llvmType) {
-        LLVMUnresolvedCallNode unresolvedCallNode = new LLVMUnresolvedCallNode(functionNode, argNodes, LLVMTypeHelperImpl.convertType(new LLVMType(llvmType)),
+        LLVMUnresolvedCallNode unresolvedCallNode = new LLVMUnresolvedCallNode(functionNode, argNodes, LLVMTypeHelper.convertType(new LLVMType(llvmType)),
                         LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()));
         return createUnresolvedNodeWrapping(llvmType, unresolvedCallNode);
 
     }
 
     public static LLVMNode createUnresolvedNodeWrapping(LLVMBaseType llvmType, LLVMExpressionNode unresolvedCallNode) {
-        if (LLVMTypeHelperImpl.isVectorType(llvmType)) {
+        if (LLVMTypeHelper.isVectorType(llvmType)) {
             return LLVMVectorCallUnboxNodeGen.create(unresolvedCallNode);
         } else {
             switch (llvmType) {
