@@ -241,7 +241,11 @@ class JavaObjectMessageResolution {
     abstract static class PropertiesNode extends Node {
         @TruffleBoundary
         public Object access(JavaObject receiver) {
-            final Field[] fields = receiver.clazz.getFields();
+            Class<?> clazz = receiver.clazz;
+            while ((clazz.getModifiers() & Modifier.PUBLIC) == 0) {
+                clazz = clazz.getSuperclass();
+            }
+            final Field[] fields = clazz.getFields();
             final String[] names = new String[fields.length];
             for (int i = 0; i < fields.length; i++) {
                 names[i] = fields[i].getName();

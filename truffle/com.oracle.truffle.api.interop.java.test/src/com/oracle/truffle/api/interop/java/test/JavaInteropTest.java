@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Iterator;
 import java.util.Map;
+import static org.junit.Assert.assertNotNull;
 
 public class JavaInteropTest {
     public class Data {
@@ -131,6 +132,27 @@ public class JavaInteropTest {
         assertTrue("Contains arr " + list, list.contains("arr"));
         assertTrue("Contains value " + list, list.contains("value"));
         assertTrue("Contains map " + list, list.contains("map"));
+    }
+
+    class POJO {
+        public int x;
+    }
+
+    @Test
+    public void accessAllProperties() {
+        TruffleObject pojo = JavaInterop.asTruffleObject(new POJO());
+        Map<?, ?> map = JavaInterop.asJavaObject(Map.class, pojo);
+        int cnt = 0;
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
+            assertNotNull(key);
+
+            assertNotNull(value);
+            cnt++;
+        }
+        assertEquals("No properties", 0, cnt);
+        assertEquals("Empty: " + map, 0, map.size());
     }
 
     @Test
