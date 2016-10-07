@@ -59,8 +59,12 @@ meth public abstract int hashCode()
 meth public boolean canSet(com.oracle.truffle.api.object.DynamicObject,java.lang.Object)
 meth public boolean canSet(java.lang.Object)
 meth public boolean canStore(java.lang.Object)
+meth public boolean isAssumedFinal()
 meth public boolean isConstant()
+meth public boolean isDeclared()
 meth public boolean isFinal()
+meth public boolean isValue()
+meth public com.oracle.truffle.api.Assumption getFinalAssumption()
 meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObject)
 meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
 meth public final void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
@@ -144,6 +148,8 @@ meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getP
 meth public abstract java.util.List<com.oracle.truffle.api.object.Property> getPropertyListInternal(boolean)
 meth public abstract java.util.List<java.lang.Object> getKeyList()
 meth public abstract java.util.List<java.lang.Object> getKeyList(com.oracle.truffle.api.object.Shape$Pred<com.oracle.truffle.api.object.Property>)
+meth public boolean isShared()
+meth public com.oracle.truffle.api.object.Shape makeSharedShape()
 supr java.lang.Object
 
 CLSS public abstract static com.oracle.truffle.api.object.Shape$Allocator
@@ -254,9 +260,11 @@ hfds INT_TO_DOUBLE_FLAG,INT_TO_LONG_FLAG,allowedImplicitCasts
 CLSS public abstract com.oracle.truffle.object.LayoutStrategy
 cons protected init()
 fld protected final static com.oracle.truffle.api.object.LocationFactory DEFAULT_LAYOUT_FACTORY
+ anno 0 java.lang.Deprecated()
 meth protected abstract boolean updateShape(com.oracle.truffle.api.object.DynamicObject)
 meth protected abstract com.oracle.truffle.object.ShapeImpl ensureSpace(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Location)
 meth protected abstract com.oracle.truffle.object.ShapeImpl ensureValid(com.oracle.truffle.object.ShapeImpl)
+meth protected com.oracle.truffle.api.object.LocationFactory getDefaultLocationFactory()
 meth protected com.oracle.truffle.object.ShapeImpl addPrimitiveExtensionArray(com.oracle.truffle.object.ShapeImpl)
 meth protected com.oracle.truffle.object.ShapeImpl addProperty(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Property)
 meth protected com.oracle.truffle.object.ShapeImpl addProperty(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Property,boolean)
@@ -335,6 +343,7 @@ supr com.oracle.truffle.object.Locations$ValueLocation
 CLSS public final static com.oracle.truffle.object.Locations$DeclaredLocation
  outer com.oracle.truffle.object.Locations
 cons public init(java.lang.Object)
+meth public boolean isDeclared()
 supr com.oracle.truffle.object.Locations$ValueLocation
 
 CLSS public abstract static com.oracle.truffle.object.Locations$ValueLocation
@@ -342,6 +351,7 @@ CLSS public abstract static com.oracle.truffle.object.Locations$ValueLocation
 cons public init(java.lang.Object)
 meth public boolean canStore(java.lang.Object)
 meth public boolean equals(java.lang.Object)
+meth public final boolean isValue()
 meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,boolean)
 meth public final void accept(com.oracle.truffle.object.LocationImpl$LocationVisitor)
 meth public final void set(com.oracle.truffle.api.object.DynamicObject,java.lang.Object,com.oracle.truffle.api.object.Shape) throws com.oracle.truffle.api.object.FinalLocationException,com.oracle.truffle.api.object.IncompatibleLocationException
@@ -418,6 +428,7 @@ CLSS public abstract com.oracle.truffle.object.ShapeImpl
 cons protected init(com.oracle.truffle.api.object.Layout,com.oracle.truffle.api.object.ObjectType,java.lang.Object,int)
 cons protected init(com.oracle.truffle.api.object.Layout,com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.ObjectType,java.lang.Object,com.oracle.truffle.object.PropertyMap,com.oracle.truffle.object.Transition,com.oracle.truffle.api.object.Shape$Allocator,int)
 fld protected final boolean hasPrimitiveArray
+fld protected final boolean shared
 fld protected final com.oracle.truffle.api.Assumption validAssumption
 fld protected final com.oracle.truffle.api.object.ObjectType objectType
 fld protected final com.oracle.truffle.object.LayoutImpl layout
@@ -441,9 +452,11 @@ meth protected static com.oracle.truffle.object.ShapeImpl makeShapeWithPrimitive
 meth protected void onPropertyTransition(com.oracle.truffle.api.object.Property)
 meth public <%0 extends java.lang.Object> {%%0} accept(com.oracle.truffle.object.ShapeVisitor<{%%0}>)
 meth public boolean isRelated(com.oracle.truffle.api.object.Shape)
+meth public boolean isShared()
 meth public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(com.oracle.truffle.api.object.DynamicObject)
 meth public com.oracle.truffle.api.object.ObjectType getObjectType()
 meth public com.oracle.truffle.api.object.Property getProperty(java.lang.Object)
+meth public com.oracle.truffle.api.object.Shape makeSharedShape()
 meth public com.oracle.truffle.api.object.Shape tryMerge(com.oracle.truffle.api.object.Shape)
 meth public com.oracle.truffle.object.ShapeImpl addProperty(com.oracle.truffle.api.object.Property)
 meth public com.oracle.truffle.object.ShapeImpl defineProperty(java.lang.Object,java.lang.Object,int)
@@ -501,12 +514,14 @@ meth public static com.oracle.truffle.object.ShapeImpl findCommonAncestor(com.or
 meth public static java.util.List<com.oracle.truffle.api.object.Property> diff(com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape)
 supr com.oracle.truffle.api.object.Shape
 hfds ALL,LEAF_ASSUMPTION_UPDATER,TRANSITION_MAP_UPDATER,extraData,id,root,shapeCacheHitCount,shapeCacheMissCount,shapeCloneCount,shapeCount,sharedData,transitionFromParent,transitionMap
+hcls DynamicObjectFactoryImpl
 
 CLSS public abstract static com.oracle.truffle.object.ShapeImpl$BaseAllocator
  outer com.oracle.truffle.object.ShapeImpl
 cons protected init(com.oracle.truffle.object.LayoutImpl)
 cons protected init(com.oracle.truffle.object.ShapeImpl)
 fld protected boolean hasPrimitiveArray
+fld protected boolean shared
 fld protected final com.oracle.truffle.object.LayoutImpl layout
 fld protected int depth
 fld protected int objectArraySize
@@ -551,6 +566,7 @@ innr public final static IndirectReplacePropertyTransition
 innr public final static ObjectTypeTransition
 innr public final static RemovePropertyTransition
 innr public final static ReservePrimitiveArrayTransition
+innr public final static ShareShapeTransition
 meth public abstract boolean isDirect()
 meth public boolean equals(java.lang.Object)
 meth public int hashCode()
@@ -614,6 +630,12 @@ meth public java.lang.String toString()
 supr com.oracle.truffle.object.Transition$PropertyTransition
 
 CLSS public final static com.oracle.truffle.object.Transition$ReservePrimitiveArrayTransition
+ outer com.oracle.truffle.object.Transition
+cons public init()
+meth public boolean isDirect()
+supr com.oracle.truffle.object.Transition
+
+CLSS public final static com.oracle.truffle.object.Transition$ShareShapeTransition
  outer com.oracle.truffle.object.Transition
 cons public init()
 meth public boolean isDirect()

@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -82,18 +83,29 @@ class JavaObjectMessageResolution {
         @Child private DoExecuteNode doExecute;
 
         public Object access(VirtualFrame frame, JavaObject object, String name, Object[] args) {
+            Method foundMethod = findMethod(object, name, args);
+
+            if (foundMethod != null) {
+                if (doExecute == null || args.length != doExecute.numberOfArguments()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    doExecute = insert(new DoExecuteNode(args.length));
+                }
+                return doExecute.execute(frame, foundMethod, object.obj, args);
+            }
+
+            throw UnknownIdentifierException.raise(name);
+        }
+
+        @TruffleBoundary
+        private static Method findMethod(JavaObject object, String name, Object[] args) {
             for (Method m : object.clazz.getMethods()) {
                 if (m.getName().equals(name)) {
                     if (m.getParameterTypes().length == args.length || m.isVarArgs()) {
-                        if (doExecute == null || args.length != doExecute.numberOfArguments()) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            doExecute = insert(new DoExecuteNode(args.length));
-                        }
-                        return doExecute.execute(frame, m, object.obj, args);
+                        return m;
                     }
                 }
             }
-            throw UnknownIdentifierException.raise(name);
+            return null;
         }
 
     }
@@ -105,6 +117,7 @@ class JavaObjectMessageResolution {
             return execute(object, args);
         }
 
+        @TruffleBoundary
         private static Object execute(JavaObject receiver, Object[] args) {
             if (receiver.obj != null) {
                 throw new IllegalStateException("Can only work on classes: " + receiver.obj);
@@ -149,6 +162,7 @@ class JavaObjectMessageResolution {
             return read.executeWithTarget(frame, object, index);
         }
 
+        @TruffleBoundary
         public Object access(JavaObject object, String name) {
             try {
                 Object obj = object.obj;
@@ -187,15 +201,15 @@ class JavaObjectMessageResolution {
     @Resolve(message = "WRITE")
     abstract static class WriteFieldNode extends Node {
 
-        @Child private ToJavaNode toJava = new ToJavaNode();
+        @Child private ToJavaNode toJava = ToJavaNodeGen.create();
 
         public Object access(VirtualFrame frame, JavaObject receiver, String name, Object value) {
             try {
                 Object obj = receiver.obj;
                 try {
-                    Class<?> fieldType = receiver.clazz.getField(name).getType();
-                    Object convertedValue = toJava.convert(frame, value, fieldType);
-                    receiver.clazz.getField(name).set(obj, convertedValue);
+                    Field f = findField(receiver, name);
+                    Object convertedValue = toJava.execute(frame, value, f.getType());
+                    setField(obj, f, convertedValue);
                     return JavaObject.NULL;
                 } catch (NoSuchFieldException ex) {
                     throw new RuntimeException(ex);
@@ -203,6 +217,16 @@ class JavaObjectMessageResolution {
             } catch (IllegalAccessException ex) {
                 throw new RuntimeException(ex);
             }
+        }
+
+        @TruffleBoundary
+        private static void setField(Object obj, Field f, Object convertedValue) throws IllegalAccessException {
+            f.set(obj, convertedValue);
+        }
+
+        @TruffleBoundary
+        private static Field findField(JavaObject receiver, String name) throws NoSuchFieldException {
+            return receiver.clazz.getField(name);
         }
 
         @Child private ArrayWriteNode write = ArrayWriteNodeGen.create();
@@ -215,6 +239,7 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "KEYS")
     abstract static class PropertiesNode extends Node {
+        @TruffleBoundary
         public Object access(JavaObject receiver) {
             Class<?> clazz = receiver.clazz;
             while ((clazz.getModifiers() & Modifier.PUBLIC) == 0) {

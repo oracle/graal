@@ -287,9 +287,17 @@ public abstract class BasicLocations {
         @Override
         public final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
             if (canStore(value)) {
-                setLongInternal(store, ((Number) value).longValue());
+                setLongInternal(store, longValue(value));
             } else {
                 throw incompatibleLocation();
+            }
+        }
+
+        private long longValue(Object value) {
+            if (!allowInt || value instanceof Long) {
+                return ((Long) value).longValue();
+            } else {
+                return ((Integer) value).longValue();
             }
         }
 
@@ -441,9 +449,17 @@ public abstract class BasicLocations {
         @Override
         public final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
             if (canStore(value)) {
-                setLongInternal(store, ((Number) value).longValue());
+                setLongInternal(store, longValue(value));
             } else {
                 throw incompatibleLocation();
+            }
+        }
+
+        private long longValue(Object value) {
+            if (!allowInt || value instanceof Long) {
+                return ((Long) value).longValue();
+            } else {
+                return ((Integer) value).longValue();
             }
         }
 
@@ -482,7 +498,7 @@ public abstract class BasicLocations {
         @Override
         public final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
             if (canStore(value)) {
-                setLongInternal(store, ((Number) value).longValue());
+                setLongInternal(store, ((Long) value).longValue());
             } else {
                 throw incompatibleLocation();
             }
@@ -672,9 +688,17 @@ public abstract class BasicLocations {
         @Override
         public final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
             if (canStore(value)) {
-                setDouble(store, ((Number) value).doubleValue(), null);
+                setDouble(store, doubleValue(value), null);
             } else {
                 throw incompatibleLocation();
+            }
+        }
+
+        private double doubleValue(Object value) {
+            if (!allowInt || value instanceof Double) {
+                return ((Double) value).doubleValue();
+            } else {
+                return ((Integer) value).doubleValue();
             }
         }
 

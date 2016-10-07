@@ -122,8 +122,9 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                         // generate it
                         generateWrapper = true;
                     } else {
-                        TypeMirror type = context.getEnvironment().getElementUtils().getTypeElement("com.oracle.truffle.api.instrumentation.TestErrorFactory").asType();
-                        if (ElementUtils.typeEquals(factoryType, type)) {
+                        TypeElement type = context.getEnvironment().getElementUtils().getTypeElement("com.oracle.truffle.api.instrumentation.test.TestErrorFactory");
+
+                        if (type != null && ElementUtils.typeEquals(factoryType, type.asType())) {
                             generateWrapper = true;
                         } else {
                             // factory is user defined or already generated

@@ -96,7 +96,7 @@ import java.lang.reflect.Modifier;
  *
  * After that objects <b>mul</b> and <b>compose</b> are available for import from any
  * {@link TruffleLanguage Truffe language}.
- * 
+ *
  * @since 0.9
  */
 public final class JavaInterop {
@@ -148,7 +148,7 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static <T> T asJavaObject(Class<T> type, TruffleObject foreignObject) {
-        RootNode root = new TemporaryConvertRoot(TruffleLanguage.class, new ToJavaNode(), foreignObject, type);
+        RootNode root = new TemporaryConvertRoot(TruffleLanguage.class, ToJavaNodeGen.create(), foreignObject, type);
         Object convertedValue = Truffle.getRuntime().createCallTarget(root).call();
         return type.cast(convertedValue);
     }
@@ -172,6 +172,7 @@ public final class JavaInterop {
      * can then be access from <em>JavaScript</em> or any other <em>Truffle</em> based language as
      *
      * <pre>
+     *  
      * obj.x;
      * obj.y;
      * obj.name();
@@ -212,7 +213,7 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function) {
-        RootNode root = new TemporaryConvertRoot(TruffleLanguage.class, new ToJavaNode(), function, functionalType);
+        RootNode root = new TemporaryConvertRoot(TruffleLanguage.class, ToJavaNodeGen.create(), function, functionalType);
         return functionalType.cast(Truffle.getRuntime().createCallTarget(root).call());
     }
 
@@ -287,7 +288,7 @@ public final class JavaInterop {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return node.convert(frame, value, type);
+            return node.execute(frame, value, type);
         }
     }
 }
