@@ -57,7 +57,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI64NodeFactory.LLVMAddressToI64NodeGen;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI64NodeFactory.LLVMAnyToI64NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNodeFactory.LLVMFunctionCallChainNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMNativeCallConvertNode.LLVMResolvedNative80BitFloatCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMNativeCallConvertNode.LLVMResolvedNativeAddressCallNode;
@@ -129,7 +129,7 @@ public abstract class LLVMCallNode {
     public static LLVMExpressionNode convertToPrimitiveNode(LLVMExpressionNode originalArg, LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
         if (originalArg instanceof LLVMAddressNode) {
-            return LLVMAddressToI64NodeGen.create((LLVMAddressNode) originalArg);
+            return LLVMAnyToI64NodeGen.create(originalArg);
         } else if (originalArg instanceof LLVM80BitFloatNode) {
             throw new AssertionError("foreign function interface does not support 80 bit floats yet");
         } else if (originalArg instanceof LLVMFunctionNode) {
