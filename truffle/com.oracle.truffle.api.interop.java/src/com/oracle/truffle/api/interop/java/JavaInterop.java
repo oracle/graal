@@ -172,7 +172,7 @@ public final class JavaInterop {
      * can then be access from <em>JavaScript</em> or any other <em>Truffle</em> based language as
      *
      * <pre>
-     *  
+     *
      * obj.x;
      * obj.y;
      * obj.name();
@@ -180,6 +180,12 @@ public final class JavaInterop {
      *
      * When the <code>obj</code> represents a {@link Class}, then the created {@link TruffleObject}
      * will allow access to <b>public</b> and <b>static</b> fields and methods from the class.
+     * <p>
+     * Do not convert primitive types (instances of {@link Number}, {@link Boolean},
+     * {@link Character} or {@link String}) to {@link TruffleObject}, all {@link TruffleLanguage}s
+     * are supposed to handle primitives. Use directly the the primitive types instead. To convert
+     * generic objects to {@link TruffleObject} while retaining primitive values unwrapped, use
+     * {@link #asTruffleValue(java.lang.Object)} instead.
      *
      * @param obj a Java object to convert into one suitable for <em>Truffle</em> languages
      * @return converted object
@@ -196,6 +202,41 @@ public final class JavaInterop {
             return JavaObject.NULL;
         }
         return new JavaObject(obj, obj.getClass());
+    }
+
+    /**
+     * Prepares a Java object for use in any {@link TruffleLanguage}. If the object is one of
+     * {@link #isPrimitive primitive} values, it is just returned, as all {@link TruffleLanguage}s
+     * are supposed to handle such object. If it is a non-primitive type of Java object, the method
+     * does exactly the same thing as {@link #asTruffleObject}.
+     *
+     * @param obj a Java object to convert into one suitable for <em>Truffle</em> languages
+     * @return converted object, or primitive
+     * @since 0.18
+     */
+    public static Object asTruffleValue(Object obj) {
+        return isPrimitive(obj) ? obj : asTruffleObject(obj);
+    }
+
+    /**
+     * Test whether the object is a primitive, which all {@link TruffleLanguage}s are supposed to
+     * handle. Primitives are instances of {@link Number}, {@link Boolean}, {@link Character} or
+     * {@link String}.
+     *
+     * @param obj a Java object to test
+     * @return <code>true</code> when the object is a primitive from {@link TruffleLanguage}s point
+     *         of view, <code>false</code> otherwise.
+     * @since 0.18
+     */
+    public static boolean isPrimitive(Object obj) {
+        if (obj instanceof TruffleObject) {
+            // Someone tried to pass a TruffleObject in
+            return false;
+        }
+        if (obj == null) {
+            return false;
+        }
+        return ToJavaNode.isPrimitive(obj);
     }
 
     /**
@@ -244,6 +285,93 @@ public final class JavaInterop {
             throw new IllegalArgumentException();
         }
         return new JavaFunctionObject(method, implementation);
+    }
+
+    /**
+     * Test whether the object represents a <code>null</code> value.
+     *
+     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
+     *            <code>null</code>.
+     * @return <code>true</code> when the object represents a <code>null</code> value,
+     *         <code>false</code> otherwise.
+     * @see Message#IS_NULL
+     * @since 0.18
+     */
+    public static boolean isNull(TruffleObject foreignObject) {
+        if (foreignObject == null) {
+            return true;
+        }
+        return boolMessage(Message.IS_NULL, foreignObject);
+    }
+
+    /**
+     * Test whether the object represents an array. When an object has a size, it represents an
+     * array and can be converted to a list of array elements by:
+     *
+     * <pre>
+     * {@link #asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject) asJavaObject}(java.util.List.<b>class</b>, foreignObject);
+     * </pre>
+     *
+     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
+     *            <code>null</code>.
+     * @return <code>true</code> when the object represents an array, <code>false</code> otherwise.
+     * @see Message#HAS_SIZE
+     * @since 0.18
+     */
+    public static boolean isArray(TruffleObject foreignObject) {
+        if (foreignObject == null) {
+            return false;
+        }
+        return boolMessage(Message.HAS_SIZE, foreignObject);
+    }
+
+    /**
+     * Test whether the object represents a boxed primitive type.
+     *
+     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, can be
+     *            <code>null</code>.
+     * @return <code>true</code> when the object represents a boxed primitive type,
+     *         <code>false</code> otherwise.
+     * @see Message#IS_BOXED
+     * @since 0.18
+     */
+    public static boolean isBoxed(TruffleObject foreignObject) {
+        if (foreignObject == null) {
+            return false;
+        }
+        return boolMessage(Message.IS_BOXED, foreignObject);
+    }
+
+    /**
+     * Convert the object into a Java primitive type. Primitive types are subclasses of Number,
+     * Boolean, Character and String.
+     *
+     * @param foreignObject object coming from a {@link TruffleObject Truffle language}, which is
+     *            known (check {@link #isBoxed(com.oracle.truffle.api.interop.TruffleObject)}) to be
+     *            a boxed Java primitive type.
+     * @return An object representation of Java primitive type, or <code>null<code> when the
+     *         unboxing was not possible.
+     * @see Message#UNBOX
+     * @since 0.18
+     */
+    public static Object unbox(TruffleObject foreignObject) {
+        if (foreignObject == null) {
+            return null;
+        }
+        try {
+            return ToJavaNode.message(Message.UNBOX, foreignObject);
+        } catch (InteropException iex) {
+            return null;
+        }
+    }
+
+    private static boolean boolMessage(Message message, TruffleObject foreignObject) {
+        try {
+            Object isTrue = ToJavaNode.message(message, foreignObject);
+            return Boolean.TRUE.equals(isTrue);
+        } catch (InteropException iex) {
+            return false;
+        }
     }
 
     private static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
