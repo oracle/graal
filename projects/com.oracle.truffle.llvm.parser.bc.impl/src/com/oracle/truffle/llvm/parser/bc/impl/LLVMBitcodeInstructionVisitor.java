@@ -377,7 +377,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-            offset += typeHelper.getPadding(offset, targetType);
+            offset += Type.getPadding(offset, targetType, typeHelper.getTargetDataLayout());
         }
 
         if (offset != 0) {

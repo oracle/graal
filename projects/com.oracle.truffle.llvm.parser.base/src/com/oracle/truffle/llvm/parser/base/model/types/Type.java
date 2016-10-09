@@ -36,10 +36,6 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 public interface Type {
 
-    default int getAlignment() {
-        return Long.BYTES;
-    }
-
     default LLVMBaseType getLLVMBaseType() {
         throw new AssertionError("Cannot resolve to LLVMBaseType: " + this);
     }
@@ -81,5 +77,17 @@ public interface Type {
 
     default int getSize(@SuppressWarnings("unused") DataLayoutConverter.DataSpecConverter targetDataLayout) {
         throw new UnsupportedOperationException("Not implemented!");
+    }
+
+    static int getPadding(int offset, int alignment) {
+        if (alignment == 0) {
+            throw new AssertionError();
+        }
+        return (alignment - (offset % alignment)) % alignment;
+    }
+
+    static int getPadding(int offset, Type type, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        final int alignment = type.getAlignment(targetDataLayout);
+        return alignment == 0 ? 0 : getPadding(offset, alignment);
     }
 }

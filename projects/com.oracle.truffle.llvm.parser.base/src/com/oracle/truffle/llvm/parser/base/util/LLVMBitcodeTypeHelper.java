@@ -29,30 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.base.util;
 
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.base.model.enums.CastOperator;
-import com.oracle.truffle.llvm.parser.base.model.types.AggregateType;
-import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
-import com.oracle.truffle.llvm.parser.base.model.types.BigIntegerConstantType;
-import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
-import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
-import com.oracle.truffle.llvm.parser.base.model.types.MetaType;
-import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
-
-import java.util.List;
 
 public class LLVMBitcodeTypeHelper {
 
@@ -60,16 +44,6 @@ public class LLVMBitcodeTypeHelper {
 
     public LLVMBitcodeTypeHelper(DataLayoutConverter.DataSpecConverter targetDataLayout) {
         this.targetDataLayout = targetDataLayout;
-    }
-
-    public static Type goIntoType(Type parent, int index) {
-        if (parent instanceof AggregateType) {
-            return ((AggregateType) parent).getElementType(index);
-        } else if (parent instanceof PointerType) {
-            return ((PointerType) parent).getPointeeType();
-        } else {
-            throw new IllegalStateException("Cannot index type: " + parent);
-        }
     }
 
     public static LLVMArithmeticInstructionType toArithmeticInstructionType(BinaryOperator operator) {
@@ -123,39 +97,6 @@ public class LLVMBitcodeTypeHelper {
         }
     }
 
-    public static FrameSlotKind toFrameSlotKind(Type type) {
-        if (type == MetaType.VOID) {
-            throw new LLVMUnsupportedException(LLVMUnsupportedException.UnsupportedReason.PARSER_ERROR_VOID_SLOT);
-
-        } else if (type instanceof IntegerType) {
-            switch (((IntegerType) type).getBits()) {
-                case 1:
-                    return FrameSlotKind.Boolean;
-                case Byte.SIZE:
-                    return FrameSlotKind.Byte;
-                case Short.SIZE:
-                case Integer.SIZE:
-                    return FrameSlotKind.Int;
-                case Long.SIZE:
-                    return FrameSlotKind.Long;
-                default:
-                    break;
-            }
-
-        } else if (type instanceof FloatingPointType) {
-            switch (((FloatingPointType) type)) {
-                case FLOAT:
-                    return FrameSlotKind.Float;
-                case DOUBLE:
-                    return FrameSlotKind.Double;
-                default:
-                    break;
-            }
-        }
-
-        return FrameSlotKind.Object;
-    }
-
     public static LLVMLogicalInstructionType toLogicalInstructionType(BinaryOperator operator) {
         switch (operator) {
             case INT_SHIFT_LEFT:
@@ -175,113 +116,6 @@ public class LLVMBitcodeTypeHelper {
         }
     }
 
-    public static LLVMFunctionDescriptor.LLVMRuntimeType toRuntimeType(final Type type) {
-        if (type == MetaType.VOID) {
-            return LLVMFunctionDescriptor.LLVMRuntimeType.VOID;
-
-        } else if (type instanceof IntegerType) {
-            switch (((IntegerType) type).getBits()) {
-                case 1:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I1;
-                case Byte.SIZE:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I8;
-                case Short.SIZE:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I16;
-                case Integer.SIZE:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I32;
-                case Long.SIZE:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I64;
-                default:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I_VAR_BITWIDTH;
-            }
-
-        } else if (type instanceof FloatingPointType) {
-            switch (((FloatingPointType) type)) {
-                case HALF:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.HALF;
-                case FLOAT:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.FLOAT;
-                case DOUBLE:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.DOUBLE;
-                case X86_FP80:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.X86_FP80;
-                default:
-                    throw new RuntimeException("Unsupported type " + type);
-            }
-
-        } else if (type instanceof PointerType) {
-            final Type pointee = ((PointerType) type).getPointeeType();
-            if (pointee instanceof FunctionType) {
-                return LLVMFunctionDescriptor.LLVMRuntimeType.FUNCTION_ADDRESS;
-
-            } else if (pointee instanceof IntegerType) {
-                switch (((IntegerType) pointee).getBits()) {
-                    case 1:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.I1_POINTER;
-                    case Byte.SIZE:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.I8_POINTER;
-                    case Short.SIZE:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.I16_POINTER;
-                    case Integer.SIZE:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.I32_POINTER;
-                    case Long.SIZE:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.I64_POINTER;
-                    default:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.ADDRESS;
-                }
-
-            } else if (pointee instanceof FloatingPointType) {
-                switch (((FloatingPointType) pointee)) {
-                    case HALF:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.HALF_POINTER;
-                    case FLOAT:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.FLOAT_POINTER;
-                    case DOUBLE:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.DOUBLE_POINTER;
-                    case X86_FP80:
-                    default:
-                        return LLVMFunctionDescriptor.LLVMRuntimeType.ADDRESS;
-                }
-
-            } else {
-                return LLVMFunctionDescriptor.LLVMRuntimeType.ADDRESS;
-            }
-
-        } else if (type instanceof StructureType) {
-            return LLVMFunctionDescriptor.LLVMRuntimeType.STRUCT;
-
-        } else if (type instanceof ArrayType) {
-            return LLVMFunctionDescriptor.LLVMRuntimeType.ARRAY;
-
-        } else if (type instanceof FunctionType) {
-            return LLVMFunctionDescriptor.LLVMRuntimeType.FUNCTION_ADDRESS;
-
-        } else if (type instanceof VectorType) {
-            final Type base = ((VectorType) type).getElementType();
-            switch (toRuntimeType(base)) {
-                case I1:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I1_VECTOR;
-                case I8:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I8_VECTOR;
-                case I16:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I16_VECTOR;
-                case I32:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I32_VECTOR;
-                case I64:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.I64_VECTOR;
-                case FLOAT:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.FLOAT_VECTOR;
-                case DOUBLE:
-                    return LLVMFunctionDescriptor.LLVMRuntimeType.DOUBLE_VECTOR;
-                default:
-                    throw new RuntimeException("Unsupported type " + type);
-            }
-
-        } else {
-            throw new RuntimeException("Unsupported type " + type);
-        }
-    }
-
     public static LLVMFunctionDescriptor.LLVMRuntimeType[] toRuntimeTypes(Type[] types) {
         final LLVMFunctionDescriptor.LLVMRuntimeType[] llvmtypes = new LLVMFunctionDescriptor.LLVMRuntimeType[types.length];
         for (int i = 0; i < types.length; i++) {
@@ -290,171 +124,8 @@ public class LLVMBitcodeTypeHelper {
         return llvmtypes;
     }
 
-    public static LLVMFunctionDescriptor.LLVMRuntimeType[] toRuntimeTypes(List<? extends Type> types) {
-        final LLVMFunctionDescriptor.LLVMRuntimeType[] llvmtypes = new LLVMFunctionDescriptor.LLVMRuntimeType[types.size()];
-        for (int i = 0; i < types.size(); i++) {
-            llvmtypes[i] = toRuntimeType(types.get(i).getType());
-        }
-        return llvmtypes;
-    }
-
-    public int getPadding(int offset, int alignment) {
-        if (alignment == 0) {
-            throw new AssertionError();
-        }
-        return (alignment - (offset % alignment)) % alignment;
-    }
-
-    public int getPadding(int offset, Type type) {
-        final int alignment = getAlignment(type);
-        return alignment == 0 ? 0 : getPadding(offset, alignment);
-    }
-
-    private int getByteSize(Type type) {
-        if (type instanceof IntegerType) {
-            return Math.max(1, ((IntegerType) type).getBits() / Byte.SIZE);
-
-        } else if (type instanceof FloatingPointType) {
-            return Math.max(1, ((FloatingPointType) type).width() / Byte.SIZE);
-
-        } else if (type instanceof BigIntegerConstantType) {
-            return getByteSize(type.getType());
-
-        } else if (type instanceof PointerType) {
-            if (((PointerType) type).getPointeeType() instanceof FunctionType) {
-                return LLVMHeap.FUNCTION_PTR_SIZE_BYTE;
-            } else {
-                return LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE;
-            }
-
-        } else if (type instanceof FunctionType) {
-            return 0;
-
-        } else if (type instanceof ArrayType) {
-            final ArrayType arrayType = (ArrayType) type;
-            if (arrayType.getLength() == 0) {
-                return 0;
-            } else {
-                return arrayType.getLength() * getByteSize(arrayType.getElementType());
-            }
-
-        } else if (type instanceof StructureType) {
-            return getStructByteSize((StructureType) type);
-
-        } else if (type instanceof VectorType) {
-            final VectorType vectorType = (VectorType) type;
-            if (vectorType.getLength() == 0) {
-                return 0;
-            } else {
-                int sum = 0;
-                for (int i = 0; i < vectorType.getLength(); i++) {
-                    sum += getByteSize(vectorType.getElementType(i));
-                }
-                return sum;
-            }
-
-        } else if (type == MetaType.X86_MMX || type == MetaType.OPAQUE) {
-            return 0;
-
-        } else if (type instanceof MetaType) {
-            return 0;
-
-        } else {
-            throw new AssertionError("Cannot compute size of type: " + type);
-        }
-    }
-
-    private int getStructByteSize(StructureType structureType) {
-        int sumByte = 0;
-        for (int i = 0; i < structureType.getLength(); i++) {
-            final Type elemType = structureType.getElementType(i);
-            if (!structureType.isPacked()) {
-                sumByte += getStructPaddingByteSize(sumByte, elemType);
-            }
-            sumByte += getByteSize(elemType);
-        }
-
-        int padding = 0;
-        if (!structureType.isPacked() && sumByte != 0) {
-            padding = getPadding(sumByte, getLargestAlignment(structureType));
-        }
-
-        return sumByte + padding;
-    }
-
-    private int getStructPaddingByteSize(int currentOffset, Type elemType) {
-        final int alignment = getAlignment(elemType);
-        if (alignment == 0) {
-            return 0;
-        } else {
-            return getPadding(currentOffset, alignment);
-        }
-    }
-
     public DataLayoutConverter.DataSpecConverter getTargetDataLayout() {
         return targetDataLayout;
-    }
-
-    private int getAlignment(Type type) {
-        if (type instanceof StructureType) {
-            return getLargestAlignment((StructureType) type);
-
-        } else if (type instanceof ArrayType) {
-            return getAlignment(((ArrayType) type).getElementType());
-
-        } else if (type instanceof VectorType) {
-            return getAlignment(((VectorType) type).getElementType());
-
-        } else if (targetDataLayout != null && !(type instanceof MetaType)) {
-            return targetDataLayout.getBitAlignment(type.getLLVMBaseType()) / Byte.SIZE;
-
-        } else {
-            return type.getAlignment();
-        }
-    }
-
-    private int getLargestAlignment(StructureType structureType) {
-        int largestAlignment = 0;
-        for (int i = 0; i < structureType.getLength(); i++) {
-            largestAlignment = Math.max(largestAlignment, getAlignment(structureType.getElementType(i)));
-        }
-        return largestAlignment;
-    }
-
-    public int goIntoTypeGetLength(Type type, int index) {
-        if (type == null) {
-            throw new IllegalStateException("Cannot go into null!");
-
-        } else if (type instanceof PointerType) {
-            return getByteSize(((PointerType) type).getPointeeType()) * index;
-
-        } else if (type instanceof ArrayType) {
-            return getByteSize(((ArrayType) type).getElementType()) * index;
-
-        } else if (type instanceof VectorType) {
-            return getByteSize(((VectorType) type).getElementType()) * index;
-
-        } else if (type instanceof StructureType) {
-            final StructureType structureType = (StructureType) type;
-            int offset = 0;
-
-            for (int i = 0; i < index; i++) {
-                final Type elemType = structureType.getElementType(i);
-                offset += getByteSize(elemType);
-                if (!structureType.isPacked()) {
-                    offset += getPadding(offset, elemType);
-                }
-            }
-
-            if (!structureType.isPacked() && getStructByteSize(structureType) > offset) {
-                offset += getPadding(offset, structureType.getElementType(index));
-            }
-
-            return offset;
-
-        } else {
-            throw new UnsupportedOperationException("Cannot compute offset in type: " + type);
-        }
     }
 
 }

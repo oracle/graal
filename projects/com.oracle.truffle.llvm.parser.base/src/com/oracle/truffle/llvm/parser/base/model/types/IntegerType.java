@@ -60,18 +60,6 @@ public final class IntegerType implements Type {
     }
 
     @Override
-    public int getAlignment() {
-        if (bits <= Byte.SIZE) {
-            return Byte.BYTES;
-        } else if (bits <= Short.SIZE) {
-            return Short.BYTES;
-        } else if (bits <= Integer.SIZE) {
-            return Integer.BYTES;
-        }
-        return Long.BYTES;
-    }
-
-    @Override
     public FrameSlotKind getFrameSlotKind() {
         switch (bits) {
             case BOOLEAN_BITS:

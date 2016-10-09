@@ -56,11 +56,6 @@ public enum FloatingPointType implements Type {
     }
 
     @Override
-    public int getAlignment() {
-        return alignment;
-    }
-
-    @Override
     public LLVMBaseType getLLVMBaseType() {
         return llvmBaseType;
     }
