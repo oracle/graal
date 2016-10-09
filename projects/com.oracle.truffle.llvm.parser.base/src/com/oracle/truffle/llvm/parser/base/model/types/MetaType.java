@@ -77,6 +77,8 @@ public enum MetaType implements Type {
         switch (this) {
             case VOID:
                 return LLVMFunctionDescriptor.LLVMRuntimeType.VOID;
+            case OPAQUE:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.ADDRESS;
             default:
                 throw new UnsupportedOperationException("Cannot resolve to Runtime Type: " + this);
         }

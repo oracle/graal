@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMAccessGlobalVariableStorage
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.parser.base.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserResultImpl;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMConstantGenerator;
@@ -114,8 +115,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         LLVMLabelList labels = LLVMLabelList.generate(model);
 
-        final String layout = ((ModelModule) model.createModule()).getTargetDataLayout().getDataLayout();
-        final DataLayoutConverter.DataSpecConverter targetDataLayout = layout != null ? DataLayoutConverter.getConverter(layout) : null;
+        final TargetDataLayout layout = ((ModelModule) model.createModule()).getTargetDataLayout();
+        final DataLayoutConverter.DataSpecConverter targetDataLayout = layout != null ? DataLayoutConverter.getConverter(layout.getDataLayout()) : null;
         LLVMMetadata.generate(model, targetDataLayout);
 
         LLVMBitcodeVisitor module = new LLVMBitcodeVisitor(source, context, lifetimes, labels, phis, targetDataLayout);
