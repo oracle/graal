@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.base.model.types;
 
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 public enum MetaType implements Type {
 
@@ -56,6 +57,16 @@ public enum MetaType implements Type {
                 return LLVMBaseType.ADDRESS;
             default:
                 throw new AssertionError("Cannot resolve to LLVMBaseType: " + this);
+        }
+    }
+
+    @Override
+    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
+        switch (this) {
+            case VOID:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.VOID;
+            default:
+                throw new UnsupportedOperationException("Cannot resolve to Runtime Type: " + this);
         }
     }
 

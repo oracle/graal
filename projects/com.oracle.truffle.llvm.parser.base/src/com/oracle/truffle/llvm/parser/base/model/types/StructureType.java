@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 public final class StructureType implements AggregateType, ValueSymbol {
 
@@ -85,6 +86,11 @@ public final class StructureType implements AggregateType, ValueSymbol {
     @Override
     public LLVMBaseType getLLVMBaseType() {
         return LLVMBaseType.STRUCT;
+    }
+
+    @Override
+    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
+        return LLVMFunctionDescriptor.LLVMRuntimeType.STRUCT;
     }
 
     @Override

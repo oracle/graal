@@ -527,7 +527,7 @@ public final class LLVMNodeGenerator {
     }
 
     private LLVMExpressionNode resolveFunction(String name, FunctionType type) {
-        final LLVMFunctionDescriptor.LLVMRuntimeType returnType = LLVMBitcodeTypeHelper.toRuntimeType(type.getReturnType());
+        final LLVMFunctionDescriptor.LLVMRuntimeType returnType = type.getReturnType().getRuntimeType();
         final LLVMFunctionDescriptor.LLVMRuntimeType[] argTypes = LLVMBitcodeTypeHelper.toRuntimeTypes(type.getArgumentTypes());
         return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) method.getContext().getFunctionRegistry().createFunctionDescriptor(name, returnType, argTypes, type.isVarArg()));
     }

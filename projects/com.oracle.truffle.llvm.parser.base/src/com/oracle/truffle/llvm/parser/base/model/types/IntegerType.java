@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.base.model.types;
 
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 public final class IntegerType implements Type {
 
@@ -84,6 +85,24 @@ public final class IntegerType implements Type {
                 return LLVMBaseType.I64;
             default:
                 return LLVMBaseType.I_VAR_BITWIDTH;
+        }
+    }
+
+    @Override
+    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
+        switch (bits) {
+            case BOOLEAN_BITS:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I1;
+            case BYTE_BITS:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I8;
+            case SHORT_BITS:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I16;
+            case INTEGER_BITS:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I32;
+            case LONG_BITS:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I64;
+            default:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I_VAR_BITWIDTH;
         }
     }
 

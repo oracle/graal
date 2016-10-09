@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 public class VectorType implements AggregateType {
 
@@ -91,7 +92,29 @@ public class VectorType implements AggregateType {
             case DOUBLE:
                 return LLVMBaseType.DOUBLE_VECTOR;
             default:
-                throw new AssertionError("Unsupported Vector Element Type: " + this.elementType);
+                throw new UnsupportedOperationException("Unsupported Vector Element Type: " + elementType);
+        }
+    }
+
+    @Override
+    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
+        switch (elementType.getRuntimeType()) {
+            case I1:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I1_VECTOR;
+            case I8:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I8_VECTOR;
+            case I16:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I16_VECTOR;
+            case I32:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I32_VECTOR;
+            case I64:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.I64_VECTOR;
+            case FLOAT:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.FLOAT_VECTOR;
+            case DOUBLE:
+                return LLVMFunctionDescriptor.LLVMRuntimeType.DOUBLE_VECTOR;
+            default:
+                throw new UnsupportedOperationException("Unsupported Vector Element Type: " + elementType);
         }
     }
 

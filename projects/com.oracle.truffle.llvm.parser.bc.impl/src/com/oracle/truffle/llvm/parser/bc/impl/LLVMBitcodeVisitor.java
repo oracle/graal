@@ -430,7 +430,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             System.out.flush();
         }
 
-        LLVMRuntimeType llvmReturnType = LLVMBitcodeTypeHelper.toRuntimeType(method.getReturnType());
+        LLVMRuntimeType llvmReturnType = method.getReturnType().getRuntimeType();
         LLVMRuntimeType[] llvmParamTypes = LLVMBitcodeTypeHelper.toRuntimeTypes(method.getArgumentTypes());
         LLVMFunction function = context.getFunctionRegistry().createFunctionDescriptor(method.getName(), llvmReturnType, llvmParamTypes, method.isVarArg());
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);

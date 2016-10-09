@@ -110,7 +110,7 @@ public final class LLVMConstantGenerator {
 
         } else if (value instanceof FunctionDefinition || value instanceof FunctionDeclaration) {
             final FunctionType type = (FunctionType) value;
-            final LLVMFunctionDescriptor.LLVMRuntimeType returnType = LLVMBitcodeTypeHelper.toRuntimeType(type.getReturnType());
+            final LLVMFunctionDescriptor.LLVMRuntimeType returnType = type.getReturnType().getRuntimeType();
             final LLVMFunctionDescriptor.LLVMRuntimeType[] argTypes = LLVMBitcodeTypeHelper.toRuntimeTypes(type.getArgumentTypes());
 
             final String name = ((ValueSymbol) value).getName();
