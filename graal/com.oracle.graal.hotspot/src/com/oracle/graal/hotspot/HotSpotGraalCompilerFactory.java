@@ -43,16 +43,13 @@ import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
-import com.oracle.graal.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.hotspot.services.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
-import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
 
-@ServiceProvider(JVMCICompilerFactory.class)
 public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFactory {
 
     /**
@@ -212,7 +209,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
             HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, compilerConfigurationFactory);
-            HotSpotGraalVMEventListener.addRuntime(graalRuntime);
+            jvmciRuntime.addVmEventListener(new HotSpotGraalVMEventListener(graalRuntime));
             return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime);
         }
     }

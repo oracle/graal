@@ -22,32 +22,26 @@
  */
 package com.oracle.graal.hotspot;
 
-import java.util.ArrayList;
-
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalDebugConfig;
-import com.oracle.graal.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-import jdk.vm.ci.hotspot.services.HotSpotVMEventListener;
+import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 
-@ServiceProvider(HotSpotVMEventListener.class)
 public class HotSpotGraalVMEventListener extends HotSpotVMEventListener {
 
-    private static final ArrayList<HotSpotGraalRuntime> runtimes = new ArrayList<>();
+    private final HotSpotGraalRuntime runtime;
 
-    static void addRuntime(HotSpotGraalRuntime runtime) {
-        runtimes.add(runtime);
+    HotSpotGraalVMEventListener(HotSpotGraalRuntime runtime) {
+        this.runtime = runtime;
     }
 
     @Override
     public void notifyShutdown() {
-        for (HotSpotGraalRuntime runtime : runtimes) {
-            runtime.shutdown();
-        }
+        runtime.shutdown();
     }
 
     @Override
@@ -64,11 +58,9 @@ public class HotSpotGraalVMEventListener extends HotSpotVMEventListener {
 
     @Override
     public void notifyBootstrapFinished() {
-        for (HotSpotGraalRuntime runtime : runtimes) {
-            runtime.notifyBootstrapFinished();
-            if (GraalDebugConfig.Options.ClearMetricsAfterBootstrap.getValue()) {
-                runtime.clearMeters();
-            }
+        runtime.notifyBootstrapFinished();
+        if (GraalDebugConfig.Options.ClearMetricsAfterBootstrap.getValue()) {
+            runtime.clearMeters();
         }
     }
 }

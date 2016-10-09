@@ -288,9 +288,9 @@ suite = {
         "com.oracle.graal.runtime",
       ],
       "imports" : [
-        "jdk.internal.misc",
-        "jdk.internal.jimage",
-        "com.sun.crypto.provider",
+        # All other internal packages are exported dynamically -
+        # see com.oracle.graal.hotspot.HotSpotGraalJVMCIAccess.
+        "jdk.internal.module",
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "annotationProcessors" : [

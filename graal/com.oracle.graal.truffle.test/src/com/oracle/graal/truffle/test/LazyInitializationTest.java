@@ -47,7 +47,7 @@ import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.test.SubprocessUtil;
 
-import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
+import jdk.vm.ci.runtime.JVMCICompilerFactory;
 
 /**
  * Test lazy initialization of Graal in the context of Truffle. When simply executing Truffle code,
