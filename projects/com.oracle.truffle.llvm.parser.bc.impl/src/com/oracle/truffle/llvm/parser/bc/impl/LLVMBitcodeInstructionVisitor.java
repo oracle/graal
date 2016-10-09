@@ -160,7 +160,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final Type type = allocate.getPointeeType();
         int alignment = 0;
         if (allocate.getAlign() == 0) {
-            alignment = type.getAlignmentByte(method.getTargetDataLayout());
+            alignment = type.getAlignment(method.getTargetDataLayout());
         } else {
             alignment = 1 << (allocate.getAlign() - 1);
         }
@@ -168,7 +168,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             alignment = LLVMStack.NO_ALIGNMENT_REQUIREMENTS;
         }
 
-        final int size = type.getSizeByte(typeHelper.getTargetDataLayout());
+        final int size = type.getSize(typeHelper.getTargetDataLayout());
         final Symbol count = allocate.getCount();
         final LLVMExpressionNode result;
         if (count instanceof NullConstant) {
@@ -207,8 +207,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         LLVMAddressNode target = null;
         if (operation.getType() instanceof VectorType) {
-            final int size = operation.getType().getSizeByte(typeHelper.getTargetDataLayout());
-            final int alignment = operation.getType().getAlignmentByte(method.getTargetDataLayout());
+            final int size = operation.getType().getSize(typeHelper.getTargetDataLayout());
+            final int alignment = operation.getType().getAlignment(method.getTargetDataLayout());
             target = LLVMAllocaInstructionNodeGen.create(size, alignment, method.getContext(), method.getStackSlot());
         }
 
@@ -245,7 +245,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         argNodes[argIndex++] = LLVMFrameReadWriteFactory.createFrameRead(LLVMBaseType.ADDRESS, method.getStackSlot());
         if (targetType instanceof StructureType) {
             // TODO use LLVMAllocFactory instead to free the memory after return
-            argNodes[argIndex++] = LLVMAllocaInstructionNodeGen.create(targetType.getSizeByte(typeHelper.getTargetDataLayout()), targetType.getAlignmentByte(method.getTargetDataLayout()),
+            argNodes[argIndex++] = LLVMAllocaInstructionNodeGen.create(targetType.getSize(typeHelper.getTargetDataLayout()), targetType.getAlignment(method.getTargetDataLayout()),
                             method.getContext(),
                             method.getStackSlot());
         }
@@ -296,8 +296,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         if (compare.getType() instanceof VectorType) {
             Type type = compare.getType();
-            final int size = type.getSizeByte(typeHelper.getTargetDataLayout());
-            final int alignment = type.getAlignmentByte(method.getTargetDataLayout());
+            final int size = type.getSize(typeHelper.getTargetDataLayout());
+            final int alignment = type.getAlignment(method.getTargetDataLayout());
             LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(size, alignment, method.getContext(), method.getStackSlot());
 
             result = LLVMNodeGenerator.toCompareVectorNode(
@@ -373,7 +373,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        int offset = aggregateType.getIndexOffsetByte(targetIndex, typeHelper.getTargetDataLayout());
+        int offset = aggregateType.getIndexOffset(targetIndex, typeHelper.getTargetDataLayout());
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
@@ -413,7 +413,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode element = symbols.resolve(insert.getValue());
         final LLVMBaseType resultType = insert.getType().getLLVMBaseType();
 
-        final LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(insert.getType().getSizeByte(method.getTargetDataLayout()), insert.getType().getAlignmentByte(method.getTargetDataLayout()),
+        final LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(insert.getType().getSize(method.getTargetDataLayout()), insert.getType().getAlignment(method.getTargetDataLayout()),
                         method.getContext(),
                         method.getStackSlot());
 
@@ -434,12 +434,12 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final int targetIndex = insert.getIndex();
 
         // TODO use LLVMAllocFactory instead to free the memory after return
-        final LLVMExpressionNode resultAggregate = LLVMAllocaInstructionNodeGen.create(sourceType.getSizeByte(method.getTargetDataLayout()), sourceType.getAlignmentByte(method.getTargetDataLayout()),
+        final LLVMExpressionNode resultAggregate = LLVMAllocaInstructionNodeGen.create(sourceType.getSize(method.getTargetDataLayout()), sourceType.getAlignment(method.getTargetDataLayout()),
                         method.getContext(),
                         method.getStackSlot());
-        final int offset = sourceType.getIndexOffsetByte(targetIndex, typeHelper.getTargetDataLayout());
+        final int offset = sourceType.getIndexOffset(targetIndex, typeHelper.getTargetDataLayout());
         final LLVMExpressionNode result = LLVMAggregateFactory.createInsertValue((LLVMAddressNode) resultAggregate, (LLVMAddressNode) sourceAggregate,
-                        sourceType.getSizeByte(method.getTargetDataLayout()), offset, valueToInsert, valueType);
+                        sourceType.getSize(method.getTargetDataLayout()), offset, valueToInsert, valueType);
 
         createFrameWrite(result, insert);
     }
@@ -526,7 +526,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                     node = LLVMRetNodeFactory.LLVMVectorRetNodeGen.create((LLVMVectorNode) value, slot);
                     break;
                 case STRUCT:
-                    final int size = type.getSizeByte(method.getTargetDataLayout());
+                    final int size = type.getSize(method.getTargetDataLayout());
                     node = LLVMRetNodeFactory.LLVMStructRetNodeGen.create((LLVMAddressNode) value, slot, size);
                     break;
                 default:
@@ -547,7 +547,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode result;
         if (select.getType() instanceof VectorType) {
             final VectorType type = (VectorType) select.getType();
-            final LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(type.getSizeByte(method.getTargetDataLayout()), type.getAlignmentByte(method.getTargetDataLayout()), method.getContext(),
+            final LLVMAddressNode target = LLVMAllocaInstructionNodeGen.create(type.getSize(method.getTargetDataLayout()), type.getAlignment(method.getTargetDataLayout()), method.getContext(),
                             method.getStackSlot());
             result = LLVMSelectFactory.createSelectVector(llvmType, target, condition, trueValue, falseValue);
 
@@ -564,8 +564,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode vector2 = symbols.resolve(shuffle.getVector2());
         final LLVMI32VectorNode mask = (LLVMI32VectorNode) symbols.resolve(shuffle.getMask());
 
-        final LLVMAddressNode destination = LLVMAllocaInstructionNodeGen.create(shuffle.getType().getSizeByte(method.getTargetDataLayout()),
-                        shuffle.getType().getAlignmentByte(method.getTargetDataLayout()),
+        final LLVMAddressNode destination = LLVMAllocaInstructionNodeGen.create(shuffle.getType().getSize(method.getTargetDataLayout()),
+                        shuffle.getType().getAlignment(method.getTargetDataLayout()),
                         method.getContext(),
                         method.getStackSlot());
 
@@ -583,7 +583,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final Type type = store.getSource().getType();
 
         final LLVMNode node = LLVMMemoryReadWriteFactory.createStore(pointerNode, valueNode, type.getLLVMBaseType(),
-                        type.getSizeByte(method.getTargetDataLayout()));
+                        type.getSize(method.getTargetDataLayout()));
 
         method.addInstruction(node);
     }

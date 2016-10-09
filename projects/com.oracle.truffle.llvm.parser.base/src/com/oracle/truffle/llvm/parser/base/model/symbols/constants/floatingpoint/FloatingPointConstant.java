@@ -36,6 +36,8 @@ import java.nio.ByteBuffer;
 
 public abstract class FloatingPointConstant extends AbstractConstant {
 
+    private static final int X86_FP80_BYTES = FloatingPointType.X86_FP80.width() / Byte.SIZE;
+
     FloatingPointConstant(FloatingPointType type) {
         super(type);
     }
@@ -49,7 +51,7 @@ public abstract class FloatingPointConstant extends AbstractConstant {
                 return DoubleConstant.create(Double.longBitsToDouble(bits[0]));
 
             case X86_FP80:
-                return X86FP80Constant.create(ByteBuffer.allocate(type.sizeof()).putLong(bits[0]).putShort((short) bits[1]).array());
+                return X86FP80Constant.create(ByteBuffer.allocate(X86_FP80_BYTES).putLong(bits[0]).putShort((short) bits[1]).array());
 
             default:
                 throw new UnsupportedOperationException("Unsupported Floating Point Type: " + type);

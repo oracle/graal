@@ -357,7 +357,7 @@ public class LLVMBitcodeTypeHelper {
             return 0;
 
         } else if (type instanceof MetaType) {
-            return type.sizeof();
+            return 0;
 
         } else {
             throw new AssertionError("Cannot compute size of type: " + type);

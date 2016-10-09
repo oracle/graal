@@ -36,13 +36,13 @@ public class MetadataConstantPointerType implements Type {
         this.symbolIndex = symbolIndex;
     }
 
-    public int getSymbolIndex() {
-        return symbolIndex;
+    @Override
+    public int getBits() {
+        return 0;
     }
 
-    @Override
-    public int sizeof() {
-        return 0;
+    public int getSymbolIndex() {
+        return symbolIndex;
     }
 
     @Override

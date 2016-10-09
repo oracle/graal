@@ -224,11 +224,6 @@ public final class Types implements ParserListener, Iterable<Type> {
         public int getIndex() {
             return idx;
         }
-
-        @Override
-        public int sizeof() {
-            return 0;
-        }
     }
 
     private static final class UnresolvedNamedPointeeType extends UnresolvedPointeeType {
@@ -255,11 +250,6 @@ public final class Types implements ParserListener, Iterable<Type> {
 
         public String getName() {
             return name;
-        }
-
-        @Override
-        public int sizeof() {
-            return 0;
         }
     }
 

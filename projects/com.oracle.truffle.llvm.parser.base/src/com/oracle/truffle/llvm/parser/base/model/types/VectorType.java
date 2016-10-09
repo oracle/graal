@@ -59,6 +59,11 @@ public class VectorType implements AggregateType {
         return false;
     }
 
+    @Override
+    public int getBits() {
+        return elementType.getBits() * length;
+    }
+
     public Type getElementType() {
         return elementType;
     }
@@ -119,18 +124,18 @@ public class VectorType implements AggregateType {
     }
 
     @Override
-    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
-        return elementType.getAlignmentByte(targetDataLayout);
+    public int getAlignment(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getAlignment(targetDataLayout);
     }
 
     @Override
-    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
-        return elementType.getSizeByte(targetDataLayout) * length;
+    public int getSize(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getSize(targetDataLayout) * length;
     }
 
     @Override
-    public int getIndexOffsetByte(int index, DataLayoutConverter.DataSpecConverter targetDataLayout) {
-        return elementType.getSizeByte(targetDataLayout) * index;
+    public int getIndexOffset(int index, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getSize(targetDataLayout) * index;
     }
 
     @Override
@@ -139,11 +144,6 @@ public class VectorType implements AggregateType {
         hash = 59 * hash + Objects.hashCode(this.elementType);
         hash = 59 * hash + this.length;
         return hash;
-    }
-
-    @Override
-    public int sizeof() {
-        return length * elementType.sizeof();
     }
 
     @Override

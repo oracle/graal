@@ -83,17 +83,17 @@ public enum MetaType implements Type {
     }
 
     @Override
-    public int sizeof() {
-        return this == X86_MMX ? Long.BYTES : 0;
+    public int getBits() {
+        return 0;
     }
 
     @Override
-    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    public int getAlignment(DataLayoutConverter.DataSpecConverter targetDataLayout) {
         return Long.BYTES;
     }
 
     @Override
-    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    public int getSize(DataLayoutConverter.DataSpecConverter targetDataLayout) {
         return 0;
     }
 }

@@ -61,7 +61,7 @@ public class FunctionType implements Type {
     }
 
     @Override
-    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    public int getAlignment(DataLayoutConverter.DataSpecConverter targetDataLayout) {
         if (targetDataLayout != null) {
             return targetDataLayout.getBitAlignment(getLLVMBaseType()) / Byte.SIZE;
         } else {
@@ -70,7 +70,7 @@ public class FunctionType implements Type {
     }
 
     @Override
-    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    public int getSize(DataLayoutConverter.DataSpecConverter targetDataLayout) {
         return 0;
     }
 
@@ -79,7 +79,7 @@ public class FunctionType implements Type {
     }
 
     @Override
-    public int sizeof() {
+    public int getBits() {
         return 0;
     }
 

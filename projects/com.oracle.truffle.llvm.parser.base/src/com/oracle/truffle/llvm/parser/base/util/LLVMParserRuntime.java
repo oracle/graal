@@ -33,6 +33,7 @@ import java.util.Map;
 
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
@@ -73,6 +74,8 @@ public interface LLVMParserRuntime {
     FrameSlot getStackPointerSlot();
 
     int getBitAlignment(LLVMBaseType type);
+
+    int getByteSize(Type type);
 
     FrameDescriptor getGlobalFrameDescriptor();
 

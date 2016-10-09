@@ -52,11 +52,6 @@ public class MetadataConstantType implements Type {
     }
 
     @Override
-    public int sizeof() {
-        return getType().sizeof();
-    }
-
-    @Override
     public String toString() {
         return String.format("%s %d", getType(), value);
     }

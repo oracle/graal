@@ -125,7 +125,7 @@ public final class LLVMLiteralFactory {
         }
         switch (type) {
             case I_VAR_BITWIDTH:
-                int byteSize = resolvedType.sizeof();
+                int byteSize = runtime.getByteSize(resolvedType);
                 byte[] loadedBytes = new byte[byteSize];
                 Arrays.fill(loadedBytes, (byte) -1);
                 return new LLVMIVarBitLiteralNode(LLVMIVarBit.create(byteSize * Byte.SIZE, loadedBytes));
@@ -384,7 +384,7 @@ public final class LLVMLiteralFactory {
         int size = nrElements * baseTypeSize;
         LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(LLVMToBitcodeAdapter.unresolveType(arrayType), size,
                         runtime.getTypeHelper().getAlignmentByte(arrayType));
-        int byteLength = elementType.sizeof();
+        int byteLength = runtime.getByteSize(elementType);
         if (size == 0) {
             throw new AssertionError(llvmElementType + " has size of 0!");
         }

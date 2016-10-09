@@ -57,6 +57,11 @@ public class ArrayType implements AggregateType {
     }
 
     @Override
+    public int getBits() {
+        return elementType.getBits() * length;
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj instanceof ArrayType) {
             ArrayType other = (ArrayType) obj;
@@ -90,18 +95,18 @@ public class ArrayType implements AggregateType {
     }
 
     @Override
-    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
-        return elementType.getAlignmentByte(targetDataLayout);
+    public int getAlignment(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getAlignment(targetDataLayout);
     }
 
     @Override
-    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
-        return elementType.getSizeByte(targetDataLayout) * length;
+    public int getSize(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getSize(targetDataLayout) * length;
     }
 
     @Override
-    public int getIndexOffsetByte(int index, DataLayoutConverter.DataSpecConverter targetDataLayout) {
-        return elementType.getSizeByte(targetDataLayout) * index;
+    public int getIndexOffset(int index, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getSize(targetDataLayout) * index;
     }
 
     @Override
@@ -110,16 +115,6 @@ public class ArrayType implements AggregateType {
         hash = 67 * hash + Objects.hashCode(this.elementType);
         hash = 67 * hash + this.length;
         return hash;
-    }
-
-    @Override
-    public int sizeof() {
-        return length * elementType.sizeof();
-    }
-
-    @Override
-    public int sizeof(int alignment) {
-        return length * elementType.sizeof(alignment);
     }
 
     @Override

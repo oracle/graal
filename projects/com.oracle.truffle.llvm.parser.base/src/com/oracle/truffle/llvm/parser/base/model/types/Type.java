@@ -44,7 +44,7 @@ public interface Type {
         throw new AssertionError("Cannot resolve to LLVMBaseType: " + this);
     }
 
-    default int getIndexOffsetByte(@SuppressWarnings("unused") int index, @SuppressWarnings("unused") DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    default int getIndexOffset(@SuppressWarnings("unused") int index, @SuppressWarnings("unused") DataLayoutConverter.DataSpecConverter targetDataLayout) {
         throw new UnsupportedOperationException("Cannot index Type: " + this);
     }
 
@@ -64,28 +64,22 @@ public interface Type {
         return this;
     }
 
+    /**
+     * This returns the bitlength of atomic types like integers or floats without consideration for
+     * alignment. To get the actual in-memory size of a type use
+     * {@link #getSize(DataLayoutConverter.DataSpecConverter)}.
+     *
+     * @return The bitwidth of this atomic type
+     */
     default int getBits() {
-        return sizeof() * Byte.SIZE;
+        throw new UnsupportedOperationException("Not implemented for this Type: " + this);
     }
 
-    int sizeof();
-
-    default int sizeof(@SuppressWarnings("unused") int alignment) {
-        return sizeof();
-    }
-
-    default int getAlignmentByte(@SuppressWarnings("unused") DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    default int getAlignment(@SuppressWarnings("unused") DataLayoutConverter.DataSpecConverter targetDataLayout) {
         throw new UnsupportedOperationException("Not implemented!");
     }
 
-    default int getSizeByte(@SuppressWarnings("unused") DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    default int getSize(@SuppressWarnings("unused") DataLayoutConverter.DataSpecConverter targetDataLayout) {
         throw new UnsupportedOperationException("Not implemented!");
-    }
-
-    static int getPadding(int offset, int alignment) {
-        if (alignment == 0) {
-            throw new AssertionError();
-        }
-        return (alignment - (offset % alignment)) % alignment;
     }
 }

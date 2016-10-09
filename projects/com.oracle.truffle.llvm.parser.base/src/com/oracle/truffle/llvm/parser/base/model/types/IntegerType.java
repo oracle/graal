@@ -142,18 +142,12 @@ public final class IntegerType implements Type {
     }
 
     @Override
-    public int sizeof() {
-        int sizeof = bits / Byte.SIZE;
-        return (bits % Byte.SIZE) == 0 ? sizeof : sizeof + 1;
-    }
-
-    @Override
     public String toString() {
         return String.format("i%d", bits);
     }
 
     @Override
-    public int getAlignmentByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    public int getAlignment(DataLayoutConverter.DataSpecConverter targetDataLayout) {
         if (targetDataLayout != null) {
             return targetDataLayout.getBitAlignment(getLLVMBaseType()) / Byte.SIZE;
 
@@ -172,7 +166,7 @@ public final class IntegerType implements Type {
     }
 
     @Override
-    public int getSizeByte(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    public int getSize(DataLayoutConverter.DataSpecConverter targetDataLayout) {
         return Math.max(1, bits / Byte.SIZE);
     }
 }

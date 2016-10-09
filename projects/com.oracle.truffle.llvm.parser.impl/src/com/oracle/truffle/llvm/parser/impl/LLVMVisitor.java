@@ -1485,6 +1485,11 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     }
 
     @Override
+    public int getByteSize(com.oracle.truffle.llvm.parser.base.model.types.Type type) {
+        return type.getSize(layoutConverter);
+    }
+
+    @Override
     public FrameDescriptor getGlobalFrameDescriptor() {
         return globalFrameDescriptor;
     }

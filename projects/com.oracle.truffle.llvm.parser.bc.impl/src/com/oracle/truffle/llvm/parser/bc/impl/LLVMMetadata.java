@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.bc.impl;
 
+import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.visitors.FunctionVisitor;
@@ -86,15 +87,18 @@ import com.oracle.truffle.llvm.parser.base.model.types.Type;
  */
 public final class LLVMMetadata implements ModelVisitor {
 
-    public static LLVMMetadata generate(Model model) {
-        LLVMMetadata visitor = new LLVMMetadata();
+    public static LLVMMetadata generate(Model model, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        LLVMMetadata visitor = new LLVMMetadata(targetDataLayout);
 
         model.accept(visitor);
 
         return visitor;
     }
 
-    private LLVMMetadata() {
+    private final DataLayoutConverter.DataSpecConverter targetDataLayout;
+
+    private LLVMMetadata(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        this.targetDataLayout = targetDataLayout;
     }
 
     @Override
@@ -124,7 +128,7 @@ public final class LLVMMetadata implements ModelVisitor {
     public void visit(Type type) {
     }
 
-    private static final class LLVMMetadataFunctionVisitor implements FunctionVisitor, InstructionVisitor {
+    private final class LLVMMetadataFunctionVisitor implements FunctionVisitor, InstructionVisitor {
         private InstructionBlock currentBlock = null;
 
         private final MetadataBlock metadata;
@@ -225,19 +229,19 @@ public final class LLVMMetadata implements ModelVisitor {
         public void visit(ExtractValueInstruction extract) {
         }
 
-        private static void setElementPointerName(GetElementPointerInstruction gep, MetadataDerivedType element) {
+        private void setElementPointerName(GetElementPointerInstruction gep, MetadataDerivedType element) {
             if (element.getName().isPresent()) {
                 gep.setReferenceName(((MetadataString) element.getName().get()).getString());
             }
         }
 
-        private static void setElementPointerName(GetElementPointerInstruction gep, MetadataCompositeType element) {
+        private void setElementPointerName(GetElementPointerInstruction gep, MetadataCompositeType element) {
             if (element.getName().isPresent()) {
                 gep.setReferenceName(((MetadataString) element.getName().get()).getString());
             }
         }
 
-        private static void setElementPointerName(GetElementPointerInstruction gep, MetadataBaseNode element) {
+        private void setElementPointerName(GetElementPointerInstruction gep, MetadataBaseNode element) {
             if (element instanceof MetadataDerivedType) {
                 setElementPointerName(gep, (MetadataDerivedType) element);
             } else if (element instanceof MetadataCompositeType) {
@@ -245,7 +249,7 @@ public final class LLVMMetadata implements ModelVisitor {
             }
         }
 
-        private static long getOffset(MetadataBaseNode element) {
+        private long getOffset(MetadataBaseNode element) {
             // TODO: simplify design by using interfaces/abstract classes
             if (element instanceof MetadataDerivedType) {
                 return ((MetadataDerivedType) element).getOffset();
@@ -255,7 +259,7 @@ public final class LLVMMetadata implements ModelVisitor {
             throw new AssertionError("unknow node type: " + element);
         }
 
-        private static void parseCompositeTypeStruct(GetElementPointerInstruction gep, StructureType struct, MetadataCompositeType node) {
+        private void parseCompositeTypeStruct(GetElementPointerInstruction gep, StructureType struct, MetadataCompositeType node) {
             struct.setName(((MetadataString) node.getName().get()).getString());
 
             MetadataNode elements = (MetadataNode) node.getMemberDescriptors().get();
@@ -263,7 +267,7 @@ public final class LLVMMetadata implements ModelVisitor {
             Symbol idx = gep.getIndices().get(1);
             int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
 
-            long elementOffset = struct.getElementOffset(parsedIndex);
+            long elementOffset = struct.getIndexOffset(parsedIndex, targetDataLayout);
             for (MetadataReference element : elements) {
                 if (getOffset(element.get()) == elementOffset) {
                     setElementPointerName(gep, element.get());
@@ -272,14 +276,14 @@ public final class LLVMMetadata implements ModelVisitor {
             }
         }
 
-        private static void parseCompositeTypeStructBitcast(GetElementPointerInstruction gep, CastInstruction cast, MetadataCompositeType node) {
+        private void parseCompositeTypeStructBitcast(GetElementPointerInstruction gep, CastInstruction cast, MetadataCompositeType node) {
             MetadataNode elements = (MetadataNode) node.getMemberDescriptors().get();
 
             Symbol idx = gep.getIndices().get(0);
             int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
 
             // TODO: correct sizeof?
-            int elementOffset = parsedIndex * cast.getType().sizeof();
+            int elementOffset = parsedIndex * cast.getType().getSize(targetDataLayout);
 
             for (int i = 0; i < elements.size(); i++) {
                 MetadataBaseNode element = elements.get(i).get();
