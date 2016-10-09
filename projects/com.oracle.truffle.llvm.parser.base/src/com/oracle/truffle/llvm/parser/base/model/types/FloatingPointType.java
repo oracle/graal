@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
@@ -62,6 +63,18 @@ public enum FloatingPointType implements Type {
     @Override
     public LLVMBaseType getLLVMBaseType() {
         return llvmBaseType;
+    }
+
+    @Override
+    public FrameSlotKind getFrameSlotKind() {
+        switch (this) {
+            case FLOAT:
+                return FrameSlotKind.Float;
+            case DOUBLE:
+                return FrameSlotKind.Double;
+            default:
+                return FrameSlotKind.Object;
+        }
     }
 
     @Override
