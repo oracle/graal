@@ -335,9 +335,9 @@ public final class LLVMConstantGenerator {
                 throw new IllegalStateException("Invalid index: " + index);
             }
 
-            currentOffset += typeHelper.goIntoTypeGetLength(currentType, indexVal);
+            currentOffset += currentType.getIndexOffsetByte(indexVal, typeHelper.getTargetDataLayout());
             parentType = currentType;
-            currentType = LLVMBitcodeTypeHelper.goIntoType(currentType, indexVal);
+            currentType = currentType.getIndexType(indexVal);
         }
 
         if (currentType != null && !((parentType instanceof StructureType) && (((StructureType) parentType).isPacked()))) {

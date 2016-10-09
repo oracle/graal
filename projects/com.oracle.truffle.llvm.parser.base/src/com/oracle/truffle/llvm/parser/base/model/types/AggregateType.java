@@ -34,4 +34,9 @@ public interface AggregateType extends Type, MetadataReferenceType {
     int getLength();
 
     Type getElementType(int index);
+
+    @Override
+    default Type getIndexType(int index) {
+        return getElementType(index);
+    }
 }

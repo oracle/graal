@@ -109,10 +109,26 @@ public final class StructureType implements AggregateType, ValueSymbol {
 
         int padding = 0;
         if (!isPacked && sumByte != 0) {
-            padding = Type.getPadding(sumByte, getLargestAlignment(targetDataLayout));
+            padding = getPadding(sumByte, getLargestAlignment(targetDataLayout));
         }
 
         return sumByte + padding;
+    }
+
+    @Override
+    public int getIndexOffsetByte(int index, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        int offset = 0;
+        for (int i = 0; i < index; i++) {
+            final Type elementType = types[i];
+            offset += elementType.getSizeByte(targetDataLayout);
+            if (!isPacked) {
+                offset += getPadding(offset, elementType, targetDataLayout);
+            }
+        }
+        if (!isPacked && getSizeByte(targetDataLayout) > offset) {
+            offset += getPadding(offset, types[index], targetDataLayout);
+        }
+        return offset;
     }
 
     private int getLargestAlignment(DataLayoutConverter.DataSpecConverter targetDataLayout) {
@@ -128,7 +144,7 @@ public final class StructureType implements AggregateType, ValueSymbol {
         if (alignment == 0) {
             return 0;
         } else {
-            return Type.getPadding(currentOffset, alignment);
+            return getPadding(currentOffset, alignment);
         }
     }
 
@@ -164,7 +180,7 @@ public final class StructureType implements AggregateType, ValueSymbol {
         return size;
     }
 
-    public String toDeclarationString() {
+    private String toDeclarationString() {
         StringBuilder str = new StringBuilder();
         if (isPacked) {
             str.append("<{ ");
@@ -218,5 +234,17 @@ public final class StructureType implements AggregateType, ValueSymbol {
     @Override
     public MetadataReference getMetadataReference() {
         return metadata;
+    }
+
+    private static int getPadding(int offset, int alignment) {
+        if (alignment == 0) {
+            throw new AssertionError();
+        }
+        return (alignment - (offset % alignment)) % alignment;
+    }
+
+    private static int getPadding(int offset, Type type, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        final int alignment = type.getAlignmentByte(targetDataLayout);
+        return alignment == 0 ? 0 : getPadding(offset, alignment);
     }
 }

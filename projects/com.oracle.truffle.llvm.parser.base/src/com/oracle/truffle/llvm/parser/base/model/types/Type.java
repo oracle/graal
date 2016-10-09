@@ -42,6 +42,14 @@ public interface Type {
         throw new AssertionError("Cannot resolve to LLVMBaseType: " + this);
     }
 
+    default int getIndexOffsetByte(@SuppressWarnings("unused") int index, @SuppressWarnings("unused") DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        throw new UnsupportedOperationException("Cannot index Type: " + this);
+    }
+
+    default Type getIndexType(@SuppressWarnings("unused") int index) {
+        throw new UnsupportedOperationException("Cannot index Type: " + this);
+    }
+
     default Type getType() {
         return this;
     }

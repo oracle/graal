@@ -94,6 +94,11 @@ public class ArrayType implements AggregateType {
     }
 
     @Override
+    public int getIndexOffsetByte(int index, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getSizeByte(targetDataLayout) * index;
+    }
+
+    @Override
     public int hashCode() {
         int hash = 7;
         hash = 67 * hash + Objects.hashCode(this.elementType);

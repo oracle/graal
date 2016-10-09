@@ -106,6 +106,11 @@ public class VectorType implements AggregateType {
     }
 
     @Override
+    public int getIndexOffsetByte(int index, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return elementType.getSizeByte(targetDataLayout) * index;
+    }
+
+    @Override
     public int hashCode() {
         int hash = 5;
         hash = 59 * hash + Objects.hashCode(this.elementType);

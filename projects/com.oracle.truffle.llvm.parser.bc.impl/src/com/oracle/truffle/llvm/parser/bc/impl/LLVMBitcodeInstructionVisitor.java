@@ -373,7 +373,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        int offset = typeHelper.goIntoTypeGetLength(aggregateType, targetIndex);
+        int offset = aggregateType.getIndexOffsetByte(targetIndex, typeHelper.getTargetDataLayout());
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
@@ -437,7 +437,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode resultAggregate = LLVMAllocaInstructionNodeGen.create(sourceType.getSizeByte(method.getTargetDataLayout()), sourceType.getAlignmentByte(method.getTargetDataLayout()),
                         method.getContext(),
                         method.getStackSlot());
-        final int offset = typeHelper.goIntoTypeGetLength(sourceType, targetIndex);
+        final int offset = sourceType.getIndexOffsetByte(targetIndex, typeHelper.getTargetDataLayout());
         final LLVMExpressionNode result = LLVMAggregateFactory.createInsertValue((LLVMAddressNode) resultAggregate, (LLVMAddressNode) sourceAggregate,
                         sourceType.getSizeByte(method.getTargetDataLayout()), offset, valueToInsert, valueType);
 

@@ -103,4 +103,14 @@ public final class PointerType implements Type {
             return LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE;
         }
     }
+
+    @Override
+    public int getIndexOffsetByte(int index, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+        return type.getSizeByte(targetDataLayout) * index;
+    }
+
+    @Override
+    public Type getIndexType(int index) {
+        return type;
+    }
 }
