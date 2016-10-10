@@ -119,7 +119,7 @@ public final class SuspendedEvent {
     private Object returnValue;
 
     private volatile boolean disposed;
-    private SteppingStrategy nextStrategy;
+    private volatile SteppingStrategy nextStrategy;
 
     private Map<Breakpoint, Throwable> conditionFailures;
     private DebugStackFrameIterable cachedFrames;
