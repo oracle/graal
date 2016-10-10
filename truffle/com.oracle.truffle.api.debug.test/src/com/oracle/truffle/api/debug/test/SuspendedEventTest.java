@@ -28,12 +28,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Iterator;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
@@ -147,6 +152,106 @@ public class SuspendedEventTest extends AbstractDebugTest {
             });
 
             expectDone();
+        }
+    }
+
+    @Test
+    public void testOtherThreadAccess() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  DEFINE(bar, VARIABLE(bar0, 41), VARIABLE(bar1, 40), STATEMENT),\n" +
+                        "  DEFINE(foo, ROOT(VARIABLE(foo0, 42), \n" +
+                        "                   STATEMENT(CALL(bar)))),\n" +
+                        "  STATEMENT(VARIABLE(root0, 43)),\n" +
+                        "  STATEMENT(CALL(foo))\n" +
+                        ")\n");
+
+        try (DebuggerSession session = startSession()) {
+            final Breakpoint breakpoint = session.install(Breakpoint.newBuilder(source).lineIs(4).build());
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+
+                run(() -> event.getBreakpointConditionException(breakpoint));
+                run(() -> event.getSession());
+                run(() -> event.getSourceSection());
+                run(() -> event.getBreakpoints());
+                run(() -> event.isHaltedBefore());
+                run(() -> event.toString());
+
+                run(() -> {
+                    event.prepareKill();
+                    return null;
+                });
+                run(() -> {
+                    event.prepareStepInto(1);
+                    return null;
+                });
+                run(() -> {
+                    event.prepareStepOut();
+                    return null;
+                });
+                run(() -> {
+                    event.prepareStepOver(1);
+                    return null;
+                });
+                run(() -> {
+                    event.prepareContinue();
+                    return null;
+                });
+
+                runExpectIllegalState(() -> event.getStackFrames());
+                runExpectIllegalState(() -> event.getTopStackFrame());
+                runExpectIllegalState(() -> event.getReturnValue());
+
+                for (DebugStackFrame frame : event.getStackFrames()) {
+
+                    for (DebugValue value : frame) {
+                        runExpectIllegalState(() -> value.as(String.class));
+                        runExpectIllegalState(() -> {
+                            value.set(null);
+                            return null;
+                        });
+                        runExpectIllegalState(() -> value.getName());
+                        runExpectIllegalState(() -> value.isReadable());
+                        runExpectIllegalState(() -> value.isWriteable());
+                    }
+
+                    run(() -> frame.getName());
+                    run(() -> frame.getSourceSection());
+                    run(() -> frame.isInternal());
+                    run(() -> frame.toString());
+
+                    runExpectIllegalState(() -> frame.getValue(""));
+                    runExpectIllegalState(() -> frame.iterator());
+                    runExpectIllegalState(() -> frame.eval(""));
+                }
+
+            });
+
+            expectDone();
+        }
+    }
+
+    private static <T> T run(Callable<T> callable) {
+        Future<T> future = Executors.newSingleThreadExecutor().submit(callable);
+        try {
+            return future.get();
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static <T> void runExpectIllegalState(Callable<T> callable) {
+        Future<T> future = Executors.newSingleThreadExecutor().submit(callable);
+        try {
+            future.get();
+            Assert.fail();
+        } catch (ExecutionException e) {
+            if (!(e.getCause() instanceof IllegalStateException)) {
+                throw new AssertionError(e);
+            }
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
         }
     }
 
