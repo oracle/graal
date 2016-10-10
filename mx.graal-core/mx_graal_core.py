@@ -500,7 +500,6 @@ def _unittest_config_participant(config):
                         for package in packages:
                             addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
 
-            patches = {}
             pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
             for classpathEntry in cp:
                 # Export concealed packages used by the class path entry
@@ -508,22 +507,12 @@ def _unittest_config_participant(config):
 
                 for deployedModule in deployedModules:
                     assert deployedModule.dist.path != classpathEntry, deployedModule.dist.path + ' should no longer be on the class path'
-                    # Patch the class path entry into a module if it defines packages already defined by the module.
+                    # Ensure the class path entry does not define packages already defined by the module.
                     # Packages definitions cannot be split between modules.
                     classpathEntryPackages = frozenset(_defined_packages(classpathEntry))
-                    if not classpathEntryPackages.isdisjoint(deployedModule.packages):
-                        patches.setdefault(deployedModule.name, []).append(classpathEntry)
-                        extraPackages = classpathEntryPackages - frozenset(deployedModule.exports.iterkeys())
-                        if extraPackages:
-                            # From http://openjdk.java.net/jeps/261:
-                            # If a package found in a module definition on a patch path is not already exported
-                            # by that module then it will, still, not be exported. It can be exported explicitly
-                            # via either the reflection API or the --add-exports option.
-                            for package in extraPackages:
-                                addedExports.setdefault(deployedModule.name + '/' + package, set()).update(junitModules + ['ALL-UNNAMED'])
-
-            for moduleName, cpEntries in patches.iteritems():
-                vmArgs.append('--patch-module=' + moduleName + '=' + os.pathsep.join(cpEntries))
+                    intersection = classpathEntryPackages.intersection(deployedModule.packages)
+                    if intersection:
+                        mx.abort(classpathEntry + ' cannot extend package(s) defined in the module ' + deployedModule.name + ': ' + ', '.join(intersection))
 
             vmArgs.extend(['--add-exports=' + export + '=' + ','.join(sorted(targets)) for export, targets in addedExports.iteritems()])
 
