@@ -142,6 +142,15 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
     public SourceSection getSourceSection() {
         verifyValidState(true);
         EventContext context = getContext();
+        if (context == null) {
+            // there is a race condition here if the event
+            // got disposed between the parent verifyValidState and getContext.
+            // if the context is null we assume the event got disposed so we re-check
+            // the disposed flag. return null should therefore not be reachable.
+            verifyValidState(true);
+            assert false : "should not be reachable";
+            return null;
+        }
         if (currentFrame == null) {
             return context.getInstrumentedSourceSection();
         } else {
@@ -288,6 +297,15 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
 
     RootNode findCurrentRoot() {
         EventContext context = getContext();
+        if (context == null) {
+            // there is a race condition here if the event
+            // got disposed between the parent verifyValidState and getContext.
+            // if the context is null we assume the event got disposed so we re-check
+            // the disposed flag. return null should therefore not be reachable.
+            verifyValidState(true);
+            assert false : "should not be reachable";
+            return null;
+        }
         if (currentFrame == null) {
             return context.getInstrumentedNode().getRootNode();
         } else {
