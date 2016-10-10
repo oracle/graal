@@ -35,18 +35,31 @@ import com.oracle.truffle.llvm.parser.base.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public interface ModelVisitor {
 
-    void visit(GlobalAlias alias);
+    default void visit(GlobalAlias alias) {
+        LLVMLogger.info("Ignored Visit to GlobalAlias: " + alias);
+    }
 
-    void visit(GlobalConstant constant);
+    default void visit(GlobalConstant constant) {
+        LLVMLogger.info("Ignored Visit to GlobalConstant: " + constant);
+    }
 
-    void visit(GlobalVariable variable);
+    default void visit(GlobalVariable variable) {
+        LLVMLogger.info("Ignored Visit to GlobalVariable: " + variable);
+    }
 
-    void visit(FunctionDeclaration function);
+    default void visit(FunctionDeclaration function) {
+        LLVMLogger.info("Ignored Visit to FunctionDeclaration: " + function);
+    }
 
-    void visit(FunctionDefinition function);
+    default void visit(FunctionDefinition function) {
+        LLVMLogger.info("Ignored Visit to FunctionDefinition: " + function);
+    }
 
-    void visit(Type type);
+    default void visit(Type type) {
+        LLVMLogger.info("Ignored Visit to Type: " + type);
+    }
 }

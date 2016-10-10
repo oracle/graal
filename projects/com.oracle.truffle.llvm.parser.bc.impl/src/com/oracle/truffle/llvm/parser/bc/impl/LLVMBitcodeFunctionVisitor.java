@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.bc.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -62,7 +63,8 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final FrameDescriptor frame;
 
-    private final Map<InstructionBlock, List<FrameSlot>> slotsToNull;
+    private final Map<InstructionBlock, List<FrameSlot>> slotsToNullBefore = Collections.emptyMap();
+    private final Map<InstructionBlock, List<FrameSlot>> slotsToNullAfter = Collections.emptyMap();
 
     private final List<LLVMStackFrameNuller[]> nullers = new ArrayList<>();
 
@@ -78,11 +80,10 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final int argCount;
 
-    public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<InstructionBlock, List<FrameSlot>> slotsToNull, Map<String, Integer> labels,
+    public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<String, Integer> labels,
                     Map<InstructionBlock, List<Phi>> phis, int argCount) {
         this.module = module;
         this.frame = frame;
-        this.slotsToNull = slotsToNull;
         this.labels = labels;
         this.phis = phis;
         this.symbolResolver = new LLVMNodeGenerator(this);
@@ -166,8 +167,9 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     public void visit(InstructionBlock block) {
         this.instructions.clear();
 
+        nullers.add(createNullers(slotsToNullBefore.get(block)));
         block.accept(new LLVMBitcodeInstructionVisitor(this, block));
-        nullers.add(createNullers(slotsToNull.get(block)));
+        nullers.add(createNullers(slotsToNullAfter.get(block)));
     }
 
     private static LLVMStackFrameNuller[] createNullers(List<FrameSlot> slots) {
