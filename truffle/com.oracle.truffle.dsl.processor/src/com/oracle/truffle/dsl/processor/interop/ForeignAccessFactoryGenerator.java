@@ -75,7 +75,7 @@ public final class ForeignAccessFactoryGenerator {
         w.append("package ").append(packageName).append(";\n");
         appendImports(w);
         Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
-        w.append("final class ").append(simpleClassName);
+        w.append("public final class ").append(simpleClassName);
         w.append(" implements Factory18, Factory {\n");
 
         appendSingletonAndGetter(w);
