@@ -366,6 +366,10 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
+    # Check that travis and ci.hocon use the same JVMCI version
+    with Task('JVMCI_CI_VersionSyncCheck', tasks, tags=[mx_gate.Tags.style]) as t:
+        if t: verify_jvmci_ci_versions()
+
     # Run unit tests in hosted mode
     for r in unit_test_runs:
         r.run(suites, tasks, ['-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments))
