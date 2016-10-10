@@ -723,9 +723,6 @@ def _parseVmArgs(args, addDefaultArgs=True):
         if not mpUpdated:
             argsPrefix.append('--module-path=' + os.pathsep.join(graalModulepath))
 
-    # Set the JVMCI compiler to Graal
-    argsPrefix.append('-Djvmci.Compiler=graal')
-
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
         if  len(ignoredArgs) > 0:
