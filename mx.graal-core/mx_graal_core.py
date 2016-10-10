@@ -44,6 +44,7 @@ import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
 import argparse
 import shlex
+import glob
 
 _suite = mx.suite('graal-core')
 
@@ -238,6 +239,40 @@ def ctw(args, extraVMarguments=None):
             vmargs.append('-XX:+CompileTheWorld')
 
     run_vm(vmargs + _remove_empty_entries(extraVMarguments))
+
+
+def verify_jvmci_ci_versions(args=None, extraVMarguments=None):
+    version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<version>\d*\.\d*)')
+
+    def _grep_version(files, msg):
+        version = None
+        last = None
+        linenr = 0
+        for filename in files:
+            for line in open(filename):
+                m = version_pattern.search(line)
+                if m:
+                    new_version = m.group('version')
+                    if version and version != new_version:
+                        mx.abort(
+                            os.linesep.join([
+                                "Multiple JVMCI versions found in {0} files:".format(msg),
+                                "  {0} in {1}:{2}:    {3}".format(version, *last),
+                                "  {0} in {1}:{2}:    {3}".format(new_version, filename, linenr, line),
+                            ]))
+                    last = (filename, linenr, line.rstrip())
+                    version = new_version
+                linenr = linenr + 1
+        if not version:
+            mx.abort("No JVMCI version not found in {0} files!".format(msg))
+        return version
+
+    hocon_version = _grep_version(glob.glob(join(mx.primary_suite().dir, 'ci*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*/*.hocon')), 'ci.hocon')
+    travis_version = _grep_version(glob.glob('.travis.yml'), 'TravisCI')
+    if hocon_version != travis_version:
+        mx.abort("Travis and ci.hocon JVMCI versions do not match: {0} vs. {1}".format(travis_version, hocon_version))
+    mx.log('JVMCI versions are ok!')
+
 
 class UnitTestRun:
     def __init__(self, name, args, tags):
@@ -782,6 +817,7 @@ mx.add_argument('--lldb', action='store_const', const='lldb --', dest='vm_prefix
 mx.update_commands(_suite, {
     'vm': [run_vm, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
+    'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
 })
 
 def mx_post_parse_cmd_line(opts):
