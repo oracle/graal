@@ -106,10 +106,9 @@ public final class ExecuteGenerator extends MessageGenerator {
             w.append("                args[i] = arguments.get(i);\n");
             w.append("              }\n");
             w.append("              return node.executeWithTarget(frame, receiver, args);\n");
-
         }
         w.append("            } catch (UnsupportedSpecializationException e) {\n");
-        w.append("                throw UnsupportedTypeException.raise(e, e.getSuppliedValues());\n");
+        appendHandleUnsupportedTypeException(w);
         w.append("            }\n");
         w.append("        }\n");
         w.append("\n");

@@ -76,7 +76,7 @@ public final class LanguageCheckGenerator {
 
         appendGeneratedFor(w, "");
         Utils.appendMessagesGeneratedByInformation(w, "", containingForeignAccessFactory.getFullClassName(), ElementUtils.getQualifiedName(element));
-        w.append("abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
+        w.append("public abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
         appendExecuteWithTarget(w);
         appendSpecializations(w);
 
@@ -185,7 +185,7 @@ public final class LanguageCheckGenerator {
         w.append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
         w.append("              return node.executeWithTarget(frame, receiver);\n");
         w.append("            } catch (UnsupportedSpecializationException e) {\n");
-        w.append("                throw UnsupportedTypeException.raise(e.getSuppliedValues());\n");
+        appendHandleUnsupportedTypeException(w);
         w.append("            }\n");
         w.append("        }\n");
         w.append("\n");
@@ -197,6 +197,14 @@ public final class LanguageCheckGenerator {
         w.append("        return new LanguageCheckRootNode(language);\n");
         w.append("    }\n");
 
+    }
+
+    protected void appendHandleUnsupportedTypeException(Writer w) throws IOException {
+        w.append("                if (e.getNode() instanceof ").append(clazzName).append(") {\n");
+        w.append("                  throw UnsupportedTypeException.raise(e, e.getSuppliedValues());\n");
+        w.append("                } else {\n");
+        w.append("                  throw e;\n");
+        w.append("                }\n");
     }
 
     public String getRootNodeFactoryInvokation() {
