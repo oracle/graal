@@ -29,6 +29,7 @@ import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
@@ -49,6 +50,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 final class LanguageCache {
     private static final boolean PRELOAD;
     private static final Map<String, LanguageCache> CACHE;
+    static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? Access.loaders() : null;
     private final TruffleLanguage<?> language;
     private final String className;
     private final Set<String> mimeTypes;
@@ -119,7 +121,7 @@ final class LanguageCache {
 
     private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
         Map<String, LanguageCache> map = new LinkedHashMap<>();
-        for (ClassLoader loader : Access.loaders()) {
+        for (ClassLoader loader : (AOT_LOADERS == null ? Access.loaders() : AOT_LOADERS)) {
             createLanguages(loader, map);
         }
         if (additionalLoader != null) {

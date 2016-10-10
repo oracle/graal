@@ -36,6 +36,8 @@ import java.nio.file.spi.FileTypeDetector;
 import java.util.Collection;
 import java.util.ServiceLoader;
 
+import com.oracle.truffle.api.TruffleOptions;
+
 final class FileSourceImpl extends Content implements Content.CreateURI {
     private final File file;
     private final String name; // Name used originally to describe the source
@@ -104,15 +106,18 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
     }
 
     static String findMimeType(final Path filePath) throws IOException {
-        Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
-        for (ClassLoader l : loaders) {
-            for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {
-                String mimeType = detector.probeContentType(filePath);
-                if (mimeType != null) {
-                    return mimeType;
+        if (!TruffleOptions.AOT) {
+            Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
+            for (ClassLoader l : loaders) {
+                for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {
+                    String mimeType = detector.probeContentType(filePath);
+                    if (mimeType != null) {
+                        return mimeType;
+                    }
                 }
             }
         }
+
         String found = Files.probeContentType(filePath);
         return found == null ? "content/unknown" : found;
     }

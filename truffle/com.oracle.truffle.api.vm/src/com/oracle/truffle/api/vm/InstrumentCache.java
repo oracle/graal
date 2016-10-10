@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 import static com.oracle.truffle.api.vm.PolyglotEngine.LOG;
 
 import java.io.IOException;
@@ -39,6 +38,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Level;
+
+import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
@@ -85,7 +86,7 @@ final class InstrumentCache {
         }
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
-        for (ClassLoader loader : Access.loaders()) {
+        for (ClassLoader loader : (LanguageCache.AOT_LOADERS == null ? Access.loaders() : LanguageCache.AOT_LOADERS)) {
             loadForOne(loader, list, classNamesUsed);
         }
         if (!PolyglotEngine.JDK8OrEarlier) {
