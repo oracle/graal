@@ -121,24 +121,17 @@ def executeGate():
     """executes the TruffleLLVM gate tasks"""
     tasks = []
     with Task('Findbugs', tasks) as t:
-        if t and mx_findbugs.findbugs([]) != 0:
-            t.abort('FindBugs warnings were found')
+        if t: findBugs()
     for testSuiteName in testCases.keys():
         command = testCases[testSuiteName]
         with Task(testSuiteName, tasks) as t:
             if t: command()
 
 def travis1(args=None):
-    """executes the first Travis job (ECJ and Javac build, findbugs, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
+    """executes the first Travis job (Javac build, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
     tasks = []
-    with Task('BuildJavaWithEcj', tasks) as t:
-        if t: compileWithEcjStrict()
-        gate_clean([], tasks, name='CleanAfterEcjBuild')
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
-    with Task('Findbugs', tasks) as t:
-        if t and mx_findbugs.findbugs([]) != 0:
-            t.abort('FindBugs warnings were found')
     with Task('TestBenchmarks', tasks) as t:
         if t: runBenchmarkTestCases()
     with Task('TestPolglot', tasks) as t:
@@ -505,25 +498,39 @@ def runTests(args=None):
         command = testCases[testSuiteName]
         command(vmArgs)
 
-def checkCode(args=None):
-    """executes some basic formating checks (gitlogcheck, ECJ, checkstyle, mdlCheck, findbugs)"""
+def runChecks(args=None):
+    """runs all the test cases or selected ones (see -h or --help)"""
+    vmArgs, otherArgs = truffle_extract_VM_args(args)
+    parser = argparse.ArgumentParser(description="Executes all or selected checks of the sulong codebase.")
+    parser.add_argument('check', nargs='*', help=' '.join(checkCases.keys()), default=checkCases.keys())
+    parser.add_argument('--verbose', dest='verbose', action='store_const', const=True, default=False, help='Display the check names before execution')
+    parsedArgs = parser.parse_args(otherArgs)
+    for checkName in parsedArgs.check:
+        if parsedArgs.verbose:
+            print 'executing', checkName, 'test suite'
+        command = checkCases[checkName]
+        command(vmArgs)
+
+def checkStyle(args=None):
+    mx.checkstyle([])
+
+def findBugs(args=None):
     tasks = []
-    with Task('gitlogcheck', tasks) as t:
-        if t: logCheck()
-    with Task('BuildJavaWithEcj', tasks) as t:
-        if t: compileWithEcjStrict()
-        gate_clean([], tasks, name='CleanAfterEcjBuild')
-    with Task('checkstyle', tasks) as t:
-        if t: mx.checkstyle([])
-    with Task('mdlCheck', tasks) as t:
-        if t: mdlCheck()
+    with Task('Clean', tasks) as t:
+        if t: mx.clean([]) # we need a clean build before running findbugs
+    with Task('Build', tasks) as t:
+        if t: mx.build([])
     with Task('Findbugs', tasks) as t:
         if t and mx_findbugs.findbugs([]) != 0:
             t.abort('FindBugs warnings were found')
 
+def checkoverlap(args=None):
+    mx.checkoverlap([])
+
 def compileWithEcjStrict(args=None):
     """build project with the option --warning-as-error"""
     if mx.get_env('JDT'):
+        mx.clean([])
         mx.command_function('build')(['-p', '--no-native', '--warning-as-error'])
     else:
         exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
@@ -1141,6 +1148,18 @@ testCases = {
     'main-arg' : runMainArgTestCases,
 }
 
+checkCases = {
+    'gitlog' : logCheck,
+    'mdl' : mdlCheck,
+    'ecj' : compileWithEcjStrict,
+    'checkstyle' : checkStyle,
+    'findbugs' : findBugs,
+    'canonicalizeprojects' : mx.canonicalizeprojects,
+    'httpcheck' : checkNoHttp,
+    'checkoverlap' : checkoverlap,
+    'clangformatcheck' : clangformatcheck
+}
+
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
@@ -1175,7 +1194,7 @@ mx.update_commands(_suite, {
     'su-travis-jruby' : [travisJRuby, ''],
     'su-travis-argon2' : [travisArgon2, ''],
     'su-ecj-strict' : [compileWithEcjStrict, ''],
-    'su-basic-checkcode' : [checkCode, ''],
+    'su-basic-checkcode' : [runChecks, ''],
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, ''],

@@ -46,7 +46,7 @@ matrix:
   include:
   - env: TEST_COMMAND='mx eclipseformat --primary' CLANG='suite version (3.2)'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx checkstyle' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx basic-checkcode --verbose' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx pylint' CLANG='suite version (3.2)'
     jdk: oraclejdk8
@@ -63,18 +63,6 @@ matrix:
   - env: TEST_COMMAND='mx su-travis-jruby' LIBXML_LIB_HOME=/usr/lib/x86_64-linux-gnu OPENSSL_LIB_HOME=/usr/lib/x86_64-linux-gnu CLANG='suite version (3.2)'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis-argon2' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-clangformatcheck' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
-  - env: TEST_COMMAND='mx checkoverlap' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
-  - env: TEST_COMMAND='mx canonicalizeprojects' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-httpcheck' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-mdlcheck' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-gitlogcheck' CLANG='suite version (3.2)'
     jdk: oraclejdk8
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
