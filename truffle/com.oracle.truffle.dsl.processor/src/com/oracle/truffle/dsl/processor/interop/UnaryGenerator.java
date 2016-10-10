@@ -74,7 +74,7 @@ public final class UnaryGenerator extends MessageGenerator {
         w.append("            try {\n");
         w.append("                return node.executeWithTarget(frame, receiver);\n");
         w.append("            } catch (UnsupportedSpecializationException e) {\n");
-        w.append("                throw UnsupportedTypeException.raise(e.getSuppliedValues());\n");
+        appendHandleUnsupportedTypeException(w);
         w.append("            }\n");
         w.append("        }\n");
         w.append("\n");

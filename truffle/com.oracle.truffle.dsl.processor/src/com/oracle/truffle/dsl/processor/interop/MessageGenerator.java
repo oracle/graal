@@ -77,7 +77,7 @@ public abstract class MessageGenerator {
         appendImports(w);
 
         Utils.appendMessagesGeneratedByInformation(w, "", containingForeignAccessFactory.getFullClassName(), ElementUtils.getQualifiedName(element));
-        w.append("abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
+        w.append("public abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
         appendExecuteWithTarget(w);
         appendSpecializations(w);
 
@@ -197,6 +197,14 @@ public abstract class MessageGenerator {
             }
         }
         return null;
+    }
+
+    protected void appendHandleUnsupportedTypeException(Writer w) throws IOException {
+        w.append("                if (e.getNode() instanceof ").append(clazzName).append(") {\n");
+        w.append("                  throw UnsupportedTypeException.raise(e, e.getSuppliedValues());\n");
+        w.append("                } else {\n");
+        w.append("                  throw e;\n");
+        w.append("                }\n");
     }
 
 }
