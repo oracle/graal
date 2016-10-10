@@ -42,6 +42,7 @@ public final class ForeignAccessFactoryGenerator {
     private final String simpleClassName;
     private final ProcessingEnvironment processingEnv;
     protected final TypeElement element;
+    private final boolean publicVisibility;
 
     private final Map<Object, String> messageHandlers;
 
@@ -55,6 +56,7 @@ public final class ForeignAccessFactoryGenerator {
         this.receiverTypeClass = Utils.getReceiverTypeFullClassName(messageResolutionAnnotation);
         this.messageHandlers = new HashMap<>();
         this.languageCheckFactoryInvokation = null;
+        this.publicVisibility = messageResolutionAnnotation.publicVisibility();
     }
 
     public void addMessageHandler(Object message, String factoryMethodInvocation) {
@@ -75,7 +77,10 @@ public final class ForeignAccessFactoryGenerator {
         w.append("package ").append(packageName).append(";\n");
         appendImports(w);
         Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
-        w.append("public final class ").append(simpleClassName);
+        if (publicVisibility) {
+            w.append("public ");
+        }
+        w.append("final class ").append(simpleClassName);
         w.append(" implements Factory18, Factory {\n");
 
         appendSingletonAndGetter(w);

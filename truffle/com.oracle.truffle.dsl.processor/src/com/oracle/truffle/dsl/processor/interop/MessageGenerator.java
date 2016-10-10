@@ -56,6 +56,7 @@ public abstract class MessageGenerator {
     protected final String receiverClassName;
     protected final ProcessingEnvironment processingEnv;
     protected final ForeignAccessFactoryGenerator containingForeignAccessFactory;
+    private final boolean publicVisibility;
 
     MessageGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
@@ -68,6 +69,7 @@ public abstract class MessageGenerator {
         this.truffleLanguageFullClazzName = Utils.getTruffleLanguageFullClassName(messageResolutionAnnotation);
         this.clazzName = Utils.getSimpleResolveClassName(element);
         this.containingForeignAccessFactory = containingForeignAccessFactory;
+        this.publicVisibility = messageResolutionAnnotation.publicVisibility();
     }
 
     public final void generate() throws IOException {
@@ -77,7 +79,10 @@ public abstract class MessageGenerator {
         appendImports(w);
 
         Utils.appendMessagesGeneratedByInformation(w, "", containingForeignAccessFactory.getFullClassName(), ElementUtils.getQualifiedName(element));
-        w.append("public abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
+        if (publicVisibility) {
+            w.append("public ");
+        }
+        w.append("abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
         appendExecuteWithTarget(w);
         appendSpecializations(w);
 
