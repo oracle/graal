@@ -31,7 +31,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 
-public class HotSpotGraalVMEventListener extends HotSpotVMEventListener {
+public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
     private final HotSpotGraalRuntime runtime;
 
