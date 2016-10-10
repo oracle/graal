@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
+import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.services.JVMCIAccess;
 
@@ -71,18 +72,31 @@ public final class HotSpotGraalJVMCIAccess extends JVMCIAccess {
                 addExports.invoke(null, javaBaseModule, "jdk.internal.misc", graalModule);
                 addExports.invoke(null, javaBaseModule, "jdk.internal.jimage", graalModule);
                 addExports.invoke(null, javaBaseModule, "com.sun.crypto.provider", graalModule);
+                exportsAdded = true;
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
                 throw new GraalError(e);
             }
         }
     }
 
+    private HotSpotGraalRuntime graalRuntime;
+
     @Override
     public <T> T getProvider(Class<T> service) {
         if (service == JVMCICompilerFactory.class) {
             addExports();
-            return service.cast(new HotSpotGraalCompilerFactory());
+            return service.cast(new HotSpotGraalCompilerFactory(this));
+        } else if (service == HotSpotVMEventListener.class) {
+            if (graalRuntime != null) {
+                addExports();
+                return service.cast(new HotSpotGraalVMEventListener(graalRuntime));
+            }
         }
         return null;
+    }
+
+    public void onCompilerCreation(HotSpotGraalCompiler compiler) {
+        assert this.graalRuntime == null : "only expect a single JVMCICompiler to be created";
+        this.graalRuntime = (HotSpotGraalRuntime) compiler.getGraalRuntime();
     }
 }
