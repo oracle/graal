@@ -118,7 +118,7 @@ public final class SuspendedEvent {
     private List<Breakpoint> breakpoints;
     private Object returnValue;
 
-    private boolean disposed;
+    private volatile boolean disposed;
     private SteppingStrategy nextStrategy;
 
     private Map<Breakpoint, Throwable> conditionFailures;
