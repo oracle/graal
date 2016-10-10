@@ -36,7 +36,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * value becomes invalid then setting or getting a value will throw an {@link IllegalStateException}
  * . {@link DebugValue} instances neither support equality or preserve identity.
  * <p>
- * Clients can access the debug value only on the execution thread where the suspended event of the
+ * Clients may access the debug value only on the execution thread where the suspended event of the
  * stack frame was created and notification received; access from other threads will throw
  * {@link IllegalStateException}.
  *
