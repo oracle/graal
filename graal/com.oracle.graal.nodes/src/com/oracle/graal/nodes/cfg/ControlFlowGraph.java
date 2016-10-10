@@ -429,6 +429,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                                  * first one and exit all loops at this one
                                  */
                                 if (succ.getLoop().getParent() != b.getLoop()) {
+                                    assert succ.getLoop().getDepth() < b.getLoop().getDepth();
+                                    // b.loop must not be a transitive parent of succ.loop
+                                    assert !Loop.transitiveParentLoop(succ.getLoop(), b.getLoop());
                                     Loop<Block> curr = b.getLoop();
                                     while (curr != null && curr != succ.getLoop()) {
                                         curr.getExits().add(succ);
