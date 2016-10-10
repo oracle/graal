@@ -473,6 +473,11 @@ def _unittest_config_participant(config):
                 deployedModules.append(deployedModule)
                 redundantClasspathEntries.update(mx.classpath(dist, preferProjects=False, jdk=jdk).split(os.pathsep))
                 redundantClasspathEntries.update(mx.classpath(dist, preferProjects=True, jdk=jdk).split(os.pathsep))
+                if hasattr(dist, 'overlaps'):
+                    for o in dist.overlaps:
+                        path = mx.distribution(o).classpath_repr()
+                        if path:
+                            redundantClasspathEntries.add(path)
 
             # Remove entries from the class path that are in the deployed modules
             cp = [classpathEntry for classpathEntry in cp if classpathEntry not in redundantClasspathEntries]
