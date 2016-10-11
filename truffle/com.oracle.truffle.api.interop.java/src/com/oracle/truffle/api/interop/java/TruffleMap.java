@@ -28,8 +28,9 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -54,12 +55,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
             Object props = ToJavaNode.message(Message.KEYS, obj);
             if (Boolean.TRUE.equals(ToJavaNode.message(Message.HAS_SIZE, props))) {
                 Number size = (Number) ToJavaNode.message(Message.GET_SIZE, props);
-                LinkedHashSet<Entry<K, V>> entries = new LinkedHashSet<>();
-                for (int i = 0; i < size.intValue(); i++) {
-                    Object key = ToJavaNode.message(Message.READ, props, i);
-                    entries.add(new TruffleEntry(keyType.cast(key)));
-                }
-                return entries;
+                return new LazyEntries(props, size.intValue());
             }
             return Collections.emptySet();
         } catch (InteropException ex) {
@@ -85,6 +81,58 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
             return valueType.cast(ToJavaNode.message(Message.WRITE, obj, key, value));
         } catch (InteropException e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    private final class LazyEntries extends AbstractSet<Entry<K, V>> {
+
+        private final Object props;
+        private final int size;
+
+        LazyEntries(Object props, int size) {
+            this.props = props;
+            this.size = size;
+        }
+
+        @Override
+        public Iterator<Entry<K, V>> iterator() {
+            return new LazyIterator();
+        }
+
+        @Override
+        public int size() {
+            return size;
+        }
+
+        private final class LazyIterator implements Iterator<Entry<K, V>> {
+
+            private int index;
+
+            LazyIterator() {
+                index = 0;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return index < size;
+            }
+
+            @Override
+            public Entry<K, V> next() {
+                Object key;
+                try {
+                    key = ToJavaNode.message(Message.READ, props, index++);
+                } catch (InteropException e) {
+                    throw new IllegalStateException(e);
+                }
+                return new TruffleEntry(keyType.cast(key));
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException("remove not supported.");
+            }
+
         }
     }
 
