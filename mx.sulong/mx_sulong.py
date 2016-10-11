@@ -499,20 +499,21 @@ def runTests(args=None):
         command(vmArgs)
 
 def runChecks(args=None):
-    """runs all the test cases or selected ones (see -h or --help)"""
+    """runs all the static analysis tools or selected ones (see -h or --help)"""
     vmArgs, otherArgs = truffle_extract_VM_args(args)
-    parser = argparse.ArgumentParser(description="Executes all or selected checks of the sulong codebase.")
+    parser = argparse.ArgumentParser(description="Executes all or selected static analysis tools")
     parser.add_argument('check', nargs='*', help=' '.join(checkCases.keys()), default=checkCases.keys())
     parser.add_argument('--verbose', dest='verbose', action='store_const', const=True, default=False, help='Display the check names before execution')
     parsedArgs = parser.parse_args(otherArgs)
+    error = False
     for checkName in parsedArgs.check:
         if parsedArgs.verbose:
-            print 'executing', checkName, 'test suite'
+            print 'executing', checkName
         command = checkCases[checkName]
-        command(vmArgs)
-
-def checkStyle(args=None):
-    if mx.checkstyle(args) != 0:
+        optionalRetValue = command(vmArgs)
+        if optionalRetValue:
+            error = True
+    if error:
         exit(-1)
 
 def findBugs(args=None):
