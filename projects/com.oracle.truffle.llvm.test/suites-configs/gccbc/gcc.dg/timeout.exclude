@@ -1,4 +1,0 @@
-gcc.dg/pr59605-2.c
-gcc.dg/long_branch.c
-gcc.dg/pr59605.c
-gcc.dg/graphite/block-4.c

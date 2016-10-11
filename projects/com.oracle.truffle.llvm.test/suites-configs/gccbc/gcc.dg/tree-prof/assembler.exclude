@@ -1,3 +1,0 @@
-gcc.dg/tree-prof/pr59003.c
-gcc.dg/tree-prof/stringop-2.c
-gcc.dg/tree-prof/stringop-1.c
