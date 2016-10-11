@@ -78,10 +78,10 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         return GRAAL_OPTION_PROPERTY_PREFIX + value.getName() + "=" + value.getValue();
     }
 
-    private final HotSpotGraalJVMCIAccess access;
+    private final HotSpotGraalJVMCIServiceLocator locator;
 
-    public HotSpotGraalCompilerFactory(HotSpotGraalJVMCIAccess access) {
-        this.access = access;
+    HotSpotGraalCompilerFactory(HotSpotGraalJVMCIServiceLocator locator) {
+        this.locator = locator;
     }
 
     @Override
@@ -204,7 +204,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         // Only the HotSpotGraalRuntime associated with the compiler created via
         // jdk.vm.ci.runtime.JVMCIRuntime.getCompiler() is registered for receiving
         // VM events.
-        access.onCompilerCreation(compiler);
+        locator.onCompilerCreation(compiler);
         return compiler;
     }
 

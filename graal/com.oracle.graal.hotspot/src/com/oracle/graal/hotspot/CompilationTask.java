@@ -58,7 +58,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import jdk.vm.ci.services.JVMCIAccess;
+import jdk.vm.ci.services.JVMCIServiceLocator;
 
 //JaCoCo Exclude
 
@@ -69,7 +69,7 @@ public class CompilationTask {
     private static final EventProvider eventProvider;
 
     static {
-        List<EventProvider> providers = JVMCIAccess.getProviders(EventProvider.class);
+        List<EventProvider> providers = JVMCIServiceLocator.getProviders(EventProvider.class);
         if (providers.size() > 1) {
             throw new GraalError("Multiple %s providers found: %s", EventProvider.class.getName(), providers);
         } else if (providers.isEmpty()) {

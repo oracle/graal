@@ -32,10 +32,10 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
-import jdk.vm.ci.services.JVMCIAccess;
+import jdk.vm.ci.services.JVMCIServiceLocator;
 
-@ServiceProvider(JVMCIAccess.class)
-public final class HotSpotGraalJVMCIAccess extends JVMCIAccess {
+@ServiceProvider(JVMCIServiceLocator.class)
+public final class HotSpotGraalJVMCIServiceLocator extends JVMCIServiceLocator {
 
     // Use reflection so that this compiles on Java 8
     private static final Method getModule;
