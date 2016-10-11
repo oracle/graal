@@ -198,6 +198,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                         stack.getFrame(functionName),
                         labels.labels(functionName),
                         phis.getPhiMap(functionName),
+                        factoryFacade,
                         method.getParameters().size());
 
         method.accept(visitor);
