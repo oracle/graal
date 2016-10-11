@@ -81,11 +81,4 @@ public @interface MessageResolution {
      */
     Class<? extends TruffleLanguage<?>> language();
 
-    /**
-     * Message resolution classes are package protected by default. If your language needs them to
-     * be public, this flag needs to be <code> true </code>.
-     *
-     * @since 0.18
-     */
-    boolean publicVisibility() default false;
 }

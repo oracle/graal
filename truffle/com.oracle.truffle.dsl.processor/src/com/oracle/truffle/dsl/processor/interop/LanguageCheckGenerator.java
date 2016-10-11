@@ -56,7 +56,6 @@ public final class LanguageCheckGenerator {
     protected final ProcessingEnvironment processingEnv;
     protected String receiverClassName;
     protected ForeignAccessFactoryGenerator containingForeignAccessFactory;
-    private final boolean publicVisibility;
 
     LanguageCheckGenerator(ProcessingEnvironment processingEnv, MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         this.processingEnv = processingEnv;
@@ -67,7 +66,6 @@ public final class LanguageCheckGenerator {
         this.clazzName = ElementUtils.getSimpleName(element) + "Sub";
         this.receiverClassName = Utils.getReceiverTypeFullClassName(messageResolutionAnnotation);
         this.containingForeignAccessFactory = containingForeignAccessFactory;
-        this.publicVisibility = messageResolutionAnnotation.publicVisibility();
     }
 
     public void generate() throws IOException {
@@ -78,9 +76,7 @@ public final class LanguageCheckGenerator {
 
         appendGeneratedFor(w, "");
         Utils.appendMessagesGeneratedByInformation(w, "", containingForeignAccessFactory.getFullClassName(), ElementUtils.getQualifiedName(element));
-        if (publicVisibility) {
-            w.append("public ");
-        }
+        Utils.appendVisibilityModifier(w, element);
         w.append("abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
         appendExecuteWithTarget(w);
         appendSpecializations(w);

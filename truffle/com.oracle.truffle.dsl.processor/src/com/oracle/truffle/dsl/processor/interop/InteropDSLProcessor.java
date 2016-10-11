@@ -110,6 +110,11 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             return;
         }
 
+        if (e.getModifiers().contains(Modifier.PRIVATE) || e.getModifiers().contains(Modifier.PROTECTED)) {
+            emitError("Class must be public or package protected", e);
+            return;
+        }
+
         // check if there is a @LanguageCheck class
 
         Element curr = e;
@@ -197,6 +202,11 @@ public final class InteropDSLProcessor extends AbstractProcessor {
             return false;
         }
 
+        if (element.getModifiers().contains(Modifier.PRIVATE) || element.getModifiers().contains(Modifier.PROTECTED)) {
+            emitError("Class must be public or package protected", element);
+            return false;
+        }
+
         List<ExecutableElement> methods = generator.getTestMethods();
         if (methods.isEmpty() || methods.size() > 1) {
             emitError("There needs to be exactly one test method.", element);
@@ -241,6 +251,11 @@ public final class InteropDSLProcessor extends AbstractProcessor {
 
         if (!element.getModifiers().contains(Modifier.STATIC)) {
             emitError("Class must be static", element);
+            return false;
+        }
+
+        if (element.getModifiers().contains(Modifier.PRIVATE) || element.getModifiers().contains(Modifier.PROTECTED)) {
+            emitError("Class must be public or package protected", element);
             return false;
         }
 
