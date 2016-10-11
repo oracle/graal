@@ -103,7 +103,7 @@ public class LLVMContext extends ExecutionContext {
         return completeFunctionDescriptors[validFunctionIndex];
     }
 
-    public LLVMGlobalVariableRegistry getGlobalVaraibleRegistry() {
+    public LLVMGlobalVariableRegistry getGlobalVariableRegistry() {
         return globalVariableRegistry;
     }
 
