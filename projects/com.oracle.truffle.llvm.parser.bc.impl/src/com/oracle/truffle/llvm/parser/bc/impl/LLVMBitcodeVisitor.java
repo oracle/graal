@@ -62,10 +62,12 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
+import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserResultImpl;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMConstantGenerator;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
@@ -105,7 +107,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.Type;
 
 public class LLVMBitcodeVisitor implements ModelVisitor {
 
-    public static LLVMParserResult getMain(Source source, LLVMContext context) {
+    public static LLVMParserResult getMain(Source source, LLVMContext context, NodeFactoryFacade factoryFacade) {
         Model model = new Model();
 
         ModuleVersion llvmVersion = ModuleVersion.getModuleVersion(LLVMBaseOptionFacade.getLLVMVersion());
@@ -121,7 +123,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         final DataLayoutConverter.DataSpecConverter targetDataLayout = layout != null ? DataLayoutConverter.getConverter(layout.getDataLayout()) : null;
         LLVMMetadata.generate(model, targetDataLayout);
 
-        LLVMBitcodeVisitor module = new LLVMBitcodeVisitor(source, context, stackAllocation, labels, phis, targetDataLayout);
+        LLVMBitcodeVisitor module = new LLVMBitcodeVisitor(source, context, stackAllocation, labels, phis, targetDataLayout, factoryFacade);
 
         model.accept(module);
 
@@ -170,12 +172,14 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final LLVMBitcodeTypeHelper typeHelper;
 
+    private final NodeFactoryFacade factoryFacade;
+
     private final Source source;
 
     private final StackAllocation stack;
 
     public LLVMBitcodeVisitor(Source source, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
-                    DataLayoutConverter.DataSpecConverter layout) {
+                    DataLayoutConverter.DataSpecConverter layout, NodeFactoryFacade factoryFacade) {
         this.source = source;
         this.context = context;
         this.stack = stack;
@@ -183,6 +187,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         this.phis = phis;
         this.targetDataLayout = layout;
         this.typeHelper = new LLVMBitcodeTypeHelper(targetDataLayout);
+        this.factoryFacade = factoryFacade;
     }
 
     private LLVMExpressionNode createFunction(FunctionDefinition method, LLVMLifetimeAnalysis lifetimes) {
@@ -507,36 +512,12 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
     /**
      * Initializes the tags of the frame.
      */
-    private static LLVMStackFrameNuller[] getInitNullers(FrameDescriptor frameDescriptor) throws AssertionError {
+    private LLVMStackFrameNuller[] getInitNullers(FrameDescriptor frameDescriptor) throws AssertionError {
         List<LLVMStackFrameNuller> initNullers = new ArrayList<>();
         for (FrameSlot slot : frameDescriptor.getSlots()) {
-            switch (slot.getKind()) {
-                case Boolean:
-                    initNullers.add(new LLVMStackFrameNuller.LLVMBooleanNuller(slot));
-                    break;
-                case Byte:
-                    initNullers.add(new LLVMStackFrameNuller.LLVMByteNuller(slot));
-                    break;
-                case Int:
-                    initNullers.add(new LLVMStackFrameNuller.LLVMIntNuller(slot));
-                    break;
-                case Long:
-                    initNullers.add(new LLVMStackFrameNuller.LLVMLongNuller(slot));
-                    break;
-                case Float:
-                    initNullers.add(new LLVMStackFrameNuller.LLVMFloatNuller(slot));
-                    break;
-                case Double:
-                    initNullers.add(new LLVMStackFrameNuller.LLVMDoubleNuller(slot));
-                    break;
-                case Object:
-                    initNullers.add(new LLVMStackFrameNuller.LLVMAddressNuller(slot));
-                    break;
-                case Illegal:
-                    break;
-                default:
-                    throw new AssertionError(slot);
-            }
+            String identifier = (String) slot.getIdentifier();
+            LLVMType type = null; // TODO?
+            initNullers.add(factoryFacade.createFrameNuller(identifier, type, slot));
         }
         return initNullers.toArray(new LLVMStackFrameNuller[initNullers.size()]);
     }
