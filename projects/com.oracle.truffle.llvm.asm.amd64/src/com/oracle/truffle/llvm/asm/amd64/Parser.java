@@ -45,7 +45,7 @@ public class Parser {
 	public static final int _ident = 1;
 	public static final int _number = 2;
 	public static final int _hexNumber = 3;
-	public static final int maxT = 29;
+	public static final int maxT = 30;
 
 	static final boolean _T = true;
 	static final boolean _x = false;
@@ -60,7 +60,7 @@ public class Parser {
 	private final AsmFactory factory;
 	private LLVMInlineAssemblyRootNode root;
 	private LLVMBaseType retType;
-
+	
 
 	public Parser(String asmSnippet, String asmFlags, @SuppressWarnings("unused") LLVMExpressionNode[] args, LLVMBaseType retType) {
 		this.scanner = new Scanner(new ByteArrayInputStream(asmSnippet.getBytes()));
@@ -125,28 +125,59 @@ public class Parser {
 	void InlineAssembly() {
 
 		Expect(4);
-		if (la.kind == 7 || la.kind == 8) {
+		switch (la.kind) {
+		case 7: case 8: {
 			AddSubOperation();
-		} else if (la.kind == 9 || la.kind == 10) {
+			break;
+		}
+		case 9: case 10: {
 			IncDecOperation();
-		} else if (StartOf(1)) {
+			break;
+		}
+		case 11: case 12: case 13: case 14: {
 			LogicOperation();
-		} else if (StartOf(2)) {
+			break;
+		}
+		case 15: case 16: case 17: case 18: {
 			ShiftOperation();
-		} else if (la.kind == 19) {
+			break;
+		}
+		case 20: {
 			MoveOperation();
-		} else SynErr(30);
-		while (StartOf(3)) {
-			if (la.kind == 7 || la.kind == 8) {
+			break;
+		}
+		case 19: {
+			MulOperation();
+			break;
+		}
+		default: SynErr(31); break;
+		}
+		while (StartOf(1)) {
+			switch (la.kind) {
+			case 7: case 8: {
 				AddSubOperation();
-			} else if (la.kind == 9 || la.kind == 10) {
+				break;
+			}
+			case 9: case 10: {
 				IncDecOperation();
-			} else if (StartOf(1)) {
+				break;
+			}
+			case 11: case 12: case 13: case 14: {
 				LogicOperation();
-			} else if (StartOf(2)) {
+				break;
+			}
+			case 15: case 16: case 17: case 18: {
 				ShiftOperation();
-			} else {
+				break;
+			}
+			case 20: {
 				MoveOperation();
+				break;
+			}
+			case 19: {
+				MulOperation();
+				break;
+			}
 			}
 		}
 		Expect(4);
@@ -156,15 +187,15 @@ public class Parser {
 	void AddSubOperation() {
 		String op; String left = null, right = null;
 		op = AddSubOp();
-		if (StartOf(4)) {
+		if (StartOf(2)) {
 			left = Register();
 			Expect(5);
 			right = Register();
-		} else if (la.kind == 28) {
+		} else if (la.kind == 29) {
 			left = Immediate();
 			Expect(5);
 			right = Register();
-		} else SynErr(31);
+		} else SynErr(32);
 		Expect(6);
 		factory.createBinaryOperation(op, left, right);
 	}
@@ -189,7 +220,7 @@ public class Parser {
 			Expect(5);
 			right = Register();
 			factory.createBinaryOperation(op, left, right);
-		} else SynErr(32);
+		} else SynErr(33);
 		Expect(6);
 	}
 
@@ -206,15 +237,31 @@ public class Parser {
 	void MoveOperation() {
 		String op; String left = null, right = null;
 		op = MoveOp();
-		if (StartOf(4)) {
+		if (StartOf(2)) {
 			left = Register();
 			Expect(5);
 			right = Register();
-		} else if (la.kind == 28) {
+		} else if (la.kind == 29) {
 			left = Immediate();
 			Expect(5);
 			right = Register();
-		} else SynErr(33);
+		} else SynErr(34);
+		Expect(6);
+		factory.createBinaryOperation(op, left, right);
+	}
+
+	void MulOperation() {
+		String op; String left = null, right = null;
+		op = MulOp();
+		if (StartOf(2)) {
+			left = Register();
+			Expect(5);
+			right = Register();
+		} else if (la.kind == 29) {
+			left = Immediate();
+			Expect(5);
+			right = Register();
+		} else SynErr(35);
 		Expect(6);
 		factory.createBinaryOperation(op, left, right);
 	}
@@ -226,17 +273,13 @@ public class Parser {
 			Get();
 		} else if (la.kind == 8) {
 			Get();
-		} else SynErr(34);
+		} else SynErr(36);
 		return op;
 	}
 
 	String  Register() {
 		String  reg;
 		switch (la.kind) {
-		case 20: {
-			Get();
-			break;
-		}
 		case 21: {
 			Get();
 			break;
@@ -265,7 +308,11 @@ public class Parser {
 			Get();
 			break;
 		}
-		default: SynErr(35); break;
+		case 28: {
+			Get();
+			break;
+		}
+		default: SynErr(37); break;
 		}
 		reg = t.val; factory.addFrameSlot(reg, this.retType);
 		return reg;
@@ -274,15 +321,22 @@ public class Parser {
 	String  Immediate() {
 		String  n;
 		n = null;
-		Expect(28);
+		Expect(29);
 		if (la.kind == 2) {
 			Get();
 			n = t.val;
 		} else if (la.kind == 3) {
 			Get();
 			n = t.val;
-		} else SynErr(36);
+		} else SynErr(38);
 		return n;
+	}
+
+	String  MulOp() {
+		String  op;
+		op = la.val;
+		Expect(19);
+		return op;
 	}
 
 	String  IncDecOp() {
@@ -292,7 +346,7 @@ public class Parser {
 			Get();
 		} else if (la.kind == 10) {
 			Get();
-		} else SynErr(37);
+		} else SynErr(39);
 		return op;
 	}
 
@@ -312,7 +366,7 @@ public class Parser {
 			Get();
 		} else if (la.kind == 14) {
 			Get();
-		} else SynErr(38);
+		} else SynErr(40);
 		return op;
 	}
 
@@ -327,14 +381,14 @@ public class Parser {
 			Get();
 		} else if (la.kind == 18) {
 			Get();
-		} else SynErr(39);
+		} else SynErr(41);
 		return op;
 	}
 
 	String  MoveOp() {
 		String  op;
 		op = la.val;
-		Expect(19);
+		Expect(20);
 		return op;
 	}
 
@@ -353,11 +407,9 @@ public class Parser {
 	}
 
 	private static final boolean[][] set = {
-		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_T, _x,_x,_x}
+		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_T,_T,_T, _T,_x,_x,_x}
 
 	};
 
@@ -402,27 +454,29 @@ class Errors {
 			case 16: s = "\"shrl\" expected"; break;
 			case 17: s = "\"sall\" expected"; break;
 			case 18: s = "\"sarl\" expected"; break;
-			case 19: s = "\"movl\" expected"; break;
-			case 20: s = "\"%eax\" expected"; break;
-			case 21: s = "\"%ebx\" expected"; break;
-			case 22: s = "\"%ecx\" expected"; break;
-			case 23: s = "\"%edx\" expected"; break;
-			case 24: s = "\"%esp\" expected"; break;
-			case 25: s = "\"%ebp\" expected"; break;
-			case 26: s = "\"%esi\" expected"; break;
-			case 27: s = "\"%edi\" expected"; break;
-			case 28: s = "\"$$\" expected"; break;
-			case 29: s = "??? expected"; break;
-			case 30: s = "invalid InlineAssembly"; break;
-			case 31: s = "invalid AddSubOperation"; break;
-			case 32: s = "invalid LogicOperation"; break;
-			case 33: s = "invalid MoveOperation"; break;
-			case 34: s = "invalid AddSubOp"; break;
-			case 35: s = "invalid Register"; break;
-			case 36: s = "invalid Immediate"; break;
-			case 37: s = "invalid IncDecOp"; break;
-			case 38: s = "invalid BinaryLogicOp"; break;
-			case 39: s = "invalid ShiftOp"; break;
+			case 19: s = "\"imull\" expected"; break;
+			case 20: s = "\"movl\" expected"; break;
+			case 21: s = "\"%eax\" expected"; break;
+			case 22: s = "\"%ebx\" expected"; break;
+			case 23: s = "\"%ecx\" expected"; break;
+			case 24: s = "\"%edx\" expected"; break;
+			case 25: s = "\"%esp\" expected"; break;
+			case 26: s = "\"%ebp\" expected"; break;
+			case 27: s = "\"%esi\" expected"; break;
+			case 28: s = "\"%edi\" expected"; break;
+			case 29: s = "\"$$\" expected"; break;
+			case 30: s = "??? expected"; break;
+			case 31: s = "invalid InlineAssembly"; break;
+			case 32: s = "invalid AddSubOperation"; break;
+			case 33: s = "invalid LogicOperation"; break;
+			case 34: s = "invalid MoveOperation"; break;
+			case 35: s = "invalid MulOperation"; break;
+			case 36: s = "invalid AddSubOp"; break;
+			case 37: s = "invalid Register"; break;
+			case 38: s = "invalid Immediate"; break;
+			case 39: s = "invalid IncDecOp"; break;
+			case 40: s = "invalid BinaryLogicOp"; break;
+			case 41: s = "invalid ShiftOp"; break;
 			default: s = "error " + n; break;
 		}
 		printMsg(line, col, s);
