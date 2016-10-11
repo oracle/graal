@@ -122,8 +122,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     private String cachedIncludesExcludes;
-    private List<String> includes;
-    private List<String> excludes;
+    private ArrayList<String> includes;
+    private ArrayList<String> excludes;
 
     private final List<GraalTruffleCompilationListener> compilationListeners = new ArrayList<>();
     private final GraalTruffleCompilationListener compilationNotify = new DispatchTruffleCompilationListener();
@@ -405,8 +405,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     protected void parseCompileOnly() {
-        List<String> includesList = new ArrayList<>();
-        List<String> excludesList = new ArrayList<>();
+        ArrayList<String> includesList = new ArrayList<>();
+        ArrayList<String> excludesList = new ArrayList<>();
 
         String[] items = TruffleCompileOnly.getValue().split(",");
         for (String item : items) {
