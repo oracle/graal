@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.AR
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG10_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_SIN_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_POW_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_TAN_STUB;
 
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -101,9 +102,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         if (GraalArithmeticStubs.getValue()) {
             switch (operation) {
                 case POW:
-                    // Temporarily disable pow stub
-                    // return ARITHMETIC_POW_STUB;
-                    return operation.foreignCallDescriptor;
+                    return ARITHMETIC_POW_STUB;
             }
         } else if (operation == BinaryOperation.POW) {
             return operation.foreignCallDescriptor;
