@@ -512,7 +512,8 @@ def runChecks(args=None):
         command(vmArgs)
 
 def checkStyle(args=None):
-    mx.checkstyle([])
+    if mx.checkstyle(args) != 0:
+        exit(-1)
 
 def findBugs(args=None):
     tasks = []
@@ -524,8 +525,13 @@ def findBugs(args=None):
         if t and mx_findbugs.findbugs([]) != 0:
             t.abort('FindBugs warnings were found')
 
+def canonicalizeprojects(args=None):
+    if mx.canonicalizeprojects(args) != 0:
+        exit(-1)
+
 def checkoverlap(args=None):
-    mx.checkoverlap([])
+    if mx.checkoverlap([]) != 0:
+        exit(-1)
 
 def compileWithEcjStrict(args=None):
     """build project with the option --warning-as-error"""
@@ -1154,7 +1160,7 @@ checkCases = {
     'ecj' : compileWithEcjStrict,
     'checkstyle' : checkStyle,
     'findbugs' : findBugs,
-    'canonicalizeprojects' : mx.canonicalizeprojects,
+    'canonicalizeprojects' : canonicalizeprojects,
     'httpcheck' : checkNoHttp,
     'checkoverlap' : checkoverlap,
     'clangformatcheck' : clangformatcheck
