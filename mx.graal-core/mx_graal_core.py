@@ -26,7 +26,8 @@
 
 import os
 from os.path import join, exists, getmtime
-from argparse import ArgumentParser
+from argparse import ArgumentParser, REMAINDER
+from urlparse import urlparse
 import re
 import zipfile
 import subprocess
@@ -45,6 +46,7 @@ import mx_graal_tools #pylint: disable=unused-import
 import argparse
 import shlex
 import glob
+import shutil
 
 _suite = mx.suite('graal-core')
 
@@ -814,11 +816,69 @@ class GraalArchiveParticipant:
     def __closing__(self):
         pass
 
+def testclient(args):
+    """test a Graal client against this Graal repo"""
+    defaultTestCommandAndArgs = ['gate', '--tags', 'build,test']
+    parser = ArgumentParser(prog='mx testclient')
+    parser.add_argument('--target', action='store', help='URL of client repo to clone', required=True, metavar='<url>')
+    parser.add_argument('--suitedir', action='store', help='directory of target suite in client repo', default='.', metavar='<path>')
+    parser.add_argument('testCommandAndArgs', help='mx command and args run to test client repo (default: ' + ' '.join(defaultTestCommandAndArgs) + ')', nargs=REMAINDER, metavar='command args...')
+
+    args = parser.parse_args(args)
+
+    cloneFrom = args.target
+    if not cloneFrom:
+        mx.abort('Must specify downstream repo with --target or DS_TARGET environment variable')
+
+    workDir = join(_suite.get_output_root(), 'downstream')
+    mirror = join(workDir, _suite.name)
+    if exists(mirror):
+        shutil.rmtree(mirror)
+    mx.ensure_dir_exists(mirror)
+    for f in os.listdir(_suite.dir):
+        subDir = join(_suite.dir, f)
+        if subDir == _suite.get_output_root():
+            continue
+        src = join(_suite.dir, f)
+        dst = join(mirror, f)
+        mx.logv('[Creating symlink from {} to {}]'.format(dst, src))
+        os.symlink(src, dst)
+
+    # Deduce a target name from the target URL
+    url = urlparse(cloneFrom)
+    targetName = url.path
+    if targetName.rfind('/') != -1:
+        targetName = targetName[targetName.rfind('/') + 1:]
+    if targetName.endswith('.git'):
+        targetName = targetName[0:-len('.git')]
+
+    targetDir = join(workDir, targetName)
+    git = mx.GitConfig()
+    if exists(targetDir):
+        git.pull(targetDir)
+    else:
+        git.clone(cloneFrom, targetDir)
+
+    # See if there's a matching (non-master) branch downstream and use it if there is
+    branch = git.git_command(_suite.dir, ['rev-parse', '--abbrev-ref', 'HEAD']).strip()
+    if branch != 'master':
+        git.git_command(targetDir, ['checkout', branch], abortOnError=False)
+
+    targetSuiteDir = join(targetDir, args.suitedir)
+    cmd = ['--java-home=' + mx.get_jdk().home]
+    if args.testCommandAndArgs:
+        cmd.extend(args.testCommandAndArgs)
+    else:
+        cmd.extend(defaultTestCommandAndArgs)
+    mx.logv('[running "mx ' + ' '.join(cmd) + '" in ' + targetSuiteDir + ']')
+    return mx.run_mx(cmd, targetSuiteDir)
+
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
 mx.add_argument('--lldb', action='store_const', const='lldb --', dest='vm_prefix', help='alias for --vmprefix "lldb --"')
 
 mx.update_commands(_suite, {
+    'testclient': [testclient, '[-options]'],
     'vm': [run_vm, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
