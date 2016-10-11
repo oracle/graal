@@ -11,7 +11,7 @@ import re
 import argparse
 
 from mx_unittest import unittest, add_config_participant
-from mx_gate import Task, add_gate_runner, gate_clean
+from mx_gate import Task, add_gate_runner
 from mx_gitlogcheck import logCheck
 
 os.environ["LC_NUMERIC"] = "C"  # required for some testcases

@@ -46,7 +46,7 @@ matrix:
   include:
   - env: TEST_COMMAND='mx eclipseformat --primary' CLANG='suite version (3.2)'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx basic-checkcode --verbose' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-basic-checkcode --verbose' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx pylint' CLANG='suite version (3.2)'
     jdk: oraclejdk8
