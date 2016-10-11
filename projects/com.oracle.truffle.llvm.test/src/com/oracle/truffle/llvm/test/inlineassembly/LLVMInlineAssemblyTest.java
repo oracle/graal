@@ -29,50 +29,64 @@
  */
 package com.oracle.truffle.llvm.test.inlineassembly;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.llvm.test.LLVMPaths;
-import com.oracle.truffle.llvm.tools.Clang;
-import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
-import com.oracle.truffle.llvm.tools.Opt;
-import com.oracle.truffle.llvm.tools.Opt.OptOptions;
-import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
+import com.oracle.truffle.llvm.test.LLVMSuiteTestCaseGenerator;
+import com.oracle.truffle.llvm.test.TestCaseFiles;
+import com.oracle.truffle.llvm.test.TestSuiteBase;
+import com.oracle.truffle.llvm.test.spec.SpecificationEntry;
+import com.oracle.truffle.llvm.test.spec.SpecificationFileReader;
 
-@SuppressWarnings({"static-method"})
-public final class LLVMInlineAssemblyTest {
+@RunWith(Parameterized.class)
+public class LLVMInlineAssemblyTest extends TestSuiteBase {
 
-    private static final String PATH = LLVMPaths.LOCAL_TESTS + "/../inlineassemblytests";
+    private final File bitCodeFile;
+    private final File expectedFile;
+    private final File originalFile;
 
-    @Test
-    public void test001() {
-        String file = "inlineassembly001";
-        Assert.assertEquals(42, run(file));
+    public LLVMInlineAssemblyTest(TestCaseFiles testCase) {
+        this.expectedFile = testCase.getExpectedResult();
+        this.bitCodeFile = testCase.getBitCodeFile();
+        this.originalFile = testCase.getOriginalFile();
+    }
+
+    @Parameterized.Parameters
+    public static List<TestCaseFiles[]> getTestCases() {
+        List<String> testCaseFileNames = new ArrayList<>();
+        for (File file : LLVMPaths.INLINEASSEMBLY_TESTS.listFiles()) {
+            testCaseFileNames.add(file.getName());
+        }
+        List<SpecificationEntry> testCaseFileSpecList = SpecificationFileReader.getFiles(testCaseFileNames, LLVMPaths.INLINEASSEMBLY_TESTS);
+        return collectIncludedFiles(testCaseFileSpecList, new LLVMSuiteTestCaseGenerator(false));
     }
 
     @Test
-    public void test002() {
-        String file = "inlineassembly002";
-        Assert.assertEquals(42, run(file));
-    }
-
-    private static int run(String fileName) {
+    public void test() {
         Builder builder = PolyglotEngine.newBuilder();
         builder.globalSymbol(null, null);
         final PolyglotEngine engine = builder.build();
+        List<String> expectedLines;
+        int expectedReturnValue, actualReturnValue;
         try {
-            File cFile = new File(PATH, fileName + ".c");
-            File bcFile = File.createTempFile(PATH + "/" + "bc_" + fileName, ".ll");
-            File bcOptFile = File.createTempFile(PATH + "/" + "bcopt_" + fileName, ".ll");
-            Clang.compileToLLVMIR(cFile, bcFile, ClangOptions.builder());
-            Opt.optimizeBitcodeFile(bcFile, bcOptFile, OptOptions.builder().pass(Pass.MEM_TO_REG));
-            return engine.eval(Source.newBuilder(bcOptFile).build()).as(Integer.class);
+            expectedLines = Files.readAllLines(Paths.get(expectedFile.getAbsolutePath()));
+            expectedReturnValue = parseAndRemoveReturnValue(expectedLines);
+            actualReturnValue = engine.eval(Source.newBuilder(bitCodeFile).build()).as(Integer.class);
+            assertEquals(originalFile.getAbsolutePath(), expectedReturnValue, actualReturnValue);
         } catch (IOException e) {
             throw new AssertionError(e);
         } finally {

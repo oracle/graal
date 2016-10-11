@@ -37,8 +37,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -56,8 +54,6 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
     private static BufferedWriter outputStream;
     private static BufferedReader reader;
     private static BufferedReader errorReader;
-
-    protected static final Pattern RETURN_VALUE_PATTERN = Pattern.compile("exit ([-]*[0-9]*)");
 
     public List<String> launchLocal(TestCaseFiles tuple, Object... args) {
         List<String> result = new ArrayList<>();
@@ -119,15 +115,6 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
 
     private static boolean outputPrintedNewline(List<String> lines, int lineBeforeExit) {
         return lines.get(lineBeforeExit).equals("");
-    }
-
-    protected static int parseAndRemoveReturnValue(List<String> expectedLines) {
-        String lastLine = expectedLines.remove(expectedLines.size() - 1);
-        Matcher matcher = RETURN_VALUE_PATTERN.matcher(lastLine);
-        if (matcher.matches()) {
-            return Integer.parseInt(matcher.group(1));
-        }
-        throw new AssertionError(lastLine);
     }
 
     @AfterClass

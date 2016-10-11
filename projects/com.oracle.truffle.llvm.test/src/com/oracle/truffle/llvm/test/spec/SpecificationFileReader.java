@@ -94,7 +94,7 @@ public class SpecificationFileReader {
         return fileLines;
     }
 
-    private static List<SpecificationEntry> getFiles(List<String> fileLines, File testRoot) {
+    public static List<SpecificationEntry> getFiles(List<String> fileLines, File testRoot) {
         List<SpecificationEntry> testCases = new ArrayList<>();
         List<String> allLines = fileLines.stream().filter(l -> !l.startsWith(ONE_LINE_COMMENT)).filter(l -> !l.equals("")).collect(Collectors.toList());
         for (String line : allLines) {
