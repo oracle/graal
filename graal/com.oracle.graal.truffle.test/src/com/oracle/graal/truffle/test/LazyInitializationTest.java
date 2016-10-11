@@ -202,6 +202,7 @@ public class LazyInitializationTest {
                     OptionDescriptors optionDescriptors = cls.asSubclass(OptionDescriptors.class).newInstance();
                     for (OptionDescriptor option : optionDescriptors) {
                         whitelist.add(option.getDeclaringClass());
+                        whitelist.add(option.getType());
                     }
                 } catch (ReflectiveOperationException e) {
                 }
