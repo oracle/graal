@@ -26,7 +26,7 @@
 
 import os
 from os.path import join, exists, getmtime
-from argparse import ArgumentParser, REMAINDER
+from argparse import ArgumentParser
 from urlparse import urlparse
 import re
 import zipfile
@@ -818,19 +818,14 @@ class GraalArchiveParticipant:
 
 def testclient(args):
     """test a Graal client against this Graal repo"""
-    defaultTestCommandAndArgs = ['gate', '--tags', 'build,test']
     parser = ArgumentParser(prog='mx testclient')
     parser.add_argument('--target', action='store', help='URL of client repo to clone', required=True, metavar='<url>')
     parser.add_argument('--suitedir', action='store', help='directory of target suite in client repo', default='.', metavar='<path>')
-    parser.add_argument('testCommandAndArgs', help='mx command and args run to test client repo (default: ' + ' '.join(defaultTestCommandAndArgs) + ')', nargs=REMAINDER, metavar='command args...')
+    parser.add_argument('-C', dest='clientMxCmd', action='append', help='arg to mx command run on client (e.g., -C-v -C--strict-compliance -Cgate)', default=[], metavar='<arg>')
 
     args = parser.parse_args(args)
 
-    cloneFrom = args.target
-    if not cloneFrom:
-        mx.abort('Must specify downstream repo with --target or DS_TARGET environment variable')
-
-    workDir = join(_suite.get_output_root(), 'downstream')
+    workDir = join(_suite.get_output_root(), 'testclient')
     mirror = join(workDir, _suite.name)
     if exists(mirror):
         shutil.rmtree(mirror)
@@ -845,7 +840,7 @@ def testclient(args):
         os.symlink(src, dst)
 
     # Deduce a target name from the target URL
-    url = urlparse(cloneFrom)
+    url = urlparse(args.target)
     targetName = url.path
     if targetName.rfind('/') != -1:
         targetName = targetName[targetName.rfind('/') + 1:]
@@ -857,7 +852,7 @@ def testclient(args):
     if exists(targetDir):
         git.pull(targetDir)
     else:
-        git.clone(cloneFrom, targetDir)
+        git.clone(args.target, targetDir)
 
     # See if there's a matching (non-master) branch downstream and use it if there is
     branch = git.git_command(_suite.dir, ['rev-parse', '--abbrev-ref', 'HEAD']).strip()
@@ -865,11 +860,7 @@ def testclient(args):
         git.git_command(targetDir, ['checkout', branch], abortOnError=False)
 
     targetSuiteDir = join(targetDir, args.suitedir)
-    cmd = ['--java-home=' + mx.get_jdk().home]
-    if args.testCommandAndArgs:
-        cmd.extend(args.testCommandAndArgs)
-    else:
-        cmd.extend(defaultTestCommandAndArgs)
+    cmd = ['--java-home=' + mx.get_jdk().home] + args.clientMxCmd
     mx.logv('[running "mx ' + ' '.join(cmd) + '" in ' + targetSuiteDir + ']')
     return mx.run_mx(cmd, targetSuiteDir)
 
