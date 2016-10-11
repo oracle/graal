@@ -361,7 +361,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         int i = 0;
         for (FrameSlot slot : frameDescriptor.getSlots()) {
             String identifier = (String) slot.getIdentifier();
-            Type slotType = LLVMToBitcodeAdapter.resolveType(runtime.getVariableNameTypesMapping().get(identifier));
+            Type slotType = runtime.getVariableNameTypesMapping().get(identifier);
             if (slot.equals(runtime.getReturnSlot())) {
                 nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelper.getLLVMType(runtime.resolve(functionHeader.getRettype())), slot);
             } else if (slot.equals(runtime.getStackPointerSlot())) {

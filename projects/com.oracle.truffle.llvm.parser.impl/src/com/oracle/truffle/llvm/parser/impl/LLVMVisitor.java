@@ -174,7 +174,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private Map<FunctionHeader, Map<String, Integer>> functionToLabelMapping;
     private final Map<LLVMFunction, RootCallTarget> functionCallTargets = new HashMap<>();
     private Map<String, Object> globalVariableScope = new HashMap<>();
-    private final Map<String, ResolvedType> variableTypes = new HashMap<>();
+    private final Map<String, com.oracle.truffle.llvm.parser.base.model.types.Type> variableTypes = new HashMap<>();
     private Map<String, Integer> labelList;
     private FrameSlot retSlot;
     private FrameSlot stackPointerSlot;
@@ -1307,7 +1307,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private FrameSlot findOrAddFrameSlot(String name, EObject obj) {
         ResolvedType type = resolve(obj);
         FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(name);
-        variableTypes.put(name, type);
+        variableTypes.put(name, LLVMToBitcodeAdapter.resolveType(type));
         if (frameSlot == null) {
             throw new AssertionError("frame slot is null!");
         }
@@ -1511,7 +1511,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     }
 
     @Override
-    public Map<String, ResolvedType> getVariableNameTypesMapping() {
+    public Map<String, com.oracle.truffle.llvm.parser.base.model.types.Type> getVariableNameTypesMapping() {
         return variableTypes;
     }
 
