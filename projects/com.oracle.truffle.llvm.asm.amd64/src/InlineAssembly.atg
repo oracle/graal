@@ -61,8 +61,8 @@ PRODUCTIONS
 InlineAssembly<> =
 										(..)
   "\""
-  (AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<>)
-  {AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<>}
+  (AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<>)
+  {AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<>}
   "\""
   										(.root = factory.finishInline();.)
   .
@@ -72,8 +72,16 @@ AddSubOperation<> =						(.String op; String left = null, right = null;.)
   ((Register<out left> "," Register<out right>)
   |
   (Immediate<out left> "," Register<out right>)
-   )";"									(.factory.createBinaryOperation(op, left, right);.)
+  )";"									(.factory.createBinaryOperation(op, left, right);.)
    .
+
+MulOperation<> =						(.String op; String left = null, right = null;.)
+  MulOp<out op>
+  ((Register<out left> "," Register<out right>)
+  |
+  (Immediate<out left> "," Register<out right>)
+  )";"									(.factory.createBinaryOperation(op, left, right);.)
+  .
 
 IncDecOperation<> =						(.String op; String left = null;.)
   IncDecOp<out op>
@@ -130,6 +138,10 @@ ShiftOp<out String op>					(.op = la.val;.)
   | "shrl"
   | "sall"
   | "sarl"
+  .
+
+MulOp<out String op>					(.op = la.val;.)
+  = "imull"
   .
   
 MoveOp<out String op>					(.op = la.val;.)
