@@ -175,9 +175,9 @@ def travis4(args=None):
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
     with Task('TestLLVMBC', tasks) as t:
-        if t: runLLVMBCTests()
+        if t: runLLVMTestCases(['-Dsulong.TestBinaryParser=true'])
     with Task('TestGCCBC', tasks) as t:
-        if t: runGCCBCTestCases()
+        if t: runGCCTestCases(['-Dsulong.TestBinaryParser=true'])
 
 def travisTestSulong(args=None):
     """executes the Sulong test cases (which also stress compilation)"""
@@ -558,15 +558,6 @@ def runGCCTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuite'])
 
-def runGCCBCTestCases(args=None):
-    """runs the GCC test suite"""
-    ensureLLVMBinariesExist()
-    ensureGCCSuiteExists()
-    ensureDragonEggExists()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.GCCBCTestSuite'])
-
-
 def runNWCCTestCases(args=None):
     """runs the NWCC (Nils Weller's C Compiler) test cases"""
     ensureLLVMBinariesExist()
@@ -580,13 +571,6 @@ def runLLVMTestCases(args=None):
     ensureLLVMSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMTestSuite"])
-
-def runLLVMBCTests(args=None):
-    """runs the BitCode Parser test suite"""
-    ensureLLVMBinariesExist()
-    ensureLLVMSuiteExists()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMBCTestSuite"])
 
 def runTruffleTestCases(args=None):
     """runs the Sulong test suite"""
@@ -1137,9 +1121,7 @@ def checkNoHttp(args=None):
 testCases = {
     'bench' : runBenchmarkTestCases,
     'gcc' : runGCCTestCases,
-    'gcc-bc' : runGCCBCTestCases,
     'llvm' : runLLVMTestCases,
-    'llvm-bc' : runLLVMBCTests,
     'sulong' : runTruffleTestCases,
     'nwcc' : runNWCCTestCases,
     'types' : runTypeTestCases,

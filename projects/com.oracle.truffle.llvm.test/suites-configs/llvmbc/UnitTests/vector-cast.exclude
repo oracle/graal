@@ -1,3 +1,0 @@
-test-suite-3.2.src/SingleSource/UnitTests/Vector/multiplies.c
-test-suite-3.2.src/SingleSource/UnitTests/Vector/SSE/sse.shift.c
-test-suite-3.2.src/SingleSource/UnitTests/Vector/SSE/sse.isamax.c

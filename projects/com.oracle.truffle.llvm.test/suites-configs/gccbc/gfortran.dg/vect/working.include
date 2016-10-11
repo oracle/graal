@@ -1,2 +1,0 @@
-gfortran.dg/vect/no-fre-no-copy-prop-O3-pr51704.f90
-gfortran.dg/vect/fast-math-pr33299.f90
