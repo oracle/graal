@@ -526,14 +526,6 @@ def findBugs(args=None):
         if t and mx_findbugs.findbugs([]) != 0:
             t.abort('FindBugs warnings were found')
 
-def canonicalizeprojects(args=None):
-    if mx.canonicalizeprojects(args) != 0:
-        exit(-1)
-
-def checkoverlap(args=None):
-    if mx.checkoverlap([]) != 0:
-        exit(-1)
-
 def compileWithEcjStrict(args=None):
     """build project with the option --warning-as-error"""
     if mx.get_env('JDT'):
@@ -1141,12 +1133,12 @@ checkCases = {
     'gitlog' : logCheck,
     'mdl' : mdlCheck,
     'ecj' : compileWithEcjStrict,
-    'checkstyle' : checkStyle,
+    'checkstyle' : mx.checkstyle,
     'findbugs' : findBugs,
-    'canonicalizeprojects' : canonicalizeprojects,
+    'canonicalizeprojects' : mx.canonicalizeprojects,
     'httpcheck' : checkNoHttp,
-    'checkoverlap' : checkoverlap,
-    'clangformatcheck' : clangformatcheck
+    'checkoverlap' : mx.checkoverlap,
+    'clangformatcheck' : clangformatcheck,
 }
 
 mx.update_commands(_suite, {
