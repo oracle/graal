@@ -364,11 +364,13 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
-def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
+def jvmci_ci_version_gate_runner(tasks):
     # Check that travis and ci.hocon use the same JVMCI version
     with Task('JVMCI_CI_VersionSyncCheck', tasks, tags=[mx_gate.Tags.style]) as t:
         if t: verify_jvmci_ci_versions()
+
+def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 
     # Run unit tests in hosted mode
     for r in unit_test_runs:
@@ -470,6 +472,7 @@ graal_bootstrap_tests = [
 
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['graal-core', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    jvmci_ci_version_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
