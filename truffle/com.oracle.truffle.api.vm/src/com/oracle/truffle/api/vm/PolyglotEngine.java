@@ -65,7 +65,7 @@ import com.oracle.truffle.api.source.Source;
 import java.util.Collection;
 
 /**
- * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #buildNew()
+ * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #newBuilder()
  * Instantiate} your own portal into the isolated, multi-language system with all the registered
  * languages ready for your use. A {@link PolyglotEngine} runs inside of a <em>JVM</em>. There can
  * however be multiple instances (some would say tenants) of {@link PolyglotEngine} running next to
@@ -85,10 +85,10 @@ import java.util.Collection;
  * <h2>Usage</h2>
  *
  * <p>
- * Use {@link #buildNew()} to create a new isolated portal ready for execution of various languages.
- * All the languages in a single portal see each others exported global symbols and can cooperate.
- * Use {@link #buildNew()} multiple times to create different, isolated environments that are
- * completely separated from each other.
+ * Use {@link #newBuilder()} to create a new isolated portal ready for execution of various
+ * languages. All the languages in a single portal see each others exported global symbols and can
+ * cooperate. Use {@link #newBuilder()} multiple times to create different, isolated environments
+ * that are completely separated from each other.
  * <p>
  * Once instantiated use {@link #eval(com.oracle.truffle.api.source.Source)} with a reference to a
  * file or URL or directly pass code snippet into the virtual machine via
@@ -207,7 +207,7 @@ public class PolyglotEngine {
      * virtual machine and then create one using {@link Builder#build()}:
      *
      * <pre>
-     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#buildNew() buildNew()}
+     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#newBuilder() newBuilder()}
      *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
      *     .{@link Builder#setErr(java.io.OutputStream) setErr}({@link OutputStream yourOutput})
      *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
@@ -244,7 +244,7 @@ public class PolyglotEngine {
      * at the end create new {@link PolyglotEngine virtual machine}:
      *
      * <pre>
-     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#buildNew() buildNew()}
+     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#newBuilder() newBuilder()}
      *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
      *     .{@link Builder#setErr(java.io.OutputStream) setErr}({@link OutputStream yourOutput})
      *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
