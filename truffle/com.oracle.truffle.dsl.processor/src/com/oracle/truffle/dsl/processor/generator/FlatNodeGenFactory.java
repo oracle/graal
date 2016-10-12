@@ -2225,6 +2225,7 @@ public class FlatNodeGenFactory {
                 }
                 builder.tree(guards).end();
                 builder.startBlock();
+                ifCount++;
             }
 
             if (!guardAssertions.isEmpty()) {
@@ -2235,20 +2236,11 @@ public class FlatNodeGenFactory {
                 for (SpecializationGroup child : group.getChildren()) {
                     builder.tree(visitSpecializationGroup(builder, child, forType, frameState.copy(), allowedSpecializations, execution));
                 }
-                if (specialization != null) {
+                SpecializationGroup previous = group.getPrevious();
+                if (specialization != null && (previous == null || previous.hasFallthrough())) {
                     builder.returnFalse();
                 }
             }
-
-            if (!guards.isEmpty()) {
-                builder.end();
-            }
-
-            if (useSpecializationClass && specialization.getMaximumNumberOfInstances() > 1) {
-                String name = createSpecializationLocalName(specialization);
-                builder.startStatement().string(name, " = ", name, ".next_").end();
-            }
-
             builder.end(ifCount);
 
             hasFallthrough |= ifCount > 0;
