@@ -1,0 +1,83 @@
+This page describes various presentations and publications related to Truffle.
+
+### Truffle Tutorial
+
+Forget "this language is fast", "this language has the libraries I need", and "this language has the tool support I need".
+The Truffle framework for implementing managed languages in Java gives you native performance, multi-language integration with all other Truffle languages, and tool support -- all of that by just implementing an abstract syntax tree (AST) interpreter in Java.
+Truffle applies AST specialization during interpretation, which enables partial evaluation to create highly optimized native code without the need to write a compiler specifically for a language.
+The Java VM contributes high-performance garbage collection, threads, and parallelism support.
+
+This tutorial is both for newcomers who want to learn the basic principles of Truffle, and for people with Truffle experience who want to learn about recently added features.
+It presents the basic principles of the partial evaluation used by Truffle and the Truffle DSL used for type specializations, as well as features that were added recently such as the language-agnostic object model, language integration, and debugging support.
+
+Oracle Labs and external research groups have implemented a variety of programming languages on top of Truffle, including JavaScript, Ruby, R, Python, and Smalltalk. Several of them already exceed the best implementation of that language that existed before.
+
+PLDI 2016, June 13, 2016, Santa Barbara, CA<br>
+[Video recording](https://youtu.be/FJY96_6Y3a4)<br>
+[Slides](https://lafo.ssw.uni-linz.ac.at/pub/papers/2016_PLDI_Truffle.pdf)
+
+### Truffle Papers
+*   Matthias Grimmer, Chris Seaton, Thomas Würthinger, Hanspeter Mössenböck:<br>
+    _Dynamically Composing Languages in a Modular Way: Supporting C Extensions for Dynamic Languages._<br>
+    In _Proceedings of the 14th International Conference on Modularity_, 2015.
+
+*   Gülfem Savrun-Yeniçeri, Michael Van De Vanter, Per Larsen, Stefan Brunthaler, and Michael Franz:<br>
+    _An Efficient and Generic Event-based Profiler Framework for Dynamic Languages_<br>
+    In _Proceedings of the International Conference on Principles and Practices of Programming on The Java Platform: virtual machines, languages, and tools (PPPJ)_, 2015.
+
+*   Michael Van De Vanter:<br>
+    _Building Debuggers and Other Tools: We Can "Have it All"_ (Position Paper)<br>
+    In _Proceedings of the 10th Implementation, Compilation, Optimization of Object-Oriented Languages, Programs and Systems Workshop (ICOOOLPS)_, 2015.<br>
+    [Download paper](http://vandevanter.net/mlvdv/publications/2015-icooolps.pdf)
+
+*   Matthias Grimmer:
+    _High-performance language interoperability in multi-language runtimes_<br>
+    In _Proceedings of the companion publication of the 2014 ACM SIGPLAN conference on Systems, Programming, and Applications: Software for Humanity (SPLASH)_, 2014.<br>
+    [Download paper](http://dl.acm.org/citation.cfm?doid=2660252.2660256)
+
+*   Matthias Grimmer, Manuel Rigger, Roland Schatz, Lukas Stadler, Hanspeter Mössenböck:<br>
+    _Truffle C: Dynamic Execution of C on the Java Virtual Machine_<br>
+    In _Proceedings of the International Conference on Principles and Practice of Programming in Java (PPPJ)_, 2014.<br>
+    [Download paper](http://dl.acm.org/citation.cfm?id=2647528)
+
+*    Christian Humer, Christian Wimmer, Christian Wirth, Andreas Wöss, Thomas Würthinger:<br>
+    _A Domain-Specific Language for Building Self-Optimizing AST Interpreters_<br>
+    In _Proceedings of the International Conference on Generative Programming: Concepts and Experiences (GPCE)_, 2014.<br>
+    [Download paper](http://lafo.ssw.uni-linz.ac.at/papers/2014_GPCE_TruffleDSL.pdf)
+
+*   Andreas Wöss, Christian Wirth, Daniele Bonetta, Chris Seaton, Christian Humer, Hanspeter Mössenböck:<br>
+    _An Object Storage Model for the Truffle Language Implementation Framework_<br>
+    In _Proceedings of International Conference on Principles and Practice of Programming in Java (PPPJ)_, 2014.<br>
+    [Download paper](http://dl.acm.org/citation.cfm?id=2647517)
+
+*   Matthias Grimmer, Thomas Würthinger, Andreas Wöss, Hanspeter Mössenböck:<br>
+    _An Efficient Approach to Access Native Binary Data from JavaScript_<br>
+    In _Proceedings of the 9th Workshop on Implementation, Compilation, Optimization of Object-Oriented Languages, Programs and Systems (ICOOOLPS)_, 2014.<br>
+    [Download paper](http://dl.acm.org/citation.cfm?id=2633302)
+
+*   Thomas Würthinger, Christian Wimmer, Andreas Wöss, Lukas Stadler, Gilles Duboscq, Christian Humer, Gregor Richards, Doug Simon, Mario Wolczko:<br>
+    _One VM to Rule Them All_<br>
+    In _Proceedings of Onward!_, 2013.<br>
+    [Download paper](http://lafo.ssw.uni-linz.ac.at/papers/2013_Onward_OneVMToRuleThemAll.pdf)<br>
+    Describes the vision of the Truffle approach, and the full system stack including the interpreter and dynamic compiler.
+
+*   Chris Seaton, Michael Van De Vanter, and Michael Haupt:<br>
+    _Debugging at full speed_<br>
+    In _Proceedings of the 8th Workshop on Dynamic Languages and Applications (DYLA)_, 2014.<br>
+    [Download paper](http://www.lifl.fr/dyla14/papers/dyla14-3-Debugging_at_Full_Speed.pdf)
+
+*   Matthias Grimmer, Manuel Rigger, Lukas Stadler, Roland Schatz, Hanspeter Mössenböck:<br>
+    _An efficient native function interface for Java_<br>
+    In _Proceedings of the International Conference on Principles and Practices of Programming on the Java Platform: Virtual Machines, Languages, and Tools. (PPPJ)_, 2013.<br>
+    [Download paper](http://dx.doi.org/10.1145/2500828.2500832)
+
+*   Matthias Grimmer:<br>
+    _Runtime Environment for the Truffle/C VM_<br>
+    Master's thesis, Johannes Kepler University Linz, November 2013.<br>
+    [Download](http://ssw.jku.at/Research/Papers/Grimmer13Master/)
+
+*   Thomas Würthinger, Andreas Wöss, Lukas Stadler, Gilles Duboscq, Doug Simon, Christian Wimmer:<br>
+    _Self-Optimizing AST Interpreters_<br>
+    In _Proceedings of the Dynamic Languages Symposium (DLS)_, 2012.<br>
+    [Download paper](http://lafo.ssw.uni-linz.ac.at/papers/2012_DLS_SelfOptimizingASTInterpreters.pdf)<br>
+    Describes the design of self-optimizing and self-specializing interpreter, and the application to JavaScript.
