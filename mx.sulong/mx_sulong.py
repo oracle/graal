@@ -499,20 +499,21 @@ def runTests(args=None):
         command(vmArgs)
 
 def runChecks(args=None):
-    """runs all the test cases or selected ones (see -h or --help)"""
+    """runs all the static analysis tools or selected ones (see -h or --help)"""
     vmArgs, otherArgs = truffle_extract_VM_args(args)
-    parser = argparse.ArgumentParser(description="Executes all or selected checks of the sulong codebase.")
+    parser = argparse.ArgumentParser(description="Executes all or selected static analysis tools")
     parser.add_argument('check', nargs='*', help=' '.join(checkCases.keys()), default=checkCases.keys())
     parser.add_argument('--verbose', dest='verbose', action='store_const', const=True, default=False, help='Display the check names before execution')
     parsedArgs = parser.parse_args(otherArgs)
+    error = False
     for checkName in parsedArgs.check:
         if parsedArgs.verbose:
-            print 'executing', checkName, 'test suite'
+            print 'executing', checkName
         command = checkCases[checkName]
-        command(vmArgs)
-
-def checkStyle(args=None):
-    if mx.checkstyle(args) != 0:
+        optionalRetValue = command(vmArgs)
+        if optionalRetValue:
+            error = True
+    if error:
         exit(-1)
 
 def findBugs(args=None):
@@ -524,14 +525,6 @@ def findBugs(args=None):
     with Task('Findbugs', tasks) as t:
         if t and mx_findbugs.findbugs([]) != 0:
             t.abort('FindBugs warnings were found')
-
-def canonicalizeprojects(args=None):
-    if mx.canonicalizeprojects(args) != 0:
-        exit(-1)
-
-def checkoverlap(args=None):
-    if mx.checkoverlap([]) != 0:
-        exit(-1)
 
 def compileWithEcjStrict(args=None):
     """build project with the option --warning-as-error"""
@@ -1140,12 +1133,14 @@ checkCases = {
     'gitlog' : logCheck,
     'mdl' : mdlCheck,
     'ecj' : compileWithEcjStrict,
-    'checkstyle' : checkStyle,
+    'checkstyle' : mx.checkstyle,
     'findbugs' : findBugs,
-    'canonicalizeprojects' : canonicalizeprojects,
+    'canonicalizeprojects' : mx.canonicalizeprojects,
     'httpcheck' : checkNoHttp,
-    'checkoverlap' : checkoverlap,
-    'clangformatcheck' : clangformatcheck
+    'checkoverlap' : mx.checkoverlap,
+    'clangformatcheck' : clangformatcheck,
+    'plyint' : mx.pylint,
+    'eclipseformat' : (lambda args: mx.eclipseformat(['--primary'] + args))
 }
 
 mx.update_commands(_suite, {
