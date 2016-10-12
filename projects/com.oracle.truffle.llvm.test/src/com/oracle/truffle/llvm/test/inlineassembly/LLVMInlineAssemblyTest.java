@@ -84,7 +84,8 @@ public class LLVMInlineAssemblyTest extends TestSuiteBase {
         builder.globalSymbol(null, null);
         final PolyglotEngine engine = builder.build();
         List<String> expectedLines;
-        int expectedReturnValue, actualReturnValue;
+        int expectedReturnValue;
+        int actualReturnValue;
         try {
             expectedLines = Files.readAllLines(Paths.get(expectedFile.getAbsolutePath()));
             expectedReturnValue = parseAndRemoveReturnValue(expectedLines);
@@ -97,3 +98,4 @@ public class LLVMInlineAssemblyTest extends TestSuiteBase {
         }
     }
 }
+
