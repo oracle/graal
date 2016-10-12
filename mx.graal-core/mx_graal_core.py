@@ -816,16 +816,16 @@ class GraalArchiveParticipant:
     def __closing__(self):
         pass
 
-def testclient(args):
-    """test a Graal client against this Graal repo"""
-    parser = ArgumentParser(prog='mx testclient')
+def testdownstream(args):
+    """test downstream users of GraalCore"""
+    parser = ArgumentParser(prog='mx testdownstream')
     parser.add_argument('--target', action='store', help='URL of client repo to clone', required=True, metavar='<url>')
     parser.add_argument('--suitedir', action='store', help='directory of target suite in client repo', default='.', metavar='<path>')
     parser.add_argument('-C', dest='clientMxCmd', action='append', help='arg to mx command run on client (e.g., -C-v -C--strict-compliance -Cgate)', default=[], metavar='<arg>')
 
     args = parser.parse_args(args)
 
-    workDir = join(_suite.get_output_root(), 'testclient')
+    workDir = join(_suite.get_output_root(), 'testdownstream')
     mirror = join(workDir, _suite.name)
     if exists(mirror):
         shutil.rmtree(mirror)
@@ -869,7 +869,7 @@ mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_pref
 mx.add_argument('--lldb', action='store_const', const='lldb --', dest='vm_prefix', help='alias for --vmprefix "lldb --"')
 
 mx.update_commands(_suite, {
-    'testclient': [testclient, '[-options]'],
+    'testdownstream': [testdownstream, '[-options]'],
     'vm': [run_vm, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
