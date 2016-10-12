@@ -46,7 +46,8 @@ public enum Linkage {
     AVAILABLE_EXTERNALLY,
     LINKERPRIVATE,
     LINKERPRIVATE_WEAK,
-    LINKONCEODRAUTOHIDE;
+    LINKONCEODRAUTOHIDE,
+    UNKNOWN; // TODO: required by LLVM IR Parser, should be removed when no longer needed
 
     public static Linkage decode(long value) {
         return values()[(int) value];

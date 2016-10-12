@@ -38,7 +38,6 @@ import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
-import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -96,7 +95,7 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -128,6 +127,13 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public void setUpFacade(LLVMParserRuntime runtime) {
         this.runtime = runtime;
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    @Deprecated
+    public LLVMParserRuntime getRuntime() {
+        return this.runtime;
     }
 
     @Override
@@ -430,10 +436,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMGlobalVariableDescriptor allocateGlobalVariable(GlobalVariable globalVariable) {
-        String linkage = globalVariable.getLinkage();
-        boolean isStatic = "internal".equals(linkage) || "private".equals(linkage);
-        boolean isExtern = "external".equals(linkage);
-
         String name = globalVariable.getName();
 
         NativeResolver nativeResolver = new NativeResolver() {
@@ -447,15 +449,15 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
         LLVMGlobalVariableDescriptor descriptor;
 
-        if (isStatic) {
+        if (globalVariable.isStatic()) {
             descriptor = new LLVMGlobalVariableDescriptor(name, nativeResolver);
         } else {
             LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
             descriptor = context.getGlobalVariableRegistry().lookupOrAdd(name, nativeResolver);
         }
 
-        if (!isExtern && !descriptor.isDeclared()) {
-            Type resolvedType = LLVMToBitcodeAdapter.resolveType(runtime.resolve(globalVariable.getType()));
+        if (!globalVariable.isExtern() && !descriptor.isDeclared()) {
+            Type resolvedType = globalVariable.getType();
             int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
             LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(nativeStorage, LLVMBaseType.ADDRESS);

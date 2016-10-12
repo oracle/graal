@@ -40,7 +40,6 @@ import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
-import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -53,6 +52,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
@@ -70,6 +70,13 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
 
     @Override
     public void setUpFacade(LLVMParserRuntime runtime) {
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    @Deprecated
+    public LLVMParserRuntime getRuntime() {
+        return null;
     }
 
     @Override

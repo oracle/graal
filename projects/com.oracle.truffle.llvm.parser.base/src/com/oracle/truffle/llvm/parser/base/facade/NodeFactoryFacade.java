@@ -40,7 +40,7 @@ import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
-import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -76,6 +76,14 @@ public interface NodeFactoryFacade {
      */
     // also update {@link NodeFactoryFacadeComposite} when changing or removing this name
     void setUpFacade(LLVMParserRuntime runtime);
+
+    /**
+     * Get Parser runtime (a temporary required method until we use the new Bitcode Type exclusive).
+     *
+     * @return runtime
+     */
+    @Deprecated
+    LLVMParserRuntime getRuntime();
 
     LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, com.intel.llvm.ireditor.lLVM_IR.Type vectorType, LLVMExpressionNode element, LLVMExpressionNode index);
 

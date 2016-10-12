@@ -49,7 +49,9 @@ import com.intel.llvm.ireditor.types.ResolvedUnknownType;
 import com.intel.llvm.ireditor.types.ResolvedVarargType;
 import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.intel.llvm.ireditor.types.ResolvedVoidType;
+import com.oracle.truffle.llvm.parser.base.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
@@ -59,6 +61,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 
 public final class LLVMToBitcodeAdapter {
 
@@ -309,5 +312,58 @@ public final class LLVMToBitcodeAdapter {
     public static ResolvedType unresolveType(VectorType type) {
         ResolvedType elementType = unresolveType(type.getElementType());
         return new ResolvedVectorType(type.getLength(), elementType);
+    }
+
+    public static Linkage resolveLinkage(String linkage) {
+        if (linkage == null) {
+            return Linkage.UNKNOWN;
+        } else if ("private".equals(linkage)) {
+            return Linkage.PRIVATE;
+        } else if ("linker_private".equals(linkage)) {
+            return Linkage.LINKERPRIVATE;
+        } else if ("linker_private_weak".equals(linkage)) {
+            return Linkage.LINKERPRIVATE_WEAK;
+        } else if ("internal".equals(linkage)) {
+            return Linkage.INTERNAL;
+        } else if ("available_externally".equals(linkage)) {
+            return Linkage.AVAILABLE_EXTERNALLY;
+        } else if ("linkonce".equals(linkage)) {
+            return Linkage.LINKONCE;
+        } else if ("weak".equals(linkage)) {
+            return Linkage.WEAK;
+        } else if ("common".equals(linkage)) {
+            return Linkage.COMMON;
+        } else if ("appending".equals(linkage)) {
+            return Linkage.APPENDING;
+        } else if ("extern_weak".equals(linkage)) {
+            return Linkage.EXTERN_WEAK;
+        } else if ("linkonce_odr".equals(linkage)) {
+            return Linkage.LINKONCE_ODR;
+        } else if ("weak_odr".equals(linkage)) {
+            return Linkage.WEAK_ODR;
+        } else if ("external".equals(linkage)) {
+            return Linkage.EXTERNAL;
+        } else if ("dllimport".equals(linkage)) {
+            return Linkage.DLLIMPORT;
+        } else if ("dllexport".equals(linkage)) {
+            return Linkage.DLLEXPORT;
+        } else {
+            throw new AssertionError("Unknown linkage: " + linkage);
+        }
+    }
+
+    public static GlobalVariable resolveGlobalVariable(LLVMParserRuntime runtime, com.intel.llvm.ireditor.lLVM_IR.GlobalVariable globalVariable) {
+        Type type = resolveType(runtime.resolve(globalVariable.getType()));
+
+        String alignString = globalVariable.getAlign();
+        int align = alignString != null ? Integer.valueOf(alignString.replaceAll("align ", "")) : 0;
+
+        Linkage linkage = resolveLinkage(globalVariable.getLinkage());
+
+        GlobalVariable glob = GlobalVariable.create(type, 0, align, linkage != null ? linkage.ordinal() : 0);
+        glob.setName(globalVariable.getName().substring(1));
+        // glob.initialise(globalVariable.getInitialValue());
+
+        return glob;
     }
 }
