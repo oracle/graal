@@ -75,14 +75,6 @@ public final class LLVMPaths {
     // Interop test suites
     public static final String INTEROP_TESTS = LOCAL_TESTS + "/../interoptests";
 
-    // LLVM BitCode test suite
-    static final File LLVMBC_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_EXECUTION_CONFIG, "llvmbc/");
-    static final File LLVMBC_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "llvm/");
-
-    // GCC BitCode test suite
-    public static final File GCCBC_TEST_SUITE_CONFIG = new File(EXTERNAL_TEST_SUITES_EXECUTION_CONFIG, "gccbc/");
-    public static final File GCCBC_TEST_SUITE = new File(EXTERNAL_TEST_SUITES, "gcc/gcc-5.2.0/gcc/testsuite");
-
     // InlineAssembly test suite
     public static final File INLINEASSEMBLY_TESTS = new File(LOCAL_TESTS + "/c/inlineassembly");
 

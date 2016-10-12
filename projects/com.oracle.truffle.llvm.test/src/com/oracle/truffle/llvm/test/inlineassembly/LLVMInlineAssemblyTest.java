@@ -45,6 +45,8 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.test.LLVMPaths;
 import com.oracle.truffle.llvm.test.LLVMSuiteTestCaseGenerator;
 import com.oracle.truffle.llvm.test.TestCaseFiles;
@@ -72,11 +74,12 @@ public class LLVMInlineAssemblyTest extends TestSuiteBase {
             testCaseFileNames.add(file.getName());
         }
         List<SpecificationEntry> testCaseFileSpecList = SpecificationFileReader.getFiles(testCaseFileNames, LLVMPaths.INLINEASSEMBLY_TESTS);
-        return collectIncludedFiles(testCaseFileSpecList, new LLVMSuiteTestCaseGenerator(false));
+        return collectIncludedFiles(testCaseFileSpecList, new LLVMSuiteTestCaseGenerator(LLVMBaseOptionFacade.testBinaryParser()));
     }
 
     @Test
     public void test() {
+        LLVMLogger.info("current file: " + originalFile);
         Builder builder = PolyglotEngine.newBuilder();
         builder.globalSymbol(null, null);
         final PolyglotEngine engine = builder.build();
