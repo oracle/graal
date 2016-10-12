@@ -264,7 +264,7 @@ def verify_jvmci_ci_versions(args=None, extraVMarguments=None):
                     version = new_version
                 linenr = linenr + 1
         if not version:
-            mx.abort("No JVMCI version not found in {0} files!".format(msg))
+            mx.abort("No JVMCI version found in {0} files!".format(msg))
         return version
 
     hocon_version = _grep_version(glob.glob(join(mx.primary_suite().dir, 'ci*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*/*.hocon')), 'ci.hocon')
