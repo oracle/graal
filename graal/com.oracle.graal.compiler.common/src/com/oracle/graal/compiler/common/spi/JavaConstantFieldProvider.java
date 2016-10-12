@@ -54,13 +54,13 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         if (isStableField(field, tool)) {
             JavaConstant value = tool.readValue();
-            if (isStableFieldValueConstant(field, value, tool)) {
+            if (value != null && isStableFieldValueConstant(field, value, tool)) {
                 return foldStableArray(value, field, tool);
             }
         }
         if (isFinalField(field, tool)) {
             JavaConstant value = tool.readValue();
-            if (isFinalFieldValueConstant(field, value, tool)) {
+            if (value != null && isFinalFieldValueConstant(field, value, tool)) {
                 return tool.foldConstant(value);
             }
         }
