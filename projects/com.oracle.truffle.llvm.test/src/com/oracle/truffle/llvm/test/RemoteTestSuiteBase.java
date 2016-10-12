@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.test;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -37,6 +39,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -47,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.test.RemoteLLVMTester.RemoteProgramArgsBuilder;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
+import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 
 public class RemoteTestSuiteBase extends TestSuiteBase {
 
@@ -54,6 +60,8 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
     private static BufferedWriter outputStream;
     private static BufferedReader reader;
     private static BufferedReader errorReader;
+
+    protected static final Pattern RETURN_VALUE_PATTERN = Pattern.compile("exit ([-]*[0-9]*)");
 
     public List<String> launchLocal(TestCaseFiles tuple, Object... args) {
         List<String> result = new ArrayList<>();
@@ -117,6 +125,15 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
         return lines.get(lineBeforeExit).equals("");
     }
 
+    protected static int parseAndRemoveReturnValue(List<String> expectedLines) {
+        String lastLine = expectedLines.remove(expectedLines.size() - 1);
+        Matcher matcher = RETURN_VALUE_PATTERN.matcher(lastLine);
+        if (matcher.matches()) {
+            return Integer.parseInt(matcher.group(1));
+        }
+        throw new AssertionError(lastLine);
+    }
+
     @AfterClass
     public static void endRemoteProcess() {
         if (!LLVMBaseOptionFacade.launchRemoteTestCasesAsLocal()) {
@@ -155,6 +172,31 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
             }
         }
         Assert.fail(bitCodeFile + errorMessage.toString());
+    }
+
+    public void remoteLaunchAndTest(TestCaseFiles tuple) throws Throwable {
+        LLVMLogger.info("original file: " + tuple.getOriginalFile());
+        try {
+            List<String> launchRemote = launchRemote(tuple);
+            int sulongRetValue = parseAndRemoveReturnValue(launchRemote);
+            String sulongLines = launchRemote.stream().collect(Collectors.joining());
+            ProcessResult processResult = TestHelper.executeLLVMBinary(tuple.getBitCodeFile());
+            String expectedLines = processResult.getStdOutput();
+            int expectedReturnValue = processResult.getReturnValue();
+            boolean pass = expectedLines.equals(sulongLines);
+            boolean undefinedReturnCode = tuple.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE);
+            if (!undefinedReturnCode) {
+                pass &= expectedReturnValue == sulongRetValue;
+            }
+            recordTestCase(tuple, pass);
+            assertEquals(tuple.getBitCodeFile().getAbsolutePath(), expectedLines, sulongLines);
+            if (!undefinedReturnCode) {
+                assertEquals(tuple.getBitCodeFile().getAbsolutePath(), expectedReturnValue, sulongRetValue);
+            }
+        } catch (Throwable e) {
+            recordError(tuple, e);
+            throw e;
+        }
     }
 
 }

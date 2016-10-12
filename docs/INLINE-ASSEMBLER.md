@@ -52,3 +52,4 @@ supported:
 | notl        |          |
 | decl        |          |
 | incl        |          |
+| imull       |          |

@@ -37,8 +37,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -71,7 +69,6 @@ public abstract class TestSuiteBase {
     private static List<File> parserErrorTests;
     private static Map<UnsupportedReason, List<File>> unsupportedErrorTests;
     private static final int UNSIGNED_BYTE_MAX_VALUE = 0xff;
-    protected static final Pattern RETURN_VALUE_PATTERN = Pattern.compile("exit ([-]*[0-9]*)");
 
     protected void recordTestCase(TestCaseFiles tuple, boolean pass) {
         if (pass) {
@@ -367,15 +364,6 @@ public abstract class TestSuiteBase {
             recordError(tuple, e);
             throw e;
         }
-    }
-
-    protected static int parseAndRemoveReturnValue(List<String> expectedLines) {
-        String lastLine = expectedLines.remove(expectedLines.size() - 1);
-        Matcher matcher = RETURN_VALUE_PATTERN.matcher(lastLine);
-        if (matcher.matches()) {
-            return Integer.parseInt(matcher.group(1));
-        }
-        throw new AssertionError(lastLine);
     }
 
     private static int truncate(int retValue) {

@@ -164,7 +164,7 @@ class Buffer {
 			// is not seek-able e.g. network or console,
 			// thus we have to read the stream manually till
 			// the wanted position is in sight.
-			while (value >= fileLen && ReadNextStreamChunk() > 0);
+			while (value >= fileLen && ReadNextStreamChunk() > 0){}
 		}
 
 		if (value < 0 || value > fileLen) {

@@ -76,7 +76,7 @@ public final class LLVMPaths {
     public static final String INTEROP_TESTS = LOCAL_TESTS + "/../interoptests";
 
     // InlineAssembly test suite
-    public static final File INLINEASSEMBLY_TESTS = new File(LOCAL_TESTS + "/c/inlineassembly");
+    public static final File INLINEASSEMBLY_TESTS = new File(LOCAL_TESTS + "/../inlineassemblytests");
 
     static {
         TEMP_DIRECTORY.mkdir();

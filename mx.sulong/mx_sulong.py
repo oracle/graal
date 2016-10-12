@@ -601,7 +601,7 @@ def runTckTestCases(args=None):
 def runAsmTestCases(args=None):
     """runs the asm test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.inlineassembly.LLVMInlineAssemblyTest'])
+    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), 'com.oracle.truffle.llvm.test.inlineassembly.LLVMInlineAssemblyTest'])
 
 def runMainArgTestCases(args=None):
     """runs the test cases that exercise the passing of arguments to the main function"""

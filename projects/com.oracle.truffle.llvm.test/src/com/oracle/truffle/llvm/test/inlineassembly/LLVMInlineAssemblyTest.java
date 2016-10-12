@@ -29,12 +29,7 @@
  */
 package com.oracle.truffle.llvm.test.inlineassembly;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,29 +37,20 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.test.LLVMPaths;
-import com.oracle.truffle.llvm.test.LLVMSuiteTestCaseGenerator;
+import com.oracle.truffle.llvm.test.RemoteTestSuiteBase;
 import com.oracle.truffle.llvm.test.TestCaseFiles;
-import com.oracle.truffle.llvm.test.TestSuiteBase;
 import com.oracle.truffle.llvm.test.spec.SpecificationEntry;
 import com.oracle.truffle.llvm.test.spec.SpecificationFileReader;
 
 @RunWith(Parameterized.class)
-public class LLVMInlineAssemblyTest extends TestSuiteBase {
+public class LLVMInlineAssemblyTest extends RemoteTestSuiteBase {
 
-    private final File bitCodeFile;
-    private final File expectedFile;
-    private final File originalFile;
+    private final TestCaseFiles tuple;
 
     public LLVMInlineAssemblyTest(TestCaseFiles testCase) {
-        this.expectedFile = testCase.getExpectedResult();
-        this.bitCodeFile = testCase.getBitCodeFile();
-        this.originalFile = testCase.getOriginalFile();
+        this.tuple = testCase;
     }
 
     @Parameterized.Parameters
@@ -74,28 +60,11 @@ public class LLVMInlineAssemblyTest extends TestSuiteBase {
             testCaseFileNames.add(file.getName());
         }
         List<SpecificationEntry> testCaseFileSpecList = SpecificationFileReader.getFiles(testCaseFileNames, LLVMPaths.INLINEASSEMBLY_TESTS);
-        return collectIncludedFiles(testCaseFileSpecList, new LLVMSuiteTestCaseGenerator(LLVMBaseOptionFacade.testBinaryParser()));
+        return collectIncludedFiles(testCaseFileSpecList, new TestCaseGeneratorImpl(false, LLVMBaseOptionFacade.testBinaryParser()));
     }
 
     @Test
-    public void test() {
-        LLVMLogger.info("current file: " + originalFile);
-        Builder builder = PolyglotEngine.newBuilder();
-        builder.globalSymbol(null, null);
-        final PolyglotEngine engine = builder.build();
-        List<String> expectedLines;
-        int expectedReturnValue;
-        int actualReturnValue;
-        try {
-            expectedLines = Files.readAllLines(Paths.get(expectedFile.getAbsolutePath()));
-            expectedReturnValue = parseAndRemoveReturnValue(expectedLines);
-            actualReturnValue = engine.eval(Source.newBuilder(bitCodeFile).build()).as(Integer.class);
-            assertEquals(originalFile.getAbsolutePath(), expectedReturnValue, actualReturnValue);
-        } catch (IOException e) {
-            throw new AssertionError(e);
-        } finally {
-            engine.dispose();
-        }
+    public void test() throws Throwable {
+        remoteLaunchAndTest(tuple);
     }
 }
-

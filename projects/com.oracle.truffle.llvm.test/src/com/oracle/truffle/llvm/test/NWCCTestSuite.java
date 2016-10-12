@@ -29,29 +29,21 @@
  */
 package com.oracle.truffle.llvm.test;
 
-import static org.junit.Assert.assertEquals;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
-
 @RunWith(Parameterized.class)
 public class NWCCTestSuite extends RemoteTestSuiteBase {
 
-    private final File bitCodeFile;
     private TestCaseFiles tuple;
 
     public NWCCTestSuite(TestCaseFiles tuple) {
         this.tuple = tuple;
-        this.bitCodeFile = tuple.getBitCodeFile();
     }
 
     @Parameterized.Parameters
@@ -63,28 +55,7 @@ public class NWCCTestSuite extends RemoteTestSuiteBase {
 
     @Test
     public void test() throws Throwable {
-        LLVMLogger.info("original file: " + tuple.getOriginalFile());
-        try {
-            List<String> launchRemote = launchRemote(tuple);
-            int sulongRetValue = parseAndRemoveReturnValue(launchRemote);
-            String sulongLines = launchRemote.stream().collect(Collectors.joining());
-            ProcessResult processResult = TestHelper.executeLLVMBinary(bitCodeFile);
-            String expectedLines = processResult.getStdOutput();
-            int expectedReturnValue = processResult.getReturnValue();
-            boolean pass = expectedLines.equals(sulongLines);
-            boolean undefinedReturnCode = tuple.hasFlag(TestCaseFlag.UNDEFINED_RETURN_CODE);
-            if (!undefinedReturnCode) {
-                pass &= expectedReturnValue == sulongRetValue;
-            }
-            recordTestCase(tuple, pass);
-            assertEquals(bitCodeFile.getAbsolutePath(), expectedLines, sulongLines);
-            if (!undefinedReturnCode) {
-                assertEquals(bitCodeFile.getAbsolutePath(), expectedReturnValue, sulongRetValue);
-            }
-        } catch (Throwable e) {
-            recordError(tuple, e);
-            throw e;
-        }
+        remoteLaunchAndTest(tuple);
     }
 
 }
