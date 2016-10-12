@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.graph;
 
+import java.util.Objects;
+
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
@@ -41,6 +43,21 @@ public class NodeSourcePosition extends BytecodePosition {
         assert receiver == null || method.getDeclaringClass().isInstance(receiver);
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj != null && getClass() == obj.getClass()) {
+            NodeSourcePosition that = (NodeSourcePosition) obj;
+            if (this.getBCI() == that.getBCI() && Objects.equals(this.getMethod(), that.getMethod()) && Objects.equals(this.getCaller(), that.getCaller()) &&
+                            Objects.equals(this.receiver, that.receiver)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public JavaConstant getReceiver() {
         return receiver;
     }
@@ -55,7 +72,7 @@ public class NodeSourcePosition extends BytecodePosition {
             assert newCallerReceiver == null || receiver == null : "replacing receiver";
             return new NodeSourcePosition(newCallerReceiver, link, getMethod(), getBCI());
         } else {
-            return new NodeSourcePosition(receiver, getCaller().addCaller(link), getMethod(), getBCI());
+            return new NodeSourcePosition(receiver, getCaller().addCaller(newCallerReceiver, link), getMethod(), getBCI());
         }
     }
 
@@ -68,10 +85,10 @@ public class NodeSourcePosition extends BytecodePosition {
         StringBuilder sb = new StringBuilder(100);
         NodeSourcePosition pos = this;
         while (pos != null) {
+            MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
             if (pos.receiver != null) {
                 sb.append("receiver=" + pos.receiver + " ");
             }
-            MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
             pos = pos.getCaller();
             if (pos != null) {
                 sb.append(CodeUtil.NEW_LINE);
