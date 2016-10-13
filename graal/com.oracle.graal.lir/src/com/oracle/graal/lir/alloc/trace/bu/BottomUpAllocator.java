@@ -82,9 +82,9 @@ import jdk.vm.ci.meta.Value;
 
 /**
  * Allocates registers within a trace in a greedy, bottom-up fashion. The liveness information is
- * computed on the fly as the instructions are traversed. A separate liveness information is not
- * required. The goal of this allocator is to provide a simple and fast algorithm for situations
- * where code quality is not the primary target.
+ * computed on the fly as the instructions are traversed instead of computing it in a separate pass.
+ * The goal of this allocator is to provide a simple and fast algorithm for situations where code
+ * quality is not the primary target.
  *
  * This implementation does not (yet) exploit hinting information and might introduce multiple spill
  * moves to the same stack slot (which are likely to be remove by {@link RedundantMoveElimination}.
