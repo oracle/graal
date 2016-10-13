@@ -1,6 +1,6 @@
 import tarfile
 import os
-from os.path import join
+from os.path import join, isfile
 import shutil
 import subprocess
 import sys
@@ -1116,19 +1116,24 @@ def checkNoHttp(args=None):
             line_number += 1
 
 def genInlineAssemblyParser(args=None, out=None):
-     """generate inline assembly parser and scanner if corresponding grammer is new"""
-     localCocoJarFile = _suite.dir + "/lib/Coco.jar"
-     if not os.path.isfile(localCocoJarFile):
-         jarFileUrls = ["http://www.ssw.uni-linz.ac.at/Coco/Java/Coco.jar"]
-         mx.download(localCocoJarFile, jarFileUrls)
-     command=[mx.get_jdk(tag='jvmci').java, "-jar", localCocoJarFile, "-package", _inlineAssemblyPackageName, "-o", _inlineAssemblySrcDir + _inlineAssemblyPackageName.replace('.','/'), _inlineAssemblySrcDir + "InlineAssembly.atg"]
-     mx.run(command)
+    """generate inline assembly parser and scanner if corresponding grammer is new"""
+    generatedParserDir = _inlineAssemblySrcDir + _inlineAssemblyPackageName.replace('.', '/')
+    generatedParserFile = generatedParserDir + "/Parser.java"
+    generatedScannerFile = generatedParserDir + "/Scanner.java"
+    if not isfile(generatedParserFile) or not isfile(generatedScannerFile) or os.path.getmtime(_inlineAssemblyGrammer) >= os.path.getmtime(generatedParserFile):
+        localCocoJarFile = _suite.dir + "/lib/Coco.jar"
+        if not isfile(localCocoJarFile):
+            jarFileUrls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/Coco.jar"]
+            mx.download(localCocoJarFile, jarFileUrls)
+        command = [mx.get_jdk(tag='jvmci').java, "-jar", localCocoJarFile, "-package", _inlineAssemblyPackageName, "-o", generatedParserDir, _inlineAssemblyGrammer]
+        mx.run(command)
+        #Files get generated in Windows file format. Convert them to avoid style check failure during regression testing
+        mx.run(['dos2unix', generatedParserFile, generatedScannerFile])
 
-def sulongBuild(args=None, out=None):
-     """custom build command to wrap inline assembly parser generation"""
-     genInlineAssemblyParser()
-     originalBuild(['-p', '--warning-as-error', '--no-native', '--force-javac'])
-
+def sulongBuild(args=None):
+    """custom build command to wrap inline assembly parser generation"""
+    genInlineAssemblyParser()
+    originalBuildCommand(args)
 
 testCases = {
     'bench' : runBenchmarkTestCases,
@@ -1162,7 +1167,7 @@ checkCases = {
     'eclipseformat' : (lambda args: mx.eclipseformat(['--primary'] + args))
 }
 
-originalBuild = mx.command_function('build')
+originalBuildCommand = mx.command_function('build')
 
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
