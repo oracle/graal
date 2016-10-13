@@ -42,6 +42,10 @@ _benchGameSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/benchmarkg
 
 _dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
 
+_inlineAssemblySrcDir = join(_root, "com.oracle.truffle.llvm.asm.amd64/src/")
+_inlineAssemblyGrammer = join(_inlineAssemblySrcDir, "InlineAssembly.atg")
+_inlineAssemblyPackageName = "com.oracle.truffle.llvm.asm.amd64"
+
 def _unittest_config_participant(config):
     """modifies the classpath to use the Sulong distribution jars instead of the classfiles to enable the use of Java's ServiceLoader"""
     (vmArgs, mainClass, mainClassArgs) = config
@@ -1111,6 +1115,21 @@ def checkNoHttp(args=None):
                 exit(-1)
             line_number += 1
 
+def genInlineAssemblyParser(args=None, out=None):
+     """generate inline assembly parser and scanner if corresponding grammer is new"""
+     localCocoJarFile = _suite.dir + "/lib/Coco.jar"
+     if not os.path.isfile(localCocoJarFile):
+         jarFileUrls = ["http://www.ssw.uni-linz.ac.at/Coco/Java/Coco.jar"]
+         mx.download(localCocoJarFile, jarFileUrls)
+     command=[mx.get_jdk(tag='jvmci').java, "-jar", localCocoJarFile, "-package", _inlineAssemblyPackageName, "-o", _inlineAssemblySrcDir + _inlineAssemblyPackageName.replace('.','/'), _inlineAssemblySrcDir + "InlineAssembly.atg"]
+     mx.run(command)
+
+def sulongBuild(args=None, out=None):
+     """custom build command to wrap inline assembly parser generation"""
+     genInlineAssemblyParser()
+     originalBuild(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+
+
 testCases = {
     'bench' : runBenchmarkTestCases,
     'gcc' : runGCCTestCases,
@@ -1143,11 +1162,14 @@ checkCases = {
     'eclipseformat' : (lambda args: mx.eclipseformat(['--primary'] + args))
 }
 
+originalBuild = mx.command_function('build')
+
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
     'clangbench' : [clangBench, ''],
     'gccbench' : [gccBench, ''],
+    'build' : [sulongBuild, ''],
     'su-options' : [printOptions, ''],
     'su-pullbenchmarkgame' : [pullBenchmarkGame, ''],
     'su-pulldeps' : [downloadDependencies, ''],
