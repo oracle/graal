@@ -135,17 +135,12 @@ public class DefaultLoopPolicies implements LoopPolicies {
     @Override
     public boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
         int phis = 0;
-        NodeBitMap branchNodes = null;
+        NodeBitMap branchNodes = loop.loopBegin().graph().createNodeBitMap();
         for (ControlSplitNode controlSplit : controlSplits) {
             for (Node successor : controlSplit.successors()) {
                 AbstractBeginNode branch = (AbstractBeginNode) successor;
                 // this may count twice because of fall-through in switches
-                NodeBitMap nodesInLoopBranch = loop.nodesInLoopBranch(branch);
-                if (branchNodes == null) {
-                    branchNodes = nodesInLoopBranch;
-                } else {
-                    branchNodes.union(nodesInLoopBranch);
-                }
+                loop.nodesInLoopBranch(branchNodes, branch);
             }
             Block postDomBlock = loop.loopsData().getCFG().blockFor(controlSplit).getPostdominator();
             if (postDomBlock != null) {
