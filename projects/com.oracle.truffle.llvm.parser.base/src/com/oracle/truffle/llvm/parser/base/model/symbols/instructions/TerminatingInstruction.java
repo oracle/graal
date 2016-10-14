@@ -27,36 +27,18 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.impl;
+package com.oracle.truffle.llvm.parser.base.model.symbols.instructions;
 
-import java.util.Arrays;
+import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 
-public final class LLVMParserAsserts {
+import java.util.List;
 
-    private LLVMParserAsserts() {
+public interface TerminatingInstruction extends Instruction {
+
+    List<InstructionBlock> getSuccessors();
+
+    @Override
+    default boolean isTerminating() {
+        return true;
     }
-
-    public static Object[] assertNoNullElement(Object[] objects) {
-        for (Object o : objects) {
-            if (o == null) {
-                throw new AssertionError(Arrays.toString(objects));
-            }
-        }
-        return objects;
-    }
-
-    public static void assertNotNull(Object object) {
-        if (object == null) {
-            throw new AssertionError();
-        }
-    }
-
-    public static <T> void assertNoNullElement(Iterable<T> it) {
-        for (T obj : it) {
-            if (obj == null) {
-                throw new AssertionError(it);
-            }
-        }
-    }
-
 }

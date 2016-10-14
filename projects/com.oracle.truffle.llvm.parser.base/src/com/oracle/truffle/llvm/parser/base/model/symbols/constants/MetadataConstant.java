@@ -46,6 +46,11 @@ public class MetadataConstant implements Symbol {
     }
 
     @Override
+    public boolean hasName() {
+        return false;
+    }
+
+    @Override
     public String toString() {
         return String.valueOf(value);
     }

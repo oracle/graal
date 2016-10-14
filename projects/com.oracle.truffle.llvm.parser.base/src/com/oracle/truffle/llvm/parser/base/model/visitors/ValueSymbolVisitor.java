@@ -27,25 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.model.visitors;
 
-import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.VoidInstruction;
 
-public abstract class AbstractConstant implements Constant {
-
-    private final Type type;
-
-    protected AbstractConstant(Type type) {
-        this.type = type;
-    }
+public abstract class ValueSymbolVisitor extends ReducedInstructionVisitor {
 
     @Override
-    public boolean hasName() {
-        return false;
-    }
-
-    @Override
-    public Type getType() {
-        return type;
+    public void visitVoidInstruction(VoidInstruction voidInstruction) {
     }
 }

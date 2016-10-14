@@ -27,25 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.symbols.constants;
+package com.oracle.truffle.llvm.parser.base.util;
 
-import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import java.util.Arrays;
 
-public abstract class AbstractConstant implements Constant {
+public final class LLVMParserAsserts {
 
-    private final Type type;
-
-    protected AbstractConstant(Type type) {
-        this.type = type;
+    private LLVMParserAsserts() {
     }
 
-    @Override
-    public boolean hasName() {
-        return false;
+    public static Object[] assertNoNullElement(Object[] objects) {
+        for (Object o : objects) {
+            if (o == null) {
+                throw new AssertionError(Arrays.toString(objects));
+            }
+        }
+        return objects;
     }
 
-    @Override
-    public Type getType() {
-        return type;
+    public static void assertNotNull(Object object) {
+        if (object == null) {
+            throw new AssertionError();
+        }
     }
+
+    public static <T> void assertNoNullElement(Iterable<T> it) {
+        for (T obj : it) {
+            if (obj == null) {
+                throw new AssertionError(it);
+            }
+        }
+    }
+
 }

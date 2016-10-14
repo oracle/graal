@@ -34,7 +34,11 @@ import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
 
-public final class IndirectBranchInstruction implements VoidInstruction {
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public final class IndirectBranchInstruction implements VoidInstruction, TerminatingInstruction {
 
     private Symbol address;
 
@@ -59,6 +63,11 @@ public final class IndirectBranchInstruction implements VoidInstruction {
 
     public InstructionBlock getSuccessor(int index) {
         return successors[index];
+    }
+
+    @Override
+    public List<InstructionBlock> getSuccessors() {
+        return Arrays.stream(successors).collect(Collectors.toList());
     }
 
     @Override

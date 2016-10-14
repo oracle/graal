@@ -59,7 +59,7 @@ import com.intel.llvm.ireditor.lLVM_IR.impl.Instruction_brImpl;
 import com.intel.llvm.ireditor.lLVM_IR.impl.LocalValueRefImpl;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.parser.impl.LLVMParserAsserts;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.impl.LLVMReadVisitor;

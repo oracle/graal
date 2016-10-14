@@ -35,6 +35,8 @@ public interface Symbol {
 
     Type getType();
 
+    boolean hasName();
+
     @SuppressWarnings("unused")
     default void replace(Symbol original, Symbol replacement) {
         throw new IllegalStateException("Fordward reference used with unsuspecting type " + getClass().getSimpleName());

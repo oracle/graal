@@ -32,7 +32,10 @@ package com.oracle.truffle.llvm.parser.base.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
 
-public final class BranchInstruction implements VoidInstruction {
+import java.util.Collections;
+import java.util.List;
+
+public final class BranchInstruction implements VoidInstruction, TerminatingInstruction {
 
     private final InstructionBlock successor;
 
@@ -47,6 +50,11 @@ public final class BranchInstruction implements VoidInstruction {
 
     public InstructionBlock getSuccessor() {
         return successor;
+    }
+
+    @Override
+    public List<InstructionBlock> getSuccessors() {
+        return Collections.singletonList(successor);
     }
 
     public static BranchInstruction fromTarget(InstructionBlock block) {

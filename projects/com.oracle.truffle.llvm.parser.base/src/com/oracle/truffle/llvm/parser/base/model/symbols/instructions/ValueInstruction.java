@@ -53,6 +53,16 @@ public abstract class ValueInstruction implements Instruction, ValueSymbol {
     }
 
     @Override
+    public boolean hasName() {
+        return true;
+    }
+
+    @Override
+    public boolean isTerminating() {
+        return false;
+    }
+
+    @Override
     public void setName(String name) {
         this.name = "%" + name;
     }

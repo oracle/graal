@@ -29,9 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
 
-public final class UnreachableInstruction implements VoidInstruction {
+import java.util.Collections;
+import java.util.List;
+
+public final class UnreachableInstruction implements VoidInstruction, TerminatingInstruction {
 
     private UnreachableInstruction() {
     }
@@ -39,6 +43,11 @@ public final class UnreachableInstruction implements VoidInstruction {
     @Override
     public void accept(InstructionVisitor visitor) {
         visitor.visit(this);
+    }
+
+    @Override
+    public List<InstructionBlock> getSuccessors() {
+        return Collections.emptyList();
     }
 
     public static UnreachableInstruction generate() {

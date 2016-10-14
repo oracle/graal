@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.base.model.functions;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
@@ -146,6 +147,10 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
 
     public int getBlockCount() {
         return blocks.length;
+    }
+
+    public List<InstructionBlock> getBlocks() {
+        return Arrays.asList(blocks);
     }
 
     @Override

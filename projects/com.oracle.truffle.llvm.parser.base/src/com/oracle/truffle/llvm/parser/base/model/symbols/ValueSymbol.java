@@ -39,5 +39,10 @@ public interface ValueSymbol extends Symbol {
 
     String getName();
 
+    @Override
+    default boolean hasName() {
+        return true;
+    }
+
     void setName(String name);
 }

@@ -89,6 +89,11 @@ public final class VoidCallInstruction implements Call, VoidInstruction {
     }
 
     @Override
+    public boolean isTerminating() {
+        return false;
+    }
+
+    @Override
     public void replace(Symbol original, Symbol replacement) {
         if (target == original) {
             target = replacement;

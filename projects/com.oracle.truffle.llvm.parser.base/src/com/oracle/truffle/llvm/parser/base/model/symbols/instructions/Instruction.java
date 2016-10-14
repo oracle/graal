@@ -35,4 +35,11 @@ import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
 public interface Instruction extends Symbol {
 
     void accept(InstructionVisitor visitor);
+
+    @Override
+    default boolean hasName() {
+        return false;
+    }
+
+    boolean isTerminating();
 }

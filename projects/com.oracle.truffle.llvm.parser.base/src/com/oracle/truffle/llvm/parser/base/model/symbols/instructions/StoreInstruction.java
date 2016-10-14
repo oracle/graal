@@ -92,6 +92,11 @@ public final class StoreInstruction implements VoidInstruction {
         return synchronizationScope;
     }
 
+    @Override
+    public boolean isTerminating() {
+        return false;
+    }
+
     public boolean isVolatile() {
         return isVolatile;
     }

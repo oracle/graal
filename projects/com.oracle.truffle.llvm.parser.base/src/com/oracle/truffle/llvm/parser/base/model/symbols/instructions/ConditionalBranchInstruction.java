@@ -34,7 +34,10 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
 
-public final class ConditionalBranchInstruction implements VoidInstruction {
+import java.util.Arrays;
+import java.util.List;
+
+public final class ConditionalBranchInstruction implements VoidInstruction, TerminatingInstruction {
 
     private Symbol condition;
 
@@ -62,6 +65,11 @@ public final class ConditionalBranchInstruction implements VoidInstruction {
 
     public InstructionBlock getTrueSuccessor() {
         return trueSuccessor;
+    }
+
+    @Override
+    public List<InstructionBlock> getSuccessors() {
+        return Arrays.asList(trueSuccessor, falseSuccessor);
     }
 
     @Override
