@@ -47,6 +47,7 @@ class Token {
 //-----------------------------------------------------------------------------------
 // Buffer
 //-----------------------------------------------------------------------------------
+@SuppressWarnings("all")
 class Buffer {
 	// This Buffer supports the following cases:
 	// 1) seekable stream (file)
