@@ -88,7 +88,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
 
     private static CanonicalStringGraphPrinter createStringPrinter() {
         // Construct the path to the directory.
-        Path path = Options.PrintCanonicalGraphStringsFileName.getPath();
+        Path path = Options.PrintCanonicalGraphStringsDirectory.getPath();
         return new CanonicalStringGraphPrinter(path);
     }
 
