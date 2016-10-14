@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
+import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 import com.oracle.graal.phases.util.Providers;
 
@@ -82,6 +83,12 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
             PhaseContext context = new PhaseContext(providers);
             new CanonicalizerPhase().apply(graph, context);
+            /*
+             * ConvertDeoptimizeToGuardPhase reduces the number of merges in the graph, so that
+             * fewer frame states will be created. This significantly reduces the number of nodes in
+             * the initial graph.
+             */
+            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
 
             EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, architecture);
             graphCache.put(method, encodedGraph);
