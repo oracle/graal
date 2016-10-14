@@ -31,6 +31,7 @@ import java.util.List;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
 import com.oracle.graal.nodes.FrameState;
@@ -133,13 +134,18 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
     @Override
     public boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
-        int inBranchTotal = 0;
         int phis = 0;
+        NodeBitMap branchNodes = null;
         for (ControlSplitNode controlSplit : controlSplits) {
             for (Node successor : controlSplit.successors()) {
                 AbstractBeginNode branch = (AbstractBeginNode) successor;
                 // this may count twice because of fall-through in switches
-                inBranchTotal += loop.nodesInLoopBranch(branch).count();
+                NodeBitMap nodesInLoopBranch = loop.nodesInLoopBranch(branch);
+                if (branchNodes == null) {
+                    branchNodes = nodesInLoopBranch;
+                } else {
+                    branchNodes.union(nodesInLoopBranch);
+                }
             }
             Block postDomBlock = loop.loopsData().getCFG().blockFor(controlSplit).getPostdominator();
             if (postDomBlock != null) {
@@ -147,6 +153,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
                 phis += ((MergeNode) postDomBlock.getBeginNode()).phis().count();
             }
         }
+        int inBranchTotal = branchNodes.count();
 
         CountingClosure stateNodesCount = new CountingClosure();
         double loopFrequency = loop.loopBegin().loopFrequency();

@@ -148,6 +148,17 @@ public final class NodeBitMap implements NodeIterable<Node> {
         }
     }
 
+    public void union(NodeBitMap other) {
+        assert graph() == other.graph();
+        grow();
+        if (bits.length < other.bits.length) {
+            bits = Arrays.copyOf(bits, other.bits.length);
+        }
+        for (int i = 0; i < bits.length; i++) {
+            bits[i] |= other.bits[i];
+        }
+    }
+
     public void grow() {
         nodeCount = Math.max(nodeCount, graph().nodeIdCount());
         int newLength = sizeForNodeCount(nodeCount);
