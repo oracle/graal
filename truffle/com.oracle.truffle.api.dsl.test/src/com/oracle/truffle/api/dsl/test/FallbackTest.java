@@ -30,6 +30,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback1Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback2Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback3Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback4Factory;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback6Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -193,6 +195,52 @@ public class FallbackTest {
         @Specialization
         String f1(int a) {
             return "(int)";
+        }
+    }
+
+    @Test
+    public void testFallback6() {
+        TestRootNode<Fallback6> node = createRoot(Fallback6Factory.getInstance());
+        Assert.assertEquals(2, executeWith(node, 1));
+        try {
+            Assert.assertEquals(2, executeWith(node, "foobar"));
+            Assert.fail();
+        } catch (FallbackException e) {
+        }
+
+        Assert.assertEquals((long) Integer.MAX_VALUE + (long) Integer.MAX_VALUE, executeWith(node, Integer.MAX_VALUE));
+        try {
+            executeWith(node, "foobar");
+            Assert.fail();
+        } catch (FallbackException e) {
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static class FallbackException extends RuntimeException {
+    }
+
+    @NodeChild("a")
+    abstract static class Fallback6 extends ValueNode {
+
+        @Specialization(rewriteOn = ArithmeticException.class)
+        int f1(int a) throws ArithmeticException {
+            return ExactMath.addExact(a, a);
+        }
+
+        @Specialization
+        long f2(int a) {
+            return (long) a + (long) a;
+        }
+
+        @Specialization
+        boolean f3(boolean a) {
+            return a;
+        }
+
+        @Fallback
+        Object f2(@SuppressWarnings("unused") Object a) {
+            throw new FallbackException();
         }
     }
 
