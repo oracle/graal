@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExecutionContext;
@@ -49,6 +51,8 @@ public abstract class RootNode extends Node {
     private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     private final SourceSection sourceSection;
+
+    final ReentrantLock lock = new ReentrantLock();
 
     /**
      * Creates new root node. Each {@link RootNode} is associated with a particular language - if

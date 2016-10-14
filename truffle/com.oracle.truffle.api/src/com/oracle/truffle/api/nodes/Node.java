@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -433,31 +434,27 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /** @since 0.8 or earlier */
     public final void atomic(Runnable closure) {
-        synchronized (getAtomicLock()) {
-            assert enterAtomic();
-            try {
-                closure.run();
-            } finally {
-                assert exitAtomic();
-            }
+        ReentrantLock lock = getLock();
+        try {
+            lock.lock();
+            closure.run();
+        } finally {
+            lock.unlock();
         }
     }
 
     /** @since 0.8 or earlier */
     public final <T> T atomic(Callable<T> closure) {
+        ReentrantLock lock = getLock();
         try {
-            synchronized (getAtomicLock()) {
-                assert enterAtomic();
-                try {
-                    return closure.call();
-                } finally {
-                    assert exitAtomic();
-                }
-            }
+            lock.lock();
+            return closure.call();
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -467,13 +464,29 @@ public abstract class Node implements NodeInterface, Cloneable {
      * manually.
      *
      * @since 0.17
+     * @deprecated replaced with {@link #getLock()}
      */
+    @Deprecated
     protected final Object getAtomicLock() {
         // Major Assumption: parent is never null after a node got adopted
         // it is never reset to null, and thus, rootNode is always reachable.
         // GIL: used for nodes that are replace in ASTs that are not yet adopted
         RootNode root = getRootNode();
         return root == null ? GIL : root;
+    }
+
+    /**
+     * Returns a lock object that can be used to synchronize modifications to the AST. Don't lock if
+     * you call into foreign code with potential recursions to avoid deadlocks. Use responsibly.
+     *
+     * @since 0.19
+     */
+    protected final ReentrantLock getLock() {
+        // Major Assumption: parent is never null after a node got adopted
+        // it is never reset to null, and thus, rootNode is always reachable.
+        // GIL: used for nodes that are replace in ASTs that are not yet adopted
+        RootNode root = getRootNode();
+        return root == null ? GIL_LOCK : root.lock;
     }
 
     /**
@@ -549,26 +562,10 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     private static final Object GIL = new Object();
+    private static final ReentrantLock GIL_LOCK = new ReentrantLock(false);
 
-    private static final ThreadLocal<Integer> IN_ATOMIC_BLOCK = new ThreadLocal<Integer>() {
-        @Override
-        protected Integer initialValue() {
-            return 0;
-        }
-    };
-
-    private static boolean inAtomicBlock() {
-        return IN_ATOMIC_BLOCK.get() > 0;
-    }
-
-    private static boolean enterAtomic() {
-        IN_ATOMIC_BLOCK.set(IN_ATOMIC_BLOCK.get() + 1);
-        return true;
-    }
-
-    private static boolean exitAtomic() {
-        IN_ATOMIC_BLOCK.set(IN_ATOMIC_BLOCK.get() - 1);
-        return true;
+    private boolean inAtomicBlock() {
+        return getLock().isHeldByCurrentThread();
     }
 
     static final class AccessorNodes extends Accessor {
