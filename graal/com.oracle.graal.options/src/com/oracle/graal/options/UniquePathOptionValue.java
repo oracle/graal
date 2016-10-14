@@ -24,6 +24,7 @@ package com.oracle.graal.options;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class UniquePathOptionValue extends OptionValue<String> {
@@ -70,7 +71,7 @@ public class UniquePathOptionValue extends OptionValue<String> {
 
     private String formatExtension() {
         String ext = getExtension();
-        assert ext == extension || extension == null : "extension should be null if getExtension is overridden";
+        assert Objects.equals(ext, extension) || extension == null : "extension should be null if getExtension is overridden";
         if (ext == null || ext.length() == 0) {
             return "";
         }
