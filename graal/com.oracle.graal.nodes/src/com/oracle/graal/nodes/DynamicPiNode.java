@@ -61,7 +61,7 @@ public final class DynamicPiNode extends PiNode {
                     staticPiStamp = StampFactory.object(type);
                 }
 
-                return new PiNode(object(), staticPiStamp, (ValueNode) getGuard());
+                return new PiNode(object(), staticPiStamp, (ValueNode) getGuard()).canonical(tool);
             }
         }
 
