@@ -473,7 +473,8 @@ public class InliningUtil {
                 NodeSourcePosition pos = entry.getKey().getNodeSourcePosition();
                 if (pos != null) {
                     NodeSourcePosition callerPos = pos.addCaller(constantReceiver, invokePos);
-                    entry.getValue().setNodeSourcePosition(posMap.putIfAbsent(callerPos, callerPos));
+                    posMap.putIfAbsent(callerPos, callerPos);
+                    entry.getValue().setNodeSourcePosition(posMap.get(callerPos));
                 }
             }
         }
