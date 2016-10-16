@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
@@ -434,7 +435,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /** @since 0.8 or earlier */
     public final void atomic(Runnable closure) {
-        ReentrantLock lock = getLock();
+        Lock lock = getLock();
         try {
             lock.lock();
             closure.run();
@@ -445,7 +446,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /** @since 0.8 or earlier */
     public final <T> T atomic(Callable<T> closure) {
-        ReentrantLock lock = getLock();
+        Lock lock = getLock();
         try {
             lock.lock();
             return closure.call();
@@ -481,7 +482,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @since 0.19
      */
-    protected final ReentrantLock getLock() {
+    protected final Lock getLock() {
         // Major Assumption: parent is never null after a node got adopted
         // it is never reset to null, and thus, rootNode is always reachable.
         // GIL: used for nodes that are replace in ASTs that are not yet adopted
@@ -565,7 +566,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     private static final ReentrantLock GIL_LOCK = new ReentrantLock(false);
 
     private boolean inAtomicBlock() {
-        return getLock().isHeldByCurrentThread();
+        return ((ReentrantLock) getLock()).isHeldByCurrentThread();
     }
 
     static final class AccessorNodes extends Accessor {

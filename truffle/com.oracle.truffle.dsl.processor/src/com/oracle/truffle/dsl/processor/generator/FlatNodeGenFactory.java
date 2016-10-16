@@ -47,7 +47,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Lock;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -771,7 +771,8 @@ public class FlatNodeGenFactory {
 
         final CodeTreeBuilder builder = method.createBuilder();
 
-        builder.declaration(context.getType(ReentrantLock.class), "lock", "getLock()");
+        builder.declaration(context.getType(Lock.class), "lock", "getLock()");
+        builder.declaration(context.getType(boolean.class), "hasLock", "true");
         builder.statement("lock.lock()");
         builder.startTryBlock();
 
@@ -791,7 +792,9 @@ public class FlatNodeGenFactory {
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
         builder.end().startFinallyBlock();
+        builder.startIf().string("hasLock").end().startBlock();
         builder.statement("lock.unlock()");
+        builder.end();
         builder.end();
 
         return method;
@@ -1700,8 +1703,8 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = parent.create();
 
         if (mode.isSlowPath()) {
+            builder.statement("hasLock = false");
             builder.statement("lock.unlock()");
-            builder.startTryBlock();
         }
 
         if (specialization.getMethod() == null) {
@@ -1719,12 +1722,6 @@ public class FlatNodeGenFactory {
                 builder.tree(expectOrCast(specialization.getReturnType().getType(), forType, callTemplateMethod(null, specialization, frameState)));
                 builder.end();
             }
-        }
-
-        if (mode.isSlowPath()) {
-            builder.end().startFinallyBlock();
-            builder.statement("lock.lock()");
-            builder.end();
         }
 
         return createCatchRewriteException(builder, specialization, forType, frameState, builder.build(), mode);
@@ -2485,7 +2482,7 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = parent.create();
         if (!mode.isSlowPath()) {
             // slow path is already locked
-            builder.declaration(context.getType(ReentrantLock.class), "lock", "getLock()");
+            builder.declaration(context.getType(Lock.class), "lock", "getLock()");
             builder.statement("lock.lock()");
             builder.startTryBlock();
         }
