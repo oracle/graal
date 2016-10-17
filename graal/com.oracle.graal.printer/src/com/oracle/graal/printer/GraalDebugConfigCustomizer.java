@@ -31,16 +31,14 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfig;
 import com.oracle.graal.debug.DebugConfigCustomizer;
 import com.oracle.graal.debug.DebugDumpHandler;
-import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
+import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.util.GraphUtil;
@@ -48,8 +46,6 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
-    private static long dumpIgvTimestamp;
-    private static final AtomicInteger dumpIgvId = new AtomicInteger();
 
     @Override
     public void customize(DebugConfig config) {
@@ -91,13 +87,8 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
     }
 
     private static CanonicalStringGraphPrinter createStringPrinter() {
-        // If this is the first time I have constructed a FilePrinterPath,
-        // get a time stamp in a (weak) attempt to make unique file names.
-        if (dumpIgvTimestamp == 0) {
-            dumpIgvTimestamp = System.currentTimeMillis();
-        }
         // Construct the path to the directory.
-        Path path = Paths.get(Options.DumpPath.getValue(), "graph-strings-" + dumpIgvTimestamp + "_" + dumpIgvId.incrementAndGet());
+        Path path = Options.PrintCanonicalGraphStringsDirectory.getPath();
         return new CanonicalStringGraphPrinter(path);
     }
 
@@ -126,15 +117,8 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
     }
 
     private static Path getFilePrinterPath() {
-        // If this is the first time I have constructed a FilePrinterPath,
-        // get a time stamp in a (weak) attempt to make unique file names.
-        if (dumpIgvTimestamp == 0) {
-            dumpIgvTimestamp = System.currentTimeMillis();
-        }
-        // Encode the kind of the file in the extension.
-        final String ext = (Options.PrintBinaryGraphs.getValue() ? ".bgv" : ".gv.xml");
         // Construct the path to the file.
-        return Paths.get(Options.DumpPath.getValue(), "runtime-graphs-" + dumpIgvTimestamp + "_" + dumpIgvId.incrementAndGet() + ext);
+        return Options.PrintIdealGraphFileName.getPath();
     }
 
     private static GraphPrinter createFilePrinter() throws IOException {
