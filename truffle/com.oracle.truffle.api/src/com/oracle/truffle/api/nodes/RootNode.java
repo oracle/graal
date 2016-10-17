@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
