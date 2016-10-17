@@ -31,11 +31,21 @@ package com.oracle.truffle.llvm.parser.base.model.enums;
 
 public enum Visibility {
 
-    DEFAULT,
-    HIDDEN,
-    PROTECTED;
+    DEFAULT("default"),
+    HIDDEN("hidden"),
+    PROTECTED("protected");
+
+    private final String irString;
+
+    Visibility(String irString) {
+        this.irString = irString;
+    }
 
     public static Visibility decode(long value) {
         return values()[(int) value];
+    }
+
+    public String getIrString() {
+        return irString;
     }
 }
