@@ -1703,8 +1703,8 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = parent.create();
 
         if (mode.isSlowPath()) {
-            builder.statement("hasLock = false");
             builder.statement("lock.unlock()");
+            builder.statement("hasLock = false");
         }
 
         if (specialization.getMethod() == null) {
