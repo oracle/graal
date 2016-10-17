@@ -28,11 +28,9 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.graal.bytecode.BytecodeDisassembler;
 import com.oracle.graal.code.CompilationResult;
@@ -234,14 +232,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         }
     }
 
-    private static long timestamp;
-    private static final AtomicInteger uniqueId = new AtomicInteger();
-
     private static Path getCFGPath() {
-        if (timestamp == 0) {
-            timestamp = System.currentTimeMillis();
-        }
-        return Paths.get(Options.DumpPath.getValue(), "compilations-" + timestamp + "_" + uniqueId.incrementAndGet() + ".cfg");
+        return Options.PrintCFGFileName.getPath();
     }
 
     /** Lazy initialization to delay service lookup until disassembler is actually needed. */

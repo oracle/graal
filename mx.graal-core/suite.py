@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.46.0",
+  "mxversion" : "5.48.0",
   "name" : "graal-core",
 
   "imports" : {
@@ -8,7 +8,7 @@ suite = {
         "name" : "truffle",
         # IMPORTANT: When updating the Truffle import, notify Truffle language developers
         # (by mail to graal-dev@openjdk.java.net) of the pending change.
-        "version" : "130ab7717d1869b021bdeb6a5f5bbf2ef5a7b9b6",
+        "version" : "ca21972635d350fcce90f1934d5882e144621d18",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},

@@ -176,6 +176,11 @@ public abstract class LoopFragment {
 
     protected static NodeBitMap computeNodes(Graph graph, Iterable<AbstractBeginNode> blocks, Iterable<LoopExitNode> earlyExits) {
         final NodeBitMap nodes = graph.createNodeBitMap();
+        computeNodes(nodes, graph, blocks, earlyExits);
+        return nodes;
+    }
+
+    protected static void computeNodes(NodeBitMap nodes, Graph graph, Iterable<AbstractBeginNode> blocks, Iterable<LoopExitNode> earlyExits) {
         for (AbstractBeginNode b : blocks) {
             if (b.isDeleted()) {
                 continue;
@@ -227,8 +232,6 @@ public abstract class LoopFragment {
                 }
             }
         }
-
-        return nodes;
     }
 
     private static boolean markFloating(Node n, NodeBitMap loopNodes, NodeBitMap notloopNodes) {
@@ -358,7 +361,7 @@ public abstract class LoopFragment {
                  * VirtualState nodes contained in the old exit's state may be shared by other
                  * dominated VirtualStates. Those dominated virtual states need to see the
                  * proxy->phi update that are applied below.
-                 * 
+                 *
                  * We now update the original fragment's nodes accordingly:
                  */
                 originalExitState.applyToVirtual(node -> original.nodes.clearAndGrow(node));

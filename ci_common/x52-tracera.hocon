@@ -16,3 +16,18 @@ builds += [
   ${x52.tracera} ${bench-specjbb2015}         { name: "bench-specjbb2015-linux-x52-tracera" }
   ${x52.tracera} ${bench-micros-graal}        { name: "bench-jmh-micros-graal-linux-x52-tracera" }
 ]
+
+x52.tracera-bu: ${x52.default} {
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}"-tracera-bu"
+  }
+}
+
+builds += [
+  ${x52.tracera-bu} ${bench-dacapo}                      { targets : [weekly, bench], name: "bench-dacapo-linux-x52-tracera-bu" }
+  ${x52.tracera-bu} ${bench-dacapo-timing}               { targets : [weekly, bench], name: "bench-dacapo-timing-linux-x52-tracera-bu" }
+  ${x52.tracera-bu} ${bench-dacapo-move-profiling}       { targets : [weekly, bench], name: "bench-dacapo-move-profiling-linux-x52-tracera-bu" }
+  ${x52.tracera-bu} ${bench-scala-dacapo}                { targets : [weekly, bench], name: "bench-scala-dacapo-linux-x52-tracera-bu" }
+  ${x52.tracera-bu} ${bench-scala-dacapo-timing}         { targets : [weekly, bench], name: "bench-scala-dacapo-timing-linux-x52-tracera-bu" }
+  ${x52.tracera-bu} ${bench-scala-dacapo-move-profiling} { targets : [weekly, bench], name: "bench-scala-dacapo-move-profiling-linux-x52-tracera-bu" }
+]

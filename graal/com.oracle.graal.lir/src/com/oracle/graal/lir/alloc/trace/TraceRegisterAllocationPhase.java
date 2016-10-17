@@ -87,7 +87,7 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         // currently this is not supported
         boolean neverSpillConstant = false;
 
-        final TraceRegisterAllocationPolicy plan = DefaultTraceRegisterAllocationPolicy.defaultAllocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots,
+        final TraceRegisterAllocationPolicy plan = DefaultTraceRegisterAllocationPolicy.allocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots,
                         resultTraces, neverSpillConstant);
 
         Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");

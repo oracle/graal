@@ -99,9 +99,9 @@ public class WriteBarrierSnippets implements Snippets {
 
     private static final SnippetCounter.Group countersWriteBarriers = SnippetCounters.getValue() ? new SnippetCounter.Group("WriteBarriers") : null;
     private static final SnippetCounter serialWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialWriteBarrier", "Number of Serial Write Barriers");
-    private static final SnippetCounter g1AttemptedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPreWriteBarrier", "Number of G1 attempted Pre Write Barriers");
-    private static final SnippetCounter g1EffectivePreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectivePreWriteBarrier", "Number of G1 effective Pre Write Barriers");
-    private static final SnippetCounter g1ExecutedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1ExecutedPreWriteBarrier", "Number of G1 executed Pre Write Barriers");
+    private static final SnippetCounter g1AttemptedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPreWriteBarrier", "Number of attempted G1 Pre Write Barriers");
+    private static final SnippetCounter g1EffectivePreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectivePreWriteBarrier", "Number of effective G1 Pre Write Barriers");
+    private static final SnippetCounter g1ExecutedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1ExecutedPreWriteBarrier", "Number of executed G1 Pre Write Barriers");
     private static final SnippetCounter g1AttemptedPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPostWriteBarrier", "Number of attempted G1 Post Write Barriers");
     private static final SnippetCounter g1EffectiveAfterXORPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectiveAfterXORPostWriteBarrier",
                     "Number of effective G1 Post Write Barriers (after passing the XOR test)");
@@ -169,9 +169,6 @@ public class WriteBarrierSnippets implements Snippets {
         Pointer field = Word.fromAddress(address);
         Pointer previousOop = Word.objectToTrackedPointer(fixedExpectedObject);
         byte markingValue = thread.readByte(g1SATBQueueMarkingOffset(INJECTED_VMCONFIG));
-        Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset(INJECTED_VMCONFIG));
-        Word indexAddress = thread.add(g1SATBQueueIndexOffset(INJECTED_VMCONFIG));
-        Word indexValue = indexAddress.readWord(0);
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress(INJECTED_VMCONFIG)).readLong(0);
@@ -199,7 +196,10 @@ public class WriteBarrierSnippets implements Snippets {
                 g1ExecutedPreWriteBarrierCounter.inc();
                 // If the thread-local SATB buffer is full issue a native call which will
                 // initialize a new one and add the entry.
+                Word indexAddress = thread.add(g1SATBQueueIndexOffset(INJECTED_VMCONFIG));
+                Word indexValue = indexAddress.readWord(0);
                 if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
+                    Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset(INJECTED_VMCONFIG));
                     Word nextIndex = indexValue.subtract(wordSize());
                     Word logAddress = bufferAddress.add(nextIndex);
                     // Log the object to be marked as well as update the SATB's buffer next index.
@@ -233,9 +233,6 @@ public class WriteBarrierSnippets implements Snippets {
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
         Pointer writtenValue = Word.objectToTrackedPointer(fixedValue);
-        Word bufferAddress = thread.readWord(g1CardQueueBufferOffset(INJECTED_VMCONFIG));
-        Word indexAddress = thread.add(g1CardQueueIndexOffset(INJECTED_VMCONFIG));
-        Word indexValue = thread.readWord(g1CardQueueIndexOffset(INJECTED_VMCONFIG));
         // The result of the xor reveals whether the installed pointer crosses heap regions.
         // In case it does the write barrier has to be issued.
         Unsigned xorResult = (oop.xor(writtenValue)).unsignedShiftRight(logOfHeapRegionGrainBytes(INJECTED_VMCONFIG));
@@ -272,7 +269,10 @@ public class WriteBarrierSnippets implements Snippets {
 
                         // If the thread local card queue is full, issue a native call which will
                         // initialize a new one and add the card entry.
+                        Word indexAddress = thread.add(g1CardQueueIndexOffset(INJECTED_VMCONFIG));
+                        Word indexValue = thread.readWord(g1CardQueueIndexOffset(INJECTED_VMCONFIG));
                         if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
+                            Word bufferAddress = thread.readWord(g1CardQueueBufferOffset(INJECTED_VMCONFIG));
                             Word nextIndex = indexValue.subtract(wordSize());
                             Word logAddress = bufferAddress.add(nextIndex);
                             // Log the object to be scanned as well as update

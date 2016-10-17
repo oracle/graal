@@ -22,18 +22,10 @@
  */
 package com.oracle.graal.api.replacements;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Objects;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -89,82 +81,6 @@ public interface SnippetReflectionProvider {
      * @return the boxed copy of {@code value}
      */
     JavaConstant forBoxed(JavaKind kind, Object value);
-
-    /**
-     * Resolves a parameter or return type involved in snippet code to a {@link Class}.
-     */
-    static Class<?> resolveClassForSnippet(JavaType type) throws ClassNotFoundException {
-        try {
-            return Class.forName(type.toClassName());
-        } catch (ClassNotFoundException e) {
-            // Support for -XX:-UseJVMCIClassLoader
-            return Class.forName(type.toClassName(), false, ClassLoader.getSystemClassLoader());
-        }
-    }
-
-    /**
-     * Invokes a given method via {@link Method#invoke(Object, Object...)}.
-     */
-    default Object invoke(ResolvedJavaMethod method, Object receiver, Object... args) {
-        try {
-            JavaType[] parameterTypes = method.toParameterTypes();
-            Class<?>[] parameterClasses = new Class<?>[parameterTypes.length];
-            for (int i = 0; i < parameterClasses.length; ++i) {
-                JavaType type = parameterTypes[i];
-                if (type.getJavaKind() != JavaKind.Object) {
-                    parameterClasses[i] = type.getJavaKind().toJavaClass();
-                } else {
-                    parameterClasses[i] = resolveClassForSnippet(parameterTypes[i]);
-                }
-            }
-
-            Class<?> c = resolveClassForSnippet(method.getDeclaringClass());
-            if (method.isConstructor()) {
-                Constructor<?> javaConstructor = c.getDeclaredConstructor(parameterClasses);
-                javaConstructor.setAccessible(true);
-                return javaConstructor.newInstance(args);
-            } else {
-                Method javaMethod = c.getDeclaredMethod(method.getName(), parameterClasses);
-                javaMethod.setAccessible(true);
-                return javaMethod.invoke(receiver, args);
-            }
-        } catch (IllegalAccessException | InstantiationException | InvocationTargetException | ClassNotFoundException | NoSuchMethodException ex) {
-            throw new IllegalArgumentException(ex);
-        }
-    }
-
-    /**
-     * Gets the constant value of this field. Note that a {@code static final} field may not be
-     * considered constant if its declaring class is not yet initialized or if it is a well known
-     * field that can be updated via other means (e.g., {@link System#setOut(java.io.PrintStream)}).
-     *
-     * @param receiver object from which this field's value is to be read. This value is ignored if
-     *            this field is static.
-     * @return the constant value of this field or {@code null} if this field is not considered
-     *         constant by the runtime
-     */
-    default Object readConstantFieldValue(JavaField field, Object receiver) {
-        try {
-            Class<?> c = resolveClassForSnippet(field.getDeclaringClass());
-            Field javaField = c.getDeclaredField(field.getName());
-            javaField.setAccessible(true);
-            return javaField.get(receiver);
-        } catch (IllegalAccessException | ClassNotFoundException | NoSuchFieldException ex) {
-            throw new IllegalArgumentException(ex);
-        }
-    }
-
-    /**
-     * Creates a new array with a given type as the component type and the specified length. This
-     * method is similar to {@link Array#newInstance(Class, int)}.
-     */
-    default Object newArray(ResolvedJavaType componentType, int length) {
-        try {
-            return Array.newInstance(resolveClassForSnippet(componentType), length);
-        } catch (ClassNotFoundException e) {
-            throw new IllegalArgumentException(e);
-        }
-    }
 
     /**
      * Gets the value to bind to an injected parameter in a node intrinsic.
