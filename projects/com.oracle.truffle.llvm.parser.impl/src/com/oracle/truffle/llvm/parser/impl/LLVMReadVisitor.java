@@ -175,7 +175,7 @@ public final class LLVMReadVisitor {
     }
 
     private void visitInsertElementRead(Instruction_insertelement instr) {
-        visitValueRef(instr.getElement().getRef());
+        visitValueRef(instr.getVector().getRef());
         visitValueRef(instr.getIndex().getRef());
         visitValueRef(instr.getElement().getRef());
     }

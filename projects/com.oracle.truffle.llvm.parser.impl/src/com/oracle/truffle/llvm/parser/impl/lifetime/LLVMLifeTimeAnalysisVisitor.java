@@ -287,10 +287,6 @@ public final class LLVMLifeTimeAnalysisVisitor {
                         deadAtBegin.removeAll(in.get(firstInstruction));
                         bbBeginKills.put(bas, deadAtBegin);
                     }
-                    EObject instruction = ((TerminatorInstruction) instr).getInstruction();
-                    if (instruction instanceof Instruction_ret || instruction instanceof Instruction_unreachable) {
-                        kills.put(instr, new HashSet<>(frameDescriptor.getSlots()));
-                    }
                 }
                 kills.put(instr, instructionKills);
             }
