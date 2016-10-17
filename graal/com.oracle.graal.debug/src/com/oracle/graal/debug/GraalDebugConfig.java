@@ -138,7 +138,7 @@ public class GraalDebugConfig implements DebugConfig {
         public static final OptionValue<Boolean> PrintCanonicalGraphStrings = new OptionValue<>(false);
         @Option(help = "Base directory when dumping graphs strings to files.", type = OptionType.Debug)
         public static final UniquePathOptionValue PrintCanonicalGraphStringsDirectory = new UniquePathOptionValue("graph-strings", DumpPath);
-        @Option(help = "Choose format used when dumping canonical text for graphs:" +
+        @Option(help = "Choose format used when dumping canonical text for graphs: " +
                 "0 gives a scheduled graph (better for spotting changes involving the schedule)" +
                 "while 1 gives a CFG containing expressions rooted at fixed nodes (better for spotting small structure differences)", type = OptionType.Debug)
         public static final OptionValue<Integer> PrintCanonicalGraphStringFlavor = new OptionValue<>(0);
@@ -153,11 +153,11 @@ public class GraalDebugConfig implements DebugConfig {
                        "Pattern for scope(s) in which method metering is enabled (see DebugFilter and Debug.metric).", type = OptionType.Debug)
         public static final OptionValue<String> MethodMeter = new OptionValue<>(null);
         @Option(help = "If a global metric (DebugTimer, DebugCounter or DebugMemUseTracker) is enabled in the same scope as a method metric, " +
-                       "use the global metric to update the method metric for the current compilation." +
-                       "This option enables the re-use of global metrics on per-compilation basis." +
+                       "use the global metric to update the method metric for the current compilation. " +
+                       "This option enables the re-use of global metrics on per-compilation basis. " +
                        "Whenever a value is added to a global metric, the value is also added to a MethodMetric under the same name " +
-                       "as the global metric." +
-                       "This option incurs a small but constant overhead due to the context method lookup at each metric update." +
+                       "as the global metric. " +
+                       "This option incurs a small but constant overhead due to the context method lookup at each metric update. " +
                        "Format to specify GlobalMetric interception:(Timers|Counters|MemUseTrackers)(,Timers|,Counters|,MemUseTrackers)*", type = OptionType.Debug)
         public static final OptionValue<String> GlobalMetricsInterceptedByMethodMetrics = new OptionValue<>(null);
         @Option(help = "Force-enable debug code paths", type = OptionType.Debug)

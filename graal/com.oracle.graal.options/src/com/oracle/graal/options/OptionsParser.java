@@ -220,6 +220,9 @@ public class OptionsParser {
         return lines;
     }
 
+    private static final int PROPERTY_LINE_WIDTH = 80;
+    private static final int PROPERTY_HELP_INDENT = 10;
+
     public static void printFlags(ServiceLoader<OptionDescriptors> loader, PrintStream out, Set<String> explicitlyAssigned, String namePrefix) {
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
         for (OptionDescriptors opts : loader) {
@@ -229,43 +232,37 @@ public class OptionsParser {
                 assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
             }
         }
-        int typeWidth = 0;
-        int nameWidth = 0;
-        for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
-            OptionDescriptor desc = e.getValue();
-            String name = namePrefix + e.getKey();
-            Class<?> type = desc.getType();
-            String typeName = desc.getOptionValue() instanceof EnumOptionValue ? "String" : type.getSimpleName();
-            typeWidth = Math.max(typeWidth, typeName.length());
-            nameWidth = Math.max(nameWidth, name.length());
-        }
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             OptionDescriptor desc = e.getValue();
             Object value = desc.getOptionValue().getValue();
+            if (value instanceof String) {
+                value = '"' + String.valueOf(value) + '"';
+            }
             String help = desc.getHelp();
             if (desc.getOptionValue() instanceof EnumOptionValue) {
                 EnumOptionValue<?> eoption = (EnumOptionValue<?>) desc.getOptionValue();
                 String evalues = eoption.getOptionValues().toString();
-                help += "  Valid values are: " + evalues.substring(1, evalues.length() - 1);
+                if (help.length() > 0 && !help.endsWith(".")) {
+                    help += ".";
+                }
+                help += " Valid values are: " + evalues.substring(1, evalues.length() - 1);
             }
             String name = namePrefix + e.getKey();
-            String assign = explicitlyAssigned.contains(name) ? ":=" : " =";
-            String format = "%" + (typeWidth + 1) + "s %-" + (nameWidth + 1) + "s %s %s%n";
-            Class<?> type = desc.getType();
-            String typeName = desc.getOptionValue() instanceof EnumOptionValue ? "String" : type.getSimpleName();
-            if (value instanceof String) {
-                value = '"' + String.valueOf(value) + '"';
+            String assign = explicitlyAssigned.contains(name) ? ":=" : "=";
+            String typeName = desc.getOptionValue() instanceof EnumOptionValue ? "String" : desc.getType().getSimpleName();
+            String linePrefix = String.format("%s %s %s ", name, assign, value);
+            int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
+            int linePad = typeStartPos - linePrefix.length();
+            if (linePad > 0) {
+                out.printf("%s%-" + linePad + "s[%s]%n", linePrefix, "", typeName);
+            } else {
+                out.printf("%s[%s]%n", linePrefix, typeName);
             }
-            out.printf(format, typeName, name, assign, value);
+
             if (help.length() != 0) {
-                /*
-                 * Write any help information aligned with name of the option and wrapped at column
-                 * 70
-                 */
-                List<String> helpLines = wrap(help, 70);
+                List<String> helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
                 for (int i = 0; i < helpLines.size(); i++) {
-                    String helpFormat = "%" + (typeWidth + 1) + "s %s%n";
-                    out.printf(helpFormat, "", helpLines.get(i));
+                    out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", helpLines.get(i));
                 }
             }
         }
