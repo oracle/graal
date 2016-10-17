@@ -2183,7 +2183,12 @@ public class FlatNodeGenFactory {
             int ifCount = 0;
             if (!typeChecks.isEmpty()) {
                 builder.startIf();
-                if (specialization != null) {
+                // TODO we can only conditionally execute type checks if the cast value is not used
+                // later on. if there is a cast then the cast value is going to be used in a method
+                // guard. we should still make this conditional, by making the cast conditional or
+                // inline the cast into method guards that use the cast value.
+                // ideally we could make guards for the fallback one liner.
+                if (specialization != null && typeCasts.isEmpty()) {
                     builder.tree(stateCheck).string(" || ");
                 }
                 builder.tree(typeChecks).end();
@@ -2699,7 +2704,7 @@ public class FlatNodeGenFactory {
             List<ImplicitCastData> sourceTypes = typeSystem.lookupByTargetType(targetType);
             CodeTree valueReference = value.createReference();
             if (sourceTypes.isEmpty()) {
-                checkBuilder.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, value.createReference()));
+                checkBuilder.tree(TypeSystemCodeGenerator.check(typeSystem, targetType, valueReference));
                 castBuilder.tree(TypeSystemCodeGenerator.cast(typeSystem, targetType, valueReference));
             } else {
                 List<SpecializationData> specializations = group.collectSpecializations();
