@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal;
+package micro.benchmarks;
 
 import java.util.Arrays;
 
@@ -31,6 +31,8 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
+
+import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
 
 @State(Scope.Thread)
 public class ArrayDuplicationBenchmark extends GraalBenchmark {

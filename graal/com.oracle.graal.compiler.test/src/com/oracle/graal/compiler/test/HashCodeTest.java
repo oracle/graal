@@ -109,6 +109,11 @@ public class HashCodeTest extends GraalCompilerTest {
     public void test05() {
         StructuredGraph g = buildGraphAfterMidTier("hashCodeNoFoldOverridingSnippet01");
         Assert.assertEquals(1, g.getNodes().filter(InvokeNode.class).count());
+
+        Object nullObject = null;
+        test("hashCodeNoFoldOverridingSnippet01", nullObject);
+        test("hashCodeNoFoldOverridingSnippet01", new Object());
+        test("hashCodeNoFoldOverridingSnippet01", new DontOverrideHashCode());
     }
 
     @Test

@@ -33,8 +33,13 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.LogicConstantNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.extended.LoadHubNode;
+import com.oracle.graal.nodes.extended.LoadMethodNode;
+import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(shortName = "==")
@@ -60,11 +65,42 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
         assert y.stamp() instanceof AbstractPointerStamp;
     }
 
+    /**
+     * Determines if this is a comparison used to determine whether dispatching on a receiver could
+     * select a certain method and if so, returns {@code true} if the answer is guaranteed to be
+     * false. Otherwise, returns {@code false}.
+     */
+    private boolean isAlwaysFailingVirtualDispatchTest(ValueNode forX, ValueNode forY) {
+        if (forY.isConstant()) {
+            if (forX instanceof LoadMethodNode && condition == Condition.EQ) {
+                LoadMethodNode lm = ((LoadMethodNode) forX);
+                if (lm.getMethod().getEncoding().equals(forY.asConstant())) {
+                    if (lm.getHub() instanceof LoadHubNode) {
+                        ValueNode object = ((LoadHubNode) lm.getHub()).getValue();
+                        ResolvedJavaType type = StampTool.typeOrNull(object);
+                        ResolvedJavaType declaringClass = lm.getMethod().getDeclaringClass();
+                        if (type != null && !type.equals(declaringClass) && declaringClass.isAssignableFrom(type)) {
+                            ResolvedJavaMethod override = type.resolveMethod(lm.getMethod(), type);
+                            if (override != null && override != lm.getMethod()) {
+                                assert declaringClass.isAssignableFrom(override.getDeclaringClass());
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         LogicNode result = findSynonym(forX, forY);
         if (result != null) {
             return result;
+        }
+        if (isAlwaysFailingVirtualDispatchTest(forX, forY)) {
+            return LogicConstantNode.contradiction();
         }
         return super.canonical(tool, forX, forY);
     }
