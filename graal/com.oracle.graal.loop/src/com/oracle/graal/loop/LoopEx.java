@@ -294,7 +294,7 @@ public class LoopEx {
         return data;
     }
 
-    public NodeBitMap nodesInLoopBranch(AbstractBeginNode branch) {
+    public void nodesInLoopBranch(NodeBitMap branchNodes, AbstractBeginNode branch) {
         Collection<AbstractBeginNode> blocks = new LinkedList<>();
         Collection<LoopExitNode> exits = new LinkedList<>();
         Queue<Block> work = new LinkedList<>();
@@ -313,7 +313,7 @@ public class LoopEx {
                 }
             }
         }
-        return LoopFragment.computeNodes(branch.graph(), blocks, exits);
+        LoopFragment.computeNodes(branchNodes, branch.graph(), blocks, exits);
     }
 
     public Map<Node, InductionVariable> getInductionVariables() {
