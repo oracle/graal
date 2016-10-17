@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.bc.impl;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -38,13 +37,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMAddressNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMBooleanNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMDoubleNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMFloatNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMIntNuller;
-import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
@@ -63,11 +55,6 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     private final LLVMBitcodeVisitor module;
 
     private final FrameDescriptor frame;
-
-    private final Map<InstructionBlock, List<FrameSlot>> slotsToNullBefore = Collections.emptyMap();
-    private final Map<InstructionBlock, List<FrameSlot>> slotsToNullAfter = Collections.emptyMap();
-
-    private final List<LLVMStackFrameNuller[]> nullers = new ArrayList<>();
 
     private final List<LLVMBasicBlockNode> blocks = new ArrayList<>();
 
@@ -119,10 +106,6 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return blocks.toArray(new LLVMBasicBlockNode[blocks.size()]);
     }
 
-    public int getBlockCount() {
-        return blocks.size();
-    }
-
     public LLVMContext getContext() {
         return module.getContext();
     }
@@ -159,10 +142,6 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return labels;
     }
 
-    public LLVMStackFrameNuller[][] getNullers() {
-        return nullers.toArray(new LLVMStackFrameNuller[0][]);
-    }
-
     public Map<InstructionBlock, List<Phi>> getPhiManager() {
         return phis;
     }
@@ -170,47 +149,6 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     @Override
     public void visit(InstructionBlock block) {
         this.instructions.clear();
-
-        nullers.add(createNullers(slotsToNullBefore.get(block)));
         block.accept(new LLVMBitcodeInstructionVisitor(this, block, factoryFacade));
-        nullers.add(createNullers(slotsToNullAfter.get(block)));
-    }
-
-    private static LLVMStackFrameNuller[] createNullers(List<FrameSlot> slots) {
-        if (slots == null || slots.isEmpty()) {
-            return new LLVMStackFrameNuller[0];
-        }
-        LLVMStackFrameNuller[] nodes = new LLVMStackFrameNuller[slots.size()];
-        int i = 0;
-        for (FrameSlot slot : slots) {
-            switch (slot.getKind()) {
-                case Boolean:
-                    nodes[i++] = new LLVMBooleanNuller(slot);
-                    break;
-                case Byte:
-                    nodes[i++] = new LLVMStackFrameNuller.LLVMByteNuller(slot);
-                    break;
-                case Int:
-                    nodes[i++] = new LLVMIntNuller(slot);
-                    break;
-                case Long:
-                    nodes[i++] = new LLVMLongNuller(slot);
-                    break;
-                case Float:
-                    nodes[i++] = new LLVMFloatNuller(slot);
-                    break;
-                case Double:
-                    nodes[i++] = new LLVMDoubleNuller(slot);
-                    break;
-                case Object:
-                    nodes[i++] = new LLVMAddressNuller(slot);
-                    break;
-                case Illegal:
-                    throw new AssertionError("illegal");
-                default:
-                    throw new AssertionError();
-            }
-        }
-        return nodes;
     }
 }
