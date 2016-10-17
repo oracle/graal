@@ -29,7 +29,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
 @MessageResolution(receiverType = ValidTruffleObject4.class, language = TestTruffleLanguage.class)
-public class ValidTruffleObject4MR {
+class ValidTruffleObject4MR {
     @Resolve(message = "EXECUTE")
     public abstract static class Execute4 extends Node {
 
@@ -39,7 +39,7 @@ public class ValidTruffleObject4MR {
     }
 
     @Resolve(message = "HAS_SIZE")
-    public abstract static class HasSizeNode1 extends Node {
+    public abstract static class HasSizeNode4 extends Node {
 
         protected int access(VirtualFrame frame, Object receiver) {
             return 0;
@@ -47,7 +47,7 @@ public class ValidTruffleObject4MR {
     }
 
     @Resolve(message = "INVOKE")
-    public abstract static class Invoke5 extends Node {
+    public abstract static class Invoke4 extends Node {
 
         protected int access(VirtualFrame frame, ValidTruffleObject0 receiver, String name, Object[] args) {
             return 0;
@@ -55,7 +55,7 @@ public class ValidTruffleObject4MR {
     }
 
     @Resolve(message = "NEW")
-    public abstract static class New extends Node {
+    public abstract static class New4 extends Node {
 
         protected int access(VirtualFrame frame, ValidTruffleObject1 receiver, Object[] args) {
             return 0;
@@ -67,7 +67,7 @@ public class ValidTruffleObject4MR {
     }
 
     @Resolve(message = "READ")
-    public abstract static class ReadNode6 extends Node {
+    public abstract static class ReadNode4 extends Node {
 
         protected Object access(VirtualFrame frame, Object receiver, Object name) {
             return 0;
@@ -75,7 +75,7 @@ public class ValidTruffleObject4MR {
     }
 
     @Resolve(message = "UNBOX")
-    public abstract static class Unbox extends Node {
+    public abstract static class Unbox4 extends Node {
 
         public Object access(VirtualFrame frame, ValidTruffleObject0 object) {
             return 0;
@@ -83,7 +83,7 @@ public class ValidTruffleObject4MR {
     }
 
     @Resolve(message = "WRITE")
-    public abstract static class WriteNode3 extends Node {
+    public abstract static class WriteNode4 extends Node {
 
         protected int access(VirtualFrame frame, Object receiver, Object name, Object value) {
             return 0;
