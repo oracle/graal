@@ -1785,7 +1785,11 @@ public class FlatNodeGenFactory {
                             group.getAllSpecializations().size() == allowedSpecializations.size();
             if ((!group.isEmpty() || specialization != null)) {
                 CodeTree stateCheck = null;
-                if (!stateGuaranteed) {
+                if (stateGuaranteed) {
+                    builder.startAssert();
+                    builder.tree(state.createContains(frameState, specializations));
+                    builder.end();
+                } else {
                     stateCheck = state.createContains(frameState, specializations);
                 }
                 typeChecks = combineTrees(" && ", stateCheck, typeChecks);
@@ -2480,28 +2484,28 @@ public class FlatNodeGenFactory {
     private CodeTree createRemoveThis(CodeTreeBuilder parent, FrameState frameState, ExecutableTypeData forType, SpecializationData specialization, boolean excludeSpecialization,
                     NodeExecutionMode mode) {
         CodeTreeBuilder builder = parent.create();
+
+        // slow path is already locked
         if (!mode.isSlowPath()) {
-            // slow path is already locked
             builder.declaration(context.getType(Lock.class), "lock", "getLock()");
-            builder.statement("lock.lock()");
-            builder.startTryBlock();
         }
+
+        builder.statement("lock.lock()");
+        builder.startTryBlock();
+
         if (excludeSpecialization) {
-            builder.tree(this.exclude.createSet(frameState, Arrays.asList(specialization).toArray(new SpecializationData[0]), true, true));
+            // pass null frame state to ensure values are reloaded.
+            builder.tree(this.exclude.createSet(null, Arrays.asList(specialization).toArray(new SpecializationData[0]), true, true));
         }
 
-        builder.tree((state.createSet(frameState, Arrays.asList(specialization).toArray(new SpecializationData[0]), false, true)));
-        if (
-
-        useSpecializationClass(specialization)) {
+        builder.tree((state.createSet(null, Arrays.asList(specialization).toArray(new SpecializationData[0]), false, true)));
+        if (useSpecializationClass(specialization)) {
             builder.statement("this." + createSpecializationFieldName(specialization) + " = null");
         }
 
-        if (!mode.isSlowPath()) {
-            builder.end().startFinallyBlock();
-            builder.statement("lock.unlock()");
-            builder.end();
-        }
+        builder.end().startFinallyBlock();
+        builder.statement("lock.unlock()");
+        builder.end();
         builder.tree(createCallExecuteAndSpecialize(forType, frameState));
         builder.end();
         return builder.build();
@@ -3044,7 +3048,7 @@ public class FlatNodeGenFactory {
         }
 
         private CodeTree createReference(FrameState frameState) {
-            LocalVariable var = frameState.get(name);
+            LocalVariable var = frameState != null ? frameState.get(name) : null;
             if (var != null) {
                 return var.createReference();
             } else {
