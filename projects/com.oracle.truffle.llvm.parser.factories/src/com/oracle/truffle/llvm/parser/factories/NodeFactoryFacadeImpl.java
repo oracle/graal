@@ -496,7 +496,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
             case Double:
                 return new LLVMDoubleNuller(slot);
             case Object:
-                /**
+                /*
                  * It would be cleaner to not distinguish between the frame slot kinds, and use the
                  * variable type instead. We cannot simply set the object to null, because phis that
                  * have null and other Objects inside escape and are allocated. We set a null

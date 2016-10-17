@@ -62,11 +62,14 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.LLVMType;
+import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.base.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserResultImpl;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMConstantGenerator;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
@@ -75,7 +78,6 @@ import com.oracle.truffle.llvm.parser.factories.LLVMFrameReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMFunctionFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMMemoryReadWriteFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMRootNodeFactory;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -209,69 +211,36 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         return LLVMBlockFactory.createFunctionBlock(visitor.getReturnSlot(), visitor.getBlocks(), slotNullerBeginNodes, slotNullerAfterNodes);
     }
 
-    private static LLVMStackFrameNuller[][] getSlotNuller(FunctionDefinition method, Map<InstructionBlock, FrameSlot[]> slots) {
+    private LLVMStackFrameNuller[][] getSlotNuller(FunctionDefinition method, Map<InstructionBlock, FrameSlot[]> slots) {
         final LLVMStackFrameNuller[][] indexToSlotNuller = new LLVMStackFrameNuller[method.getBlockCount()][];
         for (int j = 0; j < method.getBlockCount(); j++) {
             final InstructionBlock block = method.getBlock(j);
             final FrameSlot[] deadSlots = slots.get(block);
             if (deadSlots != null) {
                 LLVMParserAsserts.assertNoNullElement(deadSlots);
-                indexToSlotNuller[j] = getSlotNullerNode(deadSlots);
+                indexToSlotNuller[j] = getSlotNullerNode(deadSlots, method);
             }
         }
         return indexToSlotNuller;
     }
 
-    private static LLVMStackFrameNuller[] getSlotNullerNode(FrameSlot[] deadSlots) {
+    private LLVMStackFrameNuller[] getSlotNullerNode(FrameSlot[] deadSlots, FunctionDefinition method) {
         if (deadSlots == null) {
             return new LLVMStackFrameNuller[0];
         }
         final LLVMStackFrameNuller[] nullers = new LLVMStackFrameNuller[deadSlots.length];
         int i = 0;
         for (FrameSlot slot : deadSlots) {
-            nullers[i++] = getNullerNode(slot);
+            nullers[i++] = getNullerNode(slot, method);
         }
         LLVMParserAsserts.assertNoNullElement(nullers);
         return nullers;
     }
 
-    private static LLVMStackFrameNuller getNullerNode(FrameSlot slot) {
+    private LLVMStackFrameNuller getNullerNode(FrameSlot slot, FunctionDefinition method) {
         final String identifier = (String) slot.getIdentifier();
-        return createFrameNuller(identifier, slot);
-    }
-
-    private static LLVMStackFrameNuller createFrameNuller(String identifier, FrameSlot slot) {
-        switch (slot.getKind()) {
-            case Boolean:
-                return new LLVMStackFrameNuller.LLVMBooleanNuller(slot);
-            case Byte:
-                return new LLVMStackFrameNuller.LLVMByteNuller(slot);
-            case Int:
-                return new LLVMStackFrameNuller.LLVMIntNuller(slot);
-            case Long:
-                return new LLVMStackFrameNuller.LLVMLongNuller(slot);
-            case Float:
-                return new LLVMStackFrameNuller.LLVMFloatNuller(slot);
-            case Double:
-                return new LLVMStackFrameNuller.LLVMDoubleNuller(slot);
-            case Object:
-                /*
-                 * It would be cleaner to not distinguish between the frame slot kinds, and use the
-                 * variable type instead. We cannot simply set the object to null, because phis that
-                 * have null and other Objects inside escape and are allocated. We set a null
-                 * address here, since other Sulong data types that use Object are implemented
-                 * inefficiently anyway. In the long term, they should have their own stack nuller.
-                 */
-                return new LLVMStackFrameNuller.LLVMAddressNuller(slot);
-            case Illegal:
-                if (LLVMBaseOptionFacade.debugEnabled()) {
-                    LLVMLogger.info("illegal frame slot at stack nuller: " + identifier);
-                }
-                return new LLVMStackFrameNuller.LLVMAddressNuller(slot);
-            default:
-                throw new AssertionError();
-        }
-
+        final LLVMType type = findType(method, identifier);
+        return factoryFacade.createFrameNuller(identifier, type, slot);
     }
 
     private static List<LLVMNode> createParameters(FrameDescriptor frame, FunctionDefinition method) {
@@ -494,7 +463,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         LLVMNode[] afterFunction = new LLVMNode[0];
 
         final SourceSection sourceSection = source.createSection(1);
-        LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(body, beforeFunction, afterFunction, sourceSection, frame, method.getName(), getInitNullers(frame));
+        LLVMFunctionStartNode rootNode = new LLVMFunctionStartNode(body, beforeFunction, afterFunction, sourceSection, frame, method.getName(), getInitNullers(frame, method));
         if (LLVMBaseOptionFacade.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
             System.out.flush();
@@ -510,14 +479,35 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
     /**
      * Initializes the tags of the frame.
      */
-    private LLVMStackFrameNuller[] getInitNullers(FrameDescriptor frameDescriptor) throws AssertionError {
-        List<LLVMStackFrameNuller> initNullers = new ArrayList<>();
+    private LLVMStackFrameNuller[] getInitNullers(FrameDescriptor frameDescriptor, FunctionDefinition method) throws AssertionError {
+        final List<LLVMStackFrameNuller> initNullers = new ArrayList<>();
         for (FrameSlot slot : frameDescriptor.getSlots()) {
-            String identifier = (String) slot.getIdentifier();
-            LLVMType type = null; // TODO?
-            initNullers.add(factoryFacade.createFrameNuller(identifier, type, slot));
+            initNullers.add(getNullerNode(slot, method));
         }
         return initNullers.toArray(new LLVMStackFrameNuller[initNullers.size()]);
+    }
+
+    private static LLVMType findType(FunctionDefinition method, String identifier) {
+        for (int i = 0; i < method.getBlockCount(); i++) {
+            final InstructionBlock block = method.getBlock(i);
+            for (int j = 0; j < block.getInstructionCount(); j++) {
+                final Instruction instruction = block.getInstruction(j);
+                if (instruction.hasName() && ((ValueSymbol) instruction).getName().equals(identifier)) {
+                    return LLVMTypeHelper.getLLVMType(instruction.getType());
+                }
+            }
+        }
+        for (final FunctionParameter functionParameter : method.getParameters()) {
+            if (functionParameter.getName().equals(identifier)) {
+                return LLVMTypeHelper.getLLVMType(functionParameter.getType());
+            }
+        }
+        if (LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID.equals(identifier)) {
+            return LLVMTypeHelper.getLLVMType(method.getReturnType());
+        } else if (LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID.equals(identifier)) {
+            return new LLVMType(LLVMBaseType.ADDRESS);
+        }
+        throw new IllegalStateException("Cannot find Instruction with name: " + identifier);
     }
 
     @Override

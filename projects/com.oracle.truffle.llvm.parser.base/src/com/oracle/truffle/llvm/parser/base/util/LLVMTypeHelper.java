@@ -46,6 +46,8 @@ import com.intel.llvm.ireditor.types.TypeResolver;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
+import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
+import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -152,6 +154,14 @@ public class LLVMTypeHelper {
     }
 
     public static LLVMType getLLVMType(Type type) {
+        if (type instanceof PointerType) {
+            final Type pointeeType = ((PointerType) type).getPointeeType();
+            if (pointeeType instanceof FunctionType) {
+                return new LLVMType(LLVMBaseType.FUNCTION_ADDRESS);
+            } else {
+                return new LLVMType(LLVMBaseType.ADDRESS, getLLVMType(pointeeType));
+            }
+        }
         return new LLVMType(type.getLLVMBaseType());
     }
 
