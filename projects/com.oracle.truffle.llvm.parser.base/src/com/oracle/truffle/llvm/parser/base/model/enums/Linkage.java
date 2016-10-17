@@ -31,26 +31,36 @@ package com.oracle.truffle.llvm.parser.base.model.enums;
 
 public enum Linkage {
 
-    EXTERNAL,
-    WEAK,
-    APPENDING,
-    INTERNAL,
-    LINKONCE,
-    DLL_IMPORT,
-    DLL_EXPORT,
-    EXTERN_WEAK,
-    COMMON,
-    PRIVATE,
-    WEAK_ODR,
-    LINK_ONCE_ODR,
-    AVAILABLE_EXTERNALLY,
-    LINKER_PRIVATE,
-    LINKER_PRIVATE_WEAK,
-    LINK_ONCE_ODR_AUTO_HIDE,
-    UNKNOWN; // TODO: required by LLVM IR Parser, should be removed when no longer needed
+    EXTERNAL("external"),
+    WEAK("weak"),
+    APPENDING("appending"),
+    INTERNAL("internal"),
+    LINKONCE("linkonce"),
+    DLL_IMPORT("dllimport"),
+    DLL_EXPORT("dllexport"),
+    EXTERN_WEAK("extern_weak"),
+    COMMON("common"),
+    PRIVATE("private"),
+    WEAK_ODR("weak_odr"),
+    LINK_ONCE_ODR("linkonce_odr"),
+    AVAILABLE_EXTERNALLY("available_externally"),
+    LINKER_PRIVATE("linker_private"),
+    LINKER_PRIVATE_WEAK("linker_private_weak"),
+    LINK_ONCE_ODR_AUTO_HIDE("linkonce_odr_auto_hide"),
+    UNKNOWN(""); // TODO: required by LLVM IR Parser, should be removed when no longer needed
+
+    private final String irString;
+
+    Linkage(String irString) {
+        this.irString = irString;
+    }
 
     public static Linkage decode(long value) {
         return values()[(int) value];
+    }
+
+    public String getIrString() {
+        return irString;
     }
 
     @Override

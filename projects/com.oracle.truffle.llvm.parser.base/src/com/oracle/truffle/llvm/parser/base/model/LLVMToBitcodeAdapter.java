@@ -314,42 +314,13 @@ public final class LLVMToBitcodeAdapter {
         return new ResolvedVectorType(type.getLength(), elementType);
     }
 
-    public static Linkage resolveLinkage(String linkage) {
-        if (linkage == null) {
-            return Linkage.UNKNOWN;
-        } else if ("private".equals(linkage)) {
-            return Linkage.PRIVATE;
-        } else if ("linker_private".equals(linkage)) {
-            return Linkage.LINKER_PRIVATE;
-        } else if ("linker_private_weak".equals(linkage)) {
-            return Linkage.LINKER_PRIVATE_WEAK;
-        } else if ("internal".equals(linkage)) {
-            return Linkage.INTERNAL;
-        } else if ("available_externally".equals(linkage)) {
-            return Linkage.AVAILABLE_EXTERNALLY;
-        } else if ("linkonce".equals(linkage)) {
-            return Linkage.LINKONCE;
-        } else if ("weak".equals(linkage)) {
-            return Linkage.WEAK;
-        } else if ("common".equals(linkage)) {
-            return Linkage.COMMON;
-        } else if ("appending".equals(linkage)) {
-            return Linkage.APPENDING;
-        } else if ("extern_weak".equals(linkage)) {
-            return Linkage.EXTERN_WEAK;
-        } else if ("linkonce_odr".equals(linkage)) {
-            return Linkage.LINK_ONCE_ODR;
-        } else if ("weak_odr".equals(linkage)) {
-            return Linkage.WEAK_ODR;
-        } else if ("external".equals(linkage)) {
-            return Linkage.EXTERNAL;
-        } else if ("dllimport".equals(linkage)) {
-            return Linkage.DLL_IMPORT;
-        } else if ("dllexport".equals(linkage)) {
-            return Linkage.DLL_EXPORT;
-        } else {
-            throw new AssertionError("Unknown linkage: " + linkage);
+    private static Linkage resolveLinkage(String linkage) {
+        for (final Linkage linkageEnumVal : Linkage.values()) {
+            if (linkageEnumVal.getIrString().equalsIgnoreCase(linkage)) {
+                return linkageEnumVal;
+            }
         }
+        return Linkage.UNKNOWN;
     }
 
     public static GlobalVariable resolveGlobalVariable(LLVMParserRuntime runtime, com.intel.llvm.ireditor.lLVM_IR.GlobalVariable globalVariable) {
