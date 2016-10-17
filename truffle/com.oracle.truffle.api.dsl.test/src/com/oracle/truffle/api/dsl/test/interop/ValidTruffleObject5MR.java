@@ -43,7 +43,7 @@ public class ValidTruffleObject5MR {
     }
 
     @Resolve(message = "INVOKE")
-    public abstract static class Invoke6 extends Node {
+    public abstract static class Invoke5 extends Node {
 
         protected int access(VirtualFrame frame, ValidTruffleObject1 receiver, String name, Object[] args) {
             return 0;
@@ -55,7 +55,7 @@ public class ValidTruffleObject5MR {
     }
 
     @Resolve(message = "NEW")
-    public abstract static class New1 extends Node {
+    public abstract static class New5 extends Node {
 
         protected int access(VirtualFrame frame, ValidTruffleObject0 receiver, Object[] args) {
             return 0;
@@ -63,7 +63,7 @@ public class ValidTruffleObject5MR {
     }
 
     @Resolve(message = "READ")
-    public abstract static class ReadNode7 extends Node {
+    public abstract static class ReadNode5 extends Node {
 
         protected Object access(VirtualFrame frame, ValidTruffleObject1 receiver, Object name) {
             return 0;
@@ -79,7 +79,7 @@ public class ValidTruffleObject5MR {
     }
 
     @Resolve(message = "UNBOX")
-    public abstract static class Unbox2 extends Node {
+    public abstract static class Unbox5 extends Node {
 
         public Object access(VirtualFrame frame, ValidTruffleObject1 object) {
             return 0;
@@ -91,7 +91,7 @@ public class ValidTruffleObject5MR {
     }
 
     @Resolve(message = "WRITE")
-    public abstract static class WriteNode4 extends Node {
+    public abstract static class WriteNode5 extends Node {
 
         protected int access(VirtualFrame frame, ValidTruffleObject0 receiver, Object name, String value) {
             return 0;

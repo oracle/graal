@@ -67,6 +67,8 @@ public @interface MessageResolution {
      * {@link TruffleObject} can use to implement {@link TruffleObject#getForeignAccess()}.
      *
      * @return class of the receiver object
+     *
+     * @since 0.13
      */
     Class<?> receiverType();
 
@@ -74,6 +76,9 @@ public @interface MessageResolution {
      * The language the message implementation belongs to.
      *
      * @return class of the language object
+     *
+     * @since 0.13
      */
     Class<? extends TruffleLanguage<?>> language();
+
 }

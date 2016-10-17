@@ -76,7 +76,8 @@ public final class LanguageCheckGenerator {
 
         appendGeneratedFor(w, "");
         Utils.appendMessagesGeneratedByInformation(w, "", containingForeignAccessFactory.getFullClassName(), ElementUtils.getQualifiedName(element));
-        w.append("public abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
+        Utils.appendVisibilityModifier(w, element);
+        w.append("abstract class ").append(clazzName).append(" extends ").append(userClassName).append(" {\n");
         appendExecuteWithTarget(w);
         appendSpecializations(w);
 
