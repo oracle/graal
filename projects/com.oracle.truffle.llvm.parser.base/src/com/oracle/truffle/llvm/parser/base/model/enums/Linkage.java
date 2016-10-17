@@ -36,17 +36,17 @@ public enum Linkage {
     APPENDING,
     INTERNAL,
     LINKONCE,
-    DLLIMPORT,
-    DLLEXPORT,
+    DLL_IMPORT,
+    DLL_EXPORT,
     EXTERN_WEAK,
     COMMON,
     PRIVATE,
     WEAK_ODR,
-    LINKONCE_ODR,
+    LINK_ONCE_ODR,
     AVAILABLE_EXTERNALLY,
-    LINKERPRIVATE,
-    LINKERPRIVATE_WEAK,
-    LINKONCEODRAUTOHIDE,
+    LINKER_PRIVATE,
+    LINKER_PRIVATE_WEAK,
+    LINK_ONCE_ODR_AUTO_HIDE,
     UNKNOWN; // TODO: required by LLVM IR Parser, should be removed when no longer needed
 
     public static Linkage decode(long value) {

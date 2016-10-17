@@ -320,9 +320,9 @@ public final class LLVMToBitcodeAdapter {
         } else if ("private".equals(linkage)) {
             return Linkage.PRIVATE;
         } else if ("linker_private".equals(linkage)) {
-            return Linkage.LINKERPRIVATE;
+            return Linkage.LINKER_PRIVATE;
         } else if ("linker_private_weak".equals(linkage)) {
-            return Linkage.LINKERPRIVATE_WEAK;
+            return Linkage.LINKER_PRIVATE_WEAK;
         } else if ("internal".equals(linkage)) {
             return Linkage.INTERNAL;
         } else if ("available_externally".equals(linkage)) {
@@ -338,15 +338,15 @@ public final class LLVMToBitcodeAdapter {
         } else if ("extern_weak".equals(linkage)) {
             return Linkage.EXTERN_WEAK;
         } else if ("linkonce_odr".equals(linkage)) {
-            return Linkage.LINKONCE_ODR;
+            return Linkage.LINK_ONCE_ODR;
         } else if ("weak_odr".equals(linkage)) {
             return Linkage.WEAK_ODR;
         } else if ("external".equals(linkage)) {
             return Linkage.EXTERNAL;
         } else if ("dllimport".equals(linkage)) {
-            return Linkage.DLLIMPORT;
+            return Linkage.DLL_IMPORT;
         } else if ("dllexport".equals(linkage)) {
-            return Linkage.DLLEXPORT;
+            return Linkage.DLL_EXPORT;
         } else {
             throw new AssertionError("Unknown linkage: " + linkage);
         }
