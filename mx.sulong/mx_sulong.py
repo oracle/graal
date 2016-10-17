@@ -1115,6 +1115,21 @@ def checkNoHttp(args=None):
                 exit(-1)
             line_number += 1
 
+def dos2unix(args=None):
+    """convert file from DOS to UNIX file format. Functionality equivalent to UNIX command 'dos2unix'"""
+    for fileName in args:
+        if not os.path.isfile(fileName):
+            exit("File '" + fileName + "' does not exists for dos2unix conversion.")
+        inFile = open(fileName, 'r')
+        content = inFile.read()
+        inFile.close()
+        outFileName = fileName + ".tmp"
+        outFile = open(outFileName, 'w')
+        for line in content.splitlines():
+            outFile.write(line + "\n")
+        outFile.close()
+        os.rename(outFileName, fileName)
+
 def genInlineAssemblyParser(args=None, out=None):
     """generate inline assembly parser and scanner if corresponding grammer is new"""
     generatedParserDir = _inlineAssemblySrcDir + _inlineAssemblyPackageName.replace('.', '/')
@@ -1128,7 +1143,7 @@ def genInlineAssemblyParser(args=None, out=None):
         command = [mx.get_jdk(tag='jvmci').java, "-jar", localCocoJarFile, "-package", _inlineAssemblyPackageName, "-o", generatedParserDir, _inlineAssemblyGrammer]
         mx.run(command)
         #Files get generated in Windows file format. Convert them to avoid style check failure during regression testing
-        mx.run(['dos2unix', generatedParserFile, generatedScannerFile])
+        dos2unix([generatedParserFile, generatedScannerFile])
 
 def sulongBuild(args=None):
     """custom build command to wrap inline assembly parser generation"""
