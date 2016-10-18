@@ -47,7 +47,8 @@ import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.test.SubprocessUtil;
 
-import jdk.vm.ci.runtime.services.JVMCICompilerFactory;
+import jdk.vm.ci.runtime.JVMCICompilerFactory;
+import jdk.vm.ci.services.JVMCIServiceLocator;
 
 /**
  * Test lazy initialization of Graal in the context of Truffle. When simply executing Truffle code,
@@ -247,6 +248,10 @@ public class LazyInitializationTest {
 
         if (JVMCICompilerFactory.class.isAssignableFrom(cls)) {
             // The compiler factories have to be loaded and instantiated by the JVMCI.
+            return true;
+        }
+
+        if (JVMCIServiceLocator.class.isAssignableFrom(cls)) {
             return true;
         }
 
