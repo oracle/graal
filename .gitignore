@@ -17,6 +17,7 @@ mx.imports/**
 .idea/**
 build/**
 graal/**
+projects/.project
 projects/*/nbproject/
 projects/*/build.xml
 projects/*/\.settings
