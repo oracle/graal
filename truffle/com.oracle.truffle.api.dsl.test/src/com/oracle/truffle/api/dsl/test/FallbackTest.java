@@ -40,6 +40,7 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback2Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback3Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback4Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback6Factory;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback7Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -242,6 +243,36 @@ public class FallbackTest {
         Object f2(@SuppressWarnings("unused") Object a) {
             throw new FallbackException();
         }
+    }
+
+    @Test
+    public void testFallback7() {
+        TestRootNode<Fallback7> node = createRoot(Fallback7Factory.getInstance());
+        Assert.assertEquals(2, executeWith(node, 1));
+        Assert.assertEquals(2, executeWith(node, "asdf"));
+        Assert.assertEquals(2, executeWith(node, "asdf"));
+    }
+
+    @NodeChild("a")
+    @SuppressWarnings("unused")
+    abstract static class Fallback7 extends ValueNode {
+
+        public abstract Object execute(VirtualFrame frame, Object arg);
+
+        protected boolean guard(int value) {
+            return true;
+        }
+
+        @Specialization(guards = {"guard(arg)"})
+        protected static int access(int arg) {
+            return 2;
+        }
+
+        @Fallback
+        protected static Object access(Object arg) {
+            return 2;
+        }
+
     }
 
 }
