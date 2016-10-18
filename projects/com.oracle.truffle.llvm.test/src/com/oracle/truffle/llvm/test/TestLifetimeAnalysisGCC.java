@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -71,6 +72,11 @@ import com.oracle.truffle.llvm.test.FunctionVisitorIterator.LLVMFunctionVisitor;
 
 @RunWith(Parameterized.class)
 public class TestLifetimeAnalysisGCC extends TestSuiteBase {
+
+    // TODO in the long term we should replace this
+    private static final String[] excludedFiles = new String[]{
+                    "projects/com.oracle.truffle.llvm.test/suites/gcc/gcc-5.2.0/gcc/testsuite/gcc.dg/pr43419.c"
+    };
 
     private static final String FUNCTION_INDENT = "";
     private static final String BEGIN_DEAD_END_INDENT = "\t";
@@ -110,7 +116,39 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         File configFile = LLVMPaths.GCC_TEST_SUITE_CONFIG;
         File testSuite = LLVMPaths.GCC_TEST_SUITE;
         List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(false, true));
-        return files;
+
+        final List<TestCaseFiles[]> filteredFiles = new ArrayList<>();
+        for (int i = 0; i < files.size(); i++) {
+            TestCaseFiles[] testCaseFilesArray = files.get(i);
+            int index = 0;
+            while (index < testCaseFilesArray.length) {
+                if (isExcluded(testCaseFilesArray[index])) {
+                    final TestCaseFiles[] newTestCaseFiles = new TestCaseFiles[testCaseFilesArray.length - 1];
+                    int targetIndex = 0;
+                    for (int j = 0; j < testCaseFilesArray.length; j++) {
+                        if (index != j) {
+                            newTestCaseFiles[targetIndex++] = testCaseFilesArray[j];
+                        }
+                    }
+                    testCaseFilesArray = newTestCaseFiles;
+                } else {
+                    index++;
+                }
+            }
+            if (testCaseFilesArray.length != 0) {
+                filteredFiles.add(testCaseFilesArray);
+            }
+        }
+        return filteredFiles;
+    }
+
+    private static boolean isExcluded(TestCaseFiles testCase) {
+        for (String excludedFilename : excludedFiles) {
+            if (testCase.getOriginalFile().getAbsolutePath().endsWith(excludedFilename)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private enum ParseState {
