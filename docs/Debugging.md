@@ -51,7 +51,7 @@ The `Debug.log` statement will send output to the console if `CodeInstall` is ma
 
 ## JVMCI and Graal specific options
 
-JVMCI and Graal options are specified by the `jvmci.*` and `graal.*` system properties respectively. These must be specified on the JVM command line. Modifications to these properties by application code are not seen by to JVMCI and Graal. A listing of all such properties can be obtained with`-XX:+JVMCIPrintSystemProperties`.
+JVMCI and Graal options are specified by the `jvmci.*` and `graal.*` system properties respectively. These must be specified on the JVM command line. Modifications to these properties by application code are not seen by JVMCI and Graal. A listing of all such properties can be obtained with `-XX:+JVMCIPrintProperties`.
 
 ## Debug Metrics
 Graal supports several types of *debug metrics* to record compiler related metrics.
