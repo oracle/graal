@@ -33,8 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.eclipse.emf.ecore.EObject;
-
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.oracle.truffle.api.CallTarget;
@@ -168,7 +166,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createUndefinedValue(EObject t) {
+    public LLVMExpressionNode createUndefinedValue(Type t) {
         return LLVMLiteralFactory.createUndefinedValue(runtime, t);
     }
 

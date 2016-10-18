@@ -1232,7 +1232,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private LLVMExpressionNode getUndefinedValueNode(EObject type) {
         LLVMBaseType llvmType = getLLVMType(type).getType();
         if (llvmType != LLVMBaseType.ARRAY && llvmType != LLVMBaseType.STRUCT) {
-            return factoryFacade.createUndefinedValue(type);
+            return factoryFacade.createUndefinedValue(LLVMToBitcodeAdapter.resolveType(resolve(type)));
         } else {
             ResolvedType resolvedType = resolve(type);
             int byteSize = typeHelper.getByteSize(resolvedType);
