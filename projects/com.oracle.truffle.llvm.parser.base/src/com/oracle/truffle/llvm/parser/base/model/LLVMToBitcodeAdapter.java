@@ -333,7 +333,6 @@ public final class LLVMToBitcodeAdapter {
 
         GlobalVariable glob = GlobalVariable.create(type, 0, align, linkage != null ? linkage.ordinal() : 0);
         glob.setName(globalVariable.getName().substring(1));
-        // glob.initialise(globalVariable.getInitialValue());
 
         return glob;
     }
