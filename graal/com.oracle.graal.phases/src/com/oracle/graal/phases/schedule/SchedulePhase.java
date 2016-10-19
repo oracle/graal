@@ -351,7 +351,9 @@ public final class SchedulePhase extends Phase {
                 for (ProxyNode proxy : loopExitNode.proxies()) {
                     unprocessed.clear(proxy);
                     ValueNode value = proxy.value();
-                    if (value != null && nodeMap.get(value) == b) {
+                    // if multiple proxies reference the same value, schedule the value of a
+                    // proxy once
+                    if (value != null && nodeMap.get(value) == b && unprocessed.isMarked(value)) {
                         sortIntoList(value, b, result, nodeMap, unprocessed, null);
                     }
                 }
