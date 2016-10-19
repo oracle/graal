@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,22 +30,37 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.Virtualizable;
+import com.oracle.graal.nodes.spi.VirtualizerTool;
+import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
 /**
  * Intrinsic node for materializing a Truffle frame.
  */
-@NodeInfo(nameTemplate = "MaterializeFrame{p#frame/s}", cycles = CYCLES_0, size = SIZE_0)
-public final class MaterializeFrameNode extends FixedWithNextNode implements IterableNodeType {
+@NodeInfo(nameTemplate = "AllowMaterialize{p#frame/s}", cycles = CYCLES_0, size = SIZE_0)
+public final class AllowMaterializeNode extends FixedWithNextNode implements IterableNodeType, Virtualizable {
 
-    public static final NodeClass<MaterializeFrameNode> TYPE = NodeClass.create(MaterializeFrameNode.class);
+    public static final NodeClass<AllowMaterializeNode> TYPE = NodeClass.create(AllowMaterializeNode.class);
     @Input ValueNode frame;
 
-    public MaterializeFrameNode(ValueNode frame) {
+    public AllowMaterializeNode(ValueNode frame) {
         super(TYPE, frame.stamp());
         this.frame = frame;
     }
 
     public ValueNode getFrame() {
         return frame;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        ValueNode alias = tool.getAlias(frame);
+        if (alias instanceof VirtualObjectNode) {
+            VirtualObjectNode virtual = (VirtualObjectNode) alias;
+            tool.setEnsureVirtualized(virtual, false);
+            tool.replaceWithVirtual(virtual);
+        } else {
+            tool.replaceWithValue(alias);
+        }
     }
 }

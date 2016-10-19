@@ -32,7 +32,6 @@ import java.util.List;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.IterableNodeType;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
@@ -40,20 +39,13 @@ import com.oracle.graal.graph.NodeInputList;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
-import com.oracle.graal.nodes.java.StoreFieldNode;
 import com.oracle.graal.nodes.spi.VirtualizableAllocation;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
-import com.oracle.graal.nodes.virtual.LockState;
 import com.oracle.graal.nodes.virtual.VirtualArrayNode;
 import com.oracle.graal.nodes.virtual.VirtualInstanceNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
@@ -146,7 +138,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         ResolvedJavaField primitiveLocalsField = findField(frameFields, "primitiveLocals");
         ResolvedJavaField tagsField = findField(frameFields, "tags");
 
-        this.virtualFrame = graph.add(new VirtualOnlyInstanceNode(frameType, frameFields));
+        this.virtualFrame = graph.add(new VirtualInstanceNode(frameType, frameFields, true));
         this.virtualFrameObjectArray = graph.add(new VirtualArrayNode((ResolvedJavaType) localsField.getType().getComponentType(), frameSlots.length));
         if (primitiveLocalsField != null) {
             this.virtualFramePrimitiveArray = graph.add(new VirtualArrayNode((ResolvedJavaType) primitiveLocalsField.getType().getComponentType(), frameSlots.length));
@@ -183,49 +175,6 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             }
         }
         return null;
-    }
-
-    @NodeInfo
-    public static final class VirtualOnlyInstanceNode extends VirtualInstanceNode {
-
-        public static final NodeClass<VirtualOnlyInstanceNode> TYPE = NodeClass.create(VirtualOnlyInstanceNode.class);
-        protected boolean allowMaterialization;
-
-        public VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
-            super(TYPE, type, fields, true);
-        }
-
-        @Override
-        public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
-            if (allowMaterialization) {
-                return super.getMaterializedRepresentation(fixed, entries, locks);
-            }
-            return getMaterializedRepresentationHelper(this, fixed);
-        }
-
-        public void setAllowMaterialization(boolean b) {
-            this.allowMaterialization = b;
-        }
-    }
-
-    public static ValueNode getMaterializedRepresentationHelper(VirtualObjectNode virtualNode, FixedNode fixed) {
-        if (fixed instanceof MaterializeFrameNode || fixed instanceof AbstractEndNode || fixed instanceof ForceMaterializeNode) {
-            // We need to conservatively assume that a materialization of a virtual frame can also
-            // happen at a merge point.
-            return new AllocatedObjectNode(virtualNode);
-        }
-        String escapeReason;
-        if (fixed instanceof StoreFieldNode) {
-            escapeReason = "Must not store virtual frame object into a field.";
-        } else if (fixed instanceof Invoke) {
-            escapeReason = "Must not pass virtual frame object into an invoke that cannot be inlined.";
-        } else {
-            escapeReason = "Must not let virtual frame object escape at node " + fixed + ".";
-        }
-
-        Throwable exception = new GraalError(escapeReason +
-                        " Insert a call to VirtualFrame.materialize() to convert the instance to a materialized frame object (source position of following stack trace is approximate)");
-        throw GraphUtil.approxSourceException(fixed, exception);
     }
 
     @Override
@@ -277,7 +226,12 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         if (tagsField != null) {
             frameEntryState[frameFieldList.indexOf(tagsField)] = virtualFrameTagArray;
         }
-        tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList(), false);
+        /*
+         * The new frame is created with "ensureVirtualized" enabled, so that it cannot be
+         * materialized. This can only be lifted by a AllowMaterializeNode, which corresponds to a
+         * frame.materialize() call.
+         */
+        tool.createVirtualObject(virtualFrame, frameEntryState, Collections.<MonitorIdNode> emptyList(), true);
         tool.replaceWithVirtual(virtualFrame);
     }
 

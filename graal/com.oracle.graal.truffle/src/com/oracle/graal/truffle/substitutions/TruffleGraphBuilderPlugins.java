@@ -81,8 +81,8 @@ import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
 import com.oracle.graal.truffle.nodes.IsCompilationConstantNode;
 import com.oracle.graal.truffle.nodes.ObjectLocationIdentity;
 import com.oracle.graal.truffle.nodes.asserts.NeverPartOfCompilationNode;
+import com.oracle.graal.truffle.nodes.frame.AllowMaterializeNode;
 import com.oracle.graal.truffle.nodes.frame.ForceMaterializeNode;
-import com.oracle.graal.truffle.nodes.frame.MaterializeFrameNode;
 import com.oracle.graal.truffle.nodes.frame.NewFrameNode;
 import com.oracle.graal.truffle.nodes.frame.VirtualFrameGetNode;
 import com.oracle.graal.truffle.nodes.frame.VirtualFrameIsNode;
@@ -308,7 +308,8 @@ public class TruffleGraphBuilderPlugins {
         r.register1("materialize", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.add(new ForceMaterializeNode(value));
+                AllowMaterializeNode materializedValue = b.append(new AllowMaterializeNode(value));
+                b.add(new ForceMaterializeNode(materializedValue));
                 return true;
             }
         });
@@ -540,7 +541,7 @@ public class TruffleGraphBuilderPlugins {
                     return true;
                 }
 
-                b.addPush(JavaKind.Object, new MaterializeFrameNode(frame));
+                b.addPush(JavaKind.Object, new AllowMaterializeNode(frame));
                 return true;
             }
         });
