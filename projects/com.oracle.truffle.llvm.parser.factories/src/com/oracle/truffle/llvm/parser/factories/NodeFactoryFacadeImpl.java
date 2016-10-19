@@ -456,7 +456,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
         if (!globalVariable.isExtern() && !descriptor.isDeclared()) {
             Type resolvedType = globalVariable.getType();
-            int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
+            int byteSize = runtime.getByteSize(resolvedType);
             LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(nativeStorage, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));

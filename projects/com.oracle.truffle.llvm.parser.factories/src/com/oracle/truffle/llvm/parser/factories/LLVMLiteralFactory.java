@@ -378,7 +378,7 @@ public final class LLVMLiteralFactory {
         int nrElements = arrayValues.size();
         Type elementType = arrayType.getElementType();
         LLVMBaseType llvmElementType = elementType.getLLVMBaseType();
-        int baseTypeSize = runtime.getTypeHelper().getByteSize(elementType);
+        int baseTypeSize = runtime.getByteSize(elementType);
         int size = nrElements * baseTypeSize;
         LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(LLVMToBitcodeAdapter.unresolveType(arrayType), size,
                         runtime.getTypeHelper().getAlignmentByte(arrayType));
