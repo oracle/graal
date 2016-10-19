@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.nodes.ValueNode;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -160,6 +161,23 @@ public class StampTool {
     public static ResolvedJavaType typeOrNull(Stamp stamp) {
         TypeReference type = typeReferenceOrNull(stamp);
         return type == null ? null : type.getType();
+    }
+
+    public static ResolvedJavaType typeOrNull(Stamp stamp, MetaAccessProvider metaAccess) {
+        if (stamp instanceof AbstractObjectStamp && stamp.hasValues()) {
+            AbstractObjectStamp abstractObjectStamp = (AbstractObjectStamp) stamp;
+            ResolvedJavaType type = abstractObjectStamp.type();
+            if (type == null) {
+                return metaAccess.lookupJavaType(Object.class);
+            } else {
+                return type;
+            }
+        }
+        return null;
+    }
+
+    public static ResolvedJavaType typeOrNull(ValueNode node, MetaAccessProvider metaAccess) {
+        return typeOrNull(node.stamp(), metaAccess);
     }
 
     /**

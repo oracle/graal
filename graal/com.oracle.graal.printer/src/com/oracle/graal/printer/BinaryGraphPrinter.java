@@ -178,13 +178,14 @@ public class BinaryGraphPrinter implements GraphPrinter {
                     try {
                         SchedulePhase schedule = new SchedulePhase();
                         schedule.apply(structuredGraph);
+                        scheduleResult = structuredGraph.getLastSchedule();
                     } catch (Throwable t) {
                     }
                 }
 
             }
         }
-        ControlFlowGraph cfg = scheduleResult == null ? null : scheduleResult.getCFG();
+        ControlFlowGraph cfg = scheduleResult == null ? Debug.contextLookup(ControlFlowGraph.class) : scheduleResult.getCFG();
         BlockMap<List<Node>> blockToNodes = scheduleResult == null ? null : scheduleResult.getBlockToNodesMap();
         NodeMap<Block> nodeToBlocks = scheduleResult == null ? null : scheduleResult.getNodeToBlockMap();
         List<Block> blocks = cfg == null ? null : Arrays.asList(cfg.getBlocks());
@@ -481,7 +482,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 try {
                     props.put("probability", cfg.blockFor(node).probability());
                 } catch (Throwable t) {
-                    props.put("probability", t);
+                    props.put("probability", 0.0);
+                    props.put("probability-exception", t);
                 }
             }
             if (nodeToBlocks != null) {
