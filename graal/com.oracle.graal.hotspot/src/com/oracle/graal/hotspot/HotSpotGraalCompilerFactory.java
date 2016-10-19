@@ -168,7 +168,9 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
                 for (Map.Entry<Object, Object> e : savedProps.entrySet()) {
                     String name = (String) e.getKey();
                     if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
-                        if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME) || name.equals(GRAAL_VERSION_PROPERTY_NAME) || name.equals(PROFILE_OPTIONVALUE_PROPERTY_NAME)) {
+                        if (name.equals("graal.PrintFlags") || name.equals("graal.ShowFlags")) {
+                            System.err.println("The " + name + " option has been removed and will be ignored. Use -XX:+JVMCIPrintProperties instead.");
+                        } else if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME) || name.equals(GRAAL_VERSION_PROPERTY_NAME) || name.equals(PROFILE_OPTIONVALUE_PROPERTY_NAME)) {
                             // Ignore well known properties that do not denote an option
                         } else {
                             String value = (String) e.getValue();
