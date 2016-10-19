@@ -249,7 +249,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final Symbol target = call.getCallTarget();
         LLVMExpressionNode result;
         if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@llvm.")) {
-            result = (LLVMExpressionNode) LLVMIntrinsicFactory.create(((ValueSymbol) target).getName(), argNodes, call.getCallType().getArgumentTypes().length, method.getStackSlot());
+            result = (LLVMExpressionNode) factoryFacade.createLLVMIntrinsic(((ValueSymbol) target).getName(), argNodes, call.getCallType());
 
         } else if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@truffle_")) {
             method.addInstruction(factoryFacade.createTruffleIntrinsic(((ValueSymbol) target).getName(), argNodes));

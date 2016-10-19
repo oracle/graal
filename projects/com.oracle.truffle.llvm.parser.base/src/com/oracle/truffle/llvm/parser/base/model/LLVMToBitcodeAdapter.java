@@ -35,6 +35,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
+import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
+import com.intel.llvm.ireditor.lLVM_IR.Parameter;
 import com.intel.llvm.ireditor.types.ResolvedArrayType;
 import com.intel.llvm.ireditor.types.ResolvedFloatingType;
 import com.intel.llvm.ireditor.types.ResolvedFunctionType;
@@ -312,6 +315,28 @@ public final class LLVMToBitcodeAdapter {
     public static ResolvedType unresolveType(VectorType type) {
         ResolvedType elementType = unresolveType(type.getElementType());
         return new ResolvedVectorType(type.getLength(), elementType);
+    }
+
+    public static FunctionDeclaration resolveFunctionDef(LLVMParserRuntime runtime, FunctionDef def) {
+        return resolveFunctionHeader(runtime, def.getHeader());
+    }
+
+    public static FunctionDeclaration resolveFunctionHeader(LLVMParserRuntime runtime, FunctionHeader header) {
+        Type returnType = resolveType(runtime.resolve(header.getRettype()));
+        List<Type> args = new ArrayList<>();
+        boolean hasVararg = false;
+        for (Parameter arg : header.getParameters().getParameters()) {
+            assert !hasVararg; // should be the last element of the parameterlist
+            if (runtime.resolve(arg.getType().getType()).isVararg()) {
+                hasVararg = true;
+            } else {
+                args.add(resolveType(runtime.resolve(arg.getType().getType())));
+            }
+        }
+        FunctionType funcType = new FunctionType(returnType, args.toArray(new Type[args.size()]), hasVararg);
+        FunctionDeclaration funcDecl = new FunctionDeclaration(funcType);
+        funcDecl.setName(header.getName().substring(1));
+        return funcDecl;
     }
 
     private static Linkage resolveLinkage(String linkage) {

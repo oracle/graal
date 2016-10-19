@@ -37,9 +37,9 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 
-import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
-import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -112,7 +112,7 @@ public interface NodeFactoryFacade {
      * @param functionDef the function definition of the function from which the intrinsic is called
      * @return the created intrinsic
      */
-    LLVMNode createLLVMIntrinsic(String functionName, Object[] argNodes, FunctionDef functionDef);
+    LLVMNode createLLVMIntrinsic(String functionName, Object[] argNodes, FunctionType functionDef);
 
     LLVMNode createTruffleIntrinsic(String functionName, LLVMExpressionNode[] argNodes);
 
@@ -279,7 +279,7 @@ public interface NodeFactoryFacade {
      * @return a function root node
      */
     RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor,
-                    FunctionHeader functionHeader);
+                    FunctionDeclaration functionHeader);
 
     /**
      * Returns the index of the first argument of the formal parameter list.

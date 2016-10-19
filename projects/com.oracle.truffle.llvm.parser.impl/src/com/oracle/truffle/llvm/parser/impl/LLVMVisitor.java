@@ -470,7 +470,8 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMExpressionNode block = getFunctionBlockStatements(def);
         LLVMNode[] beforeFunction = formalParameters.toArray(new LLVMNode[formalParameters.size()]);
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
-        RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, sourceFile.createSection(1), frameDescriptor, def.getHeader());
+        RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, sourceFile.createSection(1), frameDescriptor,
+                        LLVMToBitcodeAdapter.resolveFunctionDef(this, def));
         if (LLVMBaseOptionFacade.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }
@@ -657,7 +658,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             FunctionHeader functionHeader = (FunctionHeader) ((GlobalValueRef) callee).getConstant().getRef();
             String functionName = functionHeader.getName();
             if (functionName.startsWith("@llvm.")) {
-                return factoryFacade.createLLVMIntrinsic(functionName, finalArgs, containingFunctionDef);
+                return factoryFacade.createLLVMIntrinsic(functionName, finalArgs, LLVMToBitcodeAdapter.resolveFunctionDef(this, containingFunctionDef));
             } else if (functionName.startsWith("@truffle_")) {
                 LLVMNode truffleIntrinsic = factoryFacade.createTruffleIntrinsic(functionName, finalArgs);
                 if (truffleIntrinsic != null) {
