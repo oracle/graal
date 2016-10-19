@@ -129,7 +129,7 @@ public class TestHelper {
     public static TestCaseFiles compileLLVMIRToLLVMBC(TestCaseFiles caseFile) {
         File llvmBinaryCodeFile = TestHelper.getTempBCFile(caseFile.getBitCodeFile());
         LLVMAssembler.assembleToBitcodeFile(caseFile.getBitCodeFile(), llvmBinaryCodeFile);
-        return TestCaseFiles.createFromCompiledFile(caseFile.getBitCodeFile(), llvmBinaryCodeFile, caseFile.getExpectedResult(), caseFile.getFlags());
+        return TestCaseFiles.createFromCompiledFile(caseFile.getOriginalFile(), llvmBinaryCodeFile, caseFile.getExpectedResult(), caseFile.getFlags());
     }
 
     public static File getTempLLFile(File toBeCompiled, String optionName) {
