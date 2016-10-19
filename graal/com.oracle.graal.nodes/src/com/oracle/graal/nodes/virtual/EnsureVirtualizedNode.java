@@ -32,12 +32,16 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.VerificationError;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.AbstractEndNode;
+import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.java.StoreFieldNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
+import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
@@ -76,7 +80,20 @@ public final class EnsureVirtualizedNode extends FixedWithNextNode implements Vi
     }
 
     public static void ensureVirtualFailure(Node location, Stamp stamp) {
-        Throwable exception = new VerificationError("Object should not be materialized (stamp=%s):", stamp);
+        String additionalReason = "";
+        if (location instanceof FixedWithNextNode && !(location instanceof EnsureVirtualizedNode)) {
+            FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) location;
+            FixedNode next = fixedWithNextNode.next();
+            if (next instanceof StoreFieldNode) {
+                additionalReason = " (must not store virtual object into a field)";
+            } else if (next instanceof Invoke) {
+                additionalReason = " (must not pass virtual object into an invoke that cannot be inlined)";
+            } else {
+                additionalReason = " (must not let virtual object escape at node " + next + ")";
+            }
+        }
+        Throwable exception = new VerificationError("Object of type %s should not be materialized%s:", StampTool.typeOrNull(stamp).getName(), additionalReason);
+
         Node pos;
         if (location instanceof FixedWithNextNode) {
             pos = ((FixedWithNextNode) location).next();
