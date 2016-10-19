@@ -43,6 +43,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalAlias;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalConstant;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
+import com.oracle.truffle.llvm.parser.bc.impl.LLVMLifetimeAnalysis;
 import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.util.EList;
@@ -59,7 +69,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.intel.llvm.ireditor.lLVM_IR.BasicBlock;
-import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -68,7 +77,6 @@ import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
-import com.oracle.truffle.llvm.test.FunctionVisitorIterator.LLVMFunctionVisitor;
 
 @RunWith(Parameterized.class)
 public class TestLifetimeAnalysisGCC extends TestSuiteBase {
@@ -165,10 +173,57 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         try {
             LLVMLogger.info("original file: " + tuple.getOriginalFile());
 
-            FunctionVisitorIterator.visitFunctions(new LLVMFunctionVisitor() {
+            if (LLVMBaseOptionFacade.testBinaryParser()) {
+                final LLVMBitcodeVisitor.BitcodeParserResult parserResult = LLVMBitcodeVisitor.BitcodeParserResult.getFromFile(tuple.getBitCodeFile().getAbsolutePath());
+                parserResult.getModel().accept(new ModelVisitor() {
+                    @Override
+                    public void visit(FunctionDefinition method) {
+                        final String functionName = method.getName();
+                        final LLVMLifetimeAnalysis lifetimes = LLVMLifetimeAnalysis.getResult(method, parserResult.getStackAllocation().getFrame(functionName),
+                                        parserResult.getPhis().getPhiMap(functionName));
 
-                @Override
-                public void visit(FunctionDef def) {
+                        if (LLVMBaseOptionFacade.generateLifetimeReferenceOutput()) {
+                            printStringln(functionName);
+                            printStringln(BEGIN_DEAD);
+                            printInstructionBlockVariables(lifetimes.getNullableBefore());
+                            printStringln(END_DEAD);
+                            printInstructionBlockVariables(lifetimes.getNullableAfter());
+
+                        } else {
+                            LLVMLifeTimeAnalysisResult expected = referenceResults.get(functionName);
+                            assertResultsEqual(functionName, expected, lifetimes);
+                        }
+
+                    }
+
+                    @Override
+                    public void visit(GlobalAlias alias) {
+
+                    }
+
+                    @Override
+                    public void visit(GlobalConstant constant) {
+
+                    }
+
+                    @Override
+                    public void visit(GlobalVariable variable) {
+
+                    }
+
+                    @Override
+                    public void visit(FunctionDeclaration function) {
+
+                    }
+
+                    @Override
+                    public void visit(Type type) {
+
+                    }
+                });
+
+            } else {
+                FunctionVisitorIterator.visitFunctions(def -> {
                     Set<String> writes = LLVMWriteVisitor.visit(def);
                     FrameDescriptor frameDescriptor = new FrameDescriptor();
                     for (String variableName : writes) {
@@ -189,13 +244,72 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
                         LLVMLifeTimeAnalysisResult expected = referenceResults.get(functionName);
                         Assert.assertEquals(functionName, expected, analysisResult);
                     }
-                }
+                }, tuple.getBitCodeFile());
+            }
 
-            }, tuple.getBitCodeFile());
         } catch (Throwable e) {
             recordError(tuple, e);
             throw e;
         }
+    }
+
+    private static void assertResultsEqual(String functionName, LLVMLifeTimeAnalysisResult expected, LLVMLifetimeAnalysis actual) {
+        if (!assertMapsEqual(expected.getBeginDead(), actual.getNullableBefore()) || !assertMapsEqual(expected.getEndDead(), actual.getNullableAfter())) {
+            throw new AssertionError(functionName);
+        }
+    }
+
+    private static boolean assertMapsEqual(Map<BasicBlock, FrameSlot[]> expected, Map<InstructionBlock, FrameSlot[]> actual) {
+        if (expected.size() != actual.size()) {
+            return false;
+        } else if (!getBasicBlockNames(expected).equals(getInstructionBlockNames(actual))) {
+            return false;
+        }
+
+        final Set<InstructionBlock> actualKeySet = actual.keySet();
+        for (BasicBlock expectedBlock : expected.keySet()) {
+            final FrameSlot[] expectedFrameSlots = expected.get(expectedBlock);
+            final FrameSlot[] actualFrameSlots = actual.get(findEquivalentInstructionBlock(expectedBlock, actualKeySet));
+            if (!asStrings(expectedFrameSlots).equals(asStrings(actualFrameSlots))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static Set<String> asStrings(FrameSlot[] frameSlots) {
+        Set<String> frameSlotNames = new HashSet<>();
+        for (FrameSlot slot : frameSlots) {
+            frameSlotNames.add(slot.getIdentifier().toString());
+        }
+        return frameSlotNames;
+    }
+
+    private static InstructionBlock findEquivalentInstructionBlock(BasicBlock basicBlock, Set<InstructionBlock> instructionBlocks) {
+        final String blockName = basicBlock.getName();
+        for (final InstructionBlock instructionBlock : instructionBlocks) {
+            if (instructionBlock.getName().equals(blockName)) {
+                return instructionBlock;
+            }
+        }
+        throw new AssertionError("Cannot find equivalent InstructionBlock: " + basicBlock.getName());
+    }
+
+    private static Set<String> getBasicBlockNames(Map<BasicBlock, FrameSlot[]> blockSlotMap) {
+        final Set<String> basicBlockNames = new HashSet<>();
+        for (BasicBlock b : blockSlotMap.keySet()) {
+            basicBlockNames.add(b.getName());
+        }
+        return basicBlockNames;
+    }
+
+    private static Set<String> getInstructionBlockNames(Map<InstructionBlock, FrameSlot[]> blockSlotMap) {
+        final Set<String> basicBlockNames = new HashSet<>();
+        for (InstructionBlock b : blockSlotMap.keySet()) {
+            basicBlockNames.add(b.getName());
+        }
+        return basicBlockNames;
     }
 
     private static BasicBlock createBasicBlock(String name) {
@@ -431,6 +545,17 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
 
     private void printBasicBlockVariables(Map<BasicBlock, FrameSlot[]> beginDead) {
         for (BasicBlock b : beginDead.keySet()) {
+            printString(BASIC_BLOCK_INDENT + b.getName());
+            for (FrameSlot slot : beginDead.get(b)) {
+                if (slot != null) {
+                    printString(VARIABLE_INDENT + slot.getIdentifier());
+                }
+            }
+        }
+    }
+
+    private void printInstructionBlockVariables(Map<InstructionBlock, FrameSlot[]> beginDead) {
+        for (InstructionBlock b : beginDead.keySet()) {
             printString(BASIC_BLOCK_INDENT + b.getName());
             for (FrameSlot slot : beginDead.get(b)) {
                 if (slot != null) {
