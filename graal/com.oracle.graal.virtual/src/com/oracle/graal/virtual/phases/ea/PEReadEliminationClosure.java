@@ -305,7 +305,10 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 boolean phi = false;
                 for (int i = 1; i < states.size(); i++) {
                     ValueNode otherValue = states.get(i).readCache.get(key);
-                    if (otherValue == null) {
+                    // e.g. unsafe loads / stores with different access kinds have different stamps
+                    // although location, object and offset are the same, in this case we cannot
+                    // create a phi nor can we set a common value
+                    if (otherValue == null || !value.stamp().isCompatible(otherValue.stamp())) {
                         value = null;
                         phi = false;
                         break;
@@ -318,7 +321,9 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                     PhiNode phiNode = getPhi(entry, value.stamp().unrestricted());
                     mergeEffects.addFloatingNode(phiNode, "mergeReadCache");
                     for (int i = 0; i < states.size(); i++) {
-                        setPhiInput(phiNode, i, states.get(i).getReadCache(key.object, key.identity, key.index, PEReadEliminationClosure.this));
+                        ValueNode v = states.get(i).getReadCache(key.object, key.identity, key.index, PEReadEliminationClosure.this);
+                        assert phiNode.stamp().isCompatible(v.stamp()) : "Cannot create read elimination phi for inputs with incompatible stamps.";
+                        setPhiInput(phiNode, i, v);
                     }
                     newState.readCache.put(key, phiNode);
                 } else if (value != null) {
