@@ -54,6 +54,7 @@ import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.intel.llvm.ireditor.types.ResolvedVoidType;
 import com.oracle.truffle.llvm.parser.base.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
@@ -317,8 +318,10 @@ public final class LLVMToBitcodeAdapter {
         return new ResolvedVectorType(type.getLength(), elementType);
     }
 
-    public static FunctionDeclaration resolveFunctionDef(LLVMParserRuntime runtime, FunctionDef def) {
-        return resolveFunctionHeader(runtime, def.getHeader());
+    public static FunctionDefinition resolveFunctionDef(LLVMParserRuntime runtime, FunctionDef def) {
+        FunctionDefinition funcDef = new FunctionDefinition(resolveFunctionHeader(runtime, def.getHeader()), null);
+        funcDef.setName(def.getHeader().getName().substring(1));
+        return funcDef;
     }
 
     public static FunctionDeclaration resolveFunctionHeader(LLVMParserRuntime runtime, FunctionHeader header) {
