@@ -603,7 +603,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         }
         assertTrue(locksSize() == monitorIdCount(), "mismatch in number of locks");
         for (ValueNode value : values) {
-            assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
+            assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes: %s", value);
             assertTrue(value == null || value instanceof VirtualObjectNode || (value.getStackKind() != JavaKind.Void), "unexpected value: %s", value);
         }
         verifyAfterExceptionState();
