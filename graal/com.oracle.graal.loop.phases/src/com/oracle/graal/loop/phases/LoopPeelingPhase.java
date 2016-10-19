@@ -27,25 +27,31 @@ import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopPolicies;
 import com.oracle.graal.loop.LoopsData;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.phases.tiers.PhaseContext;
 
-public class LoopPeelingPhase extends ContextlessLoopPhase<LoopPolicies> {
+public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
     public LoopPeelingPhase(LoopPolicies policies) {
         super(policies);
     }
 
     @Override
-    protected void run(StructuredGraph graph) {
+    @SuppressWarnings("try")
+    protected void run(StructuredGraph graph, PhaseContext context) {
         if (graph.hasLoops()) {
             LoopsData data = new LoopsData(graph);
-            for (LoopEx loop : data.outerFirst()) {
-                if (getPolicies().shouldPeel(loop, data.getCFG())) {
-                    Debug.log("Peeling %s", loop);
-                    LoopTransformations.peel(loop);
-                    Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Peeling %s", loop);
+            try (Debug.Scope s = Debug.scope("peeling", data.getCFG())) {
+                for (LoopEx loop : data.outerFirst()) {
+                    if (getPolicies().shouldPeel(loop, data.getCFG(), context.getMetaAccess())) {
+                        Debug.log("Peeling %s", loop);
+                        LoopTransformations.peel(loop);
+                        Debug.dump(Debug.INFO_LOG_LEVEL, graph, "Peeling %s", loop);
+                    }
                 }
+                data.deleteUnusedNodes();
+            } catch (Throwable t) {
+                throw Debug.handle(t);
             }
-            data.deleteUnusedNodes();
         }
     }
 

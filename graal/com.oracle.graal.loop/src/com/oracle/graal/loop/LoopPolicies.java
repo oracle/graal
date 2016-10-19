@@ -26,9 +26,10 @@ import java.util.List;
 
 import com.oracle.graal.nodes.ControlSplitNode;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public interface LoopPolicies {
-    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg);
+    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess);
 
     boolean shouldFullUnroll(LoopEx loop);
 
