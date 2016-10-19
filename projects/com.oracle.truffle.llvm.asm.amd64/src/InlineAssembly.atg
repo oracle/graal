@@ -83,12 +83,15 @@ MulOperation<> =						(.String op; String left = null, right = null;.)
   )";"									(.factory.createBinaryOperation(op, left, right);.)
   .
 
-DivOperation<> =						(.String op; String left = null, right = null;.)
+DivOperation<> =						(.String op; String left = null;.)
   DivOp<out op>
-  ((Register<out left> "," Register<out right>)
+  ((Register<out left> ["," "%eax"])
   |
-  (Immediate<out left> "," Register<out right>)
-  )";"									(.factory.createBinaryOperation(op, left, right);.)
+  (Immediate<out left> ["," "%eax"])
+  )";"									(.	factory.addFrameSlot("%eax", this.retType);
+											factory.addFrameSlot("%edx", this.retType);
+											factory.createDivisionOperatoin(op, left);
+										.)
   .
 
 IncDecOperation<> =						(.String op; String left = null;.)

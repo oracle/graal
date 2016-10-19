@@ -40,7 +40,6 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64DeclNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64AddlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64AndlNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64IdivNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64ImulNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64OrlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64SallNodeGen;
@@ -49,6 +48,7 @@ import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVM
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64ShrlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64SublNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64XorlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64IdivlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ImmNode;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64InclNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64NotlNodeGen;
@@ -128,9 +128,6 @@ public class AsmFactory {
             case "imull":
                 opNode = LLVMAMD64ImulNodeGen.create(leftNode, rightNode);
                 break;
-            case "idivl":
-                opNode = LLVMAMD64IdivNodeGen.create(leftNode, rightNode);
-                break;
             default:
                 opNode = new LLVMI32UnsupportedInlineAssemblerNode();
                 return;
@@ -158,6 +155,26 @@ public class AsmFactory {
                 return;
         }
         this.statements.add(LLVMWriteI32NodeGen.create(opNode, slot));
+    }
+
+    public void createDivisionOperatoin(String op, String divisor) {
+        FrameSlot slot = frameDescriptor.findFrameSlot(divisor);
+        LLVMI32Node divisorNode = (slot != null) ? LLVMI32ReadNodeGen.create(slot) : getImmediateNode(divisor);
+        LLVMNode statement = new LLVMI32UnsupportedInlineAssemblerNode();
+        LLVMExpressionNode returnNode = new LLVMI32UnsupportedInlineAssemblerNode();
+
+        if (op.equals("idivl")) {
+            FrameSlot eaxSlot = frameDescriptor.findFrameSlot("%eax");
+            LLVMI32Node eaxNode = LLVMI32ReadNodeGen.create(eaxSlot);
+            FrameSlot edxSlot = frameDescriptor.findFrameSlot("%edx");
+            LLVMI32Node edxNode = LLVMI32ReadNodeGen.create(edxSlot);
+            LLVMI32Node divisionNode = LLVMAMD64IdivlNodeGen.create(divisorNode, eaxNode, edxNode);
+            statement = LLVMWriteI32NodeGen.create(divisionNode, eaxSlot);
+            returnNode = LLVMI32ReadNodeGen.create(eaxSlot);
+        }
+        // TODO: Other div instruction shall go here
+        this.statements.add(statement);
+        this.result = returnNode;
     }
 
     protected void addFrameSlot(String reg, LLVMBaseType type) {
