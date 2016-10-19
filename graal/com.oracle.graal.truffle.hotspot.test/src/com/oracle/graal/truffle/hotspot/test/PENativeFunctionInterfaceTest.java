@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle.hotspot.test;
 
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.truffle.test.PartialEvaluationTest;
@@ -59,6 +60,7 @@ public class PENativeFunctionInterfaceTest extends PartialEvaluationTest {
     }
 
     @Test
+    @Ignore
     public void testSqrt() {
         NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
         Assume.assumeTrue("NFI not supported on this platform", nfi != null);
