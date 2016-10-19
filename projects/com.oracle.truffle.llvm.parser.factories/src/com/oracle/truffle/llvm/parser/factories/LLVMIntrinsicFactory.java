@@ -81,7 +81,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.bit.CountTrailingZeroe
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.x86.LLVMX86_64BitVAStart;
-import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -137,9 +137,8 @@ public final class LLVMIntrinsicFactory {
     // The nodes are directly inserted in the current LLVM AST for the moment. To change this later
     // one,
     // reuse the same intrinsic node classes but pass arg read nodes as there arguments.
-    public static LLVMNode create(String functionName, Object[] argNodes, FunctionType functionDef, LLVMParserRuntime runtime) {
-        int argCount = functionDef.getArgumentTypes().length;
-        return create(functionName, argNodes, argCount, runtime.getStackPointerSlot());
+    public static LLVMNode create(FunctionDeclaration declaration, Object[] argNodes, int argCount, LLVMParserRuntime runtime) {
+        return create(declaration.getName(), argNodes, argCount, runtime.getStackPointerSlot());
     }
 
     public static LLVMNode create(String functionName, Object[] argNodes, int argCount, FrameSlot stack) {
