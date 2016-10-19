@@ -49,9 +49,9 @@ try (Scope s = Debug.scope("CodeInstall", method)) {
 
 The `Debug.log` statement will send output to the console if `CodeInstall` is matched by the `graal.Log` system property. The matching logic for this option is described in [DebugFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/DebugFilter.java#L31-L82). As mentioned in the javadoc, the same matching logic also applies to the `graal.Dump`, `graal.Time` and `-Dgraal.Count` system properties.
 
-## Graal specific options
+## JVMCI and Graal specific options
 
-Graal options occupy the `graal.*` namespace in the system properties. These options must be specified on the JVM command line. Modifications to these properties by application code are invisible to Graal. A listing of all Graal options can be obtained by specifying `-Dgraal.PrintFlags=true`.
+JVMCI and Graal options are specified by the `jvmci.*` and `graal.*` system properties respectively. These must be specified on the JVM command line. Modifications to these properties by application code are not seen by JVMCI and Graal. A listing of all such properties can be obtained with `-XX:+JVMCIPrintProperties`.
 
 ## Debug Metrics
 Graal supports several types of *debug metrics* to record compiler related metrics.

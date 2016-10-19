@@ -676,9 +676,6 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if exists(options_file):
         argsPrefix.append('-Dgraal.options.file=' + options_file)
 
-    if '-Dgraal.PrintFlags=true' in args and '-Xcomp' not in args:
-        mx.warn('Using -Dgraal.PrintFlags=true may have no effect without -Xcomp as Graal initialization is lazy')
-
     if isJDK8:
         argsPrefix.append('-Djvmci.class.path.append=' + os.pathsep.join((e.get_path() for e in _jvmci_classpath)))
         argsPrefix.append('-Xbootclasspath/a:' + os.pathsep.join([dep.classpath_repr() for dep in _bootclasspath_appends]))
