@@ -61,8 +61,8 @@ PRODUCTIONS
 InlineAssembly<> =
 										(..)
   "\""
-  (AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<>)
-  {AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<>}
+  (AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<> | DivOperation<>)
+  {AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<> | DivOperation<>}
   "\""
   										(.root = factory.finishInline();.)
   .
@@ -77,6 +77,14 @@ AddSubOperation<> =						(.String op; String left = null, right = null;.)
 
 MulOperation<> =						(.String op; String left = null, right = null;.)
   MulOp<out op>
+  ((Register<out left> "," Register<out right>)
+  |
+  (Immediate<out left> "," Register<out right>)
+  )";"									(.factory.createBinaryOperation(op, left, right);.)
+  .
+
+DivOperation<> =						(.String op; String left = null, right = null;.)
+  DivOp<out op>
   ((Register<out left> "," Register<out right>)
   |
   (Immediate<out left> "," Register<out right>)
@@ -143,7 +151,11 @@ ShiftOp<out String op>					(.op = la.val;.)
 MulOp<out String op>					(.op = la.val;.)
   = "imull"
   .
-  
+
+DivOp<out String op>					(.op = la.val;.)
+  = "idivl"
+  .
+
 MoveOp<out String op>					(.op = la.val;.)
   = "movl"
   .  
