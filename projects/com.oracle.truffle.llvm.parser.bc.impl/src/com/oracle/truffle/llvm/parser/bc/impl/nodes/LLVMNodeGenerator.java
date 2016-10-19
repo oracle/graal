@@ -187,6 +187,9 @@ public final class LLVMNodeGenerator {
 
         final Parser asmParser = new Parser(asmConstant.getAsmExpression(), asmConstant.getAsmFlags(), argNodes, targetType);
         final LLVMInlineAssemblyRootNode assemblyRootNode = asmParser.Parse();
+        if (asmParser.getErrorCount() != 0) {
+            throw new AssertionError("Error while parsing inline assembly expression - " + asmConstant.getAsmExpression());
+        }
         final CallTarget callTarget = Truffle.getRuntime().createCallTarget(assemblyRootNode);
         switch (targetType) {
             case VOID:

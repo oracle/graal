@@ -89,7 +89,8 @@ public class AsmFactory {
 
     public void createBinaryOperation(String operation, String left, String right) {
         FrameSlot leftSlot = frameDescriptor.findFrameSlot(left);
-        FrameSlot rightSlot = frameDescriptor.findFrameSlot(right);
+        String rightOperand = (right == null) ? "%eax" : right;
+        FrameSlot rightSlot = frameDescriptor.findFrameSlot(rightOperand);
         LLVMI32Node leftNode = (leftSlot != null) ? LLVMI32ReadNodeGen.create(leftSlot) : getImmediateNode(left);
         LLVMI32Node rightNode = LLVMI32ReadNodeGen.create(rightSlot);
         this.result = LLVMI32ReadNodeGen.create(rightSlot);

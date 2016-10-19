@@ -63,6 +63,10 @@ public class Parser {
 		errDist = 0;
 	}
 
+	public int getErrorCount(){
+		return errors.count;
+	}
+
 	void Get () {
 		for (;;) {
 			t = la;

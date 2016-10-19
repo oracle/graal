@@ -77,17 +77,18 @@ AddSubOperation<> =						(.String op; String left = null, right = null;.)
 
 MulOperation<> =						(.String op; String left = null, right = null;.)
   MulOp<out op>
-  ((Register<out left> "," Register<out right>)
+  ((Register<out left> ["," Register<out right>])
   |
   (Immediate<out left> "," Register<out right>)
-  )";"									(.factory.createBinaryOperation(op, left, right);.)
+  )";"									(.	if (right == null) {
+												factory.addFrameSlot("%eax", this.retType);
+											}
+											factory.createBinaryOperation(op, left, right);.)
   .
 
 DivOperation<> =						(.String op; String left = null;.)
   DivOp<out op>
   ((Register<out left> ["," "%eax"])
-  |
-  (Immediate<out left> ["," "%eax"])
   )";"									(.	factory.addFrameSlot("%eax", this.retType);
 											factory.addFrameSlot("%edx", this.retType);
 											factory.createDivisionOperatoin(op, left);

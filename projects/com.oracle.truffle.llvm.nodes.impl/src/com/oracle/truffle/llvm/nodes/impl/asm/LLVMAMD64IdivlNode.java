@@ -39,7 +39,8 @@ public abstract class LLVMAMD64IdivlNode extends LLVMI32Node {
 
     @Specialization
     public int executeI32(int left, int rightAX, int rightDX) {
-        long divident = rightDX << 32;
+        final int registerBits = 32;
+        long divident = rightDX << registerBits;
         divident = divident | rightAX;
         return (int) (divident / left);
     }
