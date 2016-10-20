@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import java.util.stream.Collectors;
+
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
@@ -88,5 +90,19 @@ public class ValuePhiNode extends PhiNode implements ArrayLengthProvider {
             }
         }
         return length;
+    }
+
+    @Override
+    public boolean verify() {
+        Stamp s = null;
+        for (ValueNode input : values()) {
+            if (s == null) {
+                s = input.stamp();
+            } else {
+                assertTrue(s.isCompatible(input.stamp()), "Phi Input Stamps are not compatible. Phi:%s inputs:%s", this,
+                                values().stream().map(x -> x.toString() + ":" + x.stamp()).collect(Collectors.joining(", ")));
+            }
+        }
+        return super.verify();
     }
 }
