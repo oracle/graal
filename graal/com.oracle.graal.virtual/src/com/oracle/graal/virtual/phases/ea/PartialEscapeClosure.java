@@ -616,6 +616,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                                     ObjectState obj = states[i].getObjectState(object);
                                     if (obj.isVirtual()) {
                                         Block predecessor = getPredecessor(i);
+                                        if (!ensureVirtual && obj.isVirtual()) {
+                                            // we can materialize if not all inputs are
+                                            // "ensureVirtualized"
+                                            obj.setEnsureVirtualized(false);
+                                        }
                                         materialized |= ensureMaterialized(states[i], object, predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
                                         obj = states[i].getObjectState(object);
                                     }
@@ -796,6 +801,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 PhiNode materializedValuePhi = getPhi(resultObject, StampFactory.forKind(JavaKind.Object));
                 for (int i = 0; i < states.length; i++) {
                     Block predecessor = getPredecessor(i);
+                    if (!ensureVirtual && states[i].getObjectState(virtual).isVirtual()) {
+                        // we can materialize if not all inputs are "ensureVirtualized"
+                        states[i].getObjectState(virtual).setEnsureVirtualized(false);
+                    }
                     ensureMaterialized(states[i], getObject.apply(i), predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_MERGE);
                     setPhiInput(materializedValuePhi, i, states[i].getObjectState(getObject.apply(i)).getMaterializedValue());
                 }
@@ -850,6 +859,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             // determine how many inputs are virtual and if they're all the same virtual object
             int virtualInputs = 0;
             boolean uniqueVirtualObject = true;
+            boolean ensureVirtual = true;
             VirtualObjectNode[] virtualObjs = new VirtualObjectNode[states.length];
             for (int i = 0; i < states.length; i++) {
                 ValueNode alias = getAlias(getPhiValueAt(phi, i));
@@ -865,6 +875,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         if (virtualObjs[0] != alias) {
                             uniqueVirtualObject = false;
                         }
+                        ensureVirtual &= objectState.getEnsureVirtualized();
                         virtualInputs++;
                     }
                 }
@@ -917,11 +928,22 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
             // otherwise: materialize all phi inputs
             boolean materialized = false;
+            if (virtualInputs > 0) {
+                for (int i = 0; i < states.length; i++) {
+                    VirtualObjectNode virtual = virtualObjs[i];
+                    if (virtual != null) {
+                        Block predecessor = getPredecessor(i);
+                        if (!ensureVirtual && states[i].getObjectState(virtual).isVirtual()) {
+                            // we can materialize if not all inputs are "ensureVirtualized"
+                            states[i].getObjectState(virtual).setEnsureVirtualized(false);
+                        }
+                        materialized |= ensureMaterialized(states[i], virtual.getObjectId(), predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_PHI);
+                    }
+                }
+            }
             for (int i = 0; i < states.length; i++) {
                 VirtualObjectNode virtual = virtualObjs[i];
                 if (virtual != null) {
-                    Block predecessor = getPredecessor(i);
-                    materialized |= ensureMaterialized(states[i], virtual.getObjectId(), predecessor.getEndNode(), blockEffects.get(predecessor), COUNTER_MATERIALIZATIONS_PHI);
                     setPhiInput(phi, i, getAliasAndResolve(states[i], virtual));
                 }
             }
