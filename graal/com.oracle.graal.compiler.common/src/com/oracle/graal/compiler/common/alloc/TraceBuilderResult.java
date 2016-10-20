@@ -37,9 +37,9 @@ public final class TraceBuilderResult {
     }
 
     private final ArrayList<Trace> traces;
-    private final int[] blockToTrace;
+    private final Trace[] blockToTrace;
 
-    static TraceBuilderResult create(AbstractBlockBase<?>[] blocks, ArrayList<Trace> traces, int[] blockToTrace, TrivialTracePredicate pred) {
+    static TraceBuilderResult create(AbstractBlockBase<?>[] blocks, ArrayList<Trace> traces, Trace[] blockToTrace, TrivialTracePredicate pred) {
         connect(traces, blockToTrace);
         ArrayList<Trace> newTraces = reorderTraces(traces, blockToTrace, pred);
         TraceBuilderResult traceBuilderResult = new TraceBuilderResult(newTraces, blockToTrace);
@@ -48,20 +48,13 @@ public final class TraceBuilderResult {
         return traceBuilderResult;
     }
 
-    private TraceBuilderResult(ArrayList<Trace> traces, int[] blockToTrace) {
+    private TraceBuilderResult(ArrayList<Trace> traces, Trace[] blockToTrace) {
         this.traces = traces;
         this.blockToTrace = blockToTrace;
     }
 
     public Trace getTraceForBlock(AbstractBlockBase<?> block) {
-        int traceNr = blockToTrace[block.getId()];
-        Trace trace = traces.get(traceNr);
-        assert traceNr == trace.getId() : "Trace number mismatch: " + traceNr + " vs. " + trace.getId();
-        return trace;
-    }
-
-    public Trace traceForBlock(AbstractBlockBase<?> block) {
-        return getTraces().get(blockToTrace[block.getId()]);
+        return blockToTrace[block.getId()];
     }
 
     public ArrayList<Trace> getTraces() {
@@ -140,13 +133,10 @@ public final class TraceBuilderResult {
         for (int i = 0; i < traces.size(); i++) {
             Trace trace = traces.get(i);
             trace.setId(i);
-            for (AbstractBlockBase<?> block : trace.getBlocks()) {
-                blockToTrace[block.getId()] = i;
-            }
         }
     }
 
-    private static void connect(ArrayList<Trace> traces, int[] blockToTrace) {
+    private static void connect(ArrayList<Trace> traces, Trace[] blockToTrace) {
         int numTraces = traces.size();
         for (Trace trace : traces) {
             BitSet added = new BitSet(numTraces);
@@ -155,8 +145,8 @@ public final class TraceBuilderResult {
 
             for (AbstractBlockBase<?> block : trace.getBlocks()) {
                 for (AbstractBlockBase<?> succ : block.getSuccessors()) {
-                    int succId = blockToTrace[succ.getId()];
-                    Trace succTrace = traces.get(succId);
+                    Trace succTrace = blockToTrace[succ.getId()];
+                    int succId = succTrace.getId();
                     if (!added.get(succId)) {
                         added.set(succId);
                         successors.add(succTrace);
@@ -167,7 +157,7 @@ public final class TraceBuilderResult {
     }
 
     @SuppressWarnings("try")
-    private static ArrayList<Trace> reorderTraces(ArrayList<Trace> traces, int[] blockToTrace, TrivialTracePredicate pred) {
+    private static ArrayList<Trace> reorderTraces(ArrayList<Trace> traces, Trace[] blockToTrace, TrivialTracePredicate pred) {
         if (pred == null) {
             return traces;
         }
@@ -197,8 +187,8 @@ public final class TraceBuilderResult {
         }
     }
 
-    private static int getTraceIndex(Trace trace, int[] blockToTrace) {
-        return blockToTrace[trace.getBlocks()[0].getId()];
+    private static int getTraceIndex(Trace trace, Trace[] blockToTrace) {
+        return blockToTrace[trace.getBlocks()[0].getId()].getId();
     }
 
 }

@@ -415,7 +415,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
         private void resolveLocalDataFlow(Trace trace) {
             for (AbstractBlockBase<?> block : trace.getBlocks()) {
                 for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                    if (resultTraces.traceForBlock(pred).equals(trace)) {
+                    if (resultTraces.getTraceForBlock(pred).equals(trace)) {
                         resolveFindInsertPos(pred, block);
                         SSIUtil.forEachValuePair(getLIR(), block, pred, resolveLoopBackEdgeVisitor);
                         moveResolver.resolveAndAppendMoves();
