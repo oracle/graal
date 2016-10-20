@@ -30,6 +30,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -85,7 +86,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.LayoutFactory;
-import java.util.Iterator;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -373,11 +373,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return null;
     }
 
+    @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
     final boolean acceptForCompilation(RootNode rootNode) {
         String includesExcludes = TruffleCompileOnly.getValue();
         if (includesExcludes != null) {
-            // unneccesary method to make findbugs happy
-            if (!compare(cachedIncludesExcludes, includesExcludes)) {
+            if (cachedIncludesExcludes != includesExcludes) {
                 parseCompileOnly();
                 this.cachedIncludesExcludes = includesExcludes;
             }
@@ -403,10 +403,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             }
         }
         return true;
-    }
-
-    private static boolean compare(Object o1, Object o2) {
-        return o1 == o2;
     }
 
     protected void parseCompileOnly() {
