@@ -1132,10 +1132,14 @@ def dos2unix(args=None):
 
 def genInlineAssemblyParser(args=None, out=None):
     """generate inline assembly parser and scanner if corresponding grammer is new"""
-    generatedParserDir = _inlineAssemblySrcDir + _inlineAssemblyPackageName.replace('.', '/')
-    generatedParserFile = generatedParserDir + "/Parser.java"
-    generatedScannerFile = generatedParserDir + "/Scanner.java"
-    if not isfile(generatedParserFile) or not isfile(generatedScannerFile) or os.path.getmtime(_inlineAssemblyGrammer) >= os.path.getmtime(generatedParserFile):
+    generatedParserDir = _inlineAssemblySrcDir + _inlineAssemblyPackageName.replace('.', '/') + "/"
+    generatedFiles = [generatedParserDir + "Parser.java", generatedParserDir + "Scanner.java"]
+    configFiles = [_inlineAssemblySrcDir + "InlineAssembly.atg", _inlineAssemblySrcDir + "Parser.frame", _inlineAssemblySrcDir + "Scanner.frame", _inlineAssemblySrcDir + "Copyright.frame"]
+    isAllGeneratedFilesExists = all([isfile(fileName) for fileName in generatedFiles])
+    latestGeneratedFile = sorted(generatedFiles, key=os.path.getmtime, reverse=True)[0] if isAllGeneratedFilesExists else ""
+    latestConfigFile = sorted(configFiles, key=os.path.getmtime, reverse=True)[0]
+    #If any auto-generated file is missing or any config file is updated after last auto-generation then regenerate the files
+    if not isAllGeneratedFilesExists or os.path.getmtime(latestConfigFile) >= os.path.getmtime(latestGeneratedFile):
         localCocoJarFile = _suite.dir + "/lib/Coco.jar"
         if not isfile(localCocoJarFile):
             jarFileUrls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/Coco.jar"]
@@ -1143,7 +1147,7 @@ def genInlineAssemblyParser(args=None, out=None):
         command = [mx.get_jdk(tag='jvmci').java, "-jar", localCocoJarFile, "-package", _inlineAssemblyPackageName, "-o", generatedParserDir, _inlineAssemblyGrammer]
         mx.run(command)
         #Files get generated in Windows file format. Convert them to avoid style check failure during regression testing
-        dos2unix([generatedParserFile, generatedScannerFile])
+        dos2unix(generatedFiles)
 
 def sulongBuild(args=None):
     """custom build command to wrap inline assembly parser generation"""
