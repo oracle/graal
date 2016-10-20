@@ -33,8 +33,11 @@ import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.DebugVerifyHandler;
 import com.oracle.graal.debug.DelegatingDebugConfig;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.JavaMethodContext;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.TopLevelDebugConfig;
+
+import jdk.vm.ci.meta.JavaMethod;
 
 public final class DebugScope implements Debug.Scope {
 
@@ -56,6 +59,14 @@ public final class DebugScope implements Debug.Scope {
                     parentIndent.printScopeName(str);
                 }
                 str.append(indent).append("[thread:").append(Thread.currentThread().getId()).append("] scope: ").append(getQualifiedName()).append(System.lineSeparator());
+                if (context != null && context.length > 0) {
+                    // Include some context in the scope output
+                    for (Object contextObj : context) {
+                        if (contextObj instanceof JavaMethodContext || contextObj instanceof JavaMethod) {
+                            str.append(indent).append("Context obj ").append(contextObj).append(System.lineSeparator());
+                        }
+                    }
+                }
                 logScopeName = false;
             }
         }
