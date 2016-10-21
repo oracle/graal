@@ -390,10 +390,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     public LLVMNode createInlineAssemblerExpression(String asmExpression, String asmFlags, LLVMExpressionNode[] args, LLVMBaseType retType) {
         Parser asmParser = new Parser(asmExpression, asmFlags, args, retType);
         LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
-        if (asmParser.getErrorCount() != 0) {
-            throw new AssertionError("Error while parsing inline assembly expression - " + asmExpression);
-        }
-
         CallTarget target = Truffle.getRuntime().createCallTarget(assemblyRoot);
         switch (retType) {
             case VOID:

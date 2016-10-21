@@ -53,3 +53,4 @@ supported:
 | decl        |          |
 | incl        |          |
 | imull       |          |
+| idivl       |          |

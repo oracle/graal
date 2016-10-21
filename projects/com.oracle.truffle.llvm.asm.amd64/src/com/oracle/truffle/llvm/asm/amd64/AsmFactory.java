@@ -172,8 +172,11 @@ public class AsmFactory {
             LLVMI32Node divisionNode = LLVMAMD64IdivlNodeGen.create(divisorNode, eaxNode, edxNode);
             statement = LLVMWriteI32NodeGen.create(divisionNode, eaxSlot);
             returnNode = LLVMI32ReadNodeGen.create(eaxSlot);
+        } else {
+            // TODO: Other div instruction shall go here
+            returnNode = new LLVMI32UnsupportedInlineAssemblerNode();
+            statement = returnNode;
         }
-        // TODO: Other div instruction shall go here
         this.statements.add(statement);
         this.result = returnNode;
     }
