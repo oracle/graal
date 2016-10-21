@@ -41,7 +41,7 @@ public final class TraceBuilderResult {
 
     static TraceBuilderResult create(AbstractBlockBase<?>[] blocks, ArrayList<Trace> traces, Trace[] blockToTrace, TrivialTracePredicate pred) {
         connect(traces, blockToTrace);
-        ArrayList<Trace> newTraces = reorderTraces(traces, blockToTrace, pred);
+        ArrayList<Trace> newTraces = reorderTraces(traces, pred);
         TraceBuilderResult traceBuilderResult = new TraceBuilderResult(newTraces, blockToTrace);
         traceBuilderResult.numberTraces();
         assert verify(traceBuilderResult, blocks.length);
@@ -157,38 +157,40 @@ public final class TraceBuilderResult {
     }
 
     @SuppressWarnings("try")
-    private static ArrayList<Trace> reorderTraces(ArrayList<Trace> traces, Trace[] blockToTrace, TrivialTracePredicate pred) {
+    private static ArrayList<Trace> reorderTraces(ArrayList<Trace> oldTraces, TrivialTracePredicate pred) {
         if (pred == null) {
-            return traces;
+            return oldTraces;
         }
         try (Indent indent = Debug.logAndIndent("ReorderTrace")) {
-            ArrayList<Trace> newTraces = new ArrayList<>(traces.size());
-            for (Trace currentTrace : traces) {
-                if (currentTrace != null) {
+            ArrayList<Trace> newTraces = new ArrayList<>(oldTraces.size());
+            for (int oldTraceIdx = 0; oldTraceIdx < oldTraces.size(); oldTraceIdx++) {
+                Trace currentTrace = oldTraces.get(oldTraceIdx);
+                if (!alreadyProcessed(newTraces, currentTrace)) {
+                    assert currentTrace.getId() == oldTraceIdx : "Index mismatch";
                     // add current trace
-                    newTraces.add(currentTrace);
+                    addTrace(newTraces, currentTrace);
                     for (Trace succTrace : currentTrace.getSuccessors()) {
-                        int succTraceIndex = getTraceIndex(succTrace, blockToTrace);
-                        if (getTraceIndex(currentTrace, blockToTrace) < succTraceIndex && pred.isTrivialTrace(succTrace)) {
-                            //
-                            int oldTraceId = succTraceIndex;
-                            int newTraceId = newTraces.size();
-                            Debug.log("Moving trivial trace from %d to %d", oldTraceId, newTraceId);
-                            //
-                            succTrace.setId(newTraceId);
-                            newTraces.add(succTrace);
-                            traces.set(oldTraceId, null);
+                        if (pred.isTrivialTrace(succTrace) && !alreadyProcessed(newTraces, succTrace)) {
+                            Debug.log("Moving trivial trace from %d to %d", succTrace.getId(), newTraces.size());
+                            // add trivial successor trace
+                            addTrace(newTraces, succTrace);
                         }
                     }
                 }
             }
-            assert newTraces.size() == traces.size() : "Lost traces?";
+            assert newTraces.size() == oldTraces.size() : "Lost traces? " + oldTraces.size() + " vs. " + newTraces.size();
             return newTraces;
         }
     }
 
-    private static int getTraceIndex(Trace trace, Trace[] blockToTrace) {
-        return blockToTrace[trace.getBlocks()[0].getId()].getId();
+    private static boolean alreadyProcessed(ArrayList<Trace> newTraces, Trace currentTrace) {
+        int currentTraceId = currentTrace.getId();
+        return currentTraceId < newTraces.size() && currentTrace == newTraces.get(currentTraceId);
+    }
+
+    private static void addTrace(ArrayList<Trace> newTraces, Trace currentTrace) {
+        currentTrace.setId(newTraces.size());
+        newTraces.add(currentTrace);
     }
 
 }
