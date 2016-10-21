@@ -257,7 +257,21 @@ public final class InstructionBlock implements InstructionGenerator, ValueSymbol
 
     @Override
     public void setName(String name) {
-        this.name = "%" + name;
+        // we align the naming to the textparser to make lifetime analysis tests work
+        if (isNumber(name)) {
+            this.name = String.format("%%\"%s\"", name);
+        } else {
+            this.name = String.format("%%%s", name);
+        }
+    }
+
+    private static boolean isNumber(String str) {
+        for (char c : str.toCharArray()) {
+            if (!Character.isDigit(c)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override

@@ -37,11 +37,14 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
@@ -253,63 +256,90 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         }
     }
 
-    private static void assertResultsEqual(String functionName, LLVMLifeTimeAnalysisResult expected, LLVMLifetimeAnalysis actual) {
-        if (!assertMapsEqual(expected.getBeginDead(), actual.getNullableBefore()) || !assertMapsEqual(expected.getEndDead(), actual.getNullableAfter())) {
-            throw new AssertionError(functionName);
+    private void assertResultsEqual(String functionName, LLVMLifeTimeAnalysisResult expected, LLVMLifetimeAnalysis actual) {
+        if (expected == null) {
+            LLVMLogger.unconditionalInfo(String.format("No reference result for test %s", tuple.getBitCodeFile().getAbsolutePath()));
+            return;
+        }
+        final Map<String, Set<String>> expectedBeginDead = getCommonFromBasicBlocks(expected.getBeginDead());
+        final Map<String, Set<String>> actualBeginDead = getCommonFromInstructionBlocks(actual.getNullableBefore());
+        assertMapsEqual(functionName, expectedBeginDead, actualBeginDead);
+
+        final Map<String, Set<String>> expectedEndDead = getCommonFromBasicBlocks(expected.getEndDead());
+        final Map<String, Set<String>> actualEndDead = getCommonFromInstructionBlocks(actual.getNullableAfter());
+        assertMapsEqual(functionName, expectedEndDead, actualEndDead);
+    }
+
+    private static Map<String, Set<String>> getCommonFromBasicBlocks(Map<BasicBlock, FrameSlot[]> original) {
+        final Map<String, Set<String>> commonMap = new HashMap<>(original.size());
+        for (Map.Entry<BasicBlock, FrameSlot[]> entry : original.entrySet()) {
+            final String name = getQuotedName(entry.getKey().getName());
+            final Set<String> slots = getQuotedNames(entry.getValue());
+            commonMap.put(name, slots);
+        }
+        return commonMap;
+    }
+
+    private static Map<String, Set<String>> getCommonFromInstructionBlocks(Map<InstructionBlock, FrameSlot[]> original) {
+        final Map<String, Set<String>> commonMap = new HashMap<>(original.size());
+        for (Map.Entry<InstructionBlock, FrameSlot[]> entry : original.entrySet()) {
+            final String name = getQuotedName(entry.getKey().getName());
+            final Set<String> slots = getQuotedNames(entry.getValue());
+            commonMap.put(name, slots);
+        }
+        return commonMap;
+    }
+
+    private static Set<String> getQuotedNames(FrameSlot[] slots) {
+        return Arrays.stream(slots).map(frameSlot -> getQuotedName((String) frameSlot.getIdentifier())).collect(Collectors.toSet());
+    }
+
+    private static String getQuotedName(String originalName) {
+        // make sure all names are quoted to avoid naming differences between parsers
+        if (originalName.charAt(1) == '"') {
+            return originalName;
+        } else {
+            return String.format("%%\"%s\"", originalName.substring(1));
         }
     }
 
-    private static boolean assertMapsEqual(Map<BasicBlock, FrameSlot[]> expected, Map<InstructionBlock, FrameSlot[]> actual) {
+    private void assertMapsEqual(String functionName, Map<String, Set<String>> expected, Map<String, Set<String>> actual) {
         if (expected.size() != actual.size()) {
-            return false;
-        } else if (!getBasicBlockNames(expected).equals(getInstructionBlockNames(actual))) {
-            return false;
+            throw new AssertionError(buildErrorMessage(functionName, "Different Map Sizes!"));
         }
 
-        final Set<InstructionBlock> actualKeySet = actual.keySet();
-        for (BasicBlock expectedBlock : expected.keySet()) {
-            final FrameSlot[] expectedFrameSlots = expected.get(expectedBlock);
-            final FrameSlot[] actualFrameSlots = actual.get(findEquivalentInstructionBlock(expectedBlock, actualKeySet));
-            if (!asStrings(expectedFrameSlots).equals(asStrings(actualFrameSlots))) {
+        for (final String name : expected.keySet()) {
+            if (!actual.containsKey(name)) {
+                throw new AssertionError(buildErrorMessage(functionName, String.format("Cannot find block %s in %s", name, asString(actual.keySet()))));
+            }
+
+            final Set<String> expectedFrameSlots = expected.get(name);
+            final Set<String> actualFrameSlots = actual.get(name);
+            if (!setsEqual(expectedFrameSlots, actualFrameSlots)) {
+                throw new AssertionError(buildErrorMessage(functionName, String.format("Nullers do not match: should be %s, but are %s", asString(expectedFrameSlots), asString(actualFrameSlots))));
+            }
+        }
+    }
+
+    private static boolean setsEqual(Set<String> expected, Set<String> actual) {
+        for (String expectedString : expected) {
+            if (!actual.contains(expectedString)) {
                 return false;
             }
         }
-
-        return true;
+        return expected.size() == actual.size();
     }
 
-    private static Set<String> asStrings(FrameSlot[] frameSlots) {
-        Set<String> frameSlotNames = new HashSet<>();
-        for (FrameSlot slot : frameSlots) {
-            frameSlotNames.add(slot.getIdentifier().toString());
+    private static String asString(Set<String> names) {
+        final StringJoiner joiner = new StringJoiner(", ", "[", "]");
+        for (final String name : names) {
+            joiner.add(name);
         }
-        return frameSlotNames;
+        return joiner.toString();
     }
 
-    private static InstructionBlock findEquivalentInstructionBlock(BasicBlock basicBlock, Set<InstructionBlock> instructionBlocks) {
-        final String blockName = basicBlock.getName();
-        for (final InstructionBlock instructionBlock : instructionBlocks) {
-            if (instructionBlock.getName().equals(blockName)) {
-                return instructionBlock;
-            }
-        }
-        throw new AssertionError("Cannot find equivalent InstructionBlock: " + basicBlock.getName());
-    }
-
-    private static Set<String> getBasicBlockNames(Map<BasicBlock, FrameSlot[]> blockSlotMap) {
-        final Set<String> basicBlockNames = new HashSet<>();
-        for (BasicBlock b : blockSlotMap.keySet()) {
-            basicBlockNames.add(b.getName());
-        }
-        return basicBlockNames;
-    }
-
-    private static Set<String> getInstructionBlockNames(Map<InstructionBlock, FrameSlot[]> blockSlotMap) {
-        final Set<String> basicBlockNames = new HashSet<>();
-        for (InstructionBlock b : blockSlotMap.keySet()) {
-            basicBlockNames.add(b.getName());
-        }
-        return basicBlockNames;
+    private String buildErrorMessage(String functionName, String message) {
+        return String.format("Error in Function %s in File %s: %s", functionName, tuple.getBitCodeFile().getAbsolutePath(), message);
     }
 
     private static BasicBlock createBasicBlock(String name) {

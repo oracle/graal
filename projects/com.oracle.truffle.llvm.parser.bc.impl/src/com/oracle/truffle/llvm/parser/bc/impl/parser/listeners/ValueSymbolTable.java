@@ -47,15 +47,18 @@ public final class ValueSymbolTable implements ParserListener {
 
         switch (record) {
             case ENTRY:
-                generator.nameEntry((int) args[0], Records.toString(args, 1));
+                final String entryName = Records.toString(args, 1);
+                generator.nameEntry((int) args[0], entryName);
                 break;
 
             case BASIC_BLOCK_ENTRY:
-                generator.nameBlock((int) args[0], Records.toString(args, 1));
+                final String blockName = Records.toString(args, 1);
+                generator.nameBlock((int) args[0], blockName);
                 break;
 
             case FUNCTION_ENTRY:
-                generator.nameFunction((int) args[0], (int) args[1], Records.toString(args, 2));
+                final String functionName = Records.toString(args, 2);
+                generator.nameFunction((int) args[0], (int) args[1], functionName);
                 break;
 
             default:

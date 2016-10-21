@@ -116,8 +116,6 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
 
         for (final InstructionBlock block : blocks) {
             if (block.getName().equals(ValueSymbol.UNKNOWN)) {
-                // compilers like to assign numbers as blocknames, we name unnamed blocks this way
-                // to prevent name clashes
                 block.setName(String.valueOf(symbolIndex++));
             }
             for (int i = 0; i < block.getInstructionCount(); i++) {
