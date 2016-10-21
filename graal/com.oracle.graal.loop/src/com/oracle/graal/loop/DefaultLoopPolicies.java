@@ -34,6 +34,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
+import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.MergeNode;
@@ -42,6 +43,7 @@ import com.oracle.graal.nodes.VirtualState.VirtualClosure;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
+import com.oracle.graal.nodes.java.TypeSwitchNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
@@ -161,7 +163,21 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
         loop.loopBegin().stateAfter().applyToVirtual(stateNodesCount);
         int loopTotal = loop.size() - loop.loopBegin().phis().count() - stateNodesCount.count - 1;
-        int actualDiff = loopTotal - inBranchTotal;
+        int actualDiff = (loopTotal - inBranchTotal);
+        ControlSplitNode firstSplit = controlSplits.get(0);
+        if (firstSplit instanceof TypeSwitchNode) {
+            int copies = firstSplit.successors().count() - 1;
+            for (Node succ : firstSplit.successors()) {
+                Node current = succ;
+                while (current instanceof AbstractBeginNode) {
+                    current = ((AbstractBeginNode) succ).next();
+                }
+                if (current instanceof DeoptimizeNode) {
+                    copies--;
+                }
+            }
+            actualDiff = actualDiff * copies;
+        }
 
         Debug.log("shouldUnswitch(%s, %s) : delta=%d (%.2f%% inside of branches), max=%d, f=%.2f, phis=%d -> %b", loop, controlSplits, actualDiff, (double) (inBranchTotal) / loopTotal * 100, maxDiff,
                         loopFrequency, phis, actualDiff <= maxDiff);
