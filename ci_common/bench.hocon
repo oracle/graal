@@ -90,6 +90,9 @@ bench-specjvm2008: ${bench-common-8} {
   downloads: {
     SPECJVM2008: { name: specjvm2008, version: "1.01" }
   }
+  teardown: [
+    [rm, "-r", "${SPECJVM2008}/results"]
+  ]
   timelimit: "2:50:00"
 }
 
