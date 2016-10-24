@@ -51,14 +51,23 @@ import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVM
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64IdivlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ImmNode;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64InclNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ModNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64NotlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMAddressArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI32ArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode;
+import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressGetElementPtrNodeFactory;
+import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNode.LLVMI32StoreNode;
+import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
+import com.oracle.truffle.llvm.nodes.impl.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMReadNodeFactory.LLVMI32ReadNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNode.LLVMWriteAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNodeFactory.LLVMWriteAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNodeFactory.LLVMWriteI32NodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 
@@ -87,12 +96,6 @@ public class AsmFactory {
 
     public LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
-        switch (retType) {
-            case I32:
-                break;
-            default:
-                result = new LLVMUnsupportedInlineAssemblerNode();
-        }
         return new LLVMInlineAssemblyRootNode(null, frameDescriptor, statements.toArray(new LLVMNode[statements.size()]), arguments, result);
     }
 
@@ -179,14 +182,41 @@ public class AsmFactory {
             FrameSlot edxSlot = frameDescriptor.findFrameSlot("%edx");
             LLVMI32Node edxNode = LLVMI32ReadNodeGen.create(edxSlot);
             LLVMI32Node divisionNode = LLVMAMD64IdivlNodeGen.create(divisorNode, eaxNode, edxNode);
-            statement = LLVMWriteI32NodeGen.create(divisionNode, eaxSlot);
-            returnNode = LLVMI32ReadNodeGen.create(eaxSlot);
+            LLVMI32Node remainderNode = LLVMAMD64ModNodeGen.create(divisorNode, eaxNode, edxNode);
+            FrameSlot quotSlotEax = frameDescriptor.addFrameSlot("quotient");
+            quotSlotEax.setKind(FrameSlotKind.Int);
+            statements.add(LLVMWriteI32NodeGen.create(divisionNode, quotSlotEax));
+
+            if (retType == LLVMBaseType.STRUCT) {
+                FrameSlot remSlotEdx = frameDescriptor.addFrameSlot("remainder");
+                quotSlotEax.setKind(FrameSlotKind.Int);
+                statements.add(LLVMWriteI32NodeGen.create(remainderNode, remSlotEdx));
+
+                LLVMExpressionNode structAllocInstr = LLVMAddressArgNodeGen.create(1);
+                FrameSlot returnValueSlot = frameDescriptor.addFrameSlot("returnValue");
+                returnValueSlot.setKind(FrameSlotKind.Object);
+                LLVMWriteAddressNode writeStructAddress = LLVMWriteAddressNodeGen.create(structAllocInstr, returnValueSlot);
+                statements.add(writeStructAddress);
+
+                LLVMAddressNode readStructAddress = LLVMAddressReadNodeGen.create(returnValueSlot);
+                LLVMAddressNode firstIntAddress = LLVMAddressGetElementPtrNodeFactory.LLVMAddressI32GetElementPtrNodeGen.create(readStructAddress, new LLVMSimpleLiteralNode.LLVMI32LiteralNode(1), 0);
+                LLVMI32StoreNode quotientStoreNode = LLVMI32StoreNodeGen.create(firstIntAddress, divisionNode);
+                statements.add(quotientStoreNode);
+
+                LLVMAddressNode secondIntAddress = LLVMAddressGetElementPtrNodeFactory.LLVMAddressI32GetElementPtrNodeGen.create(readStructAddress, new LLVMSimpleLiteralNode.LLVMI32LiteralNode(1), 4);
+                LLVMI32StoreNode remainderStoreNode = LLVMI32StoreNodeGen.create(secondIntAddress, remainderNode);
+                statements.add(remainderStoreNode);
+                returnNode = readStructAddress;
+            } else {
+                returnNode = LLVMI32ReadNodeGen.create(quotSlotEax);
+            }
         } else {
             // TODO: Other div instruction shall go here
             returnNode = new LLVMI32UnsupportedInlineAssemblerNode();
             statement = returnNode;
+            this.statements.add(statement);
         }
-        this.statements.add(statement);
+
         this.result = returnNode;
     }
 
