@@ -110,10 +110,10 @@ public interface NodeFactoryFacade {
      * @param declaration the function declaration of the function from which the intrinsic is
      *            called
      * @param argNodes the arguments to the intrinsic function
-     * @param argCount number of arguments (could differ from declaration arg count)
+     * @param numberOfExplicitArguments number of explicite arguments passed to function
      * @return the created intrinsic
      */
-    LLVMNode createLLVMIntrinsic(FunctionType declaration, Object[] argNodes, int argCount);
+    LLVMNode createLLVMIntrinsic(FunctionType declaration, Object[] argNodes, int numberOfExplicitArguments);
 
     LLVMNode createTruffleIntrinsic(String functionName, LLVMExpressionNode[] argNodes);
 

@@ -181,8 +181,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMNode createLLVMIntrinsic(FunctionType declaration, Object[] argNodes, int argCount) {
-        return LLVMIntrinsicFactory.create(declaration, argNodes, argCount, runtime);
+    public LLVMNode createLLVMIntrinsic(FunctionType declaration, Object[] argNodes, int numberOfExplicitArguments) {
+        return LLVMIntrinsicFactory.create(declaration, argNodes, numberOfExplicitArguments, runtime);
     }
 
     @Override

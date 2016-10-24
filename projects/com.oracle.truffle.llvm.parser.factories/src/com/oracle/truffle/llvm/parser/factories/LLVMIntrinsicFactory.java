@@ -137,11 +137,11 @@ public final class LLVMIntrinsicFactory {
     // The nodes are directly inserted in the current LLVM AST for the moment. To change this later
     // one,
     // reuse the same intrinsic node classes but pass arg read nodes as there arguments.
-    public static LLVMNode create(FunctionType declaration, Object[] argNodes, int argCount, LLVMParserRuntime runtime) {
-        return create(declaration.getName(), argNodes, argCount, runtime.getStackPointerSlot());
+    public static LLVMNode create(FunctionType declaration, Object[] argNodes, int numberOfExplicitArguments, LLVMParserRuntime runtime) {
+        return create(declaration.getName(), argNodes, numberOfExplicitArguments, runtime.getStackPointerSlot());
     }
 
-    public static LLVMNode create(String functionName, Object[] argNodes, int argCount, FrameSlot stack) {
+    public static LLVMNode create(String functionName, Object[] argNodes, int numberOfExplicitArguments, FrameSlot stack) {
         NodeFactory<? extends LLVMNode> factory = factories.get(functionName);
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
         LLVMAddressNode readStackPointerNode = (LLVMAddressNode) argNodes[0];
@@ -157,11 +157,11 @@ public final class LLVMIntrinsicFactory {
             } else if (functionName.equals("@llvm.frameaddress")) {
                 return LLVMFrameAddressNodeGen.create((LLVMI32Node) realArgNodes[0], stack);
             } else if (functionName.startsWith("@llvm.va_start")) {
-                return new LLVMX86_64BitVAStart(argCount, (LLVMAddressNode) realArgNodes[0]);
+                return new LLVMX86_64BitVAStart(numberOfExplicitArguments, (LLVMAddressNode) realArgNodes[0]);
             } else if (functionName.startsWith("@llvm.va_end")) {
                 return new LLVMX86_64BitVAEnd((LLVMAddressNode) realArgNodes[0]);
             } else if (functionName.startsWith("@llvm.va_copy")) {
-                return LLVMX86_64BitVACopyNodeGen.create((LLVMAddressNode) realArgNodes[0], (LLVMAddressNode) realArgNodes[1], argCount);
+                return LLVMX86_64BitVACopyNodeGen.create((LLVMAddressNode) realArgNodes[0], (LLVMAddressNode) realArgNodes[1], numberOfExplicitArguments);
             } else if (functionName.equals("@llvm.eh.sjlj.longjmp") || functionName.equals("@llvm.eh.sjlj.setjmp")) {
                 throw new LLVMUnsupportedException(UnsupportedReason.SET_JMP_LONG_JMP);
             } else if (functionName.startsWith("@llvm.objectsize.i64")) {
