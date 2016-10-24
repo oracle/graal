@@ -56,13 +56,12 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.ValueInstr
 import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
-import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionGenerator;
 import com.oracle.truffle.llvm.parser.base.model.visitors.FunctionVisitor;
 
-public final class FunctionDefinition extends FunctionType implements Constant, FunctionGenerator, ValueSymbol {
+public final class FunctionDefinition extends FunctionType implements Constant, FunctionGenerator {
 
     private final Symbols symbols = new Symbols();
 
@@ -153,16 +152,6 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
         return Arrays.asList(blocks);
     }
 
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public Type getType() {
-        return new PointerType(super.getType());
-    }
-
     public List<FunctionParameter> getParameters() {
         return parameters;
     }
@@ -184,11 +173,6 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     @Override
     public void nameFunction(int index, int offset, String argName) {
         symbols.setSymbolName(index, argName);
-    }
-
-    @Override
-    public void setName(String name) {
-        this.name = "@" + name;
     }
 
     @Override
