@@ -192,14 +192,6 @@ def travisTestSulong(args=None):
     with Task('TestSulong', tasks) as t:
         if t: runTruffleTestCases()
 
-def travisJRuby(args=None):
-    """executes the JRuby Travis job (Javac build, JRuby test cases)"""
-    tasks = []
-    with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
-    with Task('TestJRuby', tasks) as t:
-        if t: runTestJRuby()
-
 def travisArgon2(args=None):
     """executes the argon2 Travis job (Javac build, argon2 test cases)"""
     tasks = []
@@ -620,32 +612,6 @@ def runCompileTestCases(args=None):
     ensureGCCSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCCompileSuite'])
-
-def runTestJRuby(args=None):
-    """tests that JRuby can use this version of Sulong to compile and run C extensions"""
-    rubyUrl = 'https://github.com/jruby/jruby.git'
-    rubyBranch = 'truffle-head'
-    suitesDir = os.path.abspath(join(_suite.dir, '..'))
-    jrubyDir = join(suitesDir, 'jruby')
-    if os.path.isdir(jrubyDir):
-        mx.run(['git', 'checkout', rubyBranch], cwd=jrubyDir)
-        mx.run(['git', 'pull'], cwd=jrubyDir)
-    else:
-        mx.run(['git', 'clone', rubyUrl], cwd=suitesDir)
-        mx.run(['git', 'checkout', rubyBranch], cwd=jrubyDir)
-    rubyGemsUrl = 'https://github.com/jruby/jruby-truffle-gem-test-pack.git'
-    jrubyGemsDir = join(suitesDir, 'jruby-truffle-gem-test-pack')
-    if os.path.isdir(jrubyGemsDir):
-        mx.run(['git', 'pull'], cwd=jrubyGemsDir)
-    else:
-        mx.run(['git', 'clone', rubyGemsUrl], cwd=suitesDir)
-    os.environ['GRAAL_HOME'] = _suite.dir
-    os.environ['SULONG_HOME'] = _suite.dir
-    os.environ['GEM_HOME'] = jrubyGemsDir + '/gems'
-    mx.run(['ruby', 'tool/jt.rb', 'build'], cwd=jrubyDir)
-    mx.run(['ruby', 'tool/jt.rb', 'build', 'cexts', '--no-openssl'], cwd=jrubyDir)
-    mx.run(['ruby', 'tool/jt.rb', 'test', 'specs', '--graal', ':capi'], cwd=jrubyDir)
-    mx.run(['ruby', 'tool/jt.rb', 'test', 'cexts'], cwd=jrubyDir)
 
 def compileArgon2(main, optimize, cflags=None):
     if cflags is None:
@@ -1169,7 +1135,6 @@ testCases = {
     'tck' : runTckTestCases,
     'asm' : runAsmTestCases,
     'compile' : runCompileTestCases,
-    'jruby' : runTestJRuby,
     'argon2' : runTestArgon2,
     'lifetime' : runLifetimeTestCases,
     'main-arg' : runMainArgTestCases,
@@ -1223,7 +1188,6 @@ mx.update_commands(_suite, {
     'su-travis3' : [travis3, ''],
     'su-travis4' : [travis4, ''],
     'su-travis-sulong' : [travisTestSulong, ''],
-    'su-travis-jruby' : [travisJRuby, ''],
     'su-travis-argon2' : [travisArgon2, ''],
     'su-ecj-strict' : [compileWithEcjStrict, ''],
     'su-basic-checkcode' : [runChecks, ''],

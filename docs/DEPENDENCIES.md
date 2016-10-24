@@ -50,7 +50,7 @@ everything listed in the Travis configuration.
 #### install general dependencies
 
 ```
-sudo pacman -S git mercurial pcre ruby
+sudo pacman -S git mercurial pcre
 ```
 
 #### install gcc-4.6

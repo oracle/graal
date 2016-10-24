@@ -106,7 +106,7 @@ public abstract class LLVMToI64Node extends LLVMI64Node {
         }
 
         @Specialization(guards = "!isLLVMFunctionDescriptor(from)")
-        public long executeRubyString(VirtualFrame frame, TruffleObject from,
+        public long executeUnbox(VirtualFrame frame, TruffleObject from,
                         @Cached("createUnboxNode()") Node unboxNode) {
             try {
                 return (long) ForeignAccess.sendUnbox(unboxNode, frame, from);
