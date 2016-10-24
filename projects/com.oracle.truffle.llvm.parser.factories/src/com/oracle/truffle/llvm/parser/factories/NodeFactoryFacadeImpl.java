@@ -33,10 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.eclipse.emf.ecore.EObject;
-
-import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
-import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -93,8 +89,10 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerN
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
+import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
@@ -168,7 +166,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createUndefinedValue(EObject t) {
+    public LLVMExpressionNode createUndefinedValue(Type t) {
         return LLVMLiteralFactory.createUndefinedValue(runtime, t);
     }
 
@@ -183,8 +181,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMNode createLLVMIntrinsic(String functionName, Object[] argNodes, FunctionDef def) {
-        return LLVMIntrinsicFactory.create(functionName, argNodes, def, runtime);
+    public LLVMNode createLLVMIntrinsic(FunctionType declaration, Object[] argNodes, int numberOfExplicitArguments) {
+        return LLVMIntrinsicFactory.create(declaration, argNodes, numberOfExplicitArguments, runtime);
     }
 
     @Override
@@ -362,14 +360,14 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor,
-                    FunctionHeader functionHeader) {
+                    FunctionDefinition functionHeader) {
         LLVMStackFrameNuller[] nullers = new LLVMStackFrameNuller[frameDescriptor.getSlots().size()];
         int i = 0;
         for (FrameSlot slot : frameDescriptor.getSlots()) {
             String identifier = (String) slot.getIdentifier();
             Type slotType = runtime.getVariableNameTypesMapping().get(identifier);
             if (slot.equals(runtime.getReturnSlot())) {
-                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelper.getLLVMType(runtime.resolve(functionHeader.getRettype())), slot);
+                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, LLVMTypeHelper.getLLVMType(functionHeader.getReturnType()), slot);
             } else if (slot.equals(runtime.getStackPointerSlot())) {
                 nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(identifier, new LLVMType(LLVMBaseType.ADDRESS), slot);
             } else {
@@ -458,7 +456,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
         if (!globalVariable.isExtern() && !descriptor.isDeclared()) {
             Type resolvedType = globalVariable.getType();
-            int byteSize = runtime.getTypeHelper().getByteSize(resolvedType);
+            int byteSize = runtime.getByteSize(resolvedType);
             LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(nativeStorage, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));

@@ -36,11 +36,10 @@ import java.util.Optional;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
-import org.eclipse.emf.ecore.EObject;
 
-import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
-import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -97,7 +96,7 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType opCode, LLVMBaseType llvmType, LLVMExpressionNode target);
 
-    LLVMExpressionNode createUndefinedValue(EObject t);
+    LLVMExpressionNode createUndefinedValue(Type t);
 
     LLVMExpressionNode createLiteral(Object value, LLVMBaseType type);
 
@@ -108,12 +107,13 @@ public interface NodeFactoryFacade {
     /**
      * Creates an intrinsic for a <code>@llvm.*</code> function.
      *
-     * @param functionName the name of the intrinsic function starting with <code>@llvm.</code>
+     * @param declaration the function declaration of the function from which the intrinsic is
+     *            called
      * @param argNodes the arguments to the intrinsic function
-     * @param functionDef the function definition of the function from which the intrinsic is called
+     * @param numberOfExplicitArguments number of explicite arguments passed to function
      * @return the created intrinsic
      */
-    LLVMNode createLLVMIntrinsic(String functionName, Object[] argNodes, FunctionDef functionDef);
+    LLVMNode createLLVMIntrinsic(FunctionType declaration, Object[] argNodes, int numberOfExplicitArguments);
 
     LLVMNode createTruffleIntrinsic(String functionName, LLVMExpressionNode[] argNodes);
 
@@ -280,7 +280,7 @@ public interface NodeFactoryFacade {
      * @return a function root node
      */
     RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor,
-                    FunctionHeader functionHeader);
+                    FunctionDefinition functionHeader);
 
     /**
      * Returns the index of the first argument of the formal parameter list.

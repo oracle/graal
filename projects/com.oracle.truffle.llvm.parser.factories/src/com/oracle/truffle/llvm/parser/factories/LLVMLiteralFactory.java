@@ -34,7 +34,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
-import org.eclipse.emf.ecore.EObject;
 
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
@@ -99,8 +98,7 @@ public final class LLVMLiteralFactory {
     private LLVMLiteralFactory() {
     }
 
-    public static LLVMExpressionNode createUndefinedValue(LLVMParserRuntime runtime, EObject t) {
-        Type resolvedType = LLVMToBitcodeAdapter.resolveType(runtime.resolve(t));
+    public static LLVMExpressionNode createUndefinedValue(LLVMParserRuntime runtime, Type resolvedType) {
         LLVMBaseType type = resolvedType.getLLVMBaseType();
         if (LLVMTypeHelper.isVectorType(type)) {
             LLVMAddressLiteralNode addr = new LLVMAddressLiteralNode(LLVMAddress.createUndefinedAddress());
@@ -380,7 +378,7 @@ public final class LLVMLiteralFactory {
         int nrElements = arrayValues.size();
         Type elementType = arrayType.getElementType();
         LLVMBaseType llvmElementType = elementType.getLLVMBaseType();
-        int baseTypeSize = runtime.getTypeHelper().getByteSize(elementType);
+        int baseTypeSize = runtime.getByteSize(elementType);
         int size = nrElements * baseTypeSize;
         LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(LLVMToBitcodeAdapter.unresolveType(arrayType), size,
                         runtime.getTypeHelper().getAlignmentByte(arrayType));

@@ -35,6 +35,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
+import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
+import com.intel.llvm.ireditor.lLVM_IR.Parameter;
 import com.intel.llvm.ireditor.types.ResolvedArrayType;
 import com.intel.llvm.ireditor.types.ResolvedFloatingType;
 import com.intel.llvm.ireditor.types.ResolvedFunctionType;
@@ -51,6 +54,7 @@ import com.intel.llvm.ireditor.types.ResolvedVectorType;
 import com.intel.llvm.ireditor.types.ResolvedVoidType;
 import com.oracle.truffle.llvm.parser.base.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
@@ -312,6 +316,29 @@ public final class LLVMToBitcodeAdapter {
     public static ResolvedType unresolveType(VectorType type) {
         ResolvedType elementType = unresolveType(type.getElementType());
         return new ResolvedVectorType(type.getLength(), elementType);
+    }
+
+    public static FunctionDefinition resolveFunctionDef(LLVMParserRuntime runtime, FunctionDef def) {
+        FunctionDefinition funcDef = new FunctionDefinition(resolveFunctionHeader(runtime, def.getHeader()), null);
+        funcDef.setName(def.getHeader().getName().substring(1));
+        return funcDef;
+    }
+
+    public static FunctionType resolveFunctionHeader(LLVMParserRuntime runtime, FunctionHeader header) {
+        Type returnType = resolveType(runtime.resolve(header.getRettype()));
+        List<Type> args = new ArrayList<>();
+        boolean hasVararg = false;
+        for (Parameter arg : header.getParameters().getParameters()) {
+            assert !hasVararg; // should be the last element of the parameterlist
+            if (runtime.resolve(arg.getType().getType()).isVararg()) {
+                hasVararg = true;
+            } else {
+                args.add(resolveType(runtime.resolve(arg.getType().getType())));
+            }
+        }
+        FunctionType funcType = new FunctionType(returnType, args.toArray(new Type[args.size()]), hasVararg);
+        funcType.setName(header.getName().substring(1));
+        return funcType;
     }
 
     private static Linkage resolveLinkage(String linkage) {

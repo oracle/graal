@@ -35,6 +35,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.emf.ecore.EObject;
+
+import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -67,9 +70,10 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.Instructio
 import com.oracle.truffle.llvm.parser.base.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserResultImpl;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMConstantGenerator;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
@@ -93,6 +97,7 @@ import com.oracle.truffle.llvm.parser.base.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.Model;
 import com.oracle.truffle.llvm.parser.base.model.ModelModule;
 import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
@@ -173,6 +178,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final NodeFactoryFacade factoryFacade;
 
+    private final LLVMBitcodeVisitorParserRuntime parserRuntime;
+
     private final Source source;
 
     private final StackAllocation stack;
@@ -187,6 +194,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         this.targetDataLayout = layout;
         this.typeHelper = new LLVMBitcodeTypeHelper(targetDataLayout);
         this.factoryFacade = factoryFacade;
+        this.parserRuntime = new LLVMBitcodeVisitorParserRuntime();
+        this.factoryFacade.setUpFacade(this.parserRuntime);
     }
 
     private LLVMExpressionNode createFunction(FunctionDefinition method, LLVMLifetimeAnalysis lifetimes) {
@@ -200,7 +209,11 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                         factoryFacade,
                         method.getParameters().size());
 
+        parserRuntime.setFunctionVisitor(visitor);
+
         method.accept(visitor);
+
+        parserRuntime.setFunctionVisitor(null);
 
         final int[] basicBlockIndices = new int[method.getBlockCount()];
         for (int i = 0; i < method.getBlockCount(); i++) {
@@ -512,6 +525,92 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     @Override
     public void visit(Type type) {
+    }
+
+    private class LLVMBitcodeVisitorParserRuntime implements LLVMParserRuntime {
+
+        private LLVMBitcodeFunctionVisitor functionVisitor = null;
+
+        void setFunctionVisitor(LLVMBitcodeFunctionVisitor functionVisitor) {
+            this.functionVisitor = functionVisitor;
+        }
+
+        @Override
+        public ResolvedType resolve(EObject e) {
+            throw new UnsupportedOperationException("Not implemented!");
+        }
+
+        @Override
+        public LLVMExpressionNode allocateFunctionLifetime(ResolvedType type, int size, int alignment) {
+            return factoryFacade.createAlloc(LLVMToBitcodeAdapter.resolveType(type), size, alignment, null, null);
+        }
+
+        @Override
+        public FrameSlot getReturnSlot() {
+            if (functionVisitor != null) {
+                return functionVisitor.getReturnSlot();
+            }
+            throw new IllegalStateException("There is currently no active function visitor set");
+        }
+
+        @Override
+        public LLVMExpressionNode allocateVectorResult(EObject type) {
+            throw new UnsupportedOperationException("Not implemented!");
+        }
+
+        @Override
+        public Object getGlobalAddress(com.intel.llvm.ireditor.lLVM_IR.GlobalVariable var) {
+            throw new UnsupportedOperationException("Not implemented!");
+        }
+
+        @Override
+        public FrameSlot getStackPointerSlot() {
+            if (functionVisitor != null) {
+                return functionVisitor.getStackSlot();
+            }
+            throw new IllegalStateException("There is currently no active function visitor set");
+        }
+
+        @Override
+        public int getBitAlignment(LLVMBaseType type) {
+            return targetDataLayout.getBitAlignment(type);
+        }
+
+        @Override
+        public int getByteSize(Type type) {
+            return type.getSize(targetDataLayout);
+        }
+
+        @Override
+        public FrameDescriptor getGlobalFrameDescriptor() {
+            throw new UnsupportedOperationException("Not implemented!");
+        }
+
+        @Override
+        public void addDestructor(LLVMNode destructorNode) {
+            throw new UnsupportedOperationException("Not implemented!");
+        }
+
+        @Override
+        public long getNativeHandle(String name) {
+            return nativeLookup.getNativeHandle(name);
+        }
+
+        @Override
+        public LLVMTypeHelper getTypeHelper() {
+            throw new UnsupportedOperationException("Not implemented!");
+        }
+
+        @Override
+        public Map<String, Type> getVariableNameTypesMapping() {
+            throw new UnsupportedOperationException("Not implemented!");
+        }
+
+        @Override
+        public NodeFactoryFacade getNodeFactoryFacade() {
+            return factoryFacade;
+        }
+
     }
 
 }

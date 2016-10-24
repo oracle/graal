@@ -89,7 +89,6 @@ import com.oracle.truffle.llvm.nodes.impl.memory.load.LLVMI8LoadNodeFactory.LLVM
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMAccessGlobalVariableStorageNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
@@ -195,7 +194,7 @@ public final class LLVMMemoryReadWriteFactory {
     }
 
     public static LLVMNode createStore(LLVMParserRuntime runtime, LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, Type type) {
-        return createStore(pointerNode, valueNode, type.getLLVMBaseType(), runtime.getTypeHelper().getByteSize(LLVMToBitcodeAdapter.unresolveType(type)));
+        return createStore(pointerNode, valueNode, type.getLLVMBaseType(), runtime.getByteSize(type));
     }
 
     public static LLVMNode createStore(LLVMAddressNode pointerNode, LLVMExpressionNode valueNode, LLVMBaseType type, int size) {
