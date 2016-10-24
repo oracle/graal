@@ -43,14 +43,12 @@ public class Parser {
 	public final Errors errors;
 	private final AsmFactory factory;
 	private LLVMInlineAssemblyRootNode root;
-	private LLVMBaseType retType;
 	-->declarations
 
 	public Parser(String asmSnippet, String asmFlags, @SuppressWarnings("unused") LLVMExpressionNode[] args, LLVMBaseType retType) {
 		this.scanner = new Scanner(new ByteArrayInputStream(asmSnippet.getBytes()));
 		errors = new Errors();
-		this.factory = new AsmFactory(asmFlags);
-		this.retType = retType;
+		this.factory = new AsmFactory(asmFlags, retType);
 	}
 
 	void SynErr (int n) {

@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI32ArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMReadNodeFactory.LLVMI32ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNodeFactory.LLVMWriteI32NodeGen;
@@ -72,18 +73,26 @@ public class AsmFactory {
     private List<String> registers;
     private LLVMExpressionNode result;
     private String asmFlags;
+    private LLVMBaseType retType;
 
-    public AsmFactory(String asmFlags) {
+    public AsmFactory(String asmFlags, LLVMBaseType retType) {
         this.asmFlags = asmFlags;
         this.frameDescriptor = new FrameDescriptor();
         this.statements = new ArrayList<>();
         this.arguments = new ArrayList<>();
         this.registers = new ArrayList<>();
         this.registers.add("-");
+        this.retType = retType;
     }
 
     public LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
+        switch (retType) {
+            case I32:
+                break;
+            default:
+                result = new LLVMUnsupportedInlineAssemblerNode();
+        }
         return new LLVMInlineAssemblyRootNode(null, frameDescriptor, statements.toArray(new LLVMNode[statements.size()]), arguments, result);
     }
 
