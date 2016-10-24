@@ -51,6 +51,7 @@ import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.GraalCompiler.Request;
+import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -58,15 +59,18 @@ import com.oracle.graal.debug.DebugDumpScope;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.FullInfopointNode;
 import com.oracle.graal.nodes.ProxyNode;
@@ -172,6 +176,9 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     @SuppressWarnings("unused")
     protected static void breakpoint(int arg0) {
+    }
+
+    protected static void shouldBeOptimizedAway() {
     }
 
     protected Suites createSuites() {
@@ -367,6 +374,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         } else {
             return "mismatch in graphs";
         }
+    }
+
+    protected void assertOptimizedAway(StructuredGraph g) {
+        Assert.assertEquals(0, g.getNodes().filter(NotOptimizedNode.class).count());
     }
 
     protected void assertConstantReturn(StructuredGraph graph, int value) {
@@ -1001,7 +1012,24 @@ public abstract class GraalCompilerTest extends GraalTest {
                 return true;
             }
         }, GraalCompilerTest.class, "breakpoint", int.class);
+        invocationPlugins.register(new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new NotOptimizedNode());
+                return true;
+            }
+        }, GraalCompilerTest.class, "shouldBeOptimizedAway");
         return conf;
+    }
+
+    @NodeInfo
+    public static class NotOptimizedNode extends FixedWithNextNode {
+        private static final NodeClass<NotOptimizedNode> TYPE = NodeClass.create(NotOptimizedNode.class);
+
+        protected NotOptimizedNode() {
+            super(TYPE, StampFactory.forVoid());
+        }
+
     }
 
     protected Replacements getReplacements() {

@@ -179,6 +179,11 @@ public class StampFactory {
         return new IntegerStamp(bits, newLowerBound, newUpperBound, limit.downMask() | maskStamp.downMask(), limit.upMask() & maskStamp.upMask());
     }
 
+    public static IntegerStamp forIntegerWithMask(int bits, long newLowerBound, long newUpperBound, long newDownMask, long newUpMask) {
+        IntegerStamp limit = StampFactory.forInteger(bits, newLowerBound, newUpperBound);
+        return new IntegerStamp(bits, newLowerBound, newUpperBound, limit.downMask() | newDownMask, limit.upMask() & newUpMask);
+    }
+
     public static IntegerStamp forInteger(int bits) {
         return new IntegerStamp(bits, CodeUtil.minValue(bits), CodeUtil.maxValue(bits), 0, CodeUtil.mask(bits));
     }
