@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentat
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,6 +42,8 @@ import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
+import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import com.oracle.graal.debug.Fingerprint;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.GraalGraphError;
@@ -267,104 +270,133 @@ public class InliningUtil {
      *            false if no such check is required
      * @param canonicalizedNodes if non-null then append to this list any nodes which should be
      *            canonicalized after inlining
+     * @param inlineeMethod the actual method being inlined. Maybe be null for snippets.
      */
-    public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, List<Node> canonicalizedNodes) {
-        if (Fingerprint.ENABLED) {
-            Fingerprint.submit("inlining %s into %s: %s", formatGraph(inlineGraph), formatGraph(invoke.asNode().graph()), inlineGraph.getNodes().snapshot());
-        }
-        final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
-        FixedNode invokeNode = invoke.asNode();
-        StructuredGraph graph = invokeNode.graph();
-        assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal();
-        assert !invokeNode.graph().isAfterFloatingReadPhase() : "inline isn't handled correctly after floating reads phase";
+    @SuppressWarnings("try")
+    public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, List<Node> canonicalizedNodes, ResolvedJavaMethod inlineeMethod) {
+        MethodMetricsInlineeScopeInfo m = MethodMetricsInlineeScopeInfo.create();
+        try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", m, false)) {
+            FixedNode invokeNode = invoke.asNode();
+            StructuredGraph graph = invokeNode.graph();
+            assert inlineeMethod != null && inlineeMethod.equals(inlineGraph.method()) || isSubstitutionGraph(inlineGraph, inlineeMethod) : inlineeMethod + " " + inlineGraph.method();
+            if (inlineeMethod != null) {
+                graph.recordInlinedMethod(inlineeMethod);
+            }
+            if (Fingerprint.ENABLED) {
+                Fingerprint.submit("inlining %s into %s: %s", formatGraph(inlineGraph), formatGraph(invoke.asNode().graph()), inlineGraph.getNodes().snapshot());
+            }
+            final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
 
-        if (receiverNullCheck && !((MethodCallTargetNode) invoke.callTarget()).isStatic()) {
-            nonNullReceiver(invoke);
-        }
+            assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal();
+            assert !invokeNode.graph().isAfterFloatingReadPhase() : "inline isn't handled correctly after floating reads phase";
 
-        ArrayList<Node> nodes = new ArrayList<>(inlineGraph.getNodes().count());
-        ArrayList<ReturnNode> returnNodes = new ArrayList<>(4);
-        UnwindNode unwindNode = null;
-        final StartNode entryPointNode = inlineGraph.start();
-        FixedNode firstCFGNode = entryPointNode.next();
-        if (firstCFGNode == null) {
-            throw new IllegalStateException("Inlined graph is in invalid state: " + inlineGraph);
-        }
-        for (Node node : inlineGraph.getNodes()) {
-            if (node == entryPointNode || (node == entryPointNode.stateAfter() && node.usages().count() == 1) || node instanceof ParameterNode) {
-                // Do nothing.
+            if (receiverNullCheck && !((MethodCallTargetNode) invoke.callTarget()).isStatic()) {
+                nonNullReceiver(invoke);
+            }
+
+            ArrayList<Node> nodes = new ArrayList<>(inlineGraph.getNodes().count());
+            ArrayList<ReturnNode> returnNodes = new ArrayList<>(4);
+            UnwindNode unwindNode = null;
+            final StartNode entryPointNode = inlineGraph.start();
+            FixedNode firstCFGNode = entryPointNode.next();
+            if (firstCFGNode == null) {
+                throw new IllegalStateException("Inlined graph is in invalid state: " + inlineGraph);
+            }
+            for (Node node : inlineGraph.getNodes()) {
+                if (node == entryPointNode || (node == entryPointNode.stateAfter() && node.usages().count() == 1) || node instanceof ParameterNode) {
+                    // Do nothing.
+                } else {
+                    nodes.add(node);
+                    if (node instanceof ReturnNode) {
+                        returnNodes.add((ReturnNode) node);
+                    } else if (node instanceof UnwindNode) {
+                        assert unwindNode == null;
+                        unwindNode = (UnwindNode) node;
+                    }
+                }
+            }
+
+            final AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(invokeNode);
+            DuplicationReplacement localReplacement = new DuplicationReplacement() {
+
+                @Override
+                public Node replacement(Node node) {
+                    if (node instanceof ParameterNode) {
+                        return parameters.get(((ParameterNode) node).index());
+                    } else if (node == entryPointNode) {
+                        return prevBegin;
+                    }
+                    return node;
+                }
+            };
+
+            assert invokeNode.successors().first() != null : invoke;
+            assert invokeNode.predecessor() != null;
+
+            Map<Node, Node> duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
+
+            FrameState stateAfter = invoke.stateAfter();
+            assert stateAfter == null || stateAfter.isAlive();
+
+            FrameState stateAtExceptionEdge = null;
+            if (invoke instanceof InvokeWithExceptionNode) {
+                InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
+                if (unwindNode != null) {
+                    ExceptionObjectNode obj = (ExceptionObjectNode) invokeWithException.exceptionEdge();
+                    stateAtExceptionEdge = obj.stateAfter();
+                }
+            }
+
+            updateSourcePositions(invoke, inlineGraph, duplicates);
+            if (stateAfter != null) {
+                processFrameStates(invoke, inlineGraph, duplicates, stateAtExceptionEdge, returnNodes.size() > 1);
+                int callerLockDepth = stateAfter.nestedLockDepth();
+                if (callerLockDepth != 0) {
+                    for (MonitorIdNode original : inlineGraph.getNodes(MonitorIdNode.TYPE)) {
+                        MonitorIdNode monitor = (MonitorIdNode) duplicates.get(original);
+                        processMonitorId(invoke.stateAfter(), monitor);
+                    }
+                }
             } else {
-                nodes.add(node);
-                if (node instanceof ReturnNode) {
-                    returnNodes.add((ReturnNode) node);
-                } else if (node instanceof UnwindNode) {
-                    assert unwindNode == null;
-                    unwindNode = (UnwindNode) node;
-                }
+                assert checkContainsOnlyInvalidOrAfterFrameState(duplicates);
             }
-        }
 
-        final AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(invokeNode);
-        DuplicationReplacement localReplacement = new DuplicationReplacement() {
-
-            @Override
-            public Node replacement(Node node) {
-                if (node instanceof ParameterNode) {
-                    return parameters.get(((ParameterNode) node).index());
-                } else if (node == entryPointNode) {
-                    return prevBegin;
-                }
-                return node;
+            firstCFGNode = (FixedNode) duplicates.get(firstCFGNode);
+            for (int i = 0; i < returnNodes.size(); i++) {
+                returnNodes.set(i, (ReturnNode) duplicates.get(returnNodes.get(i)));
             }
-        };
-
-        assert invokeNode.successors().first() != null : invoke;
-        assert invokeNode.predecessor() != null;
-
-        Map<Node, Node> duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
-
-        FrameState stateAfter = invoke.stateAfter();
-        assert stateAfter == null || stateAfter.isAlive();
-
-        FrameState stateAtExceptionEdge = null;
-        if (invoke instanceof InvokeWithExceptionNode) {
-            InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
             if (unwindNode != null) {
-                ExceptionObjectNode obj = (ExceptionObjectNode) invokeWithException.exceptionEdge();
-                stateAtExceptionEdge = obj.stateAfter();
+                unwindNode = (UnwindNode) duplicates.get(unwindNode);
+            }
+
+            if (UseGraalInstrumentation.getValue()) {
+                detachInstrumentation(invoke);
+            }
+            finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
+
+            GraphUtil.killCFG(invokeNode);
+
+            if (Debug.isMethodMeterEnabled() && m != null) {
+                MethodMetricsImpl.recordInlinee(m.getRootMethod(), invoke.asNode().graph().method(), inlineeMethod);
+            }
+            return duplicates;
+        }
+    }
+
+    static boolean isSubstitutionGraph(StructuredGraph inlineGraph, ResolvedJavaMethod inlineeMethod) {
+        /*
+         * There should be a better way to do this.
+         */
+        for (Annotation ann : inlineGraph.method().getAnnotations()) {
+            if (ann.annotationType().equals(MethodSubstitution.class)) {
+                assert inlineeMethod != null;
+                return true;
+            }
+            if (ann.annotationType().getName().equals("com.oracle.graal.replacements.Snippet")) {
+                return true;
             }
         }
-
-        updateSourcePositions(invoke, inlineGraph, duplicates);
-        if (stateAfter != null) {
-            processFrameStates(invoke, inlineGraph, duplicates, stateAtExceptionEdge, returnNodes.size() > 1);
-            int callerLockDepth = stateAfter.nestedLockDepth();
-            if (callerLockDepth != 0) {
-                for (MonitorIdNode original : inlineGraph.getNodes(MonitorIdNode.TYPE)) {
-                    MonitorIdNode monitor = (MonitorIdNode) duplicates.get(original);
-                    processMonitorId(invoke.stateAfter(), monitor);
-                }
-            }
-        } else {
-            assert checkContainsOnlyInvalidOrAfterFrameState(duplicates);
-        }
-
-        firstCFGNode = (FixedNode) duplicates.get(firstCFGNode);
-        for (int i = 0; i < returnNodes.size(); i++) {
-            returnNodes.set(i, (ReturnNode) duplicates.get(returnNodes.get(i)));
-        }
-        if (unwindNode != null) {
-            unwindNode = (UnwindNode) duplicates.get(unwindNode);
-        }
-
-        if (UseGraalInstrumentation.getValue()) {
-            detachInstrumentation(invoke);
-        }
-        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
-
-        GraphUtil.killCFG(invokeNode);
-
-        return duplicates;
+        return false;
     }
 
     public static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode, Assumptions inlinedAssumptions,

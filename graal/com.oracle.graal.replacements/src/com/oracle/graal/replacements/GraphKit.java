@@ -325,7 +325,7 @@ public class GraphKit implements GraphBuilderTool {
         calleeGraph.clearAllStateAfter();
         new DeadCodeEliminationPhase(Optionality.Required).apply(calleeGraph);
 
-        InliningUtil.inline(invoke, calleeGraph, false, null);
+        InliningUtil.inline(invoke, calleeGraph, false, null, method);
     }
 
     protected void pushStructure(Structure structure) {

@@ -631,7 +631,7 @@ public class MonitorSnippets implements Snippets {
                     graph.addAfterFixed(graph.start(), invoke);
 
                     StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null);
-                    InliningUtil.inline(invoke, inlineeGraph, false, null);
+                    InliningUtil.inline(invoke, inlineeGraph, false, null, null);
 
                     List<ReturnNode> rets = graph.getNodes(ReturnNode.TYPE).snapshot();
                     for (ReturnNode ret : rets) {
@@ -651,7 +651,7 @@ public class MonitorSnippets implements Snippets {
                         inlineeGraph = template(args).copySpecializedGraph();
 
                         // inlineeGraph = replacements.getSnippet(checkCounter.getMethod());
-                        InliningUtil.inline(invoke, inlineeGraph, false, null);
+                        InliningUtil.inline(invoke, inlineeGraph, false, null, null);
                     }
                 }
             }
