@@ -21,13 +21,13 @@ _mx = join(_suite.dir, "mx.sulong/")
 _libPath = join(_mx, 'libs')
 _root = join(_suite.dir, "projects/")
 _parserDir = join(_root, "com.intel.llvm.ireditor")
-_testDir = join(_root, "com.oracle.truffle.llvm.test/")
-_argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
-_lifetimeReferenceDir = join(_testDir, "lifetime/")
+_testProjectDir = join(_root, "com.oracle.truffle.llvm.test/")
+_argon2Dir = join(_testProjectDir, "argon2/phc-winner-argon2/")
+_lifetimeReferenceDir = join(_testProjectDir, "lifetime/")
 _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
 
-_testDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
+_sulongTestDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
 _interopTestDir = join(_root, "com.oracle.truffle.llvm.test/interoptests/")
 
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
@@ -78,7 +78,7 @@ httpCheckFiles = [
 # the file paths that we want to check with clang-format
 clangFormatCheckPaths = [
     _suite.dir + '/include',
-    _testDir,
+    _sulongTestDir,
     _interopTestDir,
     _libPath
 ]
