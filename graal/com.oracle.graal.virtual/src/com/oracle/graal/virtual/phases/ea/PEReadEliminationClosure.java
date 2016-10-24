@@ -343,20 +343,25 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
 
         private void mergeReadCachePhi(PhiNode phi, LocationIdentity identity, int index, List<PEReadEliminationBlockState> states) {
             ValueNode[] values = new ValueNode[states.size()];
-            for (int i = 0; i < states.size(); i++) {
-                ValueNode value = states.get(i).getReadCache(getPhiValueAt(phi, i), identity, index, PEReadEliminationClosure.this);
-                if (value == null) {
-                    return;
+            values[0] = states.get(0).getReadCache(getPhiValueAt(phi, 0), identity, index, PEReadEliminationClosure.this);
+            if (values[0] != null) {
+                for (int i = 1; i < states.size(); i++) {
+                    ValueNode value = states.get(i).getReadCache(getPhiValueAt(phi, i), identity, index, PEReadEliminationClosure.this);
+                    // e.g. unsafe loads / stores with same identity and different access kinds see
+                    // mergeReadCache(states)
+                    if (value == null || !values[i - 1].stamp().isCompatible(value.stamp())) {
+                        return;
+                    }
+                    values[i] = value;
                 }
-                values[i] = value;
-            }
 
-            PhiNode phiNode = getPhi(new ReadCacheEntry(identity, phi, index), values[0].stamp().unrestricted());
-            mergeEffects.addFloatingNode(phiNode, "mergeReadCachePhi");
-            for (int i = 0; i < values.length; i++) {
-                setPhiInput(phiNode, i, values[i]);
+                PhiNode phiNode = getPhi(new ReadCacheEntry(identity, phi, index), values[0].stamp().unrestricted());
+                mergeEffects.addFloatingNode(phiNode, "mergeReadCachePhi");
+                for (int i = 0; i < values.length; i++) {
+                    setPhiInput(phiNode, i, values[i]);
+                }
+                newState.readCache.put(new ReadCacheEntry(identity, phi, index), phiNode);
             }
-            newState.readCache.put(new ReadCacheEntry(identity, phi, index), phiNode);
         }
     }
 }
