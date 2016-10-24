@@ -35,9 +35,11 @@ import com.oracle.graal.compiler.common.alloc.TraceStatisticsPrinter;
 import com.oracle.graal.compiler.common.alloc.UniDirectionalTraceBuilder;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
+import com.oracle.graal.options.EnumOptionValue;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
@@ -46,12 +48,16 @@ import jdk.vm.ci.code.TargetDescription;
 
 public class TraceBuilderPhase extends AllocationPhase {
 
+    public enum TraceBuilder {
+        UniDirectional,
+        BiDirectional,
+        SingleBlock
+    }
+
     public static class Options {
         // @formatter:off
-        @Option(help = "Single block trace builder.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAsingleBlock = new OptionValue<>(false);
-        @Option(help = "Use bidirectional trace builder.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAbiDirectionalTraceBuilder = new OptionValue<>(false);
+        @Option(help = "Trace building algorithm.", type = OptionType.Debug)
+        public static final EnumOptionValue<TraceBuilder> TraceBuilding = new EnumOptionValue<>(TraceBuilder.UniDirectional);
         @Option(help = "Schedule trivial traces as early as possible.", type = OptionType.Debug)
         public static final OptionValue<Boolean> TraceRAScheduleTrivialTracesEarly = new OptionValue<>(true);
         // @formatter:on
@@ -84,13 +90,17 @@ public class TraceBuilderPhase extends AllocationPhase {
     private static TraceBuilderResult getTraceBuilderResult(LIR lir, AbstractBlockBase<?> startBlock, AbstractBlockBase<?>[] linearScanOrder) {
         TraceBuilderResult.TrivialTracePredicate pred = getTrivialTracePredicate(lir);
 
-        if (Options.TraceRAsingleBlock.getValue()) {
-            return SingleBlockTraceBuilder.computeTraces(startBlock, linearScanOrder, pred);
+        TraceBuilder selectedTraceBuilder = Options.TraceBuilding.getValue();
+        Debug.log(TRACE_LOG_LEVEL, "Building Traces using %s", selectedTraceBuilder);
+        switch (Options.TraceBuilding.getValue()) {
+            case SingleBlock:
+                return SingleBlockTraceBuilder.computeTraces(startBlock, linearScanOrder, pred);
+            case BiDirectional:
+                return BiDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder, pred);
+            case UniDirectional:
+                return UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder, pred);
         }
-        if (Options.TraceRAbiDirectionalTraceBuilder.getValue()) {
-            return BiDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder, pred);
-        }
-        return UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder, pred);
+        throw GraalError.shouldNotReachHere("Unknown trace building algorithm: " + Options.TraceBuilding.getValue());
     }
 
     public static TraceBuilderResult.TrivialTracePredicate getTrivialTracePredicate(LIR lir) {
