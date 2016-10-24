@@ -56,15 +56,6 @@ public class ArrayType implements AggregateType {
         return elementType.getBits() * length;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof ArrayType) {
-            ArrayType other = (ArrayType) obj;
-            return length == other.length && elementType.equals(other.elementType);
-        }
-        return false;
-    }
-
     public Type getElementType() {
         return elementType;
     }
@@ -105,6 +96,16 @@ public class ArrayType implements AggregateType {
     }
 
     @Override
+    public void setMetadataReference(MetadataReference metadata) {
+        this.metadata = metadata;
+    }
+
+    @Override
+    public MetadataReference getMetadataReference() {
+        return metadata;
+    }
+
+    @Override
     public int hashCode() {
         int hash = 7;
         hash = 67 * hash + Objects.hashCode(this.elementType);
@@ -113,17 +114,16 @@ public class ArrayType implements AggregateType {
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof ArrayType) {
+            ArrayType other = (ArrayType) obj;
+            return length == other.length && Objects.equals(elementType, other.elementType);
+        }
+        return false;
+    }
+
+    @Override
     public String toString() {
         return String.format("[%d x %s]", getLength(), getElementType());
-    }
-
-    @Override
-    public void setMetadataReference(MetadataReference metadata) {
-        this.metadata = metadata;
-    }
-
-    @Override
-    public MetadataReference getMetadataReference() {
-        return metadata;
     }
 }

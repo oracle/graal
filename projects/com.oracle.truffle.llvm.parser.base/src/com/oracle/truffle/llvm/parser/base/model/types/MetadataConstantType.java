@@ -52,6 +52,21 @@ public class MetadataConstantType implements Type {
     }
 
     @Override
+    public int hashCode() {
+        int hash = 13;
+        hash = 47 * hash + (int) (value ^ (value >>> 32));
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof MetadataConstantType) {
+            return value == ((MetadataConstantType) obj).value;
+        }
+        return false;
+    }
+
+    @Override
     public String toString() {
         return String.format("%s %d", getType(), value);
     }

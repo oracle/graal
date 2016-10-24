@@ -51,15 +51,6 @@ public class VectorType implements AggregateType {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof VectorType) {
-            VectorType other = (VectorType) obj;
-            return length == other.length && elementType.equals(other.getElementType());
-        }
-        return false;
-    }
-
-    @Override
     public int getBits() {
         return elementType.getBits() * length;
     }
@@ -139,6 +130,16 @@ public class VectorType implements AggregateType {
     }
 
     @Override
+    public void setMetadataReference(MetadataReference metadata) {
+        this.metadata = metadata;
+    }
+
+    @Override
+    public MetadataReference getMetadataReference() {
+        return metadata;
+    }
+
+    @Override
     public int hashCode() {
         int hash = 5;
         hash = 59 * hash + Objects.hashCode(this.elementType);
@@ -147,17 +148,16 @@ public class VectorType implements AggregateType {
     }
 
     @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof VectorType) {
+            VectorType other = (VectorType) obj;
+            return length == other.length && elementType.equals(other.getElementType());
+        }
+        return false;
+    }
+
+    @Override
     public String toString() {
         return String.format("<%d x %s>", getLength(), getElementType());
-    }
-
-    @Override
-    public void setMetadataReference(MetadataReference metadata) {
-        this.metadata = metadata;
-    }
-
-    @Override
-    public MetadataReference getMetadataReference() {
-        return metadata;
     }
 }

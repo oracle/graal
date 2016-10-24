@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import java.util.Objects;
+
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 
 public final class IntegerConstantType implements Type {
@@ -69,6 +71,23 @@ public final class IntegerConstantType implements Type {
     @Override
     public int getSize(DataLayoutConverter.DataSpecConverter targetDataLayout) {
         return type.getSize(targetDataLayout);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 13;
+        hash = 17 * hash + ((type == null) ? 0 : type.hashCode());
+        hash = 17 * hash + (int) (value ^ (value >>> 32));
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof IntegerConstantType) {
+            IntegerConstantType other = (IntegerConstantType) obj;
+            return Objects.equals(type, other.type) && Objects.equals(value, other.value);
+        }
+        return false;
     }
 
     @Override

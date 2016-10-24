@@ -113,25 +113,8 @@ public final class IntegerType implements Type {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        return obj instanceof IntegerType && bits == ((IntegerType) obj).bits;
-    }
-
-    @Override
     public int getBits() {
         return bits;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 71 * hash + this.bits;
-        return hash;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("i%d", bits);
     }
 
     @Override
@@ -156,5 +139,22 @@ public final class IntegerType implements Type {
     @Override
     public int getSize(DataLayoutConverter.DataSpecConverter targetDataLayout) {
         return Math.max(1, bits / Byte.SIZE);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 71 * hash + this.bits;
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof IntegerType && bits == ((IntegerType) obj).bits;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("i%d", bits);
     }
 }
