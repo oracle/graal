@@ -20,9 +20,10 @@ _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong/")
 _libPath = join(_mx, 'libs')
 _root = join(_suite.dir, "projects/")
+_testDir = join(_suite.dir, "tests/")
 _parserDir = join(_root, "com.intel.llvm.ireditor")
 _testProjectDir = join(_root, "com.oracle.truffle.llvm.test/")
-_argon2Dir = join(_testProjectDir, "argon2/phc-winner-argon2/")
+_argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
 _lifetimeReferenceDir = join(_testProjectDir, "lifetime/")
 _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
@@ -227,7 +228,7 @@ def pullTestFramework(args=None):
     pullGCCSuite()
     pullLLVMSuite()
     pullNWCCSuite()
-    pullArgon2()
+    ensureArgon2Exists()
 
 # platform independent
 def pullBenchmarkGame(args=None):
@@ -419,6 +420,16 @@ def copytree(src, dst, symlinks=False, ignore=None):
             if not os.path.exists(d) or os.stat(s).st_mtime - os.stat(d).st_mtime > 1:
                 shutil.copy2(s, d)
 
+def pullTestSuite(library, destDir, **kwargs):
+    """downloads and unpacks a test suite"""
+    mx.ensure_dir_exists(destDir)
+    localPath = mx.library(library).get_path(True)
+    tar(localPath, destDir, **kwargs)
+    os.remove(localPath)
+    sha1Path = localPath + '.sha1'
+    if os.path.exists(sha1Path):
+        os.remove(sha1Path)
+
 # platform independent
 def pullGCCSuite(args=None):
     """downloads the GCC test suite"""
@@ -435,14 +446,6 @@ def pullNWCCSuite(args=None):
     urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz"]
     localPath = pullsuite(_nwccSuiteDir, urls)
     tar(localPath, _nwccSuiteDir, ['nwcc_0.8.3/tests/', 'nwcc_0.8.3/test2/'], stripLevels=1)
-    os.remove(localPath)
-
-def pullArgon2(args=None):
-    """downloads Argon2"""
-    mx.ensure_dir_exists(_argon2Dir)
-    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/20160406.tar.gz"]
-    localPath = pullsuite(_argon2Dir, urls)
-    tar(localPath, _argon2Dir, ['phc-winner-argon2-20160406/'], stripLevels=1)
     os.remove(localPath)
 
 def pullLifetime(args=None):
@@ -950,7 +953,7 @@ def ensureLLVMBinariesExist():
 def ensureArgon2Exists():
     """downloads Argon2 if not downloaded yet"""
     if not os.path.exists(_argon2Dir):
-        pullArgon2()
+        pullTestSuite('ARGON2', _argon2Dir, stripLevels=1)
 
 def ensureLifetimeReferenceExists():
     """downloads the lifetime analysis reference outputs if not downloaded yet"""
