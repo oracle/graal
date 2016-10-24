@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.types;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
@@ -42,7 +45,7 @@ public class FunctionType implements Type, ValueSymbol {
 
     private final boolean isVarArg;
 
-    private String name;
+    private String name = ValueSymbol.UNKNOWN;
 
     public FunctionType(Type type, Type[] args, boolean isVarArg) {
         this.type = type;
@@ -102,6 +105,29 @@ public class FunctionType implements Type, ValueSymbol {
     }
 
     @Override
+    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
+        return LLVMFunctionDescriptor.LLVMRuntimeType.FUNCTION_ADDRESS;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 29;
+        hash = 17 * hash + Arrays.hashCode(args);
+        hash = 17 * hash + (isVarArg ? 1231 : 1237);
+        hash = 17 * hash + ((type == null) ? 0 : type.hashCode());
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof FunctionType) {
+            FunctionType other = (FunctionType) obj;
+            return Arrays.equals(args, other.args) && isVarArg == other.isVarArg && Objects.equals(type, other.type);
+        }
+        return false;
+    }
+
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
 
@@ -123,10 +149,5 @@ public class FunctionType implements Type, ValueSymbol {
         sb.append(")");
 
         return sb.toString();
-    }
-
-    @Override
-    public LLVMFunctionDescriptor.LLVMRuntimeType getRuntimeType() {
-        return LLVMFunctionDescriptor.LLVMRuntimeType.FUNCTION_ADDRESS;
     }
 }

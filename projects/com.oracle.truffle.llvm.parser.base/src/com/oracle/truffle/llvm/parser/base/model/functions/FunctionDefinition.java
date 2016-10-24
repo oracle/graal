@@ -33,6 +33,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
@@ -70,8 +71,6 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     private InstructionBlock[] blocks = new InstructionBlock[0];
 
     private int currentBlock = 0;
-
-    private String name = ValueSymbol.UNKNOWN;
 
     private MetadataBlock metadata;
 
@@ -251,7 +250,24 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     }
 
     @Override
+    public int hashCode() {
+        int hash = super.hashCode();
+        hash = 43 * hash + ((parameters == null) ? 0 : parameters.hashCode());
+        hash = 43 * hash + ((symbols == null) ? 0 : symbols.hashCode());
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof FunctionDefinition) {
+            FunctionDefinition other = (FunctionDefinition) obj;
+            return super.equals(other) && Objects.equals(parameters, other.parameters) && Objects.equals(symbols, other.symbols);
+        }
+        return false;
+    }
+
+    @Override
     public String toString() {
-        return "FunctionDefinition [symbolCount=" + symbols.getSize() + ", parameters=" + parameters + ", blocks=" + blocks.length + ", currentBlock=" + currentBlock + ", name=" + name + "]";
+        return "FunctionDefinition [symbolCount=" + symbols.getSize() + ", parameters=" + parameters + ", blocks=" + blocks.length + ", currentBlock=" + currentBlock + ", name=" + getName() + "]";
     }
 }
