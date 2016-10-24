@@ -32,10 +32,7 @@ package com.oracle.truffle.llvm.parser.bc.impl.nodes;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.asm.amd64.Parser;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
@@ -48,17 +45,12 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallUnboxNodeFactory;
-import com.oracle.truffle.llvm.nodes.impl.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.impl.vars.StructLiteralNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.base.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.base.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.base.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
@@ -72,7 +64,6 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.constants.BlockAddressC
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.CompareConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.GetElementPointerConstant;
-import com.oracle.truffle.llvm.parser.base.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.UndefinedConstant;
@@ -171,50 +162,6 @@ public final class LLVMNodeGenerator {
                 return new LLVMSimpleLiteralNode.LLVMI64LiteralNode(constant.getValue());
             default:
                 return new LLVMSimpleLiteralNode.LLVMIVarBitLiteralNode(LLVMIVarBit.fromLong(bits, constant.getValue()));
-        }
-    }
-
-    public static LLVMExpressionNode resolveInlineAsmConstant(InlineAsmConstant asmConstant, LLVMExpressionNode[] argNodes, LLVMBaseType targetType) {
-        if (asmConstant.hasSideEffects()) {
-            LLVMLogger.info("Parsing Inline Assembly Constant with Sideeffects!");
-        }
-        if (asmConstant.needsAlignedStack()) {
-            throw new UnsupportedOperationException("Assembly Expressions that require an aligned Stack are not supported yet!");
-        }
-        if (asmConstant.getDialect() != AsmDialect.AT_T) {
-            throw new UnsupportedOperationException("Unsupported Assembly Dialect: " + asmConstant.getDialect());
-        }
-
-        final Parser asmParser = new Parser(asmConstant.getAsmExpression(), asmConstant.getAsmFlags(), argNodes, targetType);
-        final LLVMInlineAssemblyRootNode assemblyRootNode = asmParser.Parse();
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(assemblyRootNode);
-        switch (targetType) {
-            case VOID:
-                return new LLVMUnsupportedInlineAssemblerNode();
-            case I1:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMI1UnsupportedInlineAssemblerNode();
-            case I8:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMI8UnsupportedInlineAssemblerNode();
-            case I16:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMI16UnsupportedInlineAssemblerNode();
-            case I32:
-                return LLVMCallUnboxNodeFactory.LLVMI32CallUnboxNodeGen.create(new LLVMCallNode.LLVMResolvedDirectCallNode(callTarget, argNodes));
-            case I64:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMI64UnsupportedInlineAssemblerNode();
-            case FLOAT:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMFloatUnsupportedInlineAssemblerNode();
-            case DOUBLE:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMDoubleUnsupportedInlineAssemblerNode();
-            case X86_FP80:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVM80BitFloatUnsupportedInlineAssemblerNode();
-            case ADDRESS:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMAddressUnsupportedInlineAssemblerNode();
-            case FUNCTION_ADDRESS:
-                return new LLVMUnsupportedInlineAssemblerNode.LLVMFunctionUnsupportedInlineAssemblerNode();
-            case STRUCT:
-                return LLVMCallUnboxNodeFactory.LLVMStructCallUnboxNodeGen.create(new LLVMCallNode.LLVMResolvedDirectCallNode(callTarget, argNodes));
-            default:
-                throw new AssertionError("Unknown Inline Assembly Return Type!");
         }
     }
 

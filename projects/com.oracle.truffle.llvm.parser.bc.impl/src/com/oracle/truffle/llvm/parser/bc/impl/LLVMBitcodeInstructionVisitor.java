@@ -72,6 +72,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
+import com.oracle.truffle.llvm.parser.base.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
@@ -110,6 +111,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
@@ -257,7 +259,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         } else if (target instanceof InlineAsmConstant) {
             final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-            result = LLVMNodeGenerator.resolveInlineAsmConstant(inlineAsmConstant, argNodes, targetLLVMType);
+            result = (LLVMExpressionNode) createInlineAssemblerNode(inlineAsmConstant, argNodes, targetLLVMType);
 
         } else {
             LLVMFunctionNode function = (LLVMFunctionNode) symbols.resolve(target);
@@ -637,7 +639,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         } else if (target instanceof InlineAsmConstant) {
             final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-            node = LLVMNodeGenerator.resolveInlineAsmConstant(inlineAsmConstant, args, call.getType().getLLVMBaseType());
+            node = createInlineAssemblerNode(inlineAsmConstant, args, call.getType().getLLVMBaseType());
 
         } else {
             LLVMFunctionNode function = (LLVMFunctionNode) symbols.resolve(target);
@@ -650,5 +652,18 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source) {
         final LLVMNode node = factoryFacade.createFrameWrite(source.getType().getLLVMBaseType(), result, method.getSlot(source.getName()));
         method.addInstruction(node);
+    }
+
+    private LLVMNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, LLVMBaseType retType) {
+        if (inlineAsmConstant.hasSideEffects()) {
+            LLVMLogger.info("Parsing Inline Assembly Constant with Sideeffects!");
+        }
+        if (inlineAsmConstant.needsAlignedStack()) {
+            throw new UnsupportedOperationException("Assembly Expressions that require an aligned Stack are not supported yet!");
+        }
+        if (inlineAsmConstant.getDialect() != AsmDialect.AT_T) {
+            throw new UnsupportedOperationException("Unsupported Assembly Dialect: " + inlineAsmConstant.getDialect());
+        }
+        return factoryFacade.createInlineAssemblerExpression(inlineAsmConstant.getAsmExpression(), inlineAsmConstant.getAsmFlags(), argNodes, retType);
     }
 }
