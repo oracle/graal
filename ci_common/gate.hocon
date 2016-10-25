@@ -109,6 +109,12 @@ gateLinuxAMD64TraceRABU : ${gateLinuxAMD64} {
   }
 }
 
+gateLinuxAMD64TraceRASingleBlock : ${gateLinuxAMD64} {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.TraceRA=true -Dgraal.TraceRAPolicy=BottomUpOnly -Dgraal.TraceBuilding=SingleBlock"
+  }
+}
+
 gateLinuxAMD64Bootstrap : ${gateLinuxAMD64}
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
 gateSolarisSPARCBootstrap : ${gateSolarisSPARC}
