@@ -839,8 +839,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMExpressionNode condition = visitValueRef(instr.getCondition().getRef(), instr.getCondition().getType());
         LLVMExpressionNode trueValue = visitValueRef(instr.getValue1().getRef(), instr.getValue1().getType());
         LLVMExpressionNode falseValue = visitValueRef(instr.getValue2().getRef(), instr.getValue2().getType());
-        LLVMBaseType llvmType = getLLVMType(instr.getValue1().getType()).getType();
-        return factoryFacade.createSelect(llvmType, condition, trueValue, falseValue);
+        return factoryFacade.createSelect(LLVMToBitcodeAdapter.resolveType(resolve(instr.getValue1().getType())), condition, trueValue, falseValue);
     }
 
     private LLVMExpressionNode visitGetElementPtr(Instruction_getelementptr getElementPtr) {

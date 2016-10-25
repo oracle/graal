@@ -95,6 +95,7 @@ import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -262,8 +263,17 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
-        return LLVMSelectFactory.createSelect(llvmType, condition, trueValue, falseValue);
+    public LLVMExpressionNode createSelect(Type type, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
+        LLVMBaseType llvmType = type.getLLVMBaseType();
+        if (type instanceof VectorType) {
+            final int size = runtime.getByteSize(type);
+            final int alignment = runtime.getBitAlignment(llvmType);
+            final LLVMAddressNode target = (LLVMAddressNode) createAlloc(type, size, alignment, null, null);
+
+            return LLVMSelectFactory.createSelectVector(llvmType, target, condition, trueValue, falseValue);
+        } else {
+            return LLVMSelectFactory.createSelect(llvmType, condition, trueValue, falseValue);
+        }
     }
 
     @Override

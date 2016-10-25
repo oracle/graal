@@ -163,7 +163,7 @@ public interface NodeFactoryFacade {
 
     Class<?> getJavaClass(LLVMExpressionNode llvmExpressionNode);
 
-    LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue);
+    LLVMExpressionNode createSelect(Type type, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue);
 
     /**
      * Creates a zero vector initializer.

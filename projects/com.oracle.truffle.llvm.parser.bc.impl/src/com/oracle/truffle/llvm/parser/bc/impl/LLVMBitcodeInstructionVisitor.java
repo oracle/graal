@@ -62,7 +62,6 @@ import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
-import com.oracle.truffle.llvm.parser.factories.LLVMSelectFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMVectorFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
@@ -501,20 +500,9 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode condition = symbols.resolve(select.getCondition());
         final LLVMExpressionNode trueValue = symbols.resolve(select.getTrueValue());
         final LLVMExpressionNode falseValue = symbols.resolve(select.getFalseValue());
-        final LLVMBaseType llvmType = select.getType().getLLVMBaseType();
+        final Type type = select.getType();
 
-        final LLVMExpressionNode result;
-        if (select.getType() instanceof VectorType) {
-            final VectorType type = (VectorType) select.getType();
-            final int size = type.getSize(method.getTargetDataLayout());
-            final int alignment = type.getAlignment(method.getTargetDataLayout());
-            final LLVMAddressNode target = (LLVMAddressNode) factoryFacade.createAlloc(type, size, alignment, null, null);
-
-            result = LLVMSelectFactory.createSelectVector(llvmType, target, condition, trueValue, falseValue);
-
-        } else {
-            result = factoryFacade.createSelect(llvmType, condition, trueValue, falseValue);
-        }
+        final LLVMExpressionNode result = factoryFacade.createSelect(type, condition, trueValue, falseValue);
 
         createFrameWrite(result, select);
     }
