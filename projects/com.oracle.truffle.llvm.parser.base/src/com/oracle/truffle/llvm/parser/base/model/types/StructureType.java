@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 public final class StructureType implements AggregateType, ValueSymbol {
 
@@ -199,7 +200,16 @@ public final class StructureType implements AggregateType, ValueSymbol {
     public boolean equals(Object obj) {
         if (obj instanceof StructureType) {
             StructureType other = (StructureType) obj;
-            return isPacked == other.isPacked && Arrays.equals(types, other.types);
+            if (!Objects.equals(name, other.name)) {
+                return false;
+            }
+            if (isPacked != other.isPacked) {
+                return false;
+            }
+            if (!Arrays.equals(types, other.types)) {
+                return false;
+            }
+            return true;
         }
         return false;
     }
