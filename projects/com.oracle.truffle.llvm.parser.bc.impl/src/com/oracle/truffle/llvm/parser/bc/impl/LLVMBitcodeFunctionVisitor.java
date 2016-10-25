@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.bc.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -102,8 +103,8 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return instructions.toArray(new LLVMNode[instructions.size()]);
     }
 
-    public LLVMBasicBlockNode[] getBlocks() {
-        return blocks.toArray(new LLVMBasicBlockNode[blocks.size()]);
+    public List<LLVMBasicBlockNode> getBlocks() {
+        return Collections.unmodifiableList(blocks);
     }
 
     public LLVMContext getContext() {

@@ -267,7 +267,8 @@ public interface NodeFactoryFacade {
      * @param slotNullerAfterNodes
      * @return the function block node
      */
-    LLVMExpressionNode createFunctionBlockNode(FrameSlot returnSlot, List<LLVMNode> basicBlockNodes, LLVMStackFrameNuller[][] indexToSlotNuller, LLVMStackFrameNuller[][] slotNullerAfterNodes);
+    LLVMExpressionNode createFunctionBlockNode(FrameSlot returnSlot, List<? extends LLVMNode> basicBlockNodes, LLVMStackFrameNuller[][] indexToSlotNuller,
+                    LLVMStackFrameNuller[][] slotNullerAfterNodes);
 
     /**
      * Creates the entry point for a function.
