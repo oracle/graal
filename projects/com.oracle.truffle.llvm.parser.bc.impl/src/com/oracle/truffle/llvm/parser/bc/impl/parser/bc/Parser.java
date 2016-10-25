@@ -111,7 +111,7 @@ public class Parser {
                     UNABBREV_RECORD
     };
 
-    private static final String CHAR6 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXJZ0123456789._";
+    private static final String CHAR6 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._";
 
     protected final Bitstream stream;
 
