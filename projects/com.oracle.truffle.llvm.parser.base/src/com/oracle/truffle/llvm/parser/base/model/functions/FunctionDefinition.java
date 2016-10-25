@@ -33,6 +33,8 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.Objects;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
@@ -114,9 +116,13 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
             }
         }
 
+        final Set<String> explicitBlockNames = Arrays.stream(blocks).map(InstructionBlock::getName).filter(blockName -> !ValueSymbol.UNKNOWN.equals(blockName)).collect(Collectors.toSet());
         for (final InstructionBlock block : blocks) {
             if (block.getName().equals(ValueSymbol.UNKNOWN)) {
-                block.setName(String.valueOf(symbolIndex++));
+                do {
+                    block.setName(String.valueOf(symbolIndex++));
+                    // avoid name clashes
+                } while (explicitBlockNames.contains(block.getName()));
             }
             for (int i = 0; i < block.getInstructionCount(); i++) {
                 final Instruction instruction = block.getInstruction(i);
