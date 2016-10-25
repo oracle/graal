@@ -60,7 +60,6 @@ import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMAdd
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI1LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMAccessGlobalVariableStorageNodeGen;
-import com.oracle.truffle.llvm.nodes.impl.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
@@ -168,14 +167,14 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         FrameSlot stack = stackAllocation.getRootStackSlot();
 
         LLVMNode[] globals = module.getGobalVariables(stack).toArray(new LLVMNode[0]);
-        RootNode globalVarInits = new LLVMStaticInitsBlockNode(globals, rootFrame, context, stack);
+        RootNode globalVarInits = factoryFacade.createStaticInitsRootNode(globals);
         RootCallTarget globalVarInitsTarget = Truffle.getRuntime().createCallTarget(globalVarInits);
         LLVMNode[] deallocs = module.getDeallocations();
-        RootNode globalVarDeallocs = new LLVMStaticInitsBlockNode(deallocs, rootFrame, context, stack);
+        RootNode globalVarDeallocs = factoryFacade.createStaticInitsRootNode(deallocs);
         RootCallTarget globalVarDeallocsTarget = Truffle.getRuntime().createCallTarget(globalVarDeallocs);
 
-        final List<RootCallTarget> constructorFunctions = module.getStructor("@llvm.global_ctors", rootFrame, stack);
-        final List<RootCallTarget> destructorFunctions = module.getStructor("@llvm.global_dtors", rootFrame, stack);
+        final List<RootCallTarget> constructorFunctions = module.getStructor("@llvm.global_ctors", stack);
+        final List<RootCallTarget> destructorFunctions = module.getStructor("@llvm.global_dtors", stack);
 
         if (mainFunction == null) {
             return new LLVMParserResultImpl(Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(stack)), globalVarInitsTarget, globalVarDeallocsTarget, constructorFunctions,
@@ -388,11 +387,11 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         }
     }
 
-    public List<RootCallTarget> getStructor(String name, FrameDescriptor frame, FrameSlot stackSlot) {
+    public List<RootCallTarget> getStructor(String name, FrameSlot stackSlot) {
         for (GlobalValueSymbol globalValueSymbol : globals.keySet()) {
             if (globalValueSymbol.getName().equals(name)) {
                 final LLVMNode[] targets = resolveStructor(globalValueSymbol, stackSlot);
-                final RootCallTarget constructorFunctionsRootCallTarget = Truffle.getRuntime().createCallTarget(new LLVMStaticInitsBlockNode(targets, frame, context, stackSlot));
+                final RootCallTarget constructorFunctionsRootCallTarget = Truffle.getRuntime().createCallTarget(factoryFacade.createStaticInitsRootNode(targets));
                 final List<RootCallTarget> targetList = new ArrayList<>(1);
                 targetList.add(constructorFunctionsRootCallTarget);
                 return targetList;
@@ -596,10 +595,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         @Override
         public FrameSlot getStackPointerSlot() {
-            if (functionVisitor != null) {
-                return functionVisitor.getStackSlot();
-            }
-            throw new IllegalStateException("There is currently no active function visitor set");
+            return functionVisitor != null ? functionVisitor.getStackSlot() : stack.getRootStackSlot();
         }
 
         @Override
@@ -614,7 +610,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         @Override
         public FrameDescriptor getGlobalFrameDescriptor() {
-            throw new UnsupportedOperationException("Not implemented!");
+            return stack.getRootFrame();
         }
 
         @Override
