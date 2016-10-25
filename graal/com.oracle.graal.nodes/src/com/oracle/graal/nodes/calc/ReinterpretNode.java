@@ -29,6 +29,8 @@ import java.nio.ByteOrder;
 
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.ArithmeticStamp;
+import com.oracle.graal.compiler.common.type.FloatStamp;
+import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
@@ -40,6 +42,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SerializableConstant;
 
@@ -58,7 +61,7 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
     }
 
     public ReinterpretNode(Stamp to, ValueNode value) {
-        super(TYPE, to, value);
+        super(TYPE, getReinterpretStamp(to, value.stamp()), value);
         assert to instanceof ArithmeticStamp;
     }
 
@@ -89,6 +92,184 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
             return new ReinterpretNode(stamp(), reinterpret.getValue());
         }
         return this;
+    }
+
+    /**
+     * Compute the {@link IntegerStamp} from a {@link FloatStamp}, losing as little information as
+     * possible.
+     *
+     * Sorting by their bit pattern reinterpreted as signed integers gives the following order of
+     * floating point numbers:
+     *
+     * -0 | negative numbers | -Inf | NaNs | 0 | positive numbers | +Inf | NaNs
+     *
+     * So we can compute a better integer range if we know that the input is positive, negative,
+     * finite, non-zero and/or not NaN.
+     */
+    private static IntegerStamp floatToInt(FloatStamp stamp) {
+        int bits = stamp.getBits();
+
+        long signBit = 1L << (bits - 1);
+        long exponentMask;
+        if (bits == 64) {
+            exponentMask = Double.doubleToRawLongBits(Double.POSITIVE_INFINITY);
+        } else {
+            assert bits == 32;
+            exponentMask = Float.floatToRawIntBits(Float.POSITIVE_INFINITY);
+        }
+
+        long positiveInfinity = exponentMask;
+        long negativeInfinity = CodeUtil.signExtend(signBit | positiveInfinity, bits);
+        long negativeZero = CodeUtil.signExtend(signBit | 0, bits);
+
+        if (stamp.isNaN()) {
+            // special case: in addition to the range, we know NaN has all exponent bits set
+            return new IntegerStamp(bits, negativeInfinity + 1, CodeUtil.maxValue(bits), exponentMask, CodeUtil.mask(bits));
+        }
+
+        long upperBound;
+        if (stamp.isNonNaN()) {
+            if (stamp.upperBound() < 0.0) {
+                if (stamp.lowerBound() > Double.NEGATIVE_INFINITY) {
+                    upperBound = negativeInfinity - 1;
+                } else {
+                    upperBound = negativeInfinity;
+                }
+            } else if (stamp.upperBound() == 0.0) {
+                upperBound = 0;
+            } else if (stamp.upperBound() < Double.POSITIVE_INFINITY) {
+                upperBound = positiveInfinity - 1;
+            } else {
+                upperBound = positiveInfinity;
+            }
+        } else {
+            upperBound = CodeUtil.maxValue(bits);
+        }
+
+        long lowerBound;
+        if (stamp.lowerBound() > 0.0) {
+            if (stamp.isNonNaN()) {
+                lowerBound = 1;
+            } else {
+                lowerBound = negativeInfinity + 1;
+            }
+        } else if (stamp.upperBound() == Double.NEGATIVE_INFINITY) {
+            lowerBound = negativeInfinity;
+        } else if (stamp.upperBound() < 0.0) {
+            lowerBound = negativeZero + 1;
+        } else {
+            lowerBound = negativeZero;
+        }
+
+        return StampFactory.forInteger(bits, lowerBound, upperBound);
+    }
+
+    /**
+     * Compute the {@link IntegerStamp} from a {@link FloatStamp}, losing as little information as
+     * possible.
+     *
+     * Sorting by their bit pattern reinterpreted as signed integers gives the following order of
+     * floating point numbers:
+     *
+     * -0 | negative numbers | -Inf | NaNs | 0 | positive numbers | +Inf | NaNs
+     *
+     * So from certain integer ranges we may be able to infer something about the sign, finiteness
+     * or NaN-ness of the result.
+     */
+    private static FloatStamp intToFloat(IntegerStamp stamp) {
+        int bits = stamp.getBits();
+
+        double minPositive;
+        double maxPositive;
+
+        long signBit = 1L << (bits - 1);
+        long exponentMask;
+        if (bits == 64) {
+            exponentMask = Double.doubleToRawLongBits(Double.POSITIVE_INFINITY);
+            minPositive = Double.MIN_VALUE;
+            maxPositive = Double.MAX_VALUE;
+        } else {
+            assert bits == 32;
+            exponentMask = Float.floatToRawIntBits(Float.POSITIVE_INFINITY);
+            minPositive = Float.MIN_VALUE;
+            maxPositive = Float.MAX_VALUE;
+        }
+
+        long significandMask = CodeUtil.mask(bits) & ~(signBit | exponentMask);
+
+        long positiveInfinity = exponentMask;
+        long negativeInfinity = CodeUtil.signExtend(signBit | positiveInfinity, bits);
+        long negativeZero = CodeUtil.signExtend(signBit | 0, bits);
+
+        if ((stamp.downMask() & exponentMask) == exponentMask && (stamp.downMask() & significandMask) != 0) {
+            // if all exponent bits and at least one significand bit are set, the result is NaN
+            return new FloatStamp(bits, Double.NaN, Double.NaN, false);
+        }
+
+        double upperBound;
+        if (stamp.upperBound() < negativeInfinity) {
+            if (stamp.lowerBound() > negativeZero) {
+                upperBound = -minPositive;
+            } else {
+                upperBound = -0.0;
+            }
+        } else if (stamp.upperBound() < 0) {
+            if (stamp.lowerBound() > negativeInfinity) {
+                return new FloatStamp(bits, Double.NaN, Double.NaN, false);
+            } else if (stamp.lowerBound() == negativeInfinity) {
+                upperBound = Double.NEGATIVE_INFINITY;
+            } else if (stamp.lowerBound() > negativeZero) {
+                upperBound = -minPositive;
+            } else {
+                upperBound = -0.0;
+            }
+        } else if (stamp.upperBound() == 0) {
+            upperBound = 0.0;
+        } else if (stamp.upperBound() < positiveInfinity) {
+            upperBound = maxPositive;
+        } else {
+            upperBound = Double.POSITIVE_INFINITY;
+        }
+
+        double lowerBound;
+        if (stamp.lowerBound() > positiveInfinity) {
+            return new FloatStamp(bits, Double.NaN, Double.NaN, false);
+        } else if (stamp.lowerBound() == positiveInfinity) {
+            lowerBound = Double.POSITIVE_INFINITY;
+        } else if (stamp.lowerBound() > 0) {
+            lowerBound = minPositive;
+        } else if (stamp.lowerBound() > negativeInfinity) {
+            lowerBound = 0.0;
+        } else {
+            lowerBound = Double.NEGATIVE_INFINITY;
+        }
+
+        boolean nonNaN;
+        if ((stamp.upMask() & exponentMask) != exponentMask) {
+            // NaN has all exponent bits set
+            nonNaN = true;
+        } else {
+            boolean negativeNaNBlock = stamp.lowerBound() < 0 && stamp.upperBound() > negativeInfinity;
+            boolean positiveNaNBlock = stamp.upperBound() > positiveInfinity;
+            nonNaN = !negativeNaNBlock && !positiveNaNBlock;
+        }
+
+        return new FloatStamp(bits, lowerBound, upperBound, nonNaN);
+    }
+
+    private static Stamp getReinterpretStamp(Stamp toStamp, Stamp fromStamp) {
+        if (toStamp instanceof IntegerStamp && fromStamp instanceof FloatStamp) {
+            return floatToInt((FloatStamp) fromStamp);
+        } else if (toStamp instanceof FloatStamp && fromStamp instanceof IntegerStamp) {
+            return intToFloat((IntegerStamp) fromStamp);
+        } else {
+            return toStamp;
+        }
+    }
+
+    @Override
+    public boolean inferStamp() {
+        return updateStamp(getReinterpretStamp(stamp(), getValue().stamp()));
     }
 
     @Override
