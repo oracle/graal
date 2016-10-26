@@ -31,6 +31,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.oracle.graal.bytecode.BytecodeDisassembler;
+import com.oracle.graal.debug.DebugDumpHandler.TrustedObjectConstantFormatter;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
@@ -76,7 +77,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * as properties.
      */
     @Override
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) {
+    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties, TrustedObjectConstantFormatter formatter) {
         beginGroup();
         beginProperties();
         printProperty("name", name);
@@ -98,7 +99,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * nodes.
      */
     @Override
-    public void print(Graph graph, String title, Map<Object, Object> properties) {
+    public void print(Graph graph, String title, Map<Object, Object> properties, TrustedObjectConstantFormatter formatter) {
         beginGraph(title);
         Set<Node> noBlockNodes = Node.newSet();
         ScheduleResult schedule = null;

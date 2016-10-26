@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package com.oracle.graal.truffle;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.Map;
-
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.debug.DebugDumpHandler.TrustedObjectConstantFormatter;
-import com.oracle.graal.graph.Graph;
+import com.oracle.truffle.object.LocationImpl;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.JavaConstant;
 
-interface GraphPrinter extends Closeable {
+public class TruffleObjectConstantFormatter implements TrustedObjectConstantFormatter {
 
-    /**
-     * Starts a new group of graphs with the given name, short name and method byte code index (BCI)
-     * as properties.
-     */
-    void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties, TrustedObjectConstantFormatter formatter) throws IOException;
+    private final SnippetReflectionProvider snippetReflection;
 
-    /**
-     * Prints an entire {@link Graph} with the specified title, optionally using short names for
-     * nodes.
-     */
-    void print(Graph graph, String title, Map<Object, Object> properties, TrustedObjectConstantFormatter formatter) throws IOException;
-
-    /**
-     * Ends the current group.
-     */
-    void endGroup() throws IOException;
+    public TruffleObjectConstantFormatter(SnippetReflectionProvider snippetReflection) {
+        this.snippetReflection = snippetReflection;
+    }
 
     @Override
-    void close();
+    public String format(JavaConstant value) {
+        Object obj = snippetReflection.asObject(Object.class, value);
+        if (obj instanceof LocationImpl) {
+            return obj.toString();
+        }
+        return null;
+    }
 }

@@ -69,6 +69,7 @@ public abstract class TruffleCompiler {
     protected final PartialEvaluator partialEvaluator;
     protected final Backend backend;
     protected final SnippetReflectionProvider snippetReflection;
+    protected final TruffleObjectConstantFormatter objectConstantFormatter;
     protected final GraalTruffleCompilationListener compilationNotify;
 
     // @formatter:off
@@ -91,6 +92,7 @@ public abstract class TruffleCompiler {
         this.compilationNotify = graalTruffleRuntime.getCompilationNotify();
         this.backend = backend;
         this.snippetReflection = snippetReflection;
+        this.objectConstantFormatter = new TruffleObjectConstantFormatter(snippetReflection);
         Providers backendProviders = backend.getProviders();
         ConstantFieldProvider constantFieldProvider = new TruffleConstantFieldProvider(backendProviders.getConstantFieldProvider(), backendProviders.getMetaAccess());
         this.providers = backendProviders.copyWith(constantFieldProvider);
@@ -179,7 +181,7 @@ public abstract class TruffleCompiler {
 
     @SuppressWarnings("try")
     public CompilationResult compileMethodHelper(StructuredGraph graph, String name, PhaseSuite<HighTierContext> graphBuilderSuite, InstalledCode predefinedInstalledCode) {
-        try (Scope s = Debug.scope("TruffleFinal")) {
+        try (Scope s = Debug.scope("TruffleFinal", objectConstantFormatter)) {
             Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "After TruffleTier");
         } catch (Throwable e) {
             throw Debug.handle(e);
@@ -187,8 +189,11 @@ public abstract class TruffleCompiler {
 
         CompilationResult result = null;
         List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
+
         TruffleCompilationResultBuilderFactory factory = new TruffleCompilationResultBuilderFactory(graph, validAssumptions);
-        try (DebugCloseable a = CompilationTime.start(); Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache()); DebugCloseable c = CompilationMemUse.start()) {
+        try (DebugCloseable a = CompilationTime.start();
+                        Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache(), objectConstantFormatter);
+                        DebugCloseable c = CompilationMemUse.start()) {
             SpeculationLog speculationLog = graph.getSpeculationLog();
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();

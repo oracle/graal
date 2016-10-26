@@ -24,7 +24,25 @@ package com.oracle.graal.debug;
 
 import java.io.Closeable;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+
 public interface DebugDumpHandler extends Closeable {
+
+    /**
+     * An object that can convert certain {@link JavaConstant}s of kind {@link JavaKind#Object} to a
+     * string without running untrusted code.
+     */
+    public interface TrustedObjectConstantFormatter {
+        /**
+         * Converts {@code constant} to a string without running untrusted code.
+         *
+         * @param constant a constant of kind {@link JavaKind#Object} to be converted to a string
+         * @return a {@link String} for {@code constant} or {@code null} if this object cannot
+         *         safely convert {@code constant} to a string
+         */
+        String format(JavaConstant constant);
+    }
 
     void dump(Object object, String message);
 
