@@ -22,13 +22,10 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.List;
+
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 
 public class JavaCCompiler extends AbstractCompiler {
@@ -42,62 +39,9 @@ public class JavaCCompiler extends AbstractCompiler {
         }
     }
 
-    public List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type) {
-        return type.getEnclosedElements();
-    }
-
+    @Override
     public List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type) {
         return environment.getElementUtils().getAllMembers(type);
-    }
-
-    private static final Class<?>[] getTreeAndTopLevelSignature = new Class<?>[]{Element.class, AnnotationMirror.class, AnnotationValue.class};
-    private static final Class<?>[] getCharContentSignature = new Class<?>[]{boolean.class};
-
-    @Override
-    public String getMethodBody(ProcessingEnvironment env, ExecutableElement method) {
-        try {
-            /*
-             * if (false) { Pair<JCTree, JCCompilationUnit> treeAndTopLevel = ((JavacElements)
-             * env.getElementUtils()).getTreeAndTopLevel(method, null, null); JCBlock block =
-             * ((JCMethodDecl) treeAndTopLevel.fst).getBody(); int startPos = block.pos; int endPos
-             * = block.endpos; String methodBody =
-             * treeAndTopLevel.snd.getSourceFile().getCharContent(true).subSequence(startPos + 1,
-             * endPos).toString(); return methodBody; }
-             */
-
-            Object treeAndTopLevel = getTreeAndTopLevel(env, method);
-            Object block = method(field(treeAndTopLevel, "fst"), "getBody");
-            int startPos = (int) field(block, "pos");
-            int endPos = (int) field(block, "endpos");
-            return getContent(treeAndTopLevel).subSequence(startPos + 1, endPos).toString();
-        } catch (Exception e) {
-            return ElementUtils.printException(e);
-        }
-    }
-
-    private static CharSequence getContent(Object treeAndTopLevel) throws Exception {
-        /*
-         * CharSequence content = treeAndTopLevel.snd.getSourceFile().getCharContent(true);
-         */
-        return (CharSequence) method(method(field(treeAndTopLevel, "snd"), "getSourceFile"), "getCharContent", getCharContentSignature, true);
-    }
-
-    private static Object getTreeAndTopLevel(ProcessingEnvironment env, Element element) throws Exception {
-        /*
-         * Pair<JCTree, JCCompilationUnit> treeAndTopLevel = ((JavacElements)
-         * env.getElementUtils()).getTreeAndTopLevel(method, null, null);
-         */
-        return method(method(env, "getElementUtils"), "getTreeAndTopLevel", getTreeAndTopLevelSignature, element, null, null);
-    }
-
-    @Override
-    public String getHeaderComment(ProcessingEnvironment env, Element type) {
-        try {
-            String content = getContent(getTreeAndTopLevel(env, type)).toString();
-            return parseHeader(content);
-        } catch (Exception e) {
-            return ElementUtils.printException(e);
-        }
     }
 
 }

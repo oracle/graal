@@ -23,19 +23,11 @@
 package com.oracle.truffle.dsl.processor.java.compiler;
 
 import java.util.List;
+
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 
 public interface Compiler {
-
-    String getMethodBody(ProcessingEnvironment env, ExecutableElement method);
-
-    String getHeaderComment(ProcessingEnvironment env, Element type);
-
-    List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type);
-
     List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type);
-
 }
