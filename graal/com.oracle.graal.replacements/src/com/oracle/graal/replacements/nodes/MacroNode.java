@@ -51,7 +51,7 @@ import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.tiers.PhaseContext;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

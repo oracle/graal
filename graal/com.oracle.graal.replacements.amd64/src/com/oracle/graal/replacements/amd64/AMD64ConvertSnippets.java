@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.calc.FloatConvertNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;

@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -44,7 +45,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;

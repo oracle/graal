@@ -46,8 +46,8 @@ import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
-import com.oracle.graal.replacements.Snippet;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;

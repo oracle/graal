@@ -46,7 +46,7 @@ import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.extended.UnsafeCopyNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;

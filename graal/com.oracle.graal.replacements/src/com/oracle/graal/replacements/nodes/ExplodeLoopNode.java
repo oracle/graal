@@ -33,7 +33,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.replacements.Snippet.VarargsParameter;
+import com.oracle.graal.api.replacements.Snippet.VarargsParameter;
 
 /**
  * Placeholder node to denote to snippet preparation that the following loop must be completely

@@ -35,7 +35,7 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.replacements.Snippet.VarargsParameter;
+import com.oracle.graal.api.replacements.Snippet.VarargsParameter;
 
 /**
  * Implements the semantics of {@link VarargsParameter}.

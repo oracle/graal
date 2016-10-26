@@ -44,7 +44,7 @@ import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.replacements.ReplacementsImpl;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;

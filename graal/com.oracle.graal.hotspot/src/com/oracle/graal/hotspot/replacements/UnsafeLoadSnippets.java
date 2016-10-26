@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;

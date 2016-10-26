@@ -20,14 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.api.replacements;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-
-import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
 
 /**
  * A snippet is a Graal graph expressed as a Java source method. Snippets are used for lowering
@@ -39,14 +37,9 @@ public @interface Snippet {
 
     /**
      * Denotes a snippet parameter representing 0 or more arguments that will be bound during
-     * snippet template {@linkplain SnippetTemplate#instantiate instantiation}. During snippet
-     * template creation, its value must be an array whose length specifies the number of arguments
-     * (the contents of the array are ignored) bound to the parameter during
-     * {@linkplain SnippetTemplate#instantiate instantiation}.
-     *
-     * Such a parameter must be used in a counted loop in the snippet preceded by a call to
-     * {@link ExplodeLoopNode#explodeLoop()}. The counted looped must be a standard iteration over
-     * all the loop's elements (i.e. {@code for (T e : arr) ... }).
+     * snippet template instantiation. During snippet template creation, its value must be an array
+     * whose length specifies the number of arguments (the contents of the array are ignored) bound
+     * to the parameter during instantiation.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
@@ -55,7 +48,7 @@ public @interface Snippet {
 
     /**
      * Denotes a snippet parameter that will bound to a constant value during snippet template
-     * {@linkplain SnippetTemplate#instantiate instantiation}.
+     * instantiation.
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)

@@ -27,7 +27,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.verifyObject;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 
 /**
  * Stub called via {@link HotSpotHostForeignCallsProvider#VERIFY_OOP}.

@@ -49,8 +49,8 @@ import com.oracle.graal.hotspot.nodes.LeaveUnpackFramesStackFrameNode;
 import com.oracle.graal.hotspot.nodes.PushInterpreterFrameNode;
 import com.oracle.graal.hotspot.nodes.SaveAllRegistersNode;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
-import com.oracle.graal.replacements.Snippet;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;

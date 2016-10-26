@@ -51,7 +51,7 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;

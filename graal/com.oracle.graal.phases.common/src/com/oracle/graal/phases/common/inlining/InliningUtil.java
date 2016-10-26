@@ -36,6 +36,7 @@ import java.util.Map.Entry;
 import java.util.function.Function;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
@@ -384,15 +385,12 @@ public class InliningUtil {
     }
 
     static boolean isSubstitutionGraph(StructuredGraph inlineGraph, ResolvedJavaMethod inlineeMethod) {
-        /*
-         * There should be a better way to do this.
-         */
         for (Annotation ann : inlineGraph.method().getAnnotations()) {
             if (ann.annotationType().equals(MethodSubstitution.class)) {
                 assert inlineeMethod != null;
                 return true;
             }
-            if (ann.annotationType().getName().equals("com.oracle.graal.replacements.Snippet")) {
+            if (ann.annotationType().equals(Snippet.class)) {
                 return true;
             }
         }

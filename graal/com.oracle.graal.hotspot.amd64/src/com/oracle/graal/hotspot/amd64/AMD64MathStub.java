@@ -34,7 +34,7 @@ import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.SnippetStub;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode;

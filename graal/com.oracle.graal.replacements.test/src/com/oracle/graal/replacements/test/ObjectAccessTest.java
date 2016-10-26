@@ -40,7 +40,7 @@ import com.oracle.graal.nodes.extended.JavaReadNode;
 import com.oracle.graal.nodes.extended.JavaWriteNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.replacements.ReplacementsImpl;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.ObjectAccess;
 import com.oracle.graal.word.Pointer;

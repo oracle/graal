@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.RemNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.Snippets;

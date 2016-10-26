@@ -80,8 +80,8 @@ import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.memory.address.RawAddressNode;
-import com.oracle.graal.replacements.Snippet;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;
