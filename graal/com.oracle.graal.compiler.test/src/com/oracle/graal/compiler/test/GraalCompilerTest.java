@@ -793,7 +793,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         final int id = compilationId.incrementAndGet();
 
         InstalledCode installedCode = null;
-        try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+        try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), getSnippetReflection())) {
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
                 TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(), installedCodeOwner.getSignature()));
@@ -860,7 +860,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationResult compilationResult) {
         StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
         lastCompiledGraph = graphToCompile;
-        try (Scope s = Debug.scope("Compile", graphToCompile)) {
+        try (Scope s = Debug.scope("Compile", graphToCompile, getSnippetReflection())) {
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                             graphToCompile.getProfilingInfo(), getSuites(), getLIRSuites(), compilationResult, CompilationResultBuilderFactory.Default);
             return GraalCompiler.compile(request);
@@ -967,7 +967,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog());
-        try (Scope ds = Debug.scope("Parsing", javaMethod, graph)) {
+        try (Scope ds = Debug.scope("Parsing", javaMethod, graph, getSnippetReflection())) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             return graph;
         } catch (Throwable e) {

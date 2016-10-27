@@ -106,7 +106,6 @@ public class PartialEvaluator {
     protected final Architecture architecture;
     private final CanonicalizerPhase canonicalizer;
     private final SnippetReflectionProvider snippetReflection;
-    private final TruffleObjectConstantFormatter objectConstantFormatter;
     private final ResolvedJavaMethod callDirectMethod;
     private final ResolvedJavaMethod callInlinedMethod;
     private final ResolvedJavaMethod callSiteProxyMethod;
@@ -119,7 +118,6 @@ public class PartialEvaluator {
         this.architecture = architecture;
         this.canonicalizer = new CanonicalizerPhase();
         this.snippetReflection = snippetReflection;
-        this.objectConstantFormatter = new TruffleObjectConstantFormatter(snippetReflection);
         this.callDirectMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());
         this.callInlinedMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallInlinedMethod());
         this.callSiteProxyMethod = providers.getMetaAccess().lookupJavaMethod(GraalFrameInstance.CALL_NODE_METHOD);
@@ -165,7 +163,7 @@ public class PartialEvaluator {
         final StructuredGraph graph = new StructuredGraph(callTarget.toString(), callRootMethod, allowAssumptions, callTarget.getSpeculationLog(), NO_PROFILING_INFO);
         assert graph != null : "no graph for root method";
 
-        try (Scope s = Debug.scope("CreateGraph", graph, objectConstantFormatter); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
+        try (Scope s = Debug.scope("CreateGraph", graph, snippetReflection); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
 
             PhaseContext baseContext = new PhaseContext(providers);
             HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);

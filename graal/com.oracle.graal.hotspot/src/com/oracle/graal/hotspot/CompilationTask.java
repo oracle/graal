@@ -33,6 +33,7 @@ import static com.oracle.graal.compiler.phases.HighTier.Options.Inline;
 
 import java.util.List;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -160,7 +161,8 @@ public class CompilationTask {
 
     @SuppressWarnings("try")
     public HotSpotCompilationRequestResult runCompilation() {
-        GraalHotSpotVMConfig config = compiler.getGraalRuntime().getVMConfig();
+        HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
+        GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         final long threadId = Thread.currentThread().getId();
         int entryBCI = getEntryBCI();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
@@ -205,7 +207,8 @@ public class CompilationTask {
                 allocatedBytesBefore = 0L;
             }
 
-            try (Scope s = Debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
+            SnippetReflectionProvider snippetReflection = graalRuntime.getHostBackend().getProviders().getSnippetReflection();
+            try (Scope s = Debug.scope("Compiling", new DebugDumpScope(getIdString(), true), snippetReflection)) {
                 // Begin the compilation event.
                 compilationEvent.begin();
                 /*

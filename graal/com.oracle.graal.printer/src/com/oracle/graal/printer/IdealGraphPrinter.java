@@ -30,8 +30,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.bytecode.BytecodeDisassembler;
-import com.oracle.graal.debug.DebugDumpHandler.TrustedObjectConstantFormatter;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.graph.Graph;
 import com.oracle.graal.graph.Node;
@@ -40,6 +40,7 @@ import com.oracle.graal.graph.Position;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.BeginNode;
+import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.PhiNode;
@@ -77,7 +78,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * as properties.
      */
     @Override
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties, TrustedObjectConstantFormatter formatter) {
+    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties, SnippetReflectionProvider snippetReflection) {
         beginGroup();
         beginProperties();
         printProperty("name", name);
@@ -99,7 +100,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * nodes.
      */
     @Override
-    public void print(Graph graph, String title, Map<Object, Object> properties, TrustedObjectConstantFormatter formatter) {
+    public void print(Graph graph, String title, Map<Object, Object> properties, SnippetReflectionProvider snippetReflection) {
         beginGraph(title);
         Set<Node> noBlockNodes = Node.newSet();
         ScheduleResult schedule = null;
@@ -128,7 +129,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         }
 
         beginNodes();
-        List<Edge> edges = printNodes(graph, cfg == null ? null : cfg.getNodeToBlock(), noBlockNodes);
+        List<Edge> edges = printNodes(graph, cfg == null ? null : cfg.getNodeToBlock(), noBlockNodes, snippetReflection);
         endNodes();
 
         beginEdges();
@@ -150,7 +151,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         flush();
     }
 
-    private List<Edge> printNodes(Graph graph, NodeMap<Block> nodeToBlock, Set<Node> noBlockNodes) {
+    private List<Edge> printNodes(Graph graph, NodeMap<Block> nodeToBlock, Set<Node> noBlockNodes, SnippetReflectionProvider snippetReflection) {
         ArrayList<Edge> edges = new ArrayList<>();
 
         NodeMap<Set<Entry<String, Integer>>> colors = graph.createNodeMap();
@@ -208,6 +209,9 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                 printProperty("shortName", "B");
             } else if (node.getClass() == EndNode.class) {
                 printProperty("shortName", "E");
+            } else if (node instanceof ConstantNode) {
+                ConstantNode cn = (ConstantNode) node;
+                GraphPrinter.updateStringPropertiesForConstant(snippetReflection, props, cn);
             }
             if (node.predecessor() != null) {
                 printProperty("hasPredecessor", "true");

@@ -163,7 +163,7 @@ public abstract class Stub {
     @SuppressWarnings("try")
     public synchronized InstalledCode getCode(final Backend backend) {
         if (code == null) {
-            try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {
+            try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext(), providers.getSnippetReflection())) {
                 final StructuredGraph graph = getGraph();
 
                 // Stubs cannot be recompiled so they cannot be compiled with assumptions
