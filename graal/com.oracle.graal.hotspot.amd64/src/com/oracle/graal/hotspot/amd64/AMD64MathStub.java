@@ -23,22 +23,22 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_COS_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_EXP_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG10_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG_STUB;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_POW_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_SIN_STUB;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_TAN_STUB;
-import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_EXP_STUB;
-import static com.oracle.graal.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_POW_STUB;
 
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.SnippetStub;
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
-import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode;
 import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 /**
  * Stub called to support {@link Math}.

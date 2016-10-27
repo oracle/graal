@@ -22,14 +22,10 @@
  */
 package com.oracle.graal.replacements.test;
 
-import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.NamedLocationIdentity;
@@ -44,11 +40,15 @@ import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.replacements.ReplacementsImpl;
-import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;
 import com.oracle.graal.word.nodes.WordCastNode;
+
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests for the {@link Pointer} read and write operations.

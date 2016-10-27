@@ -26,13 +26,13 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.SLOW_PATH_PR
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.calc.FloatConvertNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;

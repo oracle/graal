@@ -25,12 +25,12 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;

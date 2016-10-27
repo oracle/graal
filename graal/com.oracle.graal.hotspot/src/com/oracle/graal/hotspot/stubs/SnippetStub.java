@@ -27,6 +27,8 @@ import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.Compilati
 
 import java.lang.reflect.Method;
 
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -46,10 +48,9 @@ import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
 import com.oracle.graal.replacements.ConstantBindingParameterPlugin;
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.Snippets;
+
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.MetaAccessProvider;

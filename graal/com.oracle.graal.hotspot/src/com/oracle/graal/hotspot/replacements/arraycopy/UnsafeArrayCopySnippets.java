@@ -38,6 +38,7 @@ import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
@@ -46,7 +47,6 @@ import com.oracle.graal.nodes.NamedLocationIdentity;
 import com.oracle.graal.nodes.extended.UnsafeCopyNode;
 import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;

@@ -25,6 +25,8 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static com.oracle.graal.replacements.nodes.CStringConstant.cstring;
 
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -33,8 +35,6 @@ import com.oracle.graal.hotspot.nodes.StubStartNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;

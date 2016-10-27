@@ -45,6 +45,8 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.verifyObject;
 import static jdk.vm.ci.hotspot.HotSpotMetaAccessProvider.computeArrayAllocationSize;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -55,8 +57,6 @@ import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.Register;

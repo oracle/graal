@@ -59,6 +59,8 @@ import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.List;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
 import com.oracle.graal.compiler.common.LocationIdentity;
@@ -98,8 +100,6 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.replacements.Log;
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;

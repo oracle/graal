@@ -24,11 +24,11 @@ package com.oracle.graal.replacements.test;
 
 import org.junit.Test;
 
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.replacements.ReplacementsImpl;
-import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Unsigned;
