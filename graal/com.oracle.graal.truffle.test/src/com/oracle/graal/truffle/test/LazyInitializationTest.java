@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle.test;
 
+import static com.oracle.graal.compiler.common.util.Util.JAVA_SPECIFICATION_VERSION;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -40,6 +42,7 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.CompilerThreadFactory;
+import com.oracle.graal.compiler.common.util.ModuleAPI;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionDescriptors;
@@ -238,6 +241,11 @@ public class LazyInitializationTest {
 
         if (cls.equals(Util.class)) {
             // Provider of the Java runtime check utility used during Graal initialization.
+            return true;
+        }
+
+        if (JAVA_SPECIFICATION_VERSION >= 9 && cls.equals(ModuleAPI.class)) {
+            // Graal initialization needs access to Module API on JDK 9.
             return true;
         }
 
