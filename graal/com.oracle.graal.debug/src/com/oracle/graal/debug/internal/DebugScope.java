@@ -33,8 +33,11 @@ import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.DebugVerifyHandler;
 import com.oracle.graal.debug.DelegatingDebugConfig;
 import com.oracle.graal.debug.Indent;
+import com.oracle.graal.debug.JavaMethodContext;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.TopLevelDebugConfig;
+
+import jdk.vm.ci.meta.JavaMethod;
 
 public final class DebugScope implements Debug.Scope {
 
@@ -50,20 +53,52 @@ public final class DebugScope implements Debug.Scope {
             this.indent = (parentIndent == null ? "" : parentIndent.indent + INDENTATION_INCREMENT);
         }
 
-        private void printScopeName(StringBuilder str) {
+        private boolean logScopeName() {
+            return logScopeName;
+        }
+
+        private void printScopeName(StringBuilder str, boolean isCurrent) {
             if (logScopeName) {
+                boolean parentPrinted = false;
                 if (parentIndent != null) {
-                    parentIndent.printScopeName(str);
+                    parentPrinted = parentIndent.logScopeName();
+                    parentIndent.printScopeName(str, false);
                 }
-                str.append(indent).append("[thread:").append(Thread.currentThread().getId()).append("] scope: ").append(getQualifiedName()).append(System.lineSeparator());
+                /*
+                 * Always print the current scope, scopes with context and the any scope whose
+                 * parent didn't print. This ensure the first new scope always shows up.
+                 */
+                if (isCurrent || printContext(null) != 0 || !parentPrinted) {
+                    str.append(indent).append("[thread:").append(Thread.currentThread().getId()).append("] scope: ").append(getQualifiedName()).append(System.lineSeparator());
+                }
+                printContext(str);
                 logScopeName = false;
             }
+        }
+
+        /**
+         * Print or count the context objects for the current scope.
+         */
+        private int printContext(StringBuilder str) {
+            int count = 0;
+            if (context != null && context.length > 0) {
+                // Include some context in the scope output
+                for (Object contextObj : context) {
+                    if (contextObj instanceof JavaMethodContext || contextObj instanceof JavaMethod) {
+                        if (str != null) {
+                            str.append(indent).append("Context: ").append(contextObj).append(System.lineSeparator());
+                        }
+                        count++;
+                    }
+                }
+            }
+            return count;
         }
 
         public void log(int logLevel, String msg, Object... args) {
             if (isLogEnabled(logLevel)) {
                 StringBuilder str = new StringBuilder();
-                printScopeName(str);
+                printScopeName(str, true);
                 str.append(indent);
                 String result = args.length == 0 ? msg : String.format(msg, args);
                 String lineSep = System.lineSeparator();
