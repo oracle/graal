@@ -22,12 +22,10 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.compiler.common.util.ModuleAPI.addExports;
+import static com.oracle.graal.compiler.common.util.ModuleAPI.getModule;
 import static com.oracle.graal.compiler.common.util.Util.JAVA_SPECIFICATION_VERSION;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
@@ -36,25 +34,6 @@ import jdk.vm.ci.services.JVMCIServiceLocator;
 
 @ServiceProvider(JVMCIServiceLocator.class)
 public final class HotSpotGraalJVMCIServiceLocator extends JVMCIServiceLocator {
-
-    // Use reflection so that this compiles on Java 8
-    private static final Method getModule;
-    private static final Method addExports;
-    static {
-        if (JAVA_SPECIFICATION_VERSION >= 9) {
-            try {
-                Class<?> moduleClass = Class.forName("java.lang.reflect.Module");
-                Class<?> modulesClass = Class.forName("jdk.internal.module.Modules");
-                addExports = modulesClass.getDeclaredMethod("addExports", moduleClass, String.class, moduleClass);
-                getModule = Class.class.getMethod("getModule");
-            } catch (NoSuchMethodException | SecurityException | ClassNotFoundException e) {
-                throw new GraalError(e);
-            }
-        } else {
-            getModule = null;
-            addExports = null;
-        }
-    }
 
     private boolean exportsAdded;
 
@@ -66,16 +45,12 @@ public final class HotSpotGraalJVMCIServiceLocator extends JVMCIServiceLocator {
      */
     private void addExports() {
         if (JAVA_SPECIFICATION_VERSION >= 9 && !exportsAdded) {
-            try {
-                Object javaBaseModule = getModule.invoke(String.class);
-                Object graalModule = getModule.invoke(getClass());
-                addExports.invoke(null, javaBaseModule, "jdk.internal.misc", graalModule);
-                addExports.invoke(null, javaBaseModule, "jdk.internal.jimage", graalModule);
-                addExports.invoke(null, javaBaseModule, "com.sun.crypto.provider", graalModule);
-                exportsAdded = true;
-            } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                throw new GraalError(e);
-            }
+            Object javaBaseModule = getModule.invoke(String.class);
+            Object graalModule = getModule.invoke(getClass());
+            addExports.invokeStatic(javaBaseModule, "jdk.internal.misc", graalModule);
+            addExports.invokeStatic(javaBaseModule, "jdk.internal.jimage", graalModule);
+            addExports.invokeStatic(javaBaseModule, "com.sun.crypto.provider", graalModule);
+            exportsAdded = true;
         }
     }
 
