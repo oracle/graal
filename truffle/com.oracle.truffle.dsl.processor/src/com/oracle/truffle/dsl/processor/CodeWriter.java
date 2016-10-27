@@ -22,15 +22,16 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
+
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.tools.JavaFileObject;
+
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 
 public final class CodeWriter extends AbstractCodeWriter {
 
@@ -54,10 +55,6 @@ public final class CodeWriter extends AbstractCodeWriter {
             return;
         }
         writeLn("// CheckStyle: start generated");
-        String comment = CompilerFactory.getCompiler(originalElement).getHeaderComment(env, originalElement);
-        if (comment != null) {
-            writeLn(comment);
-        }
     }
 
 }
