@@ -99,8 +99,9 @@ public class ValuePhiNode extends PhiNode implements ArrayLengthProvider {
             if (s == null) {
                 s = input.stamp();
             } else {
-                assertTrue(s.isCompatible(input.stamp()), "Phi Input Stamps are not compatible. Phi:%s inputs:%s", this,
-                                values().stream().map(x -> x.toString() + ":" + x.stamp()).collect(Collectors.joining(", ")));
+                if (!s.isCompatible(input.stamp())) {
+                    fail("Phi Input Stamps are not compatible. Phi:%s inputs:%s", this, values().stream().map(x -> x.toString() + ":" + x.stamp()).collect(Collectors.joining(", ")));
+                }
             }
         }
         return super.verify();
