@@ -33,6 +33,8 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.Fold.InjectedParameter;
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -41,8 +43,6 @@ import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.nodes.UnwindNode;
-import com.oracle.graal.replacements.Snippet;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;
 

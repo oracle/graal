@@ -59,6 +59,8 @@ import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.List;
 
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
 import com.oracle.graal.compiler.common.LocationIdentity;
@@ -98,8 +100,6 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.replacements.Log;
-import com.oracle.graal.replacements.Snippet;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -631,7 +631,7 @@ public class MonitorSnippets implements Snippets {
                     graph.addAfterFixed(graph.start(), invoke);
 
                     StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null);
-                    InliningUtil.inline(invoke, inlineeGraph, false, null);
+                    InliningUtil.inline(invoke, inlineeGraph, false, null, null);
 
                     List<ReturnNode> rets = graph.getNodes(ReturnNode.TYPE).snapshot();
                     for (ReturnNode ret : rets) {
@@ -649,9 +649,7 @@ public class MonitorSnippets implements Snippets {
                         Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
                         args.addConst("errMsg", msg);
                         inlineeGraph = template(args).copySpecializedGraph();
-
-                        // inlineeGraph = replacements.getSnippet(checkCounter.getMethod());
-                        InliningUtil.inline(invoke, inlineeGraph, false, null);
+                        InliningUtil.inline(invoke, inlineeGraph, false, null, null);
                     }
                 }
             }

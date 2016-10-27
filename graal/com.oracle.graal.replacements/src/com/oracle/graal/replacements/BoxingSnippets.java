@@ -28,6 +28,7 @@ import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.EnumMap;
 
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.debug.Debug;

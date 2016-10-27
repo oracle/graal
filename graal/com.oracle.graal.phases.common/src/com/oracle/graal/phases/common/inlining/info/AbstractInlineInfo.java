@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
 import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.Invoke;
@@ -60,22 +59,12 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         return invoke;
     }
 
-    @SuppressWarnings("try")
     protected static Collection<Node> inline(Invoke invoke, ResolvedJavaMethod concrete, Inlineable inlineable, boolean receiverNullCheck) {
         List<Node> canonicalizeNodes = new ArrayList<>();
         assert inlineable instanceof InlineableGraph;
         StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
-        MethodMetricsInlineeScopeInfo m = MethodMetricsInlineeScopeInfo.create();
-        try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", m, false)) {
-            Map<Node, Node> duplicateMap = InliningUtil.inline(invoke, calleeGraph, receiverNullCheck, canonicalizeNodes);
-            getInlinedParameterUsages(canonicalizeNodes, calleeGraph, duplicateMap);
-            if (Debug.isMethodMeterEnabled() && m != null) {
-                MethodMetricsImpl.recordInlinee(m.getRootMethod(), invoke.asNode().graph().method(), concrete);
-            }
-        }
-        StructuredGraph graph = invoke.asNode().graph();
-        graph.recordInlinedMethod(concrete);
-
+        Map<Node, Node> duplicateMap = InliningUtil.inline(invoke, calleeGraph, receiverNullCheck, canonicalizeNodes, concrete);
+        getInlinedParameterUsages(canonicalizeNodes, calleeGraph, duplicateMap);
         return canonicalizeNodes;
     }
 

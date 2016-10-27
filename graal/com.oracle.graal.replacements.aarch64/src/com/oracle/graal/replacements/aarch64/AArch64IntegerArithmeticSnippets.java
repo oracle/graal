@@ -23,6 +23,7 @@
 
 package com.oracle.graal.replacements.aarch64;
 
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -38,7 +39,6 @@ import com.oracle.graal.nodes.calc.UnsignedDivNode;
 import com.oracle.graal.nodes.calc.UnsignedRemNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;

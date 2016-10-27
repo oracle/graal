@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.api.replacements.SnippetTemplateCache;
 import com.oracle.graal.bytecode.BytecodeProvider;

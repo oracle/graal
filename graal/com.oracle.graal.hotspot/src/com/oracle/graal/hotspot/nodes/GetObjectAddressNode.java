@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
@@ -33,7 +34,6 @@ import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
-import com.oracle.graal.replacements.Snippet;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;

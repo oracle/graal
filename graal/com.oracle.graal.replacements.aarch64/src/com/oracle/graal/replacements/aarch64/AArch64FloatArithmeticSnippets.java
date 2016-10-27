@@ -26,6 +26,7 @@ package com.oracle.graal.replacements.aarch64;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.NodeClass;
@@ -35,7 +36,6 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.RemNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.Snippet;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.Snippets;

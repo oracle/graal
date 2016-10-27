@@ -43,6 +43,8 @@ import java.util.Map;
 
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.api.replacements.Fold;
+import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
@@ -62,8 +64,6 @@ import com.oracle.graal.nodes.extended.UnsafeLoadNode;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.type.StampTool;
-import com.oracle.graal.replacements.Snippet;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.replacements.SnippetTemplate;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;

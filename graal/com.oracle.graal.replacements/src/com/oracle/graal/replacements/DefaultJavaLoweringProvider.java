@@ -37,6 +37,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;

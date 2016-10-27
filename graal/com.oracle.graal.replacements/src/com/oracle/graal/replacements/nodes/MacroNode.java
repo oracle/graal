@@ -27,6 +27,7 @@ import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
+import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -51,7 +52,6 @@ import com.oracle.graal.phases.common.LoweringPhase;
 import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.tiers.PhaseContext;
-import com.oracle.graal.replacements.Snippet;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -161,7 +161,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
                     ((Lowerable) nonNullReceiver).lower(tool);
                 }
             }
-            InliningUtil.inline(invoke, replacementGraph, false, null);
+            InliningUtil.inline(invoke, replacementGraph, false, null, targetMethod);
             Debug.dump(Debug.INFO_LOG_LEVEL, graph(), "After inlining replacement %s", replacementGraph);
         } else {
             if (isPlaceholderBci(invoke.bci())) {
