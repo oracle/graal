@@ -156,6 +156,9 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             }
         } else {
             for (Node n : g.asNode().usages()) {
+                if (n == this) {
+                    continue;
+                }
                 if (n instanceof PiNode) {
                     PiNode otherPi = (PiNode) n;
                     if (o == otherPi.object() && computedStamp.equals(otherPi.stamp())) {
