@@ -649,8 +649,6 @@ public class MonitorSnippets implements Snippets {
                         Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
                         args.addConst("errMsg", msg);
                         inlineeGraph = template(args).copySpecializedGraph();
-
-                        // inlineeGraph = replacements.getSnippet(checkCounter.getMethod());
                         InliningUtil.inline(invoke, inlineeGraph, false, null, null);
                     }
                 }
