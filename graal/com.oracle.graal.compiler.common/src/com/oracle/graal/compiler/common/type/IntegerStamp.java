@@ -405,6 +405,31 @@ public class IntegerStamp extends PrimitiveStamp {
         return v;
     }
 
+    public static boolean multiplicationOverflows(long a, long b, int bits) {
+        assert bits <= 64 && bits >= 0;
+        long result = a * b;
+        // result is positive if the sign is the same
+        boolean positive = (a >= 0 && b >= 0) || (a < 0 && b < 0);
+        if (bits == 64) {
+            if (a > 0 && b > 0) {
+                return a > 0x7FFFFFFF_FFFFFFFFL / b;
+            } else if (a > 0 && b <= 0) {
+                return b < 0x80000000_00000000L / a;
+            } else if (a <= 0 && b > 0) {
+                return a < 0x80000000_00000000L / b;
+            } else {
+                // a<=0 && b <=0
+                return a != 0 && b < 0x7FFFFFFF_FFFFFFFFL / a;
+            }
+        } else {
+            if (positive) {
+                return result > CodeUtil.maxValue(bits);
+            } else {
+                return result < CodeUtil.minValue(bits);
+            }
+        }
+    }
+
     public static final ArithmeticOpTable OPS = new ArithmeticOpTable(
 
                     new UnaryOp.Neg() {
@@ -530,13 +555,147 @@ public class IntegerStamp extends PrimitiveStamp {
                         public Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
                             IntegerStamp a = (IntegerStamp) stamp1;
                             IntegerStamp b = (IntegerStamp) stamp2;
+
+                            int bits = a.getBits();
+                            assert bits == b.getBits();
+                            // if a==0 or b==0 result of a*b is always 0
                             if (a.upMask() == 0) {
                                 return a;
                             } else if (b.upMask() == 0) {
                                 return b;
                             } else {
-                                // TODO
-                                return a.unrestricted();
+                                // if a has the full range or b, the result will also have it
+                                if (a.isUnrestricted()) {
+                                    return a;
+                                } else if (b.isUnrestricted()) {
+                                    return b;
+                                }
+                                // a!=0 && b !=0 holds
+                                long newLowerBound = Long.MAX_VALUE;
+                                long newUpperBound = Long.MIN_VALUE;
+                                /*
+                                 * Based on the signs of the incoming stamps lower and upper bound
+                                 * of the result of the multiplication may be swapped. LowerBound
+                                 * can become upper bound if both signs are negative, and so on. To
+                                 * determine the new values for lower and upper bound we need to
+                                 * look at the max and min of the cases blow:
+                                 *
+                                 * @formatter:off
+                                 *
+                                 * a.lowerBound * b.lowerBound
+                                 * a.lowerBound * b.upperBound
+                                 * a.upperBound * b.lowerBound
+                                 * a.upperBound * b.upperBound
+                                 *
+                                 * @formatter:on
+                                 *
+                                 * We are only interested in those cases that are relevant due to
+                                 * the sign of the involved stamps (whether a stamp includes
+                                 * negative and / or positive values). Based on the signs, the maximum
+                                 * or minimum of the above multiplications form the new lower and
+                                 * upper bounds.
+                                 *
+                                 * The table below contains the interesting candidates for lower and
+                                 * upper bound after multiplication.
+                                 *
+                                 * For example if we consider two stamps a & b that both contain
+                                 * negative and positive values, the product of minN_a * minN_b
+                                 * (both the smallest negative value for each stamp) can only be the
+                                 * highest positive number. The other candidates can be computed in
+                                 * a similar fashion. Some of them can never be a new minimum or
+                                 * maximum and are therefore excluded.
+                                 *
+                                 *
+                                 * @formatter:off
+                                 *
+                                 *          [x..........0..........y]
+                                 *          -------------------------
+                                 *          [minN   maxN minP   maxP]
+                                 *               where maxN = min(0,y) && minP = max(0,x)
+                                 *
+                                 *
+                                 *                |minN_a  maxN_a    minP_a  maxP_a
+                                 *         _______|________________________________
+                                 *         minN_b |MAX      /     :   /      MIN
+                                 *         maxN_b | /      MIN    :  MAX      /
+                                 *                |---------------+----------------
+                                 *         minP_b | /      MAX    :  MIN      /
+                                 *         maxP_b |MIN      /     :   /      MAX
+                                 *
+                                 * @formatter:on
+                                 */
+                                // We materialize all factors here. If they are needed, the signs of
+                                // the stamp will ensure the correct value is used.
+                                // Checkstyle: stop
+                                long minN_a = a.lowerBound();
+                                long maxN_a = Math.min(0, a.upperBound());
+                                long minP_a = Math.max(0, a.lowerBound());
+                                long maxP_a = a.upperBound();
+
+                                long minN_b = b.lowerBound();
+                                long maxN_b = Math.min(0, b.upperBound());
+                                long minP_b = Math.max(0, b.lowerBound());
+                                long maxP_b = b.upperBound();
+                                // Checkstyle: resume
+
+                                // multiplication has shift semantics
+                                long newUpMask = ~CodeUtil.mask(Long.numberOfTrailingZeros(a.upMask) + Long.numberOfTrailingZeros(b.upMask)) & CodeUtil.mask(bits);
+
+                                if (a.canBePositive()) {
+                                    if (b.canBePositive()) {
+                                        if (multiplicationOverflows(maxP_a, maxP_b, bits)) {
+                                            return a.unrestricted();
+                                        }
+                                        long maxCandidate = maxP_a * maxP_b;
+                                        if (multiplicationOverflows(minP_a, minP_b, bits)) {
+                                            return a.unrestricted();
+                                        }
+                                        long minCandidate = minP_a * minP_b;
+                                        newLowerBound = Math.min(newLowerBound, minCandidate);
+                                        newUpperBound = Math.max(newUpperBound, maxCandidate);
+                                    }
+                                    if (b.canBeNegative()) {
+                                        if (multiplicationOverflows(minP_a, maxN_b, bits)) {
+                                            return a.unrestricted();
+                                        }
+                                        long maxCandidate = minP_a * maxN_b;
+                                        if (multiplicationOverflows(maxP_a, minN_b, bits)) {
+                                            return a.unrestricted();
+                                        }
+                                        long minCandidate = maxP_a * minN_b;
+                                        newLowerBound = Math.min(newLowerBound, minCandidate);
+                                        newUpperBound = Math.max(newUpperBound, maxCandidate);
+                                    }
+                                }
+                                if (a.canBeNegative()) {
+                                    if (b.canBePositive()) {
+                                        if (multiplicationOverflows(maxN_a, minP_b, bits)) {
+                                            return a.unrestricted();
+                                        }
+                                        long maxCandidate = maxN_a * minP_b;
+                                        if (multiplicationOverflows(minN_a, maxP_b, bits)) {
+                                            return a.unrestricted();
+                                        }
+                                        long minCandidate = minN_a * maxP_b;
+                                        newLowerBound = Math.min(newLowerBound, minCandidate);
+                                        newUpperBound = Math.max(newUpperBound, maxCandidate);
+                                    }
+                                    if (b.canBeNegative()) {
+                                        if (multiplicationOverflows(minN_a, minN_b, bits)) {
+                                            return a.unrestricted();
+                                        }
+                                        long maxCandidate = minN_a * minN_b;
+                                        if (multiplicationOverflows(maxN_a, maxN_b, bits)) {
+                                            return a.unrestricted();
+                                        }
+                                        long minCandidate = maxN_a * maxN_b;
+                                        newLowerBound = Math.min(newLowerBound, minCandidate);
+                                        newUpperBound = Math.max(newUpperBound, maxCandidate);
+                                    }
+                                }
+
+                                assert newLowerBound <= newUpperBound;
+                                return StampFactory.forIntegerWithMask(bits, newLowerBound, newUpperBound, 0, newUpMask);
                             }
                         }
 
