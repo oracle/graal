@@ -38,20 +38,8 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMVectorNode;
-import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
-import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory;
-import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI16LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
@@ -426,71 +414,16 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ReturnInstruction ret) {
-        FrameSlot slot = method.getFrame().findFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
-
-        LLVMRetNode node;
+        LLVMNode node;
         if (ret.getValue() == null) {
-            node = LLVMVoidReturnNodeGen.create(slot);
+            node = factoryFacade.createRetVoid();
         } else {
-            Type type = ret.getValue().getType();
-
+            final Type type = ret.getValue().getType();
+            method.getFrame().findFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID).setKind(type.getFrameSlotKind());
             final LLVMExpressionNode value = symbols.resolve(ret.getValue());
-
-            slot.setKind(type.getFrameSlotKind());
-
-            switch (type.getLLVMBaseType()) {
-                case I1:
-                    node = LLVMRetNodeFactory.LLVMI1RetNodeGen.create((LLVMI1Node) value, slot);
-                    break;
-                case I8:
-                    node = LLVMRetNodeFactory.LLVMI8RetNodeGen.create((LLVMI8Node) value, slot);
-                    break;
-                case I16:
-                    node = LLVMRetNodeFactory.LLVMI16RetNodeGen.create((LLVMI16Node) value, slot);
-                    break;
-                case I32:
-                    node = LLVMRetNodeFactory.LLVMI32RetNodeGen.create((LLVMI32Node) value, slot);
-                    break;
-                case I64:
-                    node = LLVMRetNodeFactory.LLVMI64RetNodeGen.create((LLVMI64Node) value, slot);
-                    break;
-                case I_VAR_BITWIDTH:
-                    node = LLVMRetNodeFactory.LLVMIVarBitRetNodeGen.create((LLVMIVarBitNode) value, slot);
-                    break;
-                case FLOAT:
-                    node = LLVMRetNodeFactory.LLVMFloatRetNodeGen.create((LLVMFloatNode) value, slot);
-                    break;
-                case DOUBLE:
-                    node = LLVMRetNodeFactory.LLVMDoubleRetNodeGen.create((LLVMDoubleNode) value, slot);
-                    break;
-                case X86_FP80:
-                    node = LLVMRetNodeFactory.LLVM80BitFloatRetNodeGen.create((LLVM80BitFloatNode) value, slot);
-                    break;
-                case ADDRESS:
-                    node = LLVMRetNodeFactory.LLVMAddressRetNodeGen.create((LLVMAddressNode) value, slot);
-                    break;
-                case FUNCTION_ADDRESS:
-                    node = LLVMRetNodeFactory.LLVMFunctionRetNodeGen.create((LLVMFunctionNode) value, slot);
-                    break;
-                case I1_VECTOR:
-                case I8_VECTOR:
-                case I16_VECTOR:
-                case I32_VECTOR:
-                case I64_VECTOR:
-                case FLOAT_VECTOR:
-                case DOUBLE_VECTOR:
-                    node = LLVMRetNodeFactory.LLVMVectorRetNodeGen.create((LLVMVectorNode) value, slot);
-                    break;
-                case STRUCT:
-                    final int size = type.getSize(method.getTargetDataLayout());
-                    node = LLVMRetNodeFactory.LLVMStructRetNodeGen.create((LLVMAddressNode) value, slot, size);
-                    break;
-                default:
-                    throw new UnsupportedOperationException("Unsupported Return Type: " + type);
-            }
+            node = factoryFacade.createNonVoidRet(value, type);
         }
-
-        method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
+        method.addTerminatingInstruction((LLVMTerminatorNode) node, block.getBlockIndex(), block.getName());
     }
 
     @Override
