@@ -50,13 +50,15 @@ interface GraphPrinter extends Closeable {
      * Starts a new group of graphs with the given name, short name and method byte code index (BCI)
      * as properties.
      */
-    void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties, SnippetReflectionProvider snippetReflection) throws IOException;
+    void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException;
 
     /**
      * Prints an entire {@link Graph} with the specified title, optionally using short names for
      * nodes.
      */
-    void print(Graph graph, String title, Map<Object, Object> properties, SnippetReflectionProvider snippetReflection) throws IOException;
+    void print(Graph graph, String title, Map<Object, Object> properties) throws IOException;
+
+    SnippetReflectionProvider getSnippetReflectionProvider();
 
     /**
      * Ends the current group.
@@ -121,10 +123,11 @@ interface GraphPrinter extends Closeable {
      * {@code cn} if it's a boxed Object value and {@code snippetReflection} can access the raw
      * value.
      */
-    static void updateStringPropertiesForConstant(SnippetReflectionProvider snippetReflection, Map<Object, Object> props, ConstantNode cn) {
-        if (cn.getValue() instanceof JavaConstant) {
+    default void updateStringPropertiesForConstant(Map<Object, Object> props, ConstantNode cn) {
+        SnippetReflectionProvider snippetReflection = getSnippetReflectionProvider();
+        if (snippetReflection != null && cn.getValue() instanceof JavaConstant) {
             JavaConstant constant = (JavaConstant) cn.getValue();
-            if (constant.getJavaKind() == JavaKind.Object && snippetReflection != null) {
+            if (constant.getJavaKind() == JavaKind.Object) {
                 Object obj = snippetReflection.asObject(Object.class, constant);
                 if (obj != null) {
                     String toString = GraphPrinter.constantToString(obj);
@@ -132,6 +135,7 @@ interface GraphPrinter extends Closeable {
                     // Overwrite the value inserted by
                     // ConstantNode.getDebugProperties()
                     props.put("rawvalue", rawvalue);
+                    System.out.println(obj.getClass() + ": " + rawvalue);
                     if (!rawvalue.equals(toString)) {
                         props.put("toString", toString);
                     }

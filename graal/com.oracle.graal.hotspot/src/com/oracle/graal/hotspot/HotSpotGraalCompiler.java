@@ -109,7 +109,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             }
             // Ensure a debug configuration for this thread is initialized
             if (Debug.isEnabled() && DebugScope.getConfig() == null) {
-                DebugEnvironment.initialize(TTY.out);
+                DebugEnvironment.initialize(TTY.out, graalRuntime.getHostProviders().getSnippetReflection());
             }
             CompilationTask task = new CompilationTask(jvmciRuntime, this, (HotSpotCompilationRequest) request, true, true);
             CompilationRequestResult r = null;

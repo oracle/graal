@@ -30,7 +30,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 public class TruffleTreeDebugConfigCustomizer implements DebugConfigCustomizer {
 
     @Override
-    public void customize(DebugConfig config) {
+    public void customize(DebugConfig config, Object... extraArgs) {
         config.dumpHandlers().add(new TruffleTreeDumpHandler());
     }
 }

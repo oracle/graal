@@ -149,25 +149,32 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private final ConstantPool constantPool;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
+    private final SnippetReflectionProvider snippetReflection;
 
     private static final Charset utf8 = Charset.forName("UTF-8");
 
-    public BinaryGraphPrinter(WritableByteChannel channel) throws IOException {
+    public BinaryGraphPrinter(WritableByteChannel channel, SnippetReflectionProvider snippetReflection) throws IOException {
         constantPool = new ConstantPool();
         buffer = ByteBuffer.allocateDirect(256 * 1024);
+        this.snippetReflection = snippetReflection;
         this.channel = channel;
         writeVersion();
     }
 
     @Override
-    public void print(Graph graph, String title, Map<Object, Object> properties, SnippetReflectionProvider snippetReflection) throws IOException {
+    public SnippetReflectionProvider getSnippetReflectionProvider() {
+        return snippetReflection;
+    }
+
+    @Override
+    public void print(Graph graph, String title, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GRAPH);
         writePoolObject(title);
-        writeGraph(graph, properties, snippetReflection);
+        writeGraph(graph, properties);
         flush();
     }
 
-    private void writeGraph(Graph graph, Map<Object, Object> properties, SnippetReflectionProvider snippetReflection) throws IOException {
+    private void writeGraph(Graph graph, Map<Object, Object> properties) throws IOException {
         ScheduleResult scheduleResult = null;
         if (graph instanceof StructuredGraph) {
 
@@ -191,8 +198,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
         BlockMap<List<Node>> blockToNodes = scheduleResult == null ? null : scheduleResult.getBlockToNodesMap();
         NodeMap<Block> nodeToBlocks = scheduleResult == null ? null : scheduleResult.getNodeToBlockMap();
         List<Block> blocks = cfg == null ? null : Arrays.asList(cfg.getBlocks());
-        writeProperties(properties, snippetReflection);
-        writeNodes(graph, nodeToBlocks, cfg, snippetReflection);
+        writeProperties(properties);
+        writeNodes(graph, nodeToBlocks, cfg);
         writeBlocks(blocks, blockToNodes);
     }
 
@@ -398,7 +405,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
     }
 
-    private void writePropertyObject(Object obj, SnippetReflectionProvider snippetReflection) throws IOException {
+    private void writePropertyObject(Object obj) throws IOException {
         if (obj instanceof Integer) {
             writeByte(PROPERTY_INT);
             writeInt(((Integer) obj).intValue());
@@ -419,10 +426,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
             }
         } else if (obj instanceof Graph) {
             writeByte(PROPERTY_SUBGRAPH);
-            writeGraph((Graph) obj, null, snippetReflection);
+            writeGraph((Graph) obj, null);
         } else if (obj instanceof CachedGraph) {
             writeByte(PROPERTY_SUBGRAPH);
-            writeGraph(((CachedGraph<?>) obj).getReadonlyCopy(), null, snippetReflection);
+            writeGraph(((CachedGraph<?>) obj).getReadonlyCopy(), null);
         } else if (obj != null && obj.getClass().isArray()) {
             Class<?> componentType = obj.getClass().getComponentType();
             if (componentType.isPrimitive()) {
@@ -472,7 +479,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         return null;
     }
 
-    private void writeNodes(Graph graph, NodeMap<Block> nodeToBlocks, ControlFlowGraph cfg, SnippetReflectionProvider snippetReflection) throws IOException {
+    private void writeNodes(Graph graph, NodeMap<Block> nodeToBlocks, ControlFlowGraph cfg) throws IOException {
         Map<Object, Object> props = new HashMap<>();
 
         writeInt(graph.getNodeCount());
@@ -516,7 +523,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             } else {
                 if (node instanceof ConstantNode) {
                     ConstantNode cn = (ConstantNode) node;
-                    GraphPrinter.updateStringPropertiesForConstant(snippetReflection, props, cn);
+                    updateStringPropertiesForConstant(props, cn);
                 }
                 props.put("category", "floating");
             }
@@ -524,7 +531,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(getNodeId(node));
             writePoolObject(nodeClass);
             writeByte(node.predecessor() == null ? 0 : 1);
-            writeProperties(props, snippetReflection);
+            writeProperties(props);
             writeEdges(node, Inputs);
             writeEdges(node, Successors);
 
@@ -532,7 +539,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
     }
 
-    private void writeProperties(Map<Object, Object> props, SnippetReflectionProvider snippetReflection) throws IOException {
+    private void writeProperties(Map<Object, Object> props) throws IOException {
         if (props == null) {
             writeShort((char) 0);
             return;
@@ -542,7 +549,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         for (Entry<Object, Object> entry : props.entrySet()) {
             String key = entry.getKey().toString();
             writePoolObject(key);
-            writePropertyObject(entry.getValue(), snippetReflection);
+            writePropertyObject(entry.getValue());
         }
     }
 
@@ -618,13 +625,13 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     @Override
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties, SnippetReflectionProvider snippetReflection) throws IOException {
+    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) throws IOException {
         writeByte(BEGIN_GROUP);
         writePoolObject(name);
         writePoolObject(shortName);
         writePoolObject(method);
         writeInt(bci);
-        writeProperties(properties, snippetReflection);
+        writeProperties(properties);
     }
 
     @Override

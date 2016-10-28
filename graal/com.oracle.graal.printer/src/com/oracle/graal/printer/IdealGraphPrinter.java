@@ -60,6 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
 
     private final boolean tryToSchedule;
+    private final SnippetReflectionProvider snippetReflection;
 
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
@@ -67,10 +68,16 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * @param tryToSchedule If false, no scheduling is done, which avoids exceptions for
      *            non-schedulable graphs.
      */
-    public IdealGraphPrinter(OutputStream stream, boolean tryToSchedule) {
+    public IdealGraphPrinter(OutputStream stream, boolean tryToSchedule, SnippetReflectionProvider snippetReflection) {
         super(stream);
         this.begin();
         this.tryToSchedule = tryToSchedule;
+        this.snippetReflection = snippetReflection;
+    }
+
+    @Override
+    public SnippetReflectionProvider getSnippetReflectionProvider() {
+        return snippetReflection;
     }
 
     /**
@@ -78,7 +85,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * as properties.
      */
     @Override
-    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties, SnippetReflectionProvider snippetReflection) {
+    public void beginGroup(String name, String shortName, ResolvedJavaMethod method, int bci, Map<Object, Object> properties) {
         beginGroup();
         beginProperties();
         printProperty("name", name);
@@ -100,7 +107,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * nodes.
      */
     @Override
-    public void print(Graph graph, String title, Map<Object, Object> properties, SnippetReflectionProvider snippetReflection) {
+    public void print(Graph graph, String title, Map<Object, Object> properties) {
         beginGraph(title);
         Set<Node> noBlockNodes = Node.newSet();
         ScheduleResult schedule = null;
@@ -129,7 +136,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         }
 
         beginNodes();
-        List<Edge> edges = printNodes(graph, cfg == null ? null : cfg.getNodeToBlock(), noBlockNodes, snippetReflection);
+        List<Edge> edges = printNodes(graph, cfg == null ? null : cfg.getNodeToBlock(), noBlockNodes);
         endNodes();
 
         beginEdges();
@@ -151,7 +158,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         flush();
     }
 
-    private List<Edge> printNodes(Graph graph, NodeMap<Block> nodeToBlock, Set<Node> noBlockNodes, SnippetReflectionProvider snippetReflection) {
+    private List<Edge> printNodes(Graph graph, NodeMap<Block> nodeToBlock, Set<Node> noBlockNodes) {
         ArrayList<Edge> edges = new ArrayList<>();
 
         NodeMap<Set<Entry<String, Integer>>> colors = graph.createNodeMap();
@@ -211,7 +218,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                 printProperty("shortName", "E");
             } else if (node instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) node;
-                GraphPrinter.updateStringPropertiesForConstant(snippetReflection, props, cn);
+                updateStringPropertiesForConstant(props, cn);
             }
             if (node.predecessor() != null) {
                 printProperty("hasPredecessor", "true");

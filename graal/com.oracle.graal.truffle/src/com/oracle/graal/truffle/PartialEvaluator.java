@@ -163,7 +163,7 @@ public class PartialEvaluator {
         final StructuredGraph graph = new StructuredGraph(callTarget.toString(), callRootMethod, allowAssumptions, callTarget.getSpeculationLog(), NO_PROFILING_INFO);
         assert graph != null : "no graph for root method";
 
-        try (Scope s = Debug.scope("CreateGraph", graph, snippetReflection); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
+        try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
 
             PhaseContext baseContext = new PhaseContext(providers);
             HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);

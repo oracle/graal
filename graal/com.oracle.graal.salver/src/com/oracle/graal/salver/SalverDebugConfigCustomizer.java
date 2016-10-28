@@ -33,7 +33,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 public class SalverDebugConfigCustomizer implements DebugConfigCustomizer {
 
     @Override
-    public void customize(DebugConfig config) {
+    public void customize(DebugConfig config, Object... extraArgs) {
         if (Salver.getValue()) {
             config.dumpHandlers().add(new GraphDumpHandler());
         }
