@@ -159,6 +159,7 @@ public class PluginGenerator {
                 out.printf("// CheckStyle: stop header check\n");
                 out.printf("// CheckStyle: stop line length check\n");
                 out.printf("// GENERATED CONTENT - DO NOT EDIT\n");
+                out.printf("// GENERATORS: %s, %s\n", VerifierAnnotationProcessor.class.getName(), PluginGenerator.class.getName());
                 out.printf("package %s;\n", pkg.getQualifiedName());
                 out.printf("\n");
                 createImports(out, plugins);
