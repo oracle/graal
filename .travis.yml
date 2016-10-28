@@ -18,8 +18,6 @@ addons:
     - clang-format-3.4
     - gobjc++-4.6
     - gcc-4.6-plugin-dev
-    - libxml2-dev
-    - libssl-dev
 install:
   - export MX_BINARY_SUITES="jvmci"
   - gem install mdl
