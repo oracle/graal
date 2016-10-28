@@ -491,7 +491,21 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMBaseType llvmType = zwitch.getCondition().getType().getLLVMBaseType();
         final LLVMExpressionNode[] cases = new LLVMExpressionNode[zwitch.getCaseCount()];
         for (int i = 0; i < cases.length; i++) {
-            cases[i] = factoryFacade.createLiteral(zwitch.getCaseValue(i), llvmType);
+            // the case value is always a long here regardless of the values actual type, implicit
+            // casts to smaller types in the factoryfacade won't work
+            switch (llvmType) {
+                case I8:
+                    cases[i] = factoryFacade.createLiteral((byte) zwitch.getCaseValue(i), llvmType);
+                    break;
+                case I16:
+                    cases[i] = factoryFacade.createLiteral((short) zwitch.getCaseValue(i), llvmType);
+                    break;
+                case I32:
+                    cases[i] = factoryFacade.createLiteral((int) zwitch.getCaseValue(i), llvmType);
+                    break;
+                default:
+                    cases[i] = factoryFacade.createLiteral(zwitch.getCaseValue(i), llvmType);
+            }
         }
 
         final LLVMTerminatorNode node = (LLVMTerminatorNode) factoryFacade.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
