@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.alloc.trace;
 
 import static com.oracle.graal.lir.LIRValueUtil.asVariable;
+import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
@@ -71,6 +72,7 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
             if (isVariable(value)) {
                 Value incomingValue = variableMap.get(asVariable(value));
                 assert !flags.contains(OperandFlag.COMPOSITE);
+                assert !(SSIUtil.incoming(lir, block).isPhiIn() && isConstantValue(incomingValue)) : "Phi variable cannot be constant: " + incomingValue + " -> " + value;
                 return incomingValue;
             }
             return value;

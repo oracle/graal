@@ -27,7 +27,6 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.OUTGOING;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static com.oracle.graal.lir.LIRValueUtil.isVariable;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -183,7 +182,7 @@ public class StandardOp {
          * @return true if this label acts as a PhiIn.
          */
         public boolean isPhiIn() {
-            return getIncomingSize() > 0 && isVariable(getIncomingValue(0));
+            return getPhiSize() > 0;
         }
 
         public void forEachIncomingValue(InstructionValueProcedure proc) {

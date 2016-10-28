@@ -28,7 +28,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Deque;
-import java.util.List;
 
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult.TrivialTracePredicate;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
@@ -47,16 +46,16 @@ public final class BiDirectionalTraceBuilder {
 
     private final Deque<AbstractBlockBase<?>> worklist;
     private final BitSet processed;
-    private final int[] blockToTrace;
+    private final Trace[] blockToTrace;
 
     private BiDirectionalTraceBuilder(AbstractBlockBase<?>[] blocks) {
         processed = new BitSet(blocks.length);
         worklist = createQueue(blocks);
-        blockToTrace = new int[blocks.length];
+        blockToTrace = new Trace[blocks.length];
     }
 
     private static Deque<AbstractBlockBase<?>> createQueue(AbstractBlockBase<?>[] blocks) {
-        List<AbstractBlockBase<?>> queue = Arrays.asList(blocks);
+        ArrayList<AbstractBlockBase<?>> queue = new ArrayList<>(Arrays.asList(blocks));
         queue.sort(BiDirectionalTraceBuilder::compare);
         return new ArrayDeque<>(queue);
     }
@@ -85,7 +84,12 @@ public final class BiDirectionalTraceBuilder {
             AbstractBlockBase<?> block = worklist.pollFirst();
             assert block != null;
             if (!processed(block)) {
-                traces.add(new Trace(startTrace(block, traces.size())));
+                Trace trace = new Trace(startTrace(block));
+                for (AbstractBlockBase<?> traceBlock : trace.getBlocks()) {
+                    blockToTrace[traceBlock.getId()] = trace;
+                }
+                trace.setId(traces.size());
+                traces.add(trace);
             }
         }
         return traces;
@@ -95,12 +99,12 @@ public final class BiDirectionalTraceBuilder {
      * Build a new trace starting at {@code block}.
      */
     @SuppressWarnings("try")
-    private Collection<AbstractBlockBase<?>> startTrace(AbstractBlockBase<?> block, int traceNumber) {
+    private Collection<AbstractBlockBase<?>> startTrace(AbstractBlockBase<?> block) {
         ArrayDeque<AbstractBlockBase<?>> trace = new ArrayDeque<>();
         try (Indent i = Debug.logAndIndent("StartTrace: %s", block)) {
             try (Indent indentFront = Debug.logAndIndent("Head:")) {
                 for (AbstractBlockBase<?> currentBlock = block; currentBlock != null; currentBlock = selectPredecessor(currentBlock)) {
-                    addBlockToTrace(currentBlock, traceNumber);
+                    addBlockToTrace(currentBlock);
                     trace.addFirst(currentBlock);
                 }
             }
@@ -112,7 +116,7 @@ public final class BiDirectionalTraceBuilder {
 
             try (Indent indentBack = Debug.logAndIndent("Tail:")) {
                 for (AbstractBlockBase<?> currentBlock = selectSuccessor(block); currentBlock != null; currentBlock = selectSuccessor(currentBlock)) {
-                    addBlockToTrace(currentBlock, traceNumber);
+                    addBlockToTrace(currentBlock);
                     trace.addLast(currentBlock);
                     /* This time we can number the blocks immediately as we go forwards. */
                     currentBlock.setLinearScanNumber(blockNr++);
@@ -123,10 +127,9 @@ public final class BiDirectionalTraceBuilder {
         return trace;
     }
 
-    private void addBlockToTrace(AbstractBlockBase<?> currentBlock, int traceNumber) {
+    private void addBlockToTrace(AbstractBlockBase<?> currentBlock) {
         Debug.log("add %s (prob: %f)", currentBlock, currentBlock.probability());
         processed.set(currentBlock.getId());
-        blockToTrace[currentBlock.getId()] = traceNumber;
     }
 
     /**

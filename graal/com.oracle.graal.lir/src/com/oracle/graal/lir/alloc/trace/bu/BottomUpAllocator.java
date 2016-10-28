@@ -356,8 +356,6 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
                 for (int i = trace.getBlocks().length - 1; i >= 0; i--) {
                     AbstractBlockBase<?> block = trace.getBlocks()[i];
                     // handle PHIs
-                    assert !block.isLoopHeader() || successorBlock != null || (block.getSuccessorCount() == 1 && block.getSuccessors()[0].equals(block)) : "LoopHeader without loop condition block: " +
-                                    block;
                     if (successorBlock != null) {
                         resolvePhis(successorBlock, block);
                     }
@@ -415,7 +413,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
         private void resolveLocalDataFlow(Trace trace) {
             for (AbstractBlockBase<?> block : trace.getBlocks()) {
                 for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                    if (resultTraces.traceForBlock(pred).equals(trace)) {
+                    if (resultTraces.getTraceForBlock(pred).equals(trace)) {
                         resolveFindInsertPos(pred, block);
                         SSIUtil.forEachValuePair(getLIR(), block, pred, resolveLoopBackEdgeVisitor);
                         moveResolver.resolveAndAppendMoves();

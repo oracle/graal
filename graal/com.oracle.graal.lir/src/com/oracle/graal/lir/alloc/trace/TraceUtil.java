@@ -68,6 +68,18 @@ public class TraceUtil {
             return false;
         }
         assert instructions.get(0) instanceof LabelOp : "First instruction not a LabelOp: " + instructions.get(0);
+        if (((LabelOp) instructions.get(0)).isPhiIn()) {
+            /*
+             * Merge blocks are in general not trivial block because variables defined by a PHI
+             * always need a location. If the outgoing value of the predecessor is a constant we
+             * need to find an appropriate location (register or stack).
+             *
+             * Note that this case should not happen in practice since the trace containing the
+             * merge block should also contain one of the predecessors. For non-standard trace
+             * builders (e.g. the single block trace builder) this is not the true, though.
+             */
+            return false;
+        }
         /*
          * Now we need to check if the BlockEndOp has no special operand requirements (i.e.
          * stack-slot, register). For now we just check for JumpOp because we know that it doesn't.
