@@ -38,12 +38,6 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.impl.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI16LiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI8LiteralNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
@@ -163,12 +157,12 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMExpressionNode lhs = symbols.resolve(operation.getLHS());
         LLVMExpressionNode rhs = symbols.resolve(operation.getRHS());
 
-        LLVMAddressNode target = null;
+        LLVMExpressionNode target = null;
         if (operation.getType() instanceof VectorType) {
             Type operationType = operation.getType();
             final int size = operationType.getSize(typeHelper.getTargetDataLayout());
             final int alignment = operationType.getAlignment(method.getTargetDataLayout());
-            target = (LLVMAddressNode) factoryFacade.createAlloc(operationType, size, alignment, null, null);
+            target = factoryFacade.createAlloc(operationType, size, alignment, null, null);
         }
 
         final LLVMBaseType type = operation.getType().getLLVMBaseType();
@@ -365,7 +359,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(InsertElementInstruction insert) {
         final LLVMExpressionNode vector = symbols.resolve(insert.getVector());
-        final LLVMI32Node index = (LLVMI32Node) symbols.resolve(insert.getIndex());
+        final LLVMExpressionNode index = symbols.resolve(insert.getIndex());
         final LLVMExpressionNode element = symbols.resolve(insert.getValue());
         final Type type = insert.getType();
         final LLVMBaseType resultType = type.getLLVMBaseType();
@@ -442,7 +436,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     public void visit(ShuffleVectorInstruction shuffle) {
         final LLVMExpressionNode vector1 = symbols.resolve(shuffle.getVector1());
         final LLVMExpressionNode vector2 = symbols.resolve(shuffle.getVector2());
-        final LLVMI32VectorNode mask = (LLVMI32VectorNode) symbols.resolve(shuffle.getMask());
+        final LLVMExpressionNode mask = symbols.resolve(shuffle.getMask());
 
         final Type type = shuffle.getType();
         final int size = type.getSize(method.getTargetDataLayout());
@@ -486,27 +480,21 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(SwitchOldInstruction zwitch) {
-        LLVMExpressionNode cond = symbols.resolve(zwitch.getCondition());
-        int defaultLabel = method.labels().get(zwitch.getDefaultBlock().getName());
-        int[] otherLabels = new int[zwitch.getCaseCount()];
+        final LLVMExpressionNode cond = symbols.resolve(zwitch.getCondition());
+
+        final int defaultLabel = method.labels().get(zwitch.getDefaultBlock().getName());
+        final int[] otherLabels = new int[zwitch.getCaseCount()];
         for (int i = 0; i < otherLabels.length; i++) {
             otherLabels[i] = method.labels().get(zwitch.getCaseBlock(i).getName());
         }
-        LLVMBaseType llvmType = zwitch.getCondition().getType().getLLVMBaseType();
-        LLVMExpressionNode[] cases = new LLVMExpressionNode[zwitch.getCaseCount()];
+
+        final LLVMBaseType llvmType = zwitch.getCondition().getType().getLLVMBaseType();
+        final LLVMExpressionNode[] cases = new LLVMExpressionNode[zwitch.getCaseCount()];
         for (int i = 0; i < cases.length; i++) {
-            if (llvmType == LLVMBaseType.I8) {
-                cases[i] = new LLVMI8LiteralNode((byte) zwitch.getCaseValue(i));
-            } else if (llvmType == LLVMBaseType.I16) {
-                cases[i] = new LLVMI16LiteralNode((short) zwitch.getCaseValue(i));
-            } else if (llvmType == LLVMBaseType.I32) {
-                cases[i] = new LLVMI32LiteralNode((int) zwitch.getCaseValue(i));
-            } else {
-                cases[i] = new LLVMI64LiteralNode(zwitch.getCaseValue(i));
-            }
+            cases[i] = factoryFacade.createLiteral(zwitch.getCaseValue(i), llvmType);
         }
 
-        LLVMTerminatorNode node = (LLVMTerminatorNode) factoryFacade.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
+        final LLVMTerminatorNode node = (LLVMTerminatorNode) factoryFacade.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
     }
 
