@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;

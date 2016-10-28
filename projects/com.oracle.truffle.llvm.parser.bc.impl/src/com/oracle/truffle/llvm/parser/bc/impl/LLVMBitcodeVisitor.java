@@ -80,7 +80,6 @@ import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMConstantGenerator;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
-import com.oracle.truffle.llvm.parser.factories.LLVMRootNodeFactory;
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -163,7 +162,6 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         LLVMFunction mainFunction = module.getFunction("@main");
 
-        FrameDescriptor rootFrame = stackAllocation.getRootFrame();
         FrameSlot stack = stackAllocation.getRootStackSlot();
 
         LLVMNode[] globals = module.getGobalVariables(stack).toArray(new LLVMNode[0]);
@@ -181,7 +179,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                             destructorFunctions, module.getFunctions());
         }
         RootCallTarget mainCallTarget = module.getFunctions().get(mainFunction);
-        RootNode globalFunction = LLVMRootNodeFactory.createGlobalRootNode(context, stack, rootFrame, mainCallTarget, context.getMainArguments(), source, mainFunction.getParameterTypes());
+
+        RootNode globalFunction = factoryFacade.createGlobalRootNode(mainCallTarget, context.getMainArguments(), source, mainFunction.getParameterTypes());
         RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
         RootNode globalRootNode = factoryFacade.createGlobalRootNodeWrapping(globalFunctionRoot, mainFunction.getReturnType());
         RootCallTarget wrappedCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
