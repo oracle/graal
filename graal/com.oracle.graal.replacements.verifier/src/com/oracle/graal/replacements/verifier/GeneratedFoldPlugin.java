@@ -80,7 +80,7 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
             if (param.getAnnotation(InjectedParameter.class) == null) {
                 constantArgument(env, out, deps, argCount, param.asType(), argCount);
             } else {
-                out.printf("            assert args[%d].isNullConstant() : \"must pass null to injected argument\";\n", argCount);
+                out.printf("            assert checkInjectedArgument(b, args[%d], targetMethod);\n", argCount);
                 out.printf("            %s arg%d = %s;\n", param.asType(), argCount, deps.use(env, (DeclaredType) param.asType()));
             }
             argCount++;
