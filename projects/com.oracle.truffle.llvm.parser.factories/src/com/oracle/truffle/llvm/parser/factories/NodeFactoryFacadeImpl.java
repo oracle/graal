@@ -137,9 +137,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMVectorNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, com.intel.llvm.ireditor.lLVM_IR.Type vectorType, LLVMExpressionNode element,
+    public LLVMVectorNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, LLVMExpressionNode target, LLVMExpressionNode element,
                     LLVMExpressionNode index) {
-        return LLVMVectorFactory.createInsertElement(runtime, resultType, vector, vectorType, element, (LLVMI32Node) index);
+        return LLVMVectorFactory.createInsertElement(resultType, (LLVMAddressNode) target, vector, element, (LLVMI32Node) index);
     }
 
     @Override

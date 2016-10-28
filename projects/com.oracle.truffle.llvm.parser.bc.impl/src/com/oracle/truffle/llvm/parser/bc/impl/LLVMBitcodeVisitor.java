@@ -35,6 +35,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
+import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
+import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.types.ResolvedType;
@@ -99,10 +103,6 @@ import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ModuleVersion;
-import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.base.model.types.Type;
 
 public class LLVMBitcodeVisitor implements ModelVisitor {
 
@@ -581,11 +581,6 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                 return functionVisitor.getReturnSlot();
             }
             throw new IllegalStateException("There is currently no active function visitor set");
-        }
-
-        @Override
-        public LLVMExpressionNode allocateVectorResult(EObject type) {
-            throw new UnsupportedOperationException("Not implemented!");
         }
 
         @Override

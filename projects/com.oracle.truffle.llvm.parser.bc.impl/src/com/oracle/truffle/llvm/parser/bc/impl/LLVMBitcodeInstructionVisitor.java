@@ -62,7 +62,6 @@ import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
-import com.oracle.truffle.llvm.parser.factories.LLVMVectorFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
@@ -385,10 +384,9 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final int size = type.getSize(method.getTargetDataLayout());
         final int alignment = type.getAlignment(method.getTargetDataLayout());
-
         final LLVMAddressNode target = (LLVMAddressNode) factoryFacade.createAlloc(type, size, alignment, null, null);
 
-        final LLVMExpressionNode result = LLVMVectorFactory.createInsertElement(resultType, target, vector, element, index);
+        final LLVMExpressionNode result = factoryFacade.createInsertElement(resultType, vector, target, element, index);
 
         createFrameWrite(result, insert);
     }

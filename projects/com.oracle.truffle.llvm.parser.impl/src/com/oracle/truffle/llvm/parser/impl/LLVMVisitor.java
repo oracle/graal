@@ -782,7 +782,8 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMExpressionNode index = visitValueRef(instr.getIndex().getRef(), instr.getIndex().getType());
         LLVMExpressionNode element = visitValueRef(instr.getElement().getRef(), instr.getElement().getType());
         LLVMBaseType resultType = LLVMTypeHelper.getLLVMType(resolve(instr)).getType();
-        return factoryFacade.createInsertElement(resultType, vector, instr.getVector().getType(), element, index);
+        LLVMExpressionNode target = allocateVectorResult(instr.getVector().getType());
+        return factoryFacade.createInsertElement(resultType, vector, target, element, index);
     }
 
     private LLVMExpressionNode visitInsertValueInstr(Instruction_insertvalue insertValue) {
@@ -1440,9 +1441,8 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         }
     }
 
-    @Override
-    public LLVMExpressionNode allocateVectorResult(EObject type) {
-        ResolvedVectorType vector = (ResolvedVectorType) resolve(type);
+    private LLVMExpressionNode allocateVectorResult(Object type) {
+        ResolvedVectorType vector = (ResolvedVectorType) resolve((EObject) type);
         return allocateFunctionLifetime(vector);
     }
 
