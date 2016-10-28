@@ -44,7 +44,6 @@ import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI16
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode.LLVMI8LiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressGetElementPtrNodeFactory;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
@@ -325,7 +324,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final int targetIndex = extract.getIndex();
         final LLVMBaseType resultType = extract.getType().getLLVMBaseType();
 
-        LLVMAddressNode targetAddress = (LLVMAddressNode) baseAddress;
+        LLVMExpressionNode targetAddress = baseAddress;
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
@@ -337,7 +336,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
 
         if (offset != 0) {
-            targetAddress = LLVMAddressGetElementPtrNodeFactory.LLVMAddressI32GetElementPtrNodeGen.create(targetAddress, new LLVMI32LiteralNode(1), offset);
+            final LLVMExpressionNode oneLiteralNode = factoryFacade.createLiteral(1, LLVMBaseType.I32);
+            targetAddress = factoryFacade.createGetElementPtr(LLVMBaseType.I32, targetAddress, oneLiteralNode, offset);
         }
 
         final LLVMExpressionNode result = factoryFacade.createExtractValue(resultType, targetAddress);
