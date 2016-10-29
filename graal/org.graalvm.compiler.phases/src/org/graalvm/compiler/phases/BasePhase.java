@@ -82,7 +82,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
     }
 
-    private static class BasePhaseStatistics {
+    public static class BasePhaseStatistics {
         /**
          * Records time spent in {@link #apply(StructuredGraph, Object, boolean)}.
          */
@@ -104,7 +104,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
          */
         private final DebugMemUseTracker memUseTracker;
 
-        BasePhaseStatistics(Class<?> clazz) {
+        public BasePhaseStatistics(Class<?> clazz) {
             timer = Debug.timer("PhaseTime_%s", clazz);
             executionCount = Debug.counter("PhaseCount_%s", clazz);
             memUseTracker = Debug.memUseTracker("PhaseMemUse_%s", clazz);
@@ -119,8 +119,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     };
 
+    private static BasePhaseStatistics getBasePhaseStatistics(Class<?> c) {
+        return statisticsClassValue.get(c);
+    }
+
     protected BasePhase() {
-        BasePhaseStatistics statistics = statisticsClassValue.get(getClass());
+        BasePhaseStatistics statistics = getBasePhaseStatistics(getClass());
         timer = statistics.timer;
         executionCount = statistics.executionCount;
         memUseTracker = statistics.memUseTracker;
