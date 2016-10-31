@@ -439,7 +439,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private final List<LLVMNode> globalDeallocations = new ArrayList<>();
     private boolean isGlobalScope;
 
-    @SuppressWarnings("deprecation")
     private Object findOrAllocateGlobal(GlobalVariable globalVariable) {
         return factoryFacade.allocateGlobalVariable(LLVMToBitcodeAdapter.resolveGlobalVariable(factoryFacade.getRuntime(), globalVariable));
     }
@@ -1498,6 +1497,16 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     }
 
     @Override
+    public int getBytePadding(int offset, com.oracle.truffle.llvm.parser.base.model.types.Type type) {
+        return com.oracle.truffle.llvm.parser.base.model.types.Type.getPadding(offset, type, layoutConverter);
+    }
+
+    @Override
+    public int getIndexOffset(int index, com.oracle.truffle.llvm.parser.base.model.types.Type type) {
+        return type.getIndexOffset(index, layoutConverter);
+    }
+
+    @Override
     public FrameDescriptor getGlobalFrameDescriptor() {
         return globalFrameDescriptor;
     }
@@ -1510,11 +1519,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     @Override
     public long getNativeHandle(String name) {
         return nativeLookup.getNativeHandle(name);
-    }
-
-    @Override
-    public LLVMTypeHelper getTypeHelper() {
-        return typeHelper;
     }
 
     @Override

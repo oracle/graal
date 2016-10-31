@@ -79,6 +79,10 @@ public interface LLVMParserRuntime {
 
     int getByteSize(Type type);
 
+    int getBytePadding(int offset, Type type);
+
+    int getIndexOffset(int index, Type type);
+
     FrameDescriptor getGlobalFrameDescriptor();
 
     /**
@@ -89,8 +93,6 @@ public interface LLVMParserRuntime {
     void addDestructor(LLVMNode destructorNode);
 
     long getNativeHandle(String name);
-
-    LLVMTypeHelper getTypeHelper();
 
     Map<String, Type> getVariableNameTypesMapping();
 

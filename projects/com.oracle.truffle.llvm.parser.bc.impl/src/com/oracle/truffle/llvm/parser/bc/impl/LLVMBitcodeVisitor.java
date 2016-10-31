@@ -314,7 +314,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             return null;
         }
 
-        LLVMExpressionNode constant = LLVMConstantGenerator.toConstantNode(global.getValue(), global.getAlign(), this::getGlobalVariable, context, stackSlot, labels, typeHelper);
+        LLVMExpressionNode constant = LLVMConstantGenerator.toConstantNode(global.getValue(), global.getAlign(), this::getGlobalVariable, context, stackSlot, labels, parserRuntime);
         if (constant != null) {
             final Type type = ((PointerType) global.getType()).getPointeeType();
             final LLVMBaseType baseType = type.getLLVMBaseType();
@@ -343,6 +343,10 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     public DataLayoutConverter.DataSpecConverter getTargetDataLayout() {
         return targetDataLayout;
+    }
+
+    public LLVMParserRuntime getParserRuntime() {
+        return parserRuntime;
     }
 
     public LLVMBitcodeTypeHelper getTypeHelper() {
@@ -382,7 +386,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             }
             return address;
         } else {
-            return LLVMConstantGenerator.toConstantNode(g, 0, this::getGlobalVariable, context, null, labels, typeHelper);
+            return LLVMConstantGenerator.toConstantNode(g, 0, this::getGlobalVariable, context, null, labels, parserRuntime);
         }
     }
 
@@ -616,6 +620,16 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         }
 
         @Override
+        public int getBytePadding(int offset, Type type) {
+            return Type.getPadding(offset, type, targetDataLayout);
+        }
+
+        @Override
+        public int getIndexOffset(int index, Type type) {
+            return type.getIndexOffset(index, targetDataLayout);
+        }
+
+        @Override
         public FrameDescriptor getGlobalFrameDescriptor() {
             return stack.getRootFrame();
         }
@@ -628,11 +642,6 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         @Override
         public long getNativeHandle(String name) {
             return nativeLookup.getNativeHandle(name);
-        }
-
-        @Override
-        public LLVMTypeHelper getTypeHelper() {
-            throw new UnsupportedOperationException("Not implemented!");
         }
 
         @Override

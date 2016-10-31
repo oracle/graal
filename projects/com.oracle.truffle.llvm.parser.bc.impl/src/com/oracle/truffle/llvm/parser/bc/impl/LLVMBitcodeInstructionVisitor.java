@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
@@ -101,12 +102,15 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final NodeFactoryFacade factoryFacade;
 
+    private final LLVMParserRuntime runtime;
+
     public LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block, NodeFactoryFacade factoryFacade) {
         this.method = method;
         this.block = block;
         this.symbols = method.getSymbolResolver();
         this.typeHelper = method.getModule().getTypeHelper();
         this.factoryFacade = factoryFacade;
+        this.runtime = method.getModule().getParserRuntime();
     }
 
     private LLVMNode[] getPhiWriteNodes() {
@@ -129,7 +133,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final Type type = allocate.getPointeeType();
         int alignment = 0;
         if (allocate.getAlign() == 0) {
-            alignment = type.getAlignment(method.getTargetDataLayout());
+            alignment = runtime.getByteAlignment(type);
         } else {
             alignment = 1 << (allocate.getAlign() - 1);
         }
@@ -137,7 +141,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             alignment = LLVMStack.NO_ALIGNMENT_REQUIREMENTS;
         }
 
-        final int size = type.getSize(typeHelper.getTargetDataLayout());
+        final int size = runtime.getByteSize(type);
         final Symbol count = allocate.getCount();
         final LLVMExpressionNode result;
         if (count instanceof NullConstant) {
@@ -160,8 +164,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMExpressionNode target = null;
         if (operation.getType() instanceof VectorType) {
             Type operationType = operation.getType();
-            final int size = operationType.getSize(typeHelper.getTargetDataLayout());
-            final int alignment = operationType.getAlignment(method.getTargetDataLayout());
+            final int size = runtime.getByteSize(operationType);
+            final int alignment = runtime.getByteAlignment(operationType);
             target = factoryFacade.createAlloc(operationType, size, alignment, null, null);
         }
 
@@ -198,8 +202,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         int argIndex = 0;
         argNodes[argIndex++] = factoryFacade.createFrameRead(LLVMBaseType.ADDRESS, method.getStackSlot());
         if (targetType instanceof StructureType) {
-            final int size = targetType.getSize(typeHelper.getTargetDataLayout());
-            final int align = targetType.getAlignment(method.getTargetDataLayout());
+            final int size = runtime.getByteSize(targetType);
+            final int align = runtime.getByteAlignment(targetType);
             argNodes[argIndex++] = factoryFacade.createAlloc(targetType, size, align, null, null);
         }
         for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
@@ -245,8 +249,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         if (compare.getType() instanceof VectorType) {
             Type type = compare.getType();
-            final int size = type.getSize(typeHelper.getTargetDataLayout());
-            final int alignment = type.getAlignment(method.getTargetDataLayout());
+            final int size = runtime.getByteSize(type);
+            final int alignment = runtime.getByteAlignment(type);
             LLVMAddressNode target = (LLVMAddressNode) factoryFacade.createAlloc(type, size, alignment, null, null);
 
             result = LLVMNodeGenerator.toCompareVectorNode(
@@ -377,14 +381,14 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode valueToInsert = symbols.resolve(insert.getValue());
         final LLVMBaseType valueType = insert.getValue().getType().getLLVMBaseType();
         final int targetIndex = insert.getIndex();
-        final int size = sourceType.getSize(method.getTargetDataLayout());
-        final int alignment = sourceType.getAlignment(method.getTargetDataLayout());
+        final int size = runtime.getByteSize(sourceType);
+        final int alignment = runtime.getByteAlignment(sourceType);
 
         final LLVMExpressionNode resultAggregate = factoryFacade.createAlloc(sourceType, size, alignment, null, null);
 
         final int offset = sourceType.getIndexOffset(targetIndex, typeHelper.getTargetDataLayout());
         final LLVMExpressionNode result = factoryFacade.createInsertValue(resultAggregate, sourceAggregate,
-                        sourceType.getSize(method.getTargetDataLayout()), offset, valueToInsert, valueType);
+                        runtime.getByteSize(sourceType), offset, valueToInsert, valueType);
 
         createFrameWrite(result, insert);
     }
@@ -433,8 +437,8 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode mask = symbols.resolve(shuffle.getMask());
 
         final Type type = shuffle.getType();
-        final int size = type.getSize(method.getTargetDataLayout());
-        final int alignment = type.getAlignment(method.getTargetDataLayout());
+        final int size = runtime.getByteSize(type);
+        final int alignment = runtime.getByteAlignment(type);
         final LLVMAddressNode destination = (LLVMAddressNode) factoryFacade.createAlloc(type, size, alignment, null, null);
 
         final LLVMExpressionNode result = factoryFacade.createShuffleVector(type.getLLVMBaseType(), destination, vector1, vector2, mask);

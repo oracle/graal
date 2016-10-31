@@ -76,12 +76,6 @@ public interface NodeFactoryFacade {
     // also update {@link NodeFactoryFacadeComposite} when changing or removing this name
     void setUpFacade(LLVMParserRuntime runtime);
 
-    /**
-     * Get Parser runtime (a temporary required method until we use the new Bitcode Type exclusive).
-     *
-     * @return runtime
-     */
-    @Deprecated
     LLVMParserRuntime getRuntime();
 
     LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, Object type, LLVMExpressionNode element, LLVMExpressionNode index);

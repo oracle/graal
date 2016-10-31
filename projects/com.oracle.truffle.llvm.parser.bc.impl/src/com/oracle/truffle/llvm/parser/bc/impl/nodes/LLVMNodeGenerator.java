@@ -79,6 +79,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeFunctionVisitor;
 import com.oracle.truffle.llvm.parser.factories.LLVMArithmeticFactory;
@@ -102,11 +103,11 @@ public final class LLVMNodeGenerator {
 
     private final LLVMBitcodeFunctionVisitor method;
 
-    private final LLVMBitcodeTypeHelper typeHelper;
+    private final LLVMParserRuntime runtime;
 
     public LLVMNodeGenerator(LLVMBitcodeFunctionVisitor method) {
         this.method = method;
-        this.typeHelper = method.getModule().getTypeHelper();
+        this.runtime = method.getModule().getParserRuntime();
     }
 
     public static Integer evaluateIntegerConstant(Symbol constant) {
@@ -268,13 +269,13 @@ public final class LLVMNodeGenerator {
 
             final Integer constantIndex = LLVMNodeGenerator.evaluateIntegerConstant(symbol);
             if (constantIndex == null) {
-                final int indexedTypeLength = currentType.getIndexOffset(1, typeHelper.getTargetDataLayout());
+                final int indexedTypeLength = runtime.getIndexOffset(1, currentType);
                 currentType = currentType.getIndexType(1);
                 final LLVMExpressionNode valueref = resolve(symbol);
                 currentAddress = LLVMGetElementPtrFactory.create(type.getLLVMBaseType(), (LLVMAddressNode) currentAddress, valueref, indexedTypeLength);
 
             } else {
-                final int indexedTypeLength = currentType.getIndexOffset(constantIndex, typeHelper.getTargetDataLayout());
+                final int indexedTypeLength = runtime.getIndexOffset(constantIndex, currentType);
                 currentType = currentType.getIndexType(constantIndex);
                 if (indexedTypeLength != 0) {
                     final LLVMExpressionNode constantNode;
@@ -332,7 +333,7 @@ public final class LLVMNodeGenerator {
             return LLVMConstantGenerator.toFloatingPointConstant((FloatingPointConstant) symbol);
 
         } else if (symbol instanceof NullConstant || symbol instanceof UndefinedConstant) {
-            return LLVMConstantGenerator.toConstantZeroNode(symbol.getType(), method.getContext(), method.getStackSlot(), typeHelper);
+            return LLVMConstantGenerator.toConstantZeroNode(symbol.getType(), method.getContext(), method.getStackSlot(), runtime);
 
         } else if (symbol instanceof StructureConstant) {
             return resolveStructureConstant((StructureConstant) symbol);
@@ -353,7 +354,7 @@ public final class LLVMNodeGenerator {
 
     private LLVMExpressionNode resolveArrayConstant(ArrayConstant constant) {
 
-        final int baseTypeSize = constant.getType().getElementType().getSize(typeHelper.getTargetDataLayout());
+        final int baseTypeSize = runtime.getByteSize(constant.getType().getElementType());
         final LLVMAddressNode arrayAlloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getElementCount() * baseTypeSize,
                         constant.getType().getAlignment(method.getTargetDataLayout()),
                         method.getContext(), method.getStackSlot());
@@ -391,7 +392,7 @@ public final class LLVMNodeGenerator {
     }
 
     private LLVMExpressionNode resolveStructureConstant(StructureConstant constant) {
-        final int structSize = constant.getType().getSize(typeHelper.getTargetDataLayout());
+        final int structSize = runtime.getByteSize(constant.getType());
         final int structAlignment = constant.getType().getAlignment(method.getTargetDataLayout());
         final LLVMExpressionNode alloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(structSize, structAlignment, method.getContext(), method.getStackSlot());
 
@@ -402,12 +403,12 @@ public final class LLVMNodeGenerator {
             final Type elemType = constant.getElementType(i);
 
             if (!constant.isPacked()) {
-                currentOffset += Type.getPadding(currentOffset, elemType, typeHelper.getTargetDataLayout());
+                currentOffset += runtime.getBytePadding(currentOffset, elemType);
             }
 
             offsets[i] = currentOffset;
             nodes[i] = createStructWriteNode(resolve(constant.getElement(i)), elemType);
-            currentOffset += elemType.getSize(typeHelper.getTargetDataLayout());
+            currentOffset += runtime.getByteSize(elemType);
         }
 
         return new StructLiteralNode(offsets, nodes, (LLVMAddressNode) alloc);
@@ -434,7 +435,7 @@ public final class LLVMNodeGenerator {
                 return new StructLiteralNode.LLVM80BitFloatStructWriteNode((LLVM80BitFloatNode) parsedConstant);
             case ARRAY:
             case STRUCT:
-                final int byteSize = type.getSize(typeHelper.getTargetDataLayout());
+                final int byteSize = runtime.getByteSize(type);
                 if (byteSize == 0) {
                     return new StructLiteralNode.LLVMEmptyStructWriteNode();
                 } else {
@@ -496,13 +497,13 @@ public final class LLVMNodeGenerator {
                 throw new IllegalStateException("Invalid index: " + index);
             }
 
-            currentOffset += currentType.getIndexOffset(indexVal, typeHelper.getTargetDataLayout());
+            currentOffset += runtime.getIndexOffset(indexVal, currentType);
             parentType = currentType;
             currentType = currentType.getIndexType(indexVal);
         }
 
         if (currentType != null && !((parentType instanceof StructureType) && (((StructureType) parentType).isPacked()))) {
-            currentOffset += Type.getPadding(currentOffset, currentType, typeHelper.getTargetDataLayout());
+            currentOffset += runtime.getBytePadding(currentOffset, currentType);
         }
 
         if (currentOffset != 0) {
@@ -518,7 +519,7 @@ public final class LLVMNodeGenerator {
             values.add(resolve(constant.getElement(i)));
         }
 
-        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getType().getSize(typeHelper.getTargetDataLayout()),
+        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(runtime.getByteSize(constant.getType()),
                         constant.getType().getAlignment(method.getTargetDataLayout()),
                         method.getContext(),
                         method.getStackSlot());

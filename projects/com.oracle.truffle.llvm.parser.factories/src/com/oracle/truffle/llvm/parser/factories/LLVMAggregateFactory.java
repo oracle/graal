@@ -124,7 +124,7 @@ public final class LLVMAggregateFactory {
         for (int i = 0; i < types.length; i++) {
             Type resolvedType = types[i];
             if (!packed) {
-                currentOffset += runtime.getTypeHelper().computePaddingByte(currentOffset, resolvedType);
+                currentOffset += runtime.getBytePadding(currentOffset, resolvedType);
             }
             offsets[i] = currentOffset;
             int byteSize = runtime.getByteSize(resolvedType);
