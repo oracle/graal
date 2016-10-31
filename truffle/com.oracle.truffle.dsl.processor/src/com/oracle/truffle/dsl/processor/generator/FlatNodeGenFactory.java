@@ -47,6 +47,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -770,7 +771,10 @@ public class FlatNodeGenFactory {
 
         final CodeTreeBuilder builder = method.createBuilder();
 
-        builder.startSynchronized("getAtomicLock()");
+        builder.declaration(context.getType(Lock.class), "lock", "getLock()");
+        builder.declaration(context.getType(boolean.class), "hasLock", "true");
+        builder.statement("lock.lock()");
+        builder.startTryBlock();
 
         builder.tree(state.createLoad(frameState, node.getUninitializedSpecialization()));
         if (requiresExclude()) {
@@ -787,8 +791,12 @@ public class FlatNodeGenFactory {
             builder.tree(createTransferToInterpreterAndInvalidate());
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
-
+        builder.end().startFinallyBlock();
+        builder.startIf().string("hasLock").end().startBlock();
+        builder.statement("lock.unlock()");
         builder.end();
+        builder.end();
+
         return method;
     }
 
@@ -1686,13 +1694,18 @@ public class FlatNodeGenFactory {
             builder.startBlock();
             ifCount++;
         }
-        builder.tree(createExecute(builder, frameState, forType, specialization));
+        builder.tree(createExecute(builder, frameState, forType, specialization, NodeExecutionMode.FAST_PATH));
         builder.end(ifCount);
         return builder.build();
     }
 
-    private CodeTree createExecute(CodeTreeBuilder parent, FrameState frameState, final ExecutableTypeData forType, SpecializationData specialization) {
+    private CodeTree createExecute(CodeTreeBuilder parent, FrameState frameState, final ExecutableTypeData forType, SpecializationData specialization, NodeExecutionMode mode) {
         CodeTreeBuilder builder = parent.create();
+
+        if (mode.isSlowPath()) {
+            builder.statement("lock.unlock()");
+            builder.statement("hasLock = false");
+        }
 
         if (specialization.getMethod() == null) {
             builder.tree(createThrowUnsupported(builder, frameState));
@@ -1711,7 +1724,7 @@ public class FlatNodeGenFactory {
             }
         }
 
-        return createFastPathTryCatchRewriteException(builder, specialization, forType, frameState, builder.build());
+        return createCatchRewriteException(builder, specialization, forType, frameState, builder.build(), mode);
     }
 
     private CodeTree visitSpecializationGroup(CodeTreeBuilder parent, SpecializationGroup group, ExecutableTypeData forType, FrameState frameState, List<SpecializationData> allowedSpecializations,
@@ -1772,7 +1785,11 @@ public class FlatNodeGenFactory {
                             group.getAllSpecializations().size() == allowedSpecializations.size();
             if ((!group.isEmpty() || specialization != null)) {
                 CodeTree stateCheck = null;
-                if (!stateGuaranteed) {
+                if (stateGuaranteed) {
+                    builder.startAssert();
+                    builder.tree(state.createContains(frameState, specializations));
+                    builder.end();
+                } else {
                     stateCheck = state.createContains(frameState, specializations);
                 }
                 typeChecks = combineTrees(" && ", stateCheck, typeChecks);
@@ -2162,10 +2179,10 @@ public class FlatNodeGenFactory {
                         builder.string(duplicateFoundName);
                     }
                     builder.end().startBlock();
-                    builder.tree(createExecute(builder, frameState, executeAndSpecializeType, specialization));
+                    builder.tree(createExecute(builder, frameState, executeAndSpecializeType, specialization, execution));
                     builder.end();
                 } else {
-                    builder.tree(createExecute(builder, frameState, executeAndSpecializeType, specialization));
+                    builder.tree(createExecute(builder, frameState, executeAndSpecializeType, specialization, execution));
                     if (!guards.isEmpty()) {
                         builder.end();
                     }
@@ -2311,7 +2328,7 @@ public class FlatNodeGenFactory {
         }
         builder.end().startBlock();
         builder.tree(createTransferToInterpreterAndInvalidate());
-        builder.tree(createRemoveThis(builder, frameState, forType, specialization, false));
+        builder.tree(createRemoveThis(builder, frameState, forType, specialization, false, NodeExecutionMode.FAST_PATH));
         builder.end();
         return builder.build();
     }
@@ -2434,7 +2451,8 @@ public class FlatNodeGenFactory {
         return targetExecutable;
     }
 
-    private CodeTree createFastPathTryCatchRewriteException(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData forType, FrameState frameState, CodeTree execution) {
+    private CodeTree createCatchRewriteException(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData forType, FrameState frameState, CodeTree execution,
+                    NodeExecutionMode mode) {
         if (specialization.getExceptions().isEmpty()) {
             return execution;
         }
@@ -2457,32 +2475,39 @@ public class FlatNodeGenFactory {
             builder.lineComment("implicit transferToInterpreterAndInvalidate()");
         }
 
-        builder.tree(createRemoveThis(builder, frameState, forType, specialization, true));
+        builder.tree(createRemoveThis(builder, frameState, forType, specialization, true, mode));
 
         builder.end();
         return builder.build();
     }
 
-    private CodeTree createRemoveThis(CodeTreeBuilder parent, FrameState frameState, ExecutableTypeData forType, SpecializationData specialization, boolean excludeSpecialization) {
+    private CodeTree createRemoveThis(CodeTreeBuilder parent, FrameState frameState, ExecutableTypeData forType, SpecializationData specialization, boolean excludeSpecialization,
+                    NodeExecutionMode mode) {
         CodeTreeBuilder builder = parent.create();
-        boolean isSynchronized = builder.findMethod().getModifiers().contains(Modifier.SYNCHRONIZED);
-        if (!isSynchronized) {
-            builder.startSynchronized("getAtomicLock()");
-        }
-        if (excludeSpecialization) {
-            builder.tree(this.exclude.createSet(frameState, Arrays.asList(specialization).toArray(new SpecializationData[0]), true, true));
+
+        // slow path is already locked
+        if (!mode.isSlowPath()) {
+            builder.declaration(context.getType(Lock.class), "lock", "getLock()");
         }
 
-        builder.tree((state.createSet(frameState, Arrays.asList(specialization).toArray(new SpecializationData[0]), false, true)));
+        builder.statement("lock.lock()");
+        builder.startTryBlock();
+
+        if (excludeSpecialization) {
+            // pass null frame state to ensure values are reloaded.
+            builder.tree(this.exclude.createSet(null, Arrays.asList(specialization).toArray(new SpecializationData[0]), true, true));
+        }
+
+        builder.tree((state.createSet(null, Arrays.asList(specialization).toArray(new SpecializationData[0]), false, true)));
         if (useSpecializationClass(specialization)) {
             builder.statement("this." + createSpecializationFieldName(specialization) + " = null");
         }
 
+        builder.end().startFinallyBlock();
+        builder.statement("lock.unlock()");
+        builder.end();
         builder.tree(createCallExecuteAndSpecialize(forType, frameState));
         builder.end();
-        if (!isSynchronized) {
-            builder.end();
-        }
         return builder.build();
     }
 
@@ -3023,7 +3048,7 @@ public class FlatNodeGenFactory {
         }
 
         private CodeTree createReference(FrameState frameState) {
-            LocalVariable var = frameState.get(name);
+            LocalVariable var = frameState != null ? frameState.get(name) : null;
             if (var != null) {
                 return var.createReference();
             } else {
