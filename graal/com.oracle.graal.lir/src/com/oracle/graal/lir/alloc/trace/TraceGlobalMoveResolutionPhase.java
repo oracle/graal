@@ -72,7 +72,7 @@ public final class TraceGlobalMoveResolutionPhase extends LIRPhase<TraceAllocati
         /* Resolve trace global data-flow mismatch. */
         TraceGlobalMoveResolver moveResolver = new TraceGlobalMoveResolver(lirGenRes, spillMoveFactory, arch);
         PhiValueVisitor visitor = (Value phiIn, Value phiOut) -> {
-            if (!isIllegal(phiIn) && !TraceGlobalMoveResolver.isMoveToSelf(phiOut, phiIn)) {
+            if (!isIllegal(phiIn)) {
                 addMapping(moveResolver, phiOut, phiIn);
             }
         };
