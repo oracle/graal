@@ -75,6 +75,8 @@ public interface LLVMParserRuntime {
 
     int getBitAlignment(LLVMBaseType type);
 
+    int getByteAlignment(Type type);
+
     int getByteSize(Type type);
 
     FrameDescriptor getGlobalFrameDescriptor();

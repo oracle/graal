@@ -1488,6 +1488,11 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     }
 
     @Override
+    public int getByteAlignment(com.oracle.truffle.llvm.parser.base.model.types.Type type) {
+        return type.getAlignment(layoutConverter);
+    }
+
+    @Override
     public int getByteSize(com.oracle.truffle.llvm.parser.base.model.types.Type type) {
         return type.getSize(layoutConverter);
     }
