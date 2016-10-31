@@ -98,8 +98,6 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final LLVMNodeGenerator symbols;
 
-    private final LLVMBitcodeTypeHelper typeHelper;
-
     private final NodeFactoryFacade factoryFacade;
 
     private final LLVMParserRuntime runtime;
@@ -108,7 +106,6 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         this.method = method;
         this.block = block;
         this.symbols = method.getSymbolResolver();
-        this.typeHelper = method.getModule().getTypeHelper();
         this.factoryFacade = factoryFacade;
         this.runtime = method.getModule().getParserRuntime();
     }
@@ -326,11 +323,11 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        int offset = aggregateType.getIndexOffset(targetIndex, typeHelper.getTargetDataLayout());
+        int offset = runtime.getIndexOffset(targetIndex, aggregateType);
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-            offset += Type.getPadding(offset, targetType, typeHelper.getTargetDataLayout());
+            offset += runtime.getBytePadding(offset, targetType);
         }
 
         if (offset != 0) {
@@ -386,7 +383,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final LLVMExpressionNode resultAggregate = factoryFacade.createAlloc(sourceType, size, alignment, null, null);
 
-        final int offset = sourceType.getIndexOffset(targetIndex, typeHelper.getTargetDataLayout());
+        final int offset = runtime.getIndexOffset(targetIndex, sourceType);
         final LLVMExpressionNode result = factoryFacade.createInsertValue(resultAggregate, sourceAggregate,
                         runtime.getByteSize(sourceType), offset, valueToInsert, valueType);
 
