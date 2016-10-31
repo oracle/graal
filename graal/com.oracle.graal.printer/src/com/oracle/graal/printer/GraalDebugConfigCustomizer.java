@@ -33,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfig;
 import com.oracle.graal.debug.DebugConfigCustomizer;
@@ -47,15 +48,18 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 @ServiceProvider(DebugConfigCustomizer.class)
 public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
 
+    private SnippetReflectionProvider snippetReflection;
+
     @Override
-    public void customize(DebugConfig config) {
+    public void customize(DebugConfig config, Object... extraArgs) {
+        snippetReflection = DebugConfigCustomizer.lookupArg(SnippetReflectionProvider.class, extraArgs);
         if (Options.PrintIdealGraphFile.getValue()) {
-            config.dumpHandlers().add(new GraphPrinterDumpHandler(GraalDebugConfigCustomizer::createFilePrinter));
+            config.dumpHandlers().add(new GraphPrinterDumpHandler(this::createFilePrinter));
         } else {
-            config.dumpHandlers().add(new GraphPrinterDumpHandler(GraalDebugConfigCustomizer::createNetworkPrinter));
+            config.dumpHandlers().add(new GraphPrinterDumpHandler(this::createNetworkPrinter));
         }
         if (Options.PrintCanonicalGraphStrings.getValue()) {
-            config.dumpHandlers().add(new GraphPrinterDumpHandler(GraalDebugConfigCustomizer::createStringPrinter));
+            config.dumpHandlers().add(new GraphPrinterDumpHandler(this::createStringPrinter));
         }
         config.dumpHandlers().add(new NodeDumper());
         if (Options.PrintCFG.getValue() || Options.PrintBackendCFG.getValue()) {
@@ -86,21 +90,21 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
         }
     }
 
-    private static CanonicalStringGraphPrinter createStringPrinter() {
+    private CanonicalStringGraphPrinter createStringPrinter() {
         // Construct the path to the directory.
         Path path = Options.PrintCanonicalGraphStringsDirectory.getPath();
-        return new CanonicalStringGraphPrinter(path);
+        return new CanonicalStringGraphPrinter(path, snippetReflection);
     }
 
-    private static GraphPrinter createNetworkPrinter() throws IOException {
+    private GraphPrinter createNetworkPrinter() throws IOException {
         String host = Options.PrintIdealGraphAddress.getValue();
         int port = Options.PrintBinaryGraphs.getValue() ? Options.PrintBinaryGraphPort.getValue() : Options.PrintIdealGraphPort.getValue();
         try {
             GraphPrinter printer;
             if (Options.PrintBinaryGraphs.getValue()) {
-                printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)));
+                printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)), snippetReflection);
             } else {
-                printer = new IdealGraphPrinter(new Socket(host, port).getOutputStream(), true);
+                printer = new IdealGraphPrinter(new Socket(host, port).getOutputStream(), true, snippetReflection);
             }
             TTY.println("Connected to the IGV on %s:%d", host, port);
             return printer;
@@ -121,14 +125,14 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
         return Options.PrintIdealGraphFileName.getPath();
     }
 
-    private static GraphPrinter createFilePrinter() throws IOException {
+    private GraphPrinter createFilePrinter() throws IOException {
         Path path = getFilePrinterPath();
         try {
             GraphPrinter printer;
             if (Options.PrintBinaryGraphs.getValue()) {
-                printer = new BinaryGraphPrinter(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
+                printer = new BinaryGraphPrinter(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), snippetReflection);
             } else {
-                printer = new IdealGraphPrinter(Files.newOutputStream(path), true);
+                printer = new IdealGraphPrinter(Files.newOutputStream(path), true, snippetReflection);
             }
             TTY.println("Dumping IGV graphs to %s", path.toString());
             return printer;

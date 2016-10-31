@@ -106,7 +106,7 @@ public abstract class TruffleCompiler {
         this.partialEvaluator = createPartialEvaluator();
 
         if (Debug.isEnabled()) {
-            DebugEnvironment.initialize(System.out);
+            DebugEnvironment.initialize(System.out, graalTruffleRuntime.getRequiredGraalCapability(SnippetReflectionProvider.class));
         }
 
         graalTruffleRuntime.reinstallStubs();
@@ -187,8 +187,11 @@ public abstract class TruffleCompiler {
 
         CompilationResult result = null;
         List<AssumptionValidAssumption> validAssumptions = new ArrayList<>();
+
         TruffleCompilationResultBuilderFactory factory = new TruffleCompilationResultBuilderFactory(graph, validAssumptions);
-        try (DebugCloseable a = CompilationTime.start(); Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache()); DebugCloseable c = CompilationMemUse.start()) {
+        try (DebugCloseable a = CompilationTime.start();
+                        Scope s = Debug.scope("TruffleGraal.GraalCompiler", graph, providers.getCodeCache());
+                        DebugCloseable c = CompilationMemUse.start()) {
             SpeculationLog speculationLog = graph.getSpeculationLog();
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();

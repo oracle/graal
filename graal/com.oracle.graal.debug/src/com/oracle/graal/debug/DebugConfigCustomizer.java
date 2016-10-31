@@ -23,5 +23,14 @@
 package com.oracle.graal.debug;
 
 public interface DebugConfigCustomizer {
-    void customize(DebugConfig config);
+    void customize(DebugConfig config, Object... extraArgs);
+
+    static <T> T lookupArg(Class<T> c, Object... extraArgs) {
+        for (Object arg : extraArgs) {
+            if (c.isInstance(arg)) {
+                return c.cast(arg);
+            }
+        }
+        return null;
+    }
 }

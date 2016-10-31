@@ -517,7 +517,7 @@ public final class CompileTheWorld {
             @Override
             public GraalDebugConfig getDebugConfig() {
                 if (Debug.isEnabled() && DebugScope.getConfig() == null) {
-                    return DebugEnvironment.initialize(System.out);
+                    return DebugEnvironment.initialize(System.out, compiler.getGraalRuntime().getHostProviders().getSnippetReflection());
                 }
                 return null;
             }

@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.bytecode.BytecodeDisassembler;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.graph.Graph;
@@ -39,6 +40,7 @@ import com.oracle.graal.graph.Position;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.BeginNode;
+import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.PhiNode;
@@ -58,6 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
 
     private final boolean tryToSchedule;
+    private final SnippetReflectionProvider snippetReflection;
 
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
@@ -65,10 +68,16 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * @param tryToSchedule If false, no scheduling is done, which avoids exceptions for
      *            non-schedulable graphs.
      */
-    public IdealGraphPrinter(OutputStream stream, boolean tryToSchedule) {
+    public IdealGraphPrinter(OutputStream stream, boolean tryToSchedule, SnippetReflectionProvider snippetReflection) {
         super(stream);
         this.begin();
         this.tryToSchedule = tryToSchedule;
+        this.snippetReflection = snippetReflection;
+    }
+
+    @Override
+    public SnippetReflectionProvider getSnippetReflectionProvider() {
+        return snippetReflection;
     }
 
     /**
@@ -207,6 +216,9 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                 printProperty("shortName", "B");
             } else if (node.getClass() == EndNode.class) {
                 printProperty("shortName", "E");
+            } else if (node instanceof ConstantNode) {
+                ConstantNode cn = (ConstantNode) node;
+                updateStringPropertiesForConstant(props, cn);
             }
             if (node.predecessor() != null) {
                 printProperty("hasPredecessor", "true");

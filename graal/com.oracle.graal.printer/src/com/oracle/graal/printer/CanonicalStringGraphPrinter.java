@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph;
@@ -67,10 +68,17 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
     private static final Pattern IDENTITY_PATTERN = Pattern.compile("([A-Za-z0-9$_]+)@[0-9a-f]+");
     private Path currentDirectory;
     private Path root;
+    private final SnippetReflectionProvider snippetReflection;
 
-    public CanonicalStringGraphPrinter(Path directory) {
+    public CanonicalStringGraphPrinter(Path directory, SnippetReflectionProvider snippetReflection) {
         this.currentDirectory = directory;
         this.root = directory;
+        this.snippetReflection = snippetReflection;
+    }
+
+    @Override
+    public SnippetReflectionProvider getSnippetReflectionProvider() {
+        return snippetReflection;
     }
 
     protected static String escapeFileName(String name) {

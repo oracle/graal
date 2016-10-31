@@ -41,7 +41,7 @@ import jdk.vm.ci.runtime.JVMCI;
 
 public class DebugEnvironment {
 
-    public static GraalDebugConfig initialize(PrintStream log) {
+    public static GraalDebugConfig initialize(PrintStream log, Object... extraArgs) {
         // Initialize JVMCI before loading class Debug
         JVMCI.initialize();
         if (!Debug.isEnabled()) {
@@ -55,7 +55,7 @@ public class DebugEnvironment {
                         log, dumpHandlers, verifyHandlers);
 
         for (DebugConfigCustomizer customizer : GraalServices.load(DebugConfigCustomizer.class)) {
-            customizer.customize(debugConfig);
+            customizer.customize(debugConfig, extraArgs);
         }
 
         Debug.setConfig(debugConfig);

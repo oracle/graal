@@ -36,11 +36,11 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
+import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph;
 
 import jdk.vm.ci.meta.JavaMethod;
@@ -115,6 +115,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 return;
             }
             final Graph graph = (Graph) object;
+
             // Get all current JavaMethod instances in the context.
             List<String> inlineContext = getInlineContext(graph);
 

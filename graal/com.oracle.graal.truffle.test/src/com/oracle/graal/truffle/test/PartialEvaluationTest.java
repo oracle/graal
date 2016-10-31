@@ -24,6 +24,7 @@ package com.oracle.graal.truffle.test;
 
 import org.junit.Assert;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -54,7 +55,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
         this.truffleCompiler = DefaultTruffleCompiler.create(runtime);
 
-        DebugEnvironment.initialize(System.out);
+        DebugEnvironment.initialize(System.out, runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
     }
 
     /**

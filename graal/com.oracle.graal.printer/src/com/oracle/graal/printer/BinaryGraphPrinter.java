@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
@@ -51,6 +52,7 @@ import com.oracle.graal.graph.NodeMap;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ControlSinkNode;
 import com.oracle.graal.nodes.ControlSplitNode;
 import com.oracle.graal.nodes.FixedNode;
@@ -147,14 +149,21 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private final ConstantPool constantPool;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
+    private final SnippetReflectionProvider snippetReflection;
 
     private static final Charset utf8 = Charset.forName("UTF-8");
 
-    public BinaryGraphPrinter(WritableByteChannel channel) throws IOException {
+    public BinaryGraphPrinter(WritableByteChannel channel, SnippetReflectionProvider snippetReflection) throws IOException {
         constantPool = new ConstantPool();
         buffer = ByteBuffer.allocateDirect(256 * 1024);
+        this.snippetReflection = snippetReflection;
         this.channel = channel;
         writeVersion();
+    }
+
+    @Override
+    public SnippetReflectionProvider getSnippetReflectionProvider() {
+        return snippetReflection;
     }
 
     @Override
@@ -512,6 +521,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
             } else if (node instanceof ProxyNode) {
                 props.put("category", "proxy");
             } else {
+                if (node instanceof ConstantNode) {
+                    ConstantNode cn = (ConstantNode) node;
+                    updateStringPropertiesForConstant(props, cn);
+                }
                 props.put("category", "floating");
             }
 

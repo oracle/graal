@@ -160,7 +160,8 @@ public class CompilationTask {
 
     @SuppressWarnings("try")
     public HotSpotCompilationRequestResult runCompilation() {
-        GraalHotSpotVMConfig config = compiler.getGraalRuntime().getVMConfig();
+        HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
+        GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         final long threadId = Thread.currentThread().getId();
         int entryBCI = getEntryBCI();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;

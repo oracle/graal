@@ -22,13 +22,27 @@
  */
 package com.oracle.graal.printer;
 
+import static com.oracle.graal.compiler.common.util.Util.JAVA_SPECIFICATION_VERSION;
+
 import java.io.Closeable;
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
+import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.util.ModuleAPI;
 import com.oracle.graal.graph.Graph;
+import com.oracle.graal.nodes.ConstantNode;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.services.Services;
 
 interface GraphPrinter extends Closeable {
 
@@ -44,6 +58,8 @@ interface GraphPrinter extends Closeable {
      */
     void print(Graph graph, String title, Map<Object, Object> properties) throws IOException;
 
+    SnippetReflectionProvider getSnippetReflectionProvider();
+
     /**
      * Ends the current group.
      */
@@ -51,4 +67,121 @@ interface GraphPrinter extends Closeable {
 
     @Override
     void close();
+
+    /**
+     * A JVMCI package {@linkplain Services#exportJVMCITo(Class) dynamically exported} to trusted
+     * modules.
+     */
+    String JVMCI_RUNTIME_PACKAGE = JVMCI.class.getPackage().getName();
+
+    /**
+     * {@code jdk.vm.ci} module.
+     */
+    Object JVMCI_MODULE = JAVA_SPECIFICATION_VERSION < 9 ? null : ModuleAPI.getModule.invoke(Services.class);
+
+    /**
+     * Classes whose {@link #toString()} method does not run any untrusted code.
+     */
+    Set<Class<?>> TRUSTED_CLASSES = new HashSet<>(Arrays.asList(
+                    String.class,
+                    Class.class,
+                    Boolean.class,
+                    Byte.class,
+                    Character.class,
+                    Short.class,
+                    Integer.class,
+                    Float.class,
+                    Long.class,
+                    Double.class));
+    int MAX_CONSTANT_TO_STRING_LENGTH = 50;
+
+    /**
+     * Determines if invoking {@link Object#toString()} on an instance of {@code c} will only run
+     * trusted code.
+     */
+    static boolean isToStringTrusted(Class<?> c) {
+        if (TRUSTED_CLASSES.contains(c)) {
+            return true;
+        }
+        if (JAVA_SPECIFICATION_VERSION < 9) {
+            if (c.getClassLoader() == Services.class.getClassLoader()) {
+                // Loaded by the JVMCI class loader
+                return true;
+            }
+        } else {
+            Object module = ModuleAPI.getModule.invoke(c);
+            if (JVMCI_MODULE == module || (Boolean) ModuleAPI.isExportedTo.invoke(JVMCI_MODULE, JVMCI_RUNTIME_PACKAGE, module)) {
+                // Can access non-statically-exported package in JVMCI
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Sets or updates the {@code "rawvalue"} and {@code "toString"} properties in {@code props} for
+     * {@code cn} if it's a boxed Object value and {@code snippetReflection} can access the raw
+     * value.
+     */
+    default void updateStringPropertiesForConstant(Map<Object, Object> props, ConstantNode cn) {
+        SnippetReflectionProvider snippetReflection = getSnippetReflectionProvider();
+        if (snippetReflection != null && cn.getValue() instanceof JavaConstant) {
+            JavaConstant constant = (JavaConstant) cn.getValue();
+            if (constant.getJavaKind() == JavaKind.Object) {
+                Object obj = snippetReflection.asObject(Object.class, constant);
+                if (obj != null) {
+                    String toString = GraphPrinter.constantToString(obj);
+                    String rawvalue = GraphPrinter.truncate(toString);
+                    // Overwrite the value inserted by
+                    // ConstantNode.getDebugProperties()
+                    props.put("rawvalue", rawvalue);
+                    System.out.println(obj.getClass() + ": " + rawvalue);
+                    if (!rawvalue.equals(toString)) {
+                        props.put("toString", toString);
+                    }
+                }
+            }
+        }
+    }
+
+    static String truncate(String s) {
+        if (s.length() > MAX_CONSTANT_TO_STRING_LENGTH) {
+            return s.substring(0, MAX_CONSTANT_TO_STRING_LENGTH - 3) + "...";
+        }
+        return s;
+    }
+
+    static String constantToString(Object value) {
+        Class<?> c = value.getClass();
+        if (c.isArray()) {
+            return constantArrayToString(value);
+        } else if (value instanceof Enum) {
+            return ((Enum<?>) value).name();
+        } else if (isToStringTrusted(c)) {
+            return value.toString();
+        }
+        return MetaUtil.getSimpleName(c, true) + "@" + System.identityHashCode(value);
+
+    }
+
+    static String constantArrayToString(Object array) {
+        Class<?> componentType = array.getClass().getComponentType();
+        assert componentType != null;
+        int arrayLength = Array.getLength(array);
+        StringBuilder buf = new StringBuilder(MetaUtil.getSimpleName(componentType, true)).append('[').append(arrayLength).append("]{");
+        int length = arrayLength;
+        boolean primitive = componentType.isPrimitive();
+        for (int i = 0; i < length; i++) {
+            if (primitive) {
+                buf.append(Array.get(array, i));
+            } else {
+                Object o = ((Object[]) array)[i];
+                buf.append(o == null ? "null" : constantToString(o));
+            }
+            if (i != length - 1) {
+                buf.append(", ");
+            }
+        }
+        return buf.append('}').toString();
+    }
 }
