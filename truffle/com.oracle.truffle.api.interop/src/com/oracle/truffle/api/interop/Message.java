@@ -363,18 +363,24 @@ public abstract class Message {
     public static final Message IS_NULL = IsNull.INSTANCE;
 
     /**
-     * Message to check for having a size.
+     * Message to check for having a size. If a {@link TruffleObject} indicates it
+     * <em>has a size</em>, it is expected it represents array-like structure and it also properly
+     * responds to {@link #GET_SIZE} message
      * <p>
      * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
      * this message should yield value of {@link Boolean}.
      *
      * @since 0.8 or earlier
+     * @see ForeignAccess#sendHasSize(com.oracle.truffle.api.nodes.Node,
+     *      com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject)
      */
     public static final Message HAS_SIZE = HasSize.INSTANCE;
 
     /**
      * Getter of the size. If {@link #HAS_SIZE supported}, this message allows to obtain a size (of
-     * an array).
+     * an array). It is expected that {@link TruffleObject} which returns a size can respond to
+     * {@link #READ} and possibly also {@link #WRITE} messages with {@link Integer} parameters from
+     * range <code>0</code> to <code>GET_SIZE - 1</code>.
      * <p>
      * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
      * this message should yield value of {@link Integer}.
@@ -384,6 +390,8 @@ public abstract class Message {
      * <p>
      *
      * @since 0.8 or earlier
+     * @see ForeignAccess#sendGetSize(com.oracle.truffle.api.nodes.Node,
+     *      com.oracle.truffle.api.frame.VirtualFrame, com.oracle.truffle.api.interop.TruffleObject)
      */
     public static final Message GET_SIZE = GetSize.INSTANCE;
 
