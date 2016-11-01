@@ -377,13 +377,12 @@ public class SLDebugLegacyTest {
     }
 
     private static Source createNull() {
-        return Source.fromText("function nullTest() {\n" +
+        return Source.newBuilder("function nullTest() {\n" +
                         "  res = doNull();\n" +
                         "  return res;\n" +
                         "}\n" +
                         "function doNull() {\n" +
-                        "}\n",
-                        "nullTest.sl").withMimeType(SLLanguage.MIME_TYPE);
+                        "}\n").name("nullTest.sl").mimeType(SLLanguage.MIME_TYPE).build();
     }
 
     @Test
