@@ -838,6 +838,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
+      "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH"],
       "workingSets" : "Graal,Bench",
     },
