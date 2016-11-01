@@ -1,0 +1,10 @@
+'Avoid use of lamdas in Truffle API':
+($args$) -> $any :: inTruffleButNotInTest()
+;;
+
+<?
+private boolean inTruffleButNotInTest() {
+    String pkg = context.enclosingPackage();
+    return !pkg.endsWith(".test") && pkg.startsWith("com.oracle.truffle.");
+}
+?>
