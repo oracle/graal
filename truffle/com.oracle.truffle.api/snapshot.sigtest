@@ -440,6 +440,8 @@ meth protected boolean isTaggedWith(java.lang.Class<?>)
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
 meth protected final java.lang.Object getAtomicLock()
+ anno 0 java.lang.Deprecated()
+meth protected final java.util.concurrent.locks.Lock getLock()
 meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.Node deepCopy()
@@ -461,7 +463,7 @@ meth public java.lang.String getLanguage()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds ACCESSOR,GIL,IN_ATOMIC_BLOCK,nodeClass,parent
+hfds ACCESSOR,GIL,GIL_LOCK,nodeClass,parent
 hcls AccessorNodes
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.nodes.Node$Child
@@ -642,7 +644,7 @@ meth public final void setCallTarget(com.oracle.truffle.api.RootCallTarget)
 meth public java.lang.String getName()
 meth public static com.oracle.truffle.api.nodes.RootNode createConstantNode(java.lang.Object)
 supr com.oracle.truffle.api.nodes.Node
-hfds callTarget,frameDescriptor,language,sourceSection
+hfds callTarget,frameDescriptor,language,lock,sourceSection
 hcls Constant
 
 CLSS public com.oracle.truffle.api.nodes.SlowPathException
@@ -811,7 +813,7 @@ cons public init({com.oracle.truffle.api.utilities.AssumedValue%0})
 meth public void set({com.oracle.truffle.api.utilities.AssumedValue%0})
 meth public {com.oracle.truffle.api.utilities.AssumedValue%0} get()
 supr java.lang.Object
-hfds assumption,name,value
+hfds ASSUMPTION_UPDATER,assumption,name,value
 
 CLSS public final com.oracle.truffle.api.utilities.BinaryConditionProfile
  anno 0 java.lang.Deprecated()
