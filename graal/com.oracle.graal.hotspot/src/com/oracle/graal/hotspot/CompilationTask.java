@@ -154,6 +154,17 @@ public class CompilationTask {
     private static final DebugCounter CompiledBytecodes = Debug.counter("CompiledBytecodes");
 
     /**
+     * Counts the number of compiled {@linkplain CompilationResult#getBytecodeSize() bytecodes} for
+     * which {@linkplain CompilationResult#getTargetCode()} code was installed.
+     */
+    private static final DebugCounter CompiledAndInstalledBytecodes = Debug.counter("CompiledAndInstalledBytecodes");
+
+    /**
+     * Counts the number of installed {@linkplain CompilationResult#getTargetCodeSize()} bytes.
+     */
+    private static final DebugCounter InstalledCodeSize = Debug.counter("InstalledCodeSize");
+
+    /**
      * Time spent in code installation.
      */
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
@@ -287,11 +298,13 @@ public class CompilationTask {
                 int codeSize = 0;
                 if (result != null) {
                     compiledBytecodes = result.getBytecodeSize();
+                    CompiledBytecodes.add(compiledBytecodes);
+                    if (installedCode != null) {
+                        codeSize = installedCode.getSize();
+                        CompiledAndInstalledBytecodes.add(compiledBytecodes);
+                        InstalledCodeSize.add(codeSize);
+                    }
                 }
-                if (installedCode != null) {
-                    codeSize = installedCode.getSize();
-                }
-                CompiledBytecodes.add(compiledBytecodes);
 
                 // Log a compilation event.
                 if (compilationEvent.shouldWrite()) {
