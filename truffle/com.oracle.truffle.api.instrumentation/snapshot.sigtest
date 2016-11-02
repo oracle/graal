@@ -193,6 +193,8 @@ meth protected boolean isTaggedWith(java.lang.Class<?>)
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
 meth protected final java.lang.Object getAtomicLock()
+ anno 0 java.lang.Deprecated()
+meth protected final java.util.concurrent.locks.Lock getLock()
 meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public com.oracle.truffle.api.nodes.Node deepCopy()
@@ -214,7 +216,7 @@ meth public java.lang.String getLanguage()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds ACCESSOR,GIL,IN_ATOMIC_BLOCK,nodeClass,parent
+hfds ACCESSOR,GIL,GIL_LOCK,nodeClass,parent
 hcls AccessorNodes
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo

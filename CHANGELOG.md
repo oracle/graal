@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 0.19
 1-Nov-2016
 * Deprecated [Node.getAtomicLock()](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/Node.html#getAtomicLock--) and replaced it with Node.getLock() which returns a Lock.
+* New helper methods in [ForeignAccess](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/interop/ForeignAccess.html): `isArray`, `isBoxed`, `isNull`, `isPrimitive`, `unbox`, `asTruffleValue`.
 
 ## Version 0.18
 1-Oct-2016
