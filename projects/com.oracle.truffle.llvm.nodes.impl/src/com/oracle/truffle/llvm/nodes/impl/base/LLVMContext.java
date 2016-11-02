@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -54,6 +55,7 @@ public class LLVMContext extends ExecutionContext {
     private final List<RootCallTarget> globalVarDeallocs = new ArrayList<>();
     private final List<RootCallTarget> constructorFunctions = new ArrayList<>();
     private final List<RootCallTarget> destructorFunctions = new ArrayList<>();
+    private final Stack<RootCallTarget> atExitFunctions = new Stack<>();
     private final List<LLVMThread> runningThreads = new ArrayList<>();
 
     private final LLVMFunctionRegistry functionRegistry;
@@ -151,6 +153,10 @@ public class LLVMContext extends ExecutionContext {
         destructorFunctions.add(destructorFunction);
     }
 
+    public void registerAtExitFunction(RootCallTarget atExitFunction) {
+        atExitFunctions.push(atExitFunction);
+    }
+
     public void registerGlobalVarInit(RootCallTarget globalVarInit) {
         globalVarInits.add(globalVarInit);
     }
@@ -194,6 +200,10 @@ public class LLVMContext extends ExecutionContext {
 
     public List<RootCallTarget> getDestructorFunctions() {
         return destructorFunctions;
+    }
+
+    public Stack<RootCallTarget> getAtExitFunctions() {
+        return atExitFunctions;
     }
 
     public List<RootCallTarget> getGlobalVarInits() {

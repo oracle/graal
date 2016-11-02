@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.impl.func;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -123,6 +124,8 @@ public class LLVMGlobalRootNode extends RootNode {
 
         result = main.call(frame, args);
 
+        executeAtExitFunctions();
+
         if (printExecutionTime) {
             endExecutionTime = System.currentTimeMillis();
             printExecutionTime();
@@ -161,6 +164,14 @@ public class LLVMGlobalRootNode extends RootNode {
         List<RootCallTarget> destructorFunctions = context.getDestructorFunctions();
         for (RootCallTarget callTarget : destructorFunctions) {
             callTarget.call(destructorFunctions);
+        }
+    }
+
+    @TruffleBoundary
+    protected void executeAtExitFunctions() {
+        Stack<RootCallTarget> atExitFunctions = context.getAtExitFunctions();
+        while (!atExitFunctions.isEmpty()) {
+            atExitFunctions.pop().call(atExitFunctions);
         }
     }
 
