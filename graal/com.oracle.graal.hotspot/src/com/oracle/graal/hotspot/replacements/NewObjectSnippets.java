@@ -215,8 +215,8 @@ public class NewObjectSnippets implements Snippets {
     public static native Object newInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub);
 
     @Snippet
-    public static Object allocateInstanceDynamic(Class<?> type, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister) {
-        if (probability(SLOW_PATH_PROBABILITY, type == null || DynamicNewInstanceNode.throwsInstantiationException(type))) {
+    public static Object allocateInstanceDynamic(Class<?> type, Class<?> classClass, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister) {
+        if (probability(SLOW_PATH_PROBABILITY, type == null || DynamicNewInstanceNode.throwsInstantiationException(type, classClass))) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
 
@@ -294,20 +294,20 @@ public class NewObjectSnippets implements Snippets {
     public static native Object dynamicNewInstanceStubCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
 
     @Snippet
-    public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
+    public static Object allocateArrayDynamic(Class<?> elementType, Class<?> voidClass, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
                     @ConstantParameter JavaKind knownElementKind, @ConstantParameter int knownLayoutHelper, Word prototypeMarkWord) {
-        Object result = allocateArrayDynamicImpl(elementType, length, fillContents, threadRegister, knownElementKind, knownLayoutHelper, prototypeMarkWord);
+        Object result = allocateArrayDynamicImpl(elementType, voidClass, length, fillContents, threadRegister, knownElementKind, knownLayoutHelper, prototypeMarkWord);
         return result;
     }
 
-    private static Object allocateArrayDynamicImpl(Class<?> elementType, int length, boolean fillContents, Register threadRegister, JavaKind knownElementKind, int knownLayoutHelper,
-                    Word prototypeMarkWord) {
+    private static Object allocateArrayDynamicImpl(Class<?> elementType, Class<?> voidClass, int length, boolean fillContents, Register threadRegister, JavaKind knownElementKind,
+                    int knownLayoutHelper, Word prototypeMarkWord) {
         /*
          * We only need the dynamic check for void when we have no static information from
          * knownElementKind.
          */
         staticAssert(knownElementKind != JavaKind.Void, "unsupported knownElementKind");
-        if (knownElementKind == JavaKind.Illegal && probability(SLOW_PATH_PROBABILITY, elementType == null || DynamicNewArrayNode.throwsIllegalArgumentException(elementType))) {
+        if (knownElementKind == JavaKind.Illegal && probability(SLOW_PATH_PROBABILITY, elementType == null || DynamicNewArrayNode.throwsIllegalArgumentException(elementType, voidClass))) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
 
@@ -554,6 +554,9 @@ public class NewObjectSnippets implements Snippets {
         public void lower(DynamicNewInstanceNode newInstanceNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             Arguments args = new Arguments(allocateInstanceDynamic, newInstanceNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("type", newInstanceNode.getInstanceType());
+            ValueNode classClass = newInstanceNode.getClassClass();
+            assert classClass != null;
+            args.add("classClass", classClass);
             args.addConst("fillContents", newInstanceNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
 
@@ -565,6 +568,9 @@ public class NewObjectSnippets implements Snippets {
             StructuredGraph graph = newArrayNode.graph();
             Arguments args = new Arguments(allocateArrayDynamic, newArrayNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("elementType", newArrayNode.getElementType());
+            ValueNode voidClass = newArrayNode.getVoidClass();
+            assert voidClass != null;
+            args.add("voidClass", voidClass);
             ValueNode length = newArrayNode.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
             args.addConst("fillContents", newArrayNode.fillContents());

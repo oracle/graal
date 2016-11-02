@@ -49,6 +49,13 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
     @Input ValueNode elementType;
 
     /**
+     * Class pointer to void.class needs to be exposed earlier than this node is lowered so that it
+     * can be replaced by the AOT machinery. If it's not needed for lowering this input can be
+     * ignored.
+     */
+    @OptionalInput ValueNode voidClass;
+
+    /**
      * A non-null value indicating the worst case element type. Mainly useful for distinguishing
      * Object arrays from primitive arrays.
      */
@@ -102,8 +109,8 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
         return new NewArrayNode(type, length(), fillContents(), stateBefore());
     }
 
-    public static boolean throwsIllegalArgumentException(Class<?> elementType) {
-        return elementType == void.class;
+    public static boolean throwsIllegalArgumentException(Class<?> elementType, Class<?> voidClass) {
+        return elementType == voidClass;
     }
 
     public static boolean throwsIllegalArgumentException(ResolvedJavaType elementType) {
@@ -121,4 +128,12 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
         return newArray(componentType, length, false, knownElementKind);
     }
 
+    public ValueNode getVoidClass() {
+        return voidClass;
+    }
+
+    public void setVoidClass(ValueNode newVoidClass) {
+        updateUsages(voidClass, newVoidClass);
+        voidClass = newVoidClass;
+    }
 }
