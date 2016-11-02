@@ -139,6 +139,13 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         if (cfgPrinter == null) {
             cfgFile = getCFGPath().toFile();
             try {
+                /*
+                 * Initializing a debug environment multiple times by calling
+                 * DebugEnvironment#initialize will create new CFGPrinterObserver objects that refer
+                 * to the same file path. This means the CFG file may be overridden by another
+                 * instance. Appending to an existing CFG file is not an option as the writing
+                 * happens buffered.
+                 */
                 OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
                 cfgPrinter = new CFGPrinter(out);
             } catch (FileNotFoundException e) {
