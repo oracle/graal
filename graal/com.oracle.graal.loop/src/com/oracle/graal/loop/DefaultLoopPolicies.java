@@ -35,6 +35,8 @@ import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.ControlSplitNode;
 import com.oracle.graal.nodes.DeoptimizeNode;
+import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.MergeNode;
@@ -168,9 +170,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
         if (firstSplit instanceof TypeSwitchNode) {
             int copies = firstSplit.successors().count() - 1;
             for (Node succ : firstSplit.successors()) {
-                Node current = succ;
-                while (current instanceof AbstractBeginNode) {
-                    current = ((AbstractBeginNode) succ).next();
+                FixedNode current = (FixedNode) succ;
+                while (current instanceof FixedWithNextNode) {
+                    current = ((FixedWithNextNode) current).next();
                 }
                 if (current instanceof DeoptimizeNode) {
                     copies--;
