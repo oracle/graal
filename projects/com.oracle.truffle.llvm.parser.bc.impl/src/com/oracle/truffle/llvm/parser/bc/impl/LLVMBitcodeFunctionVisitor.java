@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
-import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
@@ -80,10 +79,6 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         this.symbolResolver = new LLVMNodeGenerator(this);
         this.factoryFacade = factoryFacade;
         this.argCount = argCount;
-    }
-
-    public DataLayoutConverter.DataSpecConverter getTargetDataLayout() {
-        return module.getTargetDataLayout();
     }
 
     public void addInstruction(LLVMNode node) {

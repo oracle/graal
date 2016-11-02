@@ -356,7 +356,7 @@ public final class LLVMNodeGenerator {
 
         final int baseTypeSize = runtime.getByteSize(constant.getType().getElementType());
         final LLVMAddressNode arrayAlloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getElementCount() * baseTypeSize,
-                        constant.getType().getAlignment(method.getTargetDataLayout()),
+                        runtime.getByteAlignment(constant.getType()),
                         method.getContext(), method.getStackSlot());
 
         final List<LLVMExpressionNode> arrayValues = new ArrayList<>(constant.getElementCount());
@@ -393,7 +393,7 @@ public final class LLVMNodeGenerator {
 
     private LLVMExpressionNode resolveStructureConstant(StructureConstant constant) {
         final int structSize = runtime.getByteSize(constant.getType());
-        final int structAlignment = constant.getType().getAlignment(method.getTargetDataLayout());
+        final int structAlignment = runtime.getByteAlignment(constant.getType());
         final LLVMExpressionNode alloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(structSize, structAlignment, method.getContext(), method.getStackSlot());
 
         final int[] offsets = new int[constant.getElementCount()];
@@ -520,7 +520,7 @@ public final class LLVMNodeGenerator {
         }
 
         final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(runtime.getByteSize(constant.getType()),
-                        constant.getType().getAlignment(method.getTargetDataLayout()),
+                        runtime.getByteAlignment(constant.getType()),
                         method.getContext(),
                         method.getStackSlot());
 
