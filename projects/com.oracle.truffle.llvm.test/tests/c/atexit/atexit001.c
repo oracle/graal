@@ -1,14 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static void exit1() {
-  printf("exit1!\n");
-}
+static void exit1() { printf("exit1!\n"); }
 
-static void exit2() {
-  printf("exit2!\n");
-}
-
+static void exit2() { printf("exit2!\n"); }
 
 int main() {
   atexit(exit1);
