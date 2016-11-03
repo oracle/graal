@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.junit.Test;
 
@@ -42,7 +41,6 @@ import com.oracle.graal.debug.DebugTimer;
 import com.oracle.graal.debug.DebugValueFactory;
 import com.oracle.graal.debug.DebugVerifyHandler;
 import com.oracle.graal.debug.GraalDebugConfig;
-import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
 import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
 import com.oracle.graal.options.OptionValue;
@@ -151,9 +149,8 @@ public class MethodMetricsTestInterception02 extends MethodMetricsTest {
 
     @Override
     DebugConfig getConfig() {
-        DebugConfig config = DebugScope.getConfig();
-        List<DebugDumpHandler> dumpHandlers = config == null ? new ArrayList<>() : config.dumpHandlers().stream().collect(Collectors.toList());
-        List<DebugVerifyHandler> verifyHandlers = config == null ? new ArrayList<>() : config.verifyHandlers().stream().collect(Collectors.toList());
+        List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
+        List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
         GraalDebugConfig debugConfig = new GraalDebugConfig(
                         GraalDebugConfig.Options.Log.getValue(),
                         ""/* unscoped meter */,
