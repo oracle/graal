@@ -583,6 +583,14 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         }
 
         @Override
+        public LLVMExpressionNode allocateVectorResult(Object type) {
+            final Type vectorType = (Type) type;
+            final int size = ((Type) type).getSize(targetDataLayout);
+            final int alignment = vectorType.getAlignment(targetDataLayout);
+            return factoryFacade.createAlloc(vectorType, size, alignment, null, null);
+        }
+
+        @Override
         public Object getGlobalAddress(com.intel.llvm.ireditor.lLVM_IR.GlobalVariable var) {
             throw new UnsupportedOperationException("Not implemented!");
         }

@@ -363,13 +363,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode element = symbols.resolve(insert.getValue());
         final Type type = insert.getType();
         final LLVMBaseType resultType = type.getLLVMBaseType();
-
-        final int size = type.getSize(method.getTargetDataLayout());
-        final int alignment = type.getAlignment(method.getTargetDataLayout());
-        final LLVMAddressNode target = (LLVMAddressNode) factoryFacade.createAlloc(type, size, alignment, null, null);
-
-        final LLVMExpressionNode result = factoryFacade.createInsertElement(resultType, vector, target, element, index);
-
+        final LLVMExpressionNode result = factoryFacade.createInsertElement(resultType, vector, type, element, index);
         createFrameWrite(result, insert);
     }
 

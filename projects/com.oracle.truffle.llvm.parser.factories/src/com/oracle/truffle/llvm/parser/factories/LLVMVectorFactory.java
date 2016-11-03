@@ -61,13 +61,15 @@ import com.oracle.truffle.llvm.nodes.impl.vector.LLVMInsertElementNodeFactory.LL
 import com.oracle.truffle.llvm.nodes.impl.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI32VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI8VectorNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 
 public final class LLVMVectorFactory {
 
     private LLVMVectorFactory() {
     }
 
-    public static LLVMVectorNode createInsertElement(LLVMBaseType resultType, LLVMAddressNode target, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMI32Node index) {
+    public static LLVMVectorNode createInsertElement(LLVMParserRuntime runtime, LLVMBaseType resultType, Object type, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMI32Node index) {
+        final LLVMAddressNode target = (LLVMAddressNode) runtime.allocateVectorResult(type);
         switch (resultType) {
             case I1_VECTOR:
                 return LLVMI1InsertElementNodeGen.create(target, (LLVMI1VectorNode) vector, (LLVMI1Node) element, index);

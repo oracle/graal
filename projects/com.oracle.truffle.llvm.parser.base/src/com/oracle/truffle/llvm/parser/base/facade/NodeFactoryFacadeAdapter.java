@@ -79,7 +79,7 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, LLVMExpressionNode target, LLVMExpressionNode element,
+    public LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, Object type, LLVMExpressionNode element,
                     LLVMExpressionNode index) {
         return null;
     }
