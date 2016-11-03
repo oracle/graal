@@ -122,6 +122,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             if (inlineContext != previousInlineContext) {
                 Map<Object, Object> properties = new HashMap<>();
                 properties.put("graph", graph.toString());
+                addCFGFileName(properties);
                 if (inlineContext.equals(previousInlineContext)) {
                     /*
                      * two different graphs have the same inline context, so make sure they appear
@@ -159,8 +160,8 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 // Finally, output the graph.
                 Map<Object, Object> properties = new HashMap<>();
                 properties.put("graph", graph.toString());
-                properties.put("date", new Date().toString());
                 properties.put("scope", Debug.currentScope());
+                addCFGFileName(properties);
                 printer.print(graph, nextDumpId() + ":" + message, properties);
             } catch (IOException e) {
                 failuresCount++;
@@ -168,6 +169,12 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
+        }
+    }
+
+    private static void addCFGFileName(Map<Object, Object> properties) {
+        if (Options.PrintCFG.getValue() || Options.PrintBackendCFG.getValue()) {
+            properties.put("PrintCFGFileName", Options.PrintCFGFileName.getPath().toAbsolutePath().toString());
         }
     }
 
