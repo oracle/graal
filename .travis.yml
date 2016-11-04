@@ -16,7 +16,7 @@ dist: trusty
 env:
   global:
     - MX_BINARY_SUITES="truffle"
-    - JVMCI_VERSION="jvmci-0.22"
+    - JVMCI_VERSION="jvmci-0.23"
   matrix:
     - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"

@@ -2,10 +2,10 @@
 overlay = 7325e9a1783d1175e755623290236870ed2227a0
 
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-java8 : {name : labsjdk, version : "8u92-jvmci-0.22", platformspecific: true}
+java8 : {name : labsjdk, version : "8u111-jvmci-0.23-dev", platformspecific: true}
 java9 : {name : labsjdk, version : "9-SNAPSHOT", platformspecific: true}
 java9EA : {name : labsjdk, version : "9-ea+143", platformspecific: true}
-java8Debug : {name : labsjdk, version : "8u92-jvmci-0.22-fastdebug", platformspecific: true}
+java8Debug : {name : labsjdk, version : "8u111-jvmci-0.23-dev-fastdebug", platformspecific: true}
 
 chdirToSuite : ["cd", ${suite-root}]
 common : {
