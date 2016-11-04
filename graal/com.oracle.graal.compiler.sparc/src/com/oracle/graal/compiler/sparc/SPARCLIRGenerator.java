@@ -420,10 +420,17 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         append(new ReturnOp(Value.ILLEGAL));
     }
 
-    public Value emitSignExtendLoad(LIRKind kind, Value address, LIRFrameState state) {
+    public Value emitSignExtendLoad(LIRKind kind, LIRKind resultKind, Value address, LIRFrameState state) {
         SPARCAddressValue loadAddress = asAddressValue(address);
-        Variable result = newVariable(kind);
+        Variable result = newVariable(resultKind);
         append(new LoadOp(kind.getPlatformKind(), result, loadAddress, state, true));
+        return result;
+    }
+
+    public Value emitZeroExtendLoad(LIRKind kind, LIRKind resultKind, Value address, LIRFrameState state) {
+        SPARCAddressValue loadAddress = asAddressValue(address);
+        Variable result = newVariable(resultKind);
+        append(new LoadOp(kind.getPlatformKind(), result, loadAddress, state));
         return result;
     }
 

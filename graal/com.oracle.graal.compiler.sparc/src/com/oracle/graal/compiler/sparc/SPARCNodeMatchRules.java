@@ -40,7 +40,6 @@ import com.oracle.graal.nodes.calc.SignExtendNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.memory.Access;
 
-import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.sparc.SPARCKind;
 
 /**
@@ -65,13 +64,8 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
         SPARCKind fromKind = null;
         if (fromBits == toBits) {
             return null;
-        } else if (toBits > WORD.getSizeInBits()) {
-            toKind = XWORD;
-        } else if (toBits > HWORD.getSizeInBits()) {
-            toKind = WORD;
-        } else if (toBits > BYTE.getSizeInBits()) {
-            toKind = HWORD;
         }
+        toKind = toBits > 32 ? XWORD : WORD;
         switch (fromBits) {
             case 8:
                 fromKind = BYTE;
@@ -88,8 +82,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
         SPARCKind localFromKind = fromKind;
         SPARCKind localToKind = toKind;
         return builder -> {
-            Value v = getLIRGeneratorTool().emitSignExtendLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
-            return getArithmeticLIRGenerator().emitReinterpret(LIRKind.value(localToKind), v);
+            return getLIRGeneratorTool().emitSignExtendLoad(LIRKind.value(localFromKind), LIRKind.value(localToKind), operand(access.getAddress()), getState(access));
         };
     }
 
@@ -99,13 +92,8 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
         SPARCKind fromKind = null;
         if (fromBits == toBits) {
             return null;
-        } else if (toBits > WORD.getSizeInBits()) {
-            toKind = XWORD;
-        } else if (toBits > HWORD.getSizeInBits()) {
-            toKind = WORD;
-        } else if (toBits > BYTE.getSizeInBits()) {
-            toKind = HWORD;
         }
+        toKind = toBits > 32 ? XWORD : WORD;
         switch (fromBits) {
             case 8:
                 fromKind = BYTE;
@@ -123,8 +111,7 @@ public class SPARCNodeMatchRules extends NodeMatchRules {
         SPARCKind localToKind = toKind;
         return builder -> {
             // Loads are always zero extending load
-            Value v = getArithmeticLIRGenerator().emitLoad(LIRKind.value(localFromKind), operand(access.getAddress()), getState(access));
-            return getArithmeticLIRGenerator().emitReinterpret(LIRKind.value(localToKind), v);
+            return getLIRGeneratorTool().emitZeroExtendLoad(LIRKind.value(localFromKind), LIRKind.value(localToKind), operand(access.getAddress()), getState(access));
         };
     }
 
