@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
 import com.oracle.graal.compiler.common.type.AbstractPointerStamp;
+import com.oracle.graal.compiler.common.type.IntegerStamp;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -134,13 +135,21 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             ConvertNode convertX = (ConvertNode) forX;
             ConvertNode convertY = (ConvertNode) forY;
             if (convertX.preservesOrder(condition()) && convertY.preservesOrder(condition()) && convertX.getValue().stamp().isCompatible(convertY.getValue().stamp())) {
-                boolean multiUsage = (convertX.asNode().getUsageCount() > 1 || convertY.asNode().getUsageCount() > 1);
-                if ((forX instanceof ZeroExtendNode || forX instanceof SignExtendNode) && multiUsage) {
-                    // Do not perform for zero or sign extend if there are multiple usages of the
-                    // value.
-                    return this;
+                boolean supported = true;
+                if (convertX.getValue().stamp() instanceof IntegerStamp) {
+                    IntegerStamp intStamp = (IntegerStamp) convertX.getValue().stamp();
+                    supported = tool.supportSubwordCompare(intStamp.getBits());
                 }
-                return duplicateModified(convertX.getValue(), convertY.getValue());
+
+                if (supported) {
+                    boolean multiUsage = (convertX.asNode().getUsageCount() > 1 || convertY.asNode().getUsageCount() > 1);
+                    if ((forX instanceof ZeroExtendNode || forX instanceof SignExtendNode) && multiUsage) {
+                        // Do not perform for zero or sign extend if there are multiple usages of
+                        // the value.
+                        return this;
+                    }
+                    return duplicateModified(convertX.getValue(), convertY.getValue());
+                }
             }
         }
         return this;
@@ -178,12 +187,21 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 // new live values.
                 return this;
             }
-            ConstantNode newConstant = canonicalConvertConstant(tool, convert, constant);
-            if (newConstant != null) {
-                if (mirrored) {
-                    return duplicateModified(newConstant, convert.getValue());
-                } else {
-                    return duplicateModified(convert.getValue(), newConstant);
+
+            boolean supported = true;
+            if (convert.getValue().stamp() instanceof IntegerStamp) {
+                IntegerStamp intStamp = (IntegerStamp) convert.getValue().stamp();
+                supported = tool.supportSubwordCompare(intStamp.getBits());
+            }
+
+            if (supported) {
+                ConstantNode newConstant = canonicalConvertConstant(tool, convert, constant);
+                if (newConstant != null) {
+                    if (mirrored) {
+                        return duplicateModified(newConstant, convert.getValue());
+                    } else {
+                        return duplicateModified(convert.getValue(), newConstant);
+                    }
                 }
             }
         }

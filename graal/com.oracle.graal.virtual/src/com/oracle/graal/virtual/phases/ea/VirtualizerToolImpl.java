@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.java.MonitorIdNode;
+import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.VirtualizerTool;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 
@@ -49,14 +50,16 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     private final ConstantFieldProvider constantFieldProvider;
     private final PartialEscapeClosure<?> closure;
     private final Assumptions assumptions;
+    private final LoweringProvider loweringProvider;
 
     VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, PartialEscapeClosure<?> closure,
-                    Assumptions assumptions) {
+                    Assumptions assumptions, LoweringProvider loweringProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.constantFieldProvider = constantFieldProvider;
         this.closure = closure;
         this.assumptions = assumptions;
+        this.loweringProvider = loweringProvider;
     }
 
     private boolean deleted;
@@ -240,5 +243,14 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     @Override
     public Assumptions getAssumptions() {
         return assumptions;
+    }
+
+    @Override
+    public boolean supportSubwordCompare(int bits) {
+        if (loweringProvider != null) {
+            return loweringProvider.supportSubwordCompare(bits);
+        } else {
+            return false;
+        }
     }
 }

@@ -49,6 +49,7 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.calc.CompareNode;
+import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
@@ -83,7 +84,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
             assert d.isAlive();
-            visitDeoptBegin(AbstractBeginNode.prevBegin(d), d.action(), d.reason(), d.getSpeculation(), graph);
+            visitDeoptBegin(AbstractBeginNode.prevBegin(d), d.action(), d.reason(), d.getSpeculation(), graph, context != null ? context.getLowerer() : null);
         }
 
         if (context != null) {
@@ -147,17 +148,18 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
                 ys = yPhi.valueAt(mergePredecessor).asConstant();
             }
             if (xs != null && ys != null && compare.condition().foldCondition(xs, ys, context.getConstantReflection(), compare.unorderedIsTrue()) == fixedGuard.isNegated()) {
-                visitDeoptBegin(AbstractBeginNode.prevBegin(mergePredecessor), fixedGuard.getAction(), fixedGuard.getReason(), fixedGuard.getSpeculation(), fixedGuard.graph());
+                visitDeoptBegin(AbstractBeginNode.prevBegin(mergePredecessor), fixedGuard.getAction(), fixedGuard.getReason(), fixedGuard.getSpeculation(), fixedGuard.graph(), context.getLowerer());
             }
         }
     }
 
-    private void visitDeoptBegin(AbstractBeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, JavaConstant speculation, StructuredGraph graph) {
+    private void visitDeoptBegin(AbstractBeginNode deoptBegin, DeoptimizationAction deoptAction, DeoptimizationReason deoptReason, JavaConstant speculation, StructuredGraph graph,
+                    LoweringProvider loweringProvider) {
         if (deoptBegin.predecessor() instanceof AbstractBeginNode) {
             /*
              * Walk up chains of LoopExitNodes to the "real" BeginNode that leads to deoptimization.
              */
-            visitDeoptBegin((AbstractBeginNode) deoptBegin.predecessor(), deoptAction, deoptReason, speculation, graph);
+            visitDeoptBegin((AbstractBeginNode) deoptBegin.predecessor(), deoptAction, deoptReason, speculation, graph, loweringProvider);
             return;
         }
 
@@ -168,11 +170,11 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
             while (mergeNode.isAlive()) {
                 AbstractEndNode end = mergeNode.forwardEnds().first();
                 AbstractBeginNode newBeginNode = findBeginNode(end);
-                visitDeoptBegin(newBeginNode, deoptAction, deoptReason, speculation, graph);
+                visitDeoptBegin(newBeginNode, deoptAction, deoptReason, speculation, graph, loweringProvider);
             }
             assert next.isAlive();
             AbstractBeginNode newBeginNode = findBeginNode(next);
-            visitDeoptBegin(newBeginNode, deoptAction, deoptReason, speculation, graph);
+            visitDeoptBegin(newBeginNode, deoptAction, deoptReason, speculation, graph, loweringProvider);
             return;
         } else if (deoptBegin.predecessor() instanceof IfNode) {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
@@ -198,7 +200,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
             FixedNode next = pred.next();
             pred.setNext(guard);
             guard.setNext(next);
-            SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false, graph.getAssumptions());
+            SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false, graph.getAssumptions(), loweringProvider);
             survivingSuccessor.simplify(simplifierTool);
             return;
         }

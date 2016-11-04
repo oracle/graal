@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,4 +44,13 @@ public interface LoweringProvider {
      * @return a node that gives the index of the element
      */
     ValueNode reconstructArrayIndex(JavaKind elementKind, AddressNode address);
+
+    /**
+     * Indicates whether the target platform supports comparison of integers of a particular bit
+     * width. This check is used by optimizations that might introduce subword compares.
+     */
+    default boolean supportSubwordCompare(int bits) {
+        // most platforms only support 32 and 64 bit compares
+        return bits >= 32;
+    }
 }

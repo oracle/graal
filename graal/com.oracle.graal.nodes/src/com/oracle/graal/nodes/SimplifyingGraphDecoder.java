@@ -96,6 +96,13 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         public Assumptions getAssumptions() {
             return assumptions;
         }
+
+        @Override
+        public boolean supportSubwordCompare(int bits) {
+            // to be safe, just report false here
+            // there will be more opportunities for this optimization later
+            return false;
+        }
     }
 
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
