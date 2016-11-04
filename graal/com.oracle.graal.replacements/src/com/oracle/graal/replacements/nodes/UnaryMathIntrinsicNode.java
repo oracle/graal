@@ -65,6 +65,25 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
         UnaryOperation(ForeignCallDescriptor foreignCallDescriptor) {
             this.foreignCallDescriptor = foreignCallDescriptor;
         }
+
+        public double compute(double value) {
+            switch (this) {
+                case LOG:
+                    return Math.log(value);
+                case LOG10:
+                    return Math.log10(value);
+                case EXP:
+                    return Math.exp(value);
+                case SIN:
+                    return Math.sin(value);
+                case COS:
+                    return Math.cos(value);
+                case TAN:
+                    return Math.tan(value);
+                default:
+                    throw new GraalError("unknown op %s", this);
+            }
+        }
     }
 
     public UnaryOperation getOperation() {
@@ -81,8 +100,7 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
 
     protected static ValueNode tryConstantFold(ValueNode value, UnaryOperation op) {
         if (value.isConstant()) {
-            double ret = doCompute(value.asJavaConstant().asDouble(), op);
-            return ConstantNode.forDouble(ret);
+            return ConstantNode.forDouble(op.compute(value.asJavaConstant().asDouble()));
         }
         return null;
     }
@@ -113,12 +131,20 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
                 }
                 case LOG:
                 case LOG10: {
+                    double lowerBound = op.compute(floatStamp.lowerBound());
+                    double upperBound = op.compute(floatStamp.upperBound());
+                    if (floatStamp.contains(0.0)) {
+                        // 0.0 and -0.0 infinity produces -Inf
+                        lowerBound = Double.NEGATIVE_INFINITY;
+                    }
                     boolean nonNaN = floatStamp.lowerBound() >= 0.0 && floatStamp.isNonNaN();
-                    return StampFactory.forFloat(JavaKind.Double, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, nonNaN);
+                    return StampFactory.forFloat(JavaKind.Double, lowerBound, upperBound, nonNaN);
                 }
                 case EXP: {
+                    double lowerBound = Math.exp(floatStamp.lowerBound());
+                    double upperBound = Math.exp(floatStamp.upperBound());
                     boolean nonNaN = floatStamp.isNonNaN();
-                    return StampFactory.forFloat(JavaKind.Double, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, nonNaN);
+                    return StampFactory.forFloat(JavaKind.Double, lowerBound, upperBound, nonNaN);
                 }
 
             }
@@ -171,23 +197,4 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
 
     @NodeIntrinsic
     public static native double compute(double value, @ConstantNodeParameter UnaryOperation op);
-
-    private static double doCompute(double value, UnaryOperation op) {
-        switch (op) {
-            case LOG:
-                return Math.log(value);
-            case LOG10:
-                return Math.log10(value);
-            case EXP:
-                return Math.exp(value);
-            case SIN:
-                return Math.sin(value);
-            case COS:
-                return Math.cos(value);
-            case TAN:
-                return Math.tan(value);
-            default:
-                throw new GraalError("unknown op %s", op);
-        }
-    }
 }
