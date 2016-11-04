@@ -140,10 +140,16 @@ public class FloatStamp extends PrimitiveStamp {
         return upperBound;
     }
 
+    /**
+     * Returns true if NaN is non included in the value described by this stamp.
+     */
     public boolean isNonNaN() {
         return nonNaN;
     }
 
+    /**
+     * Returns true if this stamp represents the NaN value.
+     */
     public boolean isNaN() {
         return Double.isNaN(lowerBound);
     }

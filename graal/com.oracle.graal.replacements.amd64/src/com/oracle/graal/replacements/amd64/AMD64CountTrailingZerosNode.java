@@ -26,9 +26,7 @@ import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
 
 import com.oracle.graal.compiler.common.type.IntegerStamp;
-import com.oracle.graal.compiler.common.type.PrimitiveStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
@@ -39,8 +37,8 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.UnaryNode;
 import com.oracle.graal.nodes.spi.ArithmeticLIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.nodes.type.StampTool;
 
-import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -52,18 +50,19 @@ public final class AMD64CountTrailingZerosNode extends UnaryNode implements Arit
     public static final NodeClass<AMD64CountTrailingZerosNode> TYPE = NodeClass.create(AMD64CountTrailingZerosNode.class);
 
     public AMD64CountTrailingZerosNode(ValueNode value) {
-        super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, ((PrimitiveStamp) value.stamp()).getBits()), value);
+        super(TYPE, computeStamp(value.stamp(), value), value);
         assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long;
     }
 
     @Override
     public Stamp foldStamp(Stamp newStamp) {
-        assert newStamp.isCompatible(getValue().stamp());
+        return computeStamp(newStamp, getValue());
+    }
+
+    static Stamp computeStamp(Stamp newStamp, ValueNode value) {
+        assert newStamp.isCompatible(value.stamp());
         IntegerStamp valueStamp = (IntegerStamp) newStamp;
-        long mask = CodeUtil.mask(valueStamp.getBits());
-        int min = Long.numberOfTrailingZeros(valueStamp.upMask() & mask);
-        int max = Long.numberOfTrailingZeros(valueStamp.downMask() & mask);
-        return StampFactory.forInteger(JavaKind.Int, min, max);
+        return StampTool.stampForTrailingZeros(valueStamp);
     }
 
     public static ValueNode tryFold(ValueNode value) {

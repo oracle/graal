@@ -88,23 +88,42 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
     }
 
     protected UnaryMathIntrinsicNode(ValueNode value, UnaryOperation op) {
-        super(TYPE, StampFactory.forKind(JavaKind.Double), value);
+        super(TYPE, computeStamp(value.stamp(), op), value);
         assert value.stamp() instanceof FloatStamp && PrimitiveStamp.getBits(value.stamp()) == 64;
         this.operation = op;
     }
 
     @Override
-    public Stamp foldStamp(Stamp newStamp) {
-        if (newStamp instanceof FloatStamp) {
-            FloatStamp floatStamp = (FloatStamp) newStamp;
-            switch (getOperation()) {
+    public Stamp foldStamp(Stamp valueStamp) {
+        return computeStamp(valueStamp, getOperation());
+    }
+
+    static Stamp computeStamp(Stamp valueStamp, UnaryOperation op) {
+        if (valueStamp instanceof FloatStamp) {
+            FloatStamp floatStamp = (FloatStamp) valueStamp;
+            switch (op) {
                 case COS:
-                case SIN:
-                    boolean nonNaN = floatStamp.lowerBound() != Double.NEGATIVE_INFINITY && floatStamp.upperBound() != Double.POSITIVE_INFINITY;
+                case SIN: {
+                    boolean nonNaN = floatStamp.lowerBound() != Double.NEGATIVE_INFINITY && floatStamp.upperBound() != Double.POSITIVE_INFINITY && floatStamp.isNonNaN();
                     return StampFactory.forFloat(JavaKind.Double, -1.0, 1.0, nonNaN);
+                }
+                case TAN: {
+                    boolean nonNaN = floatStamp.lowerBound() != Double.NEGATIVE_INFINITY && floatStamp.upperBound() != Double.POSITIVE_INFINITY && floatStamp.isNonNaN();
+                    return StampFactory.forFloat(JavaKind.Double, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, nonNaN);
+                }
+                case LOG:
+                case LOG10: {
+                    boolean nonNaN = floatStamp.lowerBound() >= 0.0 && floatStamp.isNonNaN();
+                    return StampFactory.forFloat(JavaKind.Double, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, nonNaN);
+                }
+                case EXP: {
+                    boolean nonNaN = floatStamp.isNonNaN();
+                    return StampFactory.forFloat(JavaKind.Double, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, nonNaN);
+                }
+
             }
         }
-        return super.foldStamp(newStamp);
+        return StampFactory.forKind(JavaKind.Double);
     }
 
     @Override

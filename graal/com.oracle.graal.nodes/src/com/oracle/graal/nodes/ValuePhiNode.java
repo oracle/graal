@@ -65,8 +65,14 @@ public class ValuePhiNode extends PhiNode implements ArrayLengthProvider {
 
     @Override
     public boolean inferStamp() {
-        Stamp valuesStamp = StampTool.meet(values());
-        if (stamp.isCompatible(valuesStamp)) {
+        /*
+         * Meet all the values feeding this Phi but don't use the stamp of this Phi since that's
+         * what's being computed.
+         */
+        Stamp valuesStamp = StampTool.meetOrNull(values(), this);
+        if (valuesStamp == null) {
+            valuesStamp = stamp;
+        } else if (stamp.isCompatible(valuesStamp)) {
             valuesStamp = stamp.join(valuesStamp);
         }
         return updateStamp(valuesStamp);
