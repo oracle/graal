@@ -41,3 +41,5 @@ projects/com.intel.llvm.ireditor/src_gen/**
 projects/com.intel.llvm.ireditor/xtend-gen/**
 projects/com.intel.llvm.ireditor/.launch/**
 projects/com.oracle.truffle.llvm.test/lifetime/**
+
+tests/cache/*
