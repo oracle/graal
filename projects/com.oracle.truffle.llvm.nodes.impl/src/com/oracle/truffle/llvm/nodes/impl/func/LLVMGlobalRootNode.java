@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.func;
 
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -169,7 +169,7 @@ public class LLVMGlobalRootNode extends RootNode {
 
     @TruffleBoundary
     protected void executeAtExitFunctions() {
-        Stack<RootCallTarget> atExitFunctions = context.getAtExitFunctions();
+        Deque<RootCallTarget> atExitFunctions = context.getAtExitFunctions();
         while (!atExitFunctions.isEmpty()) {
             atExitFunctions.pop().call(atExitFunctions);
         }

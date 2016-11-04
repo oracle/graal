@@ -29,11 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.base;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -55,7 +56,7 @@ public class LLVMContext extends ExecutionContext {
     private final List<RootCallTarget> globalVarDeallocs = new ArrayList<>();
     private final List<RootCallTarget> constructorFunctions = new ArrayList<>();
     private final List<RootCallTarget> destructorFunctions = new ArrayList<>();
-    private final Stack<RootCallTarget> atExitFunctions = new Stack<>();
+    private final Deque<RootCallTarget> atExitFunctions = new ArrayDeque<>();
     private final List<LLVMThread> runningThreads = new ArrayList<>();
 
     private final LLVMFunctionRegistry functionRegistry;
@@ -202,7 +203,7 @@ public class LLVMContext extends ExecutionContext {
         return destructorFunctions;
     }
 
-    public Stack<RootCallTarget> getAtExitFunctions() {
+    public Deque<RootCallTarget> getAtExitFunctions() {
         return atExitFunctions;
     }
 
