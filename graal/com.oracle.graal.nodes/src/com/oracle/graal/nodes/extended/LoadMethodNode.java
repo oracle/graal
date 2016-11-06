@@ -57,13 +57,19 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
     protected final ResolvedJavaMethod method;
     protected final ResolvedJavaType receiverType;
 
+    /**
+     * The caller or context type used to perform access checks when resolving {@link #method}.
+     */
+    protected final ResolvedJavaType callerType;
+
     public ValueNode getHub() {
         return hub;
     }
 
-    public LoadMethodNode(@InjectedNodeParameter Stamp stamp, ResolvedJavaMethod method, ResolvedJavaType receiverType, ValueNode hub) {
+    public LoadMethodNode(@InjectedNodeParameter Stamp stamp, ResolvedJavaMethod method, ResolvedJavaType receiverType, ResolvedJavaType callerType, ValueNode hub) {
         super(TYPE, stamp);
         this.receiverType = receiverType;
+        this.callerType = callerType;
         this.hub = hub;
         this.method = method;
         assert method.isConcrete() : "Cannot load abstract method from a hub";
@@ -111,7 +117,7 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
      *         the method
      */
     private Node resolveExactMethod(CanonicalizerTool tool, ResolvedJavaType type) {
-        ResolvedJavaMethod newMethod = type.resolveConcreteMethod(method, type);
+        ResolvedJavaMethod newMethod = type.resolveConcreteMethod(method, callerType);
         if (newMethod == null) {
             /*
              * This really represent a misuse of LoadMethod since we're loading from a class which

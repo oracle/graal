@@ -1572,7 +1572,7 @@ public class BytecodeParser implements GraphBuilderContext {
             ValueNode nonNullReceiver = pluginReceiver.get();
             Stamp methodStamp = stampProvider.createMethodStamp();
             LoadHubNode hub = graph.unique(new LoadHubNode(stampProvider, nonNullReceiver));
-            LoadMethodNode actual = append(new LoadMethodNode(methodStamp, targetMethod, receiverType, hub));
+            LoadMethodNode actual = append(new LoadMethodNode(methodStamp, targetMethod, receiverType, method.getDeclaringClass(), hub));
             ConstantNode expected = graph.unique(ConstantNode.forConstant(methodStamp, targetMethod.getEncoding(), getMetaAccess()));
             LogicNode compare = graph.unique(CompareNode.createCompareNode(Condition.EQ, actual, expected, constantReflection));
 
