@@ -126,6 +126,13 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
         }
     }
 
+    private static boolean canOverflow(IntegerStamp a, IntegerStamp b) {
+        assert a.getBits() == b.getBits();
+        return addOverflowsPositively(a.upperBound(), b.upperBound(), a.getBits()) ||
+                        addOverflowsNegatively(a.lowerBound(), b.lowerBound(), a.getBits());
+
+    }
+
     private static ValueNode findSynonym(ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
             return new IntegerAddExactNode(forY, forX);
@@ -140,6 +147,9 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
             if (c == 0) {
                 return forX;
             }
+        }
+        if (!canOverflow((IntegerStamp) forX.stamp(), (IntegerStamp) forY.stamp())) {
+            return AddNode.create(forX, forY);
         }
         return null;
     }
