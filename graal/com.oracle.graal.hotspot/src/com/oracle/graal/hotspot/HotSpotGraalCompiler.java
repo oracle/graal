@@ -103,7 +103,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             }
         }
         ResolvedJavaMethod method = request.getMethod();
-        try (CompilationWatchDog w1 = CompilationWatchDog.watch(method); BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request)) {
+        HotSpotCompilationRequest hsRequest = (HotSpotCompilationRequest) request;
+        try (CompilationWatchDog w1 = CompilationWatchDog.watch(method, hsRequest.getId()); BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request)) {
             if (compilationCounters != null) {
                 compilationCounters.countCompilation(method);
             }
@@ -111,7 +112,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
             if (Debug.isEnabled() && DebugScope.getConfig() == null) {
                 DebugEnvironment.initialize(TTY.out, graalRuntime.getHostProviders().getSnippetReflection());
             }
-            CompilationTask task = new CompilationTask(jvmciRuntime, this, (HotSpotCompilationRequest) request, true, true);
+            CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, true);
             CompilationRequestResult r = null;
             try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig());
                             Debug.Scope s = Debug.methodMetricsScope("HotSpotGraalCompiler", MethodMetricsRootScopeInfo.create(method), true, method)) {
