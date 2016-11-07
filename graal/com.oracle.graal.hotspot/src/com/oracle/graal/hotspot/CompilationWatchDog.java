@@ -82,6 +82,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
     private WatchDogState state = WatchDogState.SLEEPING;
     private final Thread compilerThread;
     private volatile ResolvedJavaMethod currentMethod;
+    private volatile int currentId;
     private ResolvedJavaMethod lastWatched;
 
     // The 4 fields below are for a single compilation being watched
@@ -97,9 +98,10 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
         this.setDaemon(true);
     }
 
-    public void startCompilation(ResolvedJavaMethod method) {
+    public void startCompilation(ResolvedJavaMethod method, int id) {
         trace("start %s", fmt(method));
         this.currentMethod = method;
+        this.currentId = id;
     }
 
     public void stopCompilation() {
@@ -212,14 +214,14 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                                     if (numberOfIdenticalStackTraces > Options.IdenticalCompilationSnapshotsLimit.getValue()) {
                                         synchronized (CompilationWatchDog.class) {
                                             TTY.printf("======================= WATCH DOG THREAD =======================%n" +
-                                                            "%s took %d identical stack traces, which indicates a stuck compilation of %s%n%sExiting VM%n", this,
-                                                            numberOfIdenticalStackTraces, fmt(currentMethod), fmt(lastStackTrace));
+                                                            "%s took %d identical stack traces, which indicates a stuck compilation (id=%d) of %s%n%sExiting VM%n", this,
+                                                            numberOfIdenticalStackTraces, currentId, fmt(currentMethod), fmt(lastStackTrace));
                                         }
                                         System.exit(-1);
                                     } else if (newStackTrace) {
                                         synchronized (CompilationWatchDog.class) {
                                             TTY.printf("======================= WATCH DOG THREAD =======================%n" +
-                                                            "%s detected long running compilation of %s [%.2f seconds]%n%s", this, fmt(currentMethod),
+                                                            "%s detected long running compilation (id=%d) of %s [%.2f seconds]%n%s", this, currentId, fmt(currentMethod),
                                                             secs(elapsed), fmt(lastStackTrace));
                                         }
                                     }
@@ -254,12 +256,13 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
      * Opens a scope for watching the compilation of a given method.
      *
      * @param method a method about to be compiled
+     * @param id compilation request identifier
      * @return {@code null} if the compilation watch dog is disabled otherwise this object. The
      *         returned value should be used in a {@code try}-with-resources statement whose scope
      *         is the whole compilation so that leaving the scope will cause {@link #close()} to be
      *         called.
      */
-    static CompilationWatchDog watch(ResolvedJavaMethod method) {
+    static CompilationWatchDog watch(ResolvedJavaMethod method, int id) {
         if (ENABLED) {
             // Lazily get a watch dog thread for the current compiler thread
             CompilationWatchDog watchDog = WATCH_DOGS.get();
@@ -269,7 +272,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                 WATCH_DOGS.set(watchDog);
                 watchDog.start();
             }
-            watchDog.startCompilation(method);
+            watchDog.startCompilation(method, id);
             return watchDog;
         }
         return null;
