@@ -63,9 +63,9 @@ public enum FunctionRecord {
     INBOUNDS_GEP_OLD,
     INDIRECTBR,
     UNUSED_32,
-    FUNC_CODE_DEBUG_LOC_AGAIN,
+    DEBUG_LOC_AGAIN,
     CALL,
-    FUNC_CODE_DEBUG_LOC,
+    DEBUG_LOC,
     FENCE,
     CMPXCHG_OLD,
     ATOMICRMW,
@@ -85,7 +85,7 @@ public enum FunctionRecord {
     CATCHSWITCH,
     UNUSED_53,
     UNUSED_54,
-    FUNC_CODE_OPERAND_BUNDLE;
+    OPERAND_BUNDLE;
 
     public static FunctionRecord decode(long id) {
         return values()[(int) id];

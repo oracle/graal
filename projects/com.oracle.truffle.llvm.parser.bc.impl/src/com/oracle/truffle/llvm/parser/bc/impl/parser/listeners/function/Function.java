@@ -117,7 +117,7 @@ public class Function implements ParserListener {
          * improved in the future, but for now we simply parse those instructions before checking
          * for an existing InstructionGenerator. Otherwise we would cause an RuntimeException.
          */
-        if (record == FunctionRecord.FUNC_CODE_DEBUG_LOC) {
+        if (record == FunctionRecord.DEBUG_LOC) {
             /*
              * TODO: implement intial debugging support
              *
@@ -138,7 +138,7 @@ public class Function implements ParserListener {
             return;
         }
 
-        if (record == FunctionRecord.FUNC_CODE_DEBUG_LOC_AGAIN) {
+        if (record == FunctionRecord.DEBUG_LOC_AGAIN) {
             return;
         }
 
