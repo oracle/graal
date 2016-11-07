@@ -153,18 +153,19 @@ public class StackTraceTest {
             @Override
             Object execute(VirtualFrame frame) {
                 Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                    @SuppressWarnings("deprecation")
                     public Object visitFrame(FrameInstance frameInstance) {
-                        Assert.assertNull(frameInstance.getFrame(FrameAccess.NONE, true));
+                        Assert.assertNull(frameInstance.getFrame(FrameAccess.NONE));
 
-                        Frame readOnlyFrame = frameInstance.getFrame(FrameAccess.READ_ONLY, true);
+                        Frame readOnlyFrame = frameInstance.getFrame(FrameAccess.READ_ONLY);
                         FrameSlot slot = readOnlyFrame.getFrameDescriptor().findFrameSlot("demo");
                         Assert.assertEquals(42, readOnlyFrame.getValue(slot));
 
-                        Frame readWriteFrame = frameInstance.getFrame(FrameAccess.READ_WRITE, true);
+                        Frame readWriteFrame = frameInstance.getFrame(FrameAccess.READ_WRITE);
                         Assert.assertEquals(42, readWriteFrame.getValue(slot));
                         readWriteFrame.setObject(slot, 43);
 
-                        Frame materializedFrame = frameInstance.getFrame(FrameAccess.MATERIALIZE, true);
+                        Frame materializedFrame = frameInstance.getFrame(FrameAccess.MATERIALIZE);
                         Assert.assertEquals(43, materializedFrame.getValue(slot));
 
                         materializedFrame.setObject(slot, 44);

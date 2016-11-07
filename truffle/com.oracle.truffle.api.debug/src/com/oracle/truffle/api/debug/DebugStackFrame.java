@@ -281,7 +281,7 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         if (currentFrame == null) {
             return event.getMaterializedFrame();
         } else {
-            return currentFrame.getFrame(FrameAccess.MATERIALIZE, true).materialize();
+            return currentFrame.getFrame(FrameAccess.MATERIALIZE).materialize();
         }
     }
 
