@@ -43,8 +43,7 @@ public interface FrameInstance {
          * @since 0.8 or earlier
          * @deprecated without replacement. This mode always returns <code>null</code>.
          **/
-        @Deprecated
-        NONE,
+        @Deprecated NONE,
 
         /**
          * This mode allows to read the frame and provides read only access to its local variables.
