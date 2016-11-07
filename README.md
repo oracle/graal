@@ -21,7 +21,7 @@ export PATH=$PWD/mx:$PATH
 ```
 
 Graal depends on a JDK that supports JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
-JVMCI is included in JDK9 and once an [EA JDK9 binary](https://jdk9.java.net/download/) is available that works with Graal, this document will be updated.
+Graal works with build 143 or later of a [JDK9 Early Access Release](https://jdk9.java.net/download/).
 JVMCI enabled builds of JDK8 for selected platforms are available via [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 If you are not on one of these platforms (e.g., Windows), see [Building JVMCI JDK8](#building-jvmci-jdk8) below.
 
