@@ -30,6 +30,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -85,7 +86,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.LayoutFactory;
-import java.util.Iterator;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -121,6 +121,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
+    private Object cachedIncludesExcludes;
     private ArrayList<String> includes;
     private ArrayList<String> excludes;
 
@@ -372,25 +373,32 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return null;
     }
 
-    boolean acceptForCompilation(RootNode rootNode) {
-        if (TruffleCompileOnly.getValue() != null) {
-            if (includes == null) {
+    @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
+    final boolean acceptForCompilation(RootNode rootNode) {
+        String includesExcludes = TruffleCompileOnly.getValue();
+        if (includesExcludes != null) {
+            if (cachedIncludesExcludes != includesExcludes) {
                 parseCompileOnly();
+                this.cachedIncludesExcludes = includesExcludes;
             }
 
-            String name = rootNode.toString();
+            String name = rootNode.getName();
             boolean included = includes.isEmpty();
-            for (int i = 0; !included && i < includes.size(); i++) {
-                if (name.contains(includes.get(i))) {
-                    included = true;
+            if (name != null) {
+                for (int i = 0; !included && i < includes.size(); i++) {
+                    if (name.contains(includes.get(i))) {
+                        included = true;
+                    }
                 }
             }
             if (!included) {
                 return false;
             }
-            for (String exclude : excludes) {
-                if (name.contains(exclude)) {
-                    return false;
+            if (name != null) {
+                for (String exclude : excludes) {
+                    if (name.contains(exclude)) {
+                        return false;
+                    }
                 }
             }
         }
@@ -398,17 +406,19 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     protected void parseCompileOnly() {
-        includes = new ArrayList<>();
-        excludes = new ArrayList<>();
+        ArrayList<String> includesList = new ArrayList<>();
+        ArrayList<String> excludesList = new ArrayList<>();
 
         String[] items = TruffleCompileOnly.getValue().split(",");
         for (String item : items) {
             if (item.startsWith("~")) {
-                excludes.add(item.substring(1));
+                excludesList.add(item.substring(1));
             } else {
-                includes.add(item);
+                includesList.add(item);
             }
         }
+        this.includes = includesList;
+        this.excludes = excludesList;
     }
 
     public abstract SpeculationLog createSpeculationLog();

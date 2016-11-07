@@ -79,7 +79,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private final RootNode rootNode;
 
     /** Information about when and how the call target should get compiled. */
-    @CompilationFinal protected AbstractCompilationProfile compilationProfile;
+    @CompilationFinal protected OptimizedCompilationProfile compilationProfile;
 
     /** Source target if this target was duplicated. */
     private final OptimizedCallTarget sourceCallTarget;
@@ -151,7 +151,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return rootNode;
     }
 
-    public final AbstractCompilationProfile getCompilationProfile() {
+    public final OptimizedCompilationProfile getCompilationProfile() {
         if (!initialized) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initialize();
@@ -161,13 +161,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     @Override
     public final Object call(Object... args) {
-        getCompilationProfile().profileIndirectCall(this);
+        getCompilationProfile().profileIndirectCall();
         return doInvoke(args);
     }
 
     public final Object callDirect(Object... args) {
         try {
-            getCompilationProfile().profileDirectCall(this, args);
+            getCompilationProfile().profileDirectCall(args);
             Object result = doInvoke(args);
             if (CompilerDirectives.inCompiledCode()) {
                 result = compilationProfile.injectReturnValueProfile(result);
@@ -238,15 +238,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 this.uninitializedRootNode = cloneRootNode(rootNode);
             }
             GraalTruffleRuntime runtime = runtime();
-
-            if (runtime.acceptForCompilation(getRootNode())) {
-                if (TruffleCallTargetProfiling.getValue()) {
-                    this.compilationProfile = TraceCompilationProfile.create();
-                } else {
-                    this.compilationProfile = DefaultCompilationProfile.create();
-                }
+            if (TruffleCallTargetProfiling.getValue()) {
+                this.compilationProfile = TraceCompilationProfile.create();
             } else {
-                this.compilationProfile = VoidCompilationProfile.create();
+                this.compilationProfile = OptimizedCompilationProfile.create();
             }
             runtime.getTvmci().onFirstExecution(this);
             initialized = true;
@@ -265,6 +260,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         if (!isCompiling()) {
             if (!initialized) {
                 initialize();
+            }
+
+            if (!runtime().acceptForCompilation(getRootNode())) {
+                return;
             }
 
             Future<?> submitted = null;
@@ -341,7 +340,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
              * failure state.
              */
         } else {
-            compilationProfile.reportCompilationFailure(t);
+            compilationProfile.reportCompilationFailure();
             if (TruffleCompilationExceptionsAreThrown.getValue()) {
                 throw new OptimizationFailedException(t, this);
             }
@@ -449,7 +448,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         /* Notify compiled method that have inlined this call target that the tree changed. */
         invalidateNodeRewritingAssumption();
 
-        AbstractCompilationProfile profile = this.compilationProfile;
+        OptimizedCompilationProfile profile = this.compilationProfile;
         if (profile != null) {
             profile.reportNodeReplaced();
             if (cancelInstalledTask(newNode, reason)) {

@@ -38,11 +38,10 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.truffle.AbstractCompilationProfile;
-import com.oracle.graal.truffle.DefaultCompilationProfile;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.OptimizedDirectCallNode;
+import com.oracle.graal.truffle.OptimizedCompilationProfile;
 import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
@@ -124,18 +123,10 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         if (firstCompilation == 0) {
             firstCompilation = System.nanoTime();
         }
-        DefaultCompilationProfile profile = getDefaultCompilationProfile(target);
+        OptimizedCompilationProfile profile = target.getCompilationProfile();
         if (profile != null) {
             timeToQueue.accept(System.nanoTime() - profile.getTimestamp());
         }
-    }
-
-    private static DefaultCompilationProfile getDefaultCompilationProfile(OptimizedCallTarget target) {
-        AbstractCompilationProfile profile = target.getCompilationProfile();
-        if (profile instanceof DefaultCompilationProfile) {
-            return (DefaultCompilationProfile) profile;
-        }
-        return null;
     }
 
     @Override
@@ -162,7 +153,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         local.compilationStarted = System.nanoTime();
         compilationLocal.set(local);
 
-        DefaultCompilationProfile profile = getDefaultCompilationProfile(target);
+        OptimizedCompilationProfile profile = target.getCompilationProfile();
         if (profile != null) {
             deferCompilations.accept(profile.getDeferredCount());
             timeToCompilation.accept(local.compilationStarted - profile.getTimestamp());

@@ -22,40 +22,19 @@
  */
 package com.oracle.graal.truffle;
 
-import java.util.Collections;
-import java.util.Map;
+/**
+ * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
+ */
+@interface SuppressFBWarnings {
+    /**
+     * The set of FindBugs
+     * <a href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
+     * suppressed in annotated element. The value can be a bug category, kind or pattern.
+     */
+    String[] value();
 
-public abstract class AbstractCompilationProfile {
-
-    AbstractCompilationProfile() {
-    }
-
-    abstract void profileDirectCall(OptimizedCallTarget callTarget, Object[] args);
-
-    abstract void profileIndirectCall(OptimizedCallTarget callTarget);
-
-    abstract void profileInlinedCall();
-
-    abstract void profileReturnValue(Object result);
-
-    abstract <E extends Throwable> E profileExceptionType(E ex);
-
-    abstract Object[] injectArgumentProfile(Object[] originalArguments);
-
-    abstract Object injectReturnValueProfile(Object result);
-
-    abstract void reportCompilationFailure(Throwable t);
-
-    abstract void reportLoopCount(int count);
-
-    abstract void reportNodeReplaced();
-
-    abstract void interpreterCall(OptimizedCallTarget callTarget);
-
-    abstract void reportInvalidated();
-
-    public Map<String, Object> getDebugProperties() {
-        return Collections.emptyMap();
-    }
-
+    /**
+     * Reason why the warning is suppressed.
+     */
+    String justification();
 }

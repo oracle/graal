@@ -41,7 +41,7 @@ import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-public class DefaultCompilationProfile extends AbstractCompilationProfile {
+public class OptimizedCompilationProfile {
 
     /**
      * Number of times an installed code for this tree was seen invalidated.
@@ -64,7 +64,7 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
 
     private volatile boolean compilationFailed;
 
-    public DefaultCompilationProfile() {
+    public OptimizedCompilationProfile() {
         compilationCallThreshold = TruffleMinInvokeThreshold.getValue();
         compilationCallAndLoopThreshold = TruffleCompilationThreshold.getValue();
     }
@@ -75,9 +75,8 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
                         compilationCallAndLoopThreshold);
     }
 
-    @Override
     @ExplodeLoop
-    void profileDirectCall(OptimizedCallTarget callTarget, Object[] args) {
+    void profileDirectCall(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
         if (CompilerDirectives.inInterpreter() && typesAssumption == null) {
             initializeProfiledArgumentTypes(args);
@@ -103,8 +102,7 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         }
     }
 
-    @Override
-    void profileIndirectCall(OptimizedCallTarget callTarget) {
+    void profileIndirectCall() {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
             // Argument profiling is not possible for targets of indirect calls.
@@ -114,13 +112,11 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         }
     }
 
-    @Override
     void profileInlinedCall() {
         // nothing to profile for inlined calls by default
     }
 
-    @Override
-    void profileReturnValue(Object result) {
+    final void profileReturnValue(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
         if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
@@ -139,8 +135,7 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
     }
 
     @SuppressWarnings("unchecked")
-    @Override
-    <E extends Throwable> E profileExceptionType(E ex) {
+    final <E extends Throwable> E profileExceptionType(E ex) {
         Class<?> cachedClass = exceptionType;
         // if cachedClass is null and we are not in the interpreter we don't want to deoptimize
         // This usually happens only if the call target was compiled using compile without ever
@@ -160,8 +155,7 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         return ex;
     }
 
-    @Override
-    Object[] injectArgumentProfile(Object[] originalArguments) {
+    final Object[] injectArgumentProfile(Object[] originalArguments) {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         Object[] args = originalArguments;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
@@ -181,8 +175,7 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         return castArguments;
     }
 
-    @Override
-    Object injectReturnValueProfile(Object result) {
+    final Object injectReturnValueProfile(Object result) {
         Class<?> klass = profiledReturnType;
         if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
             return OptimizedCallTarget.unsafeCast(result, klass, true, true);
@@ -190,13 +183,11 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         return result;
     }
 
-    @Override
-    void reportCompilationFailure(Throwable t) {
+    final void reportCompilationFailure() {
         compilationFailed = true;
     }
 
-    @Override
-    void reportLoopCount(int count) {
+    final void reportLoopCount(int count) {
         interpreterCallAndLoopCount += count;
 
         int callsMissing = compilationCallAndLoopThreshold - interpreterCallAndLoopCount;
@@ -205,22 +196,19 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         }
     }
 
-    @Override
-    void reportInvalidated() {
+    final void reportInvalidated() {
         invalidationCount++;
         int reprofile = TruffleInvalidationReprofileCount.getValue();
         ensureProfiling(reprofile, reprofile);
     }
 
-    @Override
-    void reportNodeReplaced() {
+    final void reportNodeReplaced() {
         // delay compilation until tree is deemed stable enough
         int replaceBackoff = TruffleReplaceReprofileCount.getValue();
         ensureProfiling(1, replaceBackoff);
     }
 
-    @Override
-    void interpreterCall(OptimizedCallTarget callTarget) {
+    final void interpreterCall(OptimizedCallTarget callTarget) {
         int intCallCount = ++interpreterCallCount;
         int intAndLoopCallCount = ++interpreterCallAndLoopCount;
 
@@ -309,7 +297,6 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         }
     }
 
-    @Override
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
         String callsThreshold = String.format("%7d/%5d", getInterpreterCallCount(), getCompilationCallThreshold());
@@ -349,8 +336,8 @@ public class DefaultCompilationProfile extends AbstractCompilationProfile {
         return timestamp;
     }
 
-    public static AbstractCompilationProfile create() {
-        return new DefaultCompilationProfile();
+    public static OptimizedCompilationProfile create() {
+        return new OptimizedCompilationProfile();
     }
 
 }

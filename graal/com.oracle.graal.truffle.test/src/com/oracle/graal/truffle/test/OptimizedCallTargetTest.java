@@ -40,8 +40,11 @@ import java.util.stream.IntStream;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.OptimizedOSRLoopNode;
 import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
 import com.oracle.graal.truffle.test.nodes.ConstantTestNode;
@@ -54,8 +57,12 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("try")
 public class OptimizedCallTargetTest {
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
     private static final Field nodeRewritingAssumptionField;
@@ -89,6 +96,7 @@ public class OptimizedCallTargetTest {
     private static void assertNotCompiled(OptimizedCallTarget target) {
         assertNotNull(target);
         assertFalse(target.isValid());
+        assertFalse(target.isCompiling());
     }
 
     private static final class CallTestNode extends AbstractTestNode {
@@ -247,5 +255,160 @@ public class OptimizedCallTargetTest {
 
             assertFalse(rewriteAssumptions.stream().filter(a -> a != finalRewriteAssumption).anyMatch(Assumption::isValid));
         });
+    }
+
+    private static class NamedRootNode extends RootNode {
+
+        private String name;
+
+        NamedRootNode(String name) {
+            super(TruffleLanguage.class, null, null);
+            this.name = name;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return name;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+    }
+
+    @Test
+    public void testCompileOnly1() {
+        final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
+
+        // test single include
+        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "foobar")) {
+            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+            for (int i = 0; i < compilationThreshold; i++) {
+                assertNotCompiled(target);
+                target.call();
+            }
+            assertCompiled(target);
+            target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("baz"));
+            for (int i = 0; i < compilationThreshold; i++) {
+                assertNotCompiled(target);
+                target.call();
+            }
+            assertNotCompiled(target);
+        }
+
+    }
+
+    @Test
+    public void testCompileOnly2() {
+        final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
+        // test single exclude
+        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "~foobar")) {
+            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+            for (int i = 0; i < compilationThreshold; i++) {
+                assertNotCompiled(target);
+                target.call();
+            }
+            assertNotCompiled(target);
+            target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("baz"));
+            for (int i = 0; i < compilationThreshold; i++) {
+                assertNotCompiled(target);
+                target.call();
+            }
+            assertCompiled(target);
+        }
+    }
+
+    @Test
+    public void testCompileOnly3() {
+        final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
+        // test two includes/excludes
+        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "foo,baz")) {
+            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+            for (int i = 0; i < compilationThreshold; i++) {
+                assertNotCompiled(target);
+                target.call();
+            }
+            assertCompiled(target);
+            target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("baz"));
+            for (int i = 0; i < compilationThreshold; i++) {
+                assertNotCompiled(target);
+                target.call();
+            }
+            assertCompiled(target);
+        }
+    }
+
+    private static class OSRRepeatingNode extends Node implements RepeatingNode {
+        int count = 0;
+
+        @Override
+        public boolean executeRepeating(VirtualFrame frame) {
+            count++;
+            return count < (TruffleCompilerOptions.TruffleOSRCompilationThreshold.getValue() + 10);
+        }
+    }
+
+    @Test
+    public void testCompileOnly4() {
+        // OSR should not trigger for compile-only includes
+        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "foobar")) {
+            final OSRRepeatingNode repeating = new OSRRepeatingNode();
+            final LoopNode loop = runtime.createLoopNode(repeating);
+            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {
+
+                @Child LoopNode loopChild = loop;
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    loopChild.executeLoop(frame);
+                    return super.execute(frame);
+                }
+
+            });
+            target.call();
+            OptimizedCallTarget osrTarget = findOSRTarget(loop);
+            if (osrTarget != null) {
+                assertNotCompiled(osrTarget);
+            }
+        }
+    }
+
+    private static OptimizedCallTarget findOSRTarget(Node loopNode) {
+        if (loopNode instanceof OptimizedOSRLoopNode) {
+            return ((OptimizedOSRLoopNode) loopNode).getCompiledOSRLoop();
+        }
+
+        for (Node child : loopNode.getChildren()) {
+            OptimizedCallTarget target = findOSRTarget(child);
+            if (target != null) {
+                return target;
+            }
+        }
+
+        return null;
+    }
+
+    @Test
+    public void testCompileOnly5() {
+        // OSR should trigger if compile-only with excludes
+        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "~foobar")) {
+            final OSRRepeatingNode repeating = new OSRRepeatingNode();
+            final LoopNode loop = runtime.createLoopNode(repeating);
+            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {
+
+                @Child LoopNode loopChild = loop;
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    loopChild.executeLoop(frame);
+                    return super.execute(frame);
+                }
+
+            });
+            target.call();
+            OptimizedCallTarget osrTarget = findOSRTarget(loop);
+            assertCompiled(osrTarget);
+        }
     }
 }
