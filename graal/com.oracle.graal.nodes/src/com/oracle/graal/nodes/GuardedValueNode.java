@@ -56,7 +56,7 @@ public final class GuardedValueNode extends FloatingGuardedNode implements LIRLo
     protected final Stamp piStamp;
 
     public GuardedValueNode(ValueNode object, GuardingNode guard, Stamp stamp) {
-        super(TYPE, stamp, guard);
+        super(TYPE, computeStamp(stamp, object), guard);
         this.object = object;
         this.piStamp = stamp;
     }
@@ -78,7 +78,11 @@ public final class GuardedValueNode extends FloatingGuardedNode implements LIRLo
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(piStamp.improveWith(object().stamp()));
+        return updateStamp(computeStamp(piStamp, object()));
+    }
+
+    static Stamp computeStamp(Stamp piStamp, ValueNode object) {
+        return piStamp.improveWith(object.stamp());
     }
 
     @Override

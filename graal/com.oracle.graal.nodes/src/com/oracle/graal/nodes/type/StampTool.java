@@ -33,6 +33,8 @@ import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.nodes.ValueNode;
 
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -42,16 +44,31 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class StampTool {
 
     public static Stamp meet(Collection<? extends ValueNode> values) {
-        Iterator<? extends ValueNode> iterator = values.iterator();
-        if (iterator.hasNext()) {
-            Stamp stamp = iterator.next().stamp();
-            while (iterator.hasNext()) {
-                stamp = stamp.meet(iterator.next().stamp());
-            }
-            return stamp;
-        } else {
+        Stamp stamp = meetOrNull(values, null);
+        if (stamp == null) {
             return StampFactory.forVoid();
         }
+        return stamp;
+    }
+
+    /**
+     * Meet a collection of {@link ValueNode}s optionally excluding {@code selfValue}. If no values
+     * are encountered then return {@code null}.
+     */
+    public static Stamp meetOrNull(Collection<? extends ValueNode> values, ValueNode selfValue) {
+        Iterator<? extends ValueNode> iterator = values.iterator();
+        Stamp stamp = null;
+        while (iterator.hasNext()) {
+            ValueNode nextValue = iterator.next();
+            if (nextValue != selfValue) {
+                if (stamp == null) {
+                    stamp = nextValue.stamp();
+                } else {
+                    stamp = stamp.meet(nextValue.stamp());
+                }
+            }
+        }
+        return stamp;
     }
 
     /**
@@ -89,6 +106,23 @@ public class StampTool {
             return StampFactory.forInteger(y.getBits(), 0, y.lowerBound() - 1);
         }
         return null;
+    }
+
+    public static Stamp stampForLeadingZeros(IntegerStamp valueStamp) {
+        long mask = CodeUtil.mask(valueStamp.getBits());
+        // Don't count zeros from the mask in the result.
+        int adjust = Long.numberOfLeadingZeros(mask);
+        assert adjust == 0 || adjust == 32;
+        int min = Long.numberOfLeadingZeros(valueStamp.upMask() & mask) - adjust;
+        int max = Long.numberOfLeadingZeros(valueStamp.downMask() & mask) - adjust;
+        return StampFactory.forInteger(JavaKind.Int, min, max);
+    }
+
+    public static Stamp stampForTrailingZeros(IntegerStamp valueStamp) {
+        long mask = CodeUtil.mask(valueStamp.getBits());
+        int min = Long.numberOfTrailingZeros(valueStamp.upMask() & mask);
+        int max = Long.numberOfTrailingZeros(valueStamp.downMask() & mask);
+        return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 
     /**

@@ -53,15 +53,20 @@ public abstract class BasicObjectCloneNode extends MacroStateSplitNode implement
 
     public BasicObjectCloneNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode... arguments) {
         super(c, invokeKind, targetMethod, bci, returnStamp, arguments);
+        updateStamp(computeStamp(getObject()));
     }
 
     @Override
     public boolean inferStamp() {
-        Stamp objectStamp = getObject().stamp();
+        return updateStamp(computeStamp(getObject()));
+    }
+
+    private static Stamp computeStamp(ValueNode object) {
+        Stamp objectStamp = object.stamp();
         if (objectStamp instanceof ObjectStamp) {
             objectStamp = objectStamp.join(StampFactory.objectNonNull());
         }
-        return updateStamp(objectStamp);
+        return objectStamp;
     }
 
     public ValueNode getObject() {
