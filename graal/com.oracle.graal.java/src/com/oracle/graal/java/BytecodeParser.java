@@ -646,6 +646,11 @@ public class BytecodeParser implements GraphBuilderContext {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph);
         startFrameState.initializeForMethodStart(graph.getAssumptions(), graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins());
 
+        if (graph.method() != null) {
+            assert graph.method().equals(method);
+            graph.recordMethod(method);
+        }
+
         try (IntrinsicScope s = intrinsicContext != null ? new IntrinsicScope(this) : null) {
             build(graph.start(), startFrameState);
         }
@@ -1905,7 +1910,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
 
             // Record inlined method dependency in the graph
-            graph.recordInlinedMethod(targetMethod);
+            graph.recordMethod(targetMethod);
         }
     }
 

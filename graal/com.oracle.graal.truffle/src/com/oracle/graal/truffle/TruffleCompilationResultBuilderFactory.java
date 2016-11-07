@@ -68,7 +68,7 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
             @Override
             protected void closeCompilationResult() {
                 CompilationResult result = this.compilationResult;
-                result.setMethods(graph.method(), graph.getInlinedMethods());
+                result.setMethods(graph.method(), graph.getMethods());
                 result.setBytecodeSize(graph.getBytecodeSize());
 
                 Set<Assumption> newAssumptions = new HashSet<>();

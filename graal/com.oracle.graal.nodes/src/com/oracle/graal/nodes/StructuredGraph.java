@@ -148,7 +148,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
 
     private StartNode start;
-    private final ResolvedJavaMethod method;
+    private ResolvedJavaMethod rootMethod;
     private final long graphId;
     private final int entryBCI;
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
@@ -166,10 +166,10 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     private ScheduleResult lastSchedule;
 
     /**
-     * Records the methods that were inlined while constructing this graph, one entry for each time
-     * a specific method is inlined.
+     * Records the methods that were used while constructing this graph, one entry for each time a
+     * specific method is used.
      */
-    private final List<ResolvedJavaMethod> inlinedMethods = new ArrayList<>();
+    private final List<ResolvedJavaMethod> methods = new ArrayList<>();
 
     private enum UnsafeAccessState {
         NO_ACCESS,
@@ -232,7 +232,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     private StructuredGraph(String name, ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, boolean useProfilingInfo) {
         super(name);
         this.setStart(add(new StartNode()));
-        this.method = method;
+        this.rootMethod = method;
         this.graphId = uniqueGraphIds.incrementAndGet();
         this.entryBCI = entryBCI;
         this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
@@ -288,9 +288,9 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
             buf.append(name);
             sep = ", ";
         }
-        if (method != null) {
+        if (method() != null) {
             buf.append(sep);
-            buf.append(method);
+            buf.append(method());
             sep = ", ";
         }
 
@@ -310,7 +310,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * @return null if this method was not built from a method or the method is not available
      */
     public ResolvedJavaMethod method() {
-        return method;
+        return rootMethod;
     }
 
     public int getEntryBCI() {
@@ -338,7 +338,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     @Override
     protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
         AllowAssumptions allowAssumptions = AllowAssumptions.from(assumptions != null);
-        StructuredGraph copy = new StructuredGraph(newName, method, entryBCI, allowAssumptions, speculationLog, useProfilingInfo);
+        StructuredGraph copy = new StructuredGraph(newName, method(), entryBCI, allowAssumptions, speculationLog, useProfilingInfo);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
         }
@@ -637,24 +637,24 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     /**
      * Gets the methods that were inlined while constructing this graph.
      */
-    public List<ResolvedJavaMethod> getInlinedMethods() {
-        return inlinedMethods;
+    public List<ResolvedJavaMethod> getMethods() {
+        return methods;
     }
 
     /**
-     * Records that {@code inlinedMethod} was inlined to this graph.
+     * Records that {@code method} was used to build this graph.
      */
-    public void recordInlinedMethod(ResolvedJavaMethod inlinedMethod) {
-        inlinedMethods.add(inlinedMethod);
+    public void recordMethod(ResolvedJavaMethod method) {
+        methods.add(method);
     }
 
     /**
-     * Updates the {@linkplain #getInlinedMethods() inlined methods} of this graph with the inlined
-     * methods of another graph.
+     * Updates the {@linkplain #getMethods() methods} used to build this graph with the methods used
+     * to build another graph.
      */
-    public void updateInlinedMethods(StructuredGraph other) {
+    public void updateMethods(StructuredGraph other) {
         assert this != other;
-        this.inlinedMethods.addAll(other.inlinedMethods);
+        this.methods.addAll(other.methods);
     }
 
     /**
@@ -664,8 +664,8 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * full amount for any given method due to profile guided branch pruning).
      */
     public int getBytecodeSize() {
-        int res = method.getCodeSize();
-        for (ResolvedJavaMethod e : inlinedMethods) {
+        int res = 0;
+        for (ResolvedJavaMethod e : methods) {
             res += e.getCodeSize();
         }
         return res;
