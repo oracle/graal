@@ -493,6 +493,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             public Assumptions getAssumptions() {
                 return assumptions;
             }
+
+            @Override
+            public boolean supportSubwordCompare(int bits) {
+                return context.getLowerer().supportSubwordCompare(bits);
+            }
         }
     }
 

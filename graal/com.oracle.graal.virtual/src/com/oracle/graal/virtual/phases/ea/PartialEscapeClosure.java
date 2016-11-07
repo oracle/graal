@@ -63,6 +63,7 @@ import com.oracle.graal.nodes.ValueProxyNode;
 import com.oracle.graal.nodes.VirtualState;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.spi.NodeWithState;
 import com.oracle.graal.nodes.spi.Virtualizable;
 import com.oracle.graal.nodes.spi.VirtualizableAllocation;
@@ -125,8 +126,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      */
     public static final class Final extends PartialEscapeClosure<PartialEscapeBlockState.Final> {
 
-        public Final(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider) {
-            super(schedule, metaAccess, constantReflection, constantFieldProvider);
+        public Final(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+                        LoweringProvider loweringProvider) {
+            super(schedule, metaAccess, constantReflection, constantFieldProvider, loweringProvider);
         }
 
         @Override
@@ -141,10 +143,15 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     public PartialEscapeClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider) {
+        this(schedule, metaAccess, constantReflection, constantFieldProvider, null);
+    }
+
+    public PartialEscapeClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+                    LoweringProvider loweringProvider) {
         super(schedule, schedule.getCFG());
         StructuredGraph graph = schedule.getCFG().graph;
         this.hasVirtualInputs = graph.createNodeBitMap();
-        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, this, graph.getAssumptions());
+        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, this, graph.getAssumptions(), loweringProvider);
     }
 
     /**
