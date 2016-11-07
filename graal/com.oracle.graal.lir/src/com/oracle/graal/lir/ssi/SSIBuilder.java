@@ -33,8 +33,8 @@ import java.util.ListIterator;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Indent;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.InstructionValueConsumer;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRInstruction;
@@ -42,7 +42,6 @@ import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.ValueConsumer;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Value;
@@ -129,24 +128,8 @@ public final class SSIBuilder {
     }
 
     private void init() {
-        ValueConsumer setVariableConsumer = new ValueConsumer() {
-            @Override
-            public void visitValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (isVariable(value)) {
-                    if (operands[asVariable(value).index] == null) {
-                        operands[asVariable(value).index] = value;
-                    }
-                }
-            }
-        };
-
         for (AbstractBlockBase<?> block : getBlocks()) {
             initBlockData(block);
-
-            for (LIRInstruction op : getLIR().getLIRforBlock(block)) {
-                op.visitEachTemp(setVariableConsumer);
-                op.visitEachOutput(setVariableConsumer);
-            }
         }
     }
 
@@ -196,13 +179,13 @@ public final class SSIBuilder {
                 InstructionValueConsumer defConsumer = new InstructionValueConsumer() {
                     @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        processLocalDef(liveGen, liveKill, operand);
+                        processLocalDef(liveGen, liveKill, operand, operands);
                     }
                 };
                 InstructionValueConsumer tempConsumer = new InstructionValueConsumer() {
                     @Override
                     public void visitValue(LIRInstruction op, Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                        processLocalDef(liveGen, liveKill, operand);
+                        processLocalDef(liveGen, liveKill, operand, operands);
                     }
                 };
 
@@ -246,9 +229,12 @@ public final class SSIBuilder {
         }
     }
 
-    private static void processLocalDef(final BitSet liveGen, final BitSet liveKill, Value operand) {
+    private static void processLocalDef(final BitSet liveGen, final BitSet liveKill, Value operand, Value[] operands) {
         if (isVariable(operand)) {
             int operandNum = operandNumber(operand);
+            if (operands[operandNum] == null) {
+                operands[operandNum] = operand;
+            }
             liveKill.set(operandNum);
             liveGen.clear(operandNum);
             if (Debug.isLogEnabled()) {
