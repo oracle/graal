@@ -37,7 +37,6 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
@@ -186,7 +185,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(BranchInstruction branch) {
-        method.addTerminatingInstruction((LLVMTerminatorNode) factoryFacade.createUnconditionalBranch(method.labels().get(branch.getSuccessor().getName()),
+        method.addTerminatingInstruction(factoryFacade.createUnconditionalBranch(method.labels().get(branch.getSuccessor().getName()),
                         getPhiWriteNodes()), block.getBlockIndex(), block.getName());
     }
 
@@ -277,7 +276,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
         LLVMNode[] truePhiWriteNodes = trueConditionPhiWriteNodes.toArray(new LLVMNode[trueConditionPhiWriteNodes.size()]);
         LLVMNode[] falsePhiWriteNodes = falseConditionPhiWriteNodes.toArray(new LLVMNode[falseConditionPhiWriteNodes.size()]);
-        LLVMTerminatorNode node = (LLVMTerminatorNode) factoryFacade.createConditionalBranch(trueIndex, falseIndex, conditionNode, truePhiWriteNodes, falsePhiWriteNodes);
+        LLVMNode node = factoryFacade.createConditionalBranch(trueIndex, falseIndex, conditionNode, truePhiWriteNodes, falsePhiWriteNodes);
 
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
     }
@@ -337,7 +336,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
         LLVMAddressNode value = (LLVMAddressNode) symbols.resolve(branch.getAddress());
 
-        LLVMTerminatorNode node = (LLVMTerminatorNode) factoryFacade.createIndirectBranch(value, labelTargets, getPhiWriteNodes());
+        LLVMNode node = factoryFacade.createIndirectBranch(value, labelTargets, getPhiWriteNodes());
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
     }
 
@@ -396,7 +395,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             final LLVMExpressionNode value = symbols.resolve(ret.getValue());
             node = factoryFacade.createNonVoidRet(value, type);
         }
-        method.addTerminatingInstruction((LLVMTerminatorNode) node, block.getBlockIndex(), block.getName());
+        method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
     }
 
     @Override
@@ -453,7 +452,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
         LLVMBaseType llvmType = zwitch.getCondition().getType().getLLVMBaseType();
 
-        LLVMTerminatorNode node = (LLVMTerminatorNode) factoryFacade.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
+        LLVMNode node = factoryFacade.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
     }
 
@@ -487,13 +486,13 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
         }
 
-        final LLVMTerminatorNode node = (LLVMTerminatorNode) factoryFacade.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
+        final LLVMNode node = factoryFacade.createSwitch(cond, defaultLabel, otherLabels, cases, llvmType, getPhiWriteNodes());
         method.addTerminatingInstruction(node, block.getBlockIndex(), block.getName());
     }
 
     @Override
     public void visit(UnreachableInstruction ui) {
-        method.addTerminatingInstruction((LLVMTerminatorNode) factoryFacade.createUnreachableNode(), block.getBlockIndex(), block.getName());
+        method.addTerminatingInstruction(factoryFacade.createUnreachableNode(), block.getBlockIndex(), block.getName());
     }
 
     @Override
