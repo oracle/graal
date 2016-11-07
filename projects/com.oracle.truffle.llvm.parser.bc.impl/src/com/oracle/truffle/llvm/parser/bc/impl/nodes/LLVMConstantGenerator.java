@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.parser.bc.impl.LLVMLabelList;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMComparisonFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMGetElementPtrFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMLiteralFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
@@ -164,7 +165,7 @@ public final class LLVMConstantGenerator {
             final CompareConstant compare = (CompareConstant) value;
             final LLVMExpressionNode lhs = toConstantNode(compare.getLHS(), align, variables, context, stackSlot, labels, runtime);
             final LLVMExpressionNode rhs = toConstantNode(compare.getRHS(), align, variables, context, stackSlot, labels, runtime);
-            return LLVMNodeGenerator.toCompareNode(compare.getOperator(), compare.getLHS().getType(), lhs, rhs);
+            return LLVMComparisonFactory.toCompareNode(compare.getOperator(), compare.getLHS().getType(), lhs, rhs);
 
         } else if (value instanceof GetElementPointerConstant) {
             return toGetElementPointerConstant((GetElementPointerConstant) value, align, variables, context, stackSlot, labels, runtime);

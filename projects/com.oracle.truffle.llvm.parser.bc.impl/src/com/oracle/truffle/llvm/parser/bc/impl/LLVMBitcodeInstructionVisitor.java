@@ -242,27 +242,11 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(CompareInstruction compare) {
-        LLVMExpressionNode result;
-
-        if (compare.getType() instanceof VectorType) {
-            Type type = compare.getType();
-            final int size = runtime.getByteSize(type);
-            final int alignment = runtime.getByteAlignment(type);
-            LLVMAddressNode target = (LLVMAddressNode) factoryFacade.createAlloc(type, size, alignment, null, null);
-
-            result = LLVMNodeGenerator.toCompareVectorNode(
-                            compare.getOperator(),
-                            compare.getLHS().getType(),
-                            target,
-                            symbols.resolve(compare.getLHS()),
-                            symbols.resolve(compare.getRHS()));
-        } else {
-            result = LLVMNodeGenerator.toCompareNode(
-                            compare.getOperator(),
-                            compare.getLHS().getType(),
-                            symbols.resolve(compare.getLHS()),
-                            symbols.resolve(compare.getRHS()));
-        }
+        LLVMExpressionNode result = factoryFacade.createComparison(
+                        compare.getOperator(),
+                        compare.getLHS().getType(),
+                        symbols.resolve(compare.getLHS()),
+                        symbols.resolve(compare.getRHS()));
 
         createFrameWrite(result, compare);
     }

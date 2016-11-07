@@ -52,7 +52,6 @@ import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.vars.StructLiteralNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.model.enums.BinaryOperator;
-import com.oracle.truffle.llvm.parser.base.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionParameter;
@@ -80,7 +79,6 @@ import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeFunctionVisitor;
 import com.oracle.truffle.llvm.parser.factories.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
@@ -91,8 +89,6 @@ import com.oracle.truffle.llvm.parser.factories.LLVMLiteralFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMLogicalFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.types.LLVMAddress;
@@ -169,95 +165,6 @@ public final class LLVMNodeGenerator {
     private static LLVMExpressionNode resolveMetadataConstant(MetadataConstant constant) {
         // TODO: point to Metadata
         return new LLVMSimpleLiteralNode.LLVMI64LiteralNode(constant.getValue());
-    }
-
-    public static LLVMExpressionNode toCompareNode(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
-        return toCompareVectorNode(operator, type, null, lhs, rhs);
-    }
-
-    public static LLVMExpressionNode toCompareVectorNode(CompareOperator operator, Type type, LLVMAddressNode target, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
-        final LLVMBaseType llvmtype = type.getLLVMBaseType();
-
-        switch (operator) {
-            case FP_FALSE:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.FALSE);
-            case FP_ORDERED_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_EQUALS);
-            case FP_ORDERED_GREATER_THAN:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_GREATER_THAN);
-            case FP_ORDERED_GREATER_OR_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_GREATER_EQUALS);
-            case FP_ORDERED_LESS_THAN:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_LESS_THAN);
-            case FP_ORDERED_LESS_OR_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_LESS_EQUALS);
-            case FP_ORDERED_NOT_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_NOT_EQUALS);
-
-            case FP_ORDERED:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED);
-            case FP_UNORDERED:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED);
-            case FP_UNORDERED_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_EQUALS);
-            case FP_UNORDERED_GREATER_THAN:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_GREATER_THAN);
-            case FP_UNORDERED_GREATER_OR_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_GREATER_EQUALS);
-            case FP_UNORDERED_LESS_THAN:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_LESS_THAN);
-            case FP_UNORDERED_LESS_OR_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_LESS_EQUALS);
-            case FP_UNORDERED_NOT_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_NOT_EQUALS);
-            case FP_TRUE:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.TRUE);
-            default:
-                break;
-        }
-
-        final LLVMIntegerComparisonType comparison;
-        switch (operator) {
-            case INT_EQUAL:
-                comparison = LLVMIntegerComparisonType.EQUALS;
-                break;
-            case INT_NOT_EQUAL:
-                comparison = LLVMIntegerComparisonType.NOT_EQUALS;
-                break;
-            case INT_UNSIGNED_GREATER_THAN:
-                comparison = LLVMIntegerComparisonType.UNSIGNED_GREATER_THAN;
-                break;
-            case INT_UNSIGNED_GREATER_OR_EQUAL:
-                comparison = LLVMIntegerComparisonType.UNSIGNED_GREATER_EQUALS;
-                break;
-            case INT_UNSIGNED_LESS_THAN:
-                comparison = LLVMIntegerComparisonType.UNSIGNED_LESS_THAN;
-                break;
-            case INT_UNSIGNED_LESS_OR_EQUAL:
-                comparison = LLVMIntegerComparisonType.UNSIGNED_LESS_EQUALS;
-                break;
-            case INT_SIGNED_GREATER_THAN:
-                comparison = LLVMIntegerComparisonType.SIGNED_GREATER_THAN;
-                break;
-            case INT_SIGNED_GREATER_OR_EQUAL:
-                comparison = LLVMIntegerComparisonType.SIGNED_GREATER_EQUALS;
-                break;
-            case INT_SIGNED_LESS_THAN:
-                comparison = LLVMIntegerComparisonType.SIGNED_LESS_THAN;
-                break;
-            case INT_SIGNED_LESS_OR_EQUAL:
-                comparison = LLVMIntegerComparisonType.SIGNED_LESS_EQUALS;
-                break;
-
-            default:
-                throw new RuntimeException("Missed a compare operator");
-        }
-
-        if (LLVMTypeHelper.isVectorType(llvmtype)) {
-            return LLVMComparisonFactory.createVectorComparison(target, lhs, rhs, llvmtype, comparison);
-        } else {
-            return LLVMComparisonFactory.createIntegerComparison(lhs, rhs, llvmtype, comparison);
-        }
     }
 
     public LLVMExpressionNode resolveElementPointer(Symbol base, List<Symbol> indices) {
@@ -473,7 +380,7 @@ public final class LLVMNodeGenerator {
     private LLVMExpressionNode resolveCompareConstant(CompareConstant constant) {
         final LLVMExpressionNode lhs = resolve(constant.getLHS());
         final LLVMExpressionNode rhs = resolve(constant.getRHS());
-        return toCompareNode(constant.getOperator(), constant.getLHS().getType(), lhs, rhs);
+        return LLVMComparisonFactory.toCompareNode(constant.getOperator(), constant.getLHS().getType(), lhs, rhs);
     }
 
     private LLVMExpressionNode resolveFunction(String name, FunctionType type) {

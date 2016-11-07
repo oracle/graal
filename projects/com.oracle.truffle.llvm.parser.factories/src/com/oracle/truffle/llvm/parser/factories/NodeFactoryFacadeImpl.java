@@ -90,6 +90,7 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerN
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.base.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
@@ -225,14 +226,21 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         return LLVMFrameReadWriteFactory.getFrameSlotKind(type);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public LLVMI1Node createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType type) {
         return LLVMComparisonFactory.createIntegerComparison(left, right, llvmType, type);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public LLVMI1Node createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMFloatComparisonType conditionString) {
         return LLVMComparisonFactory.createFloatComparison(left, right, llvmType, conditionString);
+    }
+
+    @Override
+    public LLVMExpressionNode createComparison(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
+        return LLVMComparisonFactory.toCompareVectorNode(runtime, operator, type, lhs, rhs);
     }
 
     @Override

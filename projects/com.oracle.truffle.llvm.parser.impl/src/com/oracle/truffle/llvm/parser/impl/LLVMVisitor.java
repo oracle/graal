@@ -805,6 +805,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         return factoryFacade.createInsertValue(resultAggregate, sourceAggregate, size, offset, valueToInsert, llvmType);
     }
 
+    @SuppressWarnings("deprecation")
     private LLVMExpressionNode visitFcmpInstruction(Instruction_fcmp instr) {
         String condition = instr.getCondition();
         LLVMExpressionNode left = visitValueRef(instr.getOp1(), instr.getType());
@@ -913,6 +914,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         return factoryFacade.createFrameWrite(baseType, result, slot);
     }
 
+    @SuppressWarnings("deprecation")
     private LLVMExpressionNode visitIcmpInstruction(Instruction_icmp instr) {
         String condition = instr.getCondition();
         LLVMExpressionNode left = visitValueRef(instr.getOp1(), instr.getType());
@@ -1104,6 +1106,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         throw new AssertionError(opCode);
     }
 
+    @SuppressWarnings("deprecation")
     private LLVMExpressionNode visitConstantExpressionCompare(ConstantExpression_compare constant) {
         String condition = constant.getCondition();
         LLVMExpressionNode left = visitValueRef(constant.getOp1().getRef(), constant.getOp1().getType());
