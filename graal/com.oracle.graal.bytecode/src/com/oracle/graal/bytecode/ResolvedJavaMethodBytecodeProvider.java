@@ -38,4 +38,9 @@ public class ResolvedJavaMethodBytecodeProvider implements BytecodeProvider {
     public boolean supportsInvokedynamic() {
         return true;
     }
+
+    @Override
+    public boolean shouldRecordMethodDependencies() {
+        return true;
+    }
 }
