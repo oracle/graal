@@ -760,10 +760,13 @@ public final class Breakpoint {
             breakpoint.doBreak(this, frame.materialize(), conditionError);
         }
 
-        boolean shouldBreak(Frame frame) throws BreakpointConditionFailure {
+        boolean shouldBreak(@SuppressWarnings("unused") Frame frame) throws BreakpointConditionFailure {
+            // TODO we should use the current frame to evaluate the break condition
+            // currently the called break condition needs to access the parent frame
+            // using stack access methods.
             if (breakCondition != null) {
                 try {
-                    return breakCondition.shouldBreak(frame);
+                    return breakCondition.shouldBreak();
                 } catch (Throwable e) {
                     CompilerDirectives.transferToInterpreter();
                     throw new BreakpointConditionFailure(breakpoint, e);
@@ -809,19 +812,12 @@ public final class Breakpoint {
             this.conditionUnchanged = breakpoint.getConditionUnchanged();
         }
 
-        boolean shouldBreak(Frame frame) {
+        boolean shouldBreak() {
             if (conditionCallNode == null || !conditionUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeConditional();
             }
-            Object result;
-            // TODO we need to change the call signature fo DirectCallNode to support Frame instead
-            // of just VirtualFrame.
-            if (frame instanceof VirtualFrame) {
-                result = conditionCallNode.call((VirtualFrame) frame, new Object[0]);
-            } else {
-                result = conditionCallNode.getCallTarget().call();
-            }
+            Object result = conditionCallNode.call();
             if (!(result instanceof Boolean)) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalArgumentException("Unsupported return type " + result + " in condition.");

@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 
 final class CachedObjectAccessNode extends ObjectAccessNode {
@@ -48,30 +47,22 @@ final class CachedObjectAccessNode extends ObjectAccessNode {
     }
 
     @Override
-    public Object executeWith(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        return doAccess(frame, receiver, arguments);
-    }
-
-    private Object doAccess(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        if (accept(frame, receiver)) {
-            return callTarget.call(frame, accessArguments.executeCreate(receiver, arguments));
+    public Object executeWith(TruffleObject receiver, Object[] arguments) {
+        if (accept(receiver)) {
+            return callTarget.call(accessArguments.executeCreate(receiver, arguments));
         } else {
-            return doNext(frame, receiver, arguments);
+            return next.executeWith(receiver, arguments);
         }
     }
 
-    private boolean accept(VirtualFrame frame, TruffleObject receiver) {
-        if ((languageCheckAsNode != null && (boolean) languageCheckAsNode.call(frame, new Object[]{receiver}))) {
+    private boolean accept(TruffleObject receiver) {
+        if ((languageCheckAsNode != null && (boolean) languageCheckAsNode.call(new Object[]{receiver}))) {
             return true;
         } else if (languageCheckAsNode == null && languageCheck.canHandle(receiver)) {
             return true;
         } else {
             return false;
         }
-    }
-
-    private Object doNext(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        return next.executeWith(frame, receiver, arguments);
     }
 
 }

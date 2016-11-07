@@ -27,7 +27,6 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
@@ -36,16 +35,16 @@ final class UnresolvedObjectAccessNode extends ObjectAccessNode {
     private int cacheLength = 1;
 
     @Override
-    public Object executeWith(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
+    public Object executeWith(TruffleObject receiver, Object[] arguments) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         ForeignObjectAccessHeadNode nthParent = (ForeignObjectAccessHeadNode) NodeUtil.getNthParent(this, cacheLength);
         ObjectAccessNode first = nthParent.getFirst();
         if (cacheLength < UnresolvedObjectAccessNode.CACHE_SIZE) {
             CachedObjectAccessNode createCachedAccess = createCachedAccess(receiver, nthParent.getAccessTree(), first);
             cacheLength++;
-            return first.replace(createCachedAccess).executeWith(frame, receiver, arguments);
+            return first.replace(createCachedAccess).executeWith(receiver, arguments);
         } else {
-            return first.replace(createGenericAccess(nthParent.getAccessTree())).executeWith(frame, receiver, arguments);
+            return first.replace(createGenericAccess(nthParent.getAccessTree())).executeWith(receiver, arguments);
         }
     }
 

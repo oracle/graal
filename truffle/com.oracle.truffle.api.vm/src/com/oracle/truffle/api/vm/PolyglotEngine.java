@@ -921,8 +921,6 @@ public class PolyglotEngine {
 
     private static class PolyglotEvalRootNode extends PolyglotRootNode {
 
-        private static final Object[] DEFAULT_ARGUMENTS = new Object[0];
-
         @Child private DirectCallNode call;
         private TruffleLanguage<?> fillLanguage;
         private final Language language;
@@ -948,7 +946,7 @@ public class PolyglotEngine {
                 initialize();
             }
             fillLang[0] = fillLanguage;
-            return call.call(frame, DEFAULT_ARGUMENTS);
+            return call.call();
         }
 
         private void initialize() {

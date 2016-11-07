@@ -330,7 +330,7 @@ public class StackTraceTest {
 
         @Override
         Object execute(VirtualFrame frame) {
-            return indirectCall.call(frame, next, new Object[0]);
+            return indirectCall.call(next, new Object[0]);
         }
 
         @Override
@@ -354,7 +354,7 @@ public class StackTraceTest {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 directCall = insert(Truffle.getRuntime().createDirectCallNode(next));
             }
-            return directCall.call(frame, new Object[0]);
+            return directCall.call(new Object[0]);
         }
 
         @Override
