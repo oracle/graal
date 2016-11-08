@@ -1,5 +1,5 @@
 x52.default : ${commonLinux} {
-  capabilities: [linux, x52]
+  capabilities: [linux, x52, no_frequency_scaling]
   environment : {
     XMX         : "64g"
     XMS         : "64g"

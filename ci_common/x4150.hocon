@@ -1,5 +1,5 @@
 x4150.default : ${commonLinux} {
-  capabilities: [linux, x4150]
+  capabilities: [linux, x4150, no_frequency_scaling]
   environment : {
     XMX         : "64g"
     XMS         : "64g"
