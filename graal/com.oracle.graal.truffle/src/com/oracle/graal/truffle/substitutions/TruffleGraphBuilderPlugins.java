@@ -24,6 +24,9 @@ package com.oracle.graal.truffle.substitutions;
 
 import static java.lang.Character.toUpperCase;
 
+import java.lang.ref.Reference;
+import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -119,6 +122,7 @@ public class TruffleGraphBuilderPlugins {
         registerCompilerDirectivesPlugins(plugins, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, snippetReflection, canDelayIntrinsification);
+        registerCompilationFinalReferencePlugins(plugins, snippetReflection, canDelayIntrinsification);
 
         if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
             registerFrameWithoutBoxingPlugins(plugins, canDelayIntrinsification, snippetReflection);
@@ -410,6 +414,29 @@ public class TruffleGraphBuilderPlugins {
             }
         });
         registerUnsafeCast(r, canDelayIntrinsification);
+    }
+
+    public static void registerCompilationFinalReferencePlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean canDelayIntrinsification) {
+        Registration r = new Registration(plugins, Reference.class);
+        r.register1("get", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                if (canDelayIntrinsification) {
+                    return false;
+                }
+                if (receiver.isConstant()) {
+                    JavaConstant constant = (JavaConstant) receiver.get().asConstant();
+                    if (constant.isNonNull()) {
+                        Reference<?> reference = snippetReflection.asObject(Reference.class, constant);
+                        if (reference instanceof WeakReference<?> || reference instanceof SoftReference<?>) {
+                            b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(reference.get()), b.getMetaAccess()));
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        });
     }
 
     private static final EnumMap<JavaKind, Integer> accessorKindToTag;
