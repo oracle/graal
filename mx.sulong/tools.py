@@ -149,6 +149,9 @@ def getReferenceName(inputFile, outputDir, target):
         os.makedirs(outputDir)
     return '%s.%s' % (outputPath, target.exts[0])
 
+def isFileUpToDate(inputFile, outputFile):
+    return os.path.exists(outputFile) and os.path.getmtime(inputFile) < os.path.getmtime(outputFile)
+
 def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, optimizerTools):
     base, ext = os.path.splitext(inputFile)
     lang = ProgrammingLanguage.lookupFile(inputFile)
@@ -156,7 +159,7 @@ def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, 
         if tool.supports(lang):
             for optimization in optimizations:
                 outputFile = getOutputName(inputFile, outputDir, tool, optimization, target)
-                if not os.path.exists(outputFile) or os.path.getmtime(inputFile) >= os.path.getmtime(outputFile):
+                if not isFileUpToDate(inputFile, outputFile):
                     tool.run(inputFile, outputFile, flags + optimization.flags)
                     if os.path.exists(outputFile):
                         for optimizerTool in optimizerTools:
@@ -176,7 +179,8 @@ def multicompileRefFile(inputFile, outputDir, tools, flags):
     for tool in tools:
         if tool.supports(lang):
             referenceFile = getReferenceName(inputFile, outputDir, ProgrammingLanguage.EXEC)
-            tool.compileReferenceFile(inputFile, referenceFile, flags)
+            if not isFileUpToDate(inputFile, referenceFile):
+                tool.compileReferenceFile(inputFile, referenceFile, flags)
 
 def multicompileRefFolder(path, outputDir, tools, flags):
     """Produces executables for all files in given directory using the provided tool"""
