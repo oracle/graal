@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataRe
 import com.oracle.truffle.llvm.parser.base.model.types.MetadataReferenceType;
 import com.oracle.truffle.llvm.parser.base.model.Model;
 import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.MetadataConstant;
@@ -48,13 +49,15 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.CastInstru
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataFnNode;
-import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataLocalVariable;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataBaseNode;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataBasicType;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataCompositeType;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataDerivedType;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataNode;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataString;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTName;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTSizeAlignOffset;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTType;
 import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
@@ -112,6 +115,13 @@ public final class LLVMMetadata implements ModelVisitor {
          */
         private static final int SYMBOL_MISALIGN = 8;
 
+        /**
+         * Check if the current call instruction declares a variable.
+         *
+         * If yes, we can link the type informations with the metadata informations parsed before,
+         * and use those linking to get additional type informations if needed. Like getting the
+         * name of a structure element.
+         */
         @Override
         public void visit(VoidCallInstruction call) {
             Symbol callTarget = call.getCallTarget();
@@ -122,61 +132,48 @@ public final class LLVMMetadata implements ModelVisitor {
                     int symbolMetadataId = (int) ((MetadataConstant) call.getArgument(0)).getValue() + SYMBOL_MISALIGN;
                     int symbolIndex = ((MetadataFnNode) metadata.get(symbolMetadataId)).getPointer().getSymbolIndex();
                     long metadataId = ((MetadataConstant) call.getArgument(1)).getValue();
-
                     Symbol referencedSymbol = currentBlock.getFunctionSymbols().getSymbol(symbolIndex);
 
-                    // TODO: use visitor pattern
-                    // TODO: parse global variables
+                    MSTType localVar = (MSTType) metadata.getReference(metadataId).get();
+                    MetadataReference typeReference = localVar.getType();
+
                     if (referencedSymbol instanceof AllocateInstruction) {
-                        Type symType = ((AllocateInstruction) referencedSymbol).getPointeeType();
-                        if (symType instanceof MetadataReferenceType) {
-                            MetadataReferenceType metadataRefType = (MetadataReferenceType) symType;
-
-                            // TODO: other variables than localVar should be possible here
-                            MetadataLocalVariable localVar = (MetadataLocalVariable) metadata.getReference(metadataId).get();
-                            MetadataReference typeReference = localVar.getType();
-                            while (typeReference.get() instanceof MetadataDerivedType) {
-                                MetadataDerivedType derivedType = (MetadataDerivedType) typeReference.get();
-
-                                if (!derivedType.isOnlyReference()) {
-                                    break;
-                                }
-
-                                typeReference = derivedType.getBaseType();
-                            }
-                            metadataRefType.setValidatedMetadataReference(typeReference);
-                        }
+                        linkTypeToMetadataInformations(((AllocateInstruction) referencedSymbol).getPointeeType(), typeReference);
                     }
                 }
             }
         }
 
-        private void setElementPointerName(GetElementPointerInstruction gep, MetadataDerivedType element) {
-            if (element.getName().isPresent()) {
-                gep.setReferenceName(((MetadataString) element.getName().get()).getString());
+        private void linkTypeToMetadataInformations(Type target, MetadataReference sourceReference) {
+            /*
+             * currently, we only attach Metadata type informations to Reference Types (Arrays,
+             * Vectors, Structures)
+             */
+            if (target instanceof MetadataReferenceType) {
+                MetadataReferenceType metadataRefType = (MetadataReferenceType) target;
+                metadataRefType.setValidatedMetadataReference(getBaseType(sourceReference));
             }
         }
 
-        private void setElementPointerName(GetElementPointerInstruction gep, MetadataCompositeType element) {
-            if (element.getName().isPresent()) {
-                gep.setReferenceName(((MetadataString) element.getName().get()).getString());
+        private MetadataReference getBaseType(MetadataReference type) {
+            if (type.get() instanceof MetadataDerivedType) {
+                return ((MetadataDerivedType) type.get()).getTrueBaseType();
             }
+            return type;
         }
 
         private void setElementPointerName(GetElementPointerInstruction gep, MetadataBaseNode element) {
-            if (element instanceof MetadataDerivedType) {
-                setElementPointerName(gep, (MetadataDerivedType) element);
-            } else if (element instanceof MetadataCompositeType) {
-                setElementPointerName(gep, (MetadataCompositeType) element);
+            if (element instanceof MSTName) {
+                if (((MSTName) element).getName().isPresent()) {
+                    LLVMLogger.info("Derived name = " + ((MetadataString) ((MSTName) element).getName().get()).getString());
+                    gep.setReferenceName(((MetadataString) ((MSTName) element).getName().get()).getString());
+                }
             }
         }
 
         private long getOffset(MetadataBaseNode element) {
-            // TODO: simplify design by using interfaces/abstract classes
-            if (element instanceof MetadataDerivedType) {
-                return ((MetadataDerivedType) element).getOffset();
-            } else if (element instanceof MetadataCompositeType) {
-                return ((MetadataCompositeType) element).getOffset();
+            if (element instanceof MSTSizeAlignOffset) {
+                return ((MSTSizeAlignOffset) element).getOffset();
             }
             throw new AssertionError("unknow node type: " + element);
         }

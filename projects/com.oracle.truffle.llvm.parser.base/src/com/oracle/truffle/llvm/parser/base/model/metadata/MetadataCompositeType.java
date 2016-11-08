@@ -31,9 +31,11 @@ package com.oracle.truffle.llvm.parser.base.model.metadata;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTName;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTSizeAlignOffset;
 import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
-public class MetadataCompositeType implements MetadataBaseNode {
+public class MetadataCompositeType implements MetadataBaseNode, MSTName, MSTSizeAlignOffset {
 
     private MetadataReference context = MetadataBlock.voidRef;
     private MetadataReference name = MetadataBlock.voidRef;
@@ -60,10 +62,12 @@ public class MetadataCompositeType implements MetadataBaseNode {
         this.context = context;
     }
 
+    @Override
     public MetadataReference getName() {
         return name;
     }
 
+    @Override
     public void setName(MetadataReference name) {
         this.name = name;
     }
@@ -84,26 +88,32 @@ public class MetadataCompositeType implements MetadataBaseNode {
         this.line = line;
     }
 
+    @Override
     public long getSize() {
         return size;
     }
 
+    @Override
     public void setSize(long size) {
         this.size = size;
     }
 
+    @Override
     public long getAlign() {
         return align;
     }
 
+    @Override
     public void setAlign(long align) {
         this.align = align;
     }
 
+    @Override
     public long getOffset() {
         return offset;
     }
 
+    @Override
     public void setOffset(long offset) {
         this.offset = offset;
     }
