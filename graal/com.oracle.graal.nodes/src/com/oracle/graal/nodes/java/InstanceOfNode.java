@@ -70,6 +70,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         this.checkedStamp = checkedStamp;
         this.profile = profile;
         this.anchor = anchor;
+        assert (profile == null) || (anchor != null) : "profiles must be anchored";
         assert checkedStamp != null;
     }
 
@@ -193,8 +194,11 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         return !checkedStamp.nonNull();
     }
 
-    public void setProfile(JavaTypeProfile typeProfile) {
+    public void setProfile(JavaTypeProfile typeProfile, AnchoringNode anchor) {
         this.profile = typeProfile;
+        updateUsagesInterface(this.anchor, anchor);
+        this.anchor = anchor;
+        assert (profile == null) || (anchor != null) : "profiles must be anchored";
     }
 
     public AnchoringNode getAnchor() {
