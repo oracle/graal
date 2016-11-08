@@ -2,7 +2,6 @@ import mx
 import os
 
 import mx_sulong
-from shutil import copyfile
 
 class ProgrammingLanguage(object):
     class PL(object):
@@ -197,7 +196,6 @@ def multicompileFolder(path, outputDir, tools, flags, optimizations, target, opt
                 multicompileFile(os.path.join(root, f), outputDir, tools, flags, optimizations, target, optimizerTools)
 
 def multicompileRefFile(inputFile, outputDir, tools, flags):
-    base, ext = os.path.splitext(inputFile)
     lang = ProgrammingLanguage.lookup(getFileExtension(inputFile))
     for tool in tools:
         if tool.supports(lang):
