@@ -62,59 +62,55 @@ class ClangCompiler(Tool):
         self.name = 'clang'
         self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.OBJECTIVE_C]
 
+    def getTool(self, inputFile):
+        inputLanguage = ProgrammingLanguage.lookupFile(inputFile)
+        if inputLanguage == ProgrammingLanguage.C or inputLanguage == ProgrammingLanguage.OBJECTIVE_C:
+            return 'clang'
+        elif inputLanguage == ProgrammingLanguage.C_PLUS_PLUS:
+            return 'clang++'
+        else:
+            raise Exception('Unsupported input language')
+
     def run(self, inputFile, outputFile, flags):
+        tool = self.getTool(inputFile)
         try:
             f = open(os.devnull, 'w')
-            return mx.run([mx_sulong.findLLVMProgram('clang'), '-S', '-emit-llvm', '-o', outputFile] + flags + [inputFile], out=f, err=f)
+            return mx.run([mx_sulong.findLLVMProgram(tool), '-c', '-S', '-emit-llvm', '-o', outputFile] + flags + [inputFile], out=f, err=f)
         except SystemExit:
-            print 'Cannot compile %s with clang' % (inputFile)
+            print 'Cannot compile %s with %s' % (inputFile, tool)
         return -1
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
+        tool = self.getTool(inputFile)
         try:
             f = open(os.devnull, 'w')
-            return mx.run([mx_sulong.findLLVMProgram('clang'), '-o', outputFile] + flags + [inputFile], out=f, err=f)
+            return mx.run([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], out=f, err=f)
         except SystemExit:
-            print 'Cannot compile %s with clang' % (inputFile)
+            print 'Cannot compile %s with %s' % (inputFile, tool)
         return -1
 
 class GCCCompiler(Tool):
     def __init__(self):
         self.name = 'gcc'
-        self.supportedLanguages = [ProgrammingLanguage.C]
+        self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.FORTRAN]
 
     def run(self, inputFile, outputFile, flags):
+        inputLanguage = ProgrammingLanguage.lookupFile(inputFile)
+        if inputLanguage == ProgrammingLanguage.C:
+            tool = mx_sulong.getGCC()
+            flags.append('-std=gnu99')
+        elif inputLanguage == ProgrammingLanguage.C_PLUS_PLUS:
+            tool = mx_sulong.getGPP()
+        elif inputLanguage == ProgrammingLanguage.FORTRAN:
+            tool = mx_sulong.getGFortran()
+        else:
+            raise Exception('Unsupported input language')
+
         try:
             f = open(os.devnull, 'w')
-            return mx.run([mx_sulong.findLLVMProgram('gcc'), '-std=gnu99', '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], out=f, err=f)
+            return mx.run([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], out=f, err=f)
         except SystemExit:
-            print 'Cannot compile %s with gcc' % (inputFile)
-        return -1
-
-class GPPCompiler(Tool):
-    def __init__(self):
-        self.name = 'gpp'
-        self.supportedLanguages = [ProgrammingLanguage.C_PLUS_PLUS]
-
-    def run(self, inputFile, outputFile, flags):
-        try:
-            f = open(os.devnull, 'w')
-            return mx.run([mx_sulong.findLLVMProgram('g++'), '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], out=f, err=f)
-        except SystemExit:
-            print 'Cannot compile %s with g++' % (inputFile)
-        return -1
-
-class GFORTRANCompiler(Tool):
-    def __init__(self):
-        self.name = 'gfortran'
-        self.supportedLanguages = [ProgrammingLanguage.C_PLUS_PLUS]
-
-    def run(self, inputFile, outputFile, flags):
-        try:
-            f = open(os.devnull, 'w')
-            return mx.run([mx_sulong.findLLVMProgram('gfortran'), '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], out=f, err=f)
-        except SystemExit:
-            print 'Cannot compile %s with gfortran' % (inputFile)
+            print 'Cannot compile %s with %s' % (inputFile, tool)
         return -1
 
 class Opt(Tool):
@@ -123,15 +119,11 @@ class Opt(Tool):
         self.supportedLanguages = [ProgrammingLanguage.LLVMIR]
         self.passes = passes
 
-    def supports(self, language):
-        return language in self.supportedLanguages
-
     def run(self, inputFile, outputFile, flags):
-        return mx.run([mx_sulong.findLLVMProgram('opt')] + ['-S'] + self.passes +  [inputFile] + ['-o', outputFile])
+        return mx.run([mx_sulong.findLLVMProgram('opt'), '-S', '-o', outputFile] + self.passes + [inputFile])
 
 Tool.CLANG = ClangCompiler()
 Tool.GCC = GCCCompiler()
-Tool.GFORTRAN = GFORTRANCompiler()
 Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
 
 
