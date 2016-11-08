@@ -14,6 +14,8 @@ from mx_unittest import unittest, add_config_participant
 from mx_gate import Task, add_gate_runner
 from mx_gitlogcheck import logCheck
 
+import tools
+
 os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 
 _suite = mx.suite('sulong')
@@ -46,6 +48,27 @@ _dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
 _inlineAssemblySrcDir = join(_root, "com.oracle.truffle.llvm.asm.amd64/src/")
 _inlineAssemblyGrammer = join(_inlineAssemblySrcDir, "InlineAssembly.atg")
 _inlineAssemblyPackageName = "com.oracle.truffle.llvm.asm.amd64"
+
+
+################ new testing infrastructure ################
+
+# path for new test infrastructure
+
+_sulongSuiteDir = join(_testDir, "sulong/")
+_cacheDir = join(_testDir, "cache/")
+
+
+def compileSulongSuite(args=None):
+    print "Compiling Reference executables..."
+    tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'])
+    print "Compiling Sulong Suite with -O0..."
+    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, [tools.Tool.BB_VECTORIZE])
+    print "Compiling Sulong Suite with -O1/2/3..."
+    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMIR, [])
+    # MG: compared to the old test suite we do not run the ll files
+
+
+################ END: new testing infrastructure ################
 
 def _unittest_config_participant(config):
     """modifies the classpath to use the Sulong distribution jars instead of the classfiles to enable the use of Java's ServiceLoader"""
@@ -1196,5 +1219,6 @@ mx.update_commands(_suite, {
     'su-clangformatcheck' : [clangformatcheck, ''],
     'su-httpcheck' : [checkNoHttp, ''],
     'su-get-llvm-program' : [getLLVMProgramPath, ''],
-    'su-get-gcc-program' : [getGCCProgramPath, '']
+    'su-get-gcc-program' : [getGCCProgramPath, ''],
+    'su-compile-sulong-suite' : [compileSulongSuite, ''],
 })
