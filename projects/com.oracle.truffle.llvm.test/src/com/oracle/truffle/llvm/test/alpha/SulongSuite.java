@@ -42,6 +42,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.LLVM;
@@ -56,16 +57,13 @@ public class SulongSuite {
     private static final Predicate<? super Path> notExecutable = f -> !isExecutable.test(f);
     private static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
 
-    private Path path;
+    @Parameter(value = 0) public Path path;
+    @Parameter(value = 1) public String testName;
 
-    public SulongSuite(Path path) {
-        this.path = path;
-    }
-
-    @Parameters
+    @Parameters(name = "{index}: {1}")
     public static Collection<Object[]> data() {
         try {
-            return Files.walk(SULONG_SUITE_DIR).filter(isExecutable).map(f -> f.getParent()).map(f -> new Object[]{f}).collect(Collectors.toList());
+            return Files.walk(SULONG_SUITE_DIR).filter(isExecutable).map(f -> f.getParent()).map(f -> new Object[]{f, f.getFileName().toString()}).collect(Collectors.toList());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
@@ -81,7 +79,7 @@ public class SulongSuite {
 
         for (Path candidate : testCandidates) {
             int sulongResult = LLVM.executeMain(candidate.toAbsolutePath().toFile());
-            Assert.assertEquals(path.toAbsolutePath().toString(), referenceResult, sulongResult);
+            Assert.assertEquals(candidate.getFileName().toString() + " in " + path.toAbsolutePath().toString() + " failed.", referenceResult, sulongResult);
         }
     }
 }
