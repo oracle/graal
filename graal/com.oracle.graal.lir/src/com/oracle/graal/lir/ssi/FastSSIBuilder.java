@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumSet;
-import java.util.List;
 
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.Loop;
@@ -67,40 +66,7 @@ public final class FastSSIBuilder extends SSIBuilderBase {
         int numBlocks = lir.getControlFlowGraph().getBlocks().length;
         this.liveIns = new BitSet[numBlocks];
         this.liveOuts = new BitSet[numBlocks];
-        this.blocks = buildBlocks(lir);
-    }
-
-    private static AbstractBlockBase<?>[] buildBlocks(LIR lir) {
-        AbstractBlockBase<?>[] blocks = lir.getControlFlowGraph().getBlocks();
-        AbstractBlockBase<?>[] sortedBlocks = new AbstractBlockBase<?>[blocks.length];
-        BitSet processed = new BitSet(blocks.length);
-        sortBlocks(0, sortedBlocks, processed, Arrays.asList(blocks));
-        assert processed.cardinality() == blocks.length : "Not all blocks processed " + processed;
-        assert Arrays.asList(sortedBlocks).stream().allMatch(b -> b != null) : "Missing block " + sortedBlocks;
-        return sortedBlocks;
-    }
-
-    private static int sortBlocks(int i, AbstractBlockBase<?>[] sortedBlocks, BitSet processed, List<? extends AbstractBlockBase<?>> asList) {
-        int idx = i;
-        Loop<?> loop = asList.get(0).getLoop();
-        for (AbstractBlockBase<?> block : asList) {
-            if (!processed.get(block.getId())) {
-                Loop<?> innerLoop = block.getLoop();
-                if (innerLoop != loop) {
-                    assert loop == null || loop.getChildren().contains(innerLoop) : innerLoop.toString() + " not a child of " + loop;
-                    List<? extends AbstractBlockBase<?>> innerBlocks = innerLoop.getBlocks();
-                    innerBlocks.sort((a, b) -> a.getId() - b.getId());
-                    idx = sortBlocks(idx, sortedBlocks, processed, innerBlocks);
-                } else {
-                    for (AbstractBlockBase<?> pred : block.getPredecessors()) {
-                        assert processed.get(pred.getId()) || block.isLoopHeader() && pred.getId() >= block.getId();
-                    }
-                    sortedBlocks[idx++] = block;
-                    processed.set(block.getId());
-                }
-            }
-        }
-        return idx;
+        this.blocks = lir.getControlFlowGraph().getBlocks();
     }
 
     @Override
