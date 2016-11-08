@@ -79,6 +79,8 @@ public final class SSIBuilder {
         public BitSet liveKill;
     }
 
+    private static final int LOG_LEVEL = 2;
+
     private final LIR lir;
     private final Value[] operands;
     private final BlockMap<SSIBuilder.BlockData> blockData;
@@ -145,7 +147,7 @@ public final class SSIBuilder {
         AbstractBlockBase<?>[] blocks = getBlocks();
         for (int i = blocks.length - 1; i >= 0; i--) {
             final AbstractBlockBase<?> block = blocks[i];
-            try (Indent indent = Debug.logAndIndent("compute local live sets for block %s", block)) {
+            try (Indent indent = Debug.logAndIndent(LOG_LEVEL, "compute local live sets for block %s", block)) {
 
                 final BitSet liveGen = new BitSet(liveSize);
                 final BitSet liveKill = new BitSet(liveSize);
@@ -170,7 +172,7 @@ public final class SSIBuilder {
                             if (!liveKill.get(operandNum)) {
                                 liveGen.set(operandNum);
                                 if (Debug.isLogEnabled()) {
-                                    Debug.log("liveGen in state for operand %d(%s)", operandNum, operand);
+                                    Debug.log(LOG_LEVEL, "liveGen in state for operand %d(%s)", operandNum, operand);
                                 }
                             }
                         }
@@ -195,7 +197,7 @@ public final class SSIBuilder {
                 while (instIt.hasPrevious()) {
                     final LIRInstruction op = instIt.previous();
 
-                    try (Indent indent2 = Debug.logAndIndent("handle op %d: %s", op.id(), op)) {
+                    try (Indent indent2 = Debug.logAndIndent(LOG_LEVEL, "handle op %d: %s", op.id(), op)) {
                         op.visitEachOutput(defConsumer);
                         op.visitEachTemp(tempConsumer);
                         op.visitEachState(stateConsumer);
@@ -211,8 +213,8 @@ public final class SSIBuilder {
                 blockSets.liveOut = new BitSet(liveSize);
 
                 if (Debug.isLogEnabled()) {
-                    Debug.log("liveGen  B%d %s", block.getId(), blockSets.liveGen);
-                    Debug.log("liveKill B%d %s", block.getId(), blockSets.liveKill);
+                    Debug.log(LOG_LEVEL, "liveGen  B%d %s", block.getId(), blockSets.liveGen);
+                    Debug.log(LOG_LEVEL, "liveKill B%d %s", block.getId(), blockSets.liveKill);
                 }
 
             }
@@ -224,7 +226,7 @@ public final class SSIBuilder {
             int operandNum = operandNumber(operand);
             liveGen.set(operandNum);
             if (Debug.isLogEnabled()) {
-                Debug.log("liveGen for operand %d(%s)", operandNum, operand);
+                Debug.log(LOG_LEVEL, "liveGen for operand %d(%s)", operandNum, operand);
             }
         }
     }
@@ -238,7 +240,7 @@ public final class SSIBuilder {
             liveKill.set(operandNum);
             liveGen.clear(operandNum);
             if (Debug.isLogEnabled()) {
-                Debug.log("liveKill for operand %d(%s)", operandNum, operand);
+                Debug.log(LOG_LEVEL, "liveKill for operand %d(%s)", operandNum, operand);
             }
         }
     }
@@ -249,7 +251,7 @@ public final class SSIBuilder {
      */
     @SuppressWarnings("try")
     private void computeGlobalLiveSets() {
-        try (Indent indent = Debug.logAndIndent("compute global live sets")) {
+        try (Indent indent = Debug.logAndIndent(LOG_LEVEL, "compute global live sets")) {
             boolean changeOccurred;
             boolean changeOccurredInBlock;
             int iterationCount = 0;
@@ -263,7 +265,7 @@ public final class SSIBuilder {
             do {
                 changeOccurred = false;
 
-                try (Indent indent2 = Debug.logAndIndent("new iteration %d", iterationCount)) {
+                try (Indent indent2 = Debug.logAndIndent(LOG_LEVEL, "new iteration %d", iterationCount)) {
 
                     // iterate all blocks in reverse order
                     AbstractBlockBase<?>[] blocks = getBlocks();
@@ -313,7 +315,7 @@ public final class SSIBuilder {
                             liveIn.or(blockSets.liveGen);
 
                             if (Debug.isLogEnabled()) {
-                                Debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
+                                Debug.log(LOG_LEVEL, "block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
                             }
                         }
                     }
@@ -335,13 +337,13 @@ public final class SSIBuilder {
     }
 
     @SuppressWarnings("try")
-    private void finish() {
+    void finish() {
         Debug.dump(Debug.INFO_LOG_LEVEL, getLIR(), "Before SSI operands");
         // iterate all blocks in reverse order
         AbstractBlockBase<?>[] blocks = getBlocks();
         for (int i = blocks.length - 1; i >= 0; i--) {
             final AbstractBlockBase<?> block = blocks[i];
-            try (Indent indent = Debug.logAndIndent("Finish Block %s", block)) {
+            try (Indent indent = Debug.logAndIndent(LOG_LEVEL, "Finish Block %s", block)) {
                 // set label
                 SSIBuilder.BlockData data = blockData.get(block);
                 assert data != null;
