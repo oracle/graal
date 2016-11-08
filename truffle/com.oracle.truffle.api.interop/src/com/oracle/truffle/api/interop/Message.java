@@ -377,10 +377,11 @@ public abstract class Message {
     public static final Message HAS_SIZE = HasSize.INSTANCE;
 
     /**
-     * Getter of the size. If {@link #HAS_SIZE supported}, this message allows to obtain a size (of
-     * an array). It is expected that {@link TruffleObject} which returns a size can respond to
-     * {@link #READ} and possibly also {@link #WRITE} messages with {@link Integer} parameters from
-     * range <code>0</code> to <code>GET_SIZE - 1</code>.
+     * Getter of the size. If {@link #HAS_SIZE supported}, this message has to return size of
+     * receiver's array like structure as an {@link Integer}. If the {@link #HAS_SIZE} message
+     * returns <code>true</code> implementations for {@link #READ} and {@link #WRITE} messages with
+     * {@link Integer} parameters from range <code>0</code> to <code>GET_SIZE - 1</code> are
+     * required.
      * <p>
      * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
      * this message should yield value of {@link Integer}.
