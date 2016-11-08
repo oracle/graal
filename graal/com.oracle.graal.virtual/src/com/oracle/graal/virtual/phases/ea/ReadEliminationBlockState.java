@@ -66,6 +66,8 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         }
 
         public abstract boolean conflicts(LocationIdentity other);
+
+        public abstract LocationIdentity getIdentity();
     }
 
     static class LoadCacheEntry extends CacheEntry<LocationIdentity> {
@@ -82,6 +84,11 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         @Override
         public boolean conflicts(LocationIdentity other) {
             return identity.equals(other);
+        }
+
+        @Override
+        public LocationIdentity getIdentity() {
+            return identity;
         }
     }
 
@@ -122,6 +129,11 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
                 return super.equals(other) && locationIdentity.equals(other.locationIdentity);
             }
             return false;
+        }
+
+        @Override
+        public LocationIdentity getIdentity() {
+            return locationIdentity;
         }
 
         @Override

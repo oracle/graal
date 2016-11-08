@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test.inlining;
 
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,65 +43,92 @@ import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
+import com.oracle.graal.phases.schedule.SchedulePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.virtual.phases.ea.EarlyReadEliminationPhase;
 import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.misc.Unsafe;
 
 public class RecursiveInliningTest extends GraalCompilerTest {
 
     public static int SideEffectI;
+    public static int[] Memory = new int[]{1, 2};
 
-    public static void recursiveLoopMethodSlow(int a) {
+    public static final Unsafe UNSAFE;
+    static {
+        try {
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            UNSAFE = (Unsafe) theUnsafe.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Exception while trying to get Unsafe", e);
+        }
+    }
+
+    public static void recursiveLoopMethodUnsafeLoad(int a) {
+        if (UNSAFE.getInt(Memory, (long) Unsafe.ARRAY_LONG_BASE_OFFSET) == 0) {
+            return;
+        }
+        for (int i = 0; i < a; i++) {
+            recursiveLoopMethodUnsafeLoad(i);
+        }
+    }
+
+    public static void recursiveLoopMethodFieldLoad(int a) {
         if (SideEffectI == 0) {
             return;
         }
         for (int i = 0; i < a; i++) {
-            recursiveLoopMethodSlow(i);
+            recursiveLoopMethodFieldLoad(i);
         }
     }
 
-    public static void recursiveLoopMethodFast(int a) {
+    public static void recursiveLoopMethod(int a) {
         if (a == 0) {
             return;
         }
         for (int i = 0; i < a; i++) {
-            recursiveLoopMethodFast(i);
+            recursiveLoopMethod(i);
         }
     }
 
-    public static int IterationsStart = 8/* Increase to escalate early read elimination and PEA */;
-    public static int IterationsEnd = 22/* Increase to escalate early read elimination and PEA */;
+    public static final boolean LOG = true;
 
-    @Test
-    public void inlineDirectRecursiveLoopCallFast() {
-        for (int i = IterationsStart; i < IterationsEnd; i++) {
-            StructuredGraph graph = getGraph("recursiveLoopMethodFast", i);
-            long elapsed = runAndTimeEarlyReadEliminationPhase(graph);
-            System.out.printf("Needed %dms to run early read elimination on a graph with %d recursive inlined calls of method %s\n", elapsed, i, graph.method());
-        }
-        for (int i = IterationsStart; i < IterationsEnd; i++) {
-            StructuredGraph graph = getGraph("recursiveLoopMethodFast", i);
-            long elapsed = runAndTimePartialEscapeAnalysis(graph);
-            System.out.printf("Needed %dms to run early partial escape analysis on a graph with %d  recursive inlined calls of method %s\n", elapsed, i, graph.method());
-        }
+    public static int IterationsStart = 1;
+    public static int IterationsEnd = 128;
 
+    @Test(timeout = 120_000)
+    public void inlineDirectRecursiveLoopCallUnsafeLoad() {
+        testAndTime("recursiveLoopMethodUnsafeLoad");
     }
 
-    @Test
-    public void inlineDirectRecursiveLoopCallSlow() {
-        for (int i = IterationsStart; i < IterationsEnd; i++) {
-            StructuredGraph graph = getGraph("recursiveLoopMethodSlow", i);
-            long elapsed = runAndTimeEarlyReadEliminationPhase(graph);
-            System.out.printf("Needed %dms to run early read elimination on a graph with %d recursive inlined calls of method %s\n", elapsed, i, graph.method());
-        }
-        for (int i = IterationsStart; i < IterationsEnd; i++) {
-            StructuredGraph graph = getGraph("recursiveLoopMethodSlow", i);
-            long elapsed = runAndTimePartialEscapeAnalysis(graph);
-            System.out.printf("Needed %dms to run early partial escape analysis on a graph with %d recursive inlined calls of method %s\n", elapsed, i, graph.method());
-        }
+    @Test(timeout = 120_000)
+    public void inlineDirectRecursiveLoopCallFieldLoad() {
+        testAndTime("recursiveLoopMethodFieldLoad");
+    }
 
+    @Test(timeout = 120_000)
+    public void inlineDirectRecursiveLoopCallNoReads() {
+        testAndTime("recursiveLoopMethod");
+    }
+
+    private void testAndTime(String snippet) {
+        for (int i = IterationsStart; i < IterationsEnd; i++) {
+            StructuredGraph graph = getGraph(snippet, i);
+            long elapsed = runAndTimeEarlyReadEliminationPhase(graph);
+            if (LOG) {
+                System.out.printf("Needed %dms to run early read elimination on a graph with %d recursive inlined calls of method %s\n", elapsed, i, graph.method());
+            }
+        }
+        for (int i = IterationsStart; i < IterationsEnd; i++) {
+            StructuredGraph graph = getGraph(snippet, i);
+            long elapsed = runAndTimePartialEscapeAnalysis(graph);
+            if (LOG) {
+                System.out.printf("Needed %dms to run early partial escape analysis on a graph with %d recursive inlined calls of method %s\n", elapsed, i, graph.method());
+            }
+        }
     }
 
     private long runAndTimePartialEscapeAnalysis(StructuredGraph g) {
@@ -123,6 +151,7 @@ public class RecursiveInliningTest extends GraalCompilerTest {
         return end - start;
     }
 
+    @SuppressWarnings("try")
     private StructuredGraph getGraph(final String snippet, int nrOfInlinings) {
         try (Scope s = Debug.scope("RecursiveInliningTest", new DebugDumpScope(snippet, true))) {
             ResolvedJavaMethod callerMethod = getResolvedJavaMethod(snippet);
@@ -140,7 +169,7 @@ public class RecursiveInliningTest extends GraalCompilerTest {
                 canonicalizer.applyIncremental(callerGraph, context, canonicalizeNodes);
                 Debug.dump(Debug.BASIC_LOG_LEVEL, callerGraph, "After inlining %s into %s iteration %d", calleeMethod, callerMethod, i);
             }
-
+            new SchedulePhase().apply(callerGraph);
             return callerGraph;
         } catch (Throwable e) {
             throw Debug.handle(e);
