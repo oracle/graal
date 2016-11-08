@@ -267,6 +267,7 @@ import com.oracle.graal.bytecode.BytecodeSwitch;
 import com.oracle.graal.bytecode.BytecodeTableSwitch;
 import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
+import com.oracle.graal.bytecode.ResolvedJavaMethodBytecodeProvider;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
@@ -595,7 +596,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
                     int entryBCI, IntrinsicContext intrinsicContext) {
-        this.code = intrinsicContext == null ? new ResolvedJavaMethodBytecode(method) : intrinsicContext.getBytecodeProvider().getBytecode(method);
+        this.bytecodeProvider = intrinsicContext == null ? new ResolvedJavaMethodBytecodeProvider() : intrinsicContext.getBytecodeProvider();
+        this.code = bytecodeProvider.getBytecode(method);
         this.method = code.getMethod();
         this.graphBuilderInstance = graphBuilderInstance;
         this.graph = graph;
@@ -662,6 +664,11 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         try (Indent indent = Debug.logAndIndent("build graph for %s", method)) {
+            if (bytecodeProvider.shouldRecordMethodDependencies()) {
+                assert getParent() != null || method.equals(graph.method());
+                // Record method dependency in the graph
+                graph.recordMethod(method);
+            }
 
             // compute the block map, setup exception handlers and get the entrypoint(s)
             BciBlockMapping newMapping = BciBlockMapping.create(stream, code);
@@ -1320,6 +1327,7 @@ public class BytecodeParser implements GraphBuilderContext {
     protected final GraphBuilderConfiguration graphBuilderConfig;
     protected final ResolvedJavaMethod method;
     protected final Bytecode code;
+    protected final BytecodeProvider bytecodeProvider;
     protected final ProfilingInfo profilingInfo;
     protected final OptimisticOptimizations optimisticOpts;
     protected final ConstantPool constantPool;
@@ -1770,11 +1778,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @Override
-    public boolean intrinsify(BytecodeProvider bytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
+    public boolean intrinsify(BytecodeProvider intrinsicBytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
         if (receiver != null) {
             receiver.get();
         }
-        boolean res = inline(targetMethod, substitute, bytecodeProvider, args);
+        boolean res = inline(targetMethod, substitute, intrinsicBytecodeProvider, args);
         assert res : "failed to inline " + substitute;
         return res;
     }
@@ -1903,9 +1911,6 @@ public class BytecodeParser implements GraphBuilderContext {
                 assert calleeUnwindValue != null;
                 calleeBeforeUnwindNode.setNext(handleException(calleeUnwindValue, bci()));
             }
-
-            // Record inlined method dependency in the graph
-            graph.recordInlinedMethod(targetMethod);
         }
     }
 

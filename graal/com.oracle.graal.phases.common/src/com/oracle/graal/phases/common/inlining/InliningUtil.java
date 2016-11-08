@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentat
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,7 +35,6 @@ import java.util.Map.Entry;
 import java.util.function.Function;
 
 import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.TypeReference;
@@ -279,10 +277,6 @@ public class InliningUtil {
         try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", m, false)) {
             FixedNode invokeNode = invoke.asNode();
             StructuredGraph graph = invokeNode.graph();
-            assert inlineeMethod != null && inlineeMethod.equals(inlineGraph.method()) || isSubstitutionGraph(inlineGraph, inlineeMethod) : inlineeMethod + " " + inlineGraph.method();
-            if (inlineeMethod != null) {
-                graph.recordInlinedMethod(inlineeMethod);
-            }
             if (Fingerprint.ENABLED) {
                 Fingerprint.submit("inlining %s into %s: %s", formatGraph(inlineGraph), formatGraph(invoke.asNode().graph()), inlineGraph.getNodes().snapshot());
             }
@@ -384,19 +378,6 @@ public class InliningUtil {
         }
     }
 
-    static boolean isSubstitutionGraph(StructuredGraph inlineGraph, ResolvedJavaMethod inlineeMethod) {
-        for (Annotation ann : inlineGraph.method().getAnnotations()) {
-            if (ann.annotationType().equals(MethodSubstitution.class)) {
-                assert inlineeMethod != null;
-                return true;
-            }
-            if (ann.annotationType().equals(Snippet.class)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode, Assumptions inlinedAssumptions,
                     StructuredGraph inlineGraph, List<Node> canonicalizedNodes) {
         FixedNode invokeNode = invoke.asNode();
@@ -470,7 +451,7 @@ public class InliningUtil {
         }
 
         // Copy inlined methods from inlinee to caller
-        graph.updateInlinedMethods(inlineGraph);
+        graph.updateMethods(inlineGraph);
         if (inlineGraph.hasUnsafeAccess()) {
             graph.markUnsafeAccess();
         }

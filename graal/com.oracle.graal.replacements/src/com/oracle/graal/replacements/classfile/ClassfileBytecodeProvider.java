@@ -86,6 +86,11 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
         return false;
     }
 
+    @Override
+    public boolean shouldRecordMethodDependencies() {
+        return false;
+    }
+
     private static InputStream getClassfileAsStream(Class<?> c) {
         String classfilePath = c.getName().replace('.', '/') + ".class";
         if (JAVA_SPECIFICATION_VERSION >= 9) {
