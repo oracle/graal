@@ -57,8 +57,7 @@ public abstract class LLVMAtExit extends LLVMI32Intrinsic {
     public int execute(LLVMFunctionDescriptor func) {
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
 
-        // TODO: it works, but I think it can be solved in a cleaner way
-        LLVMExpressionNode[] args = {new LLVMAddressLiteralNode(null)};
+        LLVMExpressionNode[] args = {new LLVMAddressLiteralNode(context.getStack().getUpperBounds())};
 
         LLVMFunctionNode functionNode = LLVMFunctionLiteralNodeGen.create(func);
 
@@ -69,7 +68,9 @@ public abstract class LLVMAtExit extends LLVMI32Intrinsic {
                                         new LLVMNode[]{},
                                         new LLVMNode[]{},
                                         null,
-                                        new FrameDescriptor(), "", new LLVMStackFrameNuller[0]));
+                                        new FrameDescriptor(),
+                                        func.getName(),
+                                        new LLVMStackFrameNuller[0]));
 
         context.registerAtExitFunction(callTarget);
 

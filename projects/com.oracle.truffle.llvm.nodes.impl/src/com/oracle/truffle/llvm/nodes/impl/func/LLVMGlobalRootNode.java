@@ -110,6 +110,8 @@ public class LLVMGlobalRootNode extends RootNode {
         }
     }
 
+    private static final int UNIX_SIGABORT = 134;
+
     protected Object executeIteration(VirtualFrame frame, int iteration, Object[] args) {
         Object result;
 
@@ -122,9 +124,19 @@ public class LLVMGlobalRootNode extends RootNode {
             startExecutionTime = System.currentTimeMillis();
         }
 
-        result = main.call(frame, args);
+        int returnCode = 0;
 
-        executeAtExitFunctions();
+        try {
+            result = main.call(frame, args);
+        } catch (LLVMExitException e) {
+            returnCode = e.getReturnCode();
+            throw e;
+        } finally {
+            // We shouldn't execute atexit, when there was an abort
+            if (returnCode != UNIX_SIGABORT) {
+                executeAtExitFunctions();
+            }
+        }
 
         if (printExecutionTime) {
             endExecutionTime = System.currentTimeMillis();
@@ -170,8 +182,16 @@ public class LLVMGlobalRootNode extends RootNode {
     @TruffleBoundary
     protected void executeAtExitFunctions() {
         Deque<RootCallTarget> atExitFunctions = context.getAtExitFunctions();
+        LLVMExitException lastExitException = null;
         while (!atExitFunctions.isEmpty()) {
-            atExitFunctions.pop().call(atExitFunctions);
+            try {
+                atExitFunctions.pop().call(atExitFunctions);
+            } catch (LLVMExitException e) {
+                lastExitException = e;
+            }
+        }
+        if (lastExitException != null) {
+            throw lastExitException;
         }
     }
 

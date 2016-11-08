@@ -1,15 +1,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static void exit1() { printf("exit1!\n"); }
+int returnVal = 10;
 
-static void exit2() { printf("exit2!\n"); }
+static void exit1() {
+  returnVal += 5;
+  exit(returnVal);
+}
+
+static void exit2() {
+  returnVal *= 2;
+  exit(returnVal);
+}
 
 int main() {
   atexit(exit1);
   atexit(exit2);
   atexit(exit1);
   atexit(exit1);
-  printf("in main\n");
   return 0;
 }

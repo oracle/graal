@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static void exit1() { printf("something went wrong!\n"); }
+static void exit1() { exit(34); }
 
 int main() {
   atexit(exit1);
