@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.base.model.metadata;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
 public class MetadataBasicType implements MetadataBaseNode {
     // http://llvm.org/releases/3.2/docs/SourceLevelDebugging.html#format_basic_type
@@ -43,6 +44,11 @@ public class MetadataBasicType implements MetadataBaseNode {
     private long offset;
     private long flags;
     private long encoding; // DWARF type encoding
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
 
     public MetadataReference getName() {
         return name;

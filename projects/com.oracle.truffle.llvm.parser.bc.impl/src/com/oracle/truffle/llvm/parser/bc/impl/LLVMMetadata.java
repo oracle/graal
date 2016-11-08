@@ -33,11 +33,8 @@ import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.parser.base.model.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.base.model.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.parser.base.model.types.MetadataReferenceType;
@@ -47,27 +44,8 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.AllocateInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.BinaryOperationInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.BranchInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.CallInstruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.CastInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.CompareInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.ConditionalBranchInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.ExtractElementInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.GetElementPointerInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.IndirectBranchInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.InsertElementInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.InsertValueInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.LoadInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.PhiInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.ReturnInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.SelectInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.ShuffleVectorInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.StoreInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.SwitchInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.SwitchOldInstruction;
-import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataFnNode;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataLocalVariable;
@@ -102,33 +80,13 @@ public final class LLVMMetadata implements ModelVisitor {
     }
 
     @Override
-    public void visit(GlobalAlias alias) {
-    }
-
-    @Override
-    public void visit(GlobalConstant constant) {
-    }
-
-    @Override
-    public void visit(GlobalVariable variable) {
-    }
-
-    @Override
-    public void visit(FunctionDeclaration function) {
-    }
-
-    @Override
     public void visit(FunctionDefinition function) {
         LLVMMetadataFunctionVisitor visitor = new LLVMMetadataFunctionVisitor(function.getMetadata());
 
         function.accept(visitor);
     }
 
-    @Override
-    public void visit(Type type) {
-    }
-
-    private final class LLVMMetadataFunctionVisitor implements FunctionVisitor, InstructionVisitor {
+    private final class LLVMMetadataFunctionVisitor implements FunctionVisitor, InstructionVisitorAdapter {
         private InstructionBlock currentBlock = null;
 
         private final MetadataBlock metadata;
@@ -141,10 +99,6 @@ public final class LLVMMetadata implements ModelVisitor {
         public void visit(InstructionBlock block) {
             this.currentBlock = block;
             block.accept(this);
-        }
-
-        @Override
-        public void visit(AllocateInstruction allocate) {
         }
 
         /*
@@ -195,38 +149,6 @@ public final class LLVMMetadata implements ModelVisitor {
                     }
                 }
             }
-        }
-
-        @Override
-        public void visit(BinaryOperationInstruction operation) {
-        }
-
-        @Override
-        public void visit(BranchInstruction branch) {
-        }
-
-        @Override
-        public void visit(CallInstruction call) {
-        }
-
-        @Override
-        public void visit(CastInstruction cast) {
-        }
-
-        @Override
-        public void visit(CompareInstruction operation) {
-        }
-
-        @Override
-        public void visit(ConditionalBranchInstruction branch) {
-        }
-
-        @Override
-        public void visit(ExtractElementInstruction extract) {
-        }
-
-        @Override
-        public void visit(ExtractValueInstruction extract) {
         }
 
         private void setElementPointerName(GetElementPointerInstruction gep, MetadataDerivedType element) {
@@ -350,54 +272,6 @@ public final class LLVMMetadata implements ModelVisitor {
                     throw new AssertionError("unknow node type: " + node);
                 }
             }
-        }
-
-        @Override
-        public void visit(IndirectBranchInstruction branch) {
-        }
-
-        @Override
-        public void visit(InsertElementInstruction insert) {
-        }
-
-        @Override
-        public void visit(InsertValueInstruction insert) {
-        }
-
-        @Override
-        public void visit(LoadInstruction load) {
-        }
-
-        @Override
-        public void visit(PhiInstruction phi) {
-        }
-
-        @Override
-        public void visit(ReturnInstruction ret) {
-        }
-
-        @Override
-        public void visit(SelectInstruction select) {
-        }
-
-        @Override
-        public void visit(ShuffleVectorInstruction shuffle) {
-        }
-
-        @Override
-        public void visit(StoreInstruction store) {
-        }
-
-        @Override
-        public void visit(SwitchInstruction select) {
-        }
-
-        @Override
-        public void visit(SwitchOldInstruction select) {
-        }
-
-        @Override
-        public void visit(UnreachableInstruction unreachable) {
         }
     }
 }

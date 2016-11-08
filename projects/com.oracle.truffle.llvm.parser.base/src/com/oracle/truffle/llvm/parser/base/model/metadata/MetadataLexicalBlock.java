@@ -31,12 +31,18 @@ package com.oracle.truffle.llvm.parser.base.model.metadata;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
 public class MetadataLexicalBlock implements MetadataBaseNode {
 
     private MetadataReference file = MetadataBlock.voidRef;
     private long line;
     private long column;
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
 
     public MetadataReference getFile() {
         return file;

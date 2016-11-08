@@ -31,11 +31,17 @@ package com.oracle.truffle.llvm.parser.base.model.metadata;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
 public class MetadataFile implements MetadataBaseNode {
 
     private MetadataReference file = MetadataBlock.voidRef;
     private MetadataReference directory = MetadataBlock.voidRef;
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
 
     public MetadataReference getFile() {
         return file;

@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.base.model.metadata;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
 public class MetadataGlobalVariable implements MetadataBaseNode {
 
@@ -43,6 +44,11 @@ public class MetadataGlobalVariable implements MetadataBaseNode {
     private MetadataReference type = MetadataBlock.voidRef;
     private boolean isLocalToCompileUnit;
     private boolean isDefinedInCompileUnit;
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
 
     public MetadataReference getContext() {
         return context;

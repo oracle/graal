@@ -29,10 +29,17 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.metadata;
 
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
+
 public class MetadataSubrange implements MetadataBaseNode {
 
     private long lowBound;
     private long size;
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
 
     public long getLowBound() {
         return lowBound;

@@ -29,9 +29,16 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.metadata;
 
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
+
 public class MetadataString implements MetadataBaseNode {
 
     private final String s;
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
 
     public MetadataString(String s) {
         this.s = s;
