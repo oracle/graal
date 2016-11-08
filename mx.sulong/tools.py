@@ -22,6 +22,11 @@ class ProgrammingLanguage(object):
     def lookup(extension):
         return ProgrammingLanguage.exts.get(extension, None)
 
+    @staticmethod
+    def lookupFile(f):
+        _, ext = os.path.splitext(f)
+        return ProgrammingLanguage.lookup(ext[1:])
+
 ProgrammingLanguage.register('FORTRAN', 'f90', 'f', 'f03')
 ProgrammingLanguage.register('C', 'c')
 ProgrammingLanguage.register('C_PLUS_PLUS', 'cpp', 'cc', 'C')
@@ -130,10 +135,6 @@ Tool.GFORTRAN = GFORTRANCompiler()
 Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
 
 
-def getFileExtension(f):
-    _, ext = os.path.splitext(f)
-    return ext[1:]
-
 def getOutputName(inputFile, outputDir, tool, optimization, target):
     base, _ = os.path.splitext(inputFile)
     outputPath = os.path.join(outputDir, os.path.relpath(base))
@@ -158,7 +159,7 @@ def getReferenceName(inputFile, outputDir, target):
 
 def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, optimizerTools):
     base, ext = os.path.splitext(inputFile)
-    lang = ProgrammingLanguage.lookup(getFileExtension(inputFile))
+    lang = ProgrammingLanguage.lookupFile(inputFile)
     for tool in tools:
         if tool.supports(lang):
             for optimization in optimizations:
@@ -175,12 +176,11 @@ def multicompileFolder(path, outputDir, tools, flags, optimizations, target, opt
     """Produces ll files for all files in given directory using the provided tool, and applies all optimizations specified by the optimizer tool"""
     for root, _, files in os.walk(path):
         for f in files:
-            _, ext = os.path.splitext(f)
-            if ProgrammingLanguage.lookup(ext[1:]) is not None:
+            if ProgrammingLanguage.lookupFile(f) is not None:
                 multicompileFile(os.path.join(root, f), outputDir, tools, flags, optimizations, target, optimizerTools)
 
 def multicompileRefFile(inputFile, outputDir, tools, flags):
-    lang = ProgrammingLanguage.lookup(getFileExtension(inputFile))
+    lang = ProgrammingLanguage.lookupFile(inputFile)
     for tool in tools:
         if tool.supports(lang):
             referenceFile = getReferenceName(inputFile, outputDir, ProgrammingLanguage.EXEC)
@@ -190,6 +190,5 @@ def multicompileRefFolder(path, outputDir, tools, flags):
     """Produces executables for all files in given directory using the provided tool"""
     for root, _, files in os.walk(path):
         for f in files:
-            _, ext = os.path.splitext(f)
-            if ProgrammingLanguage.lookup(ext[1:]) is not None:
+            if ProgrammingLanguage.lookupFile(f) is not None:
                 multicompileRefFile(os.path.join(root, f), outputDir, tools, flags)
