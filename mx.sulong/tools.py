@@ -43,7 +43,6 @@ class Optimization(object):
         setattr(Optimization, name, Optimization.Opt(name, list(flags)))
 
 Optimization.register('NONE')
-Optimization.register('BB_VECTORIZE')
 Optimization.register('O1', '-O1')
 Optimization.register('O2', '-O2')
 Optimization.register('O3', '-O3')
@@ -129,21 +128,6 @@ Tool.CLANG = ClangCompiler()
 Tool.GCC = GCCCompiler()
 Tool.GFORTRAN = GFORTRANCompiler()
 Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
-
-
-class Runtime(object):
-    def supports(self, language):
-        return language in self.supportedLanguages
-
-class LLIRuntime(Runtime):
-    def __init__(self):
-        self.name = 'lli'
-        self.supportedLanguages = [ProgrammingLanguage.LLVMIR, ProgrammingLanguage.LLVMBC]
-
-    def run(self, f, args, vmArgs=None, out=None):
-        return mx.run([mx_sulong.findLLVMProgram('lli'), f] + args, nonZeroIsFatal=False)
-
-Runtime.LLI = LLIRuntime()
 
 
 def getFileExtension(f):
