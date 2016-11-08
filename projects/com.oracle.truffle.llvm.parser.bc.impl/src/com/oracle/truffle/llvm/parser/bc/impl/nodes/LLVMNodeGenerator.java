@@ -52,7 +52,6 @@ import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.vars.StructLiteralNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.model.enums.BinaryOperator;
-import com.oracle.truffle.llvm.parser.base.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionParameter;
@@ -79,7 +78,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeFunctionVisitor;
 import com.oracle.truffle.llvm.parser.factories.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
@@ -90,8 +89,6 @@ import com.oracle.truffle.llvm.parser.factories.LLVMLiteralFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMLogicalFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.types.LLVMAddress;
@@ -102,11 +99,11 @@ public final class LLVMNodeGenerator {
 
     private final LLVMBitcodeFunctionVisitor method;
 
-    private final LLVMBitcodeTypeHelper typeHelper;
+    private final LLVMParserRuntime runtime;
 
     public LLVMNodeGenerator(LLVMBitcodeFunctionVisitor method) {
         this.method = method;
-        this.typeHelper = method.getModule().getTypeHelper();
+        this.runtime = method.getModule().getParserRuntime();
     }
 
     public static Integer evaluateIntegerConstant(Symbol constant) {
@@ -170,95 +167,6 @@ public final class LLVMNodeGenerator {
         return new LLVMSimpleLiteralNode.LLVMI64LiteralNode(constant.getValue());
     }
 
-    public static LLVMExpressionNode toCompareNode(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
-        return toCompareVectorNode(operator, type, null, lhs, rhs);
-    }
-
-    public static LLVMExpressionNode toCompareVectorNode(CompareOperator operator, Type type, LLVMAddressNode target, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
-        final LLVMBaseType llvmtype = type.getLLVMBaseType();
-
-        switch (operator) {
-            case FP_FALSE:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.FALSE);
-            case FP_ORDERED_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_EQUALS);
-            case FP_ORDERED_GREATER_THAN:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_GREATER_THAN);
-            case FP_ORDERED_GREATER_OR_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_GREATER_EQUALS);
-            case FP_ORDERED_LESS_THAN:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_LESS_THAN);
-            case FP_ORDERED_LESS_OR_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_LESS_EQUALS);
-            case FP_ORDERED_NOT_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED_AND_NOT_EQUALS);
-
-            case FP_ORDERED:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.ORDERED);
-            case FP_UNORDERED:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED);
-            case FP_UNORDERED_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_EQUALS);
-            case FP_UNORDERED_GREATER_THAN:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_GREATER_THAN);
-            case FP_UNORDERED_GREATER_OR_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_GREATER_EQUALS);
-            case FP_UNORDERED_LESS_THAN:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_LESS_THAN);
-            case FP_UNORDERED_LESS_OR_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_LESS_EQUALS);
-            case FP_UNORDERED_NOT_EQUAL:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.UNORDERED_OR_NOT_EQUALS);
-            case FP_TRUE:
-                return LLVMComparisonFactory.createFloatComparison(lhs, rhs, llvmtype, LLVMFloatComparisonType.TRUE);
-            default:
-                break;
-        }
-
-        final LLVMIntegerComparisonType comparison;
-        switch (operator) {
-            case INT_EQUAL:
-                comparison = LLVMIntegerComparisonType.EQUALS;
-                break;
-            case INT_NOT_EQUAL:
-                comparison = LLVMIntegerComparisonType.NOT_EQUALS;
-                break;
-            case INT_UNSIGNED_GREATER_THAN:
-                comparison = LLVMIntegerComparisonType.UNSIGNED_GREATER_THAN;
-                break;
-            case INT_UNSIGNED_GREATER_OR_EQUAL:
-                comparison = LLVMIntegerComparisonType.UNSIGNED_GREATER_EQUALS;
-                break;
-            case INT_UNSIGNED_LESS_THAN:
-                comparison = LLVMIntegerComparisonType.UNSIGNED_LESS_THAN;
-                break;
-            case INT_UNSIGNED_LESS_OR_EQUAL:
-                comparison = LLVMIntegerComparisonType.UNSIGNED_LESS_EQUALS;
-                break;
-            case INT_SIGNED_GREATER_THAN:
-                comparison = LLVMIntegerComparisonType.SIGNED_GREATER_THAN;
-                break;
-            case INT_SIGNED_GREATER_OR_EQUAL:
-                comparison = LLVMIntegerComparisonType.SIGNED_GREATER_EQUALS;
-                break;
-            case INT_SIGNED_LESS_THAN:
-                comparison = LLVMIntegerComparisonType.SIGNED_LESS_THAN;
-                break;
-            case INT_SIGNED_LESS_OR_EQUAL:
-                comparison = LLVMIntegerComparisonType.SIGNED_LESS_EQUALS;
-                break;
-
-            default:
-                throw new RuntimeException("Missed a compare operator");
-        }
-
-        if (LLVMTypeHelper.isVectorType(llvmtype)) {
-            return LLVMComparisonFactory.createVectorComparison(target, lhs, rhs, llvmtype, comparison);
-        } else {
-            return LLVMComparisonFactory.createIntegerComparison(lhs, rhs, llvmtype, comparison);
-        }
-    }
-
     public LLVMExpressionNode resolveElementPointer(Symbol base, List<Symbol> indices) {
         LLVMExpressionNode currentAddress = resolve(base);
         Type currentType = base.getType();
@@ -268,13 +176,13 @@ public final class LLVMNodeGenerator {
 
             final Integer constantIndex = LLVMNodeGenerator.evaluateIntegerConstant(symbol);
             if (constantIndex == null) {
-                final int indexedTypeLength = currentType.getIndexOffset(1, typeHelper.getTargetDataLayout());
+                final int indexedTypeLength = runtime.getIndexOffset(1, currentType);
                 currentType = currentType.getIndexType(1);
                 final LLVMExpressionNode valueref = resolve(symbol);
                 currentAddress = LLVMGetElementPtrFactory.create(type.getLLVMBaseType(), (LLVMAddressNode) currentAddress, valueref, indexedTypeLength);
 
             } else {
-                final int indexedTypeLength = currentType.getIndexOffset(constantIndex, typeHelper.getTargetDataLayout());
+                final int indexedTypeLength = runtime.getIndexOffset(constantIndex, currentType);
                 currentType = currentType.getIndexType(constantIndex);
                 if (indexedTypeLength != 0) {
                     final LLVMExpressionNode constantNode;
@@ -332,7 +240,7 @@ public final class LLVMNodeGenerator {
             return LLVMConstantGenerator.toFloatingPointConstant((FloatingPointConstant) symbol);
 
         } else if (symbol instanceof NullConstant || symbol instanceof UndefinedConstant) {
-            return LLVMConstantGenerator.toConstantZeroNode(symbol.getType(), method.getContext(), method.getStackSlot(), typeHelper);
+            return LLVMConstantGenerator.toConstantZeroNode(symbol.getType(), method.getContext(), method.getStackSlot(), runtime);
 
         } else if (symbol instanceof StructureConstant) {
             return resolveStructureConstant((StructureConstant) symbol);
@@ -353,9 +261,9 @@ public final class LLVMNodeGenerator {
 
     private LLVMExpressionNode resolveArrayConstant(ArrayConstant constant) {
 
-        final int baseTypeSize = constant.getType().getElementType().getSize(typeHelper.getTargetDataLayout());
+        final int baseTypeSize = runtime.getByteSize(constant.getType().getElementType());
         final LLVMAddressNode arrayAlloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getElementCount() * baseTypeSize,
-                        constant.getType().getAlignment(method.getTargetDataLayout()),
+                        runtime.getByteAlignment(constant.getType()),
                         method.getContext(), method.getStackSlot());
 
         final List<LLVMExpressionNode> arrayValues = new ArrayList<>(constant.getElementCount());
@@ -391,8 +299,8 @@ public final class LLVMNodeGenerator {
     }
 
     private LLVMExpressionNode resolveStructureConstant(StructureConstant constant) {
-        final int structSize = constant.getType().getSize(typeHelper.getTargetDataLayout());
-        final int structAlignment = constant.getType().getAlignment(method.getTargetDataLayout());
+        final int structSize = runtime.getByteSize(constant.getType());
+        final int structAlignment = runtime.getByteAlignment(constant.getType());
         final LLVMExpressionNode alloc = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(structSize, structAlignment, method.getContext(), method.getStackSlot());
 
         final int[] offsets = new int[constant.getElementCount()];
@@ -402,12 +310,12 @@ public final class LLVMNodeGenerator {
             final Type elemType = constant.getElementType(i);
 
             if (!constant.isPacked()) {
-                currentOffset += Type.getPadding(currentOffset, elemType, typeHelper.getTargetDataLayout());
+                currentOffset += runtime.getBytePadding(currentOffset, elemType);
             }
 
             offsets[i] = currentOffset;
             nodes[i] = createStructWriteNode(resolve(constant.getElement(i)), elemType);
-            currentOffset += elemType.getSize(typeHelper.getTargetDataLayout());
+            currentOffset += runtime.getByteSize(elemType);
         }
 
         return new StructLiteralNode(offsets, nodes, (LLVMAddressNode) alloc);
@@ -434,7 +342,7 @@ public final class LLVMNodeGenerator {
                 return new StructLiteralNode.LLVM80BitFloatStructWriteNode((LLVM80BitFloatNode) parsedConstant);
             case ARRAY:
             case STRUCT:
-                final int byteSize = type.getSize(typeHelper.getTargetDataLayout());
+                final int byteSize = runtime.getByteSize(type);
                 if (byteSize == 0) {
                     return new StructLiteralNode.LLVMEmptyStructWriteNode();
                 } else {
@@ -472,7 +380,7 @@ public final class LLVMNodeGenerator {
     private LLVMExpressionNode resolveCompareConstant(CompareConstant constant) {
         final LLVMExpressionNode lhs = resolve(constant.getLHS());
         final LLVMExpressionNode rhs = resolve(constant.getRHS());
-        return toCompareNode(constant.getOperator(), constant.getLHS().getType(), lhs, rhs);
+        return LLVMComparisonFactory.toCompareNode(constant.getOperator(), constant.getLHS().getType(), lhs, rhs);
     }
 
     private LLVMExpressionNode resolveFunction(String name, FunctionType type) {
@@ -496,13 +404,13 @@ public final class LLVMNodeGenerator {
                 throw new IllegalStateException("Invalid index: " + index);
             }
 
-            currentOffset += currentType.getIndexOffset(indexVal, typeHelper.getTargetDataLayout());
+            currentOffset += runtime.getIndexOffset(indexVal, currentType);
             parentType = currentType;
             currentType = currentType.getIndexType(indexVal);
         }
 
         if (currentType != null && !((parentType instanceof StructureType) && (((StructureType) parentType).isPacked()))) {
-            currentOffset += Type.getPadding(currentOffset, currentType, typeHelper.getTargetDataLayout());
+            currentOffset += runtime.getBytePadding(currentOffset, currentType);
         }
 
         if (currentOffset != 0) {
@@ -518,8 +426,8 @@ public final class LLVMNodeGenerator {
             values.add(resolve(constant.getElement(i)));
         }
 
-        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(constant.getType().getSize(typeHelper.getTargetDataLayout()),
-                        constant.getType().getAlignment(method.getTargetDataLayout()),
+        final LLVMAddressNode target = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(runtime.getByteSize(constant.getType()),
+                        runtime.getByteAlignment(constant.getType()),
                         method.getContext(),
                         method.getStackSlot());
 

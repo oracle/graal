@@ -67,7 +67,7 @@ public interface LLVMParserRuntime {
      */
     FrameSlot getReturnSlot();
 
-    LLVMExpressionNode allocateVectorResult(EObject type);
+    LLVMExpressionNode allocateVectorResult(Object type);
 
     Object getGlobalAddress(GlobalVariable var);
 
@@ -75,7 +75,13 @@ public interface LLVMParserRuntime {
 
     int getBitAlignment(LLVMBaseType type);
 
+    int getByteAlignment(Type type);
+
     int getByteSize(Type type);
+
+    int getBytePadding(int offset, Type type);
+
+    int getIndexOffset(int index, Type type);
 
     FrameDescriptor getGlobalFrameDescriptor();
 
@@ -87,8 +93,6 @@ public interface LLVMParserRuntime {
     void addDestructor(LLVMNode destructorNode);
 
     long getNativeHandle(String name);
-
-    LLVMTypeHelper getTypeHelper();
 
     Map<String, Type> getVariableNameTypesMapping();
 

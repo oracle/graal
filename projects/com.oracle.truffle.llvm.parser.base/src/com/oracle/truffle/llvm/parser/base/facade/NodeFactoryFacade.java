@@ -36,7 +36,7 @@ import java.util.Optional;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
-
+import com.oracle.truffle.llvm.parser.base.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
@@ -76,15 +76,9 @@ public interface NodeFactoryFacade {
     // also update {@link NodeFactoryFacadeComposite} when changing or removing this name
     void setUpFacade(LLVMParserRuntime runtime);
 
-    /**
-     * Get Parser runtime (a temporary required method until we use the new Bitcode Type exclusive).
-     *
-     * @return runtime
-     */
-    @Deprecated
     LLVMParserRuntime getRuntime();
 
-    LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, com.intel.llvm.ireditor.lLVM_IR.Type vectorType, LLVMExpressionNode element, LLVMExpressionNode index);
+    LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, Object type, LLVMExpressionNode element, LLVMExpressionNode index);
 
     LLVMExpressionNode createExtractElement(LLVMBaseType resultType, LLVMExpressionNode vector, LLVMExpressionNode index);
 
@@ -140,9 +134,13 @@ public interface NodeFactoryFacade {
 
     FrameSlotKind getFrameSlotKind(Type type);
 
+    @Deprecated
     LLVMExpressionNode createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType type);
 
+    @Deprecated
     LLVMExpressionNode createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMFloatComparisonType type);
+
+    LLVMExpressionNode createComparison(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs);
 
     LLVMExpressionNode createCast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType type);
 

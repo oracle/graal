@@ -49,6 +49,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.parser.base.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
@@ -71,15 +72,13 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     public void setUpFacade(LLVMParserRuntime runtime) {
     }
 
-    @SuppressWarnings("deprecation")
     @Override
-    @Deprecated
     public LLVMParserRuntime getRuntime() {
         return null;
     }
 
     @Override
-    public LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, com.intel.llvm.ireditor.lLVM_IR.Type vectorType, LLVMExpressionNode element,
+    public LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, Object type, LLVMExpressionNode element,
                     LLVMExpressionNode index) {
         return null;
     }
@@ -174,13 +173,20 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public LLVMExpressionNode createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType type) {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public LLVMExpressionNode createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMFloatComparisonType type) {
+        return null;
+    }
+
+    @Override
+    public LLVMExpressionNode createComparison(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
         return null;
     }
 

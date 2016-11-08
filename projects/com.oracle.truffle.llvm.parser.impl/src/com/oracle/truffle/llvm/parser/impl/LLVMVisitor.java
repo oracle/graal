@@ -439,7 +439,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private final List<LLVMNode> globalDeallocations = new ArrayList<>();
     private boolean isGlobalScope;
 
-    @SuppressWarnings("deprecation")
     private Object findOrAllocateGlobal(GlobalVariable globalVariable) {
         return factoryFacade.allocateGlobalVariable(LLVMToBitcodeAdapter.resolveGlobalVariable(factoryFacade.getRuntime(), globalVariable));
     }
@@ -806,6 +805,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         return factoryFacade.createInsertValue(resultAggregate, sourceAggregate, size, offset, valueToInsert, llvmType);
     }
 
+    @SuppressWarnings("deprecation")
     private LLVMExpressionNode visitFcmpInstruction(Instruction_fcmp instr) {
         String condition = instr.getCondition();
         LLVMExpressionNode left = visitValueRef(instr.getOp1(), instr.getType());
@@ -914,6 +914,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         return factoryFacade.createFrameWrite(baseType, result, slot);
     }
 
+    @SuppressWarnings("deprecation")
     private LLVMExpressionNode visitIcmpInstruction(Instruction_icmp instr) {
         String condition = instr.getCondition();
         LLVMExpressionNode left = visitValueRef(instr.getOp1(), instr.getType());
@@ -1105,6 +1106,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         throw new AssertionError(opCode);
     }
 
+    @SuppressWarnings("deprecation")
     private LLVMExpressionNode visitConstantExpressionCompare(ConstantExpression_compare constant) {
         String condition = constant.getCondition();
         LLVMExpressionNode left = visitValueRef(constant.getOp1().getRef(), constant.getOp1().getType());
@@ -1441,8 +1443,8 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     }
 
     @Override
-    public LLVMExpressionNode allocateVectorResult(EObject type) {
-        ResolvedVectorType vector = (ResolvedVectorType) resolve(type);
+    public LLVMExpressionNode allocateVectorResult(Object type) {
+        ResolvedVectorType vector = (ResolvedVectorType) resolve((EObject) type);
         return allocateFunctionLifetime(vector);
     }
 
@@ -1488,8 +1490,23 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     }
 
     @Override
+    public int getByteAlignment(com.oracle.truffle.llvm.parser.base.model.types.Type type) {
+        return type.getAlignment(layoutConverter);
+    }
+
+    @Override
     public int getByteSize(com.oracle.truffle.llvm.parser.base.model.types.Type type) {
         return type.getSize(layoutConverter);
+    }
+
+    @Override
+    public int getBytePadding(int offset, com.oracle.truffle.llvm.parser.base.model.types.Type type) {
+        return com.oracle.truffle.llvm.parser.base.model.types.Type.getPadding(offset, type, layoutConverter);
+    }
+
+    @Override
+    public int getIndexOffset(int index, com.oracle.truffle.llvm.parser.base.model.types.Type type) {
+        return type.getIndexOffset(index, layoutConverter);
     }
 
     @Override
@@ -1505,11 +1522,6 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     @Override
     public long getNativeHandle(String name) {
         return nativeLookup.getNativeHandle(name);
-    }
-
-    @Override
-    public LLVMTypeHelper getTypeHelper() {
-        return typeHelper;
     }
 
     @Override

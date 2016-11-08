@@ -52,10 +52,6 @@ public class DataLayoutConverter {
             }
         }
 
-        public int getBitSize(LLVMBaseType baseType) {
-            return getDataTypeSpecification(baseType).getValues()[0];
-        }
-
         DataLayoutParser.DataTypeSpecification getDataTypeSpecification(LLVMBaseType baseType) {
             // Checkstyle: stop magic number name check
             switch (baseType) {
@@ -99,10 +95,6 @@ public class DataLayoutConverter {
                 }
             }
             throw new AssertionError(dataLayoutType + " " + Arrays.toString(values));
-        }
-
-        public int getByteSize(LLVMBaseType baseType) {
-            return getBitSize(baseType) / Byte.SIZE;
         }
 
     }

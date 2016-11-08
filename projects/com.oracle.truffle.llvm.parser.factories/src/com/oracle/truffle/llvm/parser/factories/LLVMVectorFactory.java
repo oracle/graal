@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.intel.llvm.ireditor.lLVM_IR.Type;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVMDoubleNode;
@@ -69,11 +68,8 @@ public final class LLVMVectorFactory {
     private LLVMVectorFactory() {
     }
 
-    public static LLVMVectorNode createInsertElement(LLVMParserRuntime runtime, LLVMBaseType resultType, LLVMExpressionNode vector, Type vectorType, LLVMExpressionNode element, LLVMI32Node index) {
-        return createInsertElement(resultType, (LLVMAddressNode) runtime.allocateVectorResult(vectorType), vector, element, index);
-    }
-
-    public static LLVMVectorNode createInsertElement(LLVMBaseType resultType, LLVMAddressNode target, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMI32Node index) {
+    public static LLVMVectorNode createInsertElement(LLVMParserRuntime runtime, LLVMBaseType resultType, Object type, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMI32Node index) {
+        final LLVMAddressNode target = (LLVMAddressNode) runtime.allocateVectorResult(type);
         switch (resultType) {
             case I1_VECTOR:
                 return LLVMI1InsertElementNodeGen.create(target, (LLVMI1VectorNode) vector, (LLVMI1Node) element, index);
