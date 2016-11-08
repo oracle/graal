@@ -127,33 +127,30 @@ Tool.GCC = GCCCompiler()
 Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
 
 
-def getOutputName(inputFile, outputDir, tool, optimization, target):
+def createOutputPath(inputFile, outputDir):
     base, _ = os.path.splitext(inputFile)
     outputPath = os.path.join(outputDir, os.path.relpath(base))
     # ensure that there is one folder for each testfile
     outputPath = os.path.join(outputPath, os.path.basename(base))
 
-    outputDir = os.path.dirname(outputPath)
-    if not os.path.exists(outputDir):
-        os.makedirs(outputDir)
+    outputFolder = os.path.dirname(outputPath)
+    if not os.path.exists(outputFolder):
+        os.makedirs(outputFolder)
+
+    return outputPath
+
+def getOutputName(inputFile, outputDir, tool, optimization, target):
+    outputPath = createOutputPath(inputFile, outputDir)
     return '%s_%s_%s.%s' % (outputPath, tool.name, optimization.name, target.exts[0])
 
 def getReferenceName(inputFile, outputDir, target):
-    base, _ = os.path.splitext(inputFile)
-    outputPath = os.path.join(outputDir, os.path.relpath(base))
-    # ensure that there is one folder for each testfile
-    outputPath = os.path.join(outputPath, os.path.basename(base))
-
-    outputDir = os.path.dirname(outputPath)
-    if not os.path.exists(outputDir):
-        os.makedirs(outputDir)
+    outputPath = createOutputPath(inputFile, outputDir)
     return '%s.%s' % (outputPath, target.exts[0])
 
 def isFileUpToDate(inputFile, outputFile):
     return os.path.exists(outputFile) and os.path.getmtime(inputFile) < os.path.getmtime(outputFile)
 
 def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, optimizerTools):
-    base, ext = os.path.splitext(inputFile)
     lang = ProgrammingLanguage.lookupFile(inputFile)
     for tool in tools:
         if tool.supports(lang):
