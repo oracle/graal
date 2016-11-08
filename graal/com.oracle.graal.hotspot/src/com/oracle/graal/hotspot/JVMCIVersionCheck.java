@@ -40,7 +40,7 @@ class JVMCIVersionCheck {
     private static final int JVMCI8_MIN_MINOR_VERSION = 22;
 
     // Will be updated once an ea build with the required JVMCI API is available.
-    private static final int JVMCI9_MIN_EA_BUILD = Integer.MAX_VALUE;
+    private static final int JVMCI9_MIN_EA_BUILD = 143;
 
     private static void failVersionCheck(boolean exit, String reason, Object... args) {
         Formatter errorMessage = new Formatter().format(reason, args);
@@ -53,9 +53,7 @@ class JVMCIVersionCheck {
         if (System.getProperty("java.specification.version").compareTo("1.9") < 0) {
             errorMessage.format("Download the latest JVMCI JDK 8 from http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html");
         } else {
-            // TODO: uncomment once a suitable EA is available
-            // errorMessage.format("Download the latest JDK 9 EA from
-            // https://jdk9.java.net/download/");
+            errorMessage.format("Download the latest JDK 9 EA from https://jdk9.java.net/download/");
         }
         String value = System.getenv("JVMCI_VERSION_CHECK");
         if ("warn".equals(value)) {
@@ -97,8 +95,8 @@ class JVMCIVersionCheck {
             failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal.%n" +
                             "Cannot read JVMCI version from java.vm.version property: %s.%n", vmVersion);
         } else {
-            if (vmVersion.contains("HSCOMPSNAPSHOT")) {
-                // The snapshot of http://hg.openjdk.java.net/jdk9/hs-comp tip is expected to work
+            if (vmVersion.contains("SNAPSHOT")) {
+                // The snapshot of http://hg.openjdk.java.net/jdk9/hs tip is expected to work
                 return;
             }
             // http://openjdk.java.net/jeps/223

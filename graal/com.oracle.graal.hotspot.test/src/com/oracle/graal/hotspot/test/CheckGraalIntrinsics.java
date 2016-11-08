@@ -316,6 +316,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "jdk/internal/misc/Unsafe.weakCompareAndSwapShortVolatile(Ljava/lang/Object;JSS)Z",
                         "jdk/internal/util/Preconditions.checkIndex(IILjava/util/function/BiFunction;)I",
                         "jdk/jfr/internal/JVM.counterTime()J",
+                        "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
                         "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
                         "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I",
                         "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I",
