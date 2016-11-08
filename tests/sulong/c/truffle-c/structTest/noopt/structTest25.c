@@ -14,7 +14,7 @@ void insert(struct element *head, int val) {
     cur = cur->next;
   }
   cur->next = ptr;
-  cur->val = val;
+  ptr->val = val;
 }
 
 int size(struct element *head) {
@@ -26,8 +26,8 @@ int size(struct element *head) {
 }
 
 int sum(struct element *head) {
-  int sum = head->val;
-  while (head->next != NULL) {
+  int sum = 0;
+  while (head != NULL) {
     sum += head->val;
     head = head->next;
   }
