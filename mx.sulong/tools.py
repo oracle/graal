@@ -58,6 +58,17 @@ class Tool(object):
     def supports(self, language):
         return language in self.supportedLanguages
 
+    def runTool(self, args, errorMsg=None):
+        try:
+            f = open(os.devnull, 'w')
+            return mx.run(args, out=f, err=f)
+        except SystemExit:
+            if errorMsg is None:
+                print 'Cannot run %s' % args
+            else:
+                print errorMsg
+        return -1
+
 class ClangCompiler(Tool):
     def __init__(self):
         self.name = 'clang'
@@ -74,21 +85,11 @@ class ClangCompiler(Tool):
 
     def run(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        try:
-            f = open(os.devnull, 'w')
-            return mx.run([mx_sulong.findLLVMProgram(tool), '-c', '-S', '-emit-llvm', '-o', outputFile] + flags + [inputFile], out=f, err=f)
-        except SystemExit:
-            print 'Cannot compile %s with %s' % (inputFile, tool)
-        return -1
+        return self.runTool([mx_sulong.findLLVMProgram(tool), '-c', '-S', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        try:
-            f = open(os.devnull, 'w')
-            return mx.run([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], out=f, err=f)
-        except SystemExit:
-            print 'Cannot compile %s with %s' % (inputFile, tool)
-        return -1
+        return self.runTool([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class GCCCompiler(Tool):
     def __init__(self):
@@ -107,12 +108,7 @@ class GCCCompiler(Tool):
         else:
             raise Exception('Unsupported input language')
 
-        try:
-            f = open(os.devnull, 'w')
-            return mx.run([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], out=f, err=f)
-        except SystemExit:
-            print 'Cannot compile %s with %s' % (inputFile, tool)
-        return -1
+        return self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
 
 class Opt(Tool):
     def __init__(self, name, passes):
