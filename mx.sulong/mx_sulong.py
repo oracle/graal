@@ -55,6 +55,8 @@ _inlineAssemblyPackageName = "com.oracle.truffle.llvm.asm.amd64"
 # path for new test infrastructure
 
 _sulongSuiteDir = join(_testDir, "sulong/")
+_llvmSuiteDirNew = join(_testDir, "llvm/")
+_llvmSuiteDirNewRoot = join(_llvmSuiteDirNew, "test-suite-3.2.src/")
 _cacheDir = join(_testDir, "cache/")
 
 
@@ -66,6 +68,19 @@ def compileSulongSuite(args=None):
     print "Compiling Sulong Suite with -O1/2/3..."
     tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMIR)
     # MG: compared to the old test suite we do not run the ll files
+
+def compileLLVMSuite(args=None):
+    ensureLLVMSuiteNewExists()
+    excludes = list(tools.collectExcludes(join(_llvmSuiteDirNew, "configs/")))
+    print "Compiling Reference executables..."
+    tools.multicompileRefFolder(_llvmSuiteDirNew, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], excludes=excludes)
+    print "Compiling LLVM Suite with -O0..."
+    tools.multicompileFolder(_llvmSuiteDirNew, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, excludes=excludes)
+
+def ensureLLVMSuiteNewExists():
+    """downloads the LLVM suite if not downloaded yet"""
+    if not os.path.exists(_llvmSuiteDirNewRoot):
+        pullTestSuite('LLVM_TEST_SUITE', _llvmSuiteDirNew)
 
 
 ################ END: new testing infrastructure ################
@@ -1221,4 +1236,5 @@ mx.update_commands(_suite, {
     'su-get-llvm-program' : [getLLVMProgramPath, ''],
     'su-get-gcc-program' : [getGCCProgramPath, ''],
     'su-compile-sulong-suite' : [compileSulongSuite, ''],
+    'su-compile-llvm-suite' : [compileLLVMSuite, ''],
 })
