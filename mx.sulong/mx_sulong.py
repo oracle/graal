@@ -14,7 +14,7 @@ from mx_unittest import unittest, add_config_participant
 from mx_gate import Task, add_gate_runner
 from mx_gitlogcheck import logCheck
 
-import tools
+import testsuites
 
 os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 
@@ -49,41 +49,6 @@ _inlineAssemblySrcDir = join(_root, "com.oracle.truffle.llvm.asm.amd64/src/")
 _inlineAssemblyGrammer = join(_inlineAssemblySrcDir, "InlineAssembly.atg")
 _inlineAssemblyPackageName = "com.oracle.truffle.llvm.asm.amd64"
 
-
-################ new testing infrastructure ################
-
-# path for new test infrastructure
-
-_sulongSuiteDir = join(_testDir, "sulong/")
-_llvmSuiteDirNew = join(_testDir, "llvm/")
-_llvmSuiteDirNewRoot = join(_llvmSuiteDirNew, "test-suite-3.2.src/")
-_cacheDir = join(_testDir, "cache/")
-
-
-def compileSulongSuite(args=None):
-    print "Compiling Reference executables..."
-    tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'])
-    print "Compiling Sulong Suite with -O0..."
-    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, optimizers=[tools.Tool.BB_VECTORIZE])
-    print "Compiling Sulong Suite with -O1/2/3..."
-    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMIR)
-    # MG: compared to the old test suite we do not run the ll files
-
-def compileLLVMSuite(args=None):
-    ensureLLVMSuiteNewExists()
-    excludes = list(tools.collectExcludes(join(_llvmSuiteDirNew, "configs/")))
-    print "Compiling Reference executables..."
-    tools.multicompileRefFolder(_llvmSuiteDirNew, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], excludes=excludes)
-    print "Compiling LLVM Suite with -O0..."
-    tools.multicompileFolder(_llvmSuiteDirNew, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, excludes=excludes)
-
-def ensureLLVMSuiteNewExists():
-    """downloads the LLVM suite if not downloaded yet"""
-    if not os.path.exists(_llvmSuiteDirNewRoot):
-        pullTestSuite('LLVM_TEST_SUITE', _llvmSuiteDirNew)
-
-
-################ END: new testing infrastructure ################
 
 def _unittest_config_participant(config):
     """modifies the classpath to use the Sulong distribution jars instead of the classfiles to enable the use of Java's ServiceLoader"""
@@ -1235,6 +1200,5 @@ mx.update_commands(_suite, {
     'su-httpcheck' : [checkNoHttp, ''],
     'su-get-llvm-program' : [getLLVMProgramPath, ''],
     'su-get-gcc-program' : [getGCCProgramPath, ''],
-    'su-compile-sulong-suite' : [compileSulongSuite, ''],
-    'su-compile-llvm-suite' : [compileLLVMSuite, ''],
+    'su-compile-tests' : [testsuites.compileSuite, ''],
 })
