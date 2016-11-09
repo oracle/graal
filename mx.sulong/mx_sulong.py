@@ -62,9 +62,9 @@ def compileSulongSuite(args=None):
     print "Compiling Reference executables..."
     tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'])
     print "Compiling Sulong Suite with -O0..."
-    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, [tools.Tool.BB_VECTORIZE])
+    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, optimizers=[tools.Tool.BB_VECTORIZE])
     print "Compiling Sulong Suite with -O1/2/3..."
-    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMIR, [])
+    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMIR)
     # MG: compared to the old test suite we do not run the ll files
 
 
