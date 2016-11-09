@@ -79,7 +79,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private final RootNode rootNode;
 
     /** Information about when and how the call target should get compiled. */
-    @CompilationFinal protected OptimizedCompilationProfile compilationProfile;
+    @CompilationFinal protected volatile OptimizedCompilationProfile compilationProfile;
 
     /** Source target if this target was duplicated. */
     private final OptimizedCallTarget sourceCallTarget;
