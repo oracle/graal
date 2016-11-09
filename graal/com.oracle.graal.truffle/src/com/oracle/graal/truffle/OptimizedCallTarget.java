@@ -88,7 +88,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private volatile RootNode uninitializedRootNode;
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
-    @CompilationFinal private volatile boolean initialized;
     private volatile int callSitesKnown;
     private volatile Future<?> compilationTask;
     /**
@@ -152,11 +151,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public final OptimizedCompilationProfile getCompilationProfile() {
-        if (!initialized) {
+        OptimizedCompilationProfile profile = compilationProfile;
+        if (profile != null) {
+            return profile;
+        } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initialize();
+            return compilationProfile;
         }
-        return compilationProfile;
     }
 
     @Override
@@ -231,34 +233,32 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         runtime().getCompilationNotify().notifyCompilationDeoptimized(this, frame);
     }
 
-    private synchronized void initialize() {
-        if (!initialized) {
-            if (sourceCallTarget == null && rootNode.isCloningAllowed()) {
-                // We are the source CallTarget, so make a copy.
-                this.uninitializedRootNode = cloneRootNode(rootNode);
-            }
-            GraalTruffleRuntime runtime = runtime();
-            if (TruffleCallTargetProfiling.getValue()) {
-                this.compilationProfile = TraceCompilationProfile.create();
-            } else {
-                this.compilationProfile = OptimizedCompilationProfile.create();
-            }
-            runtime.getTvmci().onFirstExecution(this);
-            initialized = true;
-        }
-    }
-
     private static GraalTruffleRuntime runtime() {
         return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
-    public static final void log(String message) {
-        runtime().log(message);
+    private synchronized void initialize() {
+        if (compilationProfile == null) {
+            if (sourceCallTarget == null && rootNode.isCloningAllowed()) {
+                // We are the source CallTarget, so make a copy.
+                this.uninitializedRootNode = cloneRootNode(rootNode);
+            }
+            runtime().getTvmci().onFirstExecution(this);
+            this.compilationProfile = createCompilationProfile();
+        }
+    }
+
+    private static OptimizedCompilationProfile createCompilationProfile() {
+        if (TruffleCallTargetProfiling.getValue()) {
+            return TraceCompilationProfile.create();
+        } else {
+            return OptimizedCompilationProfile.create();
+        }
     }
 
     public final void compile() {
         if (!isCompiling()) {
-            if (!initialized) {
+            if (compilationProfile == null) {
                 initialize();
             }
 
@@ -304,7 +304,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     OptimizedCallTarget cloneUninitialized() {
         assert sourceCallTarget == null;
-        if (!initialized) {
+        if (compilationProfile == null) {
             initialize();
         }
         RootNode copiedRoot = cloneRootNode(uninitializedRootNode);
@@ -364,6 +364,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         StringWriter string = new StringWriter();
         e.printStackTrace(new PrintWriter(string));
         log(string.toString());
+    }
+
+    public static final void log(String message) {
+        runtime().log(message);
     }
 
     final int getKnownCallSiteCount() {
