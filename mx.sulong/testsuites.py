@@ -1,8 +1,11 @@
+from __future__ import print_function
+
 import argparse
 import mx
-import mx_sulong
 import os
 import tools
+
+import mx_sulong
 
 
 _suite = mx.suite('sulong')
@@ -15,21 +18,21 @@ _llvmSuiteDirRoot = os.path.join(_llvmSuiteDir, "test-suite-3.2.src/")
 
 
 def compileSulongSuite():
-    print "Compiling Sulong Suite reference executables..."
-    tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'])
-    print "Compiling Sulong Suite with -O0..."
-    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, optimizers=[tools.Tool.BB_VECTORIZE])
-    print "Compiling Sulong Suite with -O1/2/3..."
-    tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMIR)
+    print("Compiling Sulong Suite reference executables ", end='')
+    tools.printProgress(tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude']))
+    print("Compiling Sulong Suite with -O0 ", end='')
+    tools.printProgress(tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, optimizers=[tools.Tool.BB_VECTORIZE]))
+    print("Compiling Sulong Suite with -O1/2/3 ", end='')
+    tools.printProgress(tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMIR))
     # MG: compared to the old test suite we do not run the ll files
 
 def compileLLVMSuite():
     ensureLLVMSuiteNewExists()
     excludes = list(tools.collectExcludes(os.path.join(_llvmSuiteDir, "configs/")))
-    print "Compiling LLVM Suite reference executables..."
-    tools.multicompileRefFolder(_llvmSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], excludes=excludes)
-    print "Compiling LLVM Suite with -O0..."
-    tools.multicompileFolder(_llvmSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, excludes=excludes)
+    print("Compiling LLVM Suite reference executables ", end='')
+    tools.printProgress(tools.multicompileRefFolder(_llvmSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], excludes=excludes))
+    print("Compiling LLVM Suite with -O0 ", end='')
+    tools.printProgress(tools.multicompileFolder(_llvmSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], [tools.Optimization.NONE], tools.ProgrammingLanguage.LLVMIR, excludes=excludes))
 
 
 testSuites = {
@@ -46,7 +49,7 @@ def compileSuite(args=None):
     parsedArgs = parser.parse_args(args)
     for testSuiteName in parsedArgs.suite:
         if parsedArgs.verbose:
-            print 'Compiling', testSuiteName, 'test suite'
+            print('Compiling', testSuiteName, 'test suite')
         command = testSuites[testSuiteName]
         command()
 
