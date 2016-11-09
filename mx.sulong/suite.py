@@ -210,10 +210,18 @@ suite = {
     "ARGON2" : {
       "path" : "tests/phc-winner-argon2-20160406.tar.gz",
       "urls" : [
-        "https://github.com/P-H-C/phc-winner-argon2/archive/20160406.tar.gz",
         "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/20160406.tar.gz",
+        "https://github.com/P-H-C/phc-winner-argon2/archive/20160406.tar.gz",
       ],
       "sha1" : "5552052e53fcd7fe40c558866c9cd51027c17322",
+    },
+    "LLVM_TEST_SUITE" : {
+      "path" : "tests/test-suite-3.2.src.tar.gz",
+      "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/test-suite-3.2.src.tar.gz",
+        "http://llvm.org/releases/3.2/test-suite-3.2.src.tar.gz",
+      ],
+      "sha1" : "e370255ca2540bcd66f316fe5b96f459382f3e8a",
     },
   },
 

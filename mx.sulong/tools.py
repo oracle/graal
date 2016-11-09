@@ -1,3 +1,6 @@
+from __future__ import print_function
+
+import fnmatch
 import mx
 import os
 
@@ -57,6 +60,24 @@ class Tool(object):
     def supports(self, language):
         return language in self.supportedLanguages
 
+    def runTool(self, args, errorMsg=None):
+        try:
+            if not mx.get_opts().verbose:
+                f = open(os.devnull, 'w')
+                ret = mx.run(args, out=f, err=f)
+            else:
+                f = None
+                ret = mx.run(args)
+        except SystemExit:
+            ret = -1
+            if errorMsg is None:
+                print('\nError: Cannot run %s' % args)
+            else:
+                print('\nError: %s' % errorMsg)
+        if f is not None:
+            f.close()
+        return ret
+
 class ClangCompiler(Tool):
     def __init__(self):
         self.name = 'clang'
@@ -73,21 +94,11 @@ class ClangCompiler(Tool):
 
     def run(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        try:
-            f = open(os.devnull, 'w')
-            return mx.run([mx_sulong.findLLVMProgram(tool), '-c', '-S', '-emit-llvm', '-o', outputFile] + flags + [inputFile], out=f, err=f)
-        except SystemExit:
-            print 'Cannot compile %s with %s' % (inputFile, tool)
-        return -1
+        return self.runTool([mx_sulong.findLLVMProgram(tool), '-c', '-S', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        try:
-            f = open(os.devnull, 'w')
-            return mx.run([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], out=f, err=f)
-        except SystemExit:
-            print 'Cannot compile %s with %s' % (inputFile, tool)
-        return -1
+        return self.runTool([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class GCCCompiler(Tool):
     def __init__(self):
@@ -106,12 +117,7 @@ class GCCCompiler(Tool):
         else:
             raise Exception('Unsupported input language')
 
-        try:
-            f = open(os.devnull, 'w')
-            return mx.run([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], out=f, err=f)
-        except SystemExit:
-            print 'Cannot compile %s with %s' % (inputFile, tool)
-        return -1
+        return self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
 
 class Opt(Tool):
     def __init__(self, name, passes):
@@ -150,7 +156,30 @@ def getReferenceName(inputFile, outputDir, target):
 def isFileUpToDate(inputFile, outputFile):
     return os.path.exists(outputFile) and os.path.getmtime(inputFile) < os.path.getmtime(outputFile)
 
-def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, optimizerTools):
+def collectExcludes(path):
+    for root, _, files in os.walk(path):
+        for f in files:
+            if f.endswith('.exclude'):
+                for line in open(os.path.join(root, f)):
+                    yield line.strip()
+
+def findRecursively(path, excludes=None):
+    if excludes is None:
+        excludes = []
+    for root, _, files in os.walk(path):
+        for f in files:
+            if ProgrammingLanguage.lookupFile(f) is not None:
+                absFilePath = os.path.join(root, f)
+                relFilePath = os.path.relpath(absFilePath, path)
+                if not matches(relFilePath, excludes):
+                    yield absFilePath
+
+def matches(path, patterns):
+    return any(fnmatch.fnmatch(path, p) for p in list(patterns))
+
+def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, optimizers=None):
+    if optimizers is None:
+        optimizers = []
     lang = ProgrammingLanguage.lookupFile(inputFile)
     for tool in tools:
         if tool.supports(lang):
@@ -159,17 +188,23 @@ def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, 
                 if not isFileUpToDate(inputFile, outputFile):
                     tool.run(inputFile, outputFile, flags + optimization.flags)
                     if os.path.exists(outputFile):
-                        for optimizerTool in optimizerTools:
+                        yield outputFile
+                        for optimizer in optimizers:
                             base, ext = os.path.splitext(outputFile)
-                            opt_outputFile = base + '_' + optimizerTool.name + ext
-                            optimizerTool.run(outputFile, opt_outputFile, [])
+                            opt_outputFile = base + '_' + optimizer.name + ext
+                            optimizer.run(outputFile, opt_outputFile, [])
+                            if os.path.exists(opt_outputFile):
+                                yield opt_outputFile
 
-def multicompileFolder(path, outputDir, tools, flags, optimizations, target, optimizerTools):
+def multicompileFiles(inputFiles, outputDir, tools, flags, optimizations, target, optimizers=None):
+    """Produces ll files for all given input files using the provided tool, and applies all optimizations specified by the optimizer tool"""
+    for f in inputFiles:
+        yield f, list(multicompileFile(f, outputDir, tools, flags, optimizations, target, optimizers=optimizers))
+
+def multicompileFolder(path, outputDir, tools, flags, optimizations, target, optimizers=None, excludes=None):
     """Produces ll files for all files in given directory using the provided tool, and applies all optimizations specified by the optimizer tool"""
-    for root, _, files in os.walk(path):
-        for f in files:
-            if ProgrammingLanguage.lookupFile(f) is not None:
-                multicompileFile(os.path.join(root, f), outputDir, tools, flags, optimizations, target, optimizerTools)
+    for f in findRecursively(path, excludes):
+        yield f, list(multicompileFile(f, outputDir, tools, flags, optimizations, target, optimizers=optimizers))
 
 def multicompileRefFile(inputFile, outputDir, tools, flags):
     lang = ProgrammingLanguage.lookupFile(inputFile)
@@ -178,10 +213,16 @@ def multicompileRefFile(inputFile, outputDir, tools, flags):
             referenceFile = getReferenceName(inputFile, outputDir, ProgrammingLanguage.EXEC)
             if not isFileUpToDate(inputFile, referenceFile):
                 tool.compileReferenceFile(inputFile, referenceFile, flags)
+                if os.path.exists(referenceFile):
+                    yield referenceFile
 
-def multicompileRefFolder(path, outputDir, tools, flags):
+def multicompileRefFolder(path, outputDir, tools, flags, excludes=None):
     """Produces executables for all files in given directory using the provided tool"""
-    for root, _, files in os.walk(path):
-        for f in files:
-            if ProgrammingLanguage.lookupFile(f) is not None:
-                multicompileRefFile(os.path.join(root, f), outputDir, tools, flags)
+    for f in findRecursively(path, excludes):
+        yield f, list(multicompileRefFile(f, outputDir, tools, flags))
+
+def printProgress(iterator):
+    for x in iterator:
+        if len(x) < 2 or len(x[1]) > 0:
+            print('.', end='')
+    print(' done')
