@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMSignal;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
@@ -110,8 +111,6 @@ public class LLVMGlobalRootNode extends RootNode {
         }
     }
 
-    private static final int UNIX_SIGABORT = 134;
-
     protected Object executeIteration(VirtualFrame frame, int iteration, Object[] args) {
         Object result;
 
@@ -133,7 +132,7 @@ public class LLVMGlobalRootNode extends RootNode {
             throw e;
         } finally {
             // We shouldn't execute atexit, when there was an abort
-            if (returnCode != UNIX_SIGABORT) {
+            if (returnCode != LLVMAbort.UNIX_SIGABORT) {
                 executeAtExitFunctions();
             }
         }

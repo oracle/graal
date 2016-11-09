@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.runtime.LLVMExitException;
 
 public abstract class LLVMAbort extends LLVMVoidIntrinsic {
 
-    private static final int UNIX_SIGABORT = 134;
+    public static final int UNIX_SIGABORT = 134;
 
     @Specialization
     public void execute() {
