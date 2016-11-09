@@ -4,6 +4,7 @@
 int main() {
   int sum;
   int *int_p = (int *)malloc(size * sizeof(int));
+  *int_p = 2;
   void *void_p;
   void_p = int_p;
   int i;

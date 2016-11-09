@@ -6,5 +6,5 @@ union test {
 
 int main() {
   union test a = { .a = 4, .c[0] = 1, .c[1] = 2 };
-  return a.b;
+  return (a.b) % 256;
 }
