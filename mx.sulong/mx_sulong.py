@@ -49,6 +49,7 @@ _inlineAssemblySrcDir = join(_root, "com.oracle.truffle.llvm.asm.amd64/src/")
 _inlineAssemblyGrammer = join(_inlineAssemblySrcDir, "InlineAssembly.atg")
 _inlineAssemblyPackageName = "com.oracle.truffle.llvm.asm.amd64"
 
+_captureSrcDir = join(_root, "projects/com.oracle.truffle.llvm.pipe.native/src")
 
 ################ new testing infrastructure ################
 
@@ -104,7 +105,8 @@ clangFormatCheckPaths = [
     _suite.dir + '/include',
     _sulongTestDir,
     _interopTestDir,
-    _libPath
+    _libPath,
+    _captureSrcDir
 ]
 
 # the file paths on which we want to use the mdl Markdown file checker
@@ -176,6 +178,8 @@ def travis1(args=None):
         if t: runLLVMTestCases()
     with Task('TestMainArgs', tasks) as t:
         if t: runMainArgTestCases()
+    with Task('TestPipe', tasks) as t:
+        if t: runPipeTestCases()
 
 def travis2(args=None):
     """executes the second Travis job (Javac build, GCC execution test cases)"""
@@ -629,6 +633,11 @@ def runMainArgTestCases(args=None):
     """runs the test cases that exercise the passing of arguments to the main function"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.LLVMMainArgTestSuite'])
+
+def runPipeTestCases(args=None):
+    """runs the stdout pipe testcases """
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(vmArgs + ['com.oracle.truffle.llvm.test.alpha.CaptureOutputTest'])
 
 def runCompileTestCases(args=None):
     """runs the compile (no execution) test cases of the GCC suite"""
@@ -1161,6 +1170,7 @@ testCases = {
     'argon2' : runTestArgon2,
     'lifetime' : runLifetimeTestCases,
     'main-arg' : runMainArgTestCases,
+    'pipe' : runPipeTestCases,
 }
 
 checkCases = {

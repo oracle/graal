@@ -29,45 +29,40 @@
  */
 package com.oracle.truffle.llvm.test.alpha;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collection;
-import java.util.stream.Collectors;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import com.oracle.truffle.llvm.pipe.CaptureOutput;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
+public class CaptureOutputTest {
 
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+    @Test
+    public void testOutputCapturing() {
+        String string = "Testoutput";
+        CaptureOutput.startCapturing();
+        System.out.print(string);
+        CaptureOutput.stopCapturing();
+        System.out.println("MUST NOT BE IN CAPTURE");
+        String captured = CaptureOutput.getCapture();
+        assertEquals(string, captured);
+    }
 
-@RunWith(Parameterized.class)
-public final class SulongSuite extends BaseSuite {
+    @Test
+    public void testOutputCapturing2() {
+        String string = "Does it work again?";
+        CaptureOutput.startCapturing();
+        System.out.print(string);
+        CaptureOutput.stopCapturing();
+        System.out.println("MUST NOT BE IN CAPTURE");
+        String captured = CaptureOutput.getCapture();
+        assertEquals(string, captured);
+    }
 
-    private static final Path SULONG_SUITE_DIR = new File(LLVMBaseOptionFacade.getProjectRoot() + "/tests/cache/tests/sulong").toPath();
-
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
-
-    @Parameters(name = "{1}")
-    public static Collection<Object[]> data() {
-        try {
-            return Files.walk(SULONG_SUITE_DIR).filter(isExecutable).map(f -> f.getParent()).map(f -> new Object[]{f, f.toString()}).collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new AssertionError("Test cases not found", e);
+    @Test(timeout = 2)
+    public void testNothingHappens() {
+        for (int i = 0; i < 3; i++) {
+            CaptureOutput.startCapturing();
+            CaptureOutput.stopCapturing();
+            CaptureOutput.getCapture();
         }
     }
-
-    @Override
-    protected Path getTestDirectory() {
-        return path;
-    }
-
-    @Override
-    protected Path getSuiteDirectory() {
-        return SULONG_SUITE_DIR;
-    }
-
 }
