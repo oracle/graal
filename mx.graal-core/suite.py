@@ -78,8 +78,8 @@ suite = {
     },
 
     "C1VISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/c1visualizer/c1visualizer-1.5.zip"],
-      "sha1" : "221d0e033609f476f5a760877cd87658dee23bf4",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/c1visualizer/c1visualizer-1.6.zip"],
+      "sha1" : "5309b3fad46067846b9e2ea55933786cdbd6f6dd",
     },
 
     "IDEALGRAPHVISUALIZER_DIST" : {
