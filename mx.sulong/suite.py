@@ -210,8 +210,8 @@ suite = {
     "ARGON2" : {
       "path" : "tests/phc-winner-argon2-20160406.tar.gz",
       "urls" : [
-        "https://github.com/P-H-C/phc-winner-argon2/archive/20160406.tar.gz",
         "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/20160406.tar.gz",
+        "https://github.com/P-H-C/phc-winner-argon2/archive/20160406.tar.gz",
       ],
       "sha1" : "5552052e53fcd7fe40c558866c9cd51027c17322",
     },
