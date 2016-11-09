@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitorAdapter;
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.parser.base.model.types.MetadataReferenceType;
@@ -47,6 +48,7 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.constants.MetadataConst
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.CastInstruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.GetElementPointerInstruction;
+import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataFnNode;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataBaseNode;
@@ -58,7 +60,6 @@ import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataString;
 import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTName;
 import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTSizeAlignOffset;
 import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTType;
-import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 
@@ -120,7 +121,7 @@ public final class LLVMMetadata implements ModelVisitor {
          *
          * If yes, we can link the type informations with the metadata informations parsed before,
          * and use those linking to get additional type informations if needed. Like getting the
-         * name of a structure element.
+         * name of a structure element when doing an GetElementPointerInstruction.
          */
         @Override
         public void visit(VoidCallInstruction call) {
@@ -162,15 +163,126 @@ public final class LLVMMetadata implements ModelVisitor {
             return type;
         }
 
-        private void setElementPointerName(GetElementPointerInstruction gep, MetadataBaseNode element) {
-            if (element instanceof MSTName) {
-                if (((MSTName) element).getName().isPresent()) {
-                    LLVMLogger.info("Derived name = " + ((MetadataString) ((MSTName) element).getName().get()).getString());
-                    gep.setReferenceName(((MetadataString) ((MSTName) element).getName().get()).getString());
+        /**
+         * Try to get the corresponding variable name, which is fetched by the
+         * GetElementPointerInstruction.
+         *
+         * The Problem is, the correct metadata is currently only referenced on AllocateInstruction,
+         * which means we have to find the correct metadata node and the correct type offset, to be
+         * able to get the correct name of the function.
+         *
+         * This is only a first implementation, to find simple element names references.
+         */
+        @Override
+        public void visit(GetElementPointerInstruction gep) {
+            if (gep.getBasePointer() instanceof Instruction) {
+                Instruction bpInstr = (Instruction) gep.getBasePointer();
+                bpInstr.accept(new InstructionVisitorAdapter() {
+                    @Override
+                    public void visit(AllocateInstruction allocate) {
+                        Type pointeeType = allocate.getPointeeType();
+                        if (pointeeType instanceof StructureType) {
+                            handleGetElementPointerInstructionOfStructure(gep, (StructureType) pointeeType);
+                        }
+                    }
+
+                    @Override
+                    public void visit(CastInstruction cast) {
+                        /*
+                         * Our problem is that bitcast operations are done in a way where it's
+                         * pretty complicated to find out what changed. To be more specific, we only
+                         * see what byte we modify, and then there is a longer list of operations,
+                         * like "and", "or", "shift",... to get the actual number of this byte.
+                         */
+                    }
+
+                    @Override
+                    public void visit(GetElementPointerInstruction instr) {
+                        /*
+                         * This instruction likely refers to a new type, which means we have to find
+                         * out what type is referenced here and use it for further name calculation
+                         * (required for array inside structures, structure inside structure, ...).
+                         */
+                    }
+                });
+            }
+        }
+
+        /**
+         * Our GetElementPointerInstruction points to a structure. Let's try to find the
+         * corresponding variable name and append it to the GetElementPointerInstruction.
+         */
+        private void handleGetElementPointerInstructionOfStructure(GetElementPointerInstruction gep, StructureType struct) {
+
+            if (!struct.getMetadataReference().isPresent()) {
+                return;
+            }
+
+            MetadataBaseNode metadataNode = struct.getMetadataReference().get();
+
+            metadataNode.accept(new MetadataVisitor() {
+                @Override
+                public void visit(MetadataCompositeType alias) {
+                    parseCompositeTypeStruct(gep, struct, alias);
+                }
+
+                @Override
+                public void visit(MetadataDerivedType alias) {
+                    // TODO: type check
+                    /*
+                     * TODO: what about getBaseType which we used before? Why are we not already
+                     * referencing MetadataCompositeType?
+                     */
+                    MetadataCompositeType compNode = (MetadataCompositeType) alias.getBaseType().get();
+                    parseCompositeTypeStruct(gep, struct, compNode);
+                }
+
+                @Override
+                public void visit(MetadataBasicType alias) {
+                    // TODO: implement?
+                }
+
+                @Override
+                public void ifVisitNotOverwritten(MetadataBaseNode alias) {
+                    throw new AssertionError("unknow node type: " + alias);
+                }
+            });
+        }
+
+        /**
+         * When we have a GetElementPointerInstruction on a structure, we can find the name of the
+         * referenced variable simply by comparing the element Offset given by the structureType
+         * with the offset defined in the metadata of the structure.
+         */
+        private void parseCompositeTypeStruct(GetElementPointerInstruction target, StructureType struct, MetadataCompositeType node) {
+            struct.setName(((MetadataString) node.getName().get()).getString());
+
+            Symbol idx = target.getIndices().get(1);
+            // either the symbol is an IntegerConstant, or null, which simply represents the value 0
+            int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
+
+            long offset = struct.getIndexOffset(parsedIndex, targetDataLayout) * Byte.SIZE;
+
+            parseCompositeTypeFromOffset(target, offset, node);
+        }
+
+        /**
+         * check which offset matches the given one in the metadata and set the found element name;
+         */
+        private void parseCompositeTypeFromOffset(GetElementPointerInstruction target, long offset, MetadataCompositeType node) {
+            MetadataNode elements = (MetadataNode) node.getMemberDescriptors().get();
+
+            for (MetadataReference element : elements) {
+                if (getOffset(element.get()) == offset) {
+                    setElementPointerName(target, element.get());
+                    break;
                 }
             }
         }
 
+        /**
+         * get the offset of a given MetadataNode.
+         */
         private long getOffset(MetadataBaseNode element) {
             if (element instanceof MSTSizeAlignOffset) {
                 return ((MSTSizeAlignOffset) element).getOffset();
@@ -178,96 +290,25 @@ public final class LLVMMetadata implements ModelVisitor {
             throw new AssertionError("unknow node type: " + element);
         }
 
-        private void parseCompositeTypeStruct(GetElementPointerInstruction gep, StructureType struct, MetadataCompositeType node) {
-            struct.setName(((MetadataString) node.getName().get()).getString());
-
-            MetadataNode elements = (MetadataNode) node.getMemberDescriptors().get();
-
-            Symbol idx = gep.getIndices().get(1);
-            int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
-
-            long elementOffset = struct.getIndexOffset(parsedIndex, targetDataLayout);
-            for (MetadataReference element : elements) {
-                if (getOffset(element.get()) == elementOffset) {
-                    setElementPointerName(gep, element.get());
-                    break;
-                }
-            }
-        }
-
-        private void parseCompositeTypeStructBitcast(GetElementPointerInstruction gep, CastInstruction cast, MetadataCompositeType node) {
-            MetadataNode elements = (MetadataNode) node.getMemberDescriptors().get();
-
-            Symbol idx = gep.getIndices().get(0);
-            int parsedIndex = idx instanceof IntegerConstant ? (int) ((IntegerConstant) (idx)).getValue() : 0;
-
-            // TODO: correct sizeof?
-            int elementOffset = parsedIndex * cast.getType().getSize(targetDataLayout);
-
-            for (int i = 0; i < elements.size(); i++) {
-                MetadataBaseNode element = elements.get(i).get();
-
-                if (getOffset(element) == elementOffset) {
-                    setElementPointerName(gep, element);
-                    break;
-                }
-            }
-        }
-
-        @Override
-        public void visit(GetElementPointerInstruction gep) {
-            Type t1 = ((PointerType) (gep.getBasePointer().getType())).getPointeeType();
-            if (t1 instanceof StructureType) {
-                StructureType thisStruct = (StructureType) t1;
-                // TODO: should always be this type?
-                if (!thisStruct.getMetadataReference().isPresent()) {
-                    return;
-                }
-                MetadataBaseNode node = thisStruct.getMetadataReference().get();
-
-                if (node instanceof MetadataCompositeType) {
-                    parseCompositeTypeStruct(gep, thisStruct, (MetadataCompositeType) node);
-                } else if (node instanceof MetadataBasicType) {
-                    // TODO: implement?
-                } else if (node instanceof MetadataDerivedType) {
-                    // TODO: type check
-                    MetadataCompositeType compNode = (MetadataCompositeType) ((MetadataDerivedType) node).getBaseType().get();
-                    parseCompositeTypeStruct(gep, thisStruct, compNode);
+        /**
+         * Assign the variable name of the metadata node to the corresponding
+         * GetElementPointerInstruction.
+         *
+         * @param gep Our GetElementPointerInstruction which now get's a name reference
+         * @param element The Metadata Node which contains informations about the element, which is
+         *            retrieved in the GetElementPointerInstruction
+         */
+        private void setElementPointerName(GetElementPointerInstruction gep, MetadataBaseNode element) {
+            if (element instanceof MSTName) {
+                if (((MSTName) element).getName().isPresent()) {
+                    String elementName = ((MetadataString) ((MSTName) element).getName().get()).getString();
+                    LLVMLogger.info("Derived name = " + elementName);
+                    gep.setReferenceName(elementName);
                 } else {
-                    throw new AssertionError("unknow node type: " + node);
+                    LLVMLogger.info("There is no element name present, which we can use");
                 }
-
-            } else if (gep.getBasePointer() instanceof CastInstruction) {
-                CastInstruction cast = (CastInstruction) gep.getBasePointer();
-                Symbol value = cast.getValue();
-
-                if (!(value instanceof AllocateInstruction)) {
-                    return;
-                }
-                AllocateInstruction allocate = (AllocateInstruction) value;
-
-                Type symType = allocate.getPointeeType();
-                if (!(symType instanceof StructureType)) {
-                    return;
-                }
-                StructureType thisStruct = (StructureType) symType;
-
-                if (!thisStruct.getMetadataReference().isPresent()) {
-                    return;
-                }
-                MetadataBaseNode node = thisStruct.getMetadataReference().get();
-
-                if (node instanceof MetadataCompositeType) {
-                    parseCompositeTypeStructBitcast(gep, cast, (MetadataCompositeType) node);
-                } else if (node instanceof MetadataBasicType) {
-                    // TODO: implement?
-                } else if (node instanceof MetadataDerivedType) {
-                    // TODO: type check
-                    MetadataCompositeType compNode = (MetadataCompositeType) ((MetadataDerivedType) node).getBaseType().get();
-                    parseCompositeTypeStructBitcast(gep, cast, compNode);
-                } else {
-                    throw new AssertionError("unknow node type: " + node);
-                }
+            } else {
+                LLVMLogger.info("This is not a valid Metadata Type: " + element);
             }
         }
     }

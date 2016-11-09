@@ -1,6 +1,7 @@
 package com.oracle.truffle.llvm.parser.base.model.visitors;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataBaseNode;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataBasicType;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataCompileUnit;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataCompositeType;
@@ -24,87 +25,95 @@ import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataValue;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public interface MetadataVisitor {
+    /**
+     * We normally don't need to implement all visitors, but want to have a default implementation
+     * for those visitors which are not handled explicitly. This little method allows us to do so.
+     */
+    default void ifVisitNotOverwritten(MetadataBaseNode alias) {
+        LLVMLogger.info("Ignored Visit to " + alias.getClass().getSimpleName() + ": " + alias);
+    }
+
     default void visit(MetadataBasicType alias) {
-        LLVMLogger.info("Ignored Visit to MetadataBasicType: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataCompileUnit alias) {
-        LLVMLogger.info("Ignored Visit to MetadataCompileUnit: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataCompositeType alias) {
-        LLVMLogger.info("Ignored Visit to MetadataCompositeType: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataDerivedType alias) {
-        LLVMLogger.info("Ignored Visit to MetadataDerivedType: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataEnumerator alias) {
-        LLVMLogger.info("Ignored Visit to MetadataEnumerator: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataFile alias) {
-        LLVMLogger.info("Ignored Visit to MetadataFile: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataFnNode alias) {
-        LLVMLogger.info("Ignored Visit to MetadataFnNode: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataGlobalVariable alias) {
-        LLVMLogger.info("Ignored Visit to MetadataGlobalVariable: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataKind alias) {
-        LLVMLogger.info("Ignored Visit to MetadataKind: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataLexicalBlock alias) {
-        LLVMLogger.info("Ignored Visit to MetadataLexicalBlock: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataLexicalBlockFile alias) {
-        LLVMLogger.info("Ignored Visit to MetadataLexicalBlockFile: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataLocalVariable alias) {
-        LLVMLogger.info("Ignored Visit to MetadataLocalVariable: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataName alias) {
-        LLVMLogger.info("Ignored Visit to MetadataName: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataNamedNode alias) {
-        LLVMLogger.info("Ignored Visit to MetadataNamedNode: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataNode alias) {
-        LLVMLogger.info("Ignored Visit to MetadataNode: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataString alias) {
-        LLVMLogger.info("Ignored Visit to MetadataString: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataSubprogram alias) {
-        LLVMLogger.info("Ignored Visit to MetadataSubprogram: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataSubrange alias) {
-        LLVMLogger.info("Ignored Visit to MetadataSubrange: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataTemplateTypeParameter alias) {
-        LLVMLogger.info("Ignored Visit to MetadataTemplateTypeParameter: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataValue alias) {
-        LLVMLogger.info("Ignored Visit to MetadataValue: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 
     default void visit(MetadataReference alias) {
-        LLVMLogger.info("Ignored Visit to MetadataReference: " + alias);
+        ifVisitNotOverwritten(alias);
     }
 }
