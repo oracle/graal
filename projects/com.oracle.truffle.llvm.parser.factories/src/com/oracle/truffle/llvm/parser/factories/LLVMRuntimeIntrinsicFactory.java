@@ -35,6 +35,7 @@ import java.util.Map;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbortFactory;
+import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAtExitFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMCeilFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMExpFactory;
@@ -232,6 +233,7 @@ public class LLVMRuntimeIntrinsicFactory {
         // C
         intrinsics.put("@abort", LLVMAbortFactory.getInstance());
         intrinsics.put("@exit", LLVMExitFactory.getInstance());
+        intrinsics.put("@atexit", LLVMAtExitFactory.getInstance());
         intrinsics.put("@signal", LLVMSignalFactory.getInstance());
     }
 
