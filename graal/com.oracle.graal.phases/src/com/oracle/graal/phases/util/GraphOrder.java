@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.GraalGraphError;
 import com.oracle.graal.graph.Node;
@@ -288,7 +289,7 @@ public final class GraphOrder {
             ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock());
 
         } catch (Throwable t) {
-            throw new AssertionError("unschedulable graph", t);
+            Debug.handle(t);
         }
         return true;
     }
