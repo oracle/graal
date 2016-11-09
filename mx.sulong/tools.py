@@ -1,3 +1,4 @@
+import fnmatch
 import mx
 import os
 
@@ -150,6 +151,16 @@ def getReferenceName(inputFile, outputDir, target):
 def isFileUpToDate(inputFile, outputFile):
     return os.path.exists(outputFile) and os.path.getmtime(inputFile) < os.path.getmtime(outputFile)
 
+def collectExcludes(path):
+    for root, _, files in os.walk(path):
+        for f in files:
+            if f.endswith('.exclude'):
+                for line in open(os.path.join(root, f)):
+                    yield line.strip()
+
+def matches(path, patterns):
+    return any(fnmatch.fnmatch(path, p) for p in list(patterns))
+
 def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, optimizerTools):
     lang = ProgrammingLanguage.lookupFile(inputFile)
     for tool in tools:
@@ -164,12 +175,17 @@ def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, 
                             opt_outputFile = base + '_' + optimizerTool.name + ext
                             optimizerTool.run(outputFile, opt_outputFile, [])
 
-def multicompileFolder(path, outputDir, tools, flags, optimizations, target, optimizerTools):
+def multicompileFolder(path, outputDir, tools, flags, optimizations, target, optimizerTools, excludes=None):
     """Produces ll files for all files in given directory using the provided tool, and applies all optimizations specified by the optimizer tool"""
+    if excludes is None:
+        excludes = []
     for root, _, files in os.walk(path):
         for f in files:
             if ProgrammingLanguage.lookupFile(f) is not None:
-                multicompileFile(os.path.join(root, f), outputDir, tools, flags, optimizations, target, optimizerTools)
+                absFilePath = os.path.join(root, f)
+                relFilePath = os.path.relpath(absFilePath, path)
+                if not matches(relFilePath, excludes):
+                    multicompileFile(absFilePath, outputDir, tools, flags, optimizations, target, optimizerTools)
 
 def multicompileRefFile(inputFile, outputDir, tools, flags):
     lang = ProgrammingLanguage.lookupFile(inputFile)
@@ -179,9 +195,14 @@ def multicompileRefFile(inputFile, outputDir, tools, flags):
             if not isFileUpToDate(inputFile, referenceFile):
                 tool.compileReferenceFile(inputFile, referenceFile, flags)
 
-def multicompileRefFolder(path, outputDir, tools, flags):
+def multicompileRefFolder(path, outputDir, tools, flags, excludes=None):
     """Produces executables for all files in given directory using the provided tool"""
+    if excludes is None:
+        excludes = []
     for root, _, files in os.walk(path):
         for f in files:
             if ProgrammingLanguage.lookupFile(f) is not None:
-                multicompileRefFile(os.path.join(root, f), outputDir, tools, flags)
+                absFilePath = os.path.join(root, f)
+                relFilePath = os.path.relpath(absFilePath, path)
+                if not matches(relFilePath, excludes):
+                    multicompileRefFile(absFilePath, outputDir, tools, flags)
