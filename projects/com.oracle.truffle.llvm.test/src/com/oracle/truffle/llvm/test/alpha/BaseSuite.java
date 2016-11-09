@@ -74,6 +74,9 @@ public abstract class BaseSuite {
         final int referenceReturnValue = processResult.getReturnValue();
 
         for (Path candidate : testCandidates) {
+            if (!filterFileName().test(candidate.getFileName().toString())) {
+                continue;
+            }
             CaptureOutput.startCapturing();
             int sulongResult = -1;
             try {
@@ -92,6 +95,16 @@ public abstract class BaseSuite {
             Assert.assertEquals(testName + " failed. Output (stdout) missmatch.", referenceStdOut,
                             sulongStdOut);
         }
+    }
+
+    /**
+     * This function can be overwritten to specify a filter on test file names. E.g. if one wants to
+     * only run unoptimized files on Sulong, use <code> s.endsWith("O0.ll") </code>
+     *
+     * @return a filter predicate
+     */
+    protected Predicate<String> filterFileName() {
+        return s -> true;
     }
 
     protected static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir) throws AssertionError {
