@@ -29,9 +29,12 @@
  */
 package com.oracle.truffle.llvm.test.alpha;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -43,6 +46,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 
@@ -51,6 +55,7 @@ public abstract class BaseSuite {
     protected static final Set<String> supportedFiles = new HashSet<>(Arrays.asList("f90", "f", "f03", "c", "cpp", "cc", "C", "m"));
 
     protected static final Predicate<? super Path> isExecutable = f -> f.getFileName().toString().endsWith(".out");
+    protected static final Predicate<? super Path> isIncludeFile = f -> f.getFileName().toString().endsWith(".include");
     protected static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".ll") || f.getFileName().toString().endsWith(".bc");
     protected static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
 
@@ -76,12 +81,55 @@ public abstract class BaseSuite {
             } finally {
                 CaptureOutput.stopCapturing();
             }
+
+            if (sulongResult != (sulongResult & 0xFF)) {
+                Assert.fail("Broken unittest " + getTestDirectory() + ". Test exits with invalid value.");
+            }
             String sulongStdOut = CaptureOutput.getCapture();
             String testName = candidate.getFileName().toString() + " in " + getTestDirectory().toAbsolutePath().toString();
-            Assert.assertEquals(testName + " failed. Return value missmatch.", referenceReturnValue,
+            Assert.assertEquals(testName + " failed. Posix return value missmatch.", referenceReturnValue,
                             sulongResult);
-            Assert.assertEquals(testName + " failed. Stdout missmatch.", referenceStdOut,
+            Assert.assertEquals(testName + " failed. Output (stdout) missmatch.", referenceStdOut,
                             sulongStdOut);
         }
+    }
+
+    protected static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir) throws AssertionError {
+        Set<Path> whiteList = getWhiteListTestFolders(configPath, suiteDir);
+        Predicate<? super Path> whiteListFilter;
+        String testDiscoveryPath = LLVMBaseOptionFacade.getTestDiscoveryPath();
+        if (testDiscoveryPath == null) {
+            whiteListFilter = whiteList::contains;
+        } else {
+            System.err.println(testDiscoveryPath);
+            whiteListFilter = p -> !whiteList.contains(p) && p.startsWith(new File(suiteDir.toString(), testDiscoveryPath).toPath());
+        }
+        return collectTestCases(suiteDir, whiteListFilter);
+    }
+
+    private static Collection<Object[]> collectTestCases(Path suiteDir, Predicate<? super Path> whiteListFilter) throws AssertionError {
+        try {
+            return Files.walk(suiteDir).filter(isExecutable).map(f -> f.getParent()).filter(whiteListFilter).map(f -> new Object[]{f, f.toString()}).collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new AssertionError("Test cases not found", e);
+        }
+    }
+
+    protected static final Set<Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
+        try {
+            return Files.walk(configDir).filter(isIncludeFile).flatMap(f -> {
+                try {
+                    return Files.lines(f);
+                } catch (IOException e) {
+                    throw new AssertionError("Error creating whitelist.", e);
+                }
+            }).map(s -> new File(suiteDirectory.toString(), removeFileEnding(s)).toPath()).collect(Collectors.toSet());
+        } catch (IOException e) {
+            throw new AssertionError("Error creating whitelist.", e);
+        }
+    }
+
+    private static String removeFileEnding(String s) {
+        return s.substring(0, s.lastIndexOf('.'));
     }
 }
