@@ -60,14 +60,21 @@ class Tool(object):
 
     def runTool(self, args, errorMsg=None):
         try:
-            f = open(os.devnull, 'w')
-            return mx.run(args, out=f, err=f)
+            if not mx.get_opts().verbose:
+                f = open(os.devnull, 'w')
+                ret = mx.run(args, out=f, err=f)
+            else:
+                f = None
+                ret = mx.run(args)
         except SystemExit:
+            ret = -1
             if errorMsg is None:
                 print 'Cannot run %s' % args
             else:
                 print errorMsg
-        return -1
+        if f is not None:
+            f.close()
+        return ret
 
 class ClangCompiler(Tool):
     def __init__(self):
