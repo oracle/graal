@@ -22,12 +22,19 @@
  */
 package com.oracle.graal.lir.ssi;
 
+import java.util.BitSet;
+
+import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.lir.ssa.SSAUtil;
+import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.StableOptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.common.JVMCIError;
 
 /**
  * Constructs {@linkplain SSIUtil SSI LIR} using a liveness analysis.
@@ -38,9 +45,38 @@ import jdk.vm.ci.code.TargetDescription;
  */
 public final class SSIConstructionPhase extends AllocationPhase {
 
+    static class Options {
+
+        //@formatter:off
+        @Option(help = "Use fast SSI builder.", type = OptionType.Debug)
+        public static final StableOptionValue<Boolean> TraceRAFastSSIBuilder = new StableOptionValue<>(true);
+        //@formatter:on
+    }
+
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
-        new SSIBuilder(lirGenRes.getLIR()).build();
+        if (Options.TraceRAFastSSIBuilder.getValue()) {
+            FastSSIBuilder fastSSIBuilder = new FastSSIBuilder(lirGenRes.getLIR());
+            fastSSIBuilder.build();
+            fastSSIBuilder.finish();
+        } else {
+            SSIBuilder ssiBuilder = new SSIBuilder(lirGenRes.getLIR());
+            ssiBuilder.build();
+            ssiBuilder.finish();
+        }
+    }
+
+    static void check(AbstractBlockBase<?>[] blocks, SSIBuilderBase liveSets1, SSIBuilderBase liveSets2) {
+        for (AbstractBlockBase<?> block : blocks) {
+            check(block, liveSets1.getLiveIn(block), liveSets2.getLiveIn(block));
+            check(block, liveSets1.getLiveOut(block), liveSets2.getLiveOut(block));
+        }
+    }
+
+    private static void check(AbstractBlockBase<?> block, BitSet liveIn1, BitSet liveIn2) {
+        if (!liveIn1.equals(liveIn2)) {
+            throw JVMCIError.shouldNotReachHere(String.format("%s LiveSet differ: %s vs %s", block, liveIn1, liveIn2));
+        }
     }
 }
