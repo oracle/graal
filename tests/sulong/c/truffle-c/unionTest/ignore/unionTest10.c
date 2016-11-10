@@ -10,5 +10,5 @@ int main() {
   for (i = 0; i < 8; i++) {
     a.c[i] = i + 1;
   }
-  return a.a[0] + a.a[1];
+  return (a.a[0] + a.a[1]) % 256;
 }

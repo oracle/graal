@@ -1,6 +1,6 @@
 class Test {
 public:
-  int val;
+  int val = 42;
   int test();
 };
 

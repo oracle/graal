@@ -49,6 +49,7 @@ _inlineAssemblySrcDir = join(_root, "com.oracle.truffle.llvm.asm.amd64/src/")
 _inlineAssemblyGrammer = join(_inlineAssemblySrcDir, "InlineAssembly.atg")
 _inlineAssemblyPackageName = "com.oracle.truffle.llvm.asm.amd64"
 
+_captureSrcDir = join(_root, "projects/com.oracle.truffle.llvm.pipe.native/src")
 
 def _unittest_config_participant(config):
     """modifies the classpath to use the Sulong distribution jars instead of the classfiles to enable the use of Java's ServiceLoader"""
@@ -84,7 +85,8 @@ clangFormatCheckPaths = [
     _suite.dir + '/include',
     _sulongTestDir,
     _interopTestDir,
-    _libPath
+    _libPath,
+    _captureSrcDir
 ]
 
 # the file paths on which we want to use the mdl Markdown file checker
@@ -139,7 +141,7 @@ def travis1(args=None):
     """executes the first Travis job (Javac build, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestBenchmarks', tasks) as t:
         if t: runBenchmarkTestCases()
     with Task('TestPolglot', tasks) as t:
@@ -156,12 +158,14 @@ def travis1(args=None):
         if t: runLLVMTestCases()
     with Task('TestMainArgs', tasks) as t:
         if t: runMainArgTestCases()
+    with Task('TestPipe', tasks) as t:
+        if t: runPipeTestCases()
 
 def travis2(args=None):
     """executes the second Travis job (Javac build, GCC execution test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestGCC', tasks) as t:
         if t: runGCCTestCases()
 
@@ -169,7 +173,7 @@ def travis3(args=None):
     """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestNWCC', tasks) as t:
         if t: runNWCCTestCases()
     with Task('TestGCCSuiteCompile', tasks) as t:
@@ -181,7 +185,7 @@ def travis4(args=None):
     """executes the fourth Travis job (Javac build, LLVM and GCC test cases with BitCode parser)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestLLVMBC', tasks) as t:
         if t: runLLVMTestCases(['-Dsulong.TestBinaryParser=true'])
     with Task('TestGCCBC', tasks) as t:
@@ -191,7 +195,7 @@ def travisTestSulong(args=None):
     """executes the Sulong test cases (which also stress compilation)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestSulong', tasks) as t:
         if t: runTruffleTestCases()
 
@@ -199,7 +203,7 @@ def travisArgon2(args=None):
     """executes the argon2 Travis job (Javac build, argon2 test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestArgon2', tasks) as t:
         if t: runTestArgon2(optimize=False)
 
@@ -532,7 +536,7 @@ def compileWithEcjStrict(args=None):
     """build project with the option --warning-as-error"""
     if mx.get_env('JDT'):
         mx.clean([])
-        mx.command_function('build')(['-p', '--no-native', '--warning-as-error'])
+        mx.command_function('build')(['-p', '--warning-as-error'])
     else:
         exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
 
@@ -609,6 +613,11 @@ def runMainArgTestCases(args=None):
     """runs the test cases that exercise the passing of arguments to the main function"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.LLVMMainArgTestSuite'])
+
+def runPipeTestCases(args=None):
+    """runs the stdout pipe testcases """
+    vmArgs, _ = truffle_extract_VM_args(args)
+    return unittest(vmArgs + ['com.oracle.truffle.llvm.test.alpha.CaptureOutputTest'])
 
 def runCompileTestCases(args=None):
     """runs the compile (no execution) test cases of the GCC suite"""
@@ -1141,14 +1150,13 @@ testCases = {
     'argon2' : runTestArgon2,
     'lifetime' : runLifetimeTestCases,
     'main-arg' : runMainArgTestCases,
+    'pipe' : runPipeTestCases,
 }
 
 checkCases = {
     'gitlog' : logCheck,
     'mdl' : mdlCheck,
-    'ecj' : compileWithEcjStrict,
     'checkstyle' : mx.checkstyle,
-    'findbugs' : findBugs,
     'canonicalizeprojects' : mx.canonicalizeprojects,
     'httpcheck' : checkNoHttp,
     'checkoverlap' : mx.checkoverlap,

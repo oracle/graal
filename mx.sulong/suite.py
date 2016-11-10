@@ -233,6 +233,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm",
         "com.oracle.truffle.llvm.tools",
+        "com.oracle.truffle.llvm.pipe",
         "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
       ],
@@ -450,6 +451,31 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
+
+    "com.oracle.truffle.llvm.pipe" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.runtime",
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.test",
+      "javaCompliance" : "1.8",
+      "license" : "BSD-new",
+    },
+
+    "com.oracle.truffle.llvm.pipe.native" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/libpipe.so"
+      ],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.pipe",
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.test",
+      "license" : "BSD-new",
+    },
   },
 
   "distributions" : {
@@ -490,7 +516,8 @@ suite = {
       "sourcesPath" : "build/sulong_test.src.zip",
       "dependencies" : [
         "com.oracle.truffle.llvm.test",
-        "com.oracle.truffle.llvm.types.test"
+        "com.oracle.truffle.llvm.types.test",
+        "com.oracle.truffle.llvm.pipe"
       ],
       "exclude" : [
        "EMF_COMMON",

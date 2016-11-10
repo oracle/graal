@@ -29,39 +29,40 @@
  */
 package com.oracle.truffle.llvm.test.alpha;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.util.Collection;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import com.oracle.truffle.llvm.pipe.CaptureOutput;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
+public class CaptureOutputTest {
 
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
-
-@RunWith(Parameterized.class)
-public final class SulongSuite extends BaseSuite {
-
-    private static final Path SULONG_SUITE_DIR = new File(LLVMBaseOptionFacade.getProjectRoot() + "/tests/cache/tests/sulong").toPath();
-    private static final Path SULONG_CONFIG_DIR = new File(LLVMBaseOptionFacade.getProjectRoot() + "/tests/sulong/config").toPath();
-
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
-
-    @Parameters(name = "{1}")
-    public static Collection<Object[]> data() {
-        return collectTestCases(SULONG_CONFIG_DIR, SULONG_SUITE_DIR);
+    @Test
+    public void testOutputCapturing() {
+        String string = "Testoutput";
+        CaptureOutput.startCapturing();
+        System.out.print(string);
+        CaptureOutput.stopCapturing();
+        System.out.println("MUST NOT BE IN CAPTURE");
+        String captured = CaptureOutput.getCapture();
+        assertEquals(string, captured);
     }
 
-    @Override
-    protected Path getTestDirectory() {
-        return path;
+    @Test
+    public void testOutputCapturing2() {
+        String string = "Does it work again?";
+        CaptureOutput.startCapturing();
+        System.out.print(string);
+        CaptureOutput.stopCapturing();
+        System.out.println("MUST NOT BE IN CAPTURE");
+        String captured = CaptureOutput.getCapture();
+        assertEquals(string, captured);
     }
 
-    @Override
-    protected Path getSuiteDirectory() {
-        return SULONG_SUITE_DIR;
+    @Test(timeout = 2)
+    public void testNothingHappens() {
+        for (int i = 0; i < 3; i++) {
+            CaptureOutput.startCapturing();
+            CaptureOutput.stopCapturing();
+            CaptureOutput.getCapture();
+        }
     }
-
 }

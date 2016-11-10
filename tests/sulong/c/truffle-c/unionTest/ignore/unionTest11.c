@@ -9,5 +9,5 @@ int main() {
 
   a.d = 3.1415;
 
-  return a.a[0] + a.a[1];
+  return (a.a[0] + a.a[1]) % 256;
 }

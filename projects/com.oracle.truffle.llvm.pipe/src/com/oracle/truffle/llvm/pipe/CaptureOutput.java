@@ -27,41 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.alpha;
+package com.oracle.truffle.llvm.pipe;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.util.Collection;
-
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
-@RunWith(Parameterized.class)
-public final class SulongSuite extends BaseSuite {
+public final class CaptureOutput {
 
-    private static final Path SULONG_SUITE_DIR = new File(LLVMBaseOptionFacade.getProjectRoot() + "/tests/cache/tests/sulong").toPath();
-    private static final Path SULONG_CONFIG_DIR = new File(LLVMBaseOptionFacade.getProjectRoot() + "/tests/sulong/config").toPath();
-
-    @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
-
-    @Parameters(name = "{1}")
-    public static Collection<Object[]> data() {
-        return collectTestCases(SULONG_CONFIG_DIR, SULONG_SUITE_DIR);
+    static {
+        // temporary solution unit mx does that for us
+        System.load(new File(LLVMBaseOptionFacade.getProjectRoot()).getAbsolutePath() + "/mxbuild/projects/com.oracle.truffle.llvm.pipe.native/bin/libpipe.so");
     }
 
-    @Override
-    protected Path getTestDirectory() {
-        return path;
-    }
+    public static native void startCapturing();
 
-    @Override
-    protected Path getSuiteDirectory() {
-        return SULONG_SUITE_DIR;
-    }
+    public static native void stopCapturing();
+
+    public static native String getCapture();
 
 }
