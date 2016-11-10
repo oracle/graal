@@ -1156,7 +1156,9 @@ testCases = {
 checkCases = {
     'gitlog' : logCheck,
     'mdl' : mdlCheck,
+    'ecj' : compileWithEcjStrict,
     'checkstyle' : mx.checkstyle,
+    'findbugs' : findBugs,
     'canonicalizeprojects' : mx.canonicalizeprojects,
     'httpcheck' : checkNoHttp,
     'checkoverlap' : mx.checkoverlap,
