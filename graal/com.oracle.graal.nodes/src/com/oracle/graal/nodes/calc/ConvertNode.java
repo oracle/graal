@@ -23,8 +23,8 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.graph.NodeInterface;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValueNodeInterface;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -32,7 +32,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 /**
  * Represents a conversion between primitive types.
  */
-public interface ConvertNode extends NodeInterface {
+public interface ConvertNode extends ValueNodeInterface {
 
     ValueNode getValue();
 
@@ -68,7 +68,4 @@ public interface ConvertNode extends NodeInterface {
     default boolean preservesOrder(Condition op, Constant value, ConstantReflectionProvider constantReflection) {
         return preservesOrder(op);
     }
-
-    @Override
-    ValueNode asNode();
 }

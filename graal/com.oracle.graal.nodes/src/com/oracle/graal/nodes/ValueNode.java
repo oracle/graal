@@ -39,7 +39,7 @@ import jdk.vm.ci.meta.JavaKind;
  * instructions.
  */
 @NodeInfo
-public abstract class ValueNode extends com.oracle.graal.graph.Node {
+public abstract class ValueNode extends com.oracle.graal.graph.Node implements ValueNodeInterface {
 
     public static final NodeClass<ValueNode> TYPE = NodeClass.create(ValueNode.class);
     /**

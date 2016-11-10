@@ -29,9 +29,6 @@ import com.oracle.graal.nodes.spi.NodeWithState;
  */
 public interface StateSplit extends NodeWithState {
 
-    @Override
-    FixedNode asNode();
-
     /**
      * Gets the {@link FrameState} corresponding to the state of the JVM after execution of this
      * node.

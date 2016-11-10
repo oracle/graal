@@ -22,18 +22,14 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.graph.NodeInterface;
-import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValueNodeInterface;
 
 /**
  * A node that may be guarded by a {@linkplain GuardingNode guarding node}.
  */
-public interface GuardedNode extends NodeInterface {
+public interface GuardedNode extends ValueNodeInterface {
 
     GuardingNode getGuard();
 
     void setGuard(GuardingNode guard);
-
-    @Override
-    ValueNode asNode();
 }

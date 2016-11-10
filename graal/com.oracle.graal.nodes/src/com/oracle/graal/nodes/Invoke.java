@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.StampTool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, GuardedNode {
+public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, GuardedNode, FixedNodeInterface {
 
     FixedNode next();
 
@@ -41,9 +41,6 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
     CallTargetNode callTarget();
 
     int bci();
-
-    @Override
-    FixedNode asNode();
 
     Node predecessor();
 

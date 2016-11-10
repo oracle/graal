@@ -22,11 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.graph.NodeInterface;
-import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.ValueNodeInterface;
 
-public interface GuardingNode extends NodeInterface {
-
-    @Override
-    ValueNode asNode();
+public interface GuardingNode extends ValueNodeInterface {
 }

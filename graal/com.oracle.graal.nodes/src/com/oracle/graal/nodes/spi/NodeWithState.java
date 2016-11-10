@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.graph.NodeInterface;
 import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.nodes.FixedNodeInterface;
 import com.oracle.graal.nodes.FrameState;
 
 /**
  * Interface for nodes which have {@link FrameState} nodes as input.
  */
-public interface NodeWithState extends NodeInterface {
+public interface NodeWithState extends FixedNodeInterface {
 
     default NodeIterable<FrameState> states() {
         return asNode().inputs().filter(FrameState.class);
