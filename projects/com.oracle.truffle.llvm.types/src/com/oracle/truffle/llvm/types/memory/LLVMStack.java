@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.types.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
 /**
@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
  */
 public final class LLVMStack extends LLVMMemory {
 
-    private static final long STACK_SIZE_KB = LLVMBaseOptionFacade.getStackSizeKB();
+    private static final long STACK_SIZE_KB = LLVMOptions.ENGINE.stackSize();
 
     private static final long STACK_SIZE_BYTE = STACK_SIZE_KB * 1024;
 

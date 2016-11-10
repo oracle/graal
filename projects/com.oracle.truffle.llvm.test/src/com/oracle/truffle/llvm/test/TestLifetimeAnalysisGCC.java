@@ -46,16 +46,6 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
-import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.base.model.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.base.model.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
-import com.oracle.truffle.llvm.parser.bc.impl.LLVMLifetimeAnalysis;
 import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.util.EList;
@@ -75,11 +65,21 @@ import com.intel.llvm.ireditor.lLVM_IR.BasicBlock;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalAlias;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalConstant;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
+import com.oracle.truffle.llvm.parser.bc.impl.LLVMLifetimeAnalysis;
 import com.oracle.truffle.llvm.parser.impl.LLVMWriteVisitor;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 
 @RunWith(Parameterized.class)
 public class TestLifetimeAnalysisGCC extends TestSuiteBase {
@@ -107,7 +107,7 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
     public TestLifetimeAnalysisGCC(TestCaseFiles tuple) throws IOException {
         this.tuple = tuple;
         setUpReferenceFilePath(tuple);
-        if (LLVMBaseOptionFacade.generateLifetimeReferenceOutput()) {
+        if (SulongTestOptions.TEST.generateLifetimeReferenceOutput()) {
             referenceOutputFile.getParentFile().mkdirs();
             printStream = new PrintStream(referenceOutputFile);
         } else {
@@ -177,7 +177,7 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         try {
             LLVMLogger.info("original file: " + tuple.getOriginalFile());
 
-            if (LLVMBaseOptionFacade.testBinaryParser()) {
+            if (SulongTestOptions.TEST.useBinaryParser()) {
                 final LLVMBitcodeVisitor.BitcodeParserResult parserResult = LLVMBitcodeVisitor.BitcodeParserResult.getFromFile(tuple.getBitCodeFile().getAbsolutePath());
                 parserResult.getModel().accept(new ModelVisitor() {
                     @Override
@@ -186,7 +186,7 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
                         final LLVMLifetimeAnalysis lifetimes = LLVMLifetimeAnalysis.getResult(method, parserResult.getStackAllocation().getFrame(functionName),
                                         parserResult.getPhis().getPhiMap(functionName));
 
-                        if (LLVMBaseOptionFacade.generateLifetimeReferenceOutput()) {
+                        if (SulongTestOptions.TEST.generateLifetimeReferenceOutput()) {
                             printStringln(functionName);
                             printStringln(BEGIN_DEAD);
                             printInstructionBlockVariables(lifetimes.getNullableBefore());
@@ -236,7 +236,7 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
                     LLVMLifeTimeAnalysisResult analysisResult = LLVMLifeTimeAnalysisVisitor.visit(def,
                                     frameDescriptor);
                     String functionName = def.getHeader().getName();
-                    if (LLVMBaseOptionFacade.generateLifetimeReferenceOutput()) {
+                    if (SulongTestOptions.TEST.generateLifetimeReferenceOutput()) {
                         printStringln(functionName);
                         printStringln(BEGIN_DEAD);
                         Map<BasicBlock, FrameSlot[]> beginDead = analysisResult.getBeginDead();

@@ -29,8 +29,5 @@
  */
 package com.oracle.truffle.llvm.runtime.options;
 
-import java.util.List;
-
 public interface LLVMOptionServiceProvider {
-    List<LLVMOption> getOptions();
 }

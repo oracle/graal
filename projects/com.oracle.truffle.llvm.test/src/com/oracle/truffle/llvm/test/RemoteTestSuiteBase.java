@@ -49,8 +49,8 @@ import org.junit.BeforeClass;
 
 import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.test.RemoteLLVMTester.RemoteProgramArgsBuilder;
+import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 
@@ -82,7 +82,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
     }
 
     public List<String> launchRemote(TestCaseFiles tuple, Object... args) throws IOException, AssertionError {
-        if (LLVMBaseOptionFacade.launchRemoteTestCasesAsLocal()) {
+        if (SulongTestOptions.TEST.runRemoteTestcasesAsLocal()) {
             return launchLocal(tuple, args);
         } else {
             String str = new RemoteProgramArgsBuilder(tuple.getBitCodeFile()).args(args).getCommand();
@@ -136,7 +136,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
 
     @AfterClass
     public static void endRemoteProcess() {
-        if (!LLVMBaseOptionFacade.launchRemoteTestCasesAsLocal()) {
+        if (!SulongTestOptions.TEST.runRemoteTestcasesAsLocal()) {
             try {
                 outputStream.write("exit\n");
                 outputStream.flush();
@@ -149,7 +149,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
 
     @BeforeClass
     public static void startRemoteProcess() throws IOException {
-        if (!LLVMBaseOptionFacade.launchRemoteTestCasesAsLocal()) {
+        if (!SulongTestOptions.TEST.runRemoteTestcasesAsLocal()) {
             remoteTruffleProcess = TestHelper.launchRemoteTruffle();
             outputStream = new BufferedWriter(new OutputStreamWriter(remoteTruffleProcess.getOutputStream()));
             reader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getInputStream()));

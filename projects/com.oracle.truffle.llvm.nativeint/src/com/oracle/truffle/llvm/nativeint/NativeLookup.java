@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
@@ -93,7 +93,7 @@ public class NativeLookup {
     }
 
     private static List<NativeLibraryHandle> getNativeFunctionHandles() {
-        String[] dynamicLibraryPaths = LLVMBaseOptionFacade.getDynamicLibraryPaths();
+        String[] dynamicLibraryPaths = LLVMOptions.ENGINE.dynamicNativeLibraryPath();
         List<NativeLibraryHandle> handles = new ArrayList<>();
         for (String library : dynamicLibraryPaths) {
             handles.add(getNFI().getLibraryHandle(library));
@@ -103,7 +103,7 @@ public class NativeLookup {
 
     public NativeLookup(NodeFactoryFacade facade) {
         this.facade = facade;
-        if (LLVMBaseOptionFacade.printNativeCallStats()) {
+        if (LLVMOptions.DEBUG.printNativeCallStatistics()) {
             nativeFunctionLookupStats = new TreeMap<>();
         } else {
             nativeFunctionLookupStats = null;
@@ -175,12 +175,12 @@ public class NativeLookup {
         if (functionName.equals("fork") || functionName.equals("pthread_create") || functionName.equals("pipe")) {
             throw new LLVMUnsupportedException(UnsupportedReason.MULTITHREADING);
         }
-        if (LLVMBaseOptionFacade.getDynamicLibraryPaths() == null) {
+        if (LLVMOptions.ENGINE.dynamicNativeLibraryPath() == null) {
             functionHandle = getNFI().getFunctionHandle(functionName, retType, paramTypes);
         } else {
             functionHandle = getNFI().getFunctionHandle(getLibraryHandlesArray(), functionName, retType, paramTypes);
         }
-        if (LLVMBaseOptionFacade.printNativeCallStats() && functionHandle != null) {
+        if (LLVMOptions.DEBUG.printNativeCallStatistics() && functionHandle != null) {
             recordNativeFunctionCallSite(function);
         }
         return functionHandle;

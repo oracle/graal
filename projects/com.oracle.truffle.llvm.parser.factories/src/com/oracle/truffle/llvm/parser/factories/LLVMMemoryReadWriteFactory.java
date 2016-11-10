@@ -88,11 +88,10 @@ import com.oracle.truffle.llvm.nodes.impl.memory.load.LLVMI8LoadNodeFactory.LLVM
 import com.oracle.truffle.llvm.nodes.impl.memory.load.LLVMI8LoadNodeFactory.LLVMI8ProfilingLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMAccessGlobalVariableStorageNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public final class LLVMMemoryReadWriteFactory {
 
@@ -114,25 +113,23 @@ public final class LLVMMemoryReadWriteFactory {
     }
 
     public static LLVMExpressionNode createLoad(LLVMBaseType resultType, LLVMAddressNode loadTarget, int bits) {
-        if (LLVMBaseOptionFacade.valueProfileMemoryReads()) {
-            switch (resultType) {
-                case I1:
-                    return new LLVMI1UninitializedLoadNode(loadTarget);
-                case I8:
-                    return LLVMI8ProfilingLoadNodeGen.create(loadTarget);
-                case I16:
-                    return new LLVMI16UninitializedLoadNode(loadTarget);
-                case I32:
-                    return LLVMI32ProfilingLoadNodeGen.create(loadTarget);
-                case I64:
-                    return LLVMI64ProfilingLoadNodeGen.create(loadTarget);
-                case FLOAT:
-                    return LLVMFloatProfilingLoadNodeGen.create(loadTarget);
-                case DOUBLE:
-                    return LLVMDoubleProfilingLoadNodeGen.create(loadTarget);
-                default:
-                    // fall through and instantiate a direct load node
-            }
+        switch (resultType) {
+            case I1:
+                return new LLVMI1UninitializedLoadNode(loadTarget);
+            case I8:
+                return LLVMI8ProfilingLoadNodeGen.create(loadTarget);
+            case I16:
+                return new LLVMI16UninitializedLoadNode(loadTarget);
+            case I32:
+                return LLVMI32ProfilingLoadNodeGen.create(loadTarget);
+            case I64:
+                return LLVMI64ProfilingLoadNodeGen.create(loadTarget);
+            case FLOAT:
+                return LLVMFloatProfilingLoadNodeGen.create(loadTarget);
+            case DOUBLE:
+                return LLVMDoubleProfilingLoadNodeGen.create(loadTarget);
+            default:
+                // fall through and instantiate a direct load node
         }
         switch (resultType) {
             case I1:

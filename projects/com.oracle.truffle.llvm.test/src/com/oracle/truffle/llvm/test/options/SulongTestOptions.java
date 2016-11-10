@@ -27,46 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.options;
+package com.oracle.truffle.llvm.test.options;
 
-public interface LLVMOption {
+import com.oracle.truffle.llvm.runtime.options.LLVMOptionServiceProvider;
 
-    /**
-     * Gets the option key. The option key is used to unambiguously identify the option. It can be,
-     * e.g., be used as a System property key.
-     *
-     * @return the option key
-     */
-    String getKey();
-
-    /**
-     * Gets the description of the option.
-     *
-     * @return the option description
-     */
-    String getDescription();
-
-    /**
-     * Gets the default value of the option. The default value is returned if the the option is not
-     * set and can be <code>null</code>.
-     *
-     * @return the default value
-     */
-    Object getDefaultValue();
-
-    /**
-     * Gets the value of the option. Returns {@link #getDefaultValue()} if the option is not set.
-     *
-     * @return the option value
-     */
-    Object getValue();
-
-    /**
-     * Returns the category label of the option. The label is used, e.g., to group the options when
-     * printing the available options.
-     *
-     * @return the category label
-     */
-    String getCategoryLabel();
-
+public final class SulongTestOptions implements LLVMOptionServiceProvider {
+    public static final TestOptionsGen TEST = TestOptionsGen.create();
 }

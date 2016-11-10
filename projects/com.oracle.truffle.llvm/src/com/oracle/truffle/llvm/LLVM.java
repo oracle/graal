@@ -62,13 +62,13 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacadeProvider;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
 import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 /**
  * This is the main LLVM execution class.
@@ -91,7 +91,7 @@ public class LLVM {
             throw new AssertionError("Could not find a " + NodeFactoryFacadeProvider.class.getSimpleName() + " for the creation of the Truffle nodes");
         }
         NodeFactoryFacade facade = null;
-        String expectedConfigName = LLVMBaseOptionFacade.getNodeConfiguration();
+        String expectedConfigName = LLVMOptions.ENGINE.nodeConfiguration();
         for (NodeFactoryFacadeProvider prov : loader) {
             String configName = prov.getConfigurationName();
             if (configName != null && configName.equals(expectedConfigName)) {
@@ -173,7 +173,7 @@ public class LLVM {
             }
 
             private void visitBitcodeLibraries(Consumer<Source> sharedLibraryConsumer) throws IOException {
-                String[] dynamicLibraryPaths = LLVMBaseOptionFacade.getDynamicBitcodeLibraries();
+                String[] dynamicLibraryPaths = LLVMOptions.ENGINE.dynamicBitcodeLibraries();
                 if (dynamicLibraryPaths != null && dynamicLibraryPaths.length != 0) {
                     for (String s : dynamicLibraryPaths) {
                         Source source;

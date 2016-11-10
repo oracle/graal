@@ -46,9 +46,6 @@ import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16Factory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32Factory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64Factory;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMDisabledExpectFactory.LLVMDisabledExpectI1NodeGen;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMDisabledExpectFactory.LLVMDisabledExpectI32NodeGen;
-import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMDisabledExpectFactory.LLVMDisabledExpectI64NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI1NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI64NodeGen;
@@ -85,7 +82,6 @@ import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public final class LLVMIntrinsicFactory {
 
@@ -206,27 +202,15 @@ public final class LLVMIntrinsicFactory {
         if (functionName.startsWith("@llvm.expect.i1")) {
             boolean expectedValue = ((LLVMI1Node) argNodes[1]).executeI1(null);
             LLVMI1Node actualValueNode = (LLVMI1Node) argNodes[0];
-            if (LLVMBaseOptionFacade.specializeForExpectIntrinsic()) {
-                return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode);
-            } else {
-                return LLVMDisabledExpectI1NodeGen.create(actualValueNode);
-            }
+            return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode);
         } else if (functionName.startsWith("@llvm.expect.i32")) {
             int expectedValue = ((LLVMI32Node) argNodes[1]).executeI32(null);
             LLVMI32Node actualValueNode = (LLVMI32Node) argNodes[0];
-            if (LLVMBaseOptionFacade.specializeForExpectIntrinsic()) {
-                return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode);
-            } else {
-                return LLVMDisabledExpectI32NodeGen.create(actualValueNode);
-            }
+            return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode);
         } else if (functionName.startsWith("@llvm.expect.i64")) {
             long expectedValue = ((LLVMI64Node) argNodes[1]).executeI64(null);
             LLVMI64Node actualValueNode = (LLVMI64Node) argNodes[0];
-            if (LLVMBaseOptionFacade.specializeForExpectIntrinsic()) {
-                return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
-            } else {
-                return LLVMDisabledExpectI64NodeGen.create(actualValueNode);
-            }
+            return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
         } else {
             throw new IllegalStateException(functionName);
         }

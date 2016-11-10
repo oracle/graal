@@ -46,7 +46,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 
@@ -110,7 +110,7 @@ public abstract class BaseSuite {
     protected static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir) throws AssertionError {
         Set<Path> whiteList = getWhiteListTestFolders(configPath, suiteDir);
         Predicate<? super Path> whiteListFilter;
-        String testDiscoveryPath = LLVMBaseOptionFacade.getTestDiscoveryPath();
+        String testDiscoveryPath = SulongTestOptions.TEST.testDiscoveryPath();
         if (testDiscoveryPath == null) {
             whiteListFilter = whiteList::contains;
         } else {

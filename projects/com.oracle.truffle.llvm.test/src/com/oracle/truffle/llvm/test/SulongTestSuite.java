@@ -29,25 +29,26 @@
  */
 package com.oracle.truffle.llvm.test;
 
-import com.oracle.truffle.llvm.LLVM;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
-import com.oracle.truffle.llvm.tools.Clang;
-import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
-import com.oracle.truffle.llvm.tools.Clang.ClangOptions.OptimizationLevel;
-import com.oracle.truffle.llvm.tools.Opt.OptOptions;
-import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
-import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.oracle.truffle.llvm.LLVM;
+import com.oracle.truffle.llvm.test.options.SulongTestOptions;
+import com.oracle.truffle.llvm.tools.Clang;
+import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
+import com.oracle.truffle.llvm.tools.Clang.ClangOptions.OptimizationLevel;
+import com.oracle.truffle.llvm.tools.Opt.OptOptions;
+import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
+import com.oracle.truffle.llvm.tools.ProgrammingLanguage;
 
 @RunWith(Parameterized.class)
 /**
@@ -68,7 +69,7 @@ public class SulongTestSuite extends TestSuiteBase {
 
     @Parameterized.Parameters
     public static List<TestCaseFiles[]> getTestFiles() {
-        if (LLVMBaseOptionFacade.discoveryTestModeEnabled()) {
+        if (SulongTestOptions.TEST.testDiscoveryPath() != null) {
             throw new AssertionError("this suite does not have a discovery mode!");
         }
         return getFilesRecursively(LLVMPaths.LOCAL_TESTS);
@@ -97,7 +98,7 @@ public class SulongTestSuite extends TestSuiteBase {
         allBitcodeFiles.addAll(optimizedFiles);
 
         // compile to *.bc files to test the binary parser
-        if (LLVMBaseOptionFacade.testBinaryParser()) {
+        if (SulongTestOptions.TEST.useBinaryParser()) {
             List<TestCaseFiles> allLLVMBitcodeFiles = allBitcodeFiles.stream().map(TestHelper::compileLLVMIRToLLVMBC).collect(Collectors.toList());
             allBitcodeFiles.clear();
             allBitcodeFiles.addAll(allLLVMBitcodeFiles);

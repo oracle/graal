@@ -53,11 +53,11 @@ import com.oracle.truffle.llvm.parser.base.model.types.IntegerConstantType;
 import com.oracle.truffle.llvm.parser.base.model.types.MetadataConstantPointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.MetadataConstantType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.records.DwTagRecord;
+import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.records.MetadataRecord;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.Types;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.records.MetadataRecord;
-import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.module.records.DwTagRecord;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 public class MetadataV32 extends Metadata {
     public MetadataV32(Types types, List<Type> symbols, SymbolGenerator generator) {
@@ -96,7 +96,7 @@ public class MetadataV32 extends Metadata {
                 return;
         }
 
-        if (LLVMBaseOptionFacade.verboseEnabled()) {
+        if (LLVMOptions.DEBUG.verbose()) {
             printMetadataDebugMsg();
         }
     }

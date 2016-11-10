@@ -39,7 +39,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 
@@ -130,12 +129,15 @@ import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.LLVMType;
-import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserResultImpl;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserResultImpl;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.parser.factories.LLVMLogicalFactory;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisVisitor;
@@ -144,17 +146,15 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.LLVMParserException.ParserErrorCause;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.memory.LLVMStack;
-import com.oracle.truffle.llvm.parser.factories.LLVMLogicalFactory;
 
 /**
  * This class traverses the LLVM IR AST as provided by the <code>com.intel.llvm.ireditor</code>
@@ -471,7 +471,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMNode[] afterFunction = functionEpilogue.toArray(new LLVMNode[functionEpilogue.size()]);
         RootNode rootNode = factoryFacade.createFunctionStartNode(block, beforeFunction, afterFunction, sourceFile.createSection(1), frameDescriptor,
                         LLVMToBitcodeAdapter.resolveFunctionDef(this, def));
-        if (LLVMBaseOptionFacade.printFunctionASTs()) {
+        if (LLVMOptions.DEBUG.printFunctionASTs()) {
             NodeUtil.printTree(System.out, rootNode);
         }
         LLVMFunction function = createLLVMFunctionFromHeader(def.getHeader());
@@ -494,14 +494,9 @@ public final class LLVMVisitor implements LLVMParserRuntime {
 
         Map<BasicBlock, FrameSlot[]> deadSlotsAtBeginBlock;
         Map<BasicBlock, FrameSlot[]> deadSlotsAfterBlock;
-        if (LLVMBaseOptionFacade.lifeTimeAnalysisEnabled()) {
-            LLVMLifeTimeAnalysisResult analysisResult = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
-            deadSlotsAtBeginBlock = analysisResult.getBeginDead();
-            deadSlotsAfterBlock = analysisResult.getEndDead();
-        } else {
-            deadSlotsAfterBlock = new HashMap<>();
-            deadSlotsAtBeginBlock = new HashMap<>();
-        }
+        LLVMLifeTimeAnalysisResult analysisResult = LLVMLifeTimeAnalysisVisitor.visit(def, frameDescriptor);
+        deadSlotsAtBeginBlock = analysisResult.getBeginDead();
+        deadSlotsAfterBlock = analysisResult.getEndDead();
         LLVMStackFrameNuller[][] slotNullerBeginNodes = getSlotNuller(def, currentIndex, basicBlockIndices, deadSlotsAtBeginBlock);
         LLVMStackFrameNuller[][] slotNullerAfterNodes = getSlotNuller(def, currentIndex, basicBlockIndices, deadSlotsAfterBlock);
         return factoryFacade.createFunctionBlockNode(retSlot, allFunctionNodes, slotNullerBeginNodes, slotNullerAfterNodes);
