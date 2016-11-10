@@ -95,7 +95,7 @@ import sun.misc.Unsafe;
  * only performed if assertions are enabled.
  */
 @NodeInfo
-public abstract class Node implements Cloneable, Formattable {
+public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     public static final NodeClass<?> TYPE = null;
     public static final boolean USE_UNSAFE_TO_CLONE = Graph.Options.CloneNodesWithUnsafe.getValue();
@@ -250,6 +250,11 @@ public abstract class Node implements Cloneable, Formattable {
 
     final int id() {
         return id;
+    }
+
+    @Override
+    public Node asNode() {
+        return this;
     }
 
     /**
