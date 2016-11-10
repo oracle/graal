@@ -29,6 +29,7 @@ import static com.oracle.graal.nodes.ConstantNode.forIntegerKind;
 import java.lang.reflect.Constructor;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.bytecode.BridgeMethodUtils;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -243,7 +244,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     }
 
     protected void processWordOperation(GraphBuilderContext b, ValueNode[] args, ResolvedJavaMethod wordMethod) throws GraalError {
-        Operation operation = wordMethod.getAnnotation(Word.Operation.class);
+        Operation operation = BridgeMethodUtils.getAnnotation(Word.Operation.class, wordMethod);
         JavaKind returnKind = wordMethod.getSignature().getReturnKind();
         switch (operation.opcode()) {
             case NODE_CLASS:
