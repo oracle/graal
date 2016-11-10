@@ -161,7 +161,7 @@ def travis1(args=None):
     """executes the first Travis job (Javac build, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestBenchmarks', tasks) as t:
         if t: runBenchmarkTestCases()
     with Task('TestPolglot', tasks) as t:
@@ -185,7 +185,7 @@ def travis2(args=None):
     """executes the second Travis job (Javac build, GCC execution test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestGCC', tasks) as t:
         if t: runGCCTestCases()
 
@@ -193,7 +193,7 @@ def travis3(args=None):
     """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestNWCC', tasks) as t:
         if t: runNWCCTestCases()
     with Task('TestGCCSuiteCompile', tasks) as t:
@@ -205,7 +205,7 @@ def travis4(args=None):
     """executes the fourth Travis job (Javac build, LLVM and GCC test cases with BitCode parser)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestLLVMBC', tasks) as t:
         if t: runLLVMTestCases(['-Dsulong.TestBinaryParser=true'])
     with Task('TestGCCBC', tasks) as t:
@@ -215,7 +215,7 @@ def travisTestSulong(args=None):
     """executes the Sulong test cases (which also stress compilation)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestSulong', tasks) as t:
         if t: runTruffleTestCases()
 
@@ -223,7 +223,7 @@ def travisArgon2(args=None):
     """executes the argon2 Travis job (Javac build, argon2 test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--no-native', '--force-javac'])
+        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestArgon2', tasks) as t:
         if t: runTestArgon2(optimize=False)
 
@@ -556,7 +556,7 @@ def compileWithEcjStrict(args=None):
     """build project with the option --warning-as-error"""
     if mx.get_env('JDT'):
         mx.clean([])
-        mx.command_function('build')(['-p', '--no-native', '--warning-as-error'])
+        mx.command_function('build')(['-p', '--warning-as-error'])
     else:
         exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
 
