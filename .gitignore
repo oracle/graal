@@ -27,8 +27,6 @@ projects/*/\bin
 projects/*/\.checkstyle
 projects/*/*.iml
 projects/*/\.factorypath
-projects/com.oracle.truffle.llvm.test/argon2/phc-winner-argon2/**
-projects/com.oracle.truffle.llvm.test/argon2/pthread-stub/*.ll
 projects/com.oracle.truffle.llvm.test/suites/**
 projects/com.oracle.truffle.llvm.tools/tools/**
 projects/com.oracle.truffle.llvm.bench/languagegame/**
@@ -42,4 +40,7 @@ projects/com.intel.llvm.ireditor/xtend-gen/**
 projects/com.intel.llvm.ireditor/.launch/**
 projects/com.oracle.truffle.llvm.test/lifetime/**
 
-tests/cache/*
+tests/cache/**
+tests/argon2/phc-winner-argon2/**
+tests/argon2/pthread-stub/*.ll
+tests/llvm/test-suite-3.2.src/**
