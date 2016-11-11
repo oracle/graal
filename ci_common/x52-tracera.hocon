@@ -4,30 +4,35 @@ x52.tracera: ${x52.default} {
   }
 }
 
+x52.tracera-tmpfs10g : ${x52.tracera} {
+  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
+}
+
 builds += [
-  ${x52.tracera} ${bench-dacapo}              { name: "bench-dacapo-linux-x52-tracera" }
-  ${x52.tracera} ${bench-dacapo-timing}       { name: "bench-dacapo-timing-linux-x52-tracera" }
-  ${x52.tracera} ${bench-dacapo-move-profiling} { name: "bench-dacapo-move-profiling-linux-x52-tracera" }
-  ${x52.tracera} ${bench-scala-dacapo}        { name: "bench-scala-dacapo-linux-x52-tracera" }
-  ${x52.tracera} ${bench-scala-dacapo-timing} { name: "bench-scala-dacapo-timing-linux-x52-tracera" }
-  ${x52.tracera} ${bench-scala-dacapo-move-profiling} { name: "bench-scala-dacapo-move-profiling-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-dacapo}              { name: "bench-dacapo-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-dacapo-timing}       { name: "bench-dacapo-timing-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-dacapo-move-profiling} { name: "bench-dacapo-move-profiling-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo}        { name: "bench-scala-dacapo-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-timing} { name: "bench-scala-dacapo-timing-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-move-profiling} { name: "bench-scala-dacapo-move-profiling-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjvm2008-Single}  { name: "bench-specjvm2008-Single-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjvm2008-OneVM}   { name: "bench-specjvm2008-OneVM-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjbb2015}         { name: "bench-specjbb2015-linux-x52-tracera" }
   ${x52.tracera} ${bench-micros-graal}        { name: "bench-jmh-micros-graal-linux-x52-tracera" }
 ]
 
-x52.tracera-bu: ${x52.default} {
+x52.tracera-bu-tmpfs10g: ${x52.default} {
   environment : {
     JVM_CONFIG  : ${jvm-config.default}"-tracera-bu"
   }
+  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
 }
 
 builds += [
-  ${x52.tracera-bu} ${bench-dacapo}                      { targets : [weekly, bench], name: "bench-dacapo-linux-x52-tracera-bu" }
-  ${x52.tracera-bu} ${bench-dacapo-timing}               { targets : [weekly, bench], name: "bench-dacapo-timing-linux-x52-tracera-bu" }
-  ${x52.tracera-bu} ${bench-dacapo-move-profiling}       { targets : [weekly, bench], name: "bench-dacapo-move-profiling-linux-x52-tracera-bu" }
-  ${x52.tracera-bu} ${bench-scala-dacapo}                { targets : [weekly, bench], name: "bench-scala-dacapo-linux-x52-tracera-bu" }
-  ${x52.tracera-bu} ${bench-scala-dacapo-timing}         { targets : [weekly, bench], name: "bench-scala-dacapo-timing-linux-x52-tracera-bu" }
-  ${x52.tracera-bu} ${bench-scala-dacapo-move-profiling} { targets : [weekly, bench], name: "bench-scala-dacapo-move-profiling-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-dacapo}                      { targets : [weekly, bench], name: "bench-dacapo-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-timing}               { targets : [weekly, bench], name: "bench-dacapo-timing-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-dacapo-move-profiling}       { targets : [weekly, bench], name: "bench-dacapo-move-profiling-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-scala-dacapo}                { targets : [weekly, bench], name: "bench-scala-dacapo-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-scala-dacapo-timing}         { targets : [weekly, bench], name: "bench-scala-dacapo-timing-linux-x52-tracera-bu" }
+  ${x52.tracera-bu-tmpfs10g} ${bench-scala-dacapo-move-profiling} { targets : [weekly, bench], name: "bench-scala-dacapo-move-profiling-linux-x52-tracera-bu" }
 ]

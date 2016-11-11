@@ -1,5 +1,5 @@
 x32.default : ${commonLinux} {
-  capabilities: [linux, x32, no_frequency_scaling]
+  capabilities: [linux, x32, no_frequency_scaling, tmpfs10g]
   environment : {
     XMX         : "8g"
     XMS         : "8g"

@@ -9,13 +9,17 @@ x52.default : ${commonLinux} {
   }
 }
 
+x52.tmpfs10g : ${x52.default} {
+  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
+}
+
 builds += [
-  ${x52.default} ${bench-dacapo}              { name: "bench-dacapo-linux-x52" }
-  ${x52.default} ${bench-dacapo-timing}       { name: "bench-dacapo-timing-linux-x52" }
-  ${x52.default} ${bench-dacapo-move-profiling} { name: "bench-dacapo-move-profiling-linux-x52" }
-  ${x52.default} ${bench-scala-dacapo}        { name: "bench-scala-dacapo-linux-x52" }
-  ${x52.default} ${bench-scala-dacapo-timing} { name: "bench-scala-dacapo-timing-linux-x52" }
-  ${x52.default} ${bench-scala-dacapo-move-profiling} { name: "bench-scala-dacapo-move-profiling-linux-x52" }
+  ${x52.tmpfs10g} ${bench-dacapo}              { name: "bench-dacapo-linux-x52" }
+  ${x52.tmpfs10g} ${bench-dacapo-timing}       { name: "bench-dacapo-timing-linux-x52" }
+  ${x52.tmpfs10g} ${bench-dacapo-move-profiling} { name: "bench-dacapo-move-profiling-linux-x52" }
+  ${x52.tmpfs10g} ${bench-scala-dacapo}        { name: "bench-scala-dacapo-linux-x52" }
+  ${x52.tmpfs10g} ${bench-scala-dacapo-timing} { name: "bench-scala-dacapo-timing-linux-x52" }
+  ${x52.tmpfs10g} ${bench-scala-dacapo-move-profiling} { name: "bench-scala-dacapo-move-profiling-linux-x52" }
   ${x52.default} ${bench-specjvm2008-Single}  { name: "bench-specjvm2008-Single-linux-x52" }
   ${x52.default} ${bench-specjvm2008-OneVM}   { name: "bench-specjvm2008-OneVM-linux-x52" }
   ${x52.default} ${bench-specjbb2015}         { name: "bench-specjbb2015-linux-x52" }

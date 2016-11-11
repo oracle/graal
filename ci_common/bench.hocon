@@ -28,6 +28,13 @@ bench-common-8 : ${java8Downloads} {
   ]
 }
 
+hwloc.bench-common-8 : {
+  packages: {hwloc: ">=1.9"}
+  setup: ${bench-common-8.setup} [
+    ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--pid", "$$"]
+  ]
+}
+
 bench-dacapo: ${bench-common-8} {
   targets : [bench, post-merge]
   run: [
@@ -36,14 +43,14 @@ bench-dacapo: ${bench-common-8} {
 }
 
 bench-dacapo-timing: ${bench-common-8} {
-  targets: [daily]
+  targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-dacapo-timing} ${bench-arguments}
   ]
 }
 
 bench-dacapo-move-profiling: ${bench-common-8} {
-  targets: [daily]
+  targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments}
   ]
@@ -59,14 +66,14 @@ bench-scala-dacapo: ${bench-common-8} {
 }
 
 bench-scala-dacapo-timing: ${bench-common-8} {
-  targets: [daily]
+  targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
   ]
 }
 
 bench-scala-dacapo-move-profiling: ${bench-common-8} {
-  targets: [daily]
+  targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-scala-dacapo-move-profiling} ${bench-arguments}
   ]

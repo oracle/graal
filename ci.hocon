@@ -10,6 +10,7 @@ include "ci_common/gate_tasks.hocon"
 
 include "ci_common/bench.hocon"
 include "ci_common/x32.hocon"
+include "ci_common/x32-tracera.hocon"
 include "ci_common/x52.hocon"
 include "ci_common/x52-tracera.hocon"
 include "ci_common/x4150.hocon"
