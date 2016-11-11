@@ -668,7 +668,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
         PhiNode phi = merge.phis().first();
-        if (phi.usages().count() != 1 || condition().usages().count() != 1) {
+        if (phi.usages().count() != 1) {
             /*
              * For simplicity the below code assumes assumes the phi goes dead at the end so skip
              * this case.
@@ -676,6 +676,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
+        /*
+         * Check that the condition uses the phi and that there is only one user of the condition
+         * expression.
+         */
         if (!conditionUses(condition(), phi)) {
             return false;
         }
@@ -747,21 +751,25 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     /**
      * @param condition
      * @param phi
-     * @return true if the passed in {@code condition} uses {@code phi}.
+     * @return true if the passed in {@code condition} uses {@code phi} and the condition is only
+     *         used once. Since the phi will go dead the condition using it will also have to be
+     *         dead after the optimization.
      */
     private static boolean conditionUses(LogicNode condition, PhiNode phi) {
+        if (condition.usages().count() != 1) {
+            return false;
+        }
         if (condition instanceof ShortCircuitOrNode) {
-            // Temporarily disabled
-            // if (condition.graph().getGuardsStage().areDeoptsFixed()) {
-            // /*
-            // * It can be unsafe to simplify a ShortCircuitOr before deopts are fixed because
-            // * conversion to guards assumes that all the required conditions are being tested.
-            // * Simplfying the condition based on context before this happens may lose a
-            // * condition.
-            // */
-            // ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
-            // return conditionUses(orNode.x, phi) || conditionUses(orNode.y, phi);
-            // }
+            if (condition.graph().getGuardsStage().areDeoptsFixed()) {
+                /*
+                 * It can be unsafe to simplify a ShortCircuitOr before deopts are fixed because
+                 * conversion to guards assumes that all the required conditions are being tested.
+                 * Simplfying the condition based on context before this happens may lose a
+                 * condition.
+                 */
+                ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
+                return (conditionUses(orNode.x, phi) || conditionUses(orNode.y, phi));
+            }
         } else if (condition instanceof Canonicalizable.Unary<?>) {
             Canonicalizable.Unary<?> unary = (Canonicalizable.Unary<?>) condition;
             return unary.getValue() == phi;
