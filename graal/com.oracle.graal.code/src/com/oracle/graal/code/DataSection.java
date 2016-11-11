@@ -28,12 +28,13 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.function.BiConsumer;
+
+import com.oracle.graal.code.DataSection.Data;
 
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.SerializableConstant;
 import jdk.vm.ci.meta.VMConstant;
-
-import com.oracle.graal.code.DataSection.Data;
 
 public final class DataSection implements Iterable<Data> {
 
@@ -352,11 +353,32 @@ public final class DataSection implements Iterable<Data> {
      *            relocations in the data section
      */
     public void buildDataSection(ByteBuffer buffer, Patches patch) {
+        buildDataSection(buffer, patch, (r, s) -> {
+        });
+    }
+
+    /**
+     * Builds the data section into a given buffer.
+     *
+     * This must only be called once this object has been {@linkplain #closed() closed}. When this
+     * method returns, the buffers' position is just after the last data item.
+     * 
+     * @param buffer the {@link ByteBuffer} where the data section should be built. The buffer must
+     *            hold at least {@link #getSectionSize()} bytes.
+     * @param patch a {@link Patches} instance to receive {@link VMConstant constants} for
+     * @param onEmit a function that is called before emitting each data item with the
+     *            {@link DataSectionReference} and the size of the data.
+     */
+    public void buildDataSection(ByteBuffer buffer, Patches patch, BiConsumer<DataSectionReference, Integer> onEmit) {
         checkClosed();
+        assert buffer.remaining() >= sectionSize;
+        int start = buffer.position();
         for (Data d : dataItems) {
-            buffer.position(d.ref.getOffset());
+            buffer.position(start + d.ref.getOffset());
+            onEmit.accept(d.ref, d.getSize());
             d.emit(buffer, patch);
         }
+        buffer.position(start + sectionSize);
     }
 
     public Data findData(DataSectionReference ref) {
