@@ -586,6 +586,25 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
     public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
 
+    public final long sha1ImplCompress = getFieldValue("StubRoutines::_sha1_implCompress", Long.class, "address", 0L);
+    public final long sha1ImplCompressMB = getFieldValue("StubRoutines::_sha1_implCompressMB", Long.class, "address", 0L);
+    public final long sha256ImplCompress = getFieldValue("StubRoutines::_sha256_implCompress", Long.class, "address", 0L);
+    public final long sha256ImplCompressMB = getFieldValue("StubRoutines::_sha256_implCompressMB", Long.class, "address", 0L);
+    public final long sha512ImplCompress = getFieldValue("StubRoutines::_sha512_implCompress", Long.class, "address", 0L);
+    public final long sha512ImplCompressMB = getFieldValue("StubRoutines::_sha512_implCompressMB", Long.class, "address", 0L);
+    public final long multiplyToLen = getFieldValue("StubRoutines::_multiplyToLen", Long.class, "address", 0L);
+
+    public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address", 0L);
+    public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address", 0L);
+    public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address", 0L);
+    public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address", 0L);
+    public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address", 0L);
+    public final long squareToLen = getFieldValue("StubRoutines::_squareToLen", Long.class, "address", 0L);
+    public final long mulAdd = getFieldValue("StubRoutines::_mulAdd", Long.class, "address", 0L);
+    public final long montgomeryMultiply = getFieldValue("StubRoutines::_montgomeryMultiply", Long.class, "address", 0L);
+    public final long montgomerySquare = getFieldValue("StubRoutines::_montgomerySquare", Long.class, "address", 0L);
+    public final long vectorizedMismatch = getFieldValue("StubRoutines::_vectorizedMismatch", Long.class, "address", 0L);
+
     public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address", longNotPresentInJDK8);
 
     public final long jbyteArraycopy = getFieldValue("StubRoutines::_jbyte_arraycopy", Long.class, "address");
