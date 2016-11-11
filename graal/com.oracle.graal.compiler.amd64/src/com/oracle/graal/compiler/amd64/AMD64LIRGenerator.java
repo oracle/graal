@@ -43,7 +43,6 @@ import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.ConstantValue;
 import com.oracle.graal.lir.LIRFrameState;
@@ -112,8 +111,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     protected static final boolean canStoreConstant(JavaConstant c) {
         // there is no immediate move of 64-bit constants on Intel
         switch (c.getJavaKind()) {
-            case Long:
-                return Util.isInt(c.asLong());
+            case Long: {
+                long l = c.asLong();
+                return (int) l == l;
+            }
             case Double:
                 return false;
             case Object:
