@@ -45,9 +45,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * dog reports a long running compilation. Every
  * {@link Options#CompilationWatchDogStackTraceInterval} seconds after that point in time where the
  * same compilation is still executing, the watch dog takes a stack trace of the compiler thread. If
- * more than {@value #NON_FATAL_IDENTICAL_STACK_TRACES} contiguous identical stack traces are seen, the
- * watch dog starts reporting that the compilation appears to be stuck instead of simply taking a
- * long time.
+ * more than {@value Options#NonFatalIdenticalCompilationSnapshots} contiguous identical stack
+ * traces are seen, the watch dog reports a stuck compilation and exits the VM.
  */
 class CompilationWatchDog extends Thread implements AutoCloseable {
 
@@ -57,6 +56,9 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
         public static final OptionValue<Double> CompilationWatchDogStartDelay = new OptionValue<>(30.0D);
         @Option(help = "Interval in seconds between a watch dog reporting stack traces for long running compilations.", type = OptionType.Debug)
         public static final OptionValue<Double> CompilationWatchDogStackTraceInterval = new OptionValue<>(30.0D);
+        @Option(help = "Number of contiguous identical compiler thread stack traces allowed before the VM exits " +
+                       "on the basis of a stuck compilation.", type = OptionType.Debug)
+         public static final OptionValue<Integer> NonFatalIdenticalCompilationSnapshots = new OptionValue<>(10);
         // @formatter:on
     }
 
@@ -91,8 +93,6 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
     private static final long START_DELAY_MS = ms(Options.CompilationWatchDogStartDelay.getValue());
     private static final long STACK_TRACE_INTERVAL_MS = ms(Options.CompilationWatchDogStackTraceInterval.getValue());
     private static final boolean ENABLED = START_DELAY_MS > 0.0D;
-
-    private static final int NON_FATAL_IDENTICAL_STACK_TRACES = 10;
 
     private WatchDogState state = WatchDogState.SLEEPING;
     private final Thread compilerThread;
@@ -226,7 +226,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                                         numberOfIdenticalStackTraces = 0;
                                     }
                                     numberOfIdenticalStackTraces++;
-                                    if (numberOfIdenticalStackTraces > NON_FATAL_IDENTICAL_STACK_TRACES) {
+                                    if (numberOfIdenticalStackTraces > Options.NonFatalIdenticalCompilationSnapshots.getValue()) {
                                         synchronized (CompilationWatchDog.class) {
                                             TTY.printf("======================= WATCH DOG THREAD =======================%n" +
                                                             "%s took %d identical stack traces, which indicates a stuck compilation (id=%d) of %s%n%sExiting VM%n", this,
