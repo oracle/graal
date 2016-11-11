@@ -68,8 +68,8 @@ import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.virtual.EnsureVirtualizedNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.StableOptionKey;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerAddExactNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerMulExactNode;
 import com.oracle.graal.replacements.nodes.arithmetic.IntegerMulHighNode;
@@ -112,7 +112,7 @@ public class TruffleGraphBuilderPlugins {
 
     public static class Options {
         @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> TruffleIntrinsifyFrameAccess = new StableOptionValue<>(true);
+        public static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new StableOptionKey<>(true);
     }
 
     public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SnippetReflectionProvider snippetReflection) {

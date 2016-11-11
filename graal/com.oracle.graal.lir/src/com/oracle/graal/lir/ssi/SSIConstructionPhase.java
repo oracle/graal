@@ -31,7 +31,7 @@ import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.lir.ssa.SSAUtil;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.StableOptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
@@ -49,7 +49,7 @@ public final class SSIConstructionPhase extends AllocationPhase {
 
         //@formatter:off
         @Option(help = "Use fast SSI builder.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAFastSSIBuilder = new StableOptionValue<>(true);
+        public static final StableOptionKey<Boolean> TraceRAFastSSIBuilder = new StableOptionKey<>(true);
         //@formatter:on
     }
 

@@ -28,8 +28,8 @@ import org.junit.Test;
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -111,7 +111,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     @Test
     public void testRootNameWithinInstrumentationAtCallee() {
-        try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
+        try (OverrideScope s = OptionKey.override(GraalOptions.UseGraalInstrumentation, true)) {
             ResolvedJavaMethod method = getResolvedJavaMethod("callerSnippet1");
             executeExpected(method, null); // ensure the method is fully resolved
             rootNameInCallee = null;

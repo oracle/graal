@@ -31,28 +31,28 @@ import com.oracle.graal.lir.RedundantMoveElimination;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.profiling.MethodProfilingPhase;
 import com.oracle.graal.lir.profiling.MoveProfilingPhase;
-import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocationOptimizationContext> {
     public static class Options {
         // @formatter:off
         @Option(help = "", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptEdgeMoveOptimizer = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionKey LIROptEdgeMoveOptimizer = new NestedBooleanOptionKey(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptControlFlowOptimizer = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionKey LIROptControlFlowOptimizer = new NestedBooleanOptionKey(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptRedundantMoveElimination = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionKey LIROptRedundantMoveElimination = new NestedBooleanOptionKey(LIROptimization, true);
         @Option(help = "", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptNullCheckOptimizer = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionKey LIROptNullCheckOptimizer = new NestedBooleanOptionKey(LIROptimization, true);
         @Option(help = "Enables profiling of move types on LIR level. " +
                        "Move types are for example stores (register to stack), " +
                        "constant loads (constant to register) or copies (register to register).", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIRProfileMoves = new OptionValue<>(false);
+        public static final OptionKey<Boolean> LIRProfileMoves = new OptionKey<>(false);
         @Option(help = "Enables profiling of methods.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIRProfileMethods = new OptionValue<>(false);
+        public static final OptionKey<Boolean> LIRProfileMethods = new OptionKey<>(false);
         // @formatter:on
     }
 

@@ -40,8 +40,8 @@ import java.util.stream.IntStream;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.OptimizedOSRLoopNode;
@@ -282,7 +282,7 @@ public class OptimizedCallTargetTest {
         final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
 
         // test single include
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "foobar")) {
+        try (OverrideScope scope = OptionKey.override(TruffleCompilerOptions.TruffleCompileOnly, "foobar")) {
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
             for (int i = 0; i < compilationThreshold; i++) {
                 assertNotCompiled(target);
@@ -303,7 +303,7 @@ public class OptimizedCallTargetTest {
     public void testCompileOnly2() {
         final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
         // test single exclude
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "~foobar")) {
+        try (OverrideScope scope = OptionKey.override(TruffleCompilerOptions.TruffleCompileOnly, "~foobar")) {
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
             for (int i = 0; i < compilationThreshold; i++) {
                 assertNotCompiled(target);
@@ -323,7 +323,7 @@ public class OptimizedCallTargetTest {
     public void testCompileOnly3() {
         final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
         // test two includes/excludes
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "foo,baz")) {
+        try (OverrideScope scope = OptionKey.override(TruffleCompilerOptions.TruffleCompileOnly, "foo,baz")) {
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
             for (int i = 0; i < compilationThreshold; i++) {
                 assertNotCompiled(target);
@@ -352,7 +352,7 @@ public class OptimizedCallTargetTest {
     @Test
     public void testCompileOnly4() {
         // OSR should not trigger for compile-only includes
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "foobar")) {
+        try (OverrideScope scope = OptionKey.override(TruffleCompilerOptions.TruffleCompileOnly, "foobar")) {
             final OSRRepeatingNode repeating = new OSRRepeatingNode();
             final LoopNode loop = runtime.createLoopNode(repeating);
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {
@@ -392,7 +392,7 @@ public class OptimizedCallTargetTest {
     @Test
     public void testCompileOnly5() {
         // OSR should trigger if compile-only with excludes
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "~foobar")) {
+        try (OverrideScope scope = OptionKey.override(TruffleCompilerOptions.TruffleCompileOnly, "~foobar")) {
             final OSRRepeatingNode repeating = new OSRRepeatingNode();
             final LoopNode loop = runtime.createLoopNode(repeating);
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {

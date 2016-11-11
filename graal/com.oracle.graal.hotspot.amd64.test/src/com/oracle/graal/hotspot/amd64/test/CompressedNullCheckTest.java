@@ -32,8 +32,8 @@ import com.oracle.graal.hotspot.test.HotSpotGraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -57,7 +57,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         Container c = new Container();
         c.i = i;
 
-        try (OverrideScope s = OptionValue.override(GraalOptions.OptImplicitNullChecks, true)) {
+        try (OverrideScope s = OptionKey.override(GraalOptions.OptImplicitNullChecks, true)) {
             ResolvedJavaMethod method = getResolvedJavaMethod("testSnippet");
             Result expect = executeExpected(method, null, c);
 
@@ -76,7 +76,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         Container c = new Container();
         c.i = i;
 
-        try (OverrideScope s = OptionValue.override(GraalOptions.OptImplicitNullChecks, false)) {
+        try (OverrideScope s = OptionKey.override(GraalOptions.OptImplicitNullChecks, false)) {
             test("testSnippet", c);
         }
     }

@@ -85,12 +85,11 @@ import com.oracle.graal.debug.MethodFilter;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
-import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionsParser;
-import com.oracle.graal.options.OptionsParser.OptionConsumer;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
@@ -129,7 +128,7 @@ public final class CompileTheWorld {
      * </pre>
      */
     @SuppressWarnings("serial")
-    public static class Config extends HashMap<OptionValue<?>, Object> implements OptionConsumer {
+    public static class Config extends HashMap<OptionKey<?>, Object> {
         /**
          * Creates a {@link Config} object by parsing a set of space separated override options.
          *
@@ -143,7 +142,10 @@ public final class CompileTheWorld {
                 for (String optionSetting : options.split("\\s+|#")) {
                     OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
                 }
-                OptionsParser.parseOptions(optionSettings, this, ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader()));
+                OptionValues values = new OptionValues();
+                ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+                OptionsParser.parseOptions(optionSettings, values, loader);
+                values.copyInto(this);
             }
         }
 
@@ -152,12 +154,7 @@ public final class CompileTheWorld {
          * {@link OverrideScope#close()} is called on the returned object.
          */
         OverrideScope apply() {
-            return OptionValue.override(this);
-        }
-
-        @Override
-        public void set(OptionDescriptor desc, Object value) {
-            put(desc.getOptionValue(), value);
+            return OptionKey.override(this);
         }
     }
 

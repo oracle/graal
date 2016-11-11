@@ -38,7 +38,7 @@ import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
 import com.oracle.graal.lir.profiling.MoveProfiler.MoveStatistics;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaConstant;
@@ -54,7 +54,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable dynamic move profiling per method.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIRDynMoveProfilMethod = new OptionValue<>(false);
+        public static final OptionKey<Boolean> LIRDynMoveProfilMethod = new OptionKey<>(false);
         // @formatter:on
     }
 

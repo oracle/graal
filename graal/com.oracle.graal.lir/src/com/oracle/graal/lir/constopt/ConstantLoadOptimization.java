@@ -53,7 +53,7 @@ import com.oracle.graal.lir.constopt.ConstantTree.NodeCost;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase;
-import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 
@@ -72,7 +72,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
     public static class Options {
         // @formatter:off
         @Option(help = "Enable constant load optimization.", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptConstantLoadOptimization = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionKey LIROptConstantLoadOptimization = new NestedBooleanOptionKey(LIROptimization, true);
         // @formatter:on
     }
 

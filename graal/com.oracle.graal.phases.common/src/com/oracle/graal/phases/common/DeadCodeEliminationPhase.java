@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.Phase;
 
 public class DeadCodeEliminationPhase extends Phase {
@@ -39,7 +39,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
         // @formatter:off
         @Option(help = "Disable optional dead code eliminations", type = OptionType.Debug)
-        public static final OptionValue<Boolean> ReduceDCE = new OptionValue<>(true);
+        public static final OptionKey<Boolean> ReduceDCE = new OptionKey<>(true);
         // @formatter:on
     }
 

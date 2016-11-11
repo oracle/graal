@@ -33,7 +33,7 @@ import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
 
@@ -46,7 +46,7 @@ public abstract class LIRPhase<C> {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable LIR level optimiztations.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptimization = new OptionValue<>(true);
+        public static final OptionKey<Boolean> LIROptimization = new OptionKey<>(true);
         // @formatter:on
     }
 

@@ -29,7 +29,7 @@ import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.hotspot.CompilerConfigurationFactory;
 import com.oracle.graal.hotspot.HotSpotGraalCompilerFactory;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
@@ -44,7 +44,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
     static class Options {
         // @formatter:off
         @Option(help = "Select a Graal compiler configuration for Truffle compilation (default: use Graal system compiler configuration).")
-        public static final OptionValue<String> TruffleCompilerConfiguration = new OptionValue<>(null);
+        public static final OptionKey<String> TruffleCompilerConfiguration = new OptionKey<>(null);
         // @formatter:on
     }
 

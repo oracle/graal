@@ -35,8 +35,8 @@ import java.util.TreeSet;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.StableOptionKey;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -47,7 +47,7 @@ class CompilationCounters {
         // @formatter:off
         @Option(help = "The number of compilations allowed for any method before " +
                        "the VM exits (a value of 0 means there is no limit).", type = OptionType.Debug)
-        public static final OptionValue<Integer> CompilationCountLimit = new StableOptionValue<>(0);
+        public static final OptionKey<Integer> CompilationCountLimit = new StableOptionKey<>(0);
         // @formatter:on
     }
 

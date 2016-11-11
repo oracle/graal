@@ -52,7 +52,7 @@ import com.oracle.graal.lir.framemap.SimpleVirtualStackSlot;
 import com.oracle.graal.lir.framemap.VirtualStackSlotRange;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
-import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 
@@ -76,7 +76,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptLSStackSlotAllocator = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionKey LIROptLSStackSlotAllocator = new NestedBooleanOptionKey(LIROptimization, true);
         // @formatter:on
     }
 

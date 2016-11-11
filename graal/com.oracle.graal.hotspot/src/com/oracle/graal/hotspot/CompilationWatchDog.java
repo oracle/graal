@@ -29,7 +29,7 @@ import java.util.Arrays;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -53,12 +53,12 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
     public static class Options {
         // @formatter:off
         @Option(help = "Delay in seconds before watch dog monitoring a compilation (0 disables monitoring).", type = OptionType.Debug)
-        public static final OptionValue<Double> CompilationWatchDogStartDelay = new OptionValue<>(30.0D);
+        public static final OptionKey<Double> CompilationWatchDogStartDelay = new OptionKey<>(30.0D);
         @Option(help = "Interval in seconds between a watch dog reporting stack traces for long running compilations.", type = OptionType.Debug)
-        public static final OptionValue<Double> CompilationWatchDogStackTraceInterval = new OptionValue<>(30.0D);
+        public static final OptionKey<Double> CompilationWatchDogStackTraceInterval = new OptionKey<>(30.0D);
         @Option(help = "Number of contiguous identical compiler thread stack traces allowed before the VM exits " +
                        "on the basis of a stuck compilation.", type = OptionType.Debug)
-         public static final OptionValue<Integer> NonFatalIdenticalCompilationSnapshots = new OptionValue<>(10);
+         public static final OptionKey<Integer> NonFatalIdenticalCompilationSnapshots = new OptionKey<>(10);
         // @formatter:on
     }
 

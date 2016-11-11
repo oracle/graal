@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.policy.GreedyInliningPolicy;
@@ -41,7 +41,7 @@ public class InliningPhase extends AbstractInliningPhase {
     public static class Options {
 
         @Option(help = "Unconditionally inline intrinsics", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> AlwaysInlineIntrinsics = new OptionValue<>(false);
+        public static final OptionKey<Boolean> AlwaysInlineIntrinsics = new OptionKey<>(false);
 
         /**
          * This is a defensive measure against known pathologies of the inliner where the breadth of
@@ -49,7 +49,7 @@ public class InliningPhase extends AbstractInliningPhase {
          * in reasonable time.
          */
         @Option(help = "Per-compilation method inlining exploration limit before giving up (use 0 to disable)", type = OptionType.Debug)//
-        public static final OptionValue<Integer> MethodInlineBailoutLimit = new OptionValue<>(5000);
+        public static final OptionKey<Integer> MethodInlineBailoutLimit = new OptionKey<>(5000);
     }
 
     private final InliningPolicy inliningPolicy;

@@ -57,7 +57,7 @@ import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.nodes.UnwindNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.tiers.SuitesProvider;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;
@@ -80,12 +80,12 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static class Options {
         // @formatter:off
         @Option(help = "Use Graal stubs instead of HotSpot stubs where possible")
-        public static final OptionValue<Boolean> PreferGraalStubs = new OptionValue<>(false);
+        public static final OptionKey<Boolean> PreferGraalStubs = new OptionKey<>(false);
         @Option(help = "Use Graal arithmetic stubs instead of HotSpot stubs where possible")
-        public static final OptionValue<Boolean> GraalArithmeticStubs = new OptionValue<>(true);
+        public static final OptionKey<Boolean> GraalArithmeticStubs = new OptionKey<>(true);
         @Option(help = "Enables instruction profiling on assembler level. Valid values are a comma separated list of supported instructions." +
                         " Compare with subclasses of Assembler.InstructionCounter.", type = OptionType.Debug)
-        public static final OptionValue<String> ASMInstructionProfiling = new OptionValue<>(null);
+        public static final OptionKey<String> ASMInstructionProfiling = new OptionKey<>(null);
         // @formatter:on
     }
 

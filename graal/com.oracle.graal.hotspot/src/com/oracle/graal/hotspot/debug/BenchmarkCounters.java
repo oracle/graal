@@ -45,8 +45,8 @@ import com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.StableOptionKey;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
@@ -90,26 +90,26 @@ public class BenchmarkCounters {
 
         //@formatter:off
         @Option(help = "Turn on the benchmark counters, and displays the results on VM shutdown", type = OptionType.Debug)
-        public static final OptionValue<Boolean> GenericDynamicCounters = new OptionValue<>(false);
+        public static final OptionKey<Boolean> GenericDynamicCounters = new OptionKey<>(false);
         @Option(help = "Turn on the benchmark counters, and displays the results every n milliseconds", type = OptionType.Debug)
-        public static final OptionValue<Integer> TimedDynamicCounters = new OptionValue<>(-1);
+        public static final OptionKey<Integer> TimedDynamicCounters = new OptionKey<>(-1);
 
         @Option(help = "Turn on the benchmark counters, and listen for specific patterns on System.out/System.err:%n" +
                        "Format: (err|out),start pattern,end pattern (~ matches multiple digits)%n" +
                        "Examples:%n" +
                        "  dacapo = 'err, starting =====, PASSED in'%n" +
                        "  specjvm2008 = 'out,Iteration ~ (~s) begins:,Iteration ~ (~s) ends:'", type = OptionType.Debug)
-        public static final OptionValue<String> BenchmarkDynamicCounters = new OptionValue<>(null);
+        public static final OptionKey<String> BenchmarkDynamicCounters = new OptionKey<>(null);
         @Option(help = "Use grouping separators for number printing", type = OptionType.Debug)
-        public static final OptionValue<Boolean> DynamicCountersPrintGroupSeparator = new OptionValue<>(true);
+        public static final OptionKey<Boolean> DynamicCountersPrintGroupSeparator = new OptionKey<>(true);
         @Option(help = "Print in human readable format", type = OptionType.Debug)
-        public static final OptionValue<Boolean> DynamicCountersHumanReadable = new OptionValue<>(true);
+        public static final OptionKey<Boolean> DynamicCountersHumanReadable = new OptionKey<>(true);
         @Option(help = "Benchmark counters log file (default is stdout)", type = OptionType.Debug)
-        public static final OptionValue<String> BenchmarkCountersFile = new OptionValue<>(null);
+        public static final OptionKey<String> BenchmarkCountersFile = new OptionKey<>(null);
         @Option(help = "Dump dynamic counters", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> BenchmarkCountersDumpDynamic = new StableOptionValue<>(true);
+        public static final StableOptionKey<Boolean> BenchmarkCountersDumpDynamic = new StableOptionKey<>(true);
         @Option(help = "Dump static counters", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> BenchmarkCountersDumpStatic = new StableOptionValue<>(false);
+        public static final StableOptionKey<Boolean> BenchmarkCountersDumpStatic = new StableOptionKey<>(false);
         //@formatter:on
     }
 

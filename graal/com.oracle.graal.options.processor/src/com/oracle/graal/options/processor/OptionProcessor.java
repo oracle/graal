@@ -55,7 +55,7 @@ import javax.tools.JavaFileObject;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 /**
  * Processes static fields annotated with {@link Option}. An {@link OptionDescriptors}
@@ -96,14 +96,14 @@ public class OptionProcessor extends AbstractProcessor {
 
         TypeMirror fieldType = field.asType();
         if (fieldType.getKind() != TypeKind.DECLARED) {
-            processingEnv.getMessager().printMessage(Kind.ERROR, "Option field must be of type " + OptionValue.class.getName(), element);
+            processingEnv.getMessager().printMessage(Kind.ERROR, "Option field must be of type " + OptionKey.class.getName(), element);
             return;
         }
         DeclaredType declaredFieldType = (DeclaredType) fieldType;
 
-        TypeMirror optionValueType = elements.getTypeElement(OptionValue.class.getName()).asType();
-        if (!types.isSubtype(fieldType, types.erasure(optionValueType))) {
-            String msg = String.format("Option field type %s is not a subclass of %s", fieldType, optionValueType);
+        TypeMirror optionKeyType = elements.getTypeElement(OptionKey.class.getName()).asType();
+        if (!types.isSubtype(fieldType, types.erasure(optionKeyType))) {
+            String msg = String.format("Option field type %s is not a subclass of %s", fieldType, optionKeyType);
             processingEnv.getMessager().printMessage(Kind.ERROR, msg, element);
             return;
         }
@@ -136,15 +136,15 @@ public class OptionProcessor extends AbstractProcessor {
             return;
         }
 
-        DeclaredType declaredOptionValueType = declaredFieldType;
-        while (!types.isSameType(types.erasure(declaredOptionValueType), types.erasure(optionValueType))) {
+        DeclaredType declaredOptionKeyType = declaredFieldType;
+        while (!types.isSameType(types.erasure(declaredOptionKeyType), types.erasure(optionKeyType))) {
             List<? extends TypeMirror> directSupertypes = types.directSupertypes(declaredFieldType);
             assert !directSupertypes.isEmpty();
-            declaredOptionValueType = (DeclaredType) directSupertypes.get(0);
+            declaredOptionKeyType = (DeclaredType) directSupertypes.get(0);
         }
 
-        assert !declaredOptionValueType.getTypeArguments().isEmpty();
-        String optionType = declaredOptionValueType.getTypeArguments().get(0).toString();
+        assert !declaredOptionKeyType.getTypeArguments().isEmpty();
+        String optionType = declaredOptionKeyType.getTypeArguments().get(0).toString();
         if (optionType.startsWith("java.lang.")) {
             optionType = optionType.substring("java.lang.".length());
         }
@@ -213,21 +213,21 @@ public class OptionProcessor extends AbstractProcessor {
             }
             for (OptionInfo option : info.options) {
                 String name = option.name;
-                String optionValue;
+                String optionField;
                 if (option.field.getModifiers().contains(Modifier.PRIVATE)) {
                     throw new InternalError();
                 } else {
-                    optionValue = option.declaringClass + "." + option.field.getSimpleName();
+                    optionField = option.declaringClass + "." + option.field.getSimpleName();
                 }
                 String type = option.type;
                 String help = option.help;
                 String declaringClass = option.declaringClass;
                 Name fieldName = option.field.getSimpleName();
                 if (info.options.size() == 1) {
-                    out.printf("            return %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s);\n", desc, name, type, help, declaringClass, fieldName, optionValue);
+                    out.printf("            return %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s);\n", desc, name, type, help, declaringClass, fieldName, optionField);
                 } else {
                     out.printf("            case \"" + name + "\": return %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s);\n", desc, name, type, help, declaringClass, fieldName,
-                                    optionValue);
+                                    optionField);
                 }
             }
             out.println("        }");
@@ -240,11 +240,11 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("        // CheckStyle: stop line length check");
             out.println("        List<" + desc + "> options = Arrays.asList(");
             for (OptionInfo option : info.options) {
-                String optionValue;
+                String optionField;
                 if (option.field.getModifiers().contains(Modifier.PRIVATE)) {
                     throw new InternalError();
                 } else {
-                    optionValue = option.declaringClass + "." + option.field.getSimpleName();
+                    optionField = option.declaringClass + "." + option.field.getSimpleName();
                 }
                 String name = option.name;
                 String type = option.type;
@@ -252,7 +252,7 @@ public class OptionProcessor extends AbstractProcessor {
                 String declaringClass = option.declaringClass;
                 Name fieldName = option.field.getSimpleName();
                 String comma = i == info.options.size() - 1 ? "" : ",";
-                out.printf("            %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s)%s\n", desc, name, type, help, declaringClass, fieldName, optionValue, comma);
+                out.printf("            %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s)%s\n", desc, name, type, help, declaringClass, fieldName, optionField, comma);
                 i++;
             }
             out.println("        );");

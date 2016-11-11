@@ -44,8 +44,8 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Management;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.TimeSource;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -225,7 +225,7 @@ public class CompilationTask {
                  * Graal.
                  */
                 boolean disableInlining = !config.inline && !Inline.hasBeenSet();
-                try (OverrideScope s1 = disableInlining ? OptionValue.override(Inline, false) : null) {
+                try (OverrideScope s1 = disableInlining ? OptionKey.override(Inline, false) : null) {
                     result = compiler.compile(method, entryBCI, useProfilingInfo);
                 }
             } catch (Throwable e) {

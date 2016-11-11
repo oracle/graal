@@ -74,7 +74,7 @@ import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.StableOptionKey;
 import com.oracle.graal.replacements.InlineDuringParsingPlugin;
 import com.oracle.graal.replacements.InlineGraalDirectivesPlugin;
 import com.oracle.graal.replacements.MethodHandlePlugin;
@@ -373,12 +373,12 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerStableOptionPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
-        Registration r = new Registration(plugins, StableOptionValue.class);
+        Registration r = new Registration(plugins, StableOptionKey.class);
         r.register1("getValue", Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant()) {
-                    StableOptionValue<?> option = snippetReflection.asObject(StableOptionValue.class, (JavaConstant) receiver.get().asConstant());
+                    StableOptionKey<?> option = snippetReflection.asObject(StableOptionKey.class, (JavaConstant) receiver.get().asConstant());
                     b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(option.getValue()), b.getMetaAccess()));
                     return true;
                 }

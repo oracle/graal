@@ -31,8 +31,8 @@ import org.junit.Test;
 
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.jtt.JTTTest;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 
 public class ConstantPhiTest extends JTTTest {
 
@@ -59,7 +59,7 @@ public class ConstantPhiTest extends JTTTest {
     @Test
     @SuppressWarnings("try")
     public void run0() {
-        try (OverrideScope os = OptionValue.override(GraalOptions.MaximumInliningSize, -1)) {
+        try (OverrideScope os = OptionKey.override(GraalOptions.MaximumInliningSize, -1)) {
             runTest("test", 0, 0xDEADDEAD);
         }
     }
@@ -67,7 +67,7 @@ public class ConstantPhiTest extends JTTTest {
     @Test
     @SuppressWarnings("try")
     public void run1() {
-        try (OverrideScope os = OptionValue.override(GraalOptions.MaximumInliningSize, -1)) {
+        try (OverrideScope os = OptionKey.override(GraalOptions.MaximumInliningSize, -1)) {
             runTest("test", -1, 0xDEADDEAD);
         }
     }
@@ -75,7 +75,7 @@ public class ConstantPhiTest extends JTTTest {
     @Test
     @SuppressWarnings("try")
     public void run2() {
-        try (OverrideScope os = OptionValue.override(GraalOptions.MaximumInliningSize, -1)) {
+        try (OverrideScope os = OptionKey.override(GraalOptions.MaximumInliningSize, -1)) {
             runTest("test", 1, 0xDEADDEAD);
         }
     }

@@ -22,7 +22,8 @@
  */
 package com.oracle.graal.options;
 
-import java.util.ArrayList;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,9 +34,9 @@ import java.util.ServiceLoader;
 /**
  * An option value.
  */
-public class OptionValue<T> {
+public class OptionKey<T> {
     /**
-     * Temporarily changes the value for an option. The {@linkplain OptionValue#getValue() value} of
+     * Temporarily changes the value for an option. The {@linkplain OptionKey#getValue() value} of
      * {@code option} is set to {@code value} until {@link OverrideScope#close()} is called on the
      * object returned by this method.
      * <p>
@@ -43,25 +44,25 @@ public class OptionValue<T> {
      * used:
      *
      * <pre>
-     * try (OverrideScope s = OptionValue.override(myOption, myValue)) {
+     * try (OverrideScope s = OptionKey.override(myOption, myValue)) {
      *     // code that depends on myOption == myValue
      * }
      * </pre>
      */
-    public static OverrideScope override(OptionValue<?> option, Object value) {
+    public static OverrideScope override(OptionKey<?> option, Object value) {
         OverrideScope current = getOverrideScope();
         if (current == null) {
             if (!value.equals(option.getValue())) {
                 return new SingleOverrideScope(option, value);
             }
-            Map<OptionValue<?>, Object> overrides = Collections.emptyMap();
+            Map<OptionKey<?>, Object> overrides = Collections.emptyMap();
             return new MultipleOverridesScope(current, overrides);
         }
         return new MultipleOverridesScope(current, option, value);
     }
 
     /**
-     * Temporarily changes the values for a set of options. The {@linkplain OptionValue#getValue()
+     * Temporarily changes the values for a set of options. The {@linkplain OptionKey#getValue()
      * value} of each {@code option} in {@code overrides} is set to the corresponding {@code value}
      * in {@code overrides} until {@link OverrideScope#close()} is called on the object returned by
      * this method.
@@ -70,19 +71,19 @@ public class OptionValue<T> {
      * used:
      *
      * <pre>
-     * Map&lt;OptionValue, Object&gt; overrides = new HashMap&lt;&gt;();
+     * Map&lt;OptionKey, Object&gt; overrides = new HashMap&lt;&gt;();
      * overrides.put(myOption1, myValue1);
      * overrides.put(myOption2, myValue2);
-     * try (OverrideScope s = OptionValue.override(overrides)) {
+     * try (OverrideScope s = OptionKey.override(overrides)) {
      *     // code that depends on myOption == myValue
      * }
      * </pre>
      */
-    public static OverrideScope override(Map<OptionValue<?>, Object> overrides) {
+    public static OverrideScope override(Map<OptionKey<?>, Object> overrides) {
         OverrideScope current = getOverrideScope();
         if (current == null && overrides.size() == 1) {
-            Entry<OptionValue<?>, Object> single = overrides.entrySet().iterator().next();
-            OptionValue<?> option = single.getKey();
+            Entry<OptionKey<?>, Object> single = overrides.entrySet().iterator().next();
+            OptionKey<?> option = single.getKey();
             Object overrideValue = single.getValue();
             return new SingleOverrideScope(option, overrideValue);
         }
@@ -90,7 +91,7 @@ public class OptionValue<T> {
     }
 
     /**
-     * Temporarily changes the values for a set of options. The {@linkplain OptionValue#getValue()
+     * Temporarily changes the values for a set of options. The {@linkplain OptionKey#getValue()
      * value} of each {@code option} in {@code overrides} is set to the corresponding {@code value}
      * in {@code overrides} until {@link OverrideScope#close()} is called on the object returned by
      * this method.
@@ -99,7 +100,7 @@ public class OptionValue<T> {
      * used:
      *
      * <pre>
-     * try (OverrideScope s = OptionValue.override(myOption1, myValue1, myOption2, myValue2)) {
+     * try (OverrideScope s = OptionKey.override(myOption1, myValue1, myOption2, myValue2)) {
      *     // code that depends on myOption == myValue
      * }
      * </pre>
@@ -109,15 +110,15 @@ public class OptionValue<T> {
     public static OverrideScope override(Object... overrides) {
         OverrideScope current = getOverrideScope();
         if (current == null && overrides.length == 2) {
-            OptionValue<?> option = (OptionValue<?>) overrides[0];
+            OptionKey<?> option = (OptionKey<?>) overrides[0];
             Object overrideValue = overrides[1];
             if (!overrideValue.equals(option.getValue())) {
                 return new SingleOverrideScope(option, overrideValue);
             }
         }
-        Map<OptionValue<?>, Object> map = Collections.emptyMap();
+        Map<OptionKey<?>, Object> map = Collections.emptyMap();
         for (int i = 0; i < overrides.length; i += 2) {
-            OptionValue<?> option = (OptionValue<?>) overrides[i];
+            OptionKey<?> option = (OptionKey<?>) overrides[i];
             Object overrideValue = overrides[i + 1];
             if (!overrideValue.equals(option.getValue())) {
                 if (map.isEmpty()) {
@@ -141,20 +142,12 @@ public class OptionValue<T> {
 
     private T defaultValue;
 
-    /**
-     * The raw option value.
-     */
-    protected T value;
-
     private OptionDescriptor descriptor;
 
-    @SuppressWarnings("unchecked")
-    public OptionValue(T value) {
+    public OptionKey(T value) {
         this.defaultValue = value;
-        this.value = (T) DEFAULT;
     }
 
-    private static final Object DEFAULT = "DEFAULT";
     private static final Object UNINITIALIZED = "UNINITIALIZED";
 
     /**
@@ -162,9 +155,8 @@ public class OptionValue<T> {
      * {@link #defaultValue() lazily}.
      */
     @SuppressWarnings("unchecked")
-    protected OptionValue() {
+    protected OptionKey() {
         this.defaultValue = (T) UNINITIALIZED;
-        this.value = (T) DEFAULT;
     }
 
     /**
@@ -221,7 +213,7 @@ public class OptionValue<T> {
 
     @Override
     public String toString() {
-        return getName() + "=" + getValue();
+        return getName();
     }
 
     /**
@@ -241,7 +233,7 @@ public class OptionValue<T> {
      * current value is different than the default.
      */
     public boolean hasBeenSet() {
-        if (!(this instanceof StableOptionValue)) {
+        if (!(this instanceof StableOptionKey)) {
             getValue(); // ensure initialized
 
             OverrideScope overrideScope = getOverrideScope();
@@ -252,14 +244,15 @@ public class OptionValue<T> {
                 }
             }
         }
-        return value != DEFAULT;
+        return GLOBAL.containsKey(this);
     }
 
     /**
      * Gets the value of this option.
      */
+    @SuppressWarnings("unchecked")
     public T getValue() {
-        if (!(this instanceof StableOptionValue)) {
+        if (!(this instanceof StableOptionKey)) {
             OverrideScope overrideScope = getOverrideScope();
             if (overrideScope != null) {
                 T override = overrideScope.getOverride(this);
@@ -268,48 +261,22 @@ public class OptionValue<T> {
                 }
             }
         }
-        if (value != DEFAULT) {
-            return value;
-        } else {
-            return getDefaultValue();
+        if (GLOBAL.containsKey(this)) {
+            return (T) GLOBAL.get(this);
         }
-    }
-
-    /**
-     * Gets the values of this option including overridden values.
-     *
-     * @param c the collection to which the values are added. If null, one is allocated.
-     * @return the collection to which the values were added in order from most overridden to
-     *         current value
-     */
-    @SuppressWarnings("unchecked")
-    public Collection<T> getValues(Collection<T> c) {
-        Collection<T> values = c == null ? new ArrayList<>() : c;
-        if (!(this instanceof StableOptionValue)) {
-            OverrideScope overrideScope = getOverrideScope();
-            if (overrideScope != null) {
-                overrideScope.getOverrides(this, (Collection<Object>) values);
-            }
-        }
-        if (value != DEFAULT) {
-            values.add(value);
-        } else {
-            values.add(getDefaultValue());
-        }
-        return values;
+        return getDefaultValue();
     }
 
     /**
      * Sets the value of this option.
      */
-    @SuppressWarnings("unchecked")
     public void setValue(Object v) {
-        this.value = (T) v;
+        GLOBAL.set(this, v);
     }
 
     /**
      * An object whose {@link #close()} method reverts the option value overriding initiated by
-     * {@link OptionValue#override(OptionValue, Object)} or {@link OptionValue#override(Map)}.
+     * {@link OptionKey#override(OptionKey, Object)} or {@link OptionKey#override(Map)}.
      */
     public abstract static class OverrideScope implements AutoCloseable {
 
@@ -328,11 +295,11 @@ public class OptionValue<T> {
             return ret;
         }
 
-        abstract void addToInherited(Map<OptionValue<?>, Object> inherited);
+        abstract void addToInherited(Map<OptionKey<?>, Object> inherited);
 
-        abstract <T> T getOverride(OptionValue<T> option);
+        abstract <T> T getOverride(OptionKey<T> option);
 
-        abstract void getOverrides(OptionValue<?> option, Collection<Object> c);
+        abstract void getOverrides(OptionKey<?> option, Collection<Object> c);
 
         @Override
         public abstract void close();
@@ -340,11 +307,11 @@ public class OptionValue<T> {
 
     static class SingleOverrideScope extends OverrideScope {
 
-        private final OptionValue<?> option;
+        private final OptionKey<?> option;
         private final Object value;
 
-        SingleOverrideScope(OptionValue<?> option, Object value) {
-            if (option instanceof StableOptionValue) {
+        SingleOverrideScope(OptionKey<?> option, Object value) {
+            if (option instanceof StableOptionKey) {
                 throw new IllegalArgumentException("Cannot override stable option " + option);
             }
             this.option = option;
@@ -353,13 +320,13 @@ public class OptionValue<T> {
         }
 
         @Override
-        void addToInherited(Map<OptionValue<?>, Object> inherited) {
+        void addToInherited(Map<OptionKey<?>, Object> inherited) {
             inherited.put(option, value);
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        <T> T getOverride(OptionValue<T> key) {
+        <T> T getOverride(OptionKey<T> key) {
             if (key == this.option) {
                 return (T) value;
             }
@@ -367,7 +334,7 @@ public class OptionValue<T> {
         }
 
         @Override
-        void getOverrides(OptionValue<?> key, Collection<Object> c) {
+        void getOverrides(OptionKey<?> key, Collection<Object> c) {
             if (key == this.option) {
                 c.add(value);
             }
@@ -381,15 +348,15 @@ public class OptionValue<T> {
 
     static class MultipleOverridesScope extends OverrideScope {
         final OverrideScope parent;
-        final Map<OptionValue<?>, Object> overrides;
+        final Map<OptionKey<?>, Object> overrides;
 
-        MultipleOverridesScope(OverrideScope parent, OptionValue<?> option, Object value) {
+        MultipleOverridesScope(OverrideScope parent, OptionKey<?> option, Object value) {
             this.parent = parent;
             this.overrides = new HashMap<>();
             if (parent != null) {
                 parent.addToInherited(overrides);
             }
-            if (option instanceof StableOptionValue) {
+            if (option instanceof StableOptionKey) {
                 throw new IllegalArgumentException("Cannot override stable option " + option);
             }
             if (!value.equals(option.getValue())) {
@@ -400,7 +367,7 @@ public class OptionValue<T> {
             }
         }
 
-        MultipleOverridesScope(OverrideScope parent, Map<OptionValue<?>, Object> overrides) {
+        MultipleOverridesScope(OverrideScope parent, Map<OptionKey<?>, Object> overrides) {
             this.parent = parent;
             if (overrides.isEmpty() && parent == null) {
                 this.overrides = Collections.emptyMap();
@@ -410,9 +377,9 @@ public class OptionValue<T> {
             if (parent != null) {
                 parent.addToInherited(this.overrides);
             }
-            for (Map.Entry<OptionValue<?>, Object> e : overrides.entrySet()) {
-                OptionValue<?> option = e.getKey();
-                if (option instanceof StableOptionValue) {
+            for (Map.Entry<OptionKey<?>, Object> e : overrides.entrySet()) {
+                OptionKey<?> option = e.getKey();
+                if (option instanceof StableOptionKey) {
                     throw new IllegalArgumentException("Cannot override stable option " + option);
                 }
                 this.overrides.put(option, e.getValue());
@@ -423,7 +390,7 @@ public class OptionValue<T> {
         }
 
         @Override
-        void addToInherited(Map<OptionValue<?>, Object> inherited) {
+        void addToInherited(Map<OptionKey<?>, Object> inherited) {
             if (parent != null) {
                 parent.addToInherited(inherited);
             }
@@ -432,12 +399,12 @@ public class OptionValue<T> {
 
         @SuppressWarnings("unchecked")
         @Override
-        <T> T getOverride(OptionValue<T> option) {
+        <T> T getOverride(OptionKey<T> option) {
             return (T) overrides.get(option);
         }
 
         @Override
-        void getOverrides(OptionValue<?> option, Collection<Object> c) {
+        void getOverrides(OptionKey<?> option, Collection<Object> c) {
             Object v = overrides.get(option);
             if (v != null) {
                 c.add(v);

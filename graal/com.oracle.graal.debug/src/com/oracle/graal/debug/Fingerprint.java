@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 /**
  * Facility for fingerprinting execution.
@@ -38,13 +38,13 @@ public class Fingerprint implements AutoCloseable {
 
     public static class Options {
         @Option(help = "Enables execution fingerprinting.")//
-        public static final OptionValue<Boolean> UseFingerprinting = new OptionValue<>(false);
+        public static final OptionKey<Boolean> UseFingerprinting = new OptionKey<>(false);
 
         @Option(help = "Limit number of events shown in fingerprinting error message.")//
-        public static final OptionValue<Integer> FingerprintErrorEventTailLength = new OptionValue<>(50);
+        public static final OptionKey<Integer> FingerprintErrorEventTailLength = new OptionKey<>(50);
 
         @Option(help = "Fingerprinting event at which to execute breakpointable code.")//
-        public static final OptionValue<Integer> FingerprintingBreakpointEvent = new OptionValue<>(-1);
+        public static final OptionKey<Integer> FingerprintingBreakpointEvent = new OptionKey<>(-1);
     }
 
     /**

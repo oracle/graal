@@ -25,12 +25,12 @@ package com.oracle.graal.options;
 /**
  * An option that always returns the same {@linkplain #getValue() value}.
  */
-public class StableOptionValue<T> extends OptionValue<T> {
+public class StableOptionKey<T> extends OptionKey<T> {
 
     /**
      * Creates a stable option value.
      */
-    public StableOptionValue(T value) {
+    public StableOptionKey(T value) {
         super(value);
     }
 
@@ -44,7 +44,7 @@ public class StableOptionValue<T> extends OptionValue<T> {
      * Creates an uninitialized stable option value for a subclass that initializes itself
      * {@link #defaultValue() lazily}.
      */
-    public StableOptionValue() {
+    public StableOptionKey() {
     }
 
     /**

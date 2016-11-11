@@ -44,7 +44,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import com.oracle.graal.debug.CSVUtil;
 import com.oracle.graal.debug.Management;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.sun.management.ThreadMXBean;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
@@ -56,7 +56,7 @@ public final class CompilationStatistics {
     public static class Options {
         // @formatter:off
         @Option(help = "Enables CompilationStatistics.")
-        public static final OptionValue<Boolean> UseCompilationStatistics = new OptionValue<>(false);
+        public static final OptionKey<Boolean> UseCompilationStatistics = new OptionKey<>(false);
         // @formatter:on
     }
 

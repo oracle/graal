@@ -56,10 +56,10 @@ import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
@@ -80,7 +80,7 @@ public class LinearScan {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final OptionKey<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionKey(LIROptimization, true);
         // @formatter:on
     }
 

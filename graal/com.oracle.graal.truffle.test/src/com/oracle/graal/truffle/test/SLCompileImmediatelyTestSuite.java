@@ -30,8 +30,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.truffle.sl.test.SLSimpleTestSuite;
 import com.oracle.truffle.sl.test.SLTestRunner;
@@ -55,10 +55,10 @@ public class SLCompileImmediatelyTestSuite {
          * it has all nodes in the uninitialized specialization. This means that most methods are
          * compiled multiple times, in different specialization states.
          */
-        Map<OptionValue<?>, Object> newOptionValues = new HashMap<>();
+        Map<OptionKey<?>, Object> newOptionValues = new HashMap<>();
         newOptionValues.put(TruffleCompilerOptions.TruffleCompileImmediately, true);
         newOptionValues.put(TruffleCompilerOptions.TruffleBackgroundCompilation, false);
-        oldOptionValues = OptionValue.override(newOptionValues);
+        oldOptionValues = OptionKey.override(newOptionValues);
     }
 
     @AfterClass

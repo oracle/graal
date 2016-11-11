@@ -48,19 +48,19 @@ import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 import com.oracle.graal.nodes.java.TypeSwitchNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class DefaultLoopPolicies implements LoopPolicies {
-    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> LoopUnswitchMaxIncrease = new OptionValue<>(500);
-    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> LoopUnswitchTrivial = new OptionValue<>(10);
-    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Double> LoopUnswitchFrequencyBoost = new OptionValue<>(10.0);
+    @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(500);
+    @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(10);
+    @Option(help = "", type = OptionType.Expert) public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(10.0);
 
-    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> FullUnrollMaxNodes = new OptionValue<>(300);
-    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> FullUnrollMaxIterations = new OptionValue<>(600);
-    @Option(help = "", type = OptionType.Expert) public static final OptionValue<Integer> ExactFullUnrollMaxNodes = new OptionValue<>(1200);
+    @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(300);
+    @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxIterations = new OptionKey<>(600);
+    @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> ExactFullUnrollMaxNodes = new OptionKey<>(1200);
 
     @Override
     public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess) {

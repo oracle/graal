@@ -24,11 +24,11 @@ package com.oracle.graal.options;
 
 import java.util.EnumSet;
 
-public class EnumOptionValue<T extends Enum<T>> extends OptionValue<T> {
+public class EnumOptionKey<T extends Enum<T>> extends OptionKey<T> {
     final Class<T> enumClass;
 
     @SuppressWarnings("unchecked")
-    public EnumOptionValue(T value) {
+    public EnumOptionKey(T value) {
         super(value);
         if (value == null) {
             throw new IllegalArgumentException("Value must not be null");
@@ -37,10 +37,9 @@ public class EnumOptionValue<T extends Enum<T>> extends OptionValue<T> {
     }
 
     /**
-     *
      * @return the set of possible values for this option.
      */
-    public EnumSet<T> getOptionValues() {
+    public EnumSet<T> getAllValues() {
         return EnumSet.allOf(enumClass);
     }
 
@@ -49,7 +48,7 @@ public class EnumOptionValue<T extends Enum<T>> extends OptionValue<T> {
         try {
             super.setValue(Enum.valueOf(enumClass, (String) v));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("\"" + v + "\" is not a valid option for " + getName() + ".  Valid values are " + EnumSet.allOf(enumClass));
+            throw new IllegalArgumentException("\"" + v + "\" is not a valid option for " + getName() + ". Valid values are " + EnumSet.allOf(enumClass));
         }
     }
 }

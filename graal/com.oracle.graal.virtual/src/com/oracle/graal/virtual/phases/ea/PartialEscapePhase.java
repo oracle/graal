@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.cfg.ControlFlowGraph;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
@@ -44,7 +44,7 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
     static class Options {
         //@formatter:off
         @Option(help = "", type = OptionType.Debug)
-        public static final OptionValue<Boolean> OptEarlyReadElimination = new OptionValue<>(true);
+        public static final OptionKey<Boolean> OptEarlyReadElimination = new OptionKey<>(true);
         //@formatter:on
     }
 

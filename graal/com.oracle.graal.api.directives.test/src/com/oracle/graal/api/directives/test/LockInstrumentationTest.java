@@ -30,8 +30,8 @@ import org.junit.Test;
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 
 import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.code.InstalledCode;
@@ -87,7 +87,7 @@ public class LockInstrumentationTest extends GraalCompilerTest {
 
     @Test
     public void testLock() {
-        try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
+        try (OverrideScope s = OptionKey.override(GraalOptions.UseGraalInstrumentation, true)) {
             Class<?> clazz = instrumentor.instrument(LockInstrumentationTest.class, "lockSnippet", Opcodes.MONITORENTER);
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "lockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
@@ -114,7 +114,7 @@ public class LockInstrumentationTest extends GraalCompilerTest {
 
     @Test
     public void testNonEscapeLock() {
-        try (OverrideScope s = OptionValue.override(GraalOptions.UseGraalInstrumentation, true)) {
+        try (OverrideScope s = OptionKey.override(GraalOptions.UseGraalInstrumentation, true)) {
             Class<?> clazz = instrumentor.instrument(LockInstrumentationTest.class, "postponeLockSnippet", Opcodes.MONITORENTER);
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "postponeLockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved

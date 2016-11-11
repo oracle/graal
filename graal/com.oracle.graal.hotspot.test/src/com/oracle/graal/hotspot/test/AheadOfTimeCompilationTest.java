@@ -44,8 +44,8 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.memory.FloatingReadNode;
 import com.oracle.graal.nodes.memory.ReadNode;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.phases.tiers.SuitesProvider;
@@ -210,7 +210,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     private StructuredGraph compile(String test, boolean compileAOT) {
-        try (OverrideScope s = OptionValue.override(ImmutableCode, compileAOT)) {
+        try (OverrideScope s = OptionKey.override(ImmutableCode, compileAOT)) {
             StructuredGraph graph = parseEager(test, AllowAssumptions.YES);
             ResolvedJavaMethod method = graph.method();
             // create suites everytime, as we modify options for the compiler

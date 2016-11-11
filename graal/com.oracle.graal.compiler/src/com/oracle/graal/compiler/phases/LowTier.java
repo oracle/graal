@@ -30,7 +30,7 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
@@ -50,7 +50,7 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         // @formatter:off
         @Option(help = "", type = OptionType.Debug)
-        public static final OptionValue<Boolean> ProfileCompiledMethods = new OptionValue<>(false);
+        public static final OptionKey<Boolean> ProfileCompiledMethods = new OptionKey<>(false);
         // @formatter:on
 
     }

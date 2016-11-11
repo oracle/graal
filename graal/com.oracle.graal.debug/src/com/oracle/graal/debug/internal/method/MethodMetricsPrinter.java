@@ -35,7 +35,7 @@ import com.oracle.graal.debug.DebugMethodMetrics;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 /**
  * Interface for printing a collection of method metrics (e.g. during shutdown).
@@ -45,9 +45,9 @@ public interface MethodMetricsPrinter {
     class Options {
         // @formatter:off
         @Option(help = "Dump method metrics to stdout on shutdown.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> MethodMeterPrintAscii = new OptionValue<>(false);
+        public static final OptionKey<Boolean> MethodMeterPrintAscii = new OptionKey<>(false);
         @Option(help = "Dump method metrics to the given file in CSV format on shutdown.", type = OptionType.Debug)
-        public static final OptionValue<String> MethodMeterFile = new OptionValue<>(null);
+        public static final OptionKey<String> MethodMeterFile = new OptionKey<>(null);
         // @formatter:on
     }
 

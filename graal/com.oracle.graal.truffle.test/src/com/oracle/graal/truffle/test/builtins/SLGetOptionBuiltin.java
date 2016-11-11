@@ -42,7 +42,7 @@ public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
         TruffleCompilerOptions_OptionDescriptors options = new TruffleCompilerOptions_OptionDescriptors();
         for (OptionDescriptor option : options) {
             if (option.getName().equals(name)) {
-                return convertValue(option.getOptionValue().getValue());
+                return convertValue(option.getOptionKey().getValue());
             }
         }
         return null;

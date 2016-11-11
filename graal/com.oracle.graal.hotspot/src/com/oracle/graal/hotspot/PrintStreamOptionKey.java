@@ -29,7 +29,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -37,9 +37,9 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 /**
  * An option that encapsulates and configures a print stream.
  */
-public class PrintStreamOption extends OptionValue<String> {
+public class PrintStreamOptionKey extends OptionKey<String> {
 
-    public PrintStreamOption() {
+    public PrintStreamOptionKey() {
         super(null);
     }
 

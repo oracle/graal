@@ -38,7 +38,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.AMD64MultiStackMove;
 import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
-import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 
@@ -58,7 +58,7 @@ public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase 
     public static class Options {
         // @formatter:off
         @Option(help = "", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptStackMoveOptimizer = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionKey LIROptStackMoveOptimizer = new NestedBooleanOptionKey(LIROptimization, true);
         // @formatter:on
     }
 

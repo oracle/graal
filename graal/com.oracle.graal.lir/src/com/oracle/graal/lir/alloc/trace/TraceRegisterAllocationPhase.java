@@ -40,7 +40,7 @@ import com.oracle.graal.lir.ssi.SSIUtil;
 import com.oracle.graal.lir.ssi.SSIVerifier;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.StableOptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -55,13 +55,13 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Use inter-trace register hints.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAuseInterTraceHints = new StableOptionValue<>(true);
+        public static final StableOptionKey<Boolean> TraceRAuseInterTraceHints = new StableOptionKey<>(true);
         @Option(help = "Share information about spilled values to other traces.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAshareSpillInformation = new StableOptionValue<>(true);
+        public static final StableOptionKey<Boolean> TraceRAshareSpillInformation = new StableOptionKey<>(true);
         @Option(help = "Reuse spill slots for global move resolution cycle breaking.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAreuseStackSlotsForMoveResolutionCycleBreaking = new StableOptionValue<>(true);
+        public static final StableOptionKey<Boolean> TraceRAreuseStackSlotsForMoveResolutionCycleBreaking = new StableOptionKey<>(true);
         @Option(help = "Cache stack slots globally (i.e. a variable always gets the same slot in every trace).", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRACacheStackSlots = new StableOptionValue<>(true);
+        public static final StableOptionKey<Boolean> TraceRACacheStackSlots = new StableOptionKey<>(true);
         // @formatter:on
     }
 

@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.CompilationRequest;
 
@@ -58,9 +58,9 @@ final class BootstrapWatchDog extends Thread {
         // @formatter:off
         @Option(help = "Ratio of the maximum compilation rate below which the bootstrap compilation rate must not fall " +
                        "(0 or less disables monitoring).", type = OptionType.Debug)
-        public static final OptionValue<Double> BootstrapWatchDogCriticalRateRatio = new OptionValue<>(0.25D);
+        public static final OptionKey<Double> BootstrapWatchDogCriticalRateRatio = new OptionKey<>(0.25D);
         @Option(help = "Maximum time in minutes to spend bootstrapping (0 to disable this limit).", type = OptionType.Debug)
-        public static final OptionValue<Double> BootstrapTimeout = new OptionValue<>(15D);
+        public static final OptionKey<Double> BootstrapTimeout = new OptionKey<>(15D);
         // @formatter:on
     }
 

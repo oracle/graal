@@ -24,7 +24,7 @@ package com.oracle.graal.compiler;
 
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 /**
  * Options related to {@link GraalCompiler}.
@@ -33,21 +33,21 @@ public class GraalCompilerOptions {
 
     // @formatter:off
     @Option(help = "Repeatedly run the LIR code generation pass to improve statistical profiling results.", type = OptionType.Debug)
-    public static final OptionValue<Integer> EmitLIRRepeatCount = new OptionValue<>(0);
+    public static final OptionKey<Integer> EmitLIRRepeatCount = new OptionKey<>(0);
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<String> PrintFilter = new OptionValue<>(null);
+    public static final OptionKey<String> PrintFilter = new OptionKey<>(null);
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintCompilation = new OptionValue<>(false);
+    public static final OptionKey<Boolean> PrintCompilation = new OptionKey<>(false);
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintAfterCompilation = new OptionValue<>(false);
+    public static final OptionKey<Boolean> PrintAfterCompilation = new OptionKey<>(false);
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintBailout = new OptionValue<>(false);
+    public static final OptionKey<Boolean> PrintBailout = new OptionKey<>(false);
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> ExitVMOnBailout = new OptionValue<>(false);
+    public static final OptionKey<Boolean> ExitVMOnBailout = new OptionKey<>(false);
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> ExitVMOnException = new OptionValue<>(false);
+    public static final OptionKey<Boolean> ExitVMOnException = new OptionKey<>(false);
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintStackTraceOnException = new OptionValue<>(false);
+    public static final OptionKey<Boolean> PrintStackTraceOnException = new OptionKey<>(false);
     // @formatter:on
 
 }

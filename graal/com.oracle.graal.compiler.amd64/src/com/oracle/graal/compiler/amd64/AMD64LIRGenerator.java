@@ -111,10 +111,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     protected static final boolean canStoreConstant(JavaConstant c) {
         // there is no immediate move of 64-bit constants on Intel
         switch (c.getJavaKind()) {
-            case Long: {
-                long l = c.asLong();
-                return (int) l == l;
-            }
+            case Long:
+                return NumUtil.isInt(c.asLong());
             case Double:
                 return false;
             case Object:

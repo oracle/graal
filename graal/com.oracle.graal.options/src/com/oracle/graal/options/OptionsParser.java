@@ -39,24 +39,19 @@ import java.util.TreeMap;
  */
 public class OptionsParser {
 
-    public interface OptionConsumer {
-        void set(OptionDescriptor desc, Object value);
-    }
-
     /**
      * Parses a map representing assignments of values to options.
      *
      * @param optionSettings option settings (i.e., assignments of values to options)
-     * @param setter the object to notify of the parsed option and value
+     * @param values the object in which to store the parsed option and value
      * @param loader the loader for {@linkplain #lookup(ServiceLoader, String) looking} up
      *            {@link OptionDescriptor}s
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    public static void parseOptions(Map<String, String> optionSettings, OptionConsumer setter, ServiceLoader<OptionDescriptors> loader) {
+    public static void parseOptions(Map<String, String> optionSettings, OptionValues values, ServiceLoader<OptionDescriptors> loader) {
         if (optionSettings != null && !optionSettings.isEmpty()) {
-
             for (Map.Entry<String, String> e : optionSettings.entrySet()) {
-                parseOption(e.getKey(), e.getValue(), setter, loader);
+                parseOption(e.getKey(), e.getValue(), values, loader);
             }
         }
     }
@@ -96,13 +91,13 @@ public class OptionsParser {
      * Parses a given option name and value.
      *
      * @param name the option name
-     * @param valueString the option value as a string
-     * @param setter the object to notify of the parsed option and value
+     * @param uncheckedValue the unchecked value for the option
+     * @param values the object in which to store the parsed option and value
      * @param loader the loader for {@linkplain #lookup(ServiceLoader, String) looking} up
      *            {@link OptionDescriptor}s
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    private static void parseOption(String name, String valueString, OptionConsumer setter, ServiceLoader<OptionDescriptors> loader) {
+    static void parseOption(String name, Object uncheckedValue, OptionValues values, ServiceLoader<OptionDescriptors> loader) {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {
@@ -120,41 +115,48 @@ public class OptionsParser {
 
         Class<?> optionType = desc.getType();
         Object value;
-        if (optionType == Boolean.class) {
-            if ("true".equals(valueString)) {
-                value = Boolean.TRUE;
-            } else if ("false".equals(valueString)) {
-                value = Boolean.FALSE;
-            } else {
-                throw new IllegalArgumentException("Boolean option '" + name + "' must have value \"true\" or \"false\", not \"" + valueString + "\"");
+        if (!(uncheckedValue instanceof String)) {
+            if (optionType != uncheckedValue.getClass()) {
+                String type = optionType.getSimpleName();
+                throw new IllegalArgumentException(type + " option '" + name + "' must have " + type + " value, not " + uncheckedValue.getClass() + " [toString: " + uncheckedValue + "]");
             }
-        } else if (optionType == String.class || Enum.class.isAssignableFrom(optionType)) {
-            value = valueString;
+            value = uncheckedValue;
         } else {
-            if (valueString.isEmpty()) {
-                throw new IllegalArgumentException("Non empty value required for option '" + name + "'");
-            }
-            try {
-                if (optionType == Float.class) {
-                    value = Float.parseFloat(valueString);
-                } else if (optionType == Double.class) {
-                    value = Double.parseDouble(valueString);
-                } else if (optionType == Integer.class) {
-                    value = Integer.valueOf((int) parseLong(valueString));
-                } else if (optionType == Long.class) {
-                    value = Long.valueOf(parseLong(valueString));
+            String valueString = (String) uncheckedValue;
+            if (optionType == Boolean.class) {
+                if (uncheckedValue instanceof Boolean) {
+                    value = uncheckedValue;
+                } else if ("true".equals(valueString)) {
+                    value = Boolean.TRUE;
+                } else if ("false".equals(valueString)) {
+                    value = Boolean.FALSE;
                 } else {
-                    throw new IllegalArgumentException("Wrong value for option '" + name + "'");
+                    throw new IllegalArgumentException("Boolean option '" + name + "' must have value \"true\" or \"false\", not \"" + uncheckedValue + "\"");
                 }
-            } catch (NumberFormatException nfe) {
-                throw new IllegalArgumentException("Value for option '" + name + "' has invalid number format: " + valueString);
+            } else if (optionType == String.class || Enum.class.isAssignableFrom(optionType)) {
+                value = valueString;
+            } else {
+                if (valueString.isEmpty()) {
+                    throw new IllegalArgumentException("Non empty value required for option '" + name + "'");
+                }
+                try {
+                    if (optionType == Float.class) {
+                        value = Float.parseFloat(valueString);
+                    } else if (optionType == Double.class) {
+                        value = Double.parseDouble(valueString);
+                    } else if (optionType == Integer.class) {
+                        value = Integer.valueOf((int) parseLong(valueString));
+                    } else if (optionType == Long.class) {
+                        value = Long.valueOf(parseLong(valueString));
+                    } else {
+                        throw new IllegalArgumentException("Wrong value for option '" + name + "'");
+                    }
+                } catch (NumberFormatException nfe) {
+                    throw new IllegalArgumentException("Value for option '" + name + "' has invalid number format: " + valueString);
+                }
             }
         }
-        if (setter == null) {
-            desc.getOptionValue().setValue(value);
-        } else {
-            setter.set(desc, value);
-        }
+        values.set(desc.optionKey, value);
     }
 
     private static long parseLong(String v) {
@@ -234,14 +236,14 @@ public class OptionsParser {
         }
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             OptionDescriptor desc = e.getValue();
-            Object value = desc.getOptionValue().getValue();
+            Object value = desc.getOptionKey().getValue();
             if (value instanceof String) {
                 value = '"' + String.valueOf(value) + '"';
             }
             String help = desc.getHelp();
-            if (desc.getOptionValue() instanceof EnumOptionValue) {
-                EnumOptionValue<?> eoption = (EnumOptionValue<?>) desc.getOptionValue();
-                String evalues = eoption.getOptionValues().toString();
+            if (desc.getOptionKey() instanceof EnumOptionKey) {
+                EnumOptionKey<?> eoption = (EnumOptionKey<?>) desc.getOptionKey();
+                String evalues = eoption.getAllValues().toString();
                 if (help.length() > 0 && !help.endsWith(".")) {
                     help += ".";
                 }
@@ -249,7 +251,7 @@ public class OptionsParser {
             }
             String name = namePrefix + e.getKey();
             String assign = explicitlyAssigned.contains(name) ? ":=" : "=";
-            String typeName = desc.getOptionValue() instanceof EnumOptionValue ? "String" : desc.getType().getSimpleName();
+            String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getType().getSimpleName();
             String linePrefix = String.format("%s %s %s ", name, assign, value);
             int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
             int linePad = typeStartPos - linePrefix.length();

@@ -46,7 +46,7 @@ import com.oracle.graal.compiler.common.util.ModuleAPI;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.test.SubprocessUtil;
 
@@ -273,12 +273,12 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (OptionValue.class.isAssignableFrom(cls)) {
-            // If options are specified, that may implicitly load a custom OptionValue subclass.
+        if (OptionKey.class.isAssignableFrom(cls)) {
+            // If options are specified, that may implicitly load a custom OptionKey subclass.
             return true;
         }
 
-        if (OptionValue.OverrideScope.class.isAssignableFrom(cls)) {
+        if (OptionKey.OverrideScope.class.isAssignableFrom(cls)) {
             // Reading options can check override scopes
             return true;
         }

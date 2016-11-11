@@ -25,9 +25,9 @@ package com.oracle.graal.lir;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
+import com.oracle.graal.options.StableOptionKey;
 
 import jdk.vm.ci.code.BailoutException;
 
@@ -41,7 +41,7 @@ public abstract class BailoutAndRestartBackendException extends BailoutException
     public static class Options {
         // @formatter:off
         @Option(help = "Unlock backend restart feature.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> LIRUnlockBackendRestart = new StableOptionValue<>(false);
+        public static final StableOptionKey<Boolean> LIRUnlockBackendRestart = new StableOptionKey<>(false);
         // @formatter:on
     }
 
@@ -63,8 +63,8 @@ public abstract class BailoutAndRestartBackendException extends BailoutException
     public abstract boolean shouldRestart();
 
     /**
-     * Returns an {@link OverrideScope} to change {@link OptionValue OptionValues} or {@code null}
-     * if no changes are required.
+     * Returns an {@link OverrideScope} to change {@link OptionKey}s or {@code null} if no changes
+     * are required.
      */
     public abstract OverrideScope getOverrideScope();
 

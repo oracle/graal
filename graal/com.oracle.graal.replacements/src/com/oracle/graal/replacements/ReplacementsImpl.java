@@ -71,8 +71,8 @@ import com.oracle.graal.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.spi.StampProvider;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
@@ -280,7 +280,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      */
     @SuppressWarnings("try")
     public StructuredGraph makeGraph(ResolvedJavaMethod method, Object[] args, ResolvedJavaMethod original) {
-        try (OverrideScope s = OptionValue.override(DeoptALot, false)) {
+        try (OverrideScope s = OptionKey.override(DeoptALot, false)) {
             return createGraphMaker(method, original).makeGraph(args);
         }
     }

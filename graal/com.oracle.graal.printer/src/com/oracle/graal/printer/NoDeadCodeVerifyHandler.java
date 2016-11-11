@@ -32,7 +32,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
 /**
@@ -50,7 +50,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
     static class Options {
         // @formatter:off
         @Option(help = "Run level for NoDeadCodeVerifyHandler (0 = off, 1 = info, 2 = verbose, 3 = fatal)", type = OptionType.Debug)
-        public static final OptionValue<Integer> NDCV = new OptionValue<>(0);
+        public static final OptionKey<Integer> NDCV = new OptionKey<>(0);
         // @formatter:on
     }
 

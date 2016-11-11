@@ -36,8 +36,8 @@ import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.StableOptionKey;
 import com.oracle.graal.phases.contract.NodeCostUtil;
 import com.oracle.graal.phases.contract.PhaseSizeContract;
 import com.oracle.graal.phases.tiers.PhaseContext;
@@ -52,7 +52,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public static class PhaseOptions {
         // @formatter:off
         @Option(help = "Verify before - after relation of the relative, computed, code size of a graph", type = OptionType.Debug)
-        public static final OptionValue<Boolean> VerifyGraalPhasesSize = new StableOptionValue<>(false);
+        public static final OptionKey<Boolean> VerifyGraalPhasesSize = new StableOptionKey<>(false);
         // @formatter:on
     }
 

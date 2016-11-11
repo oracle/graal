@@ -30,8 +30,8 @@ import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -59,7 +59,7 @@ public class LoadJavaMirrorWithKlassTest extends GraalCompilerTest {
     @Override
     @SuppressWarnings("try")
     protected Suites createSuites() {
-        try (OverrideScope s = OptionValue.override(GraalOptions.ImmutableCode, true)) {
+        try (OverrideScope s = OptionKey.override(GraalOptions.ImmutableCode, true)) {
             return super.createSuites();
         }
     }

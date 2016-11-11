@@ -34,10 +34,10 @@ import com.oracle.graal.lir.alloc.trace.bu.BottomUpAllocator;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
-import com.oracle.graal.options.EnumOptionValue;
+import com.oracle.graal.options.EnumOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.StableOptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
@@ -57,11 +57,11 @@ public final class DefaultTraceRegisterAllocationPolicy {
     public static class Options {
         // @formatter:off
         @Option(help = "Use special allocator for trivial blocks.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAtrivialBlockAllocator = new StableOptionValue<>(true);
+        public static final StableOptionKey<Boolean> TraceRAtrivialBlockAllocator = new StableOptionKey<>(true);
         @Option(help = "Use LSRA / BottomUp ratio", type = OptionType.Debug)
-        public static final StableOptionValue<Double> TraceRAbottomUpRatio = new StableOptionValue<>(0.0);
+        public static final StableOptionKey<Double> TraceRAbottomUpRatio = new StableOptionKey<>(0.0);
         @Option(help = "TraceRA allocation policy to use.", type = OptionType.Debug)
-        public static final EnumOptionValue<TraceRAPolicies> TraceRAPolicy = new EnumOptionValue<>(TraceRAPolicies.Default);
+        public static final EnumOptionKey<TraceRAPolicies> TraceRAPolicy = new EnumOptionKey<>(TraceRAPolicies.Default);
         // @formatter:on
     }
 

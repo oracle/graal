@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
-import static com.oracle.graal.options.OptionValue.PROFILE_OPTIONVALUE_PROPERTY_NAME;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.io.File;
@@ -40,16 +40,17 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.MethodFilter;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionDescriptors;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 import jdk.vm.ci.common.InitTimer;
+import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
-import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
+import jdk.vm.ci.services.Services;
 
 public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFactory {
 
@@ -75,7 +76,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     /**
      * Gets the system property assignment that would set the current value for a given option.
      */
-    public static String asSystemPropertySetting(OptionValue<?> value) {
+    public static String asSystemPropertySetting(OptionKey<?> value) {
         return GRAAL_OPTION_PROPERTY_PREFIX + value.getName() + "=" + value.getValue();
     }
 
@@ -107,13 +108,13 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
 
         // @formatter:off
         @Option(help = "In tiered mode compile Graal and JVMCI using optimized first tier code.", type = OptionType.Expert)
-        public static final OptionValue<Boolean> CompileGraalWithC1Only = new OptionValue<>(true);
+        public static final OptionKey<Boolean> CompileGraalWithC1Only = new OptionKey<>(true);
 
         @Option(help = "Hook into VM-level mechanism for denoting compilations to be performed in first tier.", type = OptionType.Expert)
-        public static final OptionValue<Boolean> UseTrivialPrefixes = new OptionValue<>(false);
+        public static final OptionKey<Boolean> UseTrivialPrefixes = new OptionKey<>(false);
 
         @Option(help = "A method filter selecting what should be compiled by Graal.  All other requests will be reduced to CompilationLevel.Simple.", type = OptionType.Expert)
-        public static final OptionValue<String> GraalCompileOnly = new OptionValue<>(null);
+        public static final OptionKey<String> GraalCompileOnly = new OptionKey<>(null);
         // @formatter:on
 
     }
@@ -149,7 +150,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
                                 optionSettings.put((String) e.getKey(), (String) e.getValue());
                             }
                             try {
-                                OptionsParser.parseOptions(optionSettings, null, loader);
+                                OptionsParser.parseOptions(optionSettings, GLOBAL, loader);
                                 if (allOptionsSettings == null) {
                                     allOptionsSettings = new HashMap<>(optionSettings);
                                 } else {
@@ -170,7 +171,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
                     if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
                         if (name.equals("graal.PrintFlags") || name.equals("graal.ShowFlags")) {
                             System.err.println("The " + name + " option has been removed and will be ignored. Use -XX:+JVMCIPrintProperties instead.");
-                        } else if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME) || name.equals(GRAAL_VERSION_PROPERTY_NAME) || name.equals(PROFILE_OPTIONVALUE_PROPERTY_NAME)) {
+                        } else if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME) || name.equals(GRAAL_VERSION_PROPERTY_NAME)) {
                             // Ignore well known properties that do not denote an option
                         } else {
                             String value = (String) e.getValue();
@@ -179,7 +180,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
                     }
                 }
 
-                OptionsParser.parseOptions(optionSettings, null, loader);
+                OptionsParser.parseOptions(optionSettings, GLOBAL, loader);
 
                 if (allOptionsSettings == null) {
                     allOptionsSettings = optionSettings;
@@ -273,6 +274,13 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     @Override
     public CompilationLevel adjustCompilationLevel(Class<?> declaringClass, String name, String signature, boolean isOsr, CompilationLevel level) {
         return adjustCompilationLevelInternal(declaringClass, name, signature, level);
+    }
+
+    static {
+        // Fail-fast detection for package renaming to guard use of package
+        // prefixes in adjustCompilationLevelInternal.
+        assert Services.class.getName().equals("jdk.vm.ci.services.Services");
+        assert HotSpotGraalCompilerFactory.class.getName().equals("com.oracle.graal.hotspot.HotSpotGraalCompilerFactory");
     }
 
     /*

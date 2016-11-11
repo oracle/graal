@@ -48,7 +48,7 @@ import org.junit.Test;
 
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.test.GraalTest;
 
 import jdk.internal.org.objectweb.asm.ClassReader;
@@ -59,7 +59,7 @@ import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.internal.org.objectweb.asm.Type;
 
 /**
- * Verifies a class declaring one or more {@linkplain OptionValue options} has a class initializer
+ * Verifies a class declaring one or more {@linkplain OptionKey options} has a class initializer
  * that only initializes the option(s). This sanity check mitigates the possibility of an option
  * value being used before being set.
  */
@@ -259,7 +259,7 @@ public class OptionsVerifierTest {
                     private boolean checkInvokeTarget(Executable method) {
                         Class<?> holder = method.getDeclaringClass();
                         if (method instanceof Constructor) {
-                            if (OptionValue.class.isAssignableFrom(holder)) {
+                            if (OptionKey.class.isAssignableFrom(holder)) {
                                 return true;
                             }
                         } else if (Arrays.asList(boxingTypes).contains(holder)) {

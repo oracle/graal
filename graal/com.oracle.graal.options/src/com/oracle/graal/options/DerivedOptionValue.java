@@ -25,7 +25,7 @@ package com.oracle.graal.options;
 import java.io.Serializable;
 import java.util.function.Supplier;
 
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 
 /**
  * A cached value that needs to be recomputed when an option changes.
@@ -43,7 +43,7 @@ public class DerivedOptionValue<T> {
     }
 
     public T getValue() {
-        OverrideScope overrideScope = OptionValue.getOverrideScope();
+        OverrideScope overrideScope = OptionKey.getOverrideScope();
         if (overrideScope != null) {
             return overrideScope.getDerived(this);
         } else {

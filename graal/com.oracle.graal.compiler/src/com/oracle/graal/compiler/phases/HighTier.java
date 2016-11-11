@@ -41,7 +41,7 @@ import com.oracle.graal.loop.phases.LoopUnswitchingPhase;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
@@ -61,7 +61,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
 
         // @formatter:off
         @Option(help = "Enable inlining", type = OptionType.Expert)
-        public static final OptionValue<Boolean> Inline = new OptionValue<>(true);
+        public static final OptionKey<Boolean> Inline = new OptionKey<>(true);
         // @formatter:on
     }
 

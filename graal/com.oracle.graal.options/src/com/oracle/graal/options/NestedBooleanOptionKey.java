@@ -23,7 +23,7 @@
 package com.oracle.graal.options;
 
 /**
- * A nested Boolean {@link OptionValue} that can be overridden by a {@link #masterOption master
+ * A nested Boolean {@link OptionKey} that can be overridden by a {@link #masterOption master
  * option}.
  * <p>
  * <li>If the option is present on the command line the specified value is used.
@@ -32,17 +32,17 @@ package com.oracle.graal.options;
  * <li>If {@link #masterOption} is set, this value equals to {@link #initialValue}.
  * <li>Otherwise, if {@link #masterOption} is {@code false}, this option is {@code false}.
  */
-public class NestedBooleanOptionValue extends OptionValue<Boolean> {
-    private final OptionValue<Boolean> masterOption;
+public class NestedBooleanOptionKey extends OptionKey<Boolean> {
+    private final OptionKey<Boolean> masterOption;
     private final Boolean initialValue;
 
-    public NestedBooleanOptionValue(OptionValue<Boolean> masterOption, Boolean initialValue) {
+    public NestedBooleanOptionKey(OptionKey<Boolean> masterOption, Boolean initialValue) {
         super(null);
         this.masterOption = masterOption;
         this.initialValue = initialValue;
     }
 
-    public OptionValue<Boolean> getMasterOption() {
+    public OptionKey<Boolean> getMasterOption() {
         return masterOption;
     }
 

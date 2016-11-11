@@ -36,7 +36,7 @@ import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
 import com.oracle.graal.lir.alloc.lsra.Interval.State;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -46,9 +46,9 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable LSRA optimization", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSRAOptimization = new OptionValue<>(false);
+        public static final OptionKey<Boolean> LSRAOptimization = new OptionKey<>(false);
         @Option(help = "LSRA optimization: Only split but do not reassign", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSRAOptSplitOnly = new OptionValue<>(false);
+        public static final OptionKey<Boolean> LSRAOptSplitOnly = new OptionKey<>(false);
         // @formatter:on
     }
 

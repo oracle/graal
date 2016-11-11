@@ -40,7 +40,7 @@ import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
@@ -49,13 +49,13 @@ public class Graph {
 
     public static class Options {
         @Option(help = "Verify graphs often during compilation when assertions are turned on", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> VerifyGraalGraphs = new OptionValue<>(true);
+        public static final OptionKey<Boolean> VerifyGraalGraphs = new OptionKey<>(true);
         @Option(help = "Perform expensive verification of graph inputs, usages, successors and predecessors", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> VerifyGraalGraphEdges = new OptionValue<>(false);
+        public static final OptionKey<Boolean> VerifyGraalGraphEdges = new OptionKey<>(false);
         @Option(help = "Graal graph compression is performed when percent of live nodes falls below this value", type = OptionType.Debug)//
-        public static final OptionValue<Integer> GraphCompressionThreshold = new OptionValue<>(70);
+        public static final OptionKey<Integer> GraphCompressionThreshold = new OptionKey<>(70);
         @Option(help = "Use Unsafe to clone graph nodes thus avoiding copying fields that will be re-initialized anyway", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> CloneNodesWithUnsafe = new OptionValue<>(true);
+        public static final OptionKey<Boolean> CloneNodesWithUnsafe = new OptionKey<>(true);
     }
 
     public final String name;

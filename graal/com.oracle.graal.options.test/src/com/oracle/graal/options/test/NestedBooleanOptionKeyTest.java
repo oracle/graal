@@ -23,36 +23,36 @@
 
 /**
  * @test
- * @run junit jdk.vm.ci.options.test.NestedBooleanOptionValueTest
+ * @run junit jdk.vm.ci.options.test.NestedBooleanOptionKeyTest
  */
 
 package com.oracle.graal.options.test;
 
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.Master0;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.Master1;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.Master2;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.NestedOption0;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.NestedOption1;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.NestedOption2;
+import static com.oracle.graal.options.test.NestedBooleanOptionKeyTest.Options.Master0;
+import static com.oracle.graal.options.test.NestedBooleanOptionKeyTest.Options.Master1;
+import static com.oracle.graal.options.test.NestedBooleanOptionKeyTest.Options.Master2;
+import static com.oracle.graal.options.test.NestedBooleanOptionKeyTest.Options.NestedOption0;
+import static com.oracle.graal.options.test.NestedBooleanOptionKeyTest.Options.NestedOption1;
+import static com.oracle.graal.options.test.NestedBooleanOptionKeyTest.Options.NestedOption2;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.OptionDescriptor;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 
-public class NestedBooleanOptionValueTest {
+public class NestedBooleanOptionKeyTest {
 
     public static class Options {
-        public static final OptionValue<Boolean> Master0 = new OptionValue<>(true);
-        public static final OptionValue<Boolean> NestedOption0 = new NestedBooleanOptionValue(Master0, true);
-        public static final OptionValue<Boolean> Master1 = new OptionValue<>(true);
-        public static final OptionValue<Boolean> NestedOption1 = new NestedBooleanOptionValue(Master1, true);
-        public static final OptionValue<Boolean> Master2 = new OptionValue<>(true);
-        public static final OptionValue<Boolean> NestedOption2 = new NestedBooleanOptionValue(Master2, false);
+        public static final OptionKey<Boolean> Master0 = new OptionKey<>(true);
+        public static final OptionKey<Boolean> NestedOption0 = new NestedBooleanOptionKey(Master0, true);
+        public static final OptionKey<Boolean> Master1 = new OptionKey<>(true);
+        public static final OptionKey<Boolean> NestedOption1 = new NestedBooleanOptionKey(Master1, true);
+        public static final OptionKey<Boolean> Master2 = new OptionKey<>(true);
+        public static final OptionKey<Boolean> NestedOption2 = new NestedBooleanOptionKey(Master2, false);
     }
 
     static final OptionDescriptor master0 = OptionDescriptor.create("Master0", Boolean.class, "", Options.class, "Master0", Master0);
@@ -67,21 +67,21 @@ public class NestedBooleanOptionValueTest {
     public void runOverrides() {
         assertTrue(Master0.getValue());
         assertTrue(NestedOption0.getValue());
-        try (OverrideScope s1 = OptionValue.override(Master0, false)) {
+        try (OverrideScope s1 = OptionKey.override(Master0, false)) {
             assertFalse(Master0.getValue());
             assertFalse(NestedOption0.getValue());
-            try (OverrideScope s2 = OptionValue.override(NestedOption0, false)) {
+            try (OverrideScope s2 = OptionKey.override(NestedOption0, false)) {
                 assertFalse(NestedOption0.getValue());
             }
-            try (OverrideScope s2 = OptionValue.override(NestedOption0, true)) {
+            try (OverrideScope s2 = OptionKey.override(NestedOption0, true)) {
                 assertTrue(NestedOption0.getValue());
             }
         }
         assertTrue(Master0.getValue());
-        try (OverrideScope s1 = OptionValue.override(NestedOption0, false)) {
+        try (OverrideScope s1 = OptionKey.override(NestedOption0, false)) {
             assertFalse(NestedOption0.getValue());
         }
-        try (OverrideScope s1 = OptionValue.override(NestedOption0, true)) {
+        try (OverrideScope s1 = OptionKey.override(NestedOption0, true)) {
             assertTrue(NestedOption0.getValue());
         }
     }

@@ -43,8 +43,8 @@ import com.oracle.graal.debug.DebugVerifyHandler;
 import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
 import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 import com.oracle.graal.phases.Phase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -129,9 +129,9 @@ public class MethodMetricsTestInterception02 extends MethodMetricsTest {
 
     @Override
     protected OverrideScope getOScope() {
-        Map<OptionValue<?>, Object> mapping = new HashMap<>();
+        Map<OptionKey<?>, Object> mapping = new HashMap<>();
         mapping.put(MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);
-        return OptionValue.override(mapping);
+        return OptionKey.override(mapping);
     }
 
     @Test

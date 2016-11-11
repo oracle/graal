@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.GraalServices;
 
@@ -52,7 +52,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         @Option(help = "Names the Graal compiler configuration to use. If ommitted, the compiler configuration " +
                        "with the highest auto-selection priority is used. To see the set of available configurations, " +
                        "supply the value 'help' to this option.", type = OptionType.Expert)
-        public static final OptionValue<String> CompilerConfiguration = new OptionValue<>(null);
+        public static final OptionKey<String> CompilerConfiguration = new OptionKey<>(null);
         // @formatter:on
     }
 

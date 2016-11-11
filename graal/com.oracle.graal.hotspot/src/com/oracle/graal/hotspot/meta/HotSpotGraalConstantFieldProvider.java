@@ -32,7 +32,7 @@ import java.util.List;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.StableOptionKey;
 import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.replacements.SnippetTemplate;
@@ -61,7 +61,7 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
         assert !ImmutableCode.getValue() || isCalledForSnippets(metaAccess) || SnippetGraphUnderConstruction.get() != null ||
                         FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : tool.getReceiver();
         if (!field.isStatic() && field.getName().equals("value")) {
-            if (getStableOptionValueType().isInstance(tool.getReceiver())) {
+            if (getStableOptionKeyType().isInstance(tool.getReceiver())) {
                 JavaConstant ret = tool.readValue();
                 return tool.foldConstant(ret);
             }
@@ -112,16 +112,16 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
 
     private final MetaAccessProvider metaAccess;
 
-    private ResolvedJavaType cachedStableOptionValueType;
+    private ResolvedJavaType cachedStableOptionKeyType;
     private ResolvedJavaType cachedHotSpotVMConfigType;
     private ResolvedJavaType cachedSnippetCounterType;
     private ResolvedJavaType cachedNodeClassType;
 
-    private ResolvedJavaType getStableOptionValueType() {
-        if (cachedStableOptionValueType == null) {
-            cachedStableOptionValueType = metaAccess.lookupJavaType(StableOptionValue.class);
+    private ResolvedJavaType getStableOptionKeyType() {
+        if (cachedStableOptionKeyType == null) {
+            cachedStableOptionKeyType = metaAccess.lookupJavaType(StableOptionKey.class);
         }
-        return cachedStableOptionValueType;
+        return cachedStableOptionKeyType;
     }
 
     private ResolvedJavaType getHotSpotVMConfigType() {

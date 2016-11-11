@@ -39,10 +39,10 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
-import com.oracle.graal.options.EnumOptionValue;
+import com.oracle.graal.options.EnumOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
 
@@ -57,9 +57,9 @@ public class TraceBuilderPhase extends AllocationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Trace building algorithm.", type = OptionType.Debug)
-        public static final EnumOptionValue<TraceBuilder> TraceBuilding = new EnumOptionValue<>(TraceBuilder.UniDirectional);
+        public static final EnumOptionKey<TraceBuilder> TraceBuilding = new EnumOptionKey<>(TraceBuilder.UniDirectional);
         @Option(help = "Schedule trivial traces as early as possible.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> TraceRAScheduleTrivialTracesEarly = new OptionValue<>(true);
+        public static final OptionKey<Boolean> TraceRAScheduleTrivialTracesEarly = new OptionKey<>(true);
         // @formatter:on
     }
 

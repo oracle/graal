@@ -54,7 +54,7 @@ import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
@@ -80,7 +80,7 @@ public class CompilationResultBuilder {
 
     // @formatter:off
     @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintLIRWithAssembly = new OptionValue<>(false);
+    public static final OptionKey<Boolean> PrintLIRWithAssembly = new OptionKey<>(false);
     // @formatter:on
 
     private static class ExceptionInfo {

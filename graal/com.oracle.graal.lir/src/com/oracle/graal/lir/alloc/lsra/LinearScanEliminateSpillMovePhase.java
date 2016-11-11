@@ -42,10 +42,10 @@ import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
 import com.oracle.graal.lir.alloc.lsra.LinearScan.IntervalPredicate;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
-import com.oracle.graal.options.NestedBooleanOptionValue;
+import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -55,7 +55,7 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable spill move elimination.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptLSRAEliminateSpillMoves = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final OptionKey<Boolean> LIROptLSRAEliminateSpillMoves = new NestedBooleanOptionKey(LIROptimization, true);
         // @formatter:on
     }
 

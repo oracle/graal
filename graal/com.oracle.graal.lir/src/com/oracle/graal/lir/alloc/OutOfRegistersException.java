@@ -27,8 +27,8 @@ import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.AL
 
 import com.oracle.graal.lir.BailoutAndRestartBackendException;
 import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionKey.OverrideScope;
 
 /**
  * Thrown if the register allocator runs out of registers. This should never happen in normal mode.
@@ -80,7 +80,7 @@ public class OutOfRegistersException extends BailoutAndRestartBackendException {
 
     @Override
     public OverrideScope getOverrideScope() {
-        return OptionValue.override(RegisterPressure, ALL_REGISTERS);
+        return OptionKey.override(RegisterPressure, ALL_REGISTERS);
     }
 
     @Override

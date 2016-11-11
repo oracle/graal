@@ -24,8 +24,8 @@ package com.oracle.graal.java;
 
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.StableOptionKey;
 
 /**
  * Options related to {@link BytecodeParser}.
@@ -36,30 +36,30 @@ import com.oracle.graal.options.StableOptionValue;
 public class BytecodeParserOptions {
     // @formatter:off
     @Option(help = "The trace level for the bytecode parser used when building a graph from bytecode", type = OptionType.Debug)
-    public static final OptionValue<Integer> TraceBytecodeParserLevel = new OptionValue<>(0);
+    public static final OptionKey<Integer> TraceBytecodeParserLevel = new OptionKey<>(0);
 
     @Option(help = "Inlines trivial methods during bytecode parsing.", type = OptionType.Expert)
-    public static final StableOptionValue<Boolean> InlineDuringParsing = new StableOptionValue<>(true);
+    public static final StableOptionKey<Boolean> InlineDuringParsing = new StableOptionKey<>(true);
 
     @Option(help = "Inlines intrinsic methods during bytecode parsing.", type = OptionType.Expert)
-    public static final StableOptionValue<Boolean> InlineIntrinsicsDuringParsing = new StableOptionValue<>(true);
+    public static final StableOptionKey<Boolean> InlineIntrinsicsDuringParsing = new StableOptionKey<>(true);
 
     @Option(help = "Traces inlining performed during bytecode parsing.", type = OptionType.Debug)
-    public static final StableOptionValue<Boolean> TraceInlineDuringParsing = new StableOptionValue<>(false);
+    public static final StableOptionKey<Boolean> TraceInlineDuringParsing = new StableOptionKey<>(false);
 
     @Option(help = "Traces use of plugins during bytecode parsing.", type = OptionType.Debug)
-    public static final StableOptionValue<Boolean> TraceParserPlugins = new StableOptionValue<>(false);
+    public static final StableOptionKey<Boolean> TraceParserPlugins = new StableOptionKey<>(false);
 
     @Option(help = "Maximum depth when inlining during bytecode parsing.", type = OptionType.Debug)
-    public static final StableOptionValue<Integer> InlineDuringParsingMaxDepth = new StableOptionValue<>(10);
+    public static final StableOptionKey<Integer> InlineDuringParsingMaxDepth = new StableOptionKey<>(10);
 
     @Option(help = "Dump graphs after non-trivial changes during bytecode parsing.", type = OptionType.Debug)
-    public static final StableOptionValue<Boolean> DumpDuringGraphBuilding = new StableOptionValue<>(false);
+    public static final StableOptionKey<Boolean> DumpDuringGraphBuilding = new StableOptionKey<>(false);
 
     @Option(help = "When creating info points hide the methods of the substitutions.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> HideSubstitutionStates = new OptionValue<>(false);
+    public static final OptionKey<Boolean> HideSubstitutionStates = new OptionKey<>(false);
 
     @Option(help = "Use intrinsics guarded by a virtual dispatch test at indirect call sites.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> UseGuardedIntrinsics = new OptionValue<>(true);
+    public static final OptionKey<Boolean> UseGuardedIntrinsics = new OptionKey<>(true);
     // @formatter:on
 }

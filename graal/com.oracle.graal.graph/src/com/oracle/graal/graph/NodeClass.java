@@ -69,8 +69,8 @@ import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.NodeSize;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
+import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.StableOptionKey;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -85,7 +85,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public static class Options {
         // @formatter:off
         @Option(help = "Verifies that receivers of NodeInfo#size() and NodeInfo#cycles() do not have UNSET values.")
-        public static final OptionValue<Boolean> VerifyNodeCostOnAccess = new StableOptionValue<>(false);
+        public static final OptionKey<Boolean> VerifyNodeCostOnAccess = new StableOptionKey<>(false);
         // @formatter:on
     }
 
