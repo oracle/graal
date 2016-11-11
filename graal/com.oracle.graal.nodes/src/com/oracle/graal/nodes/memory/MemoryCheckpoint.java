@@ -25,16 +25,14 @@ package com.oracle.graal.nodes.memory;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.FixedNode;
+import com.oracle.graal.nodes.FixedNodeInterface;
 
 /**
  * This interface marks subclasses of {@link FixedNode} that kill a set of memory locations
  * represented by location identities (i.e. change a value at one or more locations that belong to
  * these location identities).
  */
-public interface MemoryCheckpoint extends MemoryNode {
-
-    @Override
-    FixedNode asNode();
+public interface MemoryCheckpoint extends MemoryNode, FixedNodeInterface {
 
     interface Single extends MemoryCheckpoint {
 

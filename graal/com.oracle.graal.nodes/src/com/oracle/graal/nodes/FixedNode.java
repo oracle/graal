@@ -27,7 +27,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.nodeinfo.NodeInfo;
 
 @NodeInfo
-public abstract class FixedNode extends ValueNode {
+public abstract class FixedNode extends ValueNode implements FixedNodeInterface {
     public static final NodeClass<FixedNode> TYPE = NodeClass.create(FixedNode.class);
 
     protected FixedNode(NodeClass<? extends FixedNode> c, Stamp stamp) {
