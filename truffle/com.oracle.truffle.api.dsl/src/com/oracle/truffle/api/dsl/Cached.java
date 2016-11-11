@@ -134,9 +134,9 @@ import java.lang.annotation.Target;
  * state nor the operand identity guard. It is also declared after <code>doCached</code> therefore
  * it is only instantiated if the limit of the <code>doCached</code> specialization has been
  * reached. In other words <code>doNormal</code> is more generic than <code>doCached</code> . The
- * <code>doNormal</code> specialization uses <code>contains=&quot;doCached&quot;</code> to specify
+ * <code>doNormal</code> specialization uses <code>replaces=&quot;doCached&quot;</code> to specify
  * that all instantiations of <code>doCached</code> get removed if <code>doNormal</code> is
- * instantiated. Alternatively if the <code>contains</code> relation is omitted then all
+ * instantiated. Alternatively if the <code>replaces</code> relation is omitted then all
  * <code>doCached</code> instances remain but no new instances are created.
  *
  * <code>
@@ -146,10 +146,10 @@ import java.lang.annotation.Target;
  *    ...
  * }
  *
- * &#064;Specialization(contains = &quot;doCached&quot;)
+ * &#064;Specialization(replaces = &quot;doCached&quot;)
  * void doNormal(int operand) {...}
  *
- * Example executions with contains = &quot;doCached&quot;:
+ * Example executions with replaces = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
  * execute(1) => doCached(1, 1)
@@ -157,7 +157,7 @@ import java.lang.annotation.Target;
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow; doCached gets removed.
  * execute(1) => doNormal(1)
  *
- * Example executions without contains = &quot;doCached&quot;:
+ * Example executions without replaces = &quot;doCached&quot;:
  * execute(0) => doCached(0, 0) // new instantiation, cachedOperand is bound to 0
  * execute(1) => doCached(1, 1) // new instantiation, cachedOperand is bound to 1
  * execute(1) => doCached(1, 1)
@@ -217,7 +217,7 @@ import java.lang.annotation.Target;
  * </ol>
  *
  * @see Specialization#guards()
- * @see Specialization#contains()
+ * @see Specialization#replaces()
  * @see Specialization#limit()
  * @see ImportStatic
  * @since 0.8 or earlier

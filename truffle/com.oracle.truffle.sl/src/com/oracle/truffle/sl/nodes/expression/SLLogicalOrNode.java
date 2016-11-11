@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,31 +40,27 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import com.oracle.truffle.api.dsl.ShortCircuit;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.nodes.SLBinaryNode;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
 /**
- * This class is similar to the {@link SLLogicalAndNode}.
+ * Logical disjunction node with short circuit evaluation.
  */
 @NodeInfo(shortName = "||")
-@SuppressWarnings("unused")
-public abstract class SLLogicalOrNode extends SLBinaryNode {
+public final class SLLogicalOrNode extends SLShortCircuitNode {
 
-    @ShortCircuit("rightNode")
-    protected boolean needsRightNode(boolean left) {
+    public SLLogicalOrNode(SLExpressionNode left, SLExpressionNode right) {
+        super(left, right);
+    }
+
+    @Override
+    protected boolean isEvaluateRight(boolean left) {
         return !left;
     }
 
-    @ShortCircuit("rightNode")
-    protected boolean needsRightNode(Object left) {
-        return left instanceof Boolean && needsRightNode(((Boolean) left).booleanValue());
-    }
-
-    @Specialization
-    protected boolean doBoolean(boolean left, boolean hasRight, boolean right) {
+    @Override
+    protected boolean execute(boolean left, boolean right) {
         return left || right;
     }
+
 }

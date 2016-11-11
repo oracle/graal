@@ -43,7 +43,7 @@ abstract class ArrayWriteNode extends Node {
         return doArrayAccess(receiver, numberClazz.cast(index).intValue(), value);
     }
 
-    @Specialization(contains = "doNumber")
+    @Specialization(replaces = "doNumber")
     protected static final Object doNumberGeneric(JavaObject receiver, Number index, Object value) {
         return doArrayAccess(receiver, index.intValue(), value);
     }

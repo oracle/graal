@@ -53,8 +53,8 @@ public final class SpecializationData extends TemplateMethod {
     private List<CacheExpression> caches = Collections.emptyList();
     private List<AssumptionExpression> assumptionExpressions = Collections.emptyList();
     private List<ShortCircuitData> shortCircuits;
-    private final Set<SpecializationData> contains = new TreeSet<>();
-    private final Set<String> containsNames = new TreeSet<>();
+    private final Set<SpecializationData> replaces = new TreeSet<>();
+    private final Set<String> replacesNames = new TreeSet<>();
     private final Set<SpecializationData> excludedBy = new TreeSet<>();
     private String insertBeforeName;
     private SpecializationData insertBefore;
@@ -172,16 +172,16 @@ public final class SpecializationData extends TemplateMethod {
         return insertBeforeName;
     }
 
-    public Set<String> getContainsNames() {
-        return containsNames;
+    public Set<String> getReplacesNames() {
+        return replacesNames;
     }
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
         this(node, template, kind, new ArrayList<SpecializationThrowsData>());
     }
 
-    public Set<SpecializationData> getContains() {
-        return contains;
+    public Set<SpecializationData> getReplaces() {
+        return replaces;
     }
 
     public Set<SpecializationData> getExcludedBy() {

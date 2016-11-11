@@ -56,7 +56,7 @@ public class SpecializationGroupingTest {
             throw new SlowPathException();
         }
 
-        @Specialization(contains = "do1", guards = "isInitialized(value)")
+        @Specialization(replaces = "do1", guards = "isInitialized(value)")
         public int do2(int value) {
             return value == 42 ? value : 0;
         }

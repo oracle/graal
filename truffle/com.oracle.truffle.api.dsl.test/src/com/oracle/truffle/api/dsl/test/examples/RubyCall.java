@@ -131,7 +131,7 @@ public class RubyCall {
             return cachedLookup;
         }
 
-        @Specialization(contains = "cachedLookup")
+        @Specialization(replaces = "cachedLookup")
         protected static InternalMethod genericLookup(RubyObject receiver, Object name) {
             return receiver.getRubyClass().lookup(name);
         }
@@ -164,7 +164,7 @@ public class RubyCall {
             return RubyObject.NIL;
         }
 
-        @Specialization(contains = "directCall", guards = "method != METHOD_MISSING")
+        @Specialization(replaces = "directCall", guards = "method != METHOD_MISSING")
         protected static Object indirectCall(VirtualFrame frame, InternalMethod method, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
             return callNode.call(frame, method.getTarget(), arguments);

@@ -30,7 +30,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.ShortCircuit;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -66,7 +65,8 @@ public class ShortCircuitTest {
 
         static boolean needsChild;
 
-        @ShortCircuit("child0")
+        @SuppressWarnings("deprecation")
+        @com.oracle.truffle.api.dsl.ShortCircuit("child0")
         boolean needsChild0() {
             return needsChild;
         }
@@ -101,7 +101,8 @@ public class ShortCircuitTest {
     @SuppressWarnings("unused")
     abstract static class DoubleChildNode extends ValueNode {
 
-        @ShortCircuit("child1")
+        @SuppressWarnings("deprecation")
+        @com.oracle.truffle.api.dsl.ShortCircuit("child1")
         boolean needsChild1(Object leftValue) {
             return leftValue.equals(41);
         }
@@ -117,7 +118,8 @@ public class ShortCircuitTest {
     @SuppressWarnings("unused")
     abstract static class GuardChildNode extends ValueNode {
 
-        @ShortCircuit("child1")
+        @SuppressWarnings("deprecation")
+        @com.oracle.truffle.api.dsl.ShortCircuit("child1")
         boolean needsChild1(Object a) {
             return a.equals(new Integer(42));
         }
@@ -154,7 +156,8 @@ public class ShortCircuitTest {
     @NodeChild(value = "children", type = ValueNode[].class)
     abstract static class VarArgsNode extends ValueNode {
 
-        @ShortCircuit("children[1]")
+        @SuppressWarnings("deprecation")
+        @com.oracle.truffle.api.dsl.ShortCircuit("children[1]")
         boolean needsChild1(Object leftValue) {
             return leftValue.equals(41);
         }
@@ -189,7 +192,8 @@ public class ShortCircuitTest {
     @TypeSystemReference(ShortCircuitWithImplicitCastTypes.class)
     abstract static class ShortCircuitWithImplicitCastNode extends ValueNode {
 
-        @ShortCircuit("children[1]")
+        @SuppressWarnings("deprecation")
+        @com.oracle.truffle.api.dsl.ShortCircuit("children[1]")
         public boolean needsRightNode(Object left) {
             return (int) left == 41;
         }

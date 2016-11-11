@@ -83,7 +83,7 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
         return FrameUtil.getBooleanSafe(frame, getSlot());
     }
 
-    @Specialization(contains = {"readLong", "readBoolean"})
+    @Specialization(replaces = {"readLong", "readBoolean"})
     protected Object readObject(VirtualFrame frame) {
         if (!frame.isObject(getSlot())) {
             /*

@@ -29,9 +29,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** @since 0.8 or earlier */
+/**
+ * @since 0.8 or earlier
+ * @deprecated deprecated without replacement. Implement short circuits by manually executing child
+ *             nodes.
+ **/
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
+@Deprecated
 public @interface ShortCircuit {
 
     String value();
