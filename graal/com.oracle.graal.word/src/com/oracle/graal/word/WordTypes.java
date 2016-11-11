@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.word;
 
+import com.oracle.graal.bytecode.BridgeMethodUtils;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.nodes.ValueNode;
@@ -98,7 +99,7 @@ public class WordTypes {
             wordMethod = wordImplType.resolveConcreteMethod(targetMethod, callingContextType);
         }
         assert wordMethod != null : targetMethod;
-        assert wordMethod.getAnnotation(Operation.class) != null : wordMethod;
+        assert BridgeMethodUtils.getAnnotation(Operation.class, wordMethod) != null;
         return wordMethod;
     }
 

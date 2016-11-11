@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINT
 import static com.oracle.graal.nodes.ConstantNode.forBoolean;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.bytecode.BridgeMethodUtils;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -84,7 +85,7 @@ class HotSpotWordOperationPlugin extends WordOperationPlugin {
             return false;
         }
 
-        HotSpotOperation operation = method.getAnnotation(HotSpotOperation.class);
+        HotSpotOperation operation = BridgeMethodUtils.getAnnotation(HotSpotOperation.class, method);
         if (operation == null) {
             processWordOperation(b, args, wordTypes.getWordOperation(method, b.getMethod().getDeclaringClass()));
             return true;
