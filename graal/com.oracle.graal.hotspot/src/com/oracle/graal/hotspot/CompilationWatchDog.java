@@ -33,17 +33,32 @@ import com.oracle.graal.options.OptionValue;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * A watch dog for reporting long running compilations. This is designed to be an always on
+ * mechanism for the purpose of getting better reports from customer sites. As such, it only exits
+ * the VM when it is very sure about a stuck compilation as opposed to only observing a long running
+ * compilation. In both cases, it logs messages to {@link TTY}.
+ *
+ * A watch dog thread is associated with each compiler thread. It wakes up every
+ * {@value #SPIN_TIMEOUT_MS} milliseconds to observe the state of the compiler thread. After the
+ * first {@link Options#CompilationWatchDogStartDelay} seconds of a specific compilation, the watch
+ * dog reports a long running compilation. Every
+ * {@link Options#CompilationWatchDogStackTraceInterval} seconds after that point in time where the
+ * same compilation is still executing, the watch dog takes a stack trace of the compiler thread. If
+ * more than {@value Options#NonFatalIdenticalCompilationSnapshots} contiguous identical stack
+ * traces are seen, the watch dog reports a stuck compilation and exits the VM.
+ */
 class CompilationWatchDog extends Thread implements AutoCloseable {
 
     public static class Options {
         // @formatter:off
         @Option(help = "Delay in seconds before watch dog monitoring a compilation (0 disables monitoring).", type = OptionType.Debug)
-        public static final OptionValue<Double> CompilationWatchDogStartDelay = new OptionValue<>(0.0D);
+        public static final OptionValue<Double> CompilationWatchDogStartDelay = new OptionValue<>(30.0D);
         @Option(help = "Interval in seconds between a watch dog reporting stack traces for long running compilations.", type = OptionType.Debug)
         public static final OptionValue<Double> CompilationWatchDogStackTraceInterval = new OptionValue<>(30.0D);
-        @Option(help = "Number of contiguous identical compiler thread snapshot stack traces to be interpreted as a stuck " +
-                        "compilation and cause the VM to exit.", type = OptionType.Debug)
-         public static final OptionValue<Integer> IdenticalCompilationSnapshotsLimit = new OptionValue<>(8);
+        @Option(help = "Number of contiguous identical compiler thread stack traces allowed before the VM exits " +
+                       "on the basis of a stuck compilation.", type = OptionType.Debug)
+         public static final OptionValue<Integer> NonFatalIdenticalCompilationSnapshots = new OptionValue<>(10);
         // @formatter:on
     }
 
@@ -70,11 +85,11 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
     }
 
     /**
-     * Methods below this sleep timeout will, mostly, not be recognized by the watch dog. The watch
-     * dog thread only wakes up each SPIN_TIMEOUT milliseconds to check whether it should change its
-     * internal state to monitoring as the same method is compiled enough to be interesting.
+     * The number of milliseconds a watch dog thread sleeps between observing the state of the
+     * compilation thread it is associated with. Most compilations are expected to complete within
+     * this time period and thus not be actively monitored by the watch dog.
      */
-    private static final int SPIN_TIMEOUT_MS = 500;
+    private static final int SPIN_TIMEOUT_MS = 1000;
     private static final long START_DELAY_MS = ms(Options.CompilationWatchDogStartDelay.getValue());
     private static final long STACK_TRACE_INTERVAL_MS = ms(Options.CompilationWatchDogStackTraceInterval.getValue());
     private static final boolean ENABLED = START_DELAY_MS > 0.0D;
@@ -168,7 +183,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
 
     @Override
     public void run() {
-        TTY.printf("Started %s%n", this);
+        trace("Started%n", this);
         try {
             while (true) {
                 // get a copy of the last set method
@@ -211,13 +226,13 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                                         numberOfIdenticalStackTraces = 0;
                                     }
                                     numberOfIdenticalStackTraces++;
-                                    if (numberOfIdenticalStackTraces > Options.IdenticalCompilationSnapshotsLimit.getValue()) {
+                                    if (numberOfIdenticalStackTraces > Options.NonFatalIdenticalCompilationSnapshots.getValue()) {
                                         synchronized (CompilationWatchDog.class) {
                                             TTY.printf("======================= WATCH DOG THREAD =======================%n" +
                                                             "%s took %d identical stack traces, which indicates a stuck compilation (id=%d) of %s%n%sExiting VM%n", this,
                                                             numberOfIdenticalStackTraces, currentId, fmt(currentMethod), fmt(lastStackTrace));
+                                            System.exit(-1);
                                         }
-                                        System.exit(-1);
                                     } else if (newStackTrace) {
                                         synchronized (CompilationWatchDog.class) {
                                             TTY.printf("======================= WATCH DOG THREAD =======================%n" +
@@ -244,9 +259,8 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
             }
         } catch (Throwable t) {
             synchronized (CompilationWatchDog.class) {
-                TTY.printf("%s encountered an exception%n%sExiting VM%n", this, fmt(t));
+                TTY.printf("%s encountered an exception%n%s%n", this, fmt(t));
             }
-            System.exit(-1);
         }
     }
 
