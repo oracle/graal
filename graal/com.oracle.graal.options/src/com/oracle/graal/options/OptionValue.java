@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.options;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -150,32 +148,10 @@ public class OptionValue<T> {
 
     private OptionDescriptor descriptor;
 
-    private long reads;
-    private OptionValue<?> next;
-    private static OptionValue<?> head;
-
-    /**
-     * Name of the boolean system property governing whether to profile the number of times
-     * {@link #getValue()} is called for each {@link OptionValue}.
-     */
-    public static final String PROFILE_OPTIONVALUE_PROPERTY_NAME = "graal.profileOptionValue";
-
-    private static final boolean ProfileOptionValue = Boolean.getBoolean(PROFILE_OPTIONVALUE_PROPERTY_NAME);
-
-    private static void addToHistogram(OptionValue<?> option) {
-        if (ProfileOptionValue) {
-            synchronized (OptionValue.class) {
-                option.next = head;
-                head = option;
-            }
-        }
-    }
-
     @SuppressWarnings("unchecked")
     public OptionValue(T value) {
         this.defaultValue = value;
         this.value = (T) DEFAULT;
-        addToHistogram(this);
     }
 
     private static final Object DEFAULT = "DEFAULT";
@@ -189,7 +165,6 @@ public class OptionValue<T> {
     protected OptionValue() {
         this.defaultValue = (T) UNINITIALIZED;
         this.value = (T) DEFAULT;
-        addToHistogram(this);
     }
 
     /**
@@ -284,9 +259,6 @@ public class OptionValue<T> {
      * Gets the value of this option.
      */
     public T getValue() {
-        if (ProfileOptionValue) {
-            reads++;
-        }
         if (!(this instanceof StableOptionValue)) {
             OverrideScope overrideScope = getOverrideScope();
             if (overrideScope != null) {
@@ -480,38 +452,6 @@ public class OptionValue<T> {
             if (!overrides.isEmpty()) {
                 setOverrideScope(parent);
             }
-        }
-    }
-
-    static {
-        if (ProfileOptionValue) {
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                @Override
-                public void run() {
-                    ArrayList<OptionValue<?>> options = new ArrayList<>();
-                    for (OptionValue<?> option = head; option != null; option = option.next) {
-                        options.add(option);
-                    }
-                    Collections.sort(options, new Comparator<OptionValue<?>>() {
-
-                        @Override
-                        public int compare(OptionValue<?> o1, OptionValue<?> o2) {
-                            if (o1.reads < o2.reads) {
-                                return -1;
-                            } else if (o1.reads > o2.reads) {
-                                return 1;
-                            } else {
-                                return o1.getName().compareTo(o2.getName());
-                            }
-                        }
-                    });
-                    PrintStream out = System.out;
-                    out.println("=== OptionValue reads histogram ===");
-                    for (OptionValue<?> option : options) {
-                        out.println(option.reads + "\t" + option);
-                    }
-                }
-            });
         }
     }
 }
