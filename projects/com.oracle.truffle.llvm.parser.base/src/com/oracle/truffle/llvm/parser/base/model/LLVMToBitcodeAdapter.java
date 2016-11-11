@@ -250,9 +250,19 @@ public final class LLVMToBitcodeAdapter {
             return unresolveType((ArrayType) type);
         } else if (type instanceof VectorType) {
             return unresolveType((VectorType) type);
+        } else if (type instanceof FunctionType) {
+            return unresolveType((FunctionType) type);
         }
 
         throw new AssertionError("Unknown type: " + type + " - " + type.getClass().getTypeName());
+    }
+
+    public static ResolvedType unresolveType(FunctionType functionType) {
+        final List<ResolvedType> unresolvedParams = new ArrayList<>(functionType.getArgumentTypes().length);
+        for (int i = 0; i < functionType.getArgumentTypes().length; i++) {
+            unresolvedParams.add(unresolveType(functionType.getArgumentTypes()[i]));
+        }
+        return new ResolvedFunctionType(unresolveType(functionType.getReturnType()), unresolvedParams);
     }
 
     public static ResolvedType unresolveType(FunctionDeclaration type) {
