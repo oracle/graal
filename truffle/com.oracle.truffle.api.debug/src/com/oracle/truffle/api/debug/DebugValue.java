@@ -27,7 +27,14 @@ package com.oracle.truffle.api.debug;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Represents a value accessed using the debugger API. Please note that values can become invalid
@@ -42,7 +49,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  *
  * @since 0.17
  */
-public abstract class DebugValue /* TODO: future API implements Iterable<DebugValue> */ {
+public abstract class DebugValue {
 
     @SuppressWarnings("rawtypes")
     abstract Class<? extends TruffleLanguage> getLanguage();
@@ -106,6 +113,86 @@ public abstract class DebugValue /* TODO: future API implements Iterable<DebugVa
     public abstract boolean isWriteable();
 
     /**
+     * Provides properties representing an internal structure of this value. The returned collection
+     * is not thread-safe. If the value is not {@link #isReadable() readable} then an
+     * {@link IllegalStateException} is thrown.
+     *
+     * @return a collection of property values, or </code>null</code> when the value does not have
+     *         any concept of properties.
+     * @since 0.19
+     */
+    @SuppressWarnings("unchecked")
+    public final Collection<DebugValue> getProperties() {
+        if (!isReadable()) {
+            throw new IllegalStateException("Value is not readable");
+        }
+        Object value = get();
+        Collection<DebugValue> properties = null;
+        if (value instanceof TruffleObject) {
+            Map<Object, Object> map = JavaInterop.asJavaObject(Map.class, (TruffleObject) value);
+            if (map != null) {
+                try {
+                    properties = new ValuePropertiesCollection(getDebugger(), getSourceRoot(), map.entrySet());
+                } catch (Exception ex) {
+                    if (ex.getCause() instanceof InteropException) {
+                        // Not supported, no properties
+                    } else {
+                        throw ex;
+                    }
+                }
+            }
+        }
+        return properties;
+    }
+
+    /*
+     * TODO future API: Find a property value based on a String name. In general, not all properties
+     * may have String names. Use this for lookup of a value of some known String-based property.
+     * DebugValue findProperty(String name)
+     */
+
+    /**
+     * Returns <code>true</code> if this value represents an array, <code>false</code> otherwise.
+     *
+     * @since 0.19
+     */
+    public final boolean isArray() {
+        Object value = get();
+        if (value instanceof TruffleObject) {
+            TruffleObject to = (TruffleObject) value;
+            return JavaInterop.isArray(to);
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Provides array elements when this value represents an array. To test if this value represents
+     * an array, check {@link #isArray()}.
+     *
+     * @return a list of array elements, or <code>null</code> when the value does not represent an
+     *         array.
+     * @since 0.19
+     */
+    @SuppressWarnings("unchecked")
+    public final List<DebugValue> getArray() {
+        List<DebugValue> arrayList = null;
+        Object value = get();
+        if (value instanceof TruffleObject) {
+            TruffleObject to = (TruffleObject) value;
+            if (JavaInterop.isArray(to)) {
+                List<Object> array = JavaInterop.asJavaObject(List.class, (TruffleObject) value);
+                arrayList = new ValueInteropList(getDebugger(), getSourceRoot(), array);
+            }
+        }
+        return arrayList;
+    }
+
+    abstract Debugger getDebugger();
+
+    abstract RootNode getSourceRoot();
+
+    /**
      * Returns a string representation of the debug value.
      *
      * @since 0.17
@@ -125,19 +212,8 @@ public abstract class DebugValue /* TODO: future API implements Iterable<DebugVa
      * on FrameSlot.
      */
 
-    /*
-     * TODO future API: public abstract int getLength(); We could already implement this using
-     * interop, but without beeing able to iterate the values it does not make much sense.
-     */
-
-    /*
-     * TODO future API: public Iterator<DebugValue> iterator() for this we need a way to get key
-     * names of an object using interop.
-     */
-    /* TODO future API: public abstract boolean getValue(String); */
-
     @SuppressWarnings("rawtypes")
-    static final class HeapValue extends DebugValue {
+    static class HeapValue extends DebugValue {
 
         // identifies the debugger and engine
         private final Debugger debugger;
@@ -163,11 +239,12 @@ public abstract class DebugValue /* TODO: future API implements Iterable<DebugVa
                 throw new IllegalStateException("Value is not readable");
             }
             if (clazz == String.class) {
+                Object val = get();
                 String stringValue;
                 if (sourceRoot == null) {
-                    stringValue = value.toString();
+                    stringValue = val.toString();
                 } else {
-                    stringValue = debugger.getEnv().toString(sourceRoot, value);
+                    stringValue = debugger.getEnv().toString(sourceRoot, val);
                 }
                 return (T) stringValue;
             }
@@ -197,6 +274,59 @@ public abstract class DebugValue /* TODO: future API implements Iterable<DebugVa
         @Override
         public boolean isWriteable() {
             return false;
+        }
+
+        @Override
+        Debugger getDebugger() {
+            return debugger;
+        }
+
+        @Override
+        RootNode getSourceRoot() {
+            return sourceRoot;
+        }
+
+    }
+
+    static final class PropertyValue extends HeapValue {
+
+        private final Map.Entry<Object, Object> property;
+
+        PropertyValue(Debugger debugger, RootNode root, Map.Entry<Object, Object> property) {
+            super(debugger, root, null);
+            this.property = property;
+        }
+
+        @Override
+        Object get() {
+            return property.getValue();
+        }
+
+        @Override
+        public String getName() {
+            String name;
+            RootNode sourceRoot = getSourceRoot();
+            Object propertyKey = property.getKey();
+            if (propertyKey instanceof String) {
+                name = (String) propertyKey;
+            } else {
+                if (sourceRoot == null) {
+                    name = Objects.toString(propertyKey);
+                } else {
+                    name = getDebugger().getEnv().toString(sourceRoot, propertyKey);
+                }
+            }
+            return name;
+        }
+
+        @Override
+        public boolean isWriteable() {
+            return true; // Suppose that yes...
+        }
+
+        @Override
+        public void set(DebugValue value) {
+            property.setValue(value.get());
         }
 
     }
@@ -270,6 +400,16 @@ public abstract class DebugValue /* TODO: future API implements Iterable<DebugVa
         public boolean isWriteable() {
             origin.verifyValidState(false);
             return true;
+        }
+
+        @Override
+        Debugger getDebugger() {
+            return origin.event.getSession().getDebugger();
+        }
+
+        @Override
+        RootNode getSourceRoot() {
+            return origin.findCurrentRoot();
         }
 
     }

@@ -41,6 +41,8 @@
 package com.oracle.truffle.sl.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -66,6 +68,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
+import java.util.Collection;
+import java.util.Iterator;
 
 public class SLDebugTest {
 
@@ -310,6 +314,79 @@ public class SLDebugTest {
             });
 
             assertEquals("NULL", expectDone());
+        }
+    }
+
+    @Test
+    public void testDebugValue() throws Throwable {
+        final Source varsSource = slCode("function main() {\n" +
+                        "  a = doNull();\n" +
+                        "  b = 10 == 10;\n" +
+                        "  c = 10;\n" +
+                        "  d = \"str\";\n" +
+                        "  e = new();\n" +
+                        "  e.p1 = 1;\n" +
+                        "  e.p2 = new();\n" +
+                        "  e.p2.p21 = 21;\n" +
+                        "  return;\n" +
+                        "}\n" +
+                        "function doNull() {}\n");
+
+        try (DebuggerSession session = startSession()) {
+            session.install(Breakpoint.newBuilder(varsSource).lineIs(10).build());
+            startEval(varsSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+
+                DebugValue a = frame.getValue("a");
+                assertFalse(a.isArray());
+                assertNull(a.getArray());
+                assertNull(a.getProperties());
+
+                DebugValue b = frame.getValue("b");
+                assertFalse(b.isArray());
+                assertNull(b.getArray());
+                assertNull(b.getProperties());
+
+                DebugValue c = frame.getValue("c");
+                assertFalse(c.isArray());
+                assertEquals("10", c.as(String.class));
+                assertNull(c.getArray());
+                assertNull(c.getProperties());
+
+                DebugValue d = frame.getValue("d");
+                assertFalse(d.isArray());
+                assertEquals("str", d.as(String.class));
+                assertNull(d.getArray());
+                assertNull(d.getProperties());
+
+                DebugValue e = frame.getValue("e");
+                assertFalse(e.isArray());
+                assertNull(e.getArray());
+                Collection<DebugValue> propertyValues = e.getProperties();
+                assertEquals(2, propertyValues.size());
+                Iterator<DebugValue> propertiesIt = propertyValues.iterator();
+                assertTrue(propertiesIt.hasNext());
+                DebugValue p1 = propertiesIt.next();
+                assertEquals("p1", p1.getName());
+                assertEquals("1", p1.as(String.class));
+                assertTrue(propertiesIt.hasNext());
+                DebugValue p2 = propertiesIt.next();
+                assertEquals("p2", p2.getName());
+                assertFalse(propertiesIt.hasNext());
+
+                propertyValues = p2.getProperties();
+                assertEquals(1, propertyValues.size());
+                propertiesIt = propertyValues.iterator();
+                assertTrue(propertiesIt.hasNext());
+                DebugValue p21 = propertiesIt.next();
+                assertEquals("p21", p21.getName());
+                assertEquals("21", p21.as(String.class));
+                assertFalse(propertiesIt.hasNext());
+            });
+
+            expectDone();
         }
     }
 
