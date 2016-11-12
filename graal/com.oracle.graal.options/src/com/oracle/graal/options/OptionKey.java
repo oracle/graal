@@ -32,7 +32,7 @@ import java.util.Map.Entry;
 import java.util.ServiceLoader;
 
 /**
- * An option value.
+ * A key for an option. The value for an option is obtained from an {@link OptionValues} object.
  */
 public class OptionKey<T> {
     /**

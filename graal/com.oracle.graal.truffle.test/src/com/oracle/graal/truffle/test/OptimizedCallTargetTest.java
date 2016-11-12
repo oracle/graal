@@ -341,11 +341,16 @@ public class OptimizedCallTargetTest {
 
     private static class OSRRepeatingNode extends Node implements RepeatingNode {
         int count = 0;
+        final int osrCompilationThreshold;
+
+        OSRRepeatingNode(int osrCompilationThreshold) {
+            this.osrCompilationThreshold = osrCompilationThreshold;
+        }
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
             count++;
-            return count < (TruffleCompilerOptions.TruffleOSRCompilationThreshold.getValue() + 10);
+            return count < (osrCompilationThreshold + 10);
         }
     }
 
@@ -353,7 +358,7 @@ public class OptimizedCallTargetTest {
     public void testCompileOnly4() {
         // OSR should not trigger for compile-only includes
         try (OverrideScope scope = OptionKey.override(TruffleCompilerOptions.TruffleCompileOnly, "foobar")) {
-            final OSRRepeatingNode repeating = new OSRRepeatingNode();
+            final OSRRepeatingNode repeating = new OSRRepeatingNode(TruffleCompilerOptions.TruffleOSRCompilationThreshold.getValue());
             final LoopNode loop = runtime.createLoopNode(repeating);
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {
 
@@ -393,7 +398,7 @@ public class OptimizedCallTargetTest {
     public void testCompileOnly5() {
         // OSR should trigger if compile-only with excludes
         try (OverrideScope scope = OptionKey.override(TruffleCompilerOptions.TruffleCompileOnly, "~foobar")) {
-            final OSRRepeatingNode repeating = new OSRRepeatingNode();
+            final OSRRepeatingNode repeating = new OSRRepeatingNode(TruffleCompilerOptions.TruffleOSRCompilationThreshold.getValue());
             final LoopNode loop = runtime.createLoopNode(repeating);
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {
 

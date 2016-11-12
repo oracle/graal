@@ -47,6 +47,7 @@ import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.test.SubprocessUtil;
 
@@ -268,7 +269,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (cls == OptionsParser.class) {
+        if (cls == OptionsParser.class || cls == OptionValues.class) {
             // Classes implementing Graal option loading
             return true;
         }
