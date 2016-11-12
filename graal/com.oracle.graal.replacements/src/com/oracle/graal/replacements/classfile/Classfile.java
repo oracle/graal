@@ -102,8 +102,15 @@ public class Classfile {
         for (int i = 0; i < attributesCount; i++) {
             stream.skipBytes(2); // name_index
             int attributeLength = stream.readInt();
-            stream.skip(attributeLength);
+            skipFully(stream, attributeLength);
         }
+    }
+
+    static void skipFully(DataInputStream stream, int n) throws IOException {
+        long skipped = 0;
+        do {
+            skipped += stream.skip(n - skipped);
+        } while (skipped != n);
     }
 
     private ClassfileBytecode findCodeAttribute(DataInputStream stream, ClassfileConstantPool cp, String name, String descriptor, boolean isStatic) throws IOException {
@@ -124,7 +131,7 @@ public class Classfile {
                     code = null;
                 }
             } else {
-                stream.skip(attributeLength);
+                skipFully(stream, attributeLength);
             }
         }
         return code;
