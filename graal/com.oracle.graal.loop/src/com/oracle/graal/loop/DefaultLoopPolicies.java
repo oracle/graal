@@ -183,7 +183,23 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
         Debug.log("shouldUnswitch(%s, %s) : delta=%d (%.2f%% inside of branches), max=%d, f=%.2f, phis=%d -> %b", loop, controlSplits, actualDiff, (double) (inBranchTotal) / loopTotal * 100, maxDiff,
                         loopFrequency, phis, actualDiff <= maxDiff);
-        return actualDiff <= maxDiff;
+        if (actualDiff <= maxDiff) {
+            // check whether we're allowed to unswtich this loop
+            for (Node node : loop.inside().nodes()) {
+                if (node instanceof ControlFlowAnchorNode) {
+                    return false;
+                }
+                if (node instanceof FrameState) {
+                    FrameState frameState = (FrameState) node;
+                    if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 
 }

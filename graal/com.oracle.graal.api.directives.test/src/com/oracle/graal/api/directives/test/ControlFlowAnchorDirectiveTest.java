@@ -31,8 +31,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -46,6 +44,8 @@ import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
 
@@ -179,6 +179,39 @@ public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
     @Test
     public void testPeel() {
         test("preventPeelSnippet", 42);
+    }
+
+    @NodeCount(nodeClass = LoopBeginNode.class, expectedCount = 2)
+    @NodeCount(nodeClass = IfNode.class, expectedCount = 5)
+    public static void verifyUnswtichSnippet(int arg, boolean flag) {
+        int ret = arg;
+        while (GraalDirectives.injectBranchProbability(0.9999, ret < 1000)) {
+            if (flag) {
+                ret++;
+            } else {
+                ret += 2;
+            }
+        }
+    }
+
+    @NodeCount(nodeClass = LoopBeginNode.class, expectedCount = 1)
+    @NodeCount(nodeClass = IfNode.class, expectedCount = 2)
+    public static void preventUnswtichSnippet(int arg, boolean flag) {
+        int ret = arg;
+        while (GraalDirectives.injectBranchProbability(0.9999, ret < 1000)) {
+            if (flag) {
+                GraalDirectives.controlFlowAnchor();
+                ret++;
+            } else {
+                ret += 2;
+            }
+        }
+    }
+
+    @Test
+    public void testUnswitch() {
+        test("verifyUnswtichSnippet", 0, false);
+        test("preventUnswtichSnippet", 0, false);
     }
 
     /**
