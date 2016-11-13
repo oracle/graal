@@ -12,6 +12,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [TruffleLanguage.Registration.interactive()](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.Registration.html#interactive--) and [PolyglotEngine.Language.isInteractive()](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/vm/PolyglotEngine.Language.html#isInteractive--) to inform about language interactive capability. When false (the default), the language is supposed to ignore interactive property of sources. When true, the language should print results of execution of interactive sources.
 * Deprecated the @[Specialization](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/Specialization.html) contains attribute and renamed it to replaces.
 * Deprecated @[ShortCircuit](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/ShortCircuit.html) DSL annotation without replacement. It is recommended to implement short circuit nodes manually without using the DSL.
+* Added Truffle DSL [reflection API](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/Reflection.html) that provides reflection information for specialization activation and cached data.
 
 ## Version 0.21
 6-Dec-2016

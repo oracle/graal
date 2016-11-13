@@ -62,9 +62,11 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
+import com.oracle.truffle.api.dsl.Reflectable;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
@@ -198,6 +200,14 @@ public class NodeParser extends AbstractParser<NodeData> {
             return node;
         }
 
+        AnnotationMirror reflectable = findFirstAnnotation(lookupTypes, Reflectable.class);
+        if (reflectable != null) {
+            node.setReflectable(true);
+            if (node.getTypeSystem().getOptions().defaultGenerator() != DSLGenerator.FLAT) {
+                node.addError(reflectable, null, "Reflection is not supported by the used DSL layout. Only the flat DSL layout supports reflection.");
+            }
+        }
+
         node.getFields().addAll(parseFields(lookupTypes, members));
         node.getChildren().addAll(parseChildren(lookupTypes, members));
         node.getChildExecutions().addAll(parseExecutions(node.getFields(), node.getChildren(), members));
@@ -206,10 +216,6 @@ public class NodeParser extends AbstractParser<NodeData> {
         initializeExecutableTypes(node);
         initializeImportGuards(node, lookupTypes, members);
         initializeChildren(node);
-
-        if (node.hasErrors()) {
-            return node; // error sync point
-        }
 
         if (node.hasErrors()) {
             return node; // error sync point
