@@ -169,7 +169,7 @@ public class OptionKey<T> {
     /**
      * Sets the descriptor for this option.
      */
-    public void setDescriptor(OptionDescriptor descriptor) {
+    public final void setDescriptor(OptionDescriptor descriptor) {
         assert this.descriptor == null : "Overwriting existing descriptor";
         this.descriptor = descriptor;
     }
@@ -178,7 +178,7 @@ public class OptionKey<T> {
      * Returns the descriptor for this option, if it has been set by
      * {@link #setDescriptor(OptionDescriptor)}.
      */
-    public OptionDescriptor getDescriptor() {
+    public final OptionDescriptor getDescriptor() {
         return descriptor;
     }
 
@@ -202,7 +202,7 @@ public class OptionKey<T> {
      * {@linkplain #setDescriptor(OptionDescriptor) descriptor} is the value of
      * {@link Object#toString()}.
      */
-    public String getName() {
+    public final String getName() {
         if (descriptor == null) {
             // Trigger initialization of OptionsLoader to ensure all option values have
             // a descriptor which is required for them to have meaningful names.
@@ -221,7 +221,7 @@ public class OptionKey<T> {
      * {@link #setValue(Object)} or registering {@link OverrideScope}s. Therefore, it is also not
      * affected by options set on the command line.
      */
-    public T getDefaultValue() {
+    public final T getDefaultValue() {
         if (defaultValue == UNINITIALIZED) {
             defaultValue = defaultValue();
         }
@@ -232,7 +232,9 @@ public class OptionKey<T> {
      * Returns true if the option has been set in any way. Note that this doesn't mean that the
      * current value is different than the default.
      */
-    public boolean hasBeenSet() {
+    public boolean hasBeenSet(OptionValues values) {
+        assert !(this instanceof StableOptionKey);
+
         if (!(this instanceof StableOptionKey)) {
             getValue(); // ensure initialized
 
@@ -244,34 +246,66 @@ public class OptionKey<T> {
                 }
             }
         }
-        return GLOBAL.containsKey(this);
+        return values.containsKey(this);
+    }
+
+    /**
+     * Returns true if the option has been set in any way. Note that this doesn't mean that the
+     * current value is different than the default.
+     */
+    public final boolean hasBeenSet() {
+        return hasBeenSet(GLOBAL);
     }
 
     /**
      * Gets the value of this option.
      */
-    @SuppressWarnings("unchecked")
-    public T getValue() {
-        if (!(this instanceof StableOptionKey)) {
-            OverrideScope overrideScope = getOverrideScope();
-            if (overrideScope != null) {
-                T override = overrideScope.getOverride(this);
-                if (override != null) {
-                    return override;
-                }
+    public final T getValue() {
+        return getValue(GLOBAL);
+    }
+
+    /**
+     * Gets the value of this option.
+     */
+    public T getValue(OptionValues values) {
+        assert !(this instanceof StableOptionKey);
+        OverrideScope overrideScope = getOverrideScope();
+        if (overrideScope != null) {
+            T override = overrideScope.getOverride(this);
+            if (override != null) {
+                return override;
             }
         }
-        if (GLOBAL.containsKey(this)) {
-            return (T) GLOBAL.get(this);
-        }
-        return getDefaultValue();
+        return values.get(this);
     }
 
     /**
      * Sets the value of this option.
      */
-    public void setValue(Object v) {
-        GLOBAL.set(this, v);
+    public void setValue(OptionValues values, Object v) {
+        values.set(this, v);
+    }
+
+    /**
+     * Sets the value of this option.
+     */
+    public final void setValue(Object v) {
+        setValue(GLOBAL, v);
+    }
+
+    /**
+     * Notifies this object when a value associated with this key is updated in {@code values}.
+     *
+     * @param values
+     * @param oldValue
+     * @param newValue
+     */
+    protected void onValueUpdate(OptionValues values, T oldValue, T newValue) {
+    }
+
+    @SuppressWarnings("unchecked")
+    final void valueUpdated(OptionValues values, Object oldValue, Object newValue) {
+        onValueUpdate(values, (T) oldValue, (T) newValue);
     }
 
     /**

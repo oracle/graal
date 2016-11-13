@@ -44,14 +44,6 @@ public class PrintStreamOptionKey extends OptionKey<String> {
     }
 
     /**
-     * The print stream to which output will be written.
-     *
-     * Declared {@code volatile} to enable safe use of double-checked locking in
-     * {@link #getStream()} and {@link #setValue(Object)}.
-     */
-    private volatile PrintStream ps;
-
-    /**
      * Replace any instance of %p with a an identifying name. Try to get it from the RuntimeMXBean
      * name.
      *
@@ -121,44 +113,25 @@ public class PrintStreamOptionKey extends OptionKey<String> {
      * will output to HotSpot's {@link HotSpotJVMCIRuntimeProvider#getLogStream() log} stream.
      */
     public PrintStream getStream() {
-        if (ps == null) {
-            if (getValue() != null) {
-                synchronized (this) {
-                    if (ps == null) {
-                        try {
-                            final boolean enableAutoflush = true;
-                            ps = new PrintStream(new FileOutputStream(getFilename()), enableAutoflush);
-                            /*
-                             * Add the JVM and Java arguments to the log file to help identity it.
-                             */
-                            String inputArguments = String.join(" ", ManagementFactory.getRuntimeMXBean().getInputArguments());
-                            ps.println("VM Arguments: " + inputArguments);
-                            String cmd = System.getProperty("sun.java.command");
-                            if (cmd != null) {
-                                ps.println("sun.java.command=" + cmd);
-                            }
-                        } catch (FileNotFoundException e) {
-                            throw new RuntimeException("couldn't open file: " + getValue(), e);
-                        }
-                    }
+        if (getValue() != null) {
+            try {
+                final boolean enableAutoflush = true;
+                PrintStream ps = new PrintStream(new FileOutputStream(getFilename()), enableAutoflush);
+                /*
+                 * Add the JVM and Java arguments to the log file to help identity it.
+                 */
+                String inputArguments = String.join(" ", ManagementFactory.getRuntimeMXBean().getInputArguments());
+                ps.println("VM Arguments: " + inputArguments);
+                String cmd = System.getProperty("sun.java.command");
+                if (cmd != null) {
+                    ps.println("sun.java.command=" + cmd);
                 }
-            } else {
-                ps = new PrintStream(new DelayedOutputStream());
+                return ps;
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException("couldn't open file: " + getValue(), e);
             }
+        } else {
+            return new PrintStream(new DelayedOutputStream());
         }
-        return ps;
-    }
-
-    @Override
-    public void setValue(Object v) {
-        if (ps != null) {
-            synchronized (this) {
-                if (ps != null) {
-                    ps.close();
-                    ps = null;
-                }
-            }
-        }
-        super.setValue(v);
     }
 }

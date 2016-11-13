@@ -42,8 +42,8 @@ import com.oracle.graal.hotspot.replacements.CRC32Substitutions;
 import com.oracle.graal.hotspot.replacements.CallSiteTargetNode;
 import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
 import com.oracle.graal.hotspot.replacements.ClassGetHubNode;
-import com.oracle.graal.hotspot.replacements.IdentityHashCodeNode;
 import com.oracle.graal.hotspot.replacements.HotSpotClassSubstitutions;
+import com.oracle.graal.hotspot.replacements.IdentityHashCodeNode;
 import com.oracle.graal.hotspot.replacements.ObjectCloneNode;
 import com.oracle.graal.hotspot.replacements.ObjectSubstitutions;
 import com.oracle.graal.hotspot.replacements.ReflectionGetCallerClassNode;
@@ -74,6 +74,7 @@ import com.oracle.graal.nodes.memory.address.AddressNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.StableOptionKey;
 import com.oracle.graal.replacements.InlineDuringParsingPlugin;
 import com.oracle.graal.replacements.InlineGraalDirectivesPlugin;
@@ -374,12 +375,13 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerStableOptionPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, StableOptionKey.class);
-        r.register1("getValue", Receiver.class, new InvocationPlugin() {
+        r.register2("getValue", Receiver.class, OptionValues.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (receiver.isConstant()) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode values) {
+                if (receiver.isConstant() && values.isConstant()) {
                     StableOptionKey<?> option = snippetReflection.asObject(StableOptionKey.class, (JavaConstant) receiver.get().asConstant());
-                    b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(option.getValue()), b.getMetaAccess()));
+                    OptionValues optionValues = snippetReflection.asObject(OptionValues.class, (JavaConstant) values.asConstant());
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(option.getValue(optionValues)), b.getMetaAccess()));
                     return true;
                 }
                 return false;

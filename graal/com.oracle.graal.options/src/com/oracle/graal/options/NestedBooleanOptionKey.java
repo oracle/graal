@@ -47,12 +47,11 @@ public class NestedBooleanOptionKey extends OptionKey<Boolean> {
     }
 
     @Override
-    public Boolean getValue() {
-        Boolean v = super.getValue();
+    public Boolean getValue(OptionValues values) {
+        Boolean v = super.getValue(values);
         if (v == null) {
-            return initialValue && masterOption.getValue();
+            return initialValue && masterOption.getValue(values);
         }
         return v;
     }
-
 }

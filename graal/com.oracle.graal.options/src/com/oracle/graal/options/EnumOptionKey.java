@@ -44,11 +44,21 @@ public class EnumOptionKey<T extends Enum<T>> extends OptionKey<T> {
     }
 
     @Override
-    public void setValue(Object v) {
+    public void setValue(OptionValues values, Object value) {
+        assert enumClass.isInstance(value) : value + " is not a valid value for " + getName();
+        super.setValue(values, value);
+    }
+
+    Object valueOf(String name) {
         try {
-            super.setValue(Enum.valueOf(enumClass, (String) v));
+            return Enum.valueOf(enumClass, name);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("\"" + v + "\" is not a valid option for " + getName() + ". Valid values are " + EnumSet.allOf(enumClass));
+            throw new IllegalArgumentException("\"" + name + "\" is not a valid option for " + getName() + ". Valid values are " + EnumSet.allOf(enumClass));
         }
+    }
+
+    @Override
+    protected void onValueUpdate(OptionValues values, T oldValue, T newValue) {
+        assert enumClass.isInstance(newValue) : newValue + " is not a valid value for " + getName();
     }
 }

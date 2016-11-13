@@ -48,18 +48,36 @@ public class OptionValues {
     }
 
     public void set(OptionKey<?> key, Object value) {
-        values.put(key, value);
+        Object oldValue = values.put(key, encodeNull(value));
+        key.valueUpdated(this, decodeNull(oldValue), value);
     }
 
     boolean containsKey(OptionKey<?> key) {
         return values.containsKey(key);
     }
 
-    Object get(OptionKey<?> key) {
-        return values.get(key);
+    @SuppressWarnings("unchecked")
+    <T> T get(OptionKey<T> key) {
+        Object value = values.get(key);
+        if (value == null) {
+            return key.getDefaultValue();
+        }
+        return (T) decodeNull(value);
     }
 
     public void copyInto(Map<OptionKey<?>, Object> dst) {
-        dst.putAll(values);
+        for (Map.Entry<OptionKey<?>, Object> e : values.entrySet()) {
+            dst.put(e.getKey(), decodeNull(e.getValue()));
+        }
+    }
+
+    private static final Object NULL = new Object();
+
+    private static Object encodeNull(Object value) {
+        return value == null ? NULL : value;
+    }
+
+    private static Object decodeNull(Object value) {
+        return value == NULL ? null : value;
     }
 }

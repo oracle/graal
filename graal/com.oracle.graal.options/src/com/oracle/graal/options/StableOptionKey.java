@@ -51,10 +51,15 @@ public class StableOptionKey<T> extends OptionKey<T> {
      * Gets the value of this option.
      */
     @Override
-    public final T getValue() {
-        T result = super.getValue();
+    public T getValue(OptionValues values) {
+        T result = values.get(this);
         assert initGetValueCalled();
         return result;
+    }
+
+    @Override
+    public boolean hasBeenSet(OptionValues values) {
+        return values.containsKey(this);
     }
 
     private boolean initGetValueCalled() {
@@ -62,14 +67,8 @@ public class StableOptionKey<T> extends OptionKey<T> {
         return true;
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This must only be called if {@link #getValue()} has never been called.
-     */
     @Override
-    public final void setValue(Object v) {
+    protected void onValueUpdate(OptionValues values, T oldValue, T newValue) {
         assert !getValueCalled;
-        super.setValue(v);
     }
 }

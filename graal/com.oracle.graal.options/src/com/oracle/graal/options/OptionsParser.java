@@ -124,17 +124,17 @@ public class OptionsParser {
         } else {
             String valueString = (String) uncheckedValue;
             if (optionType == Boolean.class) {
-                if (uncheckedValue instanceof Boolean) {
-                    value = uncheckedValue;
-                } else if ("true".equals(valueString)) {
+                if ("true".equals(valueString)) {
                     value = Boolean.TRUE;
                 } else if ("false".equals(valueString)) {
                     value = Boolean.FALSE;
                 } else {
                     throw new IllegalArgumentException("Boolean option '" + name + "' must have value \"true\" or \"false\", not \"" + uncheckedValue + "\"");
                 }
-            } else if (optionType == String.class || Enum.class.isAssignableFrom(optionType)) {
+            } else if (optionType == String.class) {
                 value = valueString;
+            } else if (Enum.class.isAssignableFrom(optionType)) {
+                value = ((EnumOptionKey<?>) desc.getOptionKey()).valueOf(valueString);
             } else {
                 if (valueString.isEmpty()) {
                     throw new IllegalArgumentException("Non empty value required for option '" + name + "'");
