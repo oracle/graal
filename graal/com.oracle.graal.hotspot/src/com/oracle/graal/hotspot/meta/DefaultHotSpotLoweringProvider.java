@@ -257,16 +257,28 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
                 newObjectSnippets.lower((NewInstanceNode) n, registers, tool);
             }
         } else if (n instanceof DynamicNewInstanceNode) {
+            DynamicNewInstanceNode newInstanceNode = (DynamicNewInstanceNode) n;
+            if (newInstanceNode.getClassClass() == null) {
+                JavaConstant classClassMirror = constantReflection.forObject(Class.class);
+                ConstantNode classClass = ConstantNode.forConstant(classClassMirror, tool.getMetaAccess(), graph);
+                newInstanceNode.setClassClass(classClass);
+            }
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                newObjectSnippets.lower((DynamicNewInstanceNode) n, registers, tool);
+                newObjectSnippets.lower(newInstanceNode, registers, tool);
             }
         } else if (n instanceof NewArrayNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                 newObjectSnippets.lower((NewArrayNode) n, registers, tool);
             }
         } else if (n instanceof DynamicNewArrayNode) {
+            DynamicNewArrayNode dynamicNewArrayNode = (DynamicNewArrayNode) n;
+            if (dynamicNewArrayNode.getVoidClass() == null) {
+                JavaConstant voidClassMirror = constantReflection.forObject(void.class);
+                ConstantNode voidClass = ConstantNode.forConstant(voidClassMirror, tool.getMetaAccess(), graph);
+                dynamicNewArrayNode.setVoidClass(voidClass);
+            }
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-                newObjectSnippets.lower((DynamicNewArrayNode) n, registers, tool);
+                newObjectSnippets.lower(dynamicNewArrayNode, registers, tool);
             }
         } else if (n instanceof VerifyHeapNode) {
             if (graph.getGuardsStage().areFrameStatesAtDeopts()) {

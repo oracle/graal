@@ -42,6 +42,13 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
 
     @Input ValueNode clazz;
 
+    /**
+     * Class pointer to class.class needs to be exposed earlier than this node is lowered so that it
+     * can be replaced by the AOT machinery. If it's not needed for lowering this input can be
+     * ignored.
+     */
+    @OptionalInput ValueNode classClass;
+
     public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
         this(TYPE, clazz, fillContents, null);
     }
@@ -71,11 +78,20 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
         return new NewInstanceNode(type, fillContents(), stateBefore());
     }
 
-    public static boolean throwsInstantiationException(Class<?> type) {
-        return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type == Class.class;
+    public static boolean throwsInstantiationException(Class<?> type, Class<?> classClass) {
+        return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type == classClass;
     }
 
     public static boolean throwsInstantiationException(ResolvedJavaType type, MetaAccessProvider metaAccess) {
         return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type.equals(metaAccess.lookupJavaType(Class.class));
+    }
+
+    public ValueNode getClassClass() {
+        return classClass;
+    }
+
+    public void setClassClass(ValueNode newClassClass) {
+        updateUsages(classClass, newClassClass);
+        classClass = newClassClass;
     }
 }

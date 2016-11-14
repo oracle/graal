@@ -78,6 +78,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -196,8 +197,8 @@ public class ArrayCopySnippets implements Snippets {
      * underlying type is really an array type.
      */
     @Snippet
-    public static void arraycopySlowPathIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind, @ConstantParameter SnippetInfo slowPath,
-                    @ConstantParameter Object slowPathArgument) {
+    public static void arraycopySlowPathIntrinsic(Object src, int srcPos, Object dest, int destPos, int length, KlassPointer predictedKlass, @ConstantParameter JavaKind elementKind,
+                    @ConstantParameter SnippetInfo slowPath, @ConstantParameter Object slowPathArgument) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         KlassPointer srcHub = loadHub(nonNullSrc);
@@ -211,7 +212,7 @@ public class ArrayCopySnippets implements Snippets {
             nonZeroLengthDynamicCounter.inc();
             nonZeroLengthDynamicCopiedCounter.add(length);
         }
-        ArrayCopySlowPathNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, slowPath, slowPathArgument);
+        ArrayCopySlowPathNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, predictedKlass, elementKind, slowPath, slowPathArgument);
     }
 
     /**
@@ -522,6 +523,14 @@ public class ArrayCopySnippets implements Snippets {
                 args.addConst("unrolledLength", arraycopy.getLength().asJavaConstant().asInt());
                 args.addConst("elementKind", componentKind != null ? componentKind : JavaKind.Illegal);
             } else if (snippetInfo == arraycopySlowPathIntrinsicSnippet) {
+                ValueNode predictedKlass = null;
+                if (slowPathArgument == arraycopyPredictedObjectWorkSnippet) {
+                    HotSpotResolvedObjectType arrayClass = (HotSpotResolvedObjectType) tool.getMetaAccess().lookupJavaType(Object[].class);
+                    predictedKlass = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayClass.klass(), tool.getMetaAccess(), arraycopy.graph());
+                } else {
+                    predictedKlass = ConstantNode.forConstant(KlassPointerStamp.klassAlwaysNull(), JavaConstant.NULL_POINTER, tool.getMetaAccess(), arraycopy.graph());
+                }
+                args.add("predictedKlass", predictedKlass);
                 args.addConst("elementKind", componentKind != null ? componentKind : JavaKind.Illegal);
                 args.addConst("slowPath", slowPathSnippetInfo);
                 assert slowPathArgument != null;
@@ -554,9 +563,7 @@ public class ArrayCopySnippets implements Snippets {
                 args.add("length", arraycopy.getLength());
             }
             if (snippetInfo == arraycopyPredictedObjectWorkSnippet) {
-                HotSpotResolvedObjectType arrayKlass = (HotSpotResolvedObjectType) tool.getMetaAccess().lookupJavaType(Object[].class);
-                ValueNode objectArrayKlass = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), arrayKlass.klass(), tool.getMetaAccess(), arraycopy.graph());
-                args.add("objectArrayKlass", objectArrayKlass);
+                args.add("objectArrayKlass", arraycopy.getPredictedKlass());
                 args.addConst("counter", arraycopyCallCounters.get(JavaKind.Object));
                 args.addConst("copiedCounter", arraycopyCallCopiedCounters.get(JavaKind.Object));
             }

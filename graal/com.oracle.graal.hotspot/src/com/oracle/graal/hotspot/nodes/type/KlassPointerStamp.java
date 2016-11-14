@@ -56,6 +56,10 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
         return KLASS_NON_NULL;
     }
 
+    public static KlassPointerStamp klassAlwaysNull() {
+        return KLASS_ALWAYS_NULL;
+    }
+
     private KlassPointerStamp(boolean nonNull, boolean alwaysNull) {
         this(nonNull, alwaysNull, null);
     }
