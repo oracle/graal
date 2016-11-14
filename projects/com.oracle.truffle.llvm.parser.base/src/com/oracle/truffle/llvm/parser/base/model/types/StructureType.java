@@ -196,7 +196,7 @@ public final class StructureType implements AggregateType, ValueSymbol {
             /*
              * Those types could create cycles, so we ignore them for hashCode() calculation.
              */
-            if (type instanceof StructureType || type instanceof PointerType) {
+            if (type instanceof AggregateType || type instanceof PointerType || type instanceof FunctionType) {
                 hash = 23 * hash + 47;
                 continue;
             }
