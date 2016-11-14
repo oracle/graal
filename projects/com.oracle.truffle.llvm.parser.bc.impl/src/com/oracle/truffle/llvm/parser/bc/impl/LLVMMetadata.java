@@ -263,21 +263,23 @@ public final class LLVMMetadata implements ModelVisitor {
 
             long offset = struct.getIndexOffset(parsedIndex, targetDataLayout) * Byte.SIZE;
 
-            parseCompositeTypeFromOffset(target, offset, node);
+            MetadataReference ref = parseMetadataReferenceFromOffset(offset, node);
+            if (ref.isPresent()) {
+                setElementPointerName(target, ref.get());
+            }
         }
 
         /**
          * check which offset matches the given one in the metadata and set the found element name;
          */
-        private void parseCompositeTypeFromOffset(GetElementPointerInstruction target, long offset, MetadataCompositeType node) {
+        private MetadataReference parseMetadataReferenceFromOffset(long offset, MetadataCompositeType node) {
             MetadataNode elements = (MetadataNode) node.getMemberDescriptors().get();
-
             for (MetadataReference element : elements) {
                 if (getOffset(element.get()) == offset) {
-                    setElementPointerName(target, element.get());
-                    break;
+                    return element;
                 }
             }
+            return MetadataBlock.voidRef;
         }
 
         /**
