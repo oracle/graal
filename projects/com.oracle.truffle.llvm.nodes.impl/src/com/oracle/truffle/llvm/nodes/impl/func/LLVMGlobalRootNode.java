@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.c.LLVMSignal;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 
@@ -64,9 +64,9 @@ public class LLVMGlobalRootNode extends RootNode {
     @CompilationFinal protected final Object[] arguments;
     protected final LLVMContext context;
     // FIXME instead make the option system "PE safe"
-    protected final boolean printNativeStats = LLVMBaseOptionFacade.printNativeCallStats();
-    protected final int executionCount = LLVMBaseOptionFacade.getExecutionCount();
-    protected final boolean printExecutionTime = LLVMBaseOptionFacade.printExecutionTime();
+    protected final boolean printNativeStats = LLVMOptions.DEBUG.printNativeCallStatistics();
+    protected final int executionCount = LLVMOptions.ENGINE.executionCount();
+    protected final boolean printExecutionTime = LLVMOptions.DEBUG.printExecutionTime();
     protected final FrameSlot stackPointerSlot;
     protected long startExecutionTime;
     protected long endExecutionTime;

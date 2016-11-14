@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.tools;
 import java.io.File;
 import java.io.IOException;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 
 public final class GCC extends CompilerBase {
@@ -74,7 +74,7 @@ public final class GCC extends CompilerBase {
             destinationLLFileName = interimFile.getAbsolutePath();
         }
 
-        String[] llFileGenerationCommand = new String[]{tool, "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", "-S", dragonEggOption(),
+        String[] llFileGenerationCommand = new String[]{tool, "-I " + LLVMOptions.ENGINE.projectRoot() + "/../include", "-S", dragonEggOption(),
                         "-fplugin-arg-dragonegg-emit-ir", "-o " + destinationLLFileName, toBeCompiled.getAbsolutePath()};
         ProcessUtil.executeNativeCommandZeroReturn(llFileGenerationCommand);
 

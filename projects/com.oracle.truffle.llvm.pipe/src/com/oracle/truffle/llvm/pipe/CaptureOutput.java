@@ -31,13 +31,13 @@ package com.oracle.truffle.llvm.pipe;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 public final class CaptureOutput {
 
     static {
         // temporary solution unit mx does that for us
-        System.load(new File(LLVMBaseOptionFacade.getProjectRoot()).getAbsolutePath() + "/mxbuild/projects/com.oracle.truffle.llvm.pipe.native/bin/libpipe.so");
+        System.load(new File(LLVMOptions.ENGINE.projectRoot()).getAbsolutePath() + "/mxbuild/projects/com.oracle.truffle.llvm.pipe.native/bin/libpipe.so");
     }
 
     public static native void startCapturing();

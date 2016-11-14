@@ -113,7 +113,6 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFac
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteIdxPFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteLFactory;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWritePFactory;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 /**
  * This class creates intrinsic functions and is designed to be inherited.
@@ -132,9 +131,7 @@ public class LLVMRuntimeIntrinsicFactory {
 
     protected Map<String, NodeFactory<? extends LLVMNode>> getFactories() {
         intrinsifyAbortIntrinsics();
-        if (LLVMBaseOptionFacade.intrinsifyCLibraryFunctions()) {
-            intrinsifyMathFunctions();
-        }
+        intrinsifyMathFunctions();
         intrinsifyTruffleOnlyIntrinsics();
         intrinsifyInteropIntrinsics();
         return intrinsics;

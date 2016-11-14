@@ -63,7 +63,7 @@ import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.impl.LLVMReadVisitor;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 /**
  * This class determines which variables are dead after each basic block. It applies an iterative
@@ -110,7 +110,7 @@ public final class LLVMLifeTimeAnalysisVisitor {
     public static LLVMLifeTimeAnalysisResult visit(FunctionDef function, FrameDescriptor frameDescriptor) {
         LLVMParserAsserts.assertNoNullElement(frameDescriptor.getSlots());
         LifeTimeAnalysisResultImpl mapping = new LLVMLifeTimeAnalysisVisitor(function, frameDescriptor).visit();
-        if (LLVMBaseOptionFacade.printLifeTimeAnalysis()) {
+        if (LLVMOptions.DEBUG.printLifetimeAnalysisStatistics()) {
             printAnalysisResults(function, mapping.getEndDead());
         }
         return mapping;

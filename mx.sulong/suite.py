@@ -238,6 +238,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.test",
+      "annotationProcessors" : ["SULONG_OPTIONS"],
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -299,8 +300,10 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "com.oracle.truffle.llvm.option"
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes",
+      "annotationProcessors" : ["SULONG_OPTIONS"],
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -476,6 +479,27 @@ suite = {
       "checkstyle" : "com.oracle.truffle.llvm.test",
       "license" : "BSD-new",
     },
+
+    "com.oracle.truffle.llvm.option" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "com.oracle.truffle.llvm",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+    },
+
+    "com.oracle.truffle.llvm.option.processor" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.option",
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+    },
   },
 
   "distributions" : {
@@ -504,12 +528,22 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "SULONG_OPTIONS",
         "graal-core:GRAAL_API",
         "graal-core:GRAAL_COMPILER",
         "graal-core:GRAAL_HOTSPOT",
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
       ]
-  },
+    },
+
+    "SULONG_OPTIONS" : {
+      "path" : "build/sulong_options.jar",
+      "subDir" : "graal",
+      "javaCompliance" : "1.8",
+      "dependencies" : ["com.oracle.truffle.llvm.option.processor"],
+      "description" : "The Sulong Option Processor generates an option class declared using options annotations.",
+    },
+
     "SULONG_TEST" : {
       "path" : "build/sulong_test.jar",
       "subDir" : "graal",
@@ -546,6 +580,6 @@ suite = {
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
         "sulong:SULONG"
       ]
-  },
+    },
  }
 }

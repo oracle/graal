@@ -35,14 +35,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.impl.control.LLVMRetNode;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 
 public abstract class LLVMBlockNode extends LLVMExpressionNode {
 
@@ -52,7 +51,7 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
         @CompilationFinal private final LLVMStackFrameNuller[][] beforeSlotNullerNodes;
         @CompilationFinal private final LLVMStackFrameNuller[][] afterSlotNullerNodes;
         private final FrameSlot returnSlot;
-        private final boolean injectBranchProbabilities = LLVMBaseOptionFacade.injectBranchProbabilities();
+        private static final boolean INJECT_BRANCH_PROBABILITIES = true;
 
         public LLVMBlockControlFlowNode(LLVMBasicBlockNode[] bodyNodes, LLVMStackFrameNuller[][] beforeSlotNullerNodes, LLVMStackFrameNuller[][] afterSlotNullerNodes, FrameSlot returnSlot) {
             this.bodyNodes = bodyNodes;
@@ -78,7 +77,7 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
                 nullDeadSlots(frame, bci, afterSlotNullerNodes);
                 int[] successors = bb.getSuccessors();
                 for (int i = 0; i < successors.length; i++) {
-                    if (injectBranchProbabilities) {
+                    if (INJECT_BRANCH_PROBABILITIES) {
                         if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), i == successorSelection)) {
                             bb.increaseBranchProbabilityDeoptIfZero(i);
                             bci = successors[i];

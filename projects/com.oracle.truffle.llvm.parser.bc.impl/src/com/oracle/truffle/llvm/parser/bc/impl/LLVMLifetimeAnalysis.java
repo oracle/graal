@@ -29,6 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.bc.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
@@ -67,15 +75,7 @@ import com.oracle.truffle.llvm.parser.base.model.visitors.AbstractTerminatingIns
 import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.base.model.visitors.ValueSymbolVisitor;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 public final class LLVMLifetimeAnalysis {
 
@@ -98,17 +98,12 @@ public final class LLVMLifetimeAnalysis {
 
     public static LLVMLifetimeAnalysis getResult(FunctionDefinition functionDefinition, FrameDescriptor frameDescriptor, Map<InstructionBlock, List<LLVMPhiManager.Phi>> phiRefs) {
         LLVMParserAsserts.assertNoNullElement(frameDescriptor.getSlots());
-        if (LLVMBaseOptionFacade.lifeTimeAnalysisEnabled()) {
-            final LLVMLifetimeAnalysisVisitor visitor = new LLVMLifetimeAnalysisVisitor(frameDescriptor, functionDefinition, phiRefs);
-            final LLVMLifetimeAnalysis lifetimes = visitor.visit();
-            if (LLVMBaseOptionFacade.printLifeTimeAnalysis()) {
-                printResult(functionDefinition, lifetimes);
-            }
-            return lifetimes;
-        } else {
-            final Map<InstructionBlock, FrameSlot[]> emptyMap = Collections.emptyMap();
-            return new LLVMLifetimeAnalysis(emptyMap, emptyMap);
+        final LLVMLifetimeAnalysisVisitor visitor = new LLVMLifetimeAnalysisVisitor(frameDescriptor, functionDefinition, phiRefs);
+        final LLVMLifetimeAnalysis lifetimes = visitor.visit();
+        if (LLVMOptions.DEBUG.printLifetimeAnalysisStatistics()) {
+            printResult(functionDefinition, lifetimes);
         }
+        return lifetimes;
     }
 
     private static final String FUNCTION_FORMAT = "%s:\n";

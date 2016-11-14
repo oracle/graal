@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.tools;
 import java.io.File;
 import java.io.IOException;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.tools.LLVMToolPaths.LLVMTool;
 import com.oracle.truffle.llvm.tools.util.PathUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
@@ -78,7 +78,7 @@ public class Clang extends CompilerBase {
 
     public static void compileToLLVMIR(File path, File destinationFile, ClangOptions options) {
         File tool = getCompileToolFromExtension(path);
-        String[] command = new String[]{tool.getAbsolutePath(), "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", emitLLVMIRTo(destinationFile), optimizationLevel(options),
+        String[] command = new String[]{tool.getAbsolutePath(), "-I " + LLVMOptions.ENGINE.projectRoot() + "/../include", emitLLVMIRTo(destinationFile), optimizationLevel(options),
                         "-c ", path.getAbsolutePath()};
         ProcessUtil.executeNativeCommandZeroReturn(command);
     }
@@ -111,7 +111,7 @@ public class Clang extends CompilerBase {
 
     public static void compileToExecutable(File path, File destinationFile, ClangOptions options) {
         File tool = getCompileToolFromExtension(path);
-        String[] command = new String[]{tool.getAbsolutePath(), "-I " + LLVMBaseOptionFacade.getProjectRoot() + "/../include", optimizationLevel(options), path.getAbsolutePath(),
+        String[] command = new String[]{tool.getAbsolutePath(), "-I " + LLVMOptions.ENGINE.projectRoot() + "/../include", optimizationLevel(options), path.getAbsolutePath(),
                         "-o " + destinationFile, "-lm"};
         ProcessUtil.executeNativeCommandZeroReturn(command);
     }

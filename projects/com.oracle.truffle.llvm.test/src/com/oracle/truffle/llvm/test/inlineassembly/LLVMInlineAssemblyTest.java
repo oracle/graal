@@ -37,10 +37,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.test.LLVMPaths;
 import com.oracle.truffle.llvm.test.RemoteTestSuiteBase;
 import com.oracle.truffle.llvm.test.TestCaseFiles;
+import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.test.spec.SpecificationEntry;
 import com.oracle.truffle.llvm.test.spec.SpecificationFileReader;
 
@@ -60,7 +60,7 @@ public class LLVMInlineAssemblyTest extends RemoteTestSuiteBase {
             testCaseFileNames.add(file.getName());
         }
         List<SpecificationEntry> testCaseFileSpecList = SpecificationFileReader.getFiles(testCaseFileNames, LLVMPaths.INLINEASSEMBLY_TESTS);
-        return collectIncludedFiles(testCaseFileSpecList, new TestCaseGeneratorImpl(false, LLVMBaseOptionFacade.testBinaryParser()));
+        return collectIncludedFiles(testCaseFileSpecList, new TestCaseGeneratorImpl(false, SulongTestOptions.TEST.useBinaryParser()));
     }
 
     @Test

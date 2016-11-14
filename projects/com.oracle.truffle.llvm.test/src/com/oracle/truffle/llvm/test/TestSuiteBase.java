@@ -50,7 +50,8 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.test.spec.SpecificationEntry;
 import com.oracle.truffle.llvm.test.spec.SpecificationFileReader;
 import com.oracle.truffle.llvm.test.spec.TestSpecification;
@@ -126,8 +127,8 @@ public abstract class TestSuiteBase {
 
     @After
     public void displaySummary() {
-        if (LLVMBaseOptionFacade.debugEnabled()) {
-            if (LLVMBaseOptionFacade.discoveryTestModeEnabled()) {
+        if (LLVMOptions.DEBUG.debug()) {
+            if (SulongTestOptions.TEST.testDiscoveryPath() != null) {
                 printList("succeeding tests:", succeedingTests);
             } else {
                 printList("failing tests:", failingTests);
@@ -141,7 +142,7 @@ public abstract class TestSuiteBase {
 
     @AfterClass
     public static void displayEndSummary() {
-        if (!LLVMBaseOptionFacade.discoveryTestModeEnabled()) {
+        if (SulongTestOptions.TEST.testDiscoveryPath() == null) {
             printList("failing tests:", failingTests);
         }
     }
@@ -246,16 +247,16 @@ public abstract class TestSuiteBase {
     }
 
     protected static List<TestCaseFiles[]> getTestCasesFromConfigFile(File configFile, File testSuite, TestCaseGenerator gen) throws IOException, AssertionError {
-        return getTestCasesFromConfigFile(configFile, testSuite, gen, LLVMBaseOptionFacade.testBinaryParser());
+        return getTestCasesFromConfigFile(configFile, testSuite, gen, SulongTestOptions.TEST.useBinaryParser());
     }
 
     protected static List<TestCaseFiles[]> getTestCasesFromConfigFile(File configFile, File testSuite, TestCaseGenerator gen, boolean assembleToBC) throws IOException, AssertionError {
         TestSpecification testSpecification = SpecificationFileReader.readSpecificationFolder(configFile, testSuite);
         List<SpecificationEntry> includedFiles = testSpecification.getIncludedFiles();
         List<TestCaseFiles[]> testCaseFiles;
-        if (LLVMBaseOptionFacade.discoveryTestModeEnabled()) {
+        if (SulongTestOptions.TEST.testDiscoveryPath() != null) {
             List<SpecificationEntry> excludedFiles = testSpecification.getExcludedFiles();
-            File absoluteDiscoveryPath = new File(testSuite.getAbsolutePath(), LLVMBaseOptionFacade.getTestDiscoveryPath());
+            File absoluteDiscoveryPath = new File(testSuite.getAbsolutePath(), SulongTestOptions.TEST.testDiscoveryPath());
             assert absoluteDiscoveryPath.exists() : absoluteDiscoveryPath.toString();
             LLVMLogger.info("\tcollect files");
             List<File> filesToRun = getFilesRecursively(absoluteDiscoveryPath, gen);

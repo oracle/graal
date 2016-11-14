@@ -102,12 +102,11 @@ import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsic.LLVMVoid
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNode.LLVMIntrinsicVoidNode;
 import com.oracle.truffle.llvm.nodes.impl.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 public final class LLVMFunctionFactory {
@@ -165,11 +164,7 @@ public final class LLVMFunctionFactory {
             throw new AssertionError();
         }
         LLVMExpressionNode argNode = createArgNode(argIndex, paramType);
-        if (LLVMBaseOptionFacade.valueProfileFunctionArgs()) {
-            return LLVMValueProfileFactory.createValueProfiledNode(argNode, paramType);
-        } else {
-            return argNode;
-        }
+        return LLVMValueProfileFactory.createValueProfiledNode(argNode, paramType);
     }
 
     public static LLVMExpressionNode createArgNode(int argIndex, LLVMBaseType paramType) throws AssertionError {

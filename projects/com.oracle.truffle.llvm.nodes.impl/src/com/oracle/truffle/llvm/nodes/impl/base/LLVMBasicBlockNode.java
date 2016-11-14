@@ -43,7 +43,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 /**
  * This node represents a basic block in LLVM. The node contains both sequential statements which do
@@ -57,7 +57,7 @@ public class LLVMBasicBlockNode extends LLVMNode {
     private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
     public static final int DEFAULT_SUCCESSOR = 0;
 
-    private static final boolean TRACE = LLVMBaseOptionFacade.traceExecutionEnabled();
+    private static final boolean TRACE = LLVMOptions.DEBUG.traceExecution();
 
     @Children private final LLVMNode[] statements;
     @Child private LLVMTerminatorNode termInstruction;

@@ -105,7 +105,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.options.LLVMBaseOptionFacade;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
@@ -522,7 +522,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
                  */
                 return new LLVMAddressNuller(slot);
             case Illegal:
-                if (LLVMBaseOptionFacade.debugEnabled()) {
+                if (LLVMOptions.DEBUG.debug()) {
                     LLVMLogger.info("illegal frame slot at stack nuller: " + identifier);
                 }
                 return new LLVMAddressNuller(slot);
