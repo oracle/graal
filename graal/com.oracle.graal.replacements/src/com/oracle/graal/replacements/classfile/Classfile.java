@@ -109,7 +109,15 @@ public class Classfile {
     static void skipFully(DataInputStream stream, int n) throws IOException {
         long skipped = 0;
         do {
-            skipped += stream.skip(n - skipped);
+            long s = stream.skip(n - skipped);
+            skipped += s;
+            if (s == 0 && skipped != n) {
+                // Check for EOF (i.e., truncated class file)
+                if (stream.read() == -1) {
+                    throw new IOException("truncated stream");
+                }
+                skipped++;
+            }
         } while (skipped != n);
     }
 
