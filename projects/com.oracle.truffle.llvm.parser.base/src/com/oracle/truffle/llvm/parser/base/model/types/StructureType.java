@@ -192,12 +192,24 @@ public final class StructureType implements AggregateType, ValueSymbol {
     public int hashCode() {
         int hash = 11;
         hash = 23 * hash + (isPacked ? 1231 : 1237);
-        hash = 23 * hash + Arrays.hashCode(types);
+        for (Type type : types) {
+            /*
+             * Those types could create cycles, so we ignore them for hashCode() calculation.
+             */
+            if (type instanceof StructureType || type instanceof PointerType) {
+                hash = 23 * hash + 47;
+                continue;
+            }
+            hash = 23 * hash + type.hashCode();
+        }
         return hash;
     }
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj instanceof StructureType) {
             StructureType other = (StructureType) obj;
             if (!Objects.equals(name, other.name)) {

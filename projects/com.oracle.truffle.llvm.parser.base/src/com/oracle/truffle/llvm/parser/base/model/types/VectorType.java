@@ -149,6 +149,9 @@ public class VectorType implements AggregateType {
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj instanceof VectorType) {
             VectorType other = (VectorType) obj;
             return length == other.length && elementType.equals(other.getElementType());

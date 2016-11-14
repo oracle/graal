@@ -120,6 +120,9 @@ public class FunctionType implements Type, ValueSymbol {
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj instanceof FunctionType) {
             FunctionType other = (FunctionType) obj;
             if (!Objects.equals(type, other.type)) {
