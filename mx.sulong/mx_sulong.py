@@ -1110,7 +1110,7 @@ def genInlineAssemblyParser(args=None, out=None):
         if not isfile(localCocoJarFile):
             jarFileUrls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/Coco.jar"]
             mx.download(localCocoJarFile, jarFileUrls)
-        command = [mx.get_jdk(tag='jvmci').java, "-jar", localCocoJarFile, "-package", _inlineAssemblyPackageName, "-o", generatedParserDir, _inlineAssemblyGrammer]
+        command = [mx.get_jdk().java, "-jar", localCocoJarFile, "-package", _inlineAssemblyPackageName, "-o", generatedParserDir, _inlineAssemblyGrammer]
         mx.run(command)
 
 def sulongBuild(args=None):
