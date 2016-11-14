@@ -27,44 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model.metadata;
+package com.oracle.truffle.llvm.parser.base.model.metadata.subtypes;
 
-import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
-import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MetadataSubtypeName;
-import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
-public class MetadataTemplateTypeParameter implements MetadataBaseNode, MetadataSubtypeName {
+public interface MetadataSubtypeType {
+    MetadataReference getType();
 
-    private MetadataReference name = MetadataBlock.voidRef;
-    private MetadataReference baseType = MetadataBlock.voidRef;
-
-    @Override
-    public void accept(MetadataVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public MetadataReference getName() {
-        return name;
-    }
-
-    @Override
-    public void setName(MetadataReference name) {
-        this.name = name;
-    }
-
-    public MetadataReference getBaseType() {
-        return baseType;
-    }
-
-    public void setBaseType(MetadataReference baseType) {
-        this.baseType = baseType;
-    }
-
-    @Override
-    public String toString() {
-        return "MetadataTemplateTypeParameter [name=" + name + ", baseType=" + baseType + "]";
-    }
-
+    void setType(MetadataReference type);
 }

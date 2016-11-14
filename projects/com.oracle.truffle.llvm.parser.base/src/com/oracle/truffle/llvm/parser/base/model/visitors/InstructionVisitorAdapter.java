@@ -1,3 +1,32 @@
+/*
+ * Copyright (c) 2016, Oracle and/or its affiliates.
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ * conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+ * conditions and the following disclaimer in the documentation and/or other materials provided
+ * with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+ * endorse or promote products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 package com.oracle.truffle.llvm.parser.base.model.visitors;
 
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.AllocateInstruction;
@@ -27,95 +56,95 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.VoidCallIn
 public interface InstructionVisitorAdapter extends InstructionVisitor {
 
     @Override
-    default public void visit(AllocateInstruction allocate) {
+    default void visit(AllocateInstruction allocate) {
     }
 
     @Override
-    default public void visit(BinaryOperationInstruction operation) {
+    default void visit(BinaryOperationInstruction operation) {
     }
 
     @Override
-    default public void visit(BranchInstruction branch) {
+    default void visit(BranchInstruction branch) {
     }
 
     @Override
-    default public void visit(CallInstruction call) {
+    default void visit(CallInstruction call) {
     }
 
     @Override
-    default public void visit(CastInstruction cast) {
+    default void visit(CastInstruction cast) {
     }
 
     @Override
-    default public void visit(CompareInstruction operation) {
+    default void visit(CompareInstruction operation) {
     }
 
     @Override
-    default public void visit(ConditionalBranchInstruction branch) {
+    default void visit(ConditionalBranchInstruction branch) {
     }
 
     @Override
-    default public void visit(ExtractElementInstruction extract) {
+    default void visit(ExtractElementInstruction extract) {
     }
 
     @Override
-    default public void visit(ExtractValueInstruction extract) {
+    default void visit(ExtractValueInstruction extract) {
     }
 
     @Override
-    default public void visit(GetElementPointerInstruction gep) {
+    default void visit(GetElementPointerInstruction gep) {
     }
 
     @Override
-    default public void visit(IndirectBranchInstruction branch) {
+    default void visit(IndirectBranchInstruction branch) {
     }
 
     @Override
-    default public void visit(InsertElementInstruction insert) {
+    default void visit(InsertElementInstruction insert) {
     }
 
     @Override
-    default public void visit(InsertValueInstruction insert) {
+    default void visit(InsertValueInstruction insert) {
     }
 
     @Override
-    default public void visit(LoadInstruction load) {
+    default void visit(LoadInstruction load) {
     }
 
     @Override
-    default public void visit(PhiInstruction phi) {
+    default void visit(PhiInstruction phi) {
     }
 
     @Override
-    default public void visit(ReturnInstruction ret) {
+    default void visit(ReturnInstruction ret) {
     }
 
     @Override
-    default public void visit(SelectInstruction select) {
+    default void visit(SelectInstruction select) {
     }
 
     @Override
-    default public void visit(ShuffleVectorInstruction shuffle) {
+    default void visit(ShuffleVectorInstruction shuffle) {
     }
 
     @Override
-    default public void visit(StoreInstruction store) {
+    default void visit(StoreInstruction store) {
     }
 
     @Override
-    default public void visit(SwitchInstruction select) {
+    default void visit(SwitchInstruction select) {
     }
 
     @Override
-    default public void visit(SwitchOldInstruction select) {
+    default void visit(SwitchOldInstruction select) {
     }
 
     @Override
-    default public void visit(UnreachableInstruction unreachable) {
+    default void visit(UnreachableInstruction unreachable) {
     }
 
     @Override
-    default public void visit(VoidCallInstruction call) {
+    default void visit(VoidCallInstruction call) {
     }
 
 }

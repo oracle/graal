@@ -57,9 +57,9 @@ import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataCompositeType;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataDerivedType;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataNode;
 import com.oracle.truffle.llvm.parser.base.model.metadata.MetadataString;
-import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTName;
-import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTSizeAlignOffset;
-import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MSTType;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MetadataSubtypeName;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MetadataSubytypeSizeAlignOffset;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MetadataSubtypeType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 
@@ -135,7 +135,7 @@ public final class LLVMMetadata implements ModelVisitor {
                     long metadataId = ((MetadataConstant) call.getArgument(1)).getValue();
                     Symbol referencedSymbol = currentBlock.getFunctionSymbols().getSymbol(symbolIndex);
 
-                    MSTType localVar = (MSTType) metadata.getReference(metadataId).get();
+                    MetadataSubtypeType localVar = (MetadataSubtypeType) metadata.getReference(metadataId).get();
                     MetadataReference typeReference = localVar.getType();
 
                     if (referencedSymbol instanceof AllocateInstruction) {
@@ -270,7 +270,7 @@ public final class LLVMMetadata implements ModelVisitor {
         }
 
         /**
-         * check which offset matches the given one in the metadata and set the found element name;
+         * check which offset matches the given one in the metadata and set the found element name.
          */
         private MetadataReference parseMetadataReferenceFromOffset(long offset, MetadataCompositeType node) {
             MetadataNode elements = (MetadataNode) node.getMemberDescriptors().get();
@@ -286,8 +286,8 @@ public final class LLVMMetadata implements ModelVisitor {
          * get the offset of a given MetadataNode.
          */
         private long getOffset(MetadataBaseNode element) {
-            if (element instanceof MSTSizeAlignOffset) {
-                return ((MSTSizeAlignOffset) element).getOffset();
+            if (element instanceof MetadataSubytypeSizeAlignOffset) {
+                return ((MetadataSubytypeSizeAlignOffset) element).getOffset();
             }
             throw new AssertionError("unknow node type: " + element);
         }
@@ -301,9 +301,9 @@ public final class LLVMMetadata implements ModelVisitor {
          *            retrieved in the GetElementPointerInstruction
          */
         private void setElementPointerName(GetElementPointerInstruction gep, MetadataBaseNode element) {
-            if (element instanceof MSTName) {
-                if (((MSTName) element).getName().isPresent()) {
-                    String elementName = ((MetadataString) ((MSTName) element).getName().get()).getString();
+            if (element instanceof MetadataSubtypeName) {
+                if (((MetadataSubtypeName) element).getName().isPresent()) {
+                    String elementName = ((MetadataString) ((MetadataSubtypeName) element).getName().get()).getString();
                     LLVMLogger.info("Derived name = " + elementName);
                     gep.setReferenceName(elementName);
                 } else {
