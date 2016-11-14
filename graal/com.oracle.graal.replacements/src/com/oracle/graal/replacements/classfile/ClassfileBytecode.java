@@ -97,7 +97,7 @@ public class ClassfileBytecode implements Bytecode {
                     break;
                 }
                 default: {
-                    stream.skip(attributeLength);
+                    Classfile.skipFully(stream, attributeLength);
                     break;
                 }
             }
