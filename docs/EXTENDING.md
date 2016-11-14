@@ -28,8 +28,9 @@ a node facade implementation, which is currently `sulong.NodeConfiguration`.
 
 ## Adding options
 
-To implement new options, one can implement the `LLVMOptionsServiceProvider`.
-The additional options are automatically added to the existing options,
-and are thus also visible with `mx su-options`.
-
-
+Use the `OptionCategory` annotation to mark your class as containing options.
+Annotate individual options using `Option` annotation.
+An annotation processor generates a subclass of this class, which can be
+instantiated and allows accessing your options. If you want to make your
+options visible with `mx su-options`, instantiate the generated class in a
+class that implements the `LLVMOptionsServiceProvider`.
