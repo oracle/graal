@@ -130,6 +130,9 @@ public final class PointerType implements Type {
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj instanceof PointerType) {
             return type.equals(((PointerType) obj).type);
         }

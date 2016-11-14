@@ -115,6 +115,9 @@ public class ArrayType implements AggregateType {
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj instanceof ArrayType) {
             ArrayType other = (ArrayType) obj;
             return length == other.length && Objects.equals(elementType, other.elementType);
