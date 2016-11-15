@@ -27,7 +27,7 @@ def compileSulongSuite():
     # MG: compared to the old test suite we do not run the ll files
 
 def compileLLVMSuite():
-    ensureLLVMSuiteNewExists()
+    ensureLLVMSuiteExists()
     excludes = list(tools.collectExcludes(os.path.join(_llvmSuiteDir, "configs/")))
     print("Compiling LLVM Suite reference executables ", end='')
     tools.printProgress(tools.multicompileRefFolder(_llvmSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], excludes=excludes))
@@ -53,7 +53,7 @@ def compileSuite(args=None):
         command = testSuites[testSuiteName]
         command()
 
-def ensureLLVMSuiteNewExists():
+def ensureLLVMSuiteExists():
     """downloads the LLVM suite if not downloaded yet"""
     if not os.path.exists(_llvmSuiteDirRoot):
         pullTestSuite('LLVM_TEST_SUITE', _llvmSuiteDir)
