@@ -1,0 +1,6 @@
+gcc.dg/atomic-store-1.c
+gcc.dg/atomic-store-2.c
+gcc.dg/atomic-store-3.c
+gcc.dg/atomic-store-4.c
+gcc.dg/atomic-fence.c
+gcc.dg/atomic-flag.c
