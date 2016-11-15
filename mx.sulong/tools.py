@@ -3,6 +3,7 @@ from __future__ import print_function
 import fnmatch
 import mx
 import os
+import re
 
 import mx_sulong
 
@@ -163,9 +164,10 @@ def collectExcludes(path):
                 for line in open(os.path.join(root, f)):
                     yield line.strip()
 
+def collectExcludePattern(path):
+    return prepareMatchPattern(collectExcludes(path))
+
 def findRecursively(path, excludes=None):
-    if excludes is None:
-        excludes = []
     for root, _, files in os.walk(path):
         for f in files:
             if ProgrammingLanguage.lookupFile(f) is not None:
@@ -174,8 +176,11 @@ def findRecursively(path, excludes=None):
                 if not matches(relFilePath, excludes):
                     yield absFilePath
 
-def matches(path, patterns):
-    return any(fnmatch.fnmatch(path, p) for p in list(patterns))
+def prepareMatchPattern(patterns):
+    return re.compile('(%s)' % '|'.join(list(fnmatch.translate(p) for p in patterns)))
+
+def matches(path, pattern):
+    return pattern is not None and pattern.match(path) != None
 
 def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, optimizers=None):
     if optimizers is None:

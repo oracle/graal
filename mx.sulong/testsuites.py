@@ -28,7 +28,7 @@ def compileSulongSuite():
 
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
-    excludes = list(tools.collectExcludes(os.path.join(_llvmSuiteDir, "configs/")))
+    excludes = tools.collectExcludePattern(os.path.join(_llvmSuiteDir, "configs/"))
     print("Compiling LLVM Suite reference executables ", end='')
     tools.printProgress(tools.multicompileRefFolder(_llvmSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], excludes=excludes))
     print("Compiling LLVM Suite with -O0 ", end='')
