@@ -91,7 +91,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 import com.oracle.graal.lir.sparc.SPARCOP3Op;
 import com.oracle.graal.lir.sparc.SPARCOPFOp;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
@@ -367,19 +366,11 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
                 break;
             case SINGLE:
                 ForeignCallLinkage fremCall = getLIRGen().getForeignCalls().lookupForeignCall(ARITHMETIC_FREM);
-                if (fremCall != null) {
-                    result = getLIRGen().emitForeignCall(fremCall, state, a, b);
-                } else {
-                    throw new BailoutException(true, "Required foreign call to %s is not available via JVMCI", ARITHMETIC_FREM);
-                }
+                result = getLIRGen().emitForeignCall(fremCall, state, a, b);
                 break;
             case DOUBLE:
                 ForeignCallLinkage dremCall = getLIRGen().getForeignCalls().lookupForeignCall(ARITHMETIC_DREM);
-                if (dremCall != null) {
-                    result = getLIRGen().emitForeignCall(dremCall, state, a, b);
-                } else {
-                    throw new BailoutException(true, "Required foreign call to %s is not available via JVMCI", ARITHMETIC_DREM);
-                }
+                result = getLIRGen().emitForeignCall(dremCall, state, a, b);
                 break;
             default:
                 throw GraalError.shouldNotReachHere("missing: " + a.getPlatformKind());
