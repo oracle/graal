@@ -15,7 +15,7 @@ Use `-Dgraal.Dump= -Dgraal.MethodFilter=MyClass.someMethod` to see the compiler 
 IGV when compiling `MyClass.someMethod`. If you want the graphs sent immediately to IGV, ensure it is running (`mx igv`).
 To have the graphs written to disk instead (e.g., to share), add `-Dgraal.PrintIdealGraphFile=true`.
 To disable the dumping of LIR, register allocation and code generation info to `*.cfg` files readable by the C1Visualizer,
-add `-XX:PrintBackendCFG=false`.
+add `-Dgraal.PrintBackendCFG=false`.
 
 ## GraalTruffle scenarios
 
