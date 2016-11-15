@@ -1,2 +1,2 @@
-c-c++-common/asan/*
-c-c++-common/tsan/*
+gcc-5.2.0/gcc/testsuite/c-c++-common/asan/*
+gcc-5.2.0/gcc/testsuite/c-c++-common/tsan/*

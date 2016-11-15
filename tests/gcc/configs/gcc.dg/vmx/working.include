@@ -1,1 +1,1 @@
-gcc.dg/vmx/pr27006.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vmx/pr27006.c
