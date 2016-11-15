@@ -50,7 +50,7 @@ class Optimization(object):
     def register(name, *flags):
         setattr(Optimization, name, Optimization.Opt(name, list(flags)))
 
-Optimization.register('NONE')
+Optimization.register('O0')
 Optimization.register('O1', '-O1')
 Optimization.register('O2', '-O2')
 Optimization.register('O3', '-O3')
