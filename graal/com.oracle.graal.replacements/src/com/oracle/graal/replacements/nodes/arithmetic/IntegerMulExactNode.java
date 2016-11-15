@@ -53,11 +53,6 @@ public final class IntegerMulExactNode extends MulNode implements IntegerExactAr
     }
 
     @Override
-    public boolean inferStamp() {
-        return false;
-    }
-
-    @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
             return new IntegerMulExactNode(forY, forX);
@@ -73,7 +68,6 @@ public final class IntegerMulExactNode extends MulNode implements IntegerExactAr
                 return ConstantNode.forIntegerStamp(stamp(), 0);
             }
         }
-
         if (!mayOverFlow((IntegerStamp) x.stamp(), (IntegerStamp) y.stamp())) {
             return new MulNode(x, y).canonical(tool);
         }

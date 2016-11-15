@@ -49,14 +49,8 @@ public final class IntegerSubExactNode extends SubNode implements IntegerExactAr
 
     public IntegerSubExactNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);
-        setStamp(x.stamp().unrestricted());
+        setStamp(foldStamp(x.stamp(), y.stamp()));
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
-    }
-
-    @Override
-    public boolean inferStamp() {
-        // TODO Should probably use a specialized version which understands that it can't overflow
-        return false;
     }
 
     @Override
@@ -71,6 +65,9 @@ public final class IntegerSubExactNode extends SubNode implements IntegerExactAr
             if (c == 0) {
                 return forX;
             }
+        }
+        if (!IntegerStamp.subtractionCanOverflow((IntegerStamp) x.stamp(), (IntegerStamp) y.stamp())) {
+            return new SubNode(x, y).canonical(tool);
         }
         return this;
     }
