@@ -1,3 +1,3 @@
-limits-fndefn.c
-20001226-1.c
-limits-externdecl.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/limits-fndefn.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/20001226-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/limits-externdecl.c
