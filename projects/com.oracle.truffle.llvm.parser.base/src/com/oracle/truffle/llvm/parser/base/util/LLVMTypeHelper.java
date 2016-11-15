@@ -183,10 +183,6 @@ public class LLVMTypeHelper {
         }
     }// Checkstyle: resume magic number name check
 
-    public int goIntoTypeGetLengthByte(Type type, int index) {
-        return goIntoTypeGetLengthByte(LLVMToBitcodeAdapter.unresolveType(type), index);
-    }
-
     public int goIntoTypeGetLengthByte(ResolvedType currentType, int index) {
         if (currentType == null) {
             return 0; // TODO: better throw an exception
