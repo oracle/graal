@@ -796,7 +796,19 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
                 LogicNode resultX = computeCondition(tool, orNode.x, phi, value);
                 LogicNode resultY = computeCondition(tool, orNode.y, phi, value);
-                return orNode.canonical(tool, resultX, resultY);
+                if (resultX != orNode.x || resultY != orNode.y) {
+                    LogicNode result = orNode.canonical(tool, resultX, resultY);
+                    if (result != orNode) {
+                        return result;
+                    }
+                    /*
+                     * Create a new node to carry the optimized inputs.
+                     */
+                    ShortCircuitOrNode newOr = new ShortCircuitOrNode(resultX, orNode.xNegated, resultY,
+                                    orNode.yNegated, orNode.getShortCircuitProbability());
+                    return newOr.canonical(tool);
+                }
+                return orNode;
             }
         } else if (condition instanceof Canonicalizable.Binary<?>) {
             Canonicalizable.Binary<Node> compare = (Canonicalizable.Binary<Node>) condition;
