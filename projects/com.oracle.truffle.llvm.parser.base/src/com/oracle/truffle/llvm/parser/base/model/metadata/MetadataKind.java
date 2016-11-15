@@ -29,10 +29,17 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.metadata;
 
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
+
 public class MetadataKind implements MetadataBaseNode {
 
     private final long id;
     private final String name;
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
 
     public MetadataKind(long id, String name) {
         this.id = id;

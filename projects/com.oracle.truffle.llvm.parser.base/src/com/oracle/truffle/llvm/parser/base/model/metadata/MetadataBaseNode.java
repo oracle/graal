@@ -29,5 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.base.model.metadata;
 
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
+
 public interface MetadataBaseNode {
+    void accept(MetadataVisitor visitor);
 }

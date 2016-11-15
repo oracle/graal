@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.IntegerConstantType;
 import com.oracle.truffle.llvm.parser.base.model.types.MetaType;
 import com.oracle.truffle.llvm.parser.base.model.types.MetadataConstantType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -108,6 +109,11 @@ public class MetadataBlock {
      * Based on the idea of Optional, but used for automatic forward reference lookup.
      */
     public interface MetadataReference extends MetadataBaseNode {
+        @Override
+        default void accept(MetadataVisitor visitor) {
+            visitor.visit(this);
+        }
+
         boolean isPresent();
 
         MetadataBaseNode get();

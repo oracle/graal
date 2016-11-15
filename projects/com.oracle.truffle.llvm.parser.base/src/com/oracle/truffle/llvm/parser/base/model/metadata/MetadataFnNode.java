@@ -30,10 +30,16 @@
 package com.oracle.truffle.llvm.parser.base.model.metadata;
 
 import com.oracle.truffle.llvm.parser.base.model.types.MetadataConstantPointerType;
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
 public class MetadataFnNode implements MetadataBaseNode {
 
     private final MetadataConstantPointerType pointer;
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
 
     public MetadataFnNode(MetadataConstantPointerType pointer) {
         this.pointer = pointer;

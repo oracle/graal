@@ -30,10 +30,16 @@
 package com.oracle.truffle.llvm.parser.base.model.metadata;
 
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
 public class MetadataValue implements MetadataBaseNode {
 
     private final Type value;
+
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
 
     public MetadataValue(Type value) {
         this.value = value;

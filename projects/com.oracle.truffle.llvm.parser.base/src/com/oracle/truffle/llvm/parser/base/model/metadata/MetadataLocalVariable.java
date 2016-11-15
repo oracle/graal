@@ -31,8 +31,11 @@ package com.oracle.truffle.llvm.parser.base.model.metadata;
 
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.base.model.blocks.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MetadataSubtypeName;
+import com.oracle.truffle.llvm.parser.base.model.metadata.subtypes.MetadataSubtypeType;
+import com.oracle.truffle.llvm.parser.base.model.visitors.MetadataVisitor;
 
-public class MetadataLocalVariable implements MetadataBaseNode {
+public class MetadataLocalVariable implements MetadataBaseNode, MetadataSubtypeName, MetadataSubtypeType {
 
     private MetadataReference context = MetadataBlock.voidRef;
     private MetadataReference name = MetadataBlock.voidRef;
@@ -42,6 +45,11 @@ public class MetadataLocalVariable implements MetadataBaseNode {
     private MetadataReference type = MetadataBlock.voidRef;
     private long flags;
 
+    @Override
+    public void accept(MetadataVisitor visitor) {
+        visitor.visit(this);
+    }
+
     public MetadataReference getContext() {
         return context;
     }
@@ -50,10 +58,12 @@ public class MetadataLocalVariable implements MetadataBaseNode {
         this.context = context;
     }
 
+    @Override
     public MetadataReference getName() {
         return name;
     }
 
+    @Override
     public void setName(MetadataReference name) {
         this.name = name;
     }
@@ -82,10 +92,12 @@ public class MetadataLocalVariable implements MetadataBaseNode {
         this.arg = arg;
     }
 
+    @Override
     public MetadataReference getType() {
         return type;
     }
 
+    @Override
     public void setType(MetadataReference type) {
         this.type = type;
     }
