@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.bc.impl.parser.bc;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 public final class ParserResult {
 
     private final Parser parser;
@@ -55,5 +58,10 @@ public final class ParserResult {
 
     public long[] getValues() {
         return values;
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.stream(values).mapToObj(l -> String.format("%05X ", l)).collect(Collectors.joining(" "));
     }
 }
