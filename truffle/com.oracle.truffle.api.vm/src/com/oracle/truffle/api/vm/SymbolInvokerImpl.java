@@ -35,6 +35,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -108,6 +109,11 @@ abstract class SymbolInvokerImpl {
         @Override
         protected Object executeImpl(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
+            if (PolyglotEngine.JAVA_INTEROP_ENABLED) {
+                for (int i = 0; i < args.length; i++) {
+                    args[i] = JavaInterop.asTruffleValue(args[i]);
+                }
+            }
             try {
                 if (foreignAccess == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

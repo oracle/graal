@@ -170,7 +170,7 @@ public class SLJavaInteropTest {
         PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
 
         Sum javaSum = new Sum();
-        Object sum = JavaInterop.asTruffleValue(javaSum);
+        Object sum = javaSum;
         fn.execute(sum, "one", 1);
         fn.execute(sum, "two", 2);
         fn.execute(sum, "three", 3);
