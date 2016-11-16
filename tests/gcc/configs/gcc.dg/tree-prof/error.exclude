@@ -1,0 +1,4 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-prof/inliner-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-prof/crossmodule-indircall-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-prof/ic-misattribution-1a.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/tree-prof/ic-misattribution-1.c

@@ -1,0 +1,2 @@
+gcc-5.2.0/gcc/testsuite/gfortran.dg/guality/pr41558.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/guality/arg1.f90

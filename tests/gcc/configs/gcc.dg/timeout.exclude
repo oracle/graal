@@ -1,0 +1,4 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/pr59605-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/long_branch.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/pr59605.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/graphite/block-4.c

@@ -1,0 +1,6 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/atomic-store-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/atomic-store-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/atomic-store-3.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/atomic-store-4.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/atomic-fence.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/atomic-flag.c

@@ -1,0 +1,7 @@
+gcc-5.2.0/gcc/testsuite/g++.dg/conversion/cond4.C
+gcc-5.2.0/gcc/testsuite/g++.dg/conversion/bitfield3.C
+gcc-5.2.0/gcc/testsuite/g++.dg/conversion/ptrmem8.C
+gcc-5.2.0/gcc/testsuite/g++.dg/conversion/bitfield1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/conversion/bitfield10.C
+gcc-5.2.0/gcc/testsuite/g++.dg/conversion/cast1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/conversion/enum1.C

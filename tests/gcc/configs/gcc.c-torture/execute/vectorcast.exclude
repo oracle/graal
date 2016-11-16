@@ -1,0 +1,6 @@
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20050316-3.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr60960.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/simd-4.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20050316-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20050607-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20050316-2.c
