@@ -36,6 +36,11 @@ public class OptionValues {
     private final Map<OptionKey<?>, Object> values = new HashMap<>();
 
     /**
+     * Used to assert the invariant of stability for {@link StableOptionKey}s.
+     */
+    private final Map<StableOptionKey<?>, Object> stabilized = new HashMap<>();
+
+    /**
      * Sets a value for an option in this object by parsing a given option name and value.
      *
      * @param name the option name
@@ -47,22 +52,50 @@ public class OptionValues {
         OptionsParser.parseOption(name, value, this, loader);
     }
 
-    public void set(OptionKey<?> key, Object value) {
+    void set(OptionKey<?> key, Object value) {
         Object oldValue = values.put(key, encodeNull(value));
         key.valueUpdated(this, decodeNull(oldValue), value);
     }
 
+    /**
+     * Registers {@code key} as stable in this map. It should not be updated after this call.
+     *
+     * Note: Should only be used in an assertion.
+     */
+    synchronized boolean stabilize(StableOptionKey<?> key, Object value) {
+        stabilized.put(key, encodeNull(value));
+        return true;
+    }
+
+    /**
+     * Determines if the value of {@code key} is {@linkplain #stabilize(StableOptionKey, Object)
+     * stable} in this map.
+     *
+     * Note: Should only be used in an assertion.
+     */
+    synchronized boolean isStabilized(StableOptionKey<?> key) {
+        return key.getDescriptor() == null;
+    }
+
     boolean containsKey(OptionKey<?> key) {
-        return values.containsKey(key);
+        return key.getDescriptor() != null && values.containsKey(key);
     }
 
     @SuppressWarnings("unchecked")
     <T> T get(OptionKey<T> key) {
-        Object value = values.get(key);
-        if (value == null) {
+        if (key.getDescriptor() != null) {
+            Object value = values.get(key);
+            if (value == null) {
+                return key.getDefaultValue();
+            }
+            return (T) decodeNull(value);
+        } else {
+            // If a key has no descriptor, it cannot be in the map
+            // since OptionKey.hashCode() will ensure the key has a
+            // descriptor as a result of using OptionKey.getName().
             return key.getDefaultValue();
         }
-        return (T) decodeNull(value);
+
     }
 
     public void copyInto(Map<OptionKey<?>, Object> dst) {

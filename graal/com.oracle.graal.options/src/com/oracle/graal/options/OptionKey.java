@@ -144,8 +144,8 @@ public class OptionKey<T> {
 
     private OptionDescriptor descriptor;
 
-    public OptionKey(T value) {
-        this.defaultValue = value;
+    public OptionKey(T defaultValue) {
+        this.defaultValue = defaultValue;
     }
 
     private static final Object UNINITIALIZED = "UNINITIALIZED";
@@ -247,6 +247,16 @@ public class OptionKey<T> {
             }
         }
         return values.containsKey(this);
+    }
+
+    @Override
+    public final int hashCode() {
+        return getName().hashCode();
+    }
+
+    @Override
+    public final boolean equals(Object obj) {
+        return this == obj;
     }
 
     /**

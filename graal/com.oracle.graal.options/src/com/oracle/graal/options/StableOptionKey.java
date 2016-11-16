@@ -30,15 +30,9 @@ public class StableOptionKey<T> extends OptionKey<T> {
     /**
      * Creates a stable option value.
      */
-    public StableOptionKey(T value) {
-        super(value);
+    public StableOptionKey(T defaultValue) {
+        super(defaultValue);
     }
-
-    /**
-     * Used to assert the invariant for stability. Without using locks, this check is not safe
-     * against races and so it's only an assertion.
-     */
-    private boolean getValueCalled;
 
     /**
      * Creates an uninitialized stable option value for a subclass that initializes itself
@@ -53,7 +47,7 @@ public class StableOptionKey<T> extends OptionKey<T> {
     @Override
     public T getValue(OptionValues values) {
         T result = values.get(this);
-        assert initGetValueCalled();
+        assert values.stabilize(this, result);
         return result;
     }
 
@@ -62,13 +56,8 @@ public class StableOptionKey<T> extends OptionKey<T> {
         return values.containsKey(this);
     }
 
-    private boolean initGetValueCalled() {
-        getValueCalled = true;
-        return true;
-    }
-
     @Override
     protected void onValueUpdate(OptionValues values, T oldValue, T newValue) {
-        assert !getValueCalled;
+        assert !values.isStabilized(this);
     }
 }

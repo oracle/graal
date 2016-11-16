@@ -103,7 +103,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         CompileTheWorldOptions.overrideWithNativeOptions(config);
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
-        if (GraalOptions.HotSpotPrintInlining.getValue() == false) {
+        if (GraalOptions.HotSpotPrintInlining.getValue() == false && config.printInlining) {
             GraalOptions.HotSpotPrintInlining.setValue(config.printInlining);
         }
 
