@@ -12579,6 +12579,7 @@ gcc-5.2.0/gcc/testsuite/gfortran.dg/namelist_63.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/namelist_74.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/namelist_75.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/namelist_83.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/namelist_83_2.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/namelist_assumed_char.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/namelist_blockdata.f
 gcc-5.2.0/gcc/testsuite/gfortran.dg/nan_2.f90
