@@ -42,3 +42,11 @@ bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${
     ${hwloc.node0} ${bench-jvmci.mx-scala-dacapo-move-profiling} ${bench-arguments}
   ]
 }
+
+# Renaissance-related targets
+
+bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common-8} {
+  run: [
+    ${hwloc.node0} ${bench-jvmci.mx-renaissance} ${bench-arguments}
+  ]
+}
