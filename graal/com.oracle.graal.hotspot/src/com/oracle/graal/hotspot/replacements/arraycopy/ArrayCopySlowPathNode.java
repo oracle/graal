@@ -29,6 +29,7 @@ import static com.oracle.graal.compiler.common.LocationIdentity.any;
 
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.NamedLocationIdentity;
@@ -49,16 +50,26 @@ public final class ArrayCopySlowPathNode extends BasicArrayCopyNode {
      */
     private final Object argument;
 
-    public ArrayCopySlowPathNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind, SnippetTemplate.SnippetInfo snippet, Object argument) {
+    /**
+     * AOT compilation requires klass constants to be exposed after the first lowering to be handled
+     * automatically. Lowering for {@link ArrayCopySlowPathNode}, with snippet ==
+     * {@link ArrayCopySnippets#arraycopyPredictedObjectWork}, requires a klass of Object[]. For
+     * other snippets {@link #predictedKlass} is a null constant.
+     */
+    @Input protected ValueNode predictedKlass;
+
+    public ArrayCopySlowPathNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode predictedKlass, JavaKind elementKind,
+                    SnippetTemplate.SnippetInfo snippet, Object argument) {
         super(TYPE, src, srcPos, dest, destPos, length, elementKind, BytecodeFrame.INVALID_FRAMESTATE_BCI);
         assert StampTool.isPointerNonNull(src) && StampTool.isPointerNonNull(dest) : "must have been null checked";
         this.snippet = snippet;
         this.argument = argument;
+        this.predictedKlass = predictedKlass;
     }
 
     @NodeIntrinsic
-    public static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, @ConstantNodeParameter JavaKind elementKind,
-                    @ConstantNodeParameter SnippetTemplate.SnippetInfo snippet, @ConstantNodeParameter Object argument);
+    public static native void arraycopy(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, KlassPointer predictedKlass,
+                    @ConstantNodeParameter JavaKind elementKind, @ConstantNodeParameter SnippetTemplate.SnippetInfo snippet, @ConstantNodeParameter Object argument);
 
     public SnippetTemplate.SnippetInfo getSnippet() {
         return snippet;
@@ -78,5 +89,9 @@ public final class ArrayCopySlowPathNode extends BasicArrayCopyNode {
 
     public void setBci(int bci) {
         this.bci = bci;
+    }
+
+    public ValueNode getPredictedKlass() {
+        return predictedKlass;
     }
 }
