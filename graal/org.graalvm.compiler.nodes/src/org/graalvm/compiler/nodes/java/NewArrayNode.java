@@ -24,15 +24,20 @@ package org.graalvm.compiler.nodes.java;
 
 import java.util.Collections;
 
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
@@ -44,7 +49,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 // JaCoCo Exclude
 @NodeInfo
-public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableAllocation {
+public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableAllocation, Simplifiable {
 
     public static final NodeClass<NewArrayNode> TYPE = NodeClass.create(NewArrayNode.class);
     private final ResolvedJavaType elementType;
@@ -103,5 +108,18 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
     /* Factored out in a separate method so that subclasses can override it. */
     protected ConstantNode defaultElementValue() {
         return ConstantNode.defaultForKind(elementType().getJavaKind(), graph());
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (hasNoUsages()) {
+            Stamp lengthStamp = length().stamp();
+            if (lengthStamp instanceof IntegerStamp) {
+                IntegerStamp lengthIntegerStamp = (IntegerStamp) lengthStamp;
+                if (lengthIntegerStamp.isPositive()) {
+                    GraphUtil.removeFixedWithUnusedInputs(this);
+                }
+            }
+        }
     }
 }
