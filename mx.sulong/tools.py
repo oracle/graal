@@ -102,23 +102,41 @@ class ClangCompiler(Tool):
         return self.runTool([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class GCCCompiler(Tool):
-    def __init__(self):
+    def __init__(self, supportedLanguages=None):
         self.name = 'gcc'
-        self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.FORTRAN]
+        if supportedLanguages is None:
+            self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.FORTRAN]
+        else:
+            self.supportedLanguages = supportedLanguages
 
-    def run(self, inputFile, outputFile, flags):
+        self.gcc = None
+        self.gpp = None
+        self.gfortran = None
+
+    def getTool(self, inputFile):
         inputLanguage = ProgrammingLanguage.lookupFile(inputFile)
         if inputLanguage == ProgrammingLanguage.C:
-            tool = mx_sulong.getGCC()
-            flags.append('-std=gnu99')
+            if self.gcc is None:
+                self.gcc = mx_sulong.getGCC()
+            return self.gcc, ['-std=gnu99']
         elif inputLanguage == ProgrammingLanguage.C_PLUS_PLUS:
-            tool = mx_sulong.getGPP()
+            if self.gpp is None:
+                self.gpp = mx_sulong.getGPP()
+            return self.gpp, []
         elif inputLanguage == ProgrammingLanguage.FORTRAN:
-            tool = mx_sulong.getGFortran()
+            if self.gfortran is None:
+                self.gfortran = mx_sulong.getGFortran()
+            return self.gfortran, []
         else:
             raise Exception('Unsupported input language')
 
-        return self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
+    def run(self, inputFile, outputFile, flags):
+        tool, toolFlags = self.getTool(inputFile)
+        return self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
+
+    def compileReferenceFile(self, inputFile, outputFile, flags):
+        tool, toolFlags = self.getTool(inputFile)
+        return self.runTool([tool, '-o', outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class Opt(Tool):
     def __init__(self, name, passes):
@@ -131,6 +149,7 @@ class Opt(Tool):
 
 Tool.CLANG = ClangCompiler()
 Tool.GCC = GCCCompiler()
+Tool.GFORTRAN = GCCCompiler([ProgrammingLanguage.FORTRAN])
 Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
 
 
