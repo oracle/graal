@@ -1,6 +1,5 @@
 
 x52.c2 : {
-  targets: [weekly]
   capabilities: [linux, x52, no_frequency_scaling]
   environment : {
     XMX          : "64g"
@@ -16,11 +15,11 @@ x52.c2-tmpfs10g : ${x52.c2} {
 }
 
 builds += [
-  ${x52.c2-tmpfs10g} ${bench-dacapo}              { name: "bench-dacapo-linux-x52-c2" }
-  ${x52.c2-tmpfs10g} ${bench-scala-dacapo}        { name: "bench-scala-dacapo-linux-x52-c2" }
-  ${x52.c2} ${bench-specjvm2008-Single}           { name: "bench-specjvm2008-Single-linux-x52-c2" }
-  ${x52.c2} ${bench-specjvm2008-OneVM}            { name: "bench-specjvm2008-OneVM-linux-x52-c2" }
-  ${x52.c2} ${bench-specjbb2015}                  { name: "bench-specjbb2015-linux-x52-c2" }
-#  ${x52.c2} ${bench-micros-graal}                 { name: "bench-jmh-micros-graal-linux-x52-c2" }
+  ${x52.c2-tmpfs10g} ${bench-dacapo}              { targets: [weekly], name: "bench-dacapo-linux-x52-c2" }
+  ${x52.c2-tmpfs10g} ${bench-scala-dacapo}        { targets: [weekly], name: "bench-scala-dacapo-linux-x52-c2" }
+  ${x52.c2} ${bench-specjvm2008-Single}           { targets: [weekly], name: "bench-specjvm2008-Single-linux-x52-c2" }
+  ${x52.c2} ${bench-specjvm2008-OneVM}            { targets: [weekly], name: "bench-specjvm2008-OneVM-linux-x52-c2" }
+  ${x52.c2} ${bench-specjbb2015}                  { targets: [weekly], name: "bench-specjbb2015-linux-x52-c2" }
+#  ${x52.c2} ${bench-micros-graal}                 { targets: [weekly], name: "bench-jmh-micros-graal-linux-x52-c2" }
 ]
 
