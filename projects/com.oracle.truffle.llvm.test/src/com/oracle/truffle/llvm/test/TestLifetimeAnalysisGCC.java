@@ -73,6 +73,8 @@ import com.oracle.truffle.llvm.parser.bc.impl.LLVMLifetimeAnalysis;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.test.options.SulongTestOptions;
+import com.oracle.truffle.llvm.test.util.LifetimeFileFormat;
+import com.oracle.truffle.llvm.test.util.LifetimeFileParserEventListener;
 
 @RunWith(Parameterized.class)
 public class TestLifetimeAnalysisGCC extends TestSuiteBase {
@@ -83,17 +85,9 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
                     "projects/com.oracle.truffle.llvm.test/suites/gcc/gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/integer_select.f90"
     };
 
-    private static final String FUNCTION_INDENT = "";
-    private static final String BEGIN_DEAD_END_INDENT = "\t";
-    private static final String BASIC_BLOCK_INDENT = "\t\t";
-    private static final String VARIABLE_INDENT = "\t\t\t";
-
-    private static final String BEGIN_DEAD = BEGIN_DEAD_END_INDENT + "begin dead:";
-    private static final String END_DEAD = BEGIN_DEAD_END_INDENT + "end dead:";
-
     private TestCaseFiles tuple;
     private File referenceOutputFile;
-    private final PrintStream printStream;
+    private final LifetimeFileFormat.Writer fileWriter;
     private BufferedReader referenceFileReader;
     private Map<String, LLVMLifeTimeAnalysisResult> referenceResults;
 
@@ -102,9 +96,9 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         setUpReferenceFilePath(tuple);
         if (SulongTestOptions.TEST.generateLifetimeReferenceOutput()) {
             referenceOutputFile.getParentFile().mkdirs();
-            printStream = new PrintStream(referenceOutputFile);
+            fileWriter = new LifetimeFileFormat.Writer(new PrintStream(referenceOutputFile));
         } else {
-            printStream = null;
+            fileWriter = null;
             FileInputStream fis = new FileInputStream(referenceOutputFile);
             referenceFileReader = new BufferedReader(new InputStreamReader(fis));
             referenceResults = parseReferenceResults();
@@ -156,15 +150,6 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         return false;
     }
 
-    private enum ParseState {
-        LOOKING_FOR_FUNCTION,
-        LOOKING_FOR_BEGIN_DEAD,
-        LOOKING_FOR_BLOCK_OR_END_DEAD,
-        LOOKING_FOR_BLOCK_OR_END,
-        LOOKING_FOR_VARIABLE_BEGIN,
-        LOOKING_FOR_VARIABLE_END;
-    }
-
     @Test
     public void test() throws Throwable {
         try {
@@ -183,17 +168,28 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
                                     parserResult.getPhis().getPhiMap(functionName));
 
                     if (SulongTestOptions.TEST.generateLifetimeReferenceOutput()) {
-                        printStringln(functionName);
-                        printStringln(BEGIN_DEAD);
-                        printInstructionBlockVariables(lifetimes.getNullableBefore());
-                        printStringln(END_DEAD);
-                        printInstructionBlockVariables(lifetimes.getNullableAfter());
+                        fileWriter.writeFunctionName(functionName);
+                        fileWriter.writeBeginDead();
+                        writeInstructionBlockVariables(lifetimes.getNullableBefore());
+                        fileWriter.writeEndDead();
+                        writeInstructionBlockVariables(lifetimes.getNullableAfter());
 
                     } else {
                         LLVMLifeTimeAnalysisResult expected = referenceResults.get(functionName);
                         assertResultsEqual(functionName, expected, lifetimes);
                     }
 
+                }
+
+                private void writeInstructionBlockVariables(Map<InstructionBlock, FrameSlot[]> beginDead) {
+                    for (InstructionBlock b : beginDead.keySet()) {
+                        fileWriter.writeBasicBlockIndent(b.getName());
+                        for (FrameSlot slot : beginDead.get(b)) {
+                            if (slot != null) {
+                                fileWriter.writeVariableIndent(slot.getIdentifier());
+                            }
+                        }
+                    }
                 }
             });
 
@@ -400,99 +396,58 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
     }
 
     private Map<String, LLVMLifeTimeAnalysisResult> parseReferenceResults() throws IOException {
-        ParseState state = ParseState.LOOKING_FOR_FUNCTION;
-        boolean deadAtBeginning = true;
-        String block = null;
-        FrameDescriptor descr = new FrameDescriptor();
-        Map<BasicBlock, FrameSlot[]> beginDead = new HashMap<>();
-        Map<BasicBlock, FrameSlot[]> endDead = new HashMap<>();
         Map<String, LLVMLifeTimeAnalysisResult> results = new HashMap<>();
-        String functionName = null;
-        Set<FrameSlot> slots = new HashSet<>();
-        while (referenceFileReader.ready()) {
-            String line = referenceFileReader.readLine();
-            switch (state) {
-                case LOOKING_FOR_FUNCTION:
-                    if (line.startsWith(FUNCTION_INDENT)) {
-                        state = ParseState.LOOKING_FOR_BEGIN_DEAD;
-                        functionName = line;
-                    } else {
-                        throw new AssertionError(line);
-                    }
-                    break;
-                case LOOKING_FOR_BEGIN_DEAD:
-                    if (line.equals(BEGIN_DEAD)) {
-                        state = ParseState.LOOKING_FOR_BLOCK_OR_END_DEAD;
-                        deadAtBeginning = true;
-                    } else {
-                        throw new AssertionError(line);
-                    }
-                    break;
-                case LOOKING_FOR_BLOCK_OR_END_DEAD:
-                    if (line.equals(END_DEAD)) {
-                        deadAtBeginning = false;
-                        state = ParseState.LOOKING_FOR_BLOCK_OR_END;
-                    } else if (line.startsWith(BASIC_BLOCK_INDENT)) {
-                        block = line.substring(BASIC_BLOCK_INDENT.length());
-                        state = ParseState.LOOKING_FOR_VARIABLE_BEGIN;
-                    } else {
-                        throw new AssertionError(line);
-                    }
-                    break;
-                case LOOKING_FOR_VARIABLE_BEGIN:
-                    if (line.startsWith(VARIABLE_INDENT)) {
-                        String variableName = line.substring(VARIABLE_INDENT.length());
-                        slots.add(descr.findOrAddFrameSlot(variableName));
-                    } else if (line.startsWith(BASIC_BLOCK_INDENT)) {
-                        finishEntry(deadAtBeginning, block, beginDead, endDead, slots);
-                        block = line.substring(BASIC_BLOCK_INDENT.length());
-                        state = ParseState.LOOKING_FOR_VARIABLE_BEGIN;
-                    } else if (line.startsWith(END_DEAD)) {
-                        finishEntry(deadAtBeginning, block, beginDead, endDead, slots);
-                        deadAtBeginning = false;
-                        state = ParseState.LOOKING_FOR_BLOCK_OR_END;
-                    } else {
-                        throw new AssertionError(line);
-                    }
-                    break;
-                case LOOKING_FOR_BLOCK_OR_END:
-                    if (line.startsWith(BASIC_BLOCK_INDENT)) {
-                        block = line.substring(BASIC_BLOCK_INDENT.length());
-                        state = ParseState.LOOKING_FOR_VARIABLE_END;
-                    } else if (line.startsWith(FUNCTION_INDENT)) {
-                        finishEntry(deadAtBeginning, block, beginDead, endDead, slots);
-                        results.put(functionName, result(beginDead, endDead));
-                        beginDead = new HashMap<>();
-                        endDead = new HashMap<>();
-                    } else {
-                        throw new AssertionError(line);
-                    }
-                    break;
-                case LOOKING_FOR_VARIABLE_END:
-                    if (line.startsWith(VARIABLE_INDENT)) {
-                        String variableName = line.substring(VARIABLE_INDENT.length());
-                        slots.add(descr.findOrAddFrameSlot(variableName));
-                    } else if (line.startsWith(BASIC_BLOCK_INDENT)) {
-                        finishEntry(deadAtBeginning, block, beginDead, endDead, slots);
-                        block = line.substring(BASIC_BLOCK_INDENT.length());
-                        state = ParseState.LOOKING_FOR_VARIABLE_END;
-                    } else if (line.startsWith(FUNCTION_INDENT)) {
-                        finishEntry(deadAtBeginning, block, beginDead, endDead, slots);
-                        results.put(functionName, result(beginDead, endDead));
-                        functionName = line;
-                        beginDead = new HashMap<>();
-                        endDead = new HashMap<>();
-                        state = ParseState.LOOKING_FOR_BEGIN_DEAD;
-                    } else {
-                        throw new AssertionError(line);
-                    }
-                    break;
-                default:
-                    throw new AssertionError();
+
+        LifetimeFileFormat.parse(referenceFileReader, new LifetimeFileParserEventListener() {
+            private FrameDescriptor descr = new FrameDescriptor();
+            private Map<BasicBlock, FrameSlot[]> beginDead = new HashMap<>();
+            private Map<BasicBlock, FrameSlot[]> endDead = new HashMap<>();
+            Set<FrameSlot> slots = new HashSet<>();
+
+            private boolean deadAtBeginning = true;
+
+            @Override
+            public void startFile() {
             }
-        }
-        finishEntry(deadAtBeginning, block, beginDead, endDead, slots);
-        results.put(functionName, result(beginDead, endDead));
+
+            @Override
+            public void endFile(String functionName) {
+                results.put(functionName, result(beginDead, endDead));
+            }
+
+            @Override
+            public void variableIndent(String variableName) {
+                slots.add(descr.findOrAddFrameSlot(variableName));
+            }
+
+            @Override
+            public void functionIndent(String functionName) {
+                results.put(functionName, result(beginDead, endDead));
+                beginDead = new HashMap<>();
+                endDead = new HashMap<>();
+            }
+
+            @Override
+            public void finishEntry(String block) {
+                if (deadAtBeginning) {
+                    beginDead.put(createBasicBlock(block), slots.toArray(new FrameSlot[slots.size()]));
+                } else {
+                    endDead.put(createBasicBlock(block), slots.toArray(new FrameSlot[slots.size()]));
+                }
+                slots.clear();
+            }
+
+            @Override
+            public void endDead() {
+                deadAtBeginning = false;
+            }
+
+            @Override
+            public void beginDead() {
+                deadAtBeginning = true;
+            }
+        });
+
         return results;
     }
 
@@ -509,34 +464,6 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
                 return beginDead;
             }
         };
-    }
-
-    private static void finishEntry(boolean deadAtBeginning, String block, Map<BasicBlock, FrameSlot[]> beginDead, Map<BasicBlock, FrameSlot[]> endDead, Set<FrameSlot> slots) {
-        if (deadAtBeginning) {
-            beginDead.put(createBasicBlock(block), slots.toArray(new FrameSlot[slots.size()]));
-        } else {
-            endDead.put(createBasicBlock(block), slots.toArray(new FrameSlot[slots.size()]));
-        }
-        slots.clear();
-    }
-
-    private void printInstructionBlockVariables(Map<InstructionBlock, FrameSlot[]> beginDead) {
-        for (InstructionBlock b : beginDead.keySet()) {
-            printString(BASIC_BLOCK_INDENT + b.getName());
-            for (FrameSlot slot : beginDead.get(b)) {
-                if (slot != null) {
-                    printString(VARIABLE_INDENT + slot.getIdentifier());
-                }
-            }
-        }
-    }
-
-    void printStringln(String s) {
-        printStream.println(s);
-    }
-
-    void printString(String s) {
-        printStream.println(s);
     }
 
 }
