@@ -95,7 +95,7 @@ class ClangCompiler(Tool):
 
     def run(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        return self.runTool([mx_sulong.findLLVMProgram(tool), '-c', '-S', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+        return self.runTool([mx_sulong.findLLVMProgram(tool), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
@@ -132,7 +132,10 @@ class GCCCompiler(Tool):
 
     def run(self, inputFile, outputFile, flags):
         tool, toolFlags = self.getTool(inputFile, outputFile)
-        return self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
+        ret = self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', '%s.tmp.ll' % outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
+        if ret == 0:
+            ret = self.runTool([mx_sulong.findLLVMProgram('llvm-as'), '-o', outputFile, '%s.tmp.ll' % outputFile], errorMsg='Cannot assemble %s with llvm-as' % inputFile)
+        return ret
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool, toolFlags = self.getTool(inputFile, outputFile)
@@ -141,11 +144,11 @@ class GCCCompiler(Tool):
 class Opt(Tool):
     def __init__(self, name, passes):
         self.name = name
-        self.supportedLanguages = [ProgrammingLanguage.LLVMIR]
+        self.supportedLanguages = [ProgrammingLanguage.LLVMBC]
         self.passes = passes
 
     def run(self, inputFile, outputFile, flags):
-        return mx.run([mx_sulong.findLLVMProgram('opt'), '-S', '-o', outputFile] + self.passes + [inputFile])
+        return mx.run([mx_sulong.findLLVMProgram('opt'), '-o', outputFile] + self.passes + [inputFile])
 
 Tool.CLANG = ClangCompiler()
 Tool.GCC = GCCCompiler()
