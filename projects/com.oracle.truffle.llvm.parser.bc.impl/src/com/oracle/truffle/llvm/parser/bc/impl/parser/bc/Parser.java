@@ -131,6 +131,10 @@ public class Parser {
         this(Objects.requireNonNull(stream), Objects.requireNonNull(block), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2, 0);
     }
 
+    public Parser(Bitstream stream, Block block, ParserListener listener, long offset) {
+        this(Objects.requireNonNull(stream), Objects.requireNonNull(block), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2, offset);
+    }
+
     protected Parser(Parser parser) {
         this(parser.stream, parser.block, parser.listener, parser.parent, parser.operations, parser.idsize, parser.offset);
     }
