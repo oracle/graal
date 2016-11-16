@@ -113,7 +113,7 @@ class GCCCompiler(Tool):
         self.gpp = None
         self.gfortran = None
 
-    def getTool(self, inputFile):
+    def getTool(self, inputFile, outputFile):
         inputLanguage = ProgrammingLanguage.lookupFile(inputFile)
         if inputLanguage == ProgrammingLanguage.C:
             if self.gcc is None:
@@ -126,16 +126,16 @@ class GCCCompiler(Tool):
         elif inputLanguage == ProgrammingLanguage.FORTRAN:
             if self.gfortran is None:
                 self.gfortran = mx_sulong.getGFortran()
-            return self.gfortran, []
+            return self.gfortran, ['-J%s' % os.path.dirname(outputFile)]
         else:
             raise Exception('Unsupported input language')
 
     def run(self, inputFile, outputFile, flags):
-        tool, toolFlags = self.getTool(inputFile)
+        tool, toolFlags = self.getTool(inputFile, outputFile)
         return self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
-        tool, toolFlags = self.getTool(inputFile)
+        tool, toolFlags = self.getTool(inputFile, outputFile)
         return self.runTool([tool, '-o', outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class Opt(Tool):
