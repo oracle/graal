@@ -28,13 +28,6 @@ bench-common-8 : ${java8Downloads} {
   ]
 }
 
-hwloc.bench-common-8 : {
-  packages: {hwloc: ">=1.9"}
-  setup: ${bench-common-8.setup} [
-    ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--pid", "$$"]
-  ]
-}
-
 bench-dacapo: ${bench-common-8} {
   targets : [bench, post-merge]
   run: [
