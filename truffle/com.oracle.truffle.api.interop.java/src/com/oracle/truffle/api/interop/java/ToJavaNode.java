@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -76,7 +75,7 @@ abstract class ToJavaNode extends Node {
             assert convertedValue != null;
         } else if (value instanceof JavaObject && targetType.isInstance(((JavaObject) value).obj)) {
             convertedValue = ((JavaObject) value).obj;
-        } else if (value instanceof TruffleObject && isJavaFunctionInterface(targetType) && isExecutable(frame, (TruffleObject) value)) {
+        } else if (value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType) && isExecutable(frame, (TruffleObject) value)) {
             convertedValue = asJavaFunction(targetType, (TruffleObject) value);
         } else if (value instanceof TruffleObject) {
             convertedValue = asJavaObject(targetType, null, (TruffleObject) value);
@@ -109,24 +108,6 @@ abstract class ToJavaNode extends Node {
 
     private boolean isExecutable(VirtualFrame frame, TruffleObject object) {
         return ForeignAccess.sendIsExecutable(isExecutable, frame, object);
-    }
-
-    @TruffleBoundary
-    private static boolean isJavaFunctionInterface(Class<?> type) {
-        if (!type.isInterface()) {
-            return false;
-        }
-        for (Annotation annotation : type.getAnnotations()) {
-            // TODO: don't compare strings here
-            // fix once Truffle uses JDK8
-            if (annotation.toString().equals("@java.lang.FunctionalInterface()")) {
-                return true;
-            }
-        }
-        if (type.getMethods().length == 1) {
-            return true;
-        }
-        return false;
     }
 
     @TruffleBoundary
@@ -447,7 +428,7 @@ abstract class ToJavaNode extends Node {
         return null;
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings("all")
     @TruffleBoundary
     static Object message(final Message m, Object receiver, Object... arr) throws InteropException {
         Node n = m.createNode();

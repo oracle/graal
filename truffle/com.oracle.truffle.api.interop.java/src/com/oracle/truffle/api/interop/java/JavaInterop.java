@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import java.lang.reflect.Method;
 
 import com.oracle.truffle.api.Truffle;
@@ -35,6 +36,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 
 /**
@@ -419,4 +421,23 @@ public final class JavaInterop {
             return node.execute(frame, value, type);
         }
     }
+
+    @CompilerDirectives.TruffleBoundary
+    static boolean isJavaFunctionInterface(Class<?> type) {
+        if (!type.isInterface() || type == TruffleObject.class) {
+            return false;
+        }
+        for (Annotation annotation : type.getAnnotations()) {
+            // TODO: don't compare strings here
+            // fix once Truffle uses JDK8
+            if (annotation.toString().equals("@java.lang.FunctionalInterface()")) {
+                return true;
+            }
+        }
+        if (type.getMethods().length == 1) {
+            return true;
+        }
+        return false;
+    }
+
 }

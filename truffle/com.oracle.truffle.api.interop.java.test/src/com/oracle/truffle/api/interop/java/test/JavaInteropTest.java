@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Map;
 import static org.junit.Assert.assertNotNull;
@@ -309,6 +310,13 @@ public class JavaInteropTest {
         int[] a = new int[]{1, 2, 3};
         TruffleObject truffleArray = JavaInterop.asTruffleObject(a);
         assertTrue(JavaInterop.isArray(truffleArray));
+    }
+
+    @Test
+    public void truffleObjectIsntFunctionalInterface() throws Exception {
+        Method isFunctionaInterface = JavaInterop.class.getDeclaredMethod("isJavaFunctionInterface", Class.class);
+        isFunctionaInterface.setAccessible(true);
+        assertFalse("TruffleObject isn't functional interface", (boolean) isFunctionaInterface.invoke(null, TruffleObject.class));
     }
 
     @Test
