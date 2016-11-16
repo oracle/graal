@@ -26,7 +26,6 @@ def compileSulongSuite():
     tools.printProgress(tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude', '-lm'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.BB_VECTORIZE]))
     print("Compiling Sulong Suite with -O1/2/3 ", end='')
     tools.printProgress(tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude', '-lm'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMBC))
-    # MG: compared to the old test suite we do not run the ll files
 
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
@@ -43,7 +42,6 @@ def compileGCCSuite():
     tools.printProgress(tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GFORTRAN], ['-Iinclude'], excludes=excludes))
     print("Compiling GCC Suite with -O0 ", end='')
     tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GFORTRAN], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
-
 
 testSuites = {
     'gcc' : compileGCCSuite,
