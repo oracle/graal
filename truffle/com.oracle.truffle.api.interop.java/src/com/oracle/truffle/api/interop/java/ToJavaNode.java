@@ -422,7 +422,7 @@ abstract class ToJavaNode extends Node {
 
     @SuppressWarnings("all")
     @TruffleBoundary
-    static Object message(TypeAndClass convertTo, final Message m, Object receiver, Object... arr) throws InteropException {
+    static Object message(TypeAndClass<?> convertTo, final Message m, Object receiver, Object... arr) throws InteropException {
         Node n = m.createNode();
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver, convertTo));
         return callTarget.call(arr);
