@@ -70,6 +70,8 @@ import com.intel.llvm.ireditor.lLVM_IR.InlineAsm;
 import com.intel.llvm.ireditor.lLVM_IR.InlineAssembler;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_alloca;
+import com.intel.llvm.ireditor.lLVM_IR.Instruction_and;
+import com.intel.llvm.ireditor.lLVM_IR.Instruction_ashr;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_atomicrmw;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_br;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_call_nonVoid;
@@ -84,12 +86,16 @@ import com.intel.llvm.ireditor.lLVM_IR.Instruction_indirectbr;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_insertelement;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_insertvalue;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_load;
+import com.intel.llvm.ireditor.lLVM_IR.Instruction_lshr;
+import com.intel.llvm.ireditor.lLVM_IR.Instruction_or;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_ret;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_select;
+import com.intel.llvm.ireditor.lLVM_IR.Instruction_shl;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_shufflevector;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_store;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_switch;
 import com.intel.llvm.ireditor.lLVM_IR.Instruction_unreachable;
+import com.intel.llvm.ireditor.lLVM_IR.Instruction_xor;
 import com.intel.llvm.ireditor.lLVM_IR.LocalValue;
 import com.intel.llvm.ireditor.lLVM_IR.LocalValueRef;
 import com.intel.llvm.ireditor.lLVM_IR.MiddleInstruction;
@@ -137,7 +143,6 @@ import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserResultImpl;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
-import com.oracle.truffle.llvm.parser.factories.LLVMLogicalFactory;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisVisitor;
@@ -816,7 +821,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         LLVMExpressionNode right = visitValueRef(op2, instr.getType());
         LLVMBaseType llvmType = getLLVMType(instr.getType()).getType();
         LLVMExpressionNode target = allocateVectorResultIfVector(instr);
-        return factoryFacade.createLogicalOperation(left, right, LLVMLogicalFactory.getLogicalInstructionType(instr), llvmType, target);
+        return factoryFacade.createLogicalOperation(left, right, getLogicalInstructionType(instr), llvmType, target);
     }
 
     private LLVMExpressionNode allocateVectorResultIfVector(EObject type) {
@@ -828,6 +833,24 @@ public final class LLVMVisitor implements LLVMParserRuntime {
             target = null;
         }
         return target;
+    }
+
+    private static LLVMLogicalInstructionType getLogicalInstructionType(BitwiseBinaryInstruction instr) {
+        if (instr instanceof Instruction_and) {
+            return LLVMLogicalInstructionType.AND;
+        } else if (instr instanceof Instruction_or) {
+            return LLVMLogicalInstructionType.OR;
+        } else if (instr instanceof Instruction_shl) {
+            return LLVMLogicalInstructionType.SHIFT_LEFT;
+        } else if (instr instanceof Instruction_lshr) {
+            return LLVMLogicalInstructionType.LOGICAL_SHIFT_RIGHT;
+        } else if (instr instanceof Instruction_ashr) {
+            return LLVMLogicalInstructionType.ARITHMETIC_SHIFT_RIGHT;
+        } else if (instr instanceof Instruction_xor) {
+            return LLVMLogicalInstructionType.XOR;
+        } else {
+            throw new AssertionError(instr);
+        }
     }
 
     private LLVMExpressionNode visitSelectInstr(Instruction_select instr) {
