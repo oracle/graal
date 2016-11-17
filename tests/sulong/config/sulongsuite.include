@@ -727,6 +727,3 @@ c/vector/vectorDivision.c
 c/vector/vectorLiteral.c
 c/vector/vectorMultiplication.c
 c/vector/vectorSubtraction.c
-c++/simple/inttobool.cpp
-c++/simple/ignore/dynamicDispatch1.cpp
-c++/simple/ignore/simpleclass.cpp
