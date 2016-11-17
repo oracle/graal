@@ -35,17 +35,17 @@ import java.util.Map;
 import java.util.Set;
 
 final class TruffleMap<K, V> extends AbstractMap<K, V> {
-    private final Class<K> keyType;
-    private final Class<V> valueType;
+    private final TypeAndClass<K> keyType;
+    private final TypeAndClass<V> valueType;
     private final TruffleObject obj;
 
-    private TruffleMap(Class<K> keyType, Class<V> valueType, TruffleObject obj) {
+    private TruffleMap(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject obj) {
         this.keyType = keyType;
         this.valueType = valueType;
         this.obj = obj;
     }
 
-    static <K, V> Map<K, V> create(Class<K> keyType, Class<V> valueType, TruffleObject foreignObject) {
+    static <K, V> Map<K, V> create(TypeAndClass<K> keyType, TypeAndClass<V> valueType, TruffleObject foreignObject) {
         return new TruffleMap<>(keyType, valueType, foreignObject);
     }
 

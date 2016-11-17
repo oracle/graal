@@ -26,9 +26,7 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -78,7 +76,7 @@ abstract class ToJavaNode extends Node {
         } else if (value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType.clazz) && isExecutable(frame, (TruffleObject) value)) {
             convertedValue = asJavaFunction(targetType.clazz, (TruffleObject) value);
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject(targetType.clazz, targetType.type, (TruffleObject) value);
+            convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value);
         } else {
             assert targetType.clazz.isAssignableFrom(value.getClass());
             convertedValue = value;
@@ -111,7 +109,7 @@ abstract class ToJavaNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Class<T> clazz, Type type, TruffleObject foreignObject) {
+    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass type, TruffleObject foreignObject) {
         Object obj;
         if (clazz.isInstance(foreignObject)) {
             obj = foreignObject;
@@ -123,28 +121,11 @@ abstract class ToJavaNode extends Node {
                 return null;
             }
             if (clazz == List.class && Boolean.TRUE.equals(binaryMessage(Message.HAS_SIZE, foreignObject))) {
-                Class<?> elementType = Object.class;
-                if (type instanceof ParameterizedType) {
-                    ParameterizedType parametrizedType = (ParameterizedType) type;
-                    final Type[] arr = parametrizedType.getActualTypeArguments();
-                    if (arr.length == 1 && arr[0] instanceof Class) {
-                        elementType = (Class<?>) arr[0];
-                    }
-                }
+                TypeAndClass elementType = type.getParameterType(0);
                 obj = TruffleList.create(elementType, foreignObject);
             } else if (clazz == Map.class) {
-                Class<?> keyType = Object.class;
-                Class<?> valueType = Object.class;
-                if (type instanceof ParameterizedType) {
-                    ParameterizedType parametrizedType = (ParameterizedType) type;
-                    final Type[] arr = parametrizedType.getActualTypeArguments();
-                    if (arr.length == 2 && arr[0] instanceof Class) {
-                        keyType = (Class<?>) arr[0];
-                    }
-                    if (arr.length == 2 && arr[1] instanceof Class) {
-                        valueType = (Class<?>) arr[1];
-                    }
-                }
+                TypeAndClass keyType = type.getParameterType(0);
+                TypeAndClass valueType = type.getParameterType(1);
                 obj = TruffleMap.create(keyType, valueType, foreignObject);
             } else {
                 obj = Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new TruffleHandler(foreignObject));
@@ -362,7 +343,7 @@ abstract class ToJavaNode extends Node {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                return asJavaObject(retType, type.type, truffleObject);
+                return asJavaObject(retType, type, truffleObject);
             }
         }
         return ret;

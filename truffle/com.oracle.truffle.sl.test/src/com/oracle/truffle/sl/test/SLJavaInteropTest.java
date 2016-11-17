@@ -200,6 +200,31 @@ public class SLJavaInteropTest {
         assertEquals(6, javaSum.sum);
     }
 
+    @Test
+    public void sumPairsInArrayOfArray() {
+        String scriptText = "function values(sum, arr) {\n" + //
+                        "  sum.sumArrayArray(arr);\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+
+        Sum javaSum = new Sum();
+
+        PairImpl[][] arr = {
+                        new PairImpl[]{
+                                        new PairImpl("one", 1),
+                        },
+                        new PairImpl[]{
+                                        new PairImpl("two", 2),
+                                        new PairImpl("three", 3),
+                        }
+        };
+        TruffleObject truffleArr = JavaInterop.asTruffleObject(arr);
+        fn.execute(javaSum, truffleArr);
+        assertEquals(6, javaSum.sum);
+    }
+
     interface PassInArray {
         void call(Object[] arr);
     }
@@ -240,6 +265,15 @@ public class SLJavaInteropTest {
             assertNotNull("Array created", arr);
             for (Pair p : pairs) {
                 sum(p);
+            }
+        }
+
+        public void sumArrayArray(List<List<Pair>> pairs) {
+            Object[] arr = pairs.toArray();
+            assertNotNull("Array created", arr);
+            assertEquals("Two lists", 2, arr.length);
+            for (List<Pair> list : pairs) {
+                sumArray(list);
             }
         }
     }

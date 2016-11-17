@@ -32,14 +32,14 @@ import java.util.List;
 
 final class TruffleList<T> extends AbstractList<T> {
     private final TruffleObject array;
-    private final Class<T> type;
+    private final TypeAndClass<T> type;
 
-    private TruffleList(Class<T> elementType, TruffleObject array) {
+    private TruffleList(TypeAndClass<T> elementType, TruffleObject array) {
         this.array = array;
         this.type = elementType;
     }
 
-    public static <T> List<T> create(Class<T> elementType, TruffleObject array) {
+    public static <T> List<T> create(TypeAndClass<T> elementType, TruffleObject array) {
         return new TruffleList<>(elementType, array);
     }
 
@@ -47,7 +47,7 @@ final class TruffleList<T> extends AbstractList<T> {
     public T get(int index) {
         try {
             final Object item = ToJavaNode.message(Message.READ, array, index);
-            Object javaItem = ToJavaNode.toJava(item, new TypeAndClass(type, type));
+            Object javaItem = ToJavaNode.toJava(item, type);
             return type.cast(javaItem);
         } catch (InteropException e) {
             throw new IllegalStateException(e);
@@ -56,9 +56,9 @@ final class TruffleList<T> extends AbstractList<T> {
 
     @Override
     public T set(int index, T element) {
+        type.cast(element);
         T prev = get(index);
         try {
-            type.cast(element);
             ToJavaNode.message(Message.WRITE, array, index, element);
         } catch (InteropException e) {
             throw new IllegalStateException(e);

@@ -24,16 +24,45 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
-final class TypeAndClass {
+final class TypeAndClass<T> {
 
     final Type type;
-    final Class<?> clazz;
+    final Class<T> clazz;
 
-    TypeAndClass(Type type, Class<?> clazz) {
+    TypeAndClass(Type type, Class<T> clazz) {
         this.type = type;
         this.clazz = clazz;
+    }
+
+    T cast(Object o) {
+        return clazz.cast(o);
+    }
+
+    TypeAndClass<?> getParameterType(int i) {
+        if (type instanceof ParameterizedType) {
+            ParameterizedType parametrizedType = (ParameterizedType) type;
+            final Type[] arr = parametrizedType.getActualTypeArguments();
+            Class<?> elementClass = Object.class;
+            if (arr.length > i) {
+                Type elementType = arr[i];
+                if (elementType instanceof ParameterizedType) {
+                    elementType = ((ParameterizedType) elementType).getRawType();
+                }
+                if (elementType instanceof Class<?>) {
+                    elementClass = (Class<?>) elementType;
+                }
+            }
+            return new TypeAndClass(arr[i], elementClass);
+        }
+        return new TypeAndClass(Object.class, Object.class);
+    }
+
+    @Override
+    public String toString() {
+        return "[" + clazz + ": " + type.getTypeName() + "]";
     }
 
 }
