@@ -67,7 +67,9 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     public V get(Object key) {
         keyType.cast(key);
         try {
-            return valueType.cast(ToJavaNode.message(Message.READ, obj, key));
+            final Object item = ToJavaNode.message(Message.READ, obj, key);
+            Object javaItem = ToJavaNode.toJava(item, valueType);
+            return valueType.cast(javaItem);
         } catch (InteropException e) {
             throw new IllegalStateException(e);
         }
