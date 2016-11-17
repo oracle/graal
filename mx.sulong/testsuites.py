@@ -22,10 +22,12 @@ _gccSuiteDirRoot = os.path.join(_gccSuiteDir, "gcc-5.2.0/gcc/testsuite/")
 def compileSulongSuite():
     print("Compiling Sulong Suite reference executables ", end='')
     tools.printProgress(tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude', '-lm']))
-    print("Compiling Sulong Suite with -O0 ", end='')
-    tools.printProgress(tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude', '-lm'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.BB_VECTORIZE]))
-    print("Compiling Sulong Suite with -O1/2/3 ", end='')
-    tools.printProgress(tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GCC], ['-Iinclude', '-lm'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMBC))
+    print("Compiling Sulong Suite with clang -O0 ", end='')
+    tools.printProgress(tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude', '-lm'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.BB_VECTORIZE]))
+    print("Compiling Sulong Suite with clang -O1/2/3 ", end='')
+    tools.printProgress(tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude', '-lm'], [tools.Optimization.O1, tools.Optimization.O2, tools.Optimization.O3], tools.ProgrammingLanguage.LLVMBC))
+    print("Compiling Sulong Suite with gcc -O0 ", end='')
+    tools.printProgress(tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [tools.Tool.GCC], ['-Iinclude', '-lm'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC))
 
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
