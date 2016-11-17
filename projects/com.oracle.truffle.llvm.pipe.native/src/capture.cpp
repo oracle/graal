@@ -3,58 +3,51 @@
 
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <iostream>
-using namespace std;
-#include <string>
+#include <sys/stat.h>
+#include <string.h>
+#include <errno.h>
 
-#define BUF_SIZE 1024
-
-enum PIPES { R, W };
-static int myPipe[2];
-static int oldStdOut;
-static std::string captured;
-static const string LINE_BREAK = "\r\n";
-
-JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_startCapturing(JNIEnv *env, jclass c) {
-  pipe(myPipe);
-  oldStdOut = dup(fileno(stdout));
-  fflush(stdout);
-  dup2(myPipe[W], fileno(stdout));
+static bool check_error(JNIEnv *env, int ret) {
+    if (ret < 0) {
+        char *message = strerror(errno);
+        jclass ioex = env->FindClass("java/io/IOException");
+        env->ThrowNew(ioex, message);
+        return true;
+    } else {
+        return false;
+    }
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_stopCapturing(JNIEnv * env, jclass c) {
-  fflush(stdout);
-  dup2(oldStdOut, fileno(stdout));
-  captured.clear();
+JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_startCapturing(JNIEnv *env, jclass self, jstring filename) {
+    const char *path = env->GetStringUTFChars(filename, NULL);
 
-  if (myPipe[W] > 0) {
-    close(myPipe[W]);
-  }
-  std::string buf;
-  buf.resize(BUF_SIZE);
+    int fd = open(path, O_WRONLY);
+    bool error = check_error(env, fd);
+    env->ReleaseStringUTFChars(filename, path);
+    if (error) {
+        return -1;
+    }
 
-  int bytesRead = 0;
-  do {
-    bytesRead = read(myPipe[R], &(*buf.begin()), BUF_SIZE);
-    captured += buf;         
-  } while(bytesRead == BUF_SIZE);
+    int oldStdOut = dup(1);
+    if (check_error(env, oldStdOut)) {
+        close(fd);
+        return -1;
+    }
 
-  if (bytesRead > 0) {
-    buf.resize(bytesRead);
-    captured += buf;
-  }
-  if (myPipe[R] > 0) {
-    close(myPipe[R]);
-  }
+    int result = dup2(fd, 1);
+    if (check_error(env, result)) {
+        close(fd);
+        close(oldStdOut);
+        return -1;
+    }
+
+    close(fd);
+    return oldStdOut;
 }
 
-
-JNIEXPORT jstring JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_getCapture(JNIEnv * env, jclass c) {
-  std::string::size_type idx = captured.find_last_not_of(LINE_BREAK);
-  if (idx == std::string::npos) {
-    return env->NewStringUTF(captured.c_str());
-  } else {
-    return env->NewStringUTF(captured.substr(0, idx+1).c_str());
-  }
+JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_stopCapturing(JNIEnv *env, jclass self, jint oldStdOut) {
+    if (check_error(env, dup2(oldStdOut, 1))) {
+        return;
+    }
+    check_error(env, close(oldStdOut));
 }

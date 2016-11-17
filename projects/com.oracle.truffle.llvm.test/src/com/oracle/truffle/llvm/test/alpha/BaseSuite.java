@@ -77,18 +77,17 @@ public abstract class BaseSuite {
             if (!filterFileName().test(candidate.getFileName().toString())) {
                 continue;
             }
-            CaptureOutput.startCapturing();
+
             int sulongResult = -1;
-            try {
+            String sulongStdOut;
+            try (CaptureOutput out = new CaptureOutput()) {
                 sulongResult = LLVM.executeMain(candidate.toAbsolutePath().toFile());
-            } finally {
-                CaptureOutput.stopCapturing();
+                sulongStdOut = out.getResult();
             }
 
             if (sulongResult != (sulongResult & 0xFF)) {
                 Assert.fail("Broken unittest " + getTestDirectory() + ". Test exits with invalid value.");
             }
-            String sulongStdOut = CaptureOutput.getCapture();
             String testName = candidate.getFileName().toString() + " in " + getTestDirectory().toAbsolutePath().toString();
             Assert.assertEquals(testName + " failed. Posix return value missmatch.", referenceReturnValue,
                             sulongResult);
