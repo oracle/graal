@@ -24,6 +24,7 @@ package org.graalvm.compiler.nodes.java;
 
 import java.util.Collections;
 
+import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -33,14 +34,19 @@ import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -118,7 +124,14 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
                 IntegerStamp lengthIntegerStamp = (IntegerStamp) lengthStamp;
                 if (lengthIntegerStamp.isPositive()) {
                     GraphUtil.removeFixedWithUnusedInputs(this);
+                    return;
                 }
+            }
+            if (graph().getGuardsStage().areFrameStatesAtSideEffects()) {
+                LogicNode lengthNegativeCondition = CompareNode.createCompareNode(graph(), Condition.LT, length(), ConstantNode.forInt(0, graph()), tool.getConstantReflection());
+                // we do not have a non-deopting path for that at the moment so action=None.
+                FixedGuardNode guard = graph().add(new FixedGuardNode(lengthNegativeCondition, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.None, true));
+                graph().replaceFixedWithFixed(this, guard);
             }
         }
     }
