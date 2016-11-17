@@ -32,18 +32,44 @@ package com.oracle.truffle.llvm.pipe;
 import java.io.File;
 
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import java.io.IOException;
+import java.nio.file.Files;
 
-public final class CaptureOutput {
+public final class CaptureOutput implements AutoCloseable {
 
     static {
         // temporary solution unit mx does that for us
         System.load(new File(LLVMOptions.ENGINE.projectRoot()).getAbsolutePath() + "/mxbuild/projects/com.oracle.truffle.llvm.pipe.native/bin/libpipe.so");
     }
 
-    public static native void startCapturing();
+    private final File captureFile;
+    private final int oldStdout;
 
-    public static native void stopCapturing();
+    private String result;
 
-    public static native String getCapture();
+    public CaptureOutput() throws IOException {
+        captureFile = File.createTempFile("capture", ".log");
+        captureFile.deleteOnExit();
 
+        oldStdout = startCapturing(captureFile.getAbsolutePath());
+        result = null;
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (result == null) {
+            stopCapturing(oldStdout);
+            result = new String(Files.readAllBytes(captureFile.toPath()));
+            captureFile.delete();
+        }
+    }
+
+    public String getResult() throws IOException {
+        close();
+        return result;
+    }
+
+    private static native int startCapturing(String tempFilename) throws IOException;
+
+    private static native void stopCapturing(int oldStdout) throws IOException;
 }

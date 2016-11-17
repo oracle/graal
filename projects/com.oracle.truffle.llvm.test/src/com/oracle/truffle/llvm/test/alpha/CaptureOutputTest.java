@@ -32,37 +32,56 @@ package com.oracle.truffle.llvm.test.alpha;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
+import java.io.IOException;
 
 public class CaptureOutputTest {
 
     @Test
-    public void testOutputCapturing() {
+    public void testOutputCapturing() throws IOException {
         String string = "Testoutput";
-        CaptureOutput.startCapturing();
-        System.out.print(string);
-        CaptureOutput.stopCapturing();
+        String captured;
+        try (CaptureOutput out = new CaptureOutput()) {
+            System.out.print(string);
+            captured = out.getResult();
+        }
         System.out.println("MUST NOT BE IN CAPTURE");
-        String captured = CaptureOutput.getCapture();
         assertEquals(string, captured);
     }
 
     @Test
-    public void testOutputCapturing2() {
+    public void testOutputCapturing2() throws IOException {
         String string = "Does it work again?";
-        CaptureOutput.startCapturing();
-        System.out.print(string);
-        CaptureOutput.stopCapturing();
+        String captured;
+        try (CaptureOutput out = new CaptureOutput()) {
+            System.out.print(string);
+            captured = out.getResult();
+        }
         System.out.println("MUST NOT BE IN CAPTURE");
-        String captured = CaptureOutput.getCapture();
         assertEquals(string, captured);
     }
 
-    @Test(timeout = 2)
-    public void testNothingHappens() {
+    @Test
+    public void testNothingHappens() throws IOException {
         for (int i = 0; i < 3; i++) {
-            CaptureOutput.startCapturing();
-            CaptureOutput.stopCapturing();
-            CaptureOutput.getCapture();
+            try (CaptureOutput out = new CaptureOutput()) {
+                // do nothing
+            }
         }
+    }
+
+    @Test
+    public void testBigOutput() throws IOException {
+        StringBuilder result = new StringBuilder();
+        String capture;
+        try (CaptureOutput out = new CaptureOutput()) {
+            for (int i = 0; i < 9000; i++) {
+                String line = String.format("line %04d\n", i);
+                System.out.print(line);
+                result.append(line);
+            }
+            capture = out.getResult();
+        }
+
+        assertEquals(result.toString(), capture);
     }
 }

@@ -21,11 +21,11 @@ bin/src-gen-deps: Makefile
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
 OS := $(shell uname)
 ifeq ($(OS),Darwin)
-CFLAGS=-g -fPIC -I${VPATH}/include -Isrc_gen -I${JAVA_HOME}/include -I${JAVA_HOME}/include/darwin $(shell pkg-config)
+CFLAGS=-g -fPIC -I${VPATH}/include -Isrc_gen -I${JAVA_HOME}/include -I${JAVA_HOME}/include/darwin
 else
-CFLAGS=-g -fPIC -I${VPATH}/include -Isrc_gen -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux $(shell pkg-config)
+CFLAGS=-g -fPIC -I${VPATH}/include -Isrc_gen -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux
 endif
-LIBS=-g $(shell pkg-config)
+LIBS=-g
 
 bin/${TARGET}: ${OBJECTFILES}
 	@echo LINK $@
