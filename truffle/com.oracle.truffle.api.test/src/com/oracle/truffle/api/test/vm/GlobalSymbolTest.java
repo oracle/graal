@@ -24,7 +24,6 @@ package com.oracle.truffle.api.test.vm;
 
 import static com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.L3;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -33,7 +32,6 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
@@ -74,8 +72,7 @@ public class GlobalSymbolTest {
     public void passingArray() {
         vm = createEngineBuilder().globalSymbol("arguments", new Object[]{"one", "two", "three"}).build();
         PolyglotEngine.Value value = vm.findGlobalSymbol("arguments");
-        assertFalse("Not instance of array", value.get() instanceof Object[]);
-        assertTrue("Instance of TruffleObject", value.get() instanceof TruffleObject);
+        assertTrue("Get unwraps to original instance of array", value.get() instanceof Object[]);
         List<?> args = value.as(List.class);
         assertNotNull("Can be converted to List", args);
         assertEquals("Three items", 3, args.size());

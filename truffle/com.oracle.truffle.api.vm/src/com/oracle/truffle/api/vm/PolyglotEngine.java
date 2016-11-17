@@ -823,13 +823,21 @@ public class PolyglotEngine {
          * @since 0.9
          */
         public Object get() {
+            return get(true);
+        }
+
+        private Object get(boolean unwrapJava) {
             assertNoTruffle();
             Object result = waitForSymbol();
-            if (executor != null && result instanceof TruffleObject) {
-                return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
-            } else {
-                return result;
+            if (result instanceof TruffleObject) {
+                if (unwrapJava) {
+                    result = JavaInterop.asJavaObject(Object.class, (TruffleObject) result);
+                }
+                if (executor != null && result instanceof TruffleObject) {
+                    return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
+                }
             }
+            return result;
         }
 
         /**
@@ -869,7 +877,7 @@ public class PolyglotEngine {
                 return representation.cast(obj);
             }
             if (JAVA_INTEROP_ENABLED) {
-                return JavaInterop.asJavaObject(representation, (TruffleObject) obj);
+                return JavaInterop.asJavaObject(representation, (TruffleObject) get(false));
             }
             throw new ClassCastException("Value cannot be represented as " + representation.getName());
         }
