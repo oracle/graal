@@ -154,27 +154,27 @@ abstract class ToJavaNode extends Node {
             Object ret;
             if (method.isVarArgs()) {
                 if (arguments.length == 1) {
-                    ret = call((Object[]) arguments[0]);
+                    ret = call((Object[]) arguments[0], method);
                 } else {
                     final int allButOne = arguments.length - 1;
                     Object[] last = (Object[]) arguments[allButOne];
                     Object[] merge = new Object[allButOne + last.length];
                     System.arraycopy(arguments, 0, merge, 0, allButOne);
                     System.arraycopy(last, 0, merge, allButOne, last.length);
-                    ret = call(merge);
+                    ret = call(merge, method);
                 }
             } else {
-                ret = call(arguments);
+                ret = call(arguments, method);
             }
             return toJava(ret, method);
         }
 
-        private Object call(Object[] arguments) {
+        private Object call(Object[] arguments, Method method) {
             CompilerAsserts.neverPartOfCompilation();
             Object[] args = arguments == null ? EMPTY : arguments;
             if (target == null) {
                 Node executeMain = Message.createExecute(args.length).createNode();
-                RootNode symbolNode = new TemporaryRoot(TruffleLanguage.class, executeMain, symbol);
+                RootNode symbolNode = new TemporaryRoot(TruffleLanguage.class, executeMain, symbol, TypeAndClass.forReturnType(method));
                 target = Truffle.getRuntime().createCallTarget(symbolNode);
             }
             for (int i = 0; i < args.length; i++) {
@@ -297,19 +297,31 @@ abstract class ToJavaNode extends Node {
 
     private static class TemporaryRoot extends RootNode {
         @Node.Child private Node foreignAccess;
+        @Node.Child private ToJavaNode toJava;
         private final TruffleObject function;
+        private final TypeAndClass<?> type;
 
         @SuppressWarnings("rawtypes")
-        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function) {
+        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, TypeAndClass<?> type) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.function = function;
+            this.type = type;
+            if (type == null) {
+                this.toJava = null;
+            } else {
+                this.toJava = ToJavaNodeGen.create();
+            }
         }
 
         @SuppressWarnings("deprecation")
         @Override
         public Object execute(VirtualFrame frame) {
-            return ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
+            Object raw = ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
+            if (toJava == null) {
+                return raw;
+            }
+            return toJava.execute(frame, raw, type);
         }
     }
 
@@ -322,7 +334,7 @@ abstract class ToJavaNode extends Node {
     }
 
     private static Object toJava(Object ret, Method method) {
-        return toJava(ret, new TypeAndClass<>(method.getGenericReturnType(), method.getReturnType()));
+        return toJava(ret, TypeAndClass.forReturnType(method));
     }
 
     static Object toJava(Object ret, TypeAndClass<?> type) {
@@ -417,7 +429,7 @@ abstract class ToJavaNode extends Node {
     @TruffleBoundary
     static Object message(final Message m, Object receiver, Object... arr) throws InteropException {
         Node n = m.createNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver));
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver, null));
         return callTarget.call(arr);
     }
 

@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 final class TypeAndClass<T> {
+    private static final TypeAndClass<Object> ANY = new TypeAndClass<>(Object.class, Object.class);
 
     final Type type;
     final Class<T> clazz;
@@ -63,6 +65,13 @@ final class TypeAndClass<T> {
     @Override
     public String toString() {
         return "[" + clazz + ": " + type.getTypeName() + "]";
+    }
+
+    static TypeAndClass<?> forReturnType(Method method) {
+        if (method.getReturnType() == void.class) {
+            return ANY;
+        }
+        return new TypeAndClass<>(method.getGenericReturnType(), method.getReturnType());
     }
 
 }
