@@ -29,13 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.intel.llvm.ireditor.lLVM_IR.BitwiseBinaryInstruction;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_and;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_ashr;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_lshr;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_or;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_shl;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_xor;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI16Node;
@@ -256,24 +249,6 @@ public final class LLVMLogicalFactory {
                 return LLVMI64VectorXorNodeGen.create(target, left, right);
             default:
                 throw new AssertionError(type);
-        }
-    }
-
-    public static LLVMLogicalInstructionType getLogicalInstructionType(BitwiseBinaryInstruction instr) {
-        if (instr instanceof Instruction_and) {
-            return LLVMLogicalInstructionType.AND;
-        } else if (instr instanceof Instruction_or) {
-            return LLVMLogicalInstructionType.OR;
-        } else if (instr instanceof Instruction_shl) {
-            return LLVMLogicalInstructionType.SHIFT_LEFT;
-        } else if (instr instanceof Instruction_lshr) {
-            return LLVMLogicalInstructionType.LOGICAL_SHIFT_RIGHT;
-        } else if (instr instanceof Instruction_ashr) {
-            return LLVMLogicalInstructionType.ARITHMETIC_SHIFT_RIGHT;
-        } else if (instr instanceof Instruction_xor) {
-            return LLVMLogicalInstructionType.XOR;
-        } else {
-            throw new AssertionError(instr);
         }
     }
 
