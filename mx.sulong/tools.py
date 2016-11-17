@@ -74,7 +74,7 @@ class Tool(object):
             if errorMsg is None:
                 print('\nError: Cannot run %s' % args)
             else:
-                print('\nError: %s' % errorMsg)
+                print('\nError: %s\n%s' % (errorMsg, args))
         if f is not None:
             f.close()
         return ret
