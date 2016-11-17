@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements.classfile;
 
+import static com.oracle.graal.replacements.classfile.Classfile.skipFully;
 import static com.oracle.graal.replacements.classfile.ClassfileConstant.CONSTANT_Class;
 
 import java.io.DataInputStream;
@@ -106,13 +107,13 @@ class ClassfileConstantPool implements ConstantPool {
             case ClassfileConstant.CONSTANT_Utf8:
                 return new ClassfileConstant.Utf8(stream.readUTF());
             case ClassfileConstant.CONSTANT_MethodHandle:
-                stream.skipBytes(3); // reference_kind, reference_index
+                skipFully(stream, 3); // reference_kind, reference_index
                 return new ClassfileConstant.Unsupported(tag, "CONSTANT_MethodHandle_info");
             case ClassfileConstant.CONSTANT_MethodType:
-                stream.skipBytes(2); // descriptor_index
+                skipFully(stream, 2); // descriptor_index
                 return new ClassfileConstant.Unsupported(tag, "CONSTANT_MethodType_info");
             case ClassfileConstant.CONSTANT_InvokeDynamic:
-                stream.skipBytes(4); // bootstrap_method_attr_index, name_and_type_index
+                skipFully(stream, 4); // bootstrap_method_attr_index, name_and_type_index
                 return new ClassfileConstant.Unsupported(tag, "CONSTANT_InvokeDynamic_info");
             default:
                 throw new GraalError("Invalid constant pool tag: " + tag);
