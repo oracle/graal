@@ -547,10 +547,10 @@ def _unittest_config_participant(config):
                         for package in packages:
                             addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
 
-            pathToProject = {p.output_dir() : p for p in mx.projects() if p.isJavaProject()}
+            pathToDep = {p.output_dir() if p.isJavaProject() else p.path: p for p in mx.dependencies() if p.isJavaProject() or p.isJARDistribution()}
             for classpathEntry in cp:
                 # Export concealed packages used by the class path entry
-                _add_exports_for_concealed_packages(classpathEntry, pathToProject, addedExports, 'ALL-UNNAMED', deployedModules)
+                _add_exports_for_concealed_packages(classpathEntry, pathToDep, addedExports, 'ALL-UNNAMED', deployedModules)
 
                 for deployedModule in deployedModules:
                     assert deployedModule.dist.path != classpathEntry, deployedModule.dist.path + ' should no longer be on the class path'
@@ -624,22 +624,24 @@ def _automatic_module_name(modulejar):
     name = re.sub(r'^\.', '', name) # drop leading dots
     return re.sub(r'\.$', '', name) # drop trailing dots
 
-def _add_exports_for_concealed_packages(classpathEntry, pathToProject, exports, module, modulepath):
+def _add_exports_for_concealed_packages(classpathEntry, pathToDep, exports, module, modulepath):
     """
     Adds exports for concealed packages imported by the project whose output directory matches `classpathEntry`.
 
     :param str classpathEntry: a class path entry
-    :param dict pathToProject: map from an output directory to its defining `JavaProject`
+    :param dict pathToDep: map from an output directory to its defining `JavaProject` or `JARDistribution`
     :param dict exports: map from a module/package specifier to the set of modules it must be exported to
     :param str module: the name of the module containing the classes in `classpathEntry`
     :param list modulepath: modules to be searched for concealed packages
     """
-    project = pathToProject.get(classpathEntry, None)
-    if project:
-        concealed = project.get_concealed_imported_packages(jdk, modulepath)
-        for concealingModule, packages in concealed.iteritems():
-            for package in packages:
-                exports.setdefault(concealingModule + '/' + package, set()).add(module)
+    dep = pathToDep.get(classpathEntry, None)
+    if dep:
+        projects = [dep] if dep.isJavaProject() else [d for d in dep.deps if d.isJavaProject()]
+        for project in projects:
+            concealed = project.get_concealed_imported_packages(jdk, modulepath)
+            for concealingModule, packages in concealed.iteritems():
+                for package in packages:
+                    exports.setdefault(concealingModule + '/' + package, set()).add(module)
 
 def _extract_added_exports(args, addedExports):
     """
