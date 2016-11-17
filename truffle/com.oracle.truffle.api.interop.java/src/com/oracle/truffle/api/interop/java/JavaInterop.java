@@ -35,9 +35,12 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.java.ToJavaNode.TruffleHandler;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
 
 /**
  * Helper methods to simplify access to objects of {@link TruffleLanguage Truffle languages} from
@@ -202,6 +205,12 @@ public final class JavaInterop {
         }
         if (obj == null) {
             return JavaObject.NULL;
+        }
+        if (Proxy.isProxyClass(obj.getClass())) {
+            InvocationHandler h = Proxy.getInvocationHandler(obj);
+            if (h instanceof TruffleHandler) {
+                return ((TruffleHandler) h).obj;
+            }
         }
         return new JavaObject(obj, obj.getClass());
     }

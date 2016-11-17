@@ -185,7 +185,7 @@ public class SLJavaInteropTest {
     }
 
     @Test
-    public void sumPairsIndirect() {
+    public void sumPairsFunctionalInterface() {
         String scriptText = "function values(sum, k, v) {\n" + //
                         "  obj = new();\n" + //
                         "  obj.key = k;\n" + //
@@ -200,6 +200,35 @@ public class SLJavaInteropTest {
         Object ret1 = fn.values(sum, "one", 1);
         Object ret2 = fn.values(sum, "two", 2);
         Object ret3 = fn.values(sum, "three", 3);
+
+        assertEquals(6, sum.sum);
+        assertSame(ret1, ret2);
+        assertSame(ret3, ret2);
+        assertSame(sum, ret2);
+    }
+
+    @Test
+    public void sumPairsIndirect() {
+        String scriptText = "function values(sum, k, v) {\n" + //
+                        "  obj = new();\n" + //
+                        "  obj.key = k;\n" + //
+                        "  obj.value = v;\n" + //
+                        "  return sum.sum(obj);\n" + //
+                        "}\n" + //
+                        "function create() {\n" + //
+                        "  obj = new();\n" + //
+                        "  obj.doSum1 = values;\n" + //
+                        "  obj.doSum2 = values;\n" + //
+                        "  return obj;\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        DoSums fn = engine.findGlobalSymbol("create").execute().as(DoSums.class);
+
+        Sum sum = new Sum();
+        Object ret1 = fn.doSum1(sum, "one", 1);
+        Sum ret2 = fn.doSum2(sum, "two", 2);
+        Object ret3 = fn.doSum1(sum, "three", 3);
 
         assertEquals(6, sum.sum);
         assertSame(ret1, ret2);
@@ -301,6 +330,12 @@ public class SLJavaInteropTest {
     @FunctionalInterface
     interface Values {
         Object values(Sum sum, String key, int value);
+    }
+
+    interface DoSums {
+        Object doSum1(Sum sum, String key, int value);
+
+        Sum doSum2(Sum sum, String key, Integer value);
     }
 
     interface PassInArray {
