@@ -19,7 +19,12 @@ bin/src-gen-deps: Makefile
 	@${JAVA_HOME}/bin/javap -sysinfo -classpath ${MX_CLASSPATH} ${NATIVE_CLASSES} | grep "Classfile " | sed -e 's|Classfile |src_gen/native.h: |' >> $@
 
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
+OS := $(shell uname)
+ifeq ($(OS),Darwin)
+CFLAGS=-g -fPIC -I${VPATH}/include -Isrc_gen -I${JAVA_HOME}/include -I${JAVA_HOME}/include/darwin $(shell pkg-config)
+else
 CFLAGS=-g -fPIC -I${VPATH}/include -Isrc_gen -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux $(shell pkg-config)
+endif
 LIBS=-g $(shell pkg-config)
 
 bin/${TARGET}: ${OBJECTFILES}
