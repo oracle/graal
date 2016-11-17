@@ -75,6 +75,8 @@ abstract class ToJavaNode extends Node {
             convertedValue = ((JavaObject) value).obj;
         } else if (value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType.clazz) && isExecutable(frame, (TruffleObject) value)) {
             convertedValue = asJavaFunction(targetType.clazz, (TruffleObject) value);
+        } else if (value == JavaObject.NULL) {
+            return null;
         } else if (value instanceof TruffleObject) {
             convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value);
         } else {
@@ -200,6 +202,7 @@ abstract class ToJavaNode extends Node {
         @Override
         public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
             CompilerAsserts.neverPartOfCompilation();
+            TypeAndClass<?> convertTo = TypeAndClass.forReturnType(method);
             Object[] args = arguments == null ? EMPTY : arguments;
             Object val;
             for (int i = 0; i < args.length; i++) {
@@ -216,20 +219,20 @@ abstract class ToJavaNode extends Node {
                 if (args.length != 1) {
                     throw new IllegalStateException("Method needs to have a single argument to handle WRITE message " + method);
                 }
-                message(Message.WRITE, obj, name, args[0]);
+                message(null, Message.WRITE, obj, name, args[0]);
                 return null;
             }
             if (message == Message.HAS_SIZE || message == Message.IS_BOXED || message == Message.IS_EXECUTABLE || message == Message.IS_NULL || message == Message.GET_SIZE) {
-                return message(message, obj);
+                return message(null, message, obj);
             }
 
             if (message == Message.READ) {
-                val = message(Message.READ, obj, name);
+                val = message(convertTo, Message.READ, obj, name);
                 return toJava(val, method);
             }
 
             if (message == Message.UNBOX) {
-                val = message(Message.UNBOX, obj);
+                val = message(null, Message.UNBOX, obj);
                 return toJava(val, method);
             }
 
@@ -237,7 +240,7 @@ abstract class ToJavaNode extends Node {
                 List<Object> copy = new ArrayList<>(args.length);
                 copy.addAll(Arrays.asList(args));
                 message = Message.createExecute(copy.size());
-                val = message(message, obj, copy.toArray());
+                val = message(convertTo, message, obj, copy.toArray());
                 return toJava(val, method);
             }
 
@@ -246,13 +249,13 @@ abstract class ToJavaNode extends Node {
                 copy.add(name);
                 copy.addAll(Arrays.asList(args));
                 message = Message.createInvoke(args.length);
-                val = message(message, obj, copy.toArray());
+                val = message(convertTo, message, obj, copy.toArray());
                 return toJava(val, method);
             }
 
             if (Message.createNew(0).equals(message)) {
                 message = Message.createNew(args.length);
-                val = message(message, obj, args);
+                val = message(convertTo, message, obj, args);
                 return toJava(val, method);
             }
 
@@ -262,15 +265,15 @@ abstract class ToJavaNode extends Node {
                     List<Object> callArgs = new ArrayList<>(args.length);
                     callArgs.add(name);
                     callArgs.addAll(Arrays.asList(args));
-                    ret = message(Message.createInvoke(args.length), obj, callArgs.toArray());
+                    ret = message(convertTo, Message.createInvoke(args.length), obj, callArgs.toArray());
                 } catch (InteropException ex) {
-                    val = message(Message.READ, obj, name);
+                    val = message(null, Message.READ, obj, name);
                     Object primitiveVal = toPrimitive(val, method.getReturnType());
                     if (primitiveVal != null) {
                         return primitiveVal;
                     }
                     TruffleObject attr = (TruffleObject) val;
-                    if (Boolean.FALSE.equals(message(Message.IS_EXECUTABLE, attr))) {
+                    if (Boolean.FALSE.equals(message(null, Message.IS_EXECUTABLE, attr))) {
                         if (args.length == 0) {
                             return toJava(attr, method);
                         }
@@ -278,7 +281,7 @@ abstract class ToJavaNode extends Node {
                     }
                     List<Object> callArgs = new ArrayList<>(args.length);
                     callArgs.addAll(Arrays.asList(args));
-                    ret = message(Message.createExecute(callArgs.size()), attr, callArgs.toArray());
+                    ret = message(convertTo, Message.createExecute(callArgs.size()), attr, callArgs.toArray());
                 }
                 return toJava(ret, method);
             }
@@ -365,7 +368,7 @@ abstract class ToJavaNode extends Node {
                 return null;
             }
             try {
-                attr = message(Message.UNBOX, value);
+                attr = message(null, Message.UNBOX, value);
             } catch (InteropException e) {
                 throw new IllegalStateException();
             }
@@ -419,15 +422,15 @@ abstract class ToJavaNode extends Node {
 
     @SuppressWarnings("all")
     @TruffleBoundary
-    static Object message(final Message m, Object receiver, Object... arr) throws InteropException {
+    static Object message(TypeAndClass convertTo, final Message m, Object receiver, Object... arr) throws InteropException {
         Node n = m.createNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver, null));
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver, convertTo));
         return callTarget.call(arr);
     }
 
     private static Object binaryMessage(final Message m, Object receiver, Object... arr) {
         try {
-            return message(m, receiver, arr);
+            return message(null, m, receiver, arr);
         } catch (InteropException e) {
             throw new AssertionError(e);
         }

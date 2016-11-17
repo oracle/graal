@@ -46,7 +46,7 @@ final class TruffleList<T> extends AbstractList<T> {
     @Override
     public T get(int index) {
         try {
-            final Object item = ToJavaNode.message(Message.READ, array, index);
+            final Object item = ToJavaNode.message(null, Message.READ, array, index);
             Object javaItem = ToJavaNode.toJava(item, type);
             return type.cast(javaItem);
         } catch (InteropException e) {
@@ -59,7 +59,7 @@ final class TruffleList<T> extends AbstractList<T> {
         type.cast(element);
         T prev = get(index);
         try {
-            ToJavaNode.message(Message.WRITE, array, index, element);
+            ToJavaNode.message(null, Message.WRITE, array, index, element);
         } catch (InteropException e) {
             throw new IllegalStateException(e);
         }
@@ -69,7 +69,7 @@ final class TruffleList<T> extends AbstractList<T> {
     @Override
     public int size() {
         try {
-            return (Integer) ToJavaNode.message(Message.GET_SIZE, array);
+            return (Integer) ToJavaNode.message(null, Message.GET_SIZE, array);
         } catch (InteropException e) {
             throw new IllegalStateException(e);
         }

@@ -370,7 +370,7 @@ public final class JavaInterop {
             return null;
         }
         try {
-            return ToJavaNode.message(Message.UNBOX, foreignObject);
+            return ToJavaNode.message(null, Message.UNBOX, foreignObject);
         } catch (InteropException iex) {
             return null;
         }
@@ -378,7 +378,7 @@ public final class JavaInterop {
 
     private static boolean boolMessage(Message message, TruffleObject foreignObject) {
         try {
-            Object isTrue = ToJavaNode.message(message, foreignObject);
+            Object isTrue = ToJavaNode.message(null, message, foreignObject);
             return Boolean.TRUE.equals(isTrue);
         } catch (InteropException iex) {
             return false;
