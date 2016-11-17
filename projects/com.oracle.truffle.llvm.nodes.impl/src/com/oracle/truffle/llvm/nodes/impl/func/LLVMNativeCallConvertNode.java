@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.nodes.impl.func;
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMContext;
+import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode.LLVMResolvedDirectNativeCallNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;

@@ -33,7 +33,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.spi.FileTypeDetector;
 
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMLanguage;
+import com.oracle.truffle.llvm.context.LLVMLanguage;
 
 public class LLVMFileDetector extends FileTypeDetector {
 

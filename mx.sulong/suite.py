@@ -337,7 +337,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.nativeint",
+        "com.oracle.truffle.llvm.context",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes",
       "javaCompliance" : "1.8",
@@ -390,7 +390,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.nativeint",
+        "com.oracle.truffle.llvm.context",
       ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
@@ -439,7 +439,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-    "com.oracle.truffle.llvm.nativeint" : {
+    "com.oracle.truffle.llvm.context" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -458,7 +458,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         # TODO: this is a temporary dependency.
-        # should be: llvm.nativeint
+        # should be: llvm.context
         "com.oracle.truffle.llvm.parser.factories",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
