@@ -10,5 +10,5 @@ x32.default : ${commonLinux} {
 }
 
 builds += [
-  ${x32.default} ${bench-renaissance}         { name: "bench-renaissance-linux-x32" }
+  ${x32.default} ${bench-renaissance-hwloc}         { name: "bench-renaissance-linux-x32" }
 ]

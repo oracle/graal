@@ -1,0 +1,53 @@
+# hwloc (Hardware Locality) provides means to bind a process to NUMA nodes
+hwloc.bench-common-8 : {
+  packages: {hwloc: ">=1.9"}
+}
+
+# command prefix for binding a command to a certain node
+hwloc.node0 : ["hwloc-bind", "--cpubind", "node:0", "--membind", "node:0", "--"]
+
+bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common-8} {
+  run: [
+    ${hwloc.node0} ${bench-jvmci.mx-dacapo} ${bench-arguments}
+  ]
+}
+
+bench-dacapo-timing-hwloc: ${bench-dacapo-timing} ${hwloc.bench-common-8} {
+  run: [
+    ${hwloc.node0} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments}
+  ]
+}
+
+bench-dacapo-move-profiling-hwloc: ${bench-dacapo-move-profiling} ${hwloc.bench-common-8} {
+  run: [
+    ${hwloc.node0} ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments}
+  ]
+}
+
+# Scala DaCapo-related targets
+
+bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.bench-common-8} {
+  run: [
+    ${hwloc.node0} ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
+  ]
+}
+
+bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.bench-common-8} {
+  run: [
+    ${hwloc.node0} ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
+  ]
+}
+
+bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${hwloc.bench-common-8} {
+  run: [
+    ${hwloc.node0} ${bench-jvmci.mx-scala-dacapo-move-profiling} ${bench-arguments}
+  ]
+}
+
+# Renaissance-related targets
+
+bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common-8} {
+  run: [
+    ${hwloc.node0} ${bench-jvmci.mx-renaissance} ${bench-arguments}
+  ]
+}
