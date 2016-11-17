@@ -1,0 +1,2 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/outer-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr49960.c

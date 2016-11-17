@@ -1,0 +1,4 @@
+gcc-5.2.0/gcc/testsuite/g++.dg/overload/rvalue1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/overload/operator-star-1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/overload/prom1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/overload/reftemp2.C

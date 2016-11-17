@@ -1,0 +1,5 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/struct-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/ret-struct-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/vararg-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/thiscall-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/pr16660-1.c

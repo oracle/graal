@@ -1,0 +1,7 @@
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/vect-neg-store-2.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/bb-slp-30.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr65518.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr56826.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/vect-neg-store-1.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr52091.c
+gcc-5.2.0/gcc/testsuite/gcc.dg/vect/pr60276.c

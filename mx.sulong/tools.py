@@ -3,6 +3,7 @@ from __future__ import print_function
 import fnmatch
 import mx
 import os
+import re
 
 import mx_sulong
 
@@ -50,7 +51,7 @@ class Optimization(object):
     def register(name, *flags):
         setattr(Optimization, name, Optimization.Opt(name, list(flags)))
 
-Optimization.register('NONE')
+Optimization.register('O0')
 Optimization.register('O1', '-O1')
 Optimization.register('O2', '-O2')
 Optimization.register('O3', '-O3')
@@ -94,42 +95,64 @@ class ClangCompiler(Tool):
 
     def run(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        return self.runTool([mx_sulong.findLLVMProgram(tool), '-c', '-S', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+        return self.runTool([mx_sulong.findLLVMProgram(tool), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
         return self.runTool([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class GCCCompiler(Tool):
-    def __init__(self):
+    def __init__(self, supportedLanguages=None):
         self.name = 'gcc'
-        self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.FORTRAN]
+        if supportedLanguages is None:
+            self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.FORTRAN]
+        else:
+            self.supportedLanguages = supportedLanguages
 
-    def run(self, inputFile, outputFile, flags):
+        self.gcc = None
+        self.gpp = None
+        self.gfortran = None
+
+    def getTool(self, inputFile, outputFile):
         inputLanguage = ProgrammingLanguage.lookupFile(inputFile)
         if inputLanguage == ProgrammingLanguage.C:
-            tool = mx_sulong.getGCC()
-            flags.append('-std=gnu99')
+            if self.gcc is None:
+                self.gcc = mx_sulong.getGCC()
+            return self.gcc, ['-std=gnu99']
         elif inputLanguage == ProgrammingLanguage.C_PLUS_PLUS:
-            tool = mx_sulong.getGPP()
+            if self.gpp is None:
+                self.gpp = mx_sulong.getGPP()
+            return self.gpp, []
         elif inputLanguage == ProgrammingLanguage.FORTRAN:
-            tool = mx_sulong.getGFortran()
+            if self.gfortran is None:
+                self.gfortran = mx_sulong.getGFortran()
+            return self.gfortran, ['-J%s' % os.path.dirname(outputFile)]
         else:
             raise Exception('Unsupported input language')
 
-        return self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
+    def run(self, inputFile, outputFile, flags):
+        tool, toolFlags = self.getTool(inputFile, outputFile)
+        ret = self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', '%s.tmp.ll' % outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
+        if ret == 0:
+            ret = self.runTool([mx_sulong.findLLVMProgram('llvm-as'), '-o', outputFile, '%s.tmp.ll' % outputFile], errorMsg='Cannot assemble %s with llvm-as' % inputFile)
+        return ret
+
+    def compileReferenceFile(self, inputFile, outputFile, flags):
+        tool, toolFlags = self.getTool(inputFile, outputFile)
+        return self.runTool([tool, '-o', outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class Opt(Tool):
     def __init__(self, name, passes):
         self.name = name
-        self.supportedLanguages = [ProgrammingLanguage.LLVMIR]
+        self.supportedLanguages = [ProgrammingLanguage.LLVMBC]
         self.passes = passes
 
     def run(self, inputFile, outputFile, flags):
-        return mx.run([mx_sulong.findLLVMProgram('opt'), '-S', '-o', outputFile] + self.passes + [inputFile])
+        return mx.run([mx_sulong.findLLVMProgram('opt'), '-o', outputFile] + self.passes + [inputFile])
 
 Tool.CLANG = ClangCompiler()
 Tool.GCC = GCCCompiler()
+Tool.GFORTRAN = GCCCompiler([ProgrammingLanguage.FORTRAN])
 Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
 
 
@@ -163,9 +186,10 @@ def collectExcludes(path):
                 for line in open(os.path.join(root, f)):
                     yield line.strip()
 
+def collectExcludePattern(path):
+    return prepareMatchPattern(collectExcludes(path))
+
 def findRecursively(path, excludes=None):
-    if excludes is None:
-        excludes = []
     for root, _, files in os.walk(path):
         for f in files:
             if ProgrammingLanguage.lookupFile(f) is not None:
@@ -174,8 +198,11 @@ def findRecursively(path, excludes=None):
                 if not matches(relFilePath, excludes):
                     yield absFilePath
 
-def matches(path, patterns):
-    return any(fnmatch.fnmatch(path, p) for p in list(patterns))
+def prepareMatchPattern(patterns):
+    return re.compile('(%s)' % '|'.join(list(fnmatch.translate(p) for p in patterns)))
+
+def matches(path, pattern):
+    return pattern is not None and pattern.match(path) != None
 
 def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, optimizers=None):
     if optimizers is None:
