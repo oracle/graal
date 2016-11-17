@@ -51,22 +51,22 @@ abstract class ToJavaNode extends Node {
     private static final Object[] EMPTY = {};
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
 
-    public abstract Object execute(VirtualFrame frame, Object value, TypeAndClass type);
+    public abstract Object execute(VirtualFrame frame, Object value, TypeAndClass<?> type);
 
     @Specialization(guards = "operand == null")
     @SuppressWarnings("unused")
-    protected Object doNull(Object operand, TypeAndClass type) {
+    protected Object doNull(Object operand, TypeAndClass<?> type) {
         return null;
     }
 
     @Specialization(guards = {"operand != null", "operand.getClass() == cachedOperandType", "targetType == cachedTargetType"})
-    protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") TypeAndClass targetType,
+    protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") TypeAndClass<?> targetType,
                     @Cached("operand.getClass()") Class<?> cachedOperandType,
-                    @Cached("targetType") TypeAndClass cachedTargetType) {
+                    @Cached("targetType") TypeAndClass<?> cachedTargetType) {
         return convertImpl(frame, cachedOperandType.cast(operand), cachedTargetType, cachedOperandType);
     }
 
-    private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass targetType, Class<?> cachedOperandType) {
+    private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass<?> targetType, Class<?> cachedOperandType) {
         Object convertedValue;
         if (isPrimitiveType(cachedOperandType)) {
             convertedValue = toPrimitive(value, targetType.clazz);
@@ -85,7 +85,7 @@ abstract class ToJavaNode extends Node {
     }
 
     @Specialization(guards = "operand != null", contains = "doCached")
-    protected Object doGeneric(VirtualFrame frame, Object operand, TypeAndClass type) {
+    protected Object doGeneric(VirtualFrame frame, Object operand, TypeAndClass<?> type) {
         // TODO this specialization should be a TruffleBoundary because it produces too much code.
         // It can't be because a frame is passed in. We need extract all uses of frame out of
         // convertImpl.
@@ -109,7 +109,7 @@ abstract class ToJavaNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass type, TruffleObject foreignObject) {
+    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject) {
         Object obj;
         if (clazz.isInstance(foreignObject)) {
             obj = foreignObject;
@@ -121,11 +121,11 @@ abstract class ToJavaNode extends Node {
                 return null;
             }
             if (clazz == List.class && Boolean.TRUE.equals(binaryMessage(Message.HAS_SIZE, foreignObject))) {
-                TypeAndClass elementType = type.getParameterType(0);
+                TypeAndClass<?> elementType = type.getParameterType(0);
                 obj = TruffleList.create(elementType, foreignObject);
             } else if (clazz == Map.class) {
-                TypeAndClass keyType = type.getParameterType(0);
-                TypeAndClass valueType = type.getParameterType(1);
+                TypeAndClass<?> keyType = type.getParameterType(0);
+                TypeAndClass<?> valueType = type.getParameterType(1);
                 obj = TruffleMap.create(keyType, valueType, foreignObject);
             } else {
                 obj = Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new TruffleHandler(foreignObject));
@@ -322,10 +322,10 @@ abstract class ToJavaNode extends Node {
     }
 
     private static Object toJava(Object ret, Method method) {
-        return toJava(ret, new TypeAndClass(method.getGenericReturnType(), method.getReturnType()));
+        return toJava(ret, new TypeAndClass<>(method.getGenericReturnType(), method.getReturnType()));
     }
 
-    static Object toJava(Object ret, TypeAndClass type) {
+    static Object toJava(Object ret, TypeAndClass<?> type) {
         CompilerAsserts.neverPartOfCompilation();
         Class<?> retType = type.clazz;
         Object primitiveRet = toPrimitive(ret, retType);

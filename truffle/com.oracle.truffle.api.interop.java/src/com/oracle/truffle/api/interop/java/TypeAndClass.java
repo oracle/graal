@@ -55,9 +55,9 @@ final class TypeAndClass<T> {
                     elementClass = (Class<?>) elementType;
                 }
             }
-            return new TypeAndClass(arr[i], elementClass);
+            return new TypeAndClass<>(arr[i], elementClass);
         }
-        return new TypeAndClass(Object.class, Object.class);
+        return new TypeAndClass<>(Object.class, Object.class);
     }
 
     @Override

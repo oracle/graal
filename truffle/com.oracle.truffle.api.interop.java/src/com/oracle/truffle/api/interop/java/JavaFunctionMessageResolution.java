@@ -72,7 +72,7 @@ class JavaFunctionMessageResolution {
             @ExplodeLoop
             Object execute(VirtualFrame frame, Method method, Object obj, Object[] args) {
                 Object[] convertedArguments = new Object[toJava.length];
-                TypeAndClass[] types = getTypes(method, toJava.length);
+                TypeAndClass<?>[] types = getTypes(method, toJava.length);
                 for (int i = 0; i < toJava.length; i++) {
                     convertedArguments[i] = toJava[i].execute(frame, args[i], types[i]);
                 }
@@ -80,26 +80,26 @@ class JavaFunctionMessageResolution {
             }
 
             @TruffleBoundary
-            private static TypeAndClass[] getTypes(Method method, int expectedTypeCount) {
+            private static TypeAndClass<?>[] getTypes(Method method, int expectedTypeCount) {
                 Type[] argumentTypes = method.getGenericParameterTypes();
                 Class<?>[] argumentClasses = method.getParameterTypes();
                 if (method.isVarArgs()) {
-                    TypeAndClass[] types = new TypeAndClass[expectedTypeCount];
+                    TypeAndClass<?>[] types = new TypeAndClass<?>[expectedTypeCount];
                     for (int i = 0; i < expectedTypeCount; i++) {
                         if (i < argumentTypes.length - 1) {
-                            types[i] = new TypeAndClass(argumentTypes[i], argumentClasses[i]);
+                            types[i] = new TypeAndClass<>(argumentTypes[i], argumentClasses[i]);
                         } else {
                             final GenericArrayType arrayType = (GenericArrayType) argumentTypes[argumentTypes.length - 1];
                             final Class<?> arrayClazz = argumentClasses[argumentClasses.length - 1];
-                            types[i] = new TypeAndClass(arrayType.getGenericComponentType(), arrayClazz.getComponentType());
+                            types[i] = new TypeAndClass<>(arrayType.getGenericComponentType(), arrayClazz.getComponentType());
                         }
                     }
                     return types;
                 } else {
                     assert expectedTypeCount == argumentTypes.length;
-                    TypeAndClass[] types = new TypeAndClass[expectedTypeCount];
+                    TypeAndClass<?>[] types = new TypeAndClass<?>[expectedTypeCount];
                     for (int i = 0; i < expectedTypeCount; i++) {
-                        types[i] = new TypeAndClass(argumentTypes[i], argumentClasses[i]);
+                        types[i] = new TypeAndClass<>(argumentTypes[i], argumentClasses[i]);
                     }
                     return types;
                 }
