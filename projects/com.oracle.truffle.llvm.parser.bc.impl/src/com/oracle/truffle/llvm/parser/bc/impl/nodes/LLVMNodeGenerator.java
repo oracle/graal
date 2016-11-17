@@ -237,7 +237,7 @@ public final class LLVMNodeGenerator {
             return resolveBigIntegerConstant((BigIntegerConstant) symbol);
 
         } else if (symbol instanceof FloatingPointConstant) {
-            return LLVMConstantGenerator.toFloatingPointConstant((FloatingPointConstant) symbol);
+            return LLVMConstantGenerator.toFloatingPointConstant((FloatingPointConstant) symbol, runtime);
 
         } else if (symbol instanceof NullConstant || symbol instanceof UndefinedConstant) {
             return LLVMConstantGenerator.toConstantZeroNode(symbol.getType(), method.getContext(), method.getStackSlot(), runtime);

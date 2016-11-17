@@ -44,7 +44,8 @@ import com.intel.llvm.ireditor.types.ResolvedVoidType;
 import com.intel.llvm.ireditor.types.TypeResolver;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
-import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
+import com.oracle.truffle.llvm.parser.base.model.BCToTextConverter;
+import com.oracle.truffle.llvm.parser.base.model.TextToBCConverter;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
@@ -61,7 +62,7 @@ public class LLVMTypeHelper {
     }
 
     public int getByteSize(ResolvedType type) {
-        return runtime.getByteSize(LLVMToBitcodeAdapter.resolveType(type));
+        return runtime.getByteSize(TextToBCConverter.convert(type));
     }
 
     public int getStructureSizeByte(StructureConstant structure, TypeResolver typeResolver) {
@@ -85,7 +86,7 @@ public class LLVMTypeHelper {
     }
 
     private int getStructSizeByte(ResolvedStructType type) {
-        return runtime.getByteSize(LLVMToBitcodeAdapter.resolveType(type));
+        return runtime.getByteSize(TextToBCConverter.convert(type));
     }
 
     private static int computePadding(int offset, int alignment) {
@@ -183,6 +184,10 @@ public class LLVMTypeHelper {
         }
     }// Checkstyle: resume magic number name check
 
+    public int goIntoTypeGetLengthByte(Type type, int index) {
+        return goIntoTypeGetLengthByte(BCToTextConverter.convert(type), index);
+    }
+
     public int goIntoTypeGetLengthByte(ResolvedType currentType, int index) {
         if (currentType == null) {
             return 0; // TODO: better throw an exception
@@ -227,11 +232,11 @@ public class LLVMTypeHelper {
     }
 
     public int computePaddingByte(int currentOffset, ResolvedType type) {
-        return runtime.getBytePadding(currentOffset, LLVMToBitcodeAdapter.resolveType(type));
+        return runtime.getBytePadding(currentOffset, TextToBCConverter.convert(type));
     }
 
     public int getAlignmentByte(ResolvedType field) {
-        return runtime.getByteAlignment(LLVMToBitcodeAdapter.resolveType(field));
+        return runtime.getByteAlignment(TextToBCConverter.convert(field));
     }
 
     public static boolean isVectorType(LLVMBaseType llvmType) {

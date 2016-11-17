@@ -39,13 +39,13 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import java.util.Arrays;
 import java.util.Objects;
 
-public final class StructureType implements AggregateType, ValueSymbol {
+public class StructureType implements AggregateType, ValueSymbol {
 
     private String name = ValueSymbol.UNKNOWN;
 
     private final boolean isPacked;
 
-    private final Type[] types;
+    protected final Type[] types;
 
     private MetadataReference metadata = MetadataBlock.voidRef;
 
@@ -209,21 +209,14 @@ public final class StructureType implements AggregateType, ValueSymbol {
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
+
+        } else if (obj instanceof StructureType) {
+            final StructureType other = (StructureType) obj;
+            return Objects.equals(name, other.name) && isPacked == other.isPacked && Arrays.equals(types, other.types);
+
+        } else {
+            return false;
         }
-        if (obj instanceof StructureType) {
-            StructureType other = (StructureType) obj;
-            if (!Objects.equals(name, other.name)) {
-                return false;
-            }
-            if (isPacked != other.isPacked) {
-                return false;
-            }
-            if (!Arrays.equals(types, other.types)) {
-                return false;
-            }
-            return true;
-        }
-        return false;
     }
 
     @Override

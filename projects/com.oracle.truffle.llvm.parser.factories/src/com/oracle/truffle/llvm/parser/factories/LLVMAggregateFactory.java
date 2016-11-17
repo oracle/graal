@@ -66,8 +66,8 @@ import com.oracle.truffle.llvm.nodes.impl.vector.LLVMExtractValueNodeFactory.LLV
 import com.oracle.truffle.llvm.nodes.impl.vector.LLVMExtractValueNodeFactory.LLVMExtractI64ValueNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vector.LLVMExtractValueNodeFactory.LLVMExtractI8ValueNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.base.model.BCToTextConverter;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 
@@ -120,7 +120,7 @@ public final class LLVMAggregateFactory {
         int currentOffset = 0;
         int structSize = runtime.getByteSize(structType);
         int structAlignment = runtime.getByteAlignment(structType);
-        LLVMExpressionNode alloc = runtime.allocateFunctionLifetime(LLVMToBitcodeAdapter.unresolveType(structType), structSize, structAlignment);
+        LLVMExpressionNode alloc = runtime.allocateFunctionLifetime(BCToTextConverter.convert(structType), structSize, structAlignment);
         for (int i = 0; i < types.length; i++) {
             Type resolvedType = types[i];
             if (!packed) {

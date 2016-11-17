@@ -35,6 +35,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.llvm.parser.base.model.TextToBCConverter;
+import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
+import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
+import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import org.eclipse.emf.ecore.EObject;
 
 import com.intel.llvm.ireditor.types.ResolvedType;
@@ -64,7 +69,6 @@ import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.Model;
 import com.oracle.truffle.llvm.parser.base.model.ModelModule;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
@@ -80,10 +84,6 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.base.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
@@ -562,7 +562,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         @Override
         public LLVMExpressionNode allocateFunctionLifetime(ResolvedType type, int size, int alignment) {
-            return factoryFacade.createAlloc(LLVMToBitcodeAdapter.resolveType(type), size, alignment, null, null);
+            return factoryFacade.createAlloc(TextToBCConverter.convert(type), size, alignment, null, null);
         }
 
         @Override

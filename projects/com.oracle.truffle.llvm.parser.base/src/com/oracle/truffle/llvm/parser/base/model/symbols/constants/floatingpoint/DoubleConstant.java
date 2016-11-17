@@ -52,4 +52,9 @@ public final class DoubleConstant extends FloatingPointConstant {
     public static DoubleConstant create(double value) {
         return new DoubleConstant(value);
     }
+
+    @Override
+    public String getStringValue() {
+        return String.valueOf(value);
+    }
 }

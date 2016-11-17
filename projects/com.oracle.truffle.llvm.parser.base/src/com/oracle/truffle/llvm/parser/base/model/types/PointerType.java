@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
-public final class PointerType implements Type {
+public class PointerType implements Type {
 
     /* This must be mutable to handle circular references */
     private Type type;
@@ -130,13 +130,7 @@ public final class PointerType implements Type {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof PointerType) {
-            return type.equals(((PointerType) obj).type);
-        }
-        return false;
+        return this == obj || (obj instanceof PointerType && type.equals(((PointerType) obj).type));
     }
 
     @Override

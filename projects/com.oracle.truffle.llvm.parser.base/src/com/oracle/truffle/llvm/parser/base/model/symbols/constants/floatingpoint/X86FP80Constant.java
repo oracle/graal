@@ -54,4 +54,13 @@ public final class X86FP80Constant extends FloatingPointConstant {
     public static X86FP80Constant create(byte[] value) {
         return new X86FP80Constant(value);
     }
+
+    @Override
+    public String getStringValue() {
+        final StringBuilder builder = new StringBuilder("0xK");
+        for (byte aValue : value) {
+            builder.append(String.format("%x", aValue));
+        }
+        return builder.toString();
+    }
 }

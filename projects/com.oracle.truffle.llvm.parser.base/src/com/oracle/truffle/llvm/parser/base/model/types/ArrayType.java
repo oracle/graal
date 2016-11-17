@@ -53,7 +53,7 @@ public class ArrayType implements AggregateType {
 
     @Override
     public int getBits() {
-        return elementType.getBits() * length;
+        return getElementType().getBits() * length;
     }
 
     public Type getElementType() {
@@ -82,17 +82,17 @@ public class ArrayType implements AggregateType {
 
     @Override
     public int getAlignment(DataLayoutConverter.DataSpecConverter targetDataLayout) {
-        return elementType.getAlignment(targetDataLayout);
+        return getElementType().getAlignment(targetDataLayout);
     }
 
     @Override
     public int getSize(DataLayoutConverter.DataSpecConverter targetDataLayout) {
-        return elementType.getSize(targetDataLayout) * length;
+        return getElementType().getSize(targetDataLayout) * length;
     }
 
     @Override
     public int getIndexOffset(int index, DataLayoutConverter.DataSpecConverter targetDataLayout) {
-        return elementType.getSize(targetDataLayout) * index;
+        return getElementType().getSize(targetDataLayout) * index;
     }
 
     @Override
@@ -108,7 +108,7 @@ public class ArrayType implements AggregateType {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.elementType);
+        hash = 67 * hash + Objects.hashCode(this.getElementType());
         hash = 67 * hash + this.length;
         return hash;
     }
@@ -117,12 +117,14 @@ public class ArrayType implements AggregateType {
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
+
+        } else if (obj instanceof ArrayType) {
+            final ArrayType other = (ArrayType) obj;
+            return length == other.length && Objects.equals(getElementType(), other.getElementType());
+
+        } else {
+            return false;
         }
-        if (obj instanceof ArrayType) {
-            ArrayType other = (ArrayType) obj;
-            return length == other.length && Objects.equals(elementType, other.elementType);
-        }
-        return false;
     }
 
     @Override
