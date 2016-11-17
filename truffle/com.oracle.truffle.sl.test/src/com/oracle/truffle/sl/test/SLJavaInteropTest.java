@@ -56,6 +56,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import java.util.List;
 
 public class SLJavaInteropTest {
 
@@ -178,6 +179,27 @@ public class SLJavaInteropTest {
         assertEquals(6, javaSum.sum);
     }
 
+    @Test
+    public void sumPairsInArray() {
+        String scriptText = "function values(sum, arr) {\n" + //
+                        "  sum.sumArray(arr);\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+
+        Sum javaSum = new Sum();
+
+        PairImpl[] arr = {
+                        new PairImpl("one", 1),
+                        new PairImpl("two", 2),
+                        new PairImpl("three", 3),
+        };
+        TruffleObject truffleArr = JavaInterop.asTruffleObject(arr);
+        fn.execute(javaSum, truffleArr);
+        assertEquals(6, javaSum.sum);
+    }
+
     interface PassInArray {
         void call(Object[] arr);
     }
@@ -196,11 +218,29 @@ public class SLJavaInteropTest {
         int value();
     }
 
+    public static final class PairImpl {
+        public final String key;
+        public final int value;
+
+        PairImpl(String key, int value) {
+            this.key = key;
+            this.value = value;
+        }
+    }
+
     public static class Sum {
         int sum;
 
         public void sum(Pair p) {
             sum += p.value();
+        }
+
+        public void sumArray(List<Pair> pairs) {
+            Object[] arr = pairs.toArray();
+            assertNotNull("Array created", arr);
+            for (Pair p : pairs) {
+                sum(p);
+            }
         }
     }
 }

@@ -226,7 +226,7 @@ class JavaObjectMessageResolution {
                 Object obj = receiver.obj;
                 try {
                     Field f = findField(receiver, name);
-                    Object convertedValue = toJava.execute(frame, value, f.getType());
+                    Object convertedValue = toJava.execute(frame, value, new TypeAndClass(f.getGenericType(), f.getType()));
                     setField(obj, f, convertedValue);
                     return JavaObject.NULL;
                 } catch (NoSuchFieldException ex) {

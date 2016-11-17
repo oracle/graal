@@ -53,41 +53,41 @@ abstract class ToJavaNode extends Node {
     private static final Object[] EMPTY = {};
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
 
-    public abstract Object execute(VirtualFrame frame, Object value, Class<?> type);
+    public abstract Object execute(VirtualFrame frame, Object value, TypeAndClass type);
 
     @Specialization(guards = "operand == null")
     @SuppressWarnings("unused")
-    protected Object doNull(Object operand, Class<?> type) {
+    protected Object doNull(Object operand, TypeAndClass type) {
         return null;
     }
 
     @Specialization(guards = {"operand != null", "operand.getClass() == cachedOperandType", "targetType == cachedTargetType"})
-    protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") Class<?> targetType,
+    protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") TypeAndClass targetType,
                     @Cached("operand.getClass()") Class<?> cachedOperandType,
-                    @Cached("targetType") Class<?> cachedTargetType) {
+                    @Cached("targetType") TypeAndClass cachedTargetType) {
         return convertImpl(frame, cachedOperandType.cast(operand), cachedTargetType, cachedOperandType);
     }
 
-    private Object convertImpl(VirtualFrame frame, Object value, Class<?> targetType, Class<?> cachedOperandType) {
+    private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass targetType, Class<?> cachedOperandType) {
         Object convertedValue;
         if (isPrimitiveType(cachedOperandType)) {
-            convertedValue = toPrimitive(value, targetType);
+            convertedValue = toPrimitive(value, targetType.clazz);
             assert convertedValue != null;
-        } else if (value instanceof JavaObject && targetType.isInstance(((JavaObject) value).obj)) {
+        } else if (value instanceof JavaObject && targetType.clazz.isInstance(((JavaObject) value).obj)) {
             convertedValue = ((JavaObject) value).obj;
-        } else if (value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType) && isExecutable(frame, (TruffleObject) value)) {
-            convertedValue = asJavaFunction(targetType, (TruffleObject) value);
+        } else if (value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType.clazz) && isExecutable(frame, (TruffleObject) value)) {
+            convertedValue = asJavaFunction(targetType.clazz, (TruffleObject) value);
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject(targetType, null, (TruffleObject) value);
+            convertedValue = asJavaObject(targetType.clazz, targetType.type, (TruffleObject) value);
         } else {
-            assert targetType.isAssignableFrom(value.getClass());
+            assert targetType.clazz.isAssignableFrom(value.getClass());
             convertedValue = value;
         }
         return convertedValue;
     }
 
     @Specialization(guards = "operand != null", contains = "doCached")
-    protected Object doGeneric(VirtualFrame frame, Object operand, Class<?> type) {
+    protected Object doGeneric(VirtualFrame frame, Object operand, TypeAndClass type) {
         // TODO this specialization should be a TruffleBoundary because it produces too much code.
         // It can't be because a frame is passed in. We need extract all uses of frame out of
         // convertImpl.
@@ -341,8 +341,12 @@ abstract class ToJavaNode extends Node {
     }
 
     private static Object toJava(Object ret, Method method) {
+        return toJava(ret, new TypeAndClass(method.getGenericReturnType(), method.getReturnType()));
+    }
+
+    static Object toJava(Object ret, TypeAndClass type) {
         CompilerAsserts.neverPartOfCompilation();
-        Class<?> retType = method.getReturnType();
+        Class<?> retType = type.clazz;
         Object primitiveRet = toPrimitive(ret, retType);
         if (primitiveRet != null) {
             return primitiveRet;
@@ -358,7 +362,7 @@ abstract class ToJavaNode extends Node {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                return asJavaObject(retType, method.getGenericReturnType(), truffleObject);
+                return asJavaObject(retType, type.type, truffleObject);
             }
         }
         return ret;
