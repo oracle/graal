@@ -29,73 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.base.util;
 
-import com.intel.llvm.ireditor.lLVM_IR.StructureConstant;
-import com.intel.llvm.ireditor.lLVM_IR.TypedConstant;
-import com.intel.llvm.ireditor.types.ResolvedAnyIntegerType;
-import com.intel.llvm.ireditor.types.ResolvedArrayType;
-import com.intel.llvm.ireditor.types.ResolvedFloatingType;
-import com.intel.llvm.ireditor.types.ResolvedIntegerType;
-import com.intel.llvm.ireditor.types.ResolvedNamedType;
-import com.intel.llvm.ireditor.types.ResolvedPointerType;
-import com.intel.llvm.ireditor.types.ResolvedStructType;
-import com.intel.llvm.ireditor.types.ResolvedType;
-import com.intel.llvm.ireditor.types.ResolvedVectorType;
-import com.intel.llvm.ireditor.types.ResolvedVoidType;
-import com.intel.llvm.ireditor.types.TypeResolver;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.LLVMType;
-import com.oracle.truffle.llvm.parser.base.model.BCToTextConverter;
-import com.oracle.truffle.llvm.parser.base.model.TextToBCConverter;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 public class LLVMTypeHelper {
-
-    private final LLVMParserRuntime runtime;
-
-    public LLVMTypeHelper(LLVMParserRuntime runtime) {
-        this.runtime = runtime;
-    }
-
-    public int getByteSize(ResolvedType type) {
-        return runtime.getByteSize(TextToBCConverter.convert(type));
-    }
-
-    public int getStructureSizeByte(StructureConstant structure, TypeResolver typeResolver) {
-        int sumByte = 0;
-        int largestAlignment = 0;
-        for (TypedConstant constant : structure.getList().getTypedConstants()) {
-            ResolvedType type = typeResolver.resolve(constant.getType());
-            int alignmentByte = getAlignmentByte(type);
-            sumByte += computePaddingByte(sumByte, type);
-            sumByte += getByteSize(type);
-            largestAlignment = Math.max(alignmentByte, largestAlignment);
-        }
-        int padding;
-        if (structure.getPacked() != null || sumByte == 0) {
-            padding = 0;
-        } else {
-            padding = computePadding(sumByte, largestAlignment);
-        }
-        int totalSizeByte = sumByte + padding;
-        return totalSizeByte;
-    }
-
-    private int getStructSizeByte(ResolvedStructType type) {
-        return runtime.getByteSize(TextToBCConverter.convert(type));
-    }
-
-    private static int computePadding(int offset, int alignment) {
-        if (alignment == 0) {
-            throw new AssertionError();
-        }
-        int padding = (alignment - (offset % alignment)) % alignment;
-        return padding;
-    }
 
     public static LLVMType getLLVMType(Type type) {
         if (type instanceof PointerType) {
@@ -107,136 +48,6 @@ public class LLVMTypeHelper {
             }
         }
         return new LLVMType(type.getLLVMBaseType());
-    }
-
-    // Checkstyle: stop magic number name check
-    public static LLVMType getLLVMType(ResolvedType elementType) {
-        if (elementType instanceof ResolvedIntegerType) {
-            switch (elementType.getBits().intValue()) {
-                case 1:
-                    return new LLVMType(LLVMBaseType.I1);
-                case 8:
-                    return new LLVMType(LLVMBaseType.I8);
-                case 16:
-                    return new LLVMType(LLVMBaseType.I16);
-                case 32:
-                    return new LLVMType(LLVMBaseType.I32);
-                case 64:
-                    return new LLVMType(LLVMBaseType.I64);
-                default:
-                    return new LLVMType(LLVMBaseType.I_VAR_BITWIDTH);
-            }
-        } else if (elementType instanceof ResolvedFloatingType) {
-            switch (elementType.getBits().intValue()) {
-                case 32:
-                    return new LLVMType(LLVMBaseType.FLOAT);
-                case 64:
-                    return new LLVMType(LLVMBaseType.DOUBLE);
-                case 80:
-                    return new LLVMType(LLVMBaseType.X86_FP80);
-                default:
-                    throw new LLVMUnsupportedException(UnsupportedReason.FLOAT_OTHER_TYPE_NOT_IMPLEMENTED);
-            }
-        } else if (elementType.isPointer()) {
-            if (elementType.getContainedType(0).isFunction()) {
-                return new LLVMType(LLVMBaseType.FUNCTION_ADDRESS);
-            } else {
-                try {
-                    return new LLVMType(LLVMBaseType.ADDRESS, getLLVMType(elementType.getContainedType(0)));
-                } catch (LLVMUnsupportedException e) {
-                    // generic pointer
-                    return new LLVMType(LLVMBaseType.ADDRESS, new LLVMType(LLVMBaseType.VOID));
-                }
-            }
-        } else if (elementType instanceof ResolvedVoidType) {
-            return new LLVMType(LLVMBaseType.VOID);
-        } else if (elementType instanceof ResolvedArrayType) {
-            return new LLVMType(LLVMBaseType.ARRAY);
-        } else if (elementType.isStruct()) {
-            return new LLVMType(LLVMBaseType.STRUCT);
-        } else if (elementType instanceof ResolvedVectorType) {
-            switch (getLLVMType(elementType.getContainedType(-1)).getType()) {
-                case I1:
-                    return new LLVMType(LLVMBaseType.I1_VECTOR);
-                case I8:
-                    return new LLVMType(LLVMBaseType.I8_VECTOR);
-                case I16:
-                    return new LLVMType(LLVMBaseType.I16_VECTOR);
-                case I32:
-                    return new LLVMType(LLVMBaseType.I32_VECTOR);
-                case I64:
-                    return new LLVMType(LLVMBaseType.I64_VECTOR);
-                case FLOAT:
-                    return new LLVMType(LLVMBaseType.FLOAT_VECTOR);
-                case DOUBLE:
-                    return new LLVMType(LLVMBaseType.DOUBLE_VECTOR);
-                case ADDRESS:
-                    return new LLVMType(LLVMBaseType.ADDRESS_VECTOR, getLLVMType(elementType.getContainedType(-1)).getPointee());
-                default:
-                    throw new AssertionError(elementType);
-            }
-        } else if (elementType instanceof ResolvedAnyIntegerType) {
-            return new LLVMType(LLVMBaseType.I32);
-        }
-
-        else {
-            throw new LLVMUnsupportedException(UnsupportedReason.OTHER_TYPE_NOT_IMPLEMENTED);
-        }
-    }// Checkstyle: resume magic number name check
-
-    public int goIntoTypeGetLengthByte(Type type, int index) {
-        return goIntoTypeGetLengthByte(BCToTextConverter.convert(type), index);
-    }
-
-    public int goIntoTypeGetLengthByte(ResolvedType currentType, int index) {
-        if (currentType == null) {
-            return 0; // TODO: better throw an exception
-        } else if (currentType instanceof ResolvedPointerType) {
-            return getByteSize(currentType.getContainedType(0)) * index;
-        } else if (currentType instanceof ResolvedArrayType) {
-            return getByteSize(((ResolvedArrayType) currentType).getContainedType(-1)) * index;
-        } else if (currentType instanceof ResolvedVectorType) {
-            return getByteSize(((ResolvedVectorType) currentType).getContainedType(-1)) * index;
-        } else if (currentType instanceof ResolvedStructType) {
-            int sum = 0;
-            for (int i = 0; i < index; i++) {
-                ResolvedType containedType = currentType.getContainedType(i);
-                sum += getByteSize(containedType);
-                if (!isPackedStructType(currentType)) {
-                    sum += computePaddingByte(sum, containedType);
-                }
-            }
-            if (!isPackedStructType(currentType) && getStructSizeByte((ResolvedStructType) currentType) > sum) {
-                sum += computePaddingByte(sum, currentType.getContainedType(index));
-            }
-            return sum;
-        } else if (currentType instanceof ResolvedNamedType) {
-            return goIntoTypeGetLengthByte(((ResolvedNamedType) currentType).getReferredType(), index);
-        } else {
-            throw new AssertionError(currentType);
-        }
-    }
-
-    public static ResolvedType goIntoType(ResolvedType currentType, int index) {
-        return currentType.getContainedType(index);
-    }
-
-    public static boolean isPackedStructType(ResolvedType currentType) {
-        if (currentType instanceof ResolvedNamedType) {
-            return isPackedStructType(((ResolvedNamedType) currentType).getReferredType());
-        }
-        if (!(currentType instanceof ResolvedStructType)) {
-            return false;
-        }
-        return ((ResolvedStructType) currentType).isPacked();
-    }
-
-    public int computePaddingByte(int currentOffset, ResolvedType type) {
-        return runtime.getBytePadding(currentOffset, TextToBCConverter.convert(type));
-    }
-
-    public int getAlignmentByte(ResolvedType field) {
-        return runtime.getByteAlignment(TextToBCConverter.convert(field));
     }
 
     public static boolean isVectorType(LLVMBaseType llvmType) {

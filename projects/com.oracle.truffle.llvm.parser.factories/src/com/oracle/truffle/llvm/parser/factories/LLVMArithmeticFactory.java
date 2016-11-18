@@ -29,18 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.intel.llvm.ireditor.lLVM_IR.BinaryInstruction;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_add;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_fadd;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_fdiv;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_fmul;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_fsub;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_mul;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_sdiv;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_srem;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_sub;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_udiv;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction_urem;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
@@ -330,26 +318,6 @@ public final class LLVMArithmeticFactory {
                 return LLVMI32VectorRemNodeGen.create(target, left, right);
             default:
                 throw new AssertionError(type);
-        }
-    }
-
-    public static LLVMArithmeticInstructionType getBinaryArithmeticInstructionType(BinaryInstruction instr) {
-        if (instr instanceof Instruction_add || instr instanceof Instruction_fadd) {
-            return LLVMArithmeticInstructionType.ADDITION;
-        } else if (instr instanceof Instruction_sub || instr instanceof Instruction_fsub) {
-            return LLVMArithmeticInstructionType.SUBTRACTION;
-        } else if (instr instanceof Instruction_mul || instr instanceof Instruction_fmul) {
-            return LLVMArithmeticInstructionType.MULTIPLICATION;
-        } else if (instr instanceof Instruction_sdiv || instr instanceof Instruction_fdiv) {
-            return LLVMArithmeticInstructionType.DIVISION;
-        } else if (instr instanceof Instruction_srem) {
-            return LLVMArithmeticInstructionType.REMAINDER;
-        } else if (instr instanceof Instruction_urem) {
-            return LLVMArithmeticInstructionType.UNSIGNED_REMAINDER;
-        } else if (instr instanceof Instruction_udiv) {
-            return LLVMArithmeticInstructionType.UNSIGNED_DIVISION;
-        } else {
-            throw new AssertionError(instr);
         }
     }
 
