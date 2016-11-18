@@ -35,16 +35,23 @@ import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
 import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
 import com.oracle.graal.hotspot.nodes.UncommonTrapCallNode;
 import com.oracle.graal.hotspot.nodes.VMErrorNode;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
+import com.oracle.graal.hotspot.replacements.BigIntegerSubstitutions;
 import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
+import com.oracle.graal.hotspot.replacements.SHA2Substitutions;
+import com.oracle.graal.hotspot.replacements.SHA5Substitutions;
+import com.oracle.graal.hotspot.replacements.SHASubstitutions;
 import com.oracle.graal.hotspot.stubs.DeoptimizationStub;
 import com.oracle.graal.hotspot.stubs.ExceptionHandlerStub;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub;
+import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
@@ -56,6 +63,7 @@ import com.oracle.graal.lir.ValueConsumer;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.nodes.UnwindNode;
+import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
@@ -162,6 +170,103 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     int.class, Pointer.class);
 
     /**
+     * @see BigIntegerSubstitutions#multiplyToLen
+     */
+    public static final ForeignCallDescriptor MULTIPLY_TO_LEN = new ForeignCallDescriptor("multiplyToLen", void.class, Word.class, int.class, Word.class, int.class, Word.class, int.class);
+
+    public static void multiplyToLenStub(Word xAddr, int xlen, Word yAddr, int ylen, Word zAddr, int zLen) {
+        multiplyToLenStub(HotSpotBackend.MULTIPLY_TO_LEN, xAddr, xlen, yAddr, ylen, zAddr, zLen);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void multiplyToLenStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word xIn, int xLen, Word yIn, int yLen, Word zIn, int zLen);
+
+    /**
+     * @see BigIntegerSubstitutions#mulAdd
+     */
+    public static final ForeignCallDescriptor MUL_ADD = new ForeignCallDescriptor("mulAdd", int.class, Word.class, Word.class, int.class, int.class, int.class);
+
+    public static int mulAddStub(Word inAddr, Word outAddr, int newOffset, int len, int k) {
+        return mulAddStub(HotSpotBackend.MUL_ADD, inAddr, outAddr, newOffset, len, k);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native int mulAddStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word inAddr, Word outAddr, int newOffset, int len, int k);
+
+    /**
+     * @see BigIntegerSubstitutions#implMontgomeryMultiply
+     */
+    public static final ForeignCallDescriptor MONTGOMERY_MULTIPLY = new ForeignCallDescriptor("implMontgomeryMultiply", void.class, Word.class, Word.class, Word.class, int.class, long.class,
+                    Word.class);
+
+    public static void implMontgomeryMultiply(Word aAddr, Word bAddr, Word nAddr, int len, long inv, Word productAddr) {
+        implMontgomeryMultiply(HotSpotBackend.MONTGOMERY_MULTIPLY, aAddr, bAddr, nAddr, len, inv, productAddr);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void implMontgomeryMultiply(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word aAddr, Word bAddr, Word nAddr, int len, long inv, Word productAddr);
+
+    /**
+     * @see BigIntegerSubstitutions#implMontgomerySquare
+     */
+    public static final ForeignCallDescriptor MONTGOMERY_SQUARE = new ForeignCallDescriptor("implMontgomerySquare", void.class, Word.class, Word.class, int.class, long.class, Word.class);
+
+    public static void implMontgomerySquare(Word aAddr, Word nAddr, int len, long inv, Word productAddr) {
+        implMontgomerySquare(HotSpotBackend.MONTGOMERY_SQUARE, aAddr, nAddr, len, inv, productAddr);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void implMontgomerySquare(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word aAddr, Word nAddr, int len, long inv, Word productAddr);
+
+    /**
+     * @see BigIntegerSubstitutions#implSquareToLen
+     */
+    public static final ForeignCallDescriptor SQUARE_TO_LEN = new ForeignCallDescriptor("implSquareToLen", void.class, Word.class, int.class, Word.class, int.class);
+
+    public static void implSquareToLen(Word xAddr, int len, Word zAddr, int zLen) {
+        implSquareToLen(SQUARE_TO_LEN, xAddr, len, zAddr, zLen);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void implSquareToLen(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word xAddr, int len, Word zAddr, int zLen);
+
+    /**
+     * @see SHASubstitutions#implCompress0
+     */
+    public static final ForeignCallDescriptor SHA_IMPL_COMPRESS = new ForeignCallDescriptor("shaImplCompress", void.class, Word.class, Object.class);
+
+    public static void shaImplCompressStub(Word bufAddr, Object state) {
+        shaImplCompressStub(HotSpotBackend.SHA_IMPL_COMPRESS, bufAddr, state);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void shaImplCompressStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state);
+
+    /**
+     * @see SHA2Substitutions#implCompress0
+     */
+    public static final ForeignCallDescriptor SHA2_IMPL_COMPRESS = new ForeignCallDescriptor("sha2ImplCompress", void.class, Word.class, Object.class);
+
+    public static void sha2ImplCompressStub(Word bufAddr, Object state) {
+        sha2ImplCompressStub(HotSpotBackend.SHA2_IMPL_COMPRESS, bufAddr, state);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void sha2ImplCompressStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state);
+
+    /**
+     * @see SHA5Substitutions#implCompress0
+     */
+    public static final ForeignCallDescriptor SHA5_IMPL_COMPRESS = new ForeignCallDescriptor("sha5ImplCompress", void.class, Word.class, Object.class);
+
+    public static void sha5ImplCompressStub(Word bufAddr, Object state) {
+        sha5ImplCompressStub(HotSpotBackend.SHA5_IMPL_COMPRESS, bufAddr, state);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void sha5ImplCompressStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state);
+
+    /**
      * @see VMErrorNode
      */
     public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
@@ -169,17 +274,17 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * New multi array stub call.
      */
-    public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", Object.class, Word.class, int.class, Word.class);
+    public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", Object.class, KlassPointer.class, int.class, Word.class);
 
     /**
      * New array stub.
      */
-    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, Word.class, int.class, boolean.class);
+    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, KlassPointer.class, int.class, boolean.class);
 
     /**
      * New instance stub.
      */
-    public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, Word.class);
+    public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, KlassPointer.class);
 
     /**
      * @see UncommonTrapCallNode

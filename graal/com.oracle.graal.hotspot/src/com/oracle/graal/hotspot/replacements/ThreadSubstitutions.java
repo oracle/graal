@@ -60,7 +60,7 @@ public class ThreadSubstitutions {
         return threadIsInterruptedStub(THREAD_IS_INTERRUPTED, thisObject, clearInterrupted);
     }
 
-    public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED = new ForeignCallDescriptor("thread_is_interrupted", boolean.class, Object.class, boolean.class);
+    public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED = new ForeignCallDescriptor("thread_is_interrupted", boolean.class, Thread.class, boolean.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native boolean threadIsInterruptedStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Thread thread, boolean clearIsInterrupted);

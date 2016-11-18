@@ -184,19 +184,24 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
      * @param compilationId
      * @return an intrinsic graph that can be compiled and installed for {@code method} or null
      */
-    protected StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, HotSpotProviders providers, CompilationIdentifier compilationId) {
+    @SuppressWarnings("try")
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, HotSpotProviders providers, CompilationIdentifier compilationId) {
         Replacements replacements = providers.getReplacements();
         ResolvedJavaMethod substMethod = replacements.getSubstitutionMethod(method);
         if (substMethod != null) {
             assert !substMethod.equals(method);
             StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES, NO_PROFILING_INFO, compilationId);
-            Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
-            GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
-            IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, replacements.getReplacementBytecodeProvider(), ROOT_COMPILATION);
-            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
-                            OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
-            assert !graph.isFrozen();
-            return graph;
+            try (Debug.Scope scope = Debug.scope("GetIntrinsicGraph", graph)) {
+                Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
+                GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
+                IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, replacements.getReplacementBytecodeProvider(), ROOT_COMPILATION);
+                new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
+                                OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
+                assert !graph.isFrozen();
+                return graph;
+            } catch (Throwable e) {
+                Debug.handle(e);
+            }
         }
         return null;
     }

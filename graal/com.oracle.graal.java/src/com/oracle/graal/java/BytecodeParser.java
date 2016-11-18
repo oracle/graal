@@ -510,17 +510,23 @@ public class BytecodeParser implements GraphBuilderContext {
                                 ValueNode returnVal = frameState.stackAt(0);
                                 assert returnVal == frameState.usages().first();
 
-                                /*
-                                 * Swap the top-of-stack value with the side-effect return value
-                                 * using the frame state.
-                                 */
-                                JavaKind returnKind = parser.currentInvokeReturnType.getJavaKind();
-                                ValueNode tos = frameStateBuilder.pop(returnKind);
-                                assert tos.getStackKind() == returnVal.getStackKind();
-                                FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), parser.getNonIntrinsicAncestor(), false, new JavaKind[]{returnKind},
-                                                new ValueNode[]{returnVal});
-                                frameState.replaceAndDelete(newFrameState);
-                                frameStateBuilder.push(returnKind, tos);
+                                if (parser.currentInvokeReturnType == null) {
+                                    assert intrinsic.isCompilationRoot();
+                                    FrameState newFrameState = graph.add(new FrameState(BytecodeFrame.INVALID_FRAMESTATE_BCI));
+                                    frameState.replaceAndDelete(newFrameState);
+                                } else {
+                                    /*
+                                     * Swap the top-of-stack value with the side-effect return value
+                                     * using the frame state.
+                                     */
+                                    JavaKind returnKind = parser.currentInvokeReturnType.getJavaKind();
+                                    ValueNode tos = frameStateBuilder.pop(returnKind);
+                                    assert tos.getStackKind() == returnVal.getStackKind();
+                                    FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), parser.getNonIntrinsicAncestor(), false, new JavaKind[]{returnKind},
+                                                    new ValueNode[]{returnVal});
+                                    frameState.replaceAndDelete(newFrameState);
+                                    frameStateBuilder.push(returnKind, tos);
+                                }
                             } else {
                                 if (stateAfterReturn == null) {
                                     if (intrinsic != null) {
