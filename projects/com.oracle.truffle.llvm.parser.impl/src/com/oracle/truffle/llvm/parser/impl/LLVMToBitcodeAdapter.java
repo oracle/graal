@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.base.model;
+package com.oracle.truffle.llvm.parser.impl;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,25 +35,25 @@ import java.util.List;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionDef;
 import com.intel.llvm.ireditor.lLVM_IR.FunctionHeader;
 import com.intel.llvm.ireditor.lLVM_IR.Parameter;
+import com.oracle.truffle.llvm.parser.base.model.TextToBCConverter;
 import com.oracle.truffle.llvm.parser.base.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 
 public final class LLVMToBitcodeAdapter {
 
     private LLVMToBitcodeAdapter() {
     }
 
-    public static FunctionDefinition resolveFunctionDef(LLVMParserRuntime runtime, FunctionDef def) {
+    public static FunctionDefinition resolveFunctionDef(LLVMParserRuntimeTextual runtime, FunctionDef def) {
         FunctionDefinition funcDef = new FunctionDefinition(resolveFunctionHeader(runtime, def.getHeader()), null);
         funcDef.setName(def.getHeader().getName().substring(1));
         return funcDef;
     }
 
-    public static FunctionType resolveFunctionHeader(LLVMParserRuntime runtime, FunctionHeader header) {
+    public static FunctionType resolveFunctionHeader(LLVMParserRuntimeTextual runtime, FunctionHeader header) {
         Type returnType = TextToBCConverter.convert(runtime.resolve(header.getRettype()));
         List<Type> args = new ArrayList<>();
         boolean hasVararg = false;
@@ -79,7 +79,7 @@ public final class LLVMToBitcodeAdapter {
         return Linkage.UNKNOWN;
     }
 
-    public static GlobalVariable resolveGlobalVariable(LLVMParserRuntime runtime, com.intel.llvm.ireditor.lLVM_IR.GlobalVariable globalVariable) {
+    public static GlobalVariable resolveGlobalVariable(LLVMParserRuntimeTextual runtime, com.intel.llvm.ireditor.lLVM_IR.GlobalVariable globalVariable) {
         Type type = TextToBCConverter.convert(runtime.resolve(globalVariable.getType()));
 
         String alignString = globalVariable.getAlign();

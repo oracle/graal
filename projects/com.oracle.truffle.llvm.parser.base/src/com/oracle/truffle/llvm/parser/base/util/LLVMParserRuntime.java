@@ -31,21 +31,16 @@ package com.oracle.truffle.llvm.parser.base.util;
 
 import java.util.Map;
 
-import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import org.eclipse.emf.ecore.EObject;
-
-import com.intel.llvm.ireditor.lLVM_IR.GlobalVariable;
-import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
+import com.oracle.truffle.llvm.parser.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
 
 public interface LLVMParserRuntime {
-
-    ResolvedType resolve(EObject e);
 
     /**
      * Performs an <code>alloc</code> style allocation. At the begin of a function (or the global
@@ -58,7 +53,7 @@ public interface LLVMParserRuntime {
      * @param size the bytes to be allocated
      * @return a node that allocates the requested memory.
      */
-    LLVMExpressionNode allocateFunctionLifetime(ResolvedType type, int size, int alignment);
+    LLVMExpressionNode allocateFunctionLifetime(Type type, int size, int alignment);
 
     /**
      * Gets the return slot where the function return value is stored.
