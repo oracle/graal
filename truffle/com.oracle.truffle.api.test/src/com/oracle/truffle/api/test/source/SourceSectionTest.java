@@ -241,9 +241,11 @@ public class SourceSectionTest {
         assertEquals("", section.getCode());
         assertNotNull(section.toString());
 
+        // Unavailable sections must not be equals otherwise builtins
+        // will be considered all identical if they share the same source.
         SourceSection other = longSource.createUnavailableSection();
-        assertTrue(section.equals(other));
-        assertEquals(other.hashCode(), section.hashCode());
+        assertFalse(section.equals(other));
+        assertNotEquals(other.hashCode(), section.hashCode());
 
         SourceSection other2 = shortSource.createUnavailableSection();
         assertFalse(section.equals(other2));
