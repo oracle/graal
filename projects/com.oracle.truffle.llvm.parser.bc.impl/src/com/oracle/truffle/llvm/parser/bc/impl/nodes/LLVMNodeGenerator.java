@@ -240,7 +240,7 @@ public final class LLVMNodeGenerator {
             return LLVMConstantGenerator.toFloatingPointConstant((FloatingPointConstant) symbol, runtime);
 
         } else if (symbol instanceof NullConstant || symbol instanceof UndefinedConstant) {
-            return LLVMConstantGenerator.toConstantZeroNode(symbol.getType(), method.getContext(), method.getStackSlot(), runtime);
+            return LLVMConstantGenerator.toConstantZeroNode(symbol.getType(), runtime);
 
         } else if (symbol instanceof StructureConstant) {
             return resolveStructureConstant((StructureConstant) symbol);

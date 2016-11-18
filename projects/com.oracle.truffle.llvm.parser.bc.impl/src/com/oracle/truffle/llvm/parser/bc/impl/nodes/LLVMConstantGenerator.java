@@ -51,7 +51,6 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAddressZeroNode;
 import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory;
 import com.oracle.truffle.llvm.nodes.impl.vars.StructLiteralNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
@@ -158,10 +157,10 @@ public final class LLVMConstantGenerator {
             return toStructureConstant((StructureConstant) value, align, variables, context, stackSlot, labels, runtime);
 
         } else if (value instanceof NullConstant) {
-            return LLVMConstantGenerator.toConstantZeroNode(value.getType(), context, stackSlot, runtime);
+            return LLVMConstantGenerator.toConstantZeroNode(value.getType(), runtime);
 
         } else if (value instanceof UndefinedConstant) {
-            return LLVMConstantGenerator.toConstantZeroNode(value.getType(), context, stackSlot, runtime);
+            return LLVMConstantGenerator.toConstantZeroNode(value.getType(), runtime);
 
         } else if (value instanceof BinaryOperationConstant) {
             final BinaryOperationConstant operation = (BinaryOperationConstant) value;
@@ -349,15 +348,15 @@ public final class LLVMConstantGenerator {
         return new StructLiteralNode(offsets, nodes, allocation);
     }
 
-    private static LLVMExpressionNode toStructZeroNode(StructureType structureType, LLVMContext context, FrameSlot stackSlot, LLVMParserRuntime runtime) {
+    private static LLVMExpressionNode toStructZeroNode(StructureType structureType, LLVMParserRuntime runtime) {
         final int size = runtime.getByteSize(structureType);
         if (size == 0) {
             final LLVMAddress minusOneNode = LLVMAddress.fromLong(-1);
             return runtime.getNodeFactoryFacade().createLiteral(minusOneNode, LLVMBaseType.ADDRESS);
         } else {
             final int alignment = runtime.getByteAlignment(structureType);
-            final LLVMAddressNode addressNode = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(size, alignment, context, stackSlot);
-            return new LLVMAddressZeroNode(addressNode, size);
+            final LLVMExpressionNode addressnode = runtime.allocateFunctionLifetime(structureType, size, alignment);
+            return runtime.getNodeFactoryFacade().createZeroNode(addressnode, size);
         }
     }
 
@@ -373,7 +372,7 @@ public final class LLVMConstantGenerator {
 
     private static final String nullObjectValue = "null";
 
-    public static LLVMExpressionNode toConstantZeroNode(Type type, LLVMContext context, FrameSlot stack, LLVMParserRuntime runtime) {
+    public static LLVMExpressionNode toConstantZeroNode(Type type, LLVMParserRuntime runtime) {
         if (type instanceof IntegerType) {
             if (type.getBits() == 1) {
                 return runtime.getNodeFactoryFacade().createSimpleConstantNoArray("false", LLVMBaseType.I1, type);
@@ -406,7 +405,7 @@ public final class LLVMConstantGenerator {
 
         } else if (type instanceof StructureType) {
             final StructureType structureType = (StructureType) type;
-            return toStructZeroNode(structureType, context, stack, runtime);
+            return toStructZeroNode(structureType, runtime);
 
         } else {
             throw new AssertionError("Unsupported Type for Zero Constant: " + type);

@@ -201,7 +201,8 @@ public final class LLVMLiteralFactory {
             case FUNCTION_ADDRESS:
                 if (stringValue.equals("null")) {
                     LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-                    LLVMFunction functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor(LLVMFunctionRegistry.ZERO_FUNCTION, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
+                    LLVMFunction functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor(LLVMFunctionRegistry.ZERO_FUNCTION, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0],
+                                    false);
                     return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) functionDescriptor);
                 } else {
                     throw new AssertionError(stringValue);
