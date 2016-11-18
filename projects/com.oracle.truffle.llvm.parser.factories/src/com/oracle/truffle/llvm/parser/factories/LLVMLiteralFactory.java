@@ -33,6 +33,10 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.llvm.context.LLVMFunctionRegistry;
+import com.oracle.truffle.llvm.parser.base.model.BCToTextConverter;
+import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
+
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
@@ -198,7 +202,7 @@ public final class LLVMLiteralFactory {
             case FUNCTION_ADDRESS:
                 if (stringValue.equals("null")) {
                     LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-                    LLVMFunction functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<zero function>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
+                    LLVMFunction functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor(LLVMFunctionRegistry.ZERO_FUNCTION, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
                     return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) functionDescriptor);
                 } else {
                     throw new AssertionError(stringValue);

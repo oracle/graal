@@ -48,8 +48,8 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
  * Manages Sulong functions and intrinsified native functions.
  */
 public class LLVMFunctionRegistry {
-
-    private static final String ZERO_FUNCTION = "<zero function>";
+    
+    public static final String ZERO_FUNCTION = "<zero function>";
 
     // do not start with 0, otherwise the first function
     // pointer would be == NULL
@@ -194,10 +194,6 @@ public class LLVMFunctionRegistry {
 
     public boolean isZeroFunctionDescriptor(LLVMFunction function) {
         return function.getName().equals(ZERO_FUNCTION);
-    }
-
-    public LLVMFunction createZeroFunctionDescriptor() {
-        return createFunctionDescriptor(ZERO_FUNCTION, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
     }
 
 }

@@ -60,11 +60,14 @@ import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.BinaryOperationConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.BlockAddressConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.CompareConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.floatingpoint.FloatingPointConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.GetElementPointerConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.StringConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.UndefinedConstant;
@@ -82,6 +85,22 @@ import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
+import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.bc.impl.LLVMLabelList;
+import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMComparisonFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMGetElementPtrFactory;
+import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
+import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMLabelList;
@@ -328,16 +347,6 @@ public final class LLVMConstantGenerator {
         }
 
         return new StructLiteralNode(offsets, nodes, allocation);
-
-        // final Type[] types = new Type[elementCount];
-        // final LLVMExpressionNode[] resolvedConstants = new LLVMExpressionNode[elementCount];
-        // for (int i = 0; i < constant.getElementCount(); i++) {
-        // types[i] = constant.getElementType(i);
-        // resolvedConstants[i] = toConstantNode(constant.getElement(i), align, variables, context,
-        // stackSlot, labels, runtime);
-        // }
-        // return runtime.getNodeFactoryFacade().createStructureConstantNode(constant.getType(),
-        // packed, types, resolvedConstants);
     }
 
     private static LLVMExpressionNode toStructZeroNode(StructureType structureType, LLVMContext context, FrameSlot stackSlot, LLVMParserRuntime runtime) {
@@ -347,11 +356,6 @@ public final class LLVMConstantGenerator {
             return runtime.getNodeFactoryFacade().createLiteral(minusOneNode, LLVMBaseType.ADDRESS);
         } else {
             final int alignment = runtime.getByteAlignment(structureType);
-            // final LLVMExpressionNode target =
-            // runtime.allocateFunctionLifetime(LLVMToBitcodeAdapter.unresolveType(structureType),
-            // size, alignment);
-            // return runtime.getNodeFactoryFacade().createZeroNode(target, size);
-
             final LLVMAddressNode addressNode = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(size, alignment, context, stackSlot);
             return new LLVMAddressZeroNode(addressNode, size);
         }
@@ -366,6 +370,8 @@ public final class LLVMConstantGenerator {
             return runtime.getNodeFactoryFacade().createZeroNode(target, size);
         }
     }
+
+    private static final String nullObjectValue = "null";
 
     public static LLVMExpressionNode toConstantZeroNode(Type type, LLVMContext context, FrameSlot stack, LLVMParserRuntime runtime) {
         if (type instanceof IntegerType) {
@@ -385,13 +391,8 @@ public final class LLVMConstantGenerator {
                 return runtime.getNodeFactoryFacade().createSimpleConstantNoArray("0.0", floatingPointType.getLLVMBaseType(), floatingPointType);
             }
 
-        } else if (type instanceof PointerType) {
-            if (((PointerType) type).getPointeeType() instanceof FunctionType) {
-                final LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) context.getFunctionRegistry().createZeroFunctionDescriptor();
-                return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
-            } else {
-                return new LLVMSimpleLiteralNode.LLVMAddressLiteralNode(LLVMAddress.fromLong(0));
-            }
+        } else if (type instanceof PointerType || type instanceof FunctionType) {
+            return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(nullObjectValue, type.getLLVMBaseType(), type);
 
         } else if (type instanceof ArrayType) {
             return toArrayZeroNode((ArrayType) type, runtime);
@@ -402,22 +403,6 @@ public final class LLVMConstantGenerator {
             final LLVMExpressionNode target = runtime.allocateVectorResult(vectorType);
             final LLVMBaseType baseType = vectorType.getLLVMBaseType();
             return runtime.getNodeFactoryFacade().createZeroVectorInitializer(nrElements, target, baseType);
-
-            // final LLVMAddressNode target =
-            // LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(runtime.getByteSize(type.getType()),
-            // runtime.getByteAlignment(type.getType()), context,
-            // stack);
-            // final LLVMExpressionNode[] zeroes = new LLVMExpressionNode[vectorType.getLength()];
-            // Arrays.fill(zeroes, toConstantZeroNode(vectorType.getElementType(), context, stack,
-            // runtime));
-            // return LLVMLiteralFactory.createVectorLiteralNode(Arrays.asList(zeroes), target,
-            // vectorType.getLLVMBaseType());
-
-        } else if (type instanceof FunctionType) {
-            final LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) context.getFunctionRegistry().createFunctionDescriptor("<zero function>",
-                            LLVMFunctionDescriptor.LLVMRuntimeType.ILLEGAL,
-                            new LLVMFunctionDescriptor.LLVMRuntimeType[0], false);
-            return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
 
         } else if (type instanceof StructureType) {
             final StructureType structureType = (StructureType) type;
