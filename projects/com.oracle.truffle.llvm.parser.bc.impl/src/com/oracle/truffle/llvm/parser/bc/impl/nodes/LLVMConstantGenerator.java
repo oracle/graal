@@ -30,10 +30,15 @@
 
 package com.oracle.truffle.llvm.parser.bc.impl.nodes;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStructWriteNode;
 import com.oracle.truffle.llvm.nodes.impl.base.floating.LLVM80BitFloatNode;
@@ -51,36 +56,24 @@ import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory;
 import com.oracle.truffle.llvm.nodes.impl.vars.StructLiteralNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.base.model.BCToTextConverter;
-import com.oracle.truffle.llvm.parser.base.model.symbols.constants.floatingpoint.X86FP80Constant;
-import com.oracle.truffle.llvm.parser.bc.impl.LLVMLabelList;
-import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
-import com.oracle.truffle.llvm.parser.factories.LLVMComparisonFactory;
-import com.oracle.truffle.llvm.parser.factories.LLVMGetElementPtrFactory;
-import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
-import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.BinaryOperationConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.BlockAddressConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.CastConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.CompareConstant;
-import com.oracle.truffle.llvm.parser.base.model.symbols.constants.floatingpoint.FloatingPointConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.GetElementPointerConstant;
-import com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.StringConstant;
-import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.UndefinedConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.ArrayConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.VectorConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.floatingpoint.FloatingPointConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.floatingpoint.X86FP80Constant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
@@ -89,11 +82,17 @@ import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
+import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.bc.impl.LLVMLabelList;
+import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMComparisonFactory;
+import com.oracle.truffle.llvm.parser.factories.LLVMGetElementPtrFactory;
+import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
+import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public final class LLVMConstantGenerator {
 
@@ -363,7 +362,7 @@ public final class LLVMConstantGenerator {
         if (size == 0) {
             return null;
         } else {
-            final LLVMExpressionNode target = runtime.allocateFunctionLifetime(BCToTextConverter.convert(type), runtime.getByteSize(type), runtime.getByteAlignment(type));
+            final LLVMExpressionNode target = runtime.allocateFunctionLifetime(type, runtime.getByteSize(type), runtime.getByteAlignment(type));
             return runtime.getNodeFactoryFacade().createZeroNode(target, size);
         }
     }

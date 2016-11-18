@@ -51,7 +51,7 @@ public final class LLVMConstantEvaluator {
 
     private static LLVMParserRuntime runtime;
 
-    public static Object evaluateConstant(LLVMParserRuntime curRuntime, Constant index) {
+    public static Object evaluateConstant(LLVMParserRuntimeTextual curRuntime, Constant index) {
         LLVMConstantEvaluator.runtime = curRuntime;
         ResolvedType type = curRuntime.resolve(index);
         if (!(type instanceof ResolvedAnyIntegerType)) {
@@ -78,7 +78,8 @@ public final class LLVMConstantEvaluator {
     }
 
     private static Object evaluateGlobalVariable(GlobalVariable ref) {
-        Object addr = runtime.getGlobalAddress(ref);
+        com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable globalVariable = LLVMToBitcodeAdapter.resolveGlobalVariable((LLVMParserRuntimeTextual) runtime, ref);
+        Object addr = runtime.getGlobalAddress(globalVariable);
         assert addr != null;
         return addr;
     }

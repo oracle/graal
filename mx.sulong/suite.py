@@ -362,8 +362,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.types",
-        "LLVM_IR_PARSER",
-        "EMF_COMMON", "ECORE", "INJECT", "XTEXT", "XTEXT_XBASE", "XTEXT_XBASE_LIB", "EMF_ECORE_XMI", "XTEXT_TYPES", "XTEXT_JAVAX_INJECT", "XTEXT_LOG4J", "XTEXT_GOOGLE_GUAVA", "XTEXT_ANTLR_RUNTIME", "XTEXT_UTIL", "ECLIPSE_EQUINOX"
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
@@ -391,6 +389,8 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.context",
+        "LLVM_IR_PARSER",
+        "EMF_COMMON", "ECORE", "INJECT", "XTEXT", "XTEXT_XBASE", "XTEXT_XBASE_LIB", "EMF_ECORE_XMI", "XTEXT_TYPES", "XTEXT_JAVAX_INJECT", "XTEXT_LOG4J", "XTEXT_GOOGLE_GUAVA", "XTEXT_ANTLR_RUNTIME", "XTEXT_UTIL", "ECLIPSE_EQUINOX"
       ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",

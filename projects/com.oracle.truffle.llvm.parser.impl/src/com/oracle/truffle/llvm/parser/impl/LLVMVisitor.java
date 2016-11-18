@@ -39,8 +39,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.llvm.parser.base.model.TextToBCConverter;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 
@@ -140,10 +138,8 @@ import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserResultImpl;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.impl.LLVMPhiVisitor.Phi;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisVisitor;
@@ -166,7 +162,7 @@ import com.oracle.truffle.llvm.types.memory.LLVMStack;
  * This class traverses the LLVM IR AST as provided by the <code>com.intel.llvm.ireditor</code>
  * project and returns an executable AST.
  */
-public final class LLVMVisitor implements LLVMParserRuntime {
+public final class LLVMVisitor implements LLVMParserRuntimeTextual {
 
     private static final int HEX_BASE = 16;
 
@@ -336,7 +332,9 @@ public final class LLVMVisitor implements LLVMParserRuntime {
         for (EObject object : objects) {
             if (object instanceof GlobalVariable) {
                 GlobalVariable globalVar = (GlobalVariable) object;
-                globalVariableScope.put(globalVar.getName(), findOrAllocateGlobal(globalVar));
+                com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable resolveGlobalVariable = LLVMToBitcodeAdapter.resolveGlobalVariable(
+                                (LLVMParserRuntimeTextual) factoryFacade.getRuntime(), globalVar);
+                globalVariableScope.put(globalVar.getName(), findOrAllocateGlobal(resolveGlobalVariable));
             }
         }
     }
@@ -445,8 +443,8 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     private final List<LLVMNode> globalDeallocations = new ArrayList<>();
     private boolean isGlobalScope;
 
-    private Object findOrAllocateGlobal(GlobalVariable globalVariable) {
-        return factoryFacade.allocateGlobalVariable(LLVMToBitcodeAdapter.resolveGlobalVariable(factoryFacade.getRuntime(), globalVariable));
+    private Object findOrAllocateGlobal(com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable globalVariable) {
+        return factoryFacade.allocateGlobalVariable(globalVariable);
     }
 
     private LLVMExpressionNode visitArrayConstantStore(ArrayConstant constant) {
@@ -1475,17 +1473,17 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     public LLVMExpressionNode allocateFunctionLifetime(ResolvedType resolvedType) {
         int alignment = typeHelper.getAlignmentByte(resolvedType);
         int size = typeHelper.getByteSize(resolvedType);
-        return allocateFunctionLifetime(resolvedType, size, alignment);
+        return allocateFunctionLifetime(TextToBCConverter.convert(resolvedType), size, alignment);
     }
 
     public LLVMExpressionNode allocateFunctionLifetime(int size, ResolvedType resolvedType) {
         int alignment = typeHelper.getAlignmentByte(resolvedType);
-        return allocateFunctionLifetime(resolvedType, size, alignment);
+        return allocateFunctionLifetime(TextToBCConverter.convert(resolvedType), size, alignment);
     }
 
     @Override
-    public LLVMExpressionNode allocateFunctionLifetime(ResolvedType type, int size, int alignment) {
-        return factoryFacade.createAlloc(TextToBCConverter.convert(type), size, alignment, null, null);
+    public LLVMExpressionNode allocateFunctionLifetime(com.oracle.truffle.llvm.parser.base.model.types.Type type, int size, int alignment) {
+        return factoryFacade.createAlloc(type, size, alignment, null, null);
     }
 
     @Override
@@ -1494,7 +1492,7 @@ public final class LLVMVisitor implements LLVMParserRuntime {
     }
 
     @Override
-    public Object getGlobalAddress(GlobalVariable var) {
+    public Object getGlobalAddress(com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable var) {
         return findOrAllocateGlobal(var);
     }
 
