@@ -75,7 +75,6 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer.Integ
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.IntegerType;
-import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
@@ -391,33 +390,8 @@ public final class LLVMNodeGenerator {
 
     private LLVMExpressionNode resolveGetElementPointerConstant(GetElementPointerConstant constant) {
         final LLVMExpressionNode baseAddress = resolve(constant.getBasePointer());
-        final List<Symbol> indices = constant.getIndices();
-
-        LLVMExpressionNode currentAddress = baseAddress;
-        Type currentType = constant.getBasePointer().getType();
-        Type parentType = null;
-        int currentOffset = 0;
-
-        for (final Symbol index : indices) {
-            final Integer indexVal = evaluateIntegerConstant(index);
-            if (indexVal == null) {
-                throw new IllegalStateException("Invalid index: " + index);
-            }
-
-            currentOffset += runtime.getIndexOffset(indexVal, currentType);
-            parentType = currentType;
-            currentType = currentType.getIndexType(indexVal);
-        }
-
-        if (currentType != null && !((parentType instanceof StructureType) && (((StructureType) parentType).isPacked()))) {
-            currentOffset += runtime.getBytePadding(currentOffset, currentType);
-        }
-
-        if (currentOffset != 0) {
-            currentAddress = LLVMGetElementPtrFactory.create(LLVMBaseType.I32, (LLVMAddressNode) currentAddress, new LLVMSimpleLiteralNode.LLVMI32LiteralNode(1), currentOffset);
-        }
-
-        return currentAddress;
+        final Type baseType = constant.getBasePointer().getType();
+        return LLVMConstantGenerator.getConstantElementPointer(baseAddress, constant.getIndices(), baseType, runtime);
     }
 
     private LLVMExpressionNode resolveVectorConstant(VectorConstant constant) {

@@ -87,7 +87,6 @@ import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMLabelList;
 import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
 import com.oracle.truffle.llvm.parser.factories.LLVMComparisonFactory;
-import com.oracle.truffle.llvm.parser.factories.LLVMGetElementPtrFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -254,12 +253,18 @@ public final class LLVMConstantGenerator {
 
     private static LLVMExpressionNode toGetElementPointerConstant(GetElementPointerConstant constant, int align, Function<GlobalValueSymbol, LLVMExpressionNode> variables, LLVMContext context,
                     FrameSlot stackSlot, LLVMLabelList labels, LLVMParserRuntime runtime) {
-        LLVMAddressNode currentAddress = (LLVMAddressNode) toConstantNode(constant.getBasePointer(), align, variables, context, stackSlot, labels, runtime);
-        Type currentType = constant.getBasePointer().getType();
+        final LLVMExpressionNode baseAddress = toConstantNode(constant.getBasePointer(), align, variables, context, stackSlot, labels, runtime);
+        final Type baseType = constant.getBasePointer().getType();
+        return getConstantElementPointer(baseAddress, constant.getIndices(), baseType, runtime);
+    }
+
+    static LLVMExpressionNode getConstantElementPointer(LLVMExpressionNode baseAddress, List<Symbol> indices, Type baseType, LLVMParserRuntime runtime) {
+        LLVMExpressionNode currentAddress = baseAddress;
+        Type currentType = baseType;
         Type parentType = null;
         int currentOffset = 0;
 
-        for (final Symbol index : constant.getIndices()) {
+        for (final Symbol index : indices) {
             final Integer indexVal = LLVMNodeGenerator.evaluateIntegerConstant(index);
             if (indexVal == null) {
                 throw new IllegalStateException("Invalid index: " + index);
@@ -275,7 +280,8 @@ public final class LLVMConstantGenerator {
         }
 
         if (currentOffset != 0) {
-            currentAddress = LLVMGetElementPtrFactory.create(LLVMBaseType.I32, currentAddress, new LLVMSimpleLiteralNode.LLVMI32LiteralNode(1), currentOffset);
+            final LLVMExpressionNode oneValueNode = runtime.getNodeFactoryFacade().createLiteral(1, LLVMBaseType.I32);
+            currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(LLVMBaseType.I32, currentAddress, oneValueNode, currentOffset);
         }
 
         return currentAddress;
