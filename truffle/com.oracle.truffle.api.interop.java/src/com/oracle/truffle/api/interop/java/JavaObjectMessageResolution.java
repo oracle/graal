@@ -25,19 +25,19 @@
 package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.java.JavaFunctionMessageResolution.ExecuteNode.DoExecuteNode;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -83,7 +83,11 @@ class JavaObjectMessageResolution {
         @Child private DoExecuteNode doExecute;
 
         public Object access(VirtualFrame frame, JavaObject object, String name, Object[] args) {
-            Method foundMethod = findMethod(object, name, args);
+            if (TruffleOptions.AOT) {
+                throw UnsupportedMessageException.raise(Message.createInvoke(args.length));
+            }
+
+            Method foundMethod = JavaInteropReflect.findMethod(object, name, args);
 
             if (foundMethod != null) {
                 if (doExecute == null || args.length != doExecute.numberOfArguments()) {
@@ -95,19 +99,6 @@ class JavaObjectMessageResolution {
 
             throw UnknownIdentifierException.raise(name);
         }
-
-        @TruffleBoundary
-        private static Method findMethod(JavaObject object, String name, Object[] args) {
-            for (Method m : object.clazz.getMethods()) {
-                if (m.getName().equals(name)) {
-                    if (m.getParameterTypes().length == args.length || m.isVarArgs()) {
-                        return m;
-                    }
-                }
-            }
-            return null;
-        }
-
     }
 
     @Resolve(message = "NEW")
@@ -122,26 +113,16 @@ class JavaObjectMessageResolution {
             if (receiver.obj != null) {
                 throw new IllegalStateException("Can only work on classes: " + receiver.obj);
             }
+            if (TruffleOptions.AOT) {
+                throw new IllegalStateException();
+            }
             for (int i = 0; i < args.length; i++) {
                 if (args[i] instanceof JavaObject) {
                     args[i] = ((JavaObject) args[i]).obj;
                 }
             }
-            IllegalStateException ex = new IllegalStateException("No suitable constructor found for " + receiver.clazz);
-            for (Constructor<?> constructor : receiver.clazz.getConstructors()) {
-                try {
-                    Object ret = constructor.newInstance(args);
-                    if (ToJavaNode.isPrimitive(ret)) {
-                        return ret;
-                    }
-                    return JavaInterop.asTruffleObject(ret);
-                } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException instEx) {
-                    ex = new IllegalStateException(instEx);
-                }
-            }
-            throw ex;
+            return JavaInteropReflect.newConstructor(receiver.clazz, args);
         }
-
     }
 
     @Resolve(message = "IS_NULL")
@@ -183,32 +164,10 @@ class JavaObjectMessageResolution {
         @TruffleBoundary
         public Object access(JavaObject object, String name) {
             try {
-                Object obj = object.obj;
-                final boolean onlyStatic = obj == null;
-                Object val;
-                try {
-                    final Field field = object.clazz.getField(name);
-                    final boolean isStatic = (field.getModifiers() & Modifier.STATIC) != 0;
-                    if (onlyStatic != isStatic) {
-                        throw new NoSuchFieldException();
-                    }
-                    val = field.get(obj);
-                } catch (NoSuchFieldException ex) {
-                    for (Method m : object.clazz.getMethods()) {
-                        final boolean isStatic = (m.getModifiers() & Modifier.STATIC) != 0;
-                        if (onlyStatic != isStatic) {
-                            continue;
-                        }
-                        if (m.getName().equals(name)) {
-                            return new JavaFunctionObject(m, obj);
-                        }
-                    }
-                    throw (NoSuchFieldError) new NoSuchFieldError(ex.getMessage()).initCause(ex);
+                if (TruffleOptions.AOT) {
+                    return JavaObject.NULL;
                 }
-                if (ToJavaNode.isPrimitive(val)) {
-                    return val;
-                }
-                return JavaInterop.asTruffleObject(val);
+                return JavaInteropReflect.readField(object, name);
             } catch (IllegalAccessException ex) {
                 throw new RuntimeException(ex);
             }
@@ -223,11 +182,14 @@ class JavaObjectMessageResolution {
 
         public Object access(VirtualFrame frame, JavaObject receiver, String name, Object value) {
             try {
+                if (TruffleOptions.AOT) {
+                    throw UnsupportedMessageException.raise(Message.WRITE);
+                }
                 Object obj = receiver.obj;
                 try {
-                    Field f = findField(receiver, name);
+                    Field f = JavaInteropReflect.findField(receiver, name);
                     Object convertedValue = toJava.execute(frame, value, new TypeAndClass<>(f.getGenericType(), f.getType()));
-                    setField(obj, f, convertedValue);
+                    JavaInteropReflect.setField(obj, f, convertedValue);
                     return JavaObject.NULL;
                 } catch (NoSuchFieldException ex) {
                     throw new RuntimeException(ex);
@@ -235,16 +197,6 @@ class JavaObjectMessageResolution {
             } catch (IllegalAccessException ex) {
                 throw new RuntimeException(ex);
             }
-        }
-
-        @TruffleBoundary
-        private static void setField(Object obj, Field f, Object convertedValue) throws IllegalAccessException {
-            f.set(obj, convertedValue);
-        }
-
-        @TruffleBoundary
-        private static Field findField(JavaObject receiver, String name) throws NoSuchFieldException {
-            return receiver.clazz.getField(name);
         }
 
         @Child private ArrayWriteNode write = ArrayWriteNodeGen.create();
@@ -259,17 +211,10 @@ class JavaObjectMessageResolution {
     abstract static class PropertiesNode extends Node {
         @TruffleBoundary
         public Object access(JavaObject receiver) {
-            Class<?> clazz = receiver.clazz;
-            while ((clazz.getModifiers() & Modifier.PUBLIC) == 0) {
-                clazz = clazz.getSuperclass();
-            }
-            final Field[] fields = clazz.getFields();
-            final String[] names = new String[fields.length];
-            for (int i = 0; i < fields.length; i++) {
-                names[i] = fields[i].getName();
-            }
-            return JavaInterop.asTruffleObject(names);
+            String[] fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findPublicFieldsNames(receiver.clazz);
+            return JavaInterop.asTruffleObject(fields);
         }
+
     }
 
 }

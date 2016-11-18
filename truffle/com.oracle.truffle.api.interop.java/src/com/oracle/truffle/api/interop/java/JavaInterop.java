@@ -36,12 +36,9 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.ToJavaNode.TruffleHandler;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 
 /**
  * Helper methods to simplify access to objects of {@link TruffleLanguage Truffle languages} from
@@ -198,10 +195,6 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static TruffleObject asTruffleObject(Object obj) {
-        return asTruffleObject(obj, TruffleOptions.AOT);
-    }
-
-    private static TruffleObject asTruffleObject(Object obj, boolean avoidReflectionInterop) {
         if (obj instanceof TruffleObject) {
             return ((TruffleObject) obj);
         }
@@ -211,16 +204,10 @@ public final class JavaInterop {
         if (obj == null) {
             return JavaObject.NULL;
         }
-        if (avoidReflectionInterop) {
+        if (TruffleOptions.AOT) {
             throw new IllegalArgumentException();
         }
-        if (Proxy.isProxyClass(obj.getClass())) {
-            InvocationHandler h = Proxy.getInvocationHandler(obj);
-            if (h instanceof TruffleHandler) {
-                return ((TruffleHandler) h).obj;
-            }
-        }
-        return new JavaObject(obj, obj.getClass());
+        return JavaInteropReflect.asTruffleViaReflection(obj);
     }
 
     /**
@@ -234,7 +221,7 @@ public final class JavaInterop {
      * @since 0.18
      */
     public static Object asTruffleValue(Object obj) {
-        return isPrimitive(obj) ? obj : asTruffleObject(obj, TruffleOptions.AOT);
+        return isPrimitive(obj) ? obj : asTruffleObject(obj);
     }
 
     /**
