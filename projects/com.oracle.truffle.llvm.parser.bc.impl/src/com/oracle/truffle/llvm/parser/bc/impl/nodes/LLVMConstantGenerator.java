@@ -51,8 +51,6 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.literals.LLVMSimpleLiteralNode;
-import com.oracle.truffle.llvm.nodes.impl.memory.LLVMAllocInstructionFactory;
-import com.oracle.truffle.llvm.nodes.impl.vars.StructLiteralNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
@@ -283,69 +281,17 @@ public final class LLVMConstantGenerator {
         return currentAddress;
     }
 
-    private static LLVMStructWriteNode createStructWriteNode(LLVMExpressionNode parsedConstant, LLVMBaseType baseType, int byteSize) {
-        switch (baseType) {
-            case I1:
-                return new StructLiteralNode.LLVMI1StructWriteNode((LLVMI1Node) parsedConstant);
-            case I8:
-                return new StructLiteralNode.LLVMI8StructWriteNode((LLVMI8Node) parsedConstant);
-            case I16:
-                return new StructLiteralNode.LLVMI16StructWriteNode((LLVMI16Node) parsedConstant);
-            case I32:
-                return new StructLiteralNode.LLVMI32StructWriteNode((LLVMI32Node) parsedConstant);
-            case I64:
-                return new StructLiteralNode.LLVMI64StructWriteNode((LLVMI64Node) parsedConstant);
-            case FLOAT:
-                return new StructLiteralNode.LLVMFloatStructWriteNode((LLVMFloatNode) parsedConstant);
-            case DOUBLE:
-                return new StructLiteralNode.LLVMDoubleStructWriteNode((LLVMDoubleNode) parsedConstant);
-            case X86_FP80:
-                return new StructLiteralNode.LLVM80BitFloatStructWriteNode((LLVM80BitFloatNode) parsedConstant);
-            case ARRAY:
-            case STRUCT:
-                if (byteSize == 0) {
-                    return new StructLiteralNode.LLVMEmptyStructWriteNode();
-                } else {
-                    return new StructLiteralNode.LLVMCompoundStructWriteNode((LLVMAddressNode) parsedConstant, byteSize);
-                }
-            case ADDRESS:
-                return new StructLiteralNode.LLVMAddressStructWriteNode((LLVMAddressNode) parsedConstant);
-            case FUNCTION_ADDRESS:
-                return new StructLiteralNode.LLVMFunctionStructWriteNode((LLVMFunctionNode) parsedConstant);
-            default:
-                throw new AssertionError("Invalid BaseType for StructWriteNode: " + baseType);
-        }
-    }
-
     private static LLVMExpressionNode toStructureConstant(StructureConstant constant, int align, Function<GlobalValueSymbol, LLVMExpressionNode> variables, LLVMContext context, FrameSlot stackSlot,
                     LLVMLabelList labels, LLVMParserRuntime runtime) {
 
         final int elementCount = constant.getElementCount();
-
-        final boolean packed = constant.isPacked();
-        final int[] offsets = new int[elementCount];
-        final LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[elementCount];
-
-        final StructureType structureType = (StructureType) constant.getType();
-        final int structSize = runtime.getByteSize(structureType);
-        final int structAlignment = runtime.getByteAlignment(structureType);
-        final LLVMAddressNode allocation = LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen.create(structSize, structAlignment, context, stackSlot);
-
-        int currentOffset = 0;
+        final Type[] types = new Type[elementCount];
+        final LLVMExpressionNode[] constants = new LLVMExpressionNode[elementCount];
         for (int i = 0; i < elementCount; i++) {
-            final Type elementType = constant.getElementType(i);
-            if (!packed) {
-                currentOffset += runtime.getBytePadding(currentOffset, elementType);
-            }
-            offsets[i] = currentOffset;
-            final int byteSize = runtime.getByteSize(elementType);
-            final LLVMExpressionNode resolvedConstant = toConstantNode(constant.getElement(i), align, variables, context, stackSlot, labels, runtime);
-            nodes[i] = createStructWriteNode(resolvedConstant, elementType.getLLVMBaseType(), byteSize);
-            currentOffset += byteSize;
-
+            types[i] = constant.getElementType(i);
+            constants[i] = toConstantNode(constant.getElement(i), align, variables, context, stackSlot, labels, runtime);
         }
-
-        return new StructLiteralNode(offsets, nodes, allocation);
+        return runtime.getNodeFactoryFacade().createStructureConstantNode(constant.getType(), constant.isPacked(), types, constants);
     }
 
     private static LLVMExpressionNode toStructZeroNode(StructureType structureType, LLVMParserRuntime runtime) {
