@@ -32,10 +32,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
-public class JavaInteropSnippetsTest {
+public class JavaInteropDocumentationTest {
     private PolyglotEngine engine;
 
-    private static final Class<?> SNIPPETS = loadRelative(JavaInteropSnippetsTest.class, "PolyglotEngineSnippets");
+    private static final Class<?> SNIPPETS = loadRelative(JavaInteropDocumentationTest.class, "PolyglotEngineSnippets");
 
     @Before
     public void initializeEngine() {
