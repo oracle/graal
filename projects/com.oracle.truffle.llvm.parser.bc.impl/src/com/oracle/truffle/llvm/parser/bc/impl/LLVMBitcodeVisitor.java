@@ -35,6 +35,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
+import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
+import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
+import com.oracle.truffle.llvm.parser.base.model.types.Type;
+import org.eclipse.emf.ecore.EObject;
+
+import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;

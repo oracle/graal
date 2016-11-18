@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
  * Manages Sulong functions and intrinsified native functions.
  */
 public class LLVMFunctionRegistry {
-    
+
     public static final String ZERO_FUNCTION = "<zero function>";
 
     // do not start with 0, otherwise the first function

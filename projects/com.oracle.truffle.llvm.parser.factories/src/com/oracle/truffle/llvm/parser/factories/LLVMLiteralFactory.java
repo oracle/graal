@@ -34,7 +34,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.llvm.context.LLVMFunctionRegistry;
-import com.oracle.truffle.llvm.parser.base.model.BCToTextConverter;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 
 import com.oracle.truffle.llvm.context.LLVMContext;
