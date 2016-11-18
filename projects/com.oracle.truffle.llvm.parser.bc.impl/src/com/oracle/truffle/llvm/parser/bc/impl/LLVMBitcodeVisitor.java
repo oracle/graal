@@ -39,9 +39,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
-import org.eclipse.emf.ecore.EObject;
 
-import com.intel.llvm.ireditor.types.ResolvedType;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -83,17 +81,13 @@ import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.base.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserResultImpl;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
-import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMConstantGenerator;
+import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.ir.LLVMParser;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.listeners.ModuleVersion;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
@@ -165,7 +159,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         FrameSlot stack = stackAllocation.getRootStackSlot();
 
-        LLVMNode[] globals = module.getGobalVariables(stack).toArray(new LLVMNode[0]);
+        LLVMNode[] globals = module.getGobalVariables().toArray(new LLVMNode[0]);
         RootNode globalVarInits = factoryFacade.createStaticInitsRootNode(globals);
         RootCallTarget globalVarInitsTarget = Truffle.getRuntime().createCallTarget(globalVarInits);
         LLVMNode[] deallocs = module.getDeallocations();
@@ -212,6 +206,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final StackAllocation stack;
 
+    private final LLVMSymbolResolver symbolResolver;
+
     public LLVMBitcodeVisitor(Source source, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
                     DataLayoutConverter.DataSpecConverter layout, NodeFactoryFacade factoryFacade) {
         this.source = source;
@@ -223,6 +219,11 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         this.factoryFacade = factoryFacade;
         this.parserRuntime = new LLVMBitcodeVisitorParserRuntime();
         this.factoryFacade.setUpFacade(this.parserRuntime);
+        this.symbolResolver = new LLVMSymbolResolver(this::getGlobalVariable, labels, parserRuntime);
+    }
+
+    public LLVMLabelList getLabels() {
+        return labels;
     }
 
     private LLVMExpressionNode createFunction(FunctionDefinition method, LLVMLifetimeAnalysis lifetimes) {
@@ -234,7 +235,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
                         labels.labels(functionName),
                         phis.getPhiMap(functionName),
                         factoryFacade,
-                        method.getParameters().size());
+                        method.getParameters().size(),
+                        symbolResolver);
 
         parserRuntime.setFunctionVisitor(visitor);
 
@@ -307,12 +309,12 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         return formalParamInits;
     }
 
-    private LLVMNode createGlobal(GlobalValueSymbol global, FrameSlot stackSlot) {
+    private LLVMNode createGlobal(GlobalValueSymbol global) {
         if (global == null || global.getValue() == null) {
             return null;
         }
 
-        LLVMExpressionNode constant = LLVMConstantGenerator.toConstantNode(global.getValue(), global.getAlign(), this::getGlobalVariable, context, stackSlot, labels, parserRuntime);
+        LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
         if (constant != null) {
             final Type type = ((PointerType) global.getType()).getPointeeType();
             final LLVMBaseType baseType = type.getLLVMBaseType();
@@ -376,7 +378,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
             }
             return address;
         } else {
-            return LLVMConstantGenerator.toConstantNode(g, 0, this::getGlobalVariable, context, null, labels, parserRuntime);
+            return symbolResolver.resolve(g);
         }
     }
 
@@ -455,10 +457,10 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         return LLVMAccessGlobalVariableStorageNodeGen.create(descriptor);
     }
 
-    public List<LLVMNode> getGobalVariables(FrameSlot stackSlot) {
+    public List<LLVMNode> getGobalVariables() {
         final List<LLVMNode> globalNodes = new ArrayList<>();
         for (GlobalValueSymbol global : this.globals.keySet()) {
-            final LLVMNode store = createGlobal(global, stackSlot);
+            final LLVMNode store = createGlobal(global);
             if (store != null) {
                 globalNodes.add(store);
             }
@@ -617,6 +619,11 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         @Override
         public FrameDescriptor getGlobalFrameDescriptor() {
             return stack.getRootFrame();
+        }
+
+        @Override
+        public FrameDescriptor getMethodFrameDescriptor() {
+            return functionVisitor.getFrame();
         }
 
         @Override

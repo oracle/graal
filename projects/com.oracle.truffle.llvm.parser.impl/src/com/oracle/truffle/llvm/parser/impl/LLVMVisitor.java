@@ -1532,6 +1532,11 @@ public final class LLVMVisitor implements LLVMParserRuntimeTextual {
     }
 
     @Override
+    public FrameDescriptor getMethodFrameDescriptor() {
+        return frameDescriptor;
+    }
+
+    @Override
     public void addDestructor(LLVMNode destructorNode) {
         globalDeallocations.add(destructorNode);
     }

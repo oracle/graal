@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
+import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMSymbolResolver;
 
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.parser.base.model.visitors.FunctionVisitor;
@@ -64,19 +64,19 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final List<LLVMNode> instructions = new ArrayList<>();
 
-    private final LLVMNodeGenerator symbolResolver;
+    private final LLVMSymbolResolver symbolResolver;
 
     private final NodeFactoryFacade factoryFacade;
 
     private final int argCount;
 
     public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<String, Integer> labels,
-                    Map<InstructionBlock, List<Phi>> phis, NodeFactoryFacade factoryFacade, int argCount) {
+                    Map<InstructionBlock, List<Phi>> phis, NodeFactoryFacade factoryFacade, int argCount, LLVMSymbolResolver symbolResolver) {
         this.module = module;
         this.frame = frame;
         this.labels = labels;
         this.phis = phis;
-        this.symbolResolver = new LLVMNodeGenerator(this);
+        this.symbolResolver = symbolResolver;
         this.factoryFacade = factoryFacade;
         this.argCount = argCount;
     }
@@ -126,7 +126,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return getSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID);
     }
 
-    public LLVMNodeGenerator getSymbolResolver() {
+    public LLVMSymbolResolver getSymbolResolver() {
         return symbolResolver;
     }
 

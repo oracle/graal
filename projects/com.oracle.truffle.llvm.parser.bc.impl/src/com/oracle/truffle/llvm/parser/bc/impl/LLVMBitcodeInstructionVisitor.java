@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
+import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
@@ -93,7 +93,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final InstructionBlock block;
 
-    private final LLVMNodeGenerator symbols;
+    private final LLVMSymbolResolver symbols;
 
     private final NodeFactoryFacade factoryFacade;
 

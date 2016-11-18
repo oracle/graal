@@ -47,7 +47,7 @@ public final class IntegerConstant extends AbstractConstant {
 
     @Override
     public String toString() {
-        if (((IntegerType) getType()).getBits() == 1) {
+        if (getType().getBits() == 1) {
             return value == 0 ? "false" : "true";
         }
         return String.valueOf(value);

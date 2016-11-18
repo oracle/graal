@@ -80,6 +80,8 @@ public interface LLVMParserRuntime {
 
     FrameDescriptor getGlobalFrameDescriptor();
 
+    FrameDescriptor getMethodFrameDescriptor();
+
     /**
      * Adds a destructor node that is executed after returning from the main function.
      *
