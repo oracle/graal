@@ -38,9 +38,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMSymbolResolver;
@@ -56,7 +54,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final FrameDescriptor frame;
 
-    private final List<LLVMBasicBlockNode> blocks = new ArrayList<>();
+    private final List<LLVMNode> blocks = new ArrayList<>();
 
     private final Map<String, Integer> labels;
 
@@ -86,7 +84,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     }
 
     public void addTerminatingInstruction(LLVMNode node, int blockId, String blockName) {
-        blocks.add(new LLVMBasicBlockNode(getBlock(), (LLVMTerminatorNode) node, blockId, blockName));
+        blocks.add(factoryFacade.createBasicBlockNode(getBlock(), node, blockId, blockName));
         instructions.add(node);
     }
 
@@ -98,7 +96,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return instructions.toArray(new LLVMNode[instructions.size()]);
     }
 
-    public List<LLVMBasicBlockNode> getBlocks() {
+    public List<LLVMNode> getBlocks() {
         return Collections.unmodifiableList(blocks);
     }
 
