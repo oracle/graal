@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+
 import java.lang.reflect.Method;
 
 import com.oracle.graal.compiler.common.type.StampPair;
@@ -84,7 +86,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode implements Virtu
                 Assumptions assumptions = graph().getAssumptions();
                 type = getConcreteType(getObject().stamp());
                 if (type != null) {
-                    StructuredGraph newGraph = new StructuredGraph(AllowAssumptions.from(assumptions != null));
+                    StructuredGraph newGraph = new StructuredGraph(AllowAssumptions.from(assumptions != null), INVALID_COMPILATION_ID);
                     ParameterNode param = newGraph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(getObject().stamp())));
                     NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
                     newGraph.addAfterFixed(newGraph.start(), newInstance);

@@ -288,7 +288,7 @@ public class GraalCompiler {
             }
             FrameMapBuilder frameMapBuilder = backend.newFrameMapBuilder(registerConfig);
             String compilationUnitName = getCompilationUnitName(graph, compilationResult);
-            LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, graph, stub);
+            LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(compilationUnitName, graph.compilationId(), lir, frameMapBuilder, graph, stub);
             LIRGeneratorTool lirGen = backend.newLIRGenerator(lirGenRes);
             NodeLIRBuilderTool nodeLirGen = backend.newNodeLIRBuilder(graph, lirGen);
 

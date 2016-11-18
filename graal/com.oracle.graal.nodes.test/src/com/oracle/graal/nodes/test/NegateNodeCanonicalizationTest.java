@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.test;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.junit.Assert.assertEquals;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -42,7 +43,7 @@ public class NegateNodeCanonicalizationTest {
 
     @Before
     public void before() {
-        graph = new StructuredGraph(AllowAssumptions.YES);
+        graph = new StructuredGraph(AllowAssumptions.YES, INVALID_COMPILATION_ID);
     }
 
     @Test

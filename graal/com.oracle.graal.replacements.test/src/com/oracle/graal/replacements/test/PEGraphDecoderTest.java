@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements.test;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import org.junit.Test;
@@ -136,7 +137,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
             registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());
             CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, AllowAssumptions.YES, getTarget().arch);
 
-            targetGraph = new StructuredGraph(testMethod, AllowAssumptions.YES);
+            targetGraph = new StructuredGraph(testMethod, AllowAssumptions.YES, INVALID_COMPILATION_ID);
             decoder.decode(targetGraph, testMethod, null, null, new InlineInvokePlugin[]{new InlineAll()}, null);
             Debug.dump(Debug.BASIC_LOG_LEVEL, targetGraph, "Target Graph");
             targetGraph.verify();

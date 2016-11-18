@@ -24,6 +24,8 @@ package com.oracle.graal.compiler.test;
 
 import jdk.vm.ci.meta.JavaConstant;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -53,7 +55,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
 
     private void longAddChain(boolean reverse) {
         HighTierContext context = getDefaultHighTierContext();
-        StructuredGraph graph = new StructuredGraph(AllowAssumptions.NO);
+        StructuredGraph graph = new StructuredGraph(AllowAssumptions.NO, INVALID_COMPILATION_ID);
         ValueNode constant = graph.unique(ConstantNode.forPrimitive(JavaConstant.INT_1));
         ValueNode value = null;
         if (reverse) {
