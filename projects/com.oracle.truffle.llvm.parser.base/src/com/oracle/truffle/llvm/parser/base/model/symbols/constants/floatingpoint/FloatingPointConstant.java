@@ -42,6 +42,8 @@ public abstract class FloatingPointConstant extends AbstractConstant {
         super(type);
     }
 
+    public abstract String getStringValue();
+
     public static FloatingPointConstant create(FloatingPointType type, long[] bits) {
         switch (type) {
             case FLOAT:

@@ -33,6 +33,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.base.model.BCToTextConverter;
 import com.oracle.truffle.llvm.parser.base.util.LLVMTypeHelper;
 
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
@@ -79,7 +80,6 @@ import com.oracle.truffle.llvm.nodes.impl.memory.LLVMStoreNodeFactory.LLVMI8Arra
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMAccessGlobalVariableStorageNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.base.model.LLVMToBitcodeAdapter;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.types.LLVMAddress;
@@ -380,7 +380,7 @@ public final class LLVMLiteralFactory {
         LLVMBaseType llvmElementType = elementType.getLLVMBaseType();
         int baseTypeSize = runtime.getByteSize(elementType);
         int size = nrElements * baseTypeSize;
-        LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(LLVMToBitcodeAdapter.unresolveType(arrayType), size,
+        LLVMAddressNode arrayAlloc = (LLVMAddressNode) runtime.allocateFunctionLifetime(BCToTextConverter.convert(arrayType), size,
                         runtime.getByteAlignment(arrayType));
         int byteLength = runtime.getByteSize(elementType);
         if (size == 0) {

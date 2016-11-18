@@ -53,4 +53,8 @@ public final class FloatConstant extends FloatingPointConstant {
         return new FloatConstant(value);
     }
 
+    @Override
+    public String getStringValue() {
+        return String.valueOf(value);
+    }
 }

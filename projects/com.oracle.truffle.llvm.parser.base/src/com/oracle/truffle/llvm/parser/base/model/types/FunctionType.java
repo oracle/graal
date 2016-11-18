@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.base.model.types;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
@@ -41,7 +40,7 @@ public class FunctionType implements Type, ValueSymbol {
 
     private final Type type;
 
-    private final Type[] args;
+    protected final Type[] args;
 
     private final boolean isVarArg;
 
@@ -114,7 +113,7 @@ public class FunctionType implements Type, ValueSymbol {
         int hash = 29;
         hash = 17 * hash + Arrays.hashCode(args);
         hash = 17 * hash + (isVarArg ? 1231 : 1237);
-        hash = 17 * hash + ((type == null) ? 0 : type.hashCode());
+        hash = 17 * hash + ((getReturnType() == null) ? 0 : getReturnType().hashCode());
         return hash;
     }
 
@@ -122,31 +121,21 @@ public class FunctionType implements Type, ValueSymbol {
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
+
+        } else if (obj instanceof FunctionType) {
+            final FunctionType other = (FunctionType) obj;
+            return getReturnType().equals(other.getReturnType()) && Arrays.equals(args, other.args) && isVarArg == other.isVarArg && name.equals(other.name);
+
+        } else {
+            return false;
         }
-        if (obj instanceof FunctionType) {
-            FunctionType other = (FunctionType) obj;
-            if (!Objects.equals(type, other.type)) {
-                return false;
-            }
-            if (!Arrays.equals(args, other.args)) {
-                return false;
-            }
-            if (isVarArg != other.isVarArg) {
-                return false;
-            }
-            if (!Objects.equals(name, other.name)) {
-                return false;
-            }
-            return true;
-        }
-        return false;
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
 
-        sb.append(type).append(" (");
+        sb.append(getReturnType()).append(" (");
 
         for (int i = 0; i < args.length; i++) {
             if (i > 0) {

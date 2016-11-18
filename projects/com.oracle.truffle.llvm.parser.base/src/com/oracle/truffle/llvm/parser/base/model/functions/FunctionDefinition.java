@@ -222,8 +222,8 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     }
 
     @Override
-    public void createInlineASM(Type type, long[] args) {
-        symbols.addSymbol(InlineAsmConstant.generate(type, args));
+    public void createInlineASM(Type type, long[] asm) {
+        symbols.addSymbol(InlineAsmConstant.generate(type, asm));
     }
 
     @Override
