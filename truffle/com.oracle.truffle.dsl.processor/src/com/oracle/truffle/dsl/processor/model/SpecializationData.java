@@ -22,17 +22,20 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public final class SpecializationData extends TemplateMethod {
 
@@ -104,16 +107,22 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public boolean isGuardBoundWithCache(GuardExpression guardExpression) {
-        Set<VariableElement> boundVars = guardExpression.getExpression().findBoundVariableElements();
+        return !getBoundCaches(guardExpression.getExpression()).isEmpty();
+    }
+
+    public Set<CacheExpression> getBoundCaches(DSLExpression guardExpression) {
+        Set<VariableElement> boundVars = guardExpression.findBoundVariableElements();
+        Set<CacheExpression> foundCaches = new LinkedHashSet<>();
 
         for (CacheExpression cache : getCaches()) {
             VariableElement cacheVar = cache.getParameter().getVariableElement();
             if (boundVars.contains(cacheVar)) {
-                return true;
+                // bound caches for caches are returned before
+                foundCaches.addAll(getBoundCaches(cache.getExpression()));
+                foundCaches.add(cache);
             }
         }
-
-        return false;
+        return foundCaches;
     }
 
     public void setKind(SpecializationKind kind) {
