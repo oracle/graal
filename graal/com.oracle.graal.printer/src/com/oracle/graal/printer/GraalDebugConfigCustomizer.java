@@ -43,6 +43,7 @@ import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodeinfo.Verbosity;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.options.UniquePathUtilities;
 import com.oracle.graal.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
@@ -92,7 +93,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
 
     private CanonicalStringGraphPrinter createStringPrinter() {
         // Construct the path to the directory.
-        Path path = Options.PrintCanonicalGraphStringsDirectory.getPath();
+        Path path = UniquePathUtilities.getPath(Options.PrintCanonicalGraphStringsDirectory, Options.DumpPath, "");
         return new CanonicalStringGraphPrinter(path, snippetReflection);
     }
 
@@ -122,7 +123,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
 
     private static Path getFilePrinterPath() {
         // Construct the path to the file.
-        return Options.PrintIdealGraphFileName.getPath();
+        return UniquePathUtilities.getPath(Options.PrintIdealGraphFileName, Options.DumpPath, Options.PrintBinaryGraphs.getValue() ? "bgv" : "gv.xml");
     }
 
     private GraphPrinter createFilePrinter() throws IOException {
