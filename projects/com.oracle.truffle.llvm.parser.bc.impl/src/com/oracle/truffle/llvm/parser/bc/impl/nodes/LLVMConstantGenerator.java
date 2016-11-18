@@ -85,10 +85,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMLabelList;
-import com.oracle.truffle.llvm.parser.factories.LLVMCastsFactory;
-import com.oracle.truffle.llvm.parser.factories.LLVMComparisonFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
@@ -171,9 +168,7 @@ public final class LLVMConstantGenerator {
             final CastConstant cast = (CastConstant) value;
             final LLVMConversionType type = LLVMBitcodeTypeHelper.toConversionType(cast.getOperator());
             final LLVMExpressionNode fromNode = toConstantNode(cast.getValue(), align, variables, context, stackSlot, labels, runtime);
-            final LLVMBaseType from = cast.getValue().getType().getLLVMBaseType();
-            final LLVMBaseType to = cast.getType().getLLVMBaseType();
-            return LLVMCastsFactory.cast(fromNode, to, from, type);
+            return runtime.getNodeFactoryFacade().createCast(fromNode, cast.getType(), cast.getValue().getType(), type);
 
         } else if (value instanceof CompareConstant) {
             final CompareConstant compare = (CompareConstant) value;
