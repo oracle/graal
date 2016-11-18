@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -197,6 +198,10 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static TruffleObject asTruffleObject(Object obj) {
+        return asTruffleObject(obj, TruffleOptions.AOT);
+    }
+
+    private static TruffleObject asTruffleObject(Object obj, boolean avoidReflectionInterop) {
         if (obj instanceof TruffleObject) {
             return ((TruffleObject) obj);
         }
@@ -205,6 +210,9 @@ public final class JavaInterop {
         }
         if (obj == null) {
             return JavaObject.NULL;
+        }
+        if (avoidReflectionInterop) {
+            throw new IllegalArgumentException();
         }
         if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
@@ -226,7 +234,7 @@ public final class JavaInterop {
      * @since 0.18
      */
     public static Object asTruffleValue(Object obj) {
-        return isPrimitive(obj) ? obj : asTruffleObject(obj);
+        return isPrimitive(obj) ? obj : asTruffleObject(obj, TruffleOptions.AOT);
     }
 
     /**
