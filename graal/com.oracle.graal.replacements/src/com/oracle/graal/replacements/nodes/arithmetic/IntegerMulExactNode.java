@@ -48,12 +48,18 @@ public final class IntegerMulExactNode extends MulNode implements IntegerExactAr
 
     public IntegerMulExactNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y);
-        setStamp(foldStamp(x.stamp(), y.stamp()));
+        setStamp(x.stamp().unrestricted());
         assert x.stamp().isCompatible(y.stamp()) && x.stamp() instanceof IntegerStamp;
     }
 
     @Override
     public boolean inferStamp() {
+        /*
+         * Note: it is not allowed to use the foldStamp method of the regular mul node as we do not
+         * know the result stamp of this node if we do not know whether we may deopt. If we know we
+         * can never overflow we will replace this node with its non overflow checking counterpart
+         * anyway.
+         */
         return false;
     }
 
@@ -73,7 +79,6 @@ public final class IntegerMulExactNode extends MulNode implements IntegerExactAr
                 return ConstantNode.forIntegerStamp(stamp(), 0);
             }
         }
-
         if (!mayOverFlow((IntegerStamp) x.stamp(), (IntegerStamp) y.stamp())) {
             return new MulNode(x, y).canonical(tool);
         }
