@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import static org.junit.Assert.assertNotNull;
@@ -111,7 +112,35 @@ public class JavaInteropTest {
 
     @Test
     public void assertKeysAndProperties() {
+        CallTarget callTarget = sendKeys();
+        final TruffleObject ret = (TruffleObject) callTarget.call(obj);
+        List<?> list = JavaInterop.asJavaObject(List.class, ret);
+        assertTrue("Contains x " + list, list.contains("x"));
+        assertTrue("Contains y " + list, list.contains("y"));
+        assertTrue("Contains arr " + list, list.contains("arr"));
+        assertTrue("Contains value " + list, list.contains("value"));
+        assertTrue("Contains map " + list, list.contains("map"));
+    }
+
+    @Test
+    public void assertKeysFromAMap() {
+        Map<String, Integer> map = new HashMap<>();
+        map.put("one", 1);
+        map.put("null", null);
+        map.put("three", 3);
+
+        TruffleObject truffleMap = JavaInterop.asTruffleObject(map);
+        TruffleObject ret = (TruffleObject) sendKeys().call(truffleMap);
+        List<?> list = JavaInterop.asJavaObject(List.class, ret);
+        assertTrue("Contains one " + list, list.contains("one"));
+        assertTrue("Contains null " + list, list.contains("null"));
+        assertTrue("Contains three " + list, list.contains("three"));
+
+    }
+
+    private static CallTarget sendKeys() {
         final Node keysNode = Message.KEYS.createNode();
+
         class SendKeys extends RootNode {
             SendKeys() {
                 super(TruffleLanguage.class, null, null);
@@ -120,20 +149,15 @@ public class JavaInteropTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 try {
-                    return ForeignAccess.sendKeys(keysNode, frame, obj);
+                    final TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
+                    return ForeignAccess.sendKeys(keysNode, frame, receiver);
                 } catch (InteropException ex) {
                     throw ex.raise();
                 }
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new SendKeys());
-        final TruffleObject ret = (TruffleObject) callTarget.call();
-        List<?> list = JavaInterop.asJavaObject(List.class, ret);
-        assertTrue("Contains x " + list, list.contains("x"));
-        assertTrue("Contains y " + list, list.contains("y"));
-        assertTrue("Contains arr " + list, list.contains("arr"));
-        assertTrue("Contains value " + list, list.contains("value"));
-        assertTrue("Contains map " + list, list.contains("map"));
+        return callTarget;
     }
 
     class POJO {

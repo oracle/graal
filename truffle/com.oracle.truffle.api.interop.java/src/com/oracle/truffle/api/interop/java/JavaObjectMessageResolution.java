@@ -40,6 +40,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.java.JavaFunctionMessageResolution.ExecuteNode.DoExecuteNode;
 import com.oracle.truffle.api.nodes.Node;
+import java.util.Map;
+import java.util.Objects;
 
 @MessageResolution(receiverType = JavaObject.class, language = JavaInteropLanguage.class)
 class JavaObjectMessageResolution {
@@ -164,6 +166,10 @@ class JavaObjectMessageResolution {
         @TruffleBoundary
         public Object access(JavaObject object, String name) {
             try {
+                if (object.obj instanceof Map) {
+                    Map<?, ?> map = (Map<?, ?>) object.obj;
+                    return JavaInterop.asTruffleValue(map.get(name));
+                }
                 if (TruffleOptions.AOT) {
                     return JavaObject.NULL;
                 }
@@ -182,10 +188,16 @@ class JavaObjectMessageResolution {
 
         public Object access(VirtualFrame frame, JavaObject receiver, String name, Object value) {
             try {
+                Object obj = receiver.obj;
+                if (obj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<Object, Object> map = (Map<Object, Object>) obj;
+                    Object convertedValue = toJava.execute(frame, value, TypeAndClass.forReturnType(null));
+                    return map.put(name, convertedValue);
+                }
                 if (TruffleOptions.AOT) {
                     throw UnsupportedMessageException.raise(Message.WRITE);
                 }
-                Object obj = receiver.obj;
                 try {
                     Field f = JavaInteropReflect.findField(receiver, name);
                     Object convertedValue = toJava.execute(frame, value, new TypeAndClass<>(f.getGenericType(), f.getType()));
@@ -211,7 +223,17 @@ class JavaObjectMessageResolution {
     abstract static class PropertiesNode extends Node {
         @TruffleBoundary
         public Object access(JavaObject receiver) {
-            String[] fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findPublicFieldsNames(receiver.clazz);
+            String[] fields;
+            if (receiver.obj instanceof Map) {
+                Map<?, ?> map = (Map<?, ?>) receiver.obj;
+                fields = new String[map.size()];
+                int i = 0;
+                for (Object key : map.keySet()) {
+                    fields[i++] = Objects.toString(key, null);
+                }
+            } else {
+                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findPublicFieldsNames(receiver.clazz);
+            }
             return JavaInterop.asTruffleObject(fields);
         }
 

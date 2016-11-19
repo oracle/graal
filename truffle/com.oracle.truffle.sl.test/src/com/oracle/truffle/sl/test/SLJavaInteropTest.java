@@ -56,6 +56,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import static org.junit.Assert.assertSame;
@@ -325,6 +326,31 @@ public class SLJavaInteropTest {
                         });
         fn.execute(javaSum, groups);
         assertEquals(6, javaSum.sum);
+    }
+
+    @Test
+    public void accessJavaMap() {
+        String scriptText = "function write(map, key, value) {\n" + //
+                        "  map[key] = value;\n" + //
+                        "}\n" + //
+                        "function read(map, key) {\n" + //
+                        "  return map[key];\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        PolyglotEngine.Value read = engine.findGlobalSymbol("read");
+        PolyglotEngine.Value write = engine.findGlobalSymbol("write");
+
+        Map<Object, Object> map = new HashMap<>();
+        map.put("a", 42);
+
+        Object b = read.execute(map, "a").get();
+        assertEquals(42L, b);
+
+        write.execute(map, "a", 33);
+
+        Object c = read.execute(map, "a").get();
+        assertEquals(33L, c);
     }
 
     @FunctionalInterface

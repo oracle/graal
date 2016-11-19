@@ -29,6 +29,8 @@ import java.lang.reflect.Array;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ArrayReadNode extends Node {
@@ -48,8 +50,12 @@ abstract class ArrayReadNode extends Node {
 
     private static Object doArrayAccess(JavaObject object, int index) {
         Object obj = object.obj;
-        Object val = Array.get(obj, index);
-
+        Object val = null;
+        try {
+            val = Array.get(obj, index);
+        } catch (IllegalArgumentException notAnArr) {
+            throw UnsupportedMessageException.raise(Message.READ);
+        }
         if (ToJavaNode.isPrimitive(val)) {
             return val;
         }

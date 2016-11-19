@@ -68,7 +68,7 @@ final class TypeAndClass<T> {
     }
 
     static TypeAndClass<?> forReturnType(Method method) {
-        if (method.getReturnType() == void.class) {
+        if (method == null || method.getReturnType() == void.class) {
             return ANY;
         }
         return new TypeAndClass<>(method.getGenericReturnType(), method.getReturnType());
