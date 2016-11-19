@@ -457,10 +457,11 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        # TODO: this is a temporary dependency.
-        # should be: llvm.context
-        "com.oracle.truffle.llvm.parser.factories",
        ],
+      "generatedDependencies" : [
+        # TODO: remove this dependency
+        "com.oracle.truffle.llvm.parser.factories",
+      ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
