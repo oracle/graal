@@ -140,7 +140,7 @@ public abstract class TruffleTCK {
      * @since 0.12
      */
     @AfterClass
-    public static final void disposePreviousVM() {
+    public static void disposePreviousVM() {
         replacePreviousVM(null);
     }
 

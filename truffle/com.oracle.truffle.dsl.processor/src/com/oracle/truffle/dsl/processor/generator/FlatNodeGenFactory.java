@@ -878,7 +878,10 @@ public class FlatNodeGenFactory {
                 List<SpecializationData> containsOnlySpecializations = new ArrayList<>();
                 containsOnlySpecializations.add(node.getUninitializedSpecialization());
                 containsOnlySpecializations.addAll(allSpecializations);
-                CodeTree containsOnly = state.createContainsOnly(frameState, 0, -1, specializations.toArray(), containsOnlySpecializations.toArray());
+                List<SpecializationData> maskSpecializations = new ArrayList<>();
+                maskSpecializations.add(node.getUninitializedSpecialization());
+                maskSpecializations.addAll(reachableSpecializations);
+                CodeTree containsOnly = state.createContainsOnly(frameState, 0, -1, specializations.toArray(), maskSpecializations.toArray());
                 builder.tree(containsOnly);
                 builder.end().startBlock();
                 builder.tree(wrapInAMethod(builder, split.group, originalFrameState, split.getName(),
