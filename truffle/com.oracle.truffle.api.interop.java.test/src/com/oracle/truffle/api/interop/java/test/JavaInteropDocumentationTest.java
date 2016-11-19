@@ -37,7 +37,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 
 @RunWith(SeparateClassloaderTestRunner.class)
-public class JavaInteropSnippetsTest {
+public class JavaInteropDocumentationTest {
     private static boolean loadedOK;
 
     private static final Class<?> INTEROP_SNIPPETS;
