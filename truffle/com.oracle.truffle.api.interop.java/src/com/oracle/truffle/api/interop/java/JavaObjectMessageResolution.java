@@ -192,7 +192,7 @@ class JavaObjectMessageResolution {
                 if (obj instanceof Map) {
                     @SuppressWarnings("unchecked")
                     Map<Object, Object> map = (Map<Object, Object>) obj;
-                    Object convertedValue = toJava.execute(frame, value, TypeAndClass.forReturnType(null));
+                    Object convertedValue = toJava.execute(frame, value, TypeAndClass.ANY);
                     return map.put(name, convertedValue);
                 }
                 if (TruffleOptions.AOT) {

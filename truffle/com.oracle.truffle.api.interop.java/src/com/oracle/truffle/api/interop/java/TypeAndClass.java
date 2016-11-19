@@ -29,7 +29,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 final class TypeAndClass<T> {
-    private static final TypeAndClass<Object> ANY = new TypeAndClass<>(Object.class, Object.class);
+    static final TypeAndClass<Object> ANY = new TypeAndClass<>(Object.class, Object.class);
 
     final Type type;
     final Class<T> clazz;
