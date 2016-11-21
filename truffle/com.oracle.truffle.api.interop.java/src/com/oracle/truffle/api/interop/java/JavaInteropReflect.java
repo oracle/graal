@@ -113,13 +113,21 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static Field findField(JavaObject receiver, String name) throws NoSuchFieldException {
-        return receiver.clazz.getField(name);
+    static Field findField(JavaObject receiver, String name) {
+        try {
+            return receiver.clazz.getField(name);
+        } catch (NoSuchFieldException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
-    static void setField(Object obj, Field f, Object convertedValue) throws IllegalAccessException {
-        f.set(obj, convertedValue);
+    static void setField(Object obj, Field f, Object convertedValue) {
+        try {
+            f.set(obj, convertedValue);
+        } catch (IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
