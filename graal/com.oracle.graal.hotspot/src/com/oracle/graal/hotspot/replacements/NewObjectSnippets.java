@@ -94,6 +94,7 @@ import com.oracle.graal.nodes.debug.DynamicCounterNode;
 import com.oracle.graal.nodes.debug.VerifyHeapNode;
 import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.extended.MembarNode;
 import com.oracle.graal.nodes.java.DynamicNewArrayNode;
 import com.oracle.graal.nodes.java.DynamicNewInstanceNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
@@ -113,6 +114,7 @@ import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -447,6 +449,7 @@ public class NewObjectSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, useSnippetCounters);
         }
+        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, INIT_LOCATION);
         return memory.toObject();
     }
 
@@ -478,6 +481,7 @@ public class NewObjectSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(allocationSize, memory, false, headerSize, maybeUnroll, useSnippetCounters);
         }
+        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, INIT_LOCATION);
         return memory.toObject();
     }
 
