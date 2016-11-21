@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import java.lang.reflect.Method;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -201,7 +203,10 @@ public final class JavaInterop {
         if (obj == null) {
             return JavaObject.NULL;
         }
-        return new JavaObject(obj, obj.getClass());
+        if (TruffleOptions.AOT) {
+            throw new IllegalArgumentException();
+        }
+        return JavaInteropReflect.asTruffleViaReflection(obj);
     }
 
     /**
@@ -359,7 +364,7 @@ public final class JavaInterop {
             return null;
         }
         try {
-            return ToJavaNode.message(Message.UNBOX, foreignObject);
+            return ToJavaNode.message(null, Message.UNBOX, foreignObject);
         } catch (InteropException iex) {
             return null;
         }
@@ -367,7 +372,7 @@ public final class JavaInterop {
 
     private static boolean boolMessage(Message message, TruffleObject foreignObject) {
         try {
-            Object isTrue = ToJavaNode.message(message, foreignObject);
+            Object isTrue = ToJavaNode.message(null, message, foreignObject);
             return Boolean.TRUE.equals(isTrue);
         } catch (InteropException iex) {
             return false;
@@ -416,7 +421,19 @@ public final class JavaInterop {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return node.execute(frame, value, type);
+            return node.execute(frame, value, new TypeAndClass<>(null, type));
         }
     }
+
+    @CompilerDirectives.TruffleBoundary
+    static boolean isJavaFunctionInterface(Class<?> type) {
+        if (!type.isInterface() || type == TruffleObject.class) {
+            return false;
+        }
+        if (type.getAnnotation(FunctionalInterface.class) != null) {
+            return true;
+        }
+        return type.getMethods().length == 1;
+    }
+
 }

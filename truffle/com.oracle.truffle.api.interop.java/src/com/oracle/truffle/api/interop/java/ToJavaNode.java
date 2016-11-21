@@ -24,10 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
@@ -50,41 +46,43 @@ import java.util.Map;
 abstract class ToJavaNode extends Node {
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
 
-    public abstract Object execute(VirtualFrame frame, Object value, Class<?> type);
+    public abstract Object execute(VirtualFrame frame, Object value, TypeAndClass<?> type);
 
     @Specialization(guards = "operand == null")
     @SuppressWarnings("unused")
-    protected Object doNull(Object operand, Class<?> type) {
+    protected Object doNull(Object operand, TypeAndClass<?> type) {
         return null;
     }
 
     @Specialization(guards = {"operand != null", "operand.getClass() == cachedOperandType", "targetType == cachedTargetType"})
-    protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") Class<?> targetType,
+    protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") TypeAndClass<?> targetType,
                     @Cached("operand.getClass()") Class<?> cachedOperandType,
-                    @Cached("targetType") Class<?> cachedTargetType) {
+                    @Cached("targetType") TypeAndClass<?> cachedTargetType) {
         return convertImpl(frame, cachedOperandType.cast(operand), cachedTargetType, cachedOperandType);
     }
 
-    private Object convertImpl(VirtualFrame frame, Object value, Class<?> targetType, Class<?> cachedOperandType) {
+    private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass<?> targetType, Class<?> cachedOperandType) {
         Object convertedValue;
         if (isPrimitiveType(cachedOperandType)) {
-            convertedValue = toPrimitive(value, targetType);
+            convertedValue = toPrimitive(value, targetType.clazz);
             assert convertedValue != null;
-        } else if (value instanceof JavaObject && targetType.isInstance(((JavaObject) value).obj)) {
+        } else if (value instanceof JavaObject && targetType.clazz.isInstance(((JavaObject) value).obj)) {
             convertedValue = ((JavaObject) value).obj;
-        } else if (!TruffleOptions.AOT && value instanceof TruffleObject && isJavaFunctionInterface(targetType) && isExecutable(frame, (TruffleObject) value)) {
-            convertedValue = JavaInteropReflect.asJavaFunction(targetType, (TruffleObject) value);
+        } else if (!TruffleOptions.AOT && value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType.clazz) && isExecutable(frame, (TruffleObject) value)) {
+            convertedValue = JavaInteropReflect.asJavaFunction(targetType.clazz, (TruffleObject) value);
+        } else if (value == JavaObject.NULL) {
+            return null;
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject(targetType, null, (TruffleObject) value);
+            convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value);
         } else {
-            assert targetType.isAssignableFrom(value.getClass());
+            assert targetType.clazz.isAssignableFrom(value.getClass());
             convertedValue = value;
         }
         return convertedValue;
     }
 
     @Specialization(guards = "operand != null", contains = "doCached")
-    protected Object doGeneric(VirtualFrame frame, Object operand, Class<?> type) {
+    protected Object doGeneric(VirtualFrame frame, Object operand, TypeAndClass<?> type) {
         // TODO this specialization should be a TruffleBoundary because it produces too much code.
         // It can't be because a frame is passed in. We need extract all uses of frame out of
         // convertImpl.
@@ -108,25 +106,7 @@ abstract class ToJavaNode extends Node {
     }
 
     @TruffleBoundary
-    private static boolean isJavaFunctionInterface(Class<?> type) {
-        if (!type.isInterface()) {
-            return false;
-        }
-        for (Annotation annotation : type.getAnnotations()) {
-            // TODO: don't compare strings here
-            // fix once Truffle uses JDK8
-            if (annotation.toString().equals("@java.lang.FunctionalInterface()")) {
-                return true;
-            }
-        }
-        if (type.getMethods().length == 1) {
-            return true;
-        }
-        return false;
-    }
-
-    @TruffleBoundary
-    private static <T> T asJavaObject(Class<T> clazz, Type type, TruffleObject foreignObject) {
+    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject) {
         Object obj;
         if (clazz.isInstance(foreignObject)) {
             obj = foreignObject;
@@ -138,57 +118,57 @@ abstract class ToJavaNode extends Node {
                 return null;
             }
             if (clazz == List.class && Boolean.TRUE.equals(binaryMessage(Message.HAS_SIZE, foreignObject))) {
-                Class<?> elementType = Object.class;
-                if (type instanceof ParameterizedType) {
-                    ParameterizedType parametrizedType = (ParameterizedType) type;
-                    final Type[] arr = parametrizedType.getActualTypeArguments();
-                    if (arr.length == 1 && arr[0] instanceof Class) {
-                        elementType = (Class<?>) arr[0];
-                    }
-                }
+                TypeAndClass<?> elementType = type.getParameterType(0);
                 obj = TruffleList.create(elementType, foreignObject);
             } else if (clazz == Map.class) {
-                Class<?> keyType = Object.class;
-                Class<?> valueType = Object.class;
-                if (type instanceof ParameterizedType) {
-                    ParameterizedType parametrizedType = (ParameterizedType) type;
-                    final Type[] arr = parametrizedType.getActualTypeArguments();
-                    if (arr.length == 2 && arr[0] instanceof Class) {
-                        keyType = (Class<?>) arr[0];
-                    }
-                    if (arr.length == 2 && arr[1] instanceof Class) {
-                        valueType = (Class<?>) arr[1];
-                    }
-                }
+                TypeAndClass<?> keyType = type.getParameterType(0);
+                TypeAndClass<?> valueType = type.getParameterType(1);
                 obj = TruffleMap.create(keyType, valueType, foreignObject);
             } else {
-                obj = JavaInteropReflect.newProxyInstance(clazz, foreignObject);
+                if (!TruffleOptions.AOT) {
+                    obj = JavaInteropReflect.newProxyInstance(clazz, foreignObject);
+                } else {
+                    obj = foreignObject;
+                }
             }
         }
         return clazz.cast(obj);
     }
 
-    static class TemporaryRoot extends RootNode {
+    static final class TemporaryRoot extends RootNode {
+
         @Node.Child private Node foreignAccess;
+        @Node.Child private ToJavaNode toJava;
         private final TruffleObject function;
+        private final TypeAndClass<?> type;
 
         @SuppressWarnings("rawtypes")
-        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function) {
+        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, TypeAndClass<?> type) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.function = function;
+            this.type = type;
+            if (type == null) {
+                this.toJava = null;
+            } else {
+                this.toJava = ToJavaNodeGen.create();
+            }
         }
 
         @SuppressWarnings("deprecation")
         @Override
         public Object execute(VirtualFrame frame) {
-            return ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
+            Object raw = ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
+            if (toJava == null) {
+                return raw;
+            }
+            return toJava.execute(frame, raw, type);
         }
     }
 
-    static Object toJava(Object ret, Method method) {
+    static Object toJava(Object ret, TypeAndClass<?> type) {
         CompilerAsserts.neverPartOfCompilation();
-        Class<?> retType = method.getReturnType();
+        Class<?> retType = type.clazz;
         Object primitiveRet = toPrimitive(ret, retType);
         if (primitiveRet != null) {
             return primitiveRet;
@@ -204,7 +184,7 @@ abstract class ToJavaNode extends Node {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                return asJavaObject(retType, method.getGenericReturnType(), truffleObject);
+                return asJavaObject(retType, type, truffleObject);
             }
         }
         return ret;
@@ -222,7 +202,7 @@ abstract class ToJavaNode extends Node {
                 return null;
             }
             try {
-                attr = message(Message.UNBOX, value);
+                attr = message(null, Message.UNBOX, value);
             } catch (InteropException e) {
                 throw new IllegalStateException();
             }
@@ -274,17 +254,17 @@ abstract class ToJavaNode extends Node {
         return null;
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings("all")
     @TruffleBoundary
-    static Object message(final Message m, Object receiver, Object... arr) throws InteropException {
+    static Object message(TypeAndClass<?> convertTo, final Message m, Object receiver, Object... arr) throws InteropException {
         Node n = m.createNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver));
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver, convertTo));
         return callTarget.call(arr);
     }
 
     private static Object binaryMessage(final Message m, Object receiver, Object... arr) {
         try {
-            return message(m, receiver, arr);
+            return message(null, m, receiver, arr);
         } catch (InteropException e) {
             throw new AssertionError(e);
         }

@@ -113,13 +113,21 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static Field findField(JavaObject receiver, String name) throws NoSuchFieldException {
-        return receiver.clazz.getField(name);
+    static Field findField(JavaObject receiver, String name) {
+        try {
+            return receiver.clazz.getField(name);
+        } catch (NoSuchFieldException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
-    static void setField(Object obj, Field f, Object convertedValue) throws IllegalAccessException {
-        f.set(obj, convertedValue);
+    static void setField(Object obj, Field f, Object convertedValue) {
+        try {
+            f.set(obj, convertedValue);
+        } catch (IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -187,13 +195,12 @@ final class JavaInteropReflect {
             return toJava(ret, method);
         }
 
-        @SuppressWarnings("unused")
         private Object call(Object[] arguments, Method method) {
             CompilerAsserts.neverPartOfCompilation();
             Object[] args = arguments == null ? EMPTY : arguments;
             if (target == null) {
                 Node executeMain = Message.createExecute(args.length).createNode();
-                RootNode symbolNode = new ToJavaNode.TemporaryRoot(TruffleLanguage.class, executeMain, symbol);
+                RootNode symbolNode = new ToJavaNode.TemporaryRoot(TruffleLanguage.class, executeMain, symbol, TypeAndClass.forReturnType(method));
                 target = Truffle.getRuntime().createCallTarget(symbolNode);
             }
             for (int i = 0; i < args.length; i++) {
@@ -210,7 +217,8 @@ final class JavaInteropReflect {
     }
 
     private static final class TruffleHandler implements InvocationHandler {
-        private final TruffleObject obj;
+
+        final TruffleObject obj;
 
         TruffleHandler(TruffleObject obj) {
             this.obj = obj;
@@ -219,18 +227,11 @@ final class JavaInteropReflect {
         @Override
         public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
             CompilerAsserts.neverPartOfCompilation();
+            TypeAndClass<?> convertTo = TypeAndClass.forReturnType(method);
             Object[] args = arguments == null ? EMPTY : arguments;
             Object val;
             for (int i = 0; i < args.length; i++) {
-                if (args[i] == null) {
-                    continue;
-                }
-                if (Proxy.isProxyClass(args[i].getClass())) {
-                    InvocationHandler h = Proxy.getInvocationHandler(args[i]);
-                    if (h instanceof TruffleHandler) {
-                        args[i] = ((TruffleHandler) h).obj;
-                    }
-                }
+                args[i] = JavaInterop.asTruffleValue(args[i]);
             }
 
             if (Object.class == method.getDeclaringClass()) {
@@ -243,20 +244,20 @@ final class JavaInteropReflect {
                 if (args.length != 1) {
                     throw new IllegalStateException("Method needs to have a single argument to handle WRITE message " + method);
                 }
-                message(Message.WRITE, obj, name, args[0]);
+                message(null, Message.WRITE, obj, name, args[0]);
                 return null;
             }
             if (message == Message.HAS_SIZE || message == Message.IS_BOXED || message == Message.IS_EXECUTABLE || message == Message.IS_NULL || message == Message.GET_SIZE) {
-                return message(message, obj);
+                return message(null, message, obj);
             }
 
             if (message == Message.READ) {
-                val = message(Message.READ, obj, name);
+                val = message(convertTo, Message.READ, obj, name);
                 return toJava(val, method);
             }
 
             if (message == Message.UNBOX) {
-                val = message(Message.UNBOX, obj);
+                val = message(null, Message.UNBOX, obj);
                 return toJava(val, method);
             }
 
@@ -264,7 +265,7 @@ final class JavaInteropReflect {
                 List<Object> copy = new ArrayList<>(args.length);
                 copy.addAll(Arrays.asList(args));
                 message = Message.createExecute(copy.size());
-                val = message(message, obj, copy.toArray());
+                val = message(convertTo, message, obj, copy.toArray());
                 return toJava(val, method);
             }
 
@@ -273,13 +274,13 @@ final class JavaInteropReflect {
                 copy.add(name);
                 copy.addAll(Arrays.asList(args));
                 message = Message.createInvoke(args.length);
-                val = message(message, obj, copy.toArray());
+                val = message(convertTo, message, obj, copy.toArray());
                 return toJava(val, method);
             }
 
             if (Message.createNew(0).equals(message)) {
                 message = Message.createNew(args.length);
-                val = message(message, obj, args);
+                val = message(convertTo, message, obj, args);
                 return toJava(val, method);
             }
 
@@ -289,15 +290,15 @@ final class JavaInteropReflect {
                     List<Object> callArgs = new ArrayList<>(args.length);
                     callArgs.add(name);
                     callArgs.addAll(Arrays.asList(args));
-                    ret = message(Message.createInvoke(args.length), obj, callArgs.toArray());
+                    ret = message(convertTo, Message.createInvoke(args.length), obj, callArgs.toArray());
                 } catch (InteropException ex) {
-                    val = message(Message.READ, obj, name);
+                    val = message(null, Message.READ, obj, name);
                     Object primitiveVal = toPrimitive(val, method.getReturnType());
                     if (primitiveVal != null) {
                         return primitiveVal;
                     }
                     TruffleObject attr = (TruffleObject) val;
-                    if (Boolean.FALSE.equals(message(Message.IS_EXECUTABLE, attr))) {
+                    if (Boolean.FALSE.equals(message(null, Message.IS_EXECUTABLE, attr))) {
                         if (args.length == 0) {
                             return toJava(attr, method);
                         }
@@ -305,7 +306,7 @@ final class JavaInteropReflect {
                     }
                     List<Object> callArgs = new ArrayList<>(args.length);
                     callArgs.addAll(Arrays.asList(args));
-                    ret = message(Message.createExecute(callArgs.size()), attr, callArgs.toArray());
+                    ret = message(convertTo, Message.createExecute(callArgs.size()), attr, callArgs.toArray());
                 }
                 return toJava(ret, method);
             }
@@ -323,6 +324,6 @@ final class JavaInteropReflect {
     }
 
     private static Object toJava(Object ret, Method method) {
-        return ToJavaNode.toJava(ret, method);
+        return ToJavaNode.toJava(ret, TypeAndClass.forReturnType(method));
     }
 }

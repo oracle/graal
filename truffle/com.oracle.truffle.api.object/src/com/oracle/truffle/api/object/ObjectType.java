@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
 /**
  * An extensible object type descriptor for {@link DynamicObject}s.
@@ -91,8 +92,9 @@ public class ObjectType {
                 throw new IllegalArgumentException(this.toString() + " cannot be shared");
             }
 
+            @Override
             public CallTarget accessMessage(Message tree) {
-                throw new IllegalArgumentException(this.toString() + " cannot be shared; Message not possible: " + tree.toString());
+                throw UnsupportedMessageException.raise(tree);
             }
         });
     }

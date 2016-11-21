@@ -56,6 +56,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import static org.junit.Assert.assertSame;
 
 public class SLJavaInteropTest {
 
@@ -157,6 +161,209 @@ public class SLJavaInteropTest {
         assertEquals("Called with OK and FineWell\n", os.toString("UTF-8"));
     }
 
+    @Test
+    public void sumPairs() {
+        String scriptText = "function values(sum, k, v) {\n" + //
+                        "  obj = new();\n" + //
+                        "  obj.key = k;\n" + //
+                        "  obj.value = v;\n" + //
+                        "  return sum.sum(obj);\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+
+        Sum javaSum = new Sum();
+        Object sum = javaSum;
+        Object ret1 = fn.execute(sum, "one", 1).get();
+        Object ret2 = fn.execute(sum, "two", 2).as(Object.class);
+        Sum ret3 = fn.execute(sum, "three", 3).as(Sum.class);
+
+        assertEquals(6, javaSum.sum);
+        assertSame(ret1, ret2);
+        assertSame(ret3, ret2);
+        assertSame(sum, ret2);
+    }
+
+    @Test
+    public void sumPairsFunctionalInterface() {
+        String scriptText = "function values(sum, k, v) {\n" + //
+                        "  obj = new();\n" + //
+                        "  obj.key = k;\n" + //
+                        "  obj.value = v;\n" + //
+                        "  return sum.sum(obj);\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        Values fn = engine.findGlobalSymbol("values").as(Values.class);
+
+        Sum sum = new Sum();
+        Object ret1 = fn.values(sum, "one", 1);
+        Object ret2 = fn.values(sum, "two", 2);
+        Object ret3 = fn.values(sum, "three", 3);
+
+        assertEquals(6, sum.sum);
+        assertSame(ret1, ret2);
+        assertSame(ret3, ret2);
+        assertSame(sum, ret2);
+    }
+
+    @Test
+    public void sumPairsIndirect() {
+        String scriptText = "function values(sum, k, v) {\n" + //
+                        "  obj = new();\n" + //
+                        "  obj.key = k;\n" + //
+                        "  obj.value = v;\n" + //
+                        "  return sum.sum(obj);\n" + //
+                        "}\n" + //
+                        "function create() {\n" + //
+                        "  obj = new();\n" + //
+                        "  obj.doSum1 = values;\n" + //
+                        "  obj.doSum2 = values;\n" + //
+                        "  return obj;\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        DoSums fn = engine.findGlobalSymbol("create").execute().as(DoSums.class);
+
+        Sum sum = new Sum();
+        Object ret1 = fn.doSum1(sum, "one", 1);
+        Sum ret2 = fn.doSum2(sum, "two", 2);
+        Object ret3 = fn.doSum1(sum, "three", 3);
+
+        assertEquals(6, sum.sum);
+        assertSame(ret1, ret2);
+        assertSame(ret3, ret2);
+        assertSame(sum, ret2);
+    }
+
+    @Test
+    public void sumPairsInArray() {
+        String scriptText = "function values(sum, arr) {\n" + //
+                        "  sum.sumArray(arr);\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+
+        Sum javaSum = new Sum();
+
+        PairImpl[] arr = {
+                        new PairImpl("one", 1),
+                        new PairImpl("two", 2),
+                        new PairImpl("three", 3),
+        };
+        fn.execute(javaSum, arr);
+        assertEquals(6, javaSum.sum);
+    }
+
+    @Test
+    public void sumPairsInArrayOfArray() {
+        String scriptText = "function values(sum, arr) {\n" + //
+                        "  sum.sumArrayArray(arr);\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+
+        Sum javaSum = new Sum();
+
+        PairImpl[][] arr = {
+                        new PairImpl[]{
+                                        new PairImpl("one", 1),
+                        },
+                        new PairImpl[]{
+                                        new PairImpl("two", 2),
+                                        new PairImpl("three", 3),
+                        }
+        };
+        fn.execute(javaSum, arr);
+        assertEquals(6, javaSum.sum);
+    }
+
+    @Test
+    public void sumMapInArrayOfArray() {
+        String scriptText = "function values(sum, arr) {\n" + //
+                        "  sum.sumArrayMap(arr);\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+
+        Sum javaSum = new Sum();
+
+        PairImpl[][] arr = {
+                        new PairImpl[]{
+                                        new PairImpl("one", 1),
+                        },
+                        new PairImpl[]{
+                                        new PairImpl("two", 2),
+                                        new PairImpl("three", 3),
+                        }
+        };
+        fn.execute(javaSum, arr);
+        assertEquals(6, javaSum.sum);
+    }
+
+    @Test
+    public void sumPairInMapOfArray() {
+        String scriptText = "function values(sum, arr) {\n" + //
+                        "  sum.sumMapArray(arr);\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        PolyglotEngine.Value fn = engine.findGlobalSymbol("values");
+
+        Sum javaSum = new Sum();
+
+        TwoPairsImpl groups = new TwoPairsImpl(
+                        new PairImpl[]{
+                                        new PairImpl("one", 1),
+                        },
+                        new PairImpl[]{
+                                        new PairImpl("two", 2),
+                                        new PairImpl("three", 3),
+                        });
+        fn.execute(javaSum, groups);
+        assertEquals(6, javaSum.sum);
+    }
+
+    @Test
+    public void accessJavaMap() {
+        String scriptText = "function write(map, key, value) {\n" + //
+                        "  map[key] = value;\n" + //
+                        "}\n" + //
+                        "function read(map, key) {\n" + //
+                        "  return map[key];\n" + //
+                        "}\n"; //
+        Source script = Source.newBuilder(scriptText).name("Test").mimeType("application/x-sl").build();
+        engine.eval(script);
+        PolyglotEngine.Value read = engine.findGlobalSymbol("read");
+        PolyglotEngine.Value write = engine.findGlobalSymbol("write");
+
+        Map<Object, Object> map = new HashMap<>();
+        map.put("a", 42);
+
+        Object b = read.execute(map, "a").get();
+        assertEquals(42L, b);
+
+        write.execute(map, "a", 33);
+
+        Object c = read.execute(map, "a").get();
+        assertEquals(33L, c);
+    }
+
+    @FunctionalInterface
+    interface Values {
+        Object values(Sum sum, String key, int value);
+    }
+
+    interface DoSums {
+        Object doSum1(Sum sum, String key, int value);
+
+        Sum doSum2(Sum sum, String key, Integer value);
+    }
+
     interface PassInArray {
         void call(Object[] arr);
     }
@@ -167,5 +374,80 @@ public class SLJavaInteropTest {
 
     interface PassInArgAndVarArg {
         void call(Object first, Object... arr);
+    }
+
+    public interface Pair {
+        String key();
+
+        int value();
+    }
+
+    public static final class PairImpl {
+        public final String key;
+        public final int value;
+
+        PairImpl(String key, int value) {
+            this.key = key;
+            this.value = value;
+        }
+    }
+
+    public static final class TwoPairsImpl {
+        public final PairImpl[] one;
+        public final PairImpl[] two;
+
+        TwoPairsImpl(PairImpl[] one, PairImpl[] two) {
+            this.one = one;
+            this.two = two;
+        }
+    }
+
+    public static class Sum {
+        int sum;
+
+        public Sum sum(Pair p) {
+            sum += p.value();
+            return this;
+        }
+
+        public void sumArray(List<Pair> pairs) {
+            Object[] arr = pairs.toArray();
+            assertNotNull("Array created", arr);
+            for (Pair p : pairs) {
+                sum(p);
+            }
+        }
+
+        public void sumArrayArray(List<List<Pair>> pairs) {
+            Object[] arr = pairs.toArray();
+            assertNotNull("Array created", arr);
+            assertEquals("Two lists", 2, arr.length);
+            for (List<Pair> list : pairs) {
+                sumArray(list);
+            }
+        }
+
+        public void sumArrayMap(List<List<Map<String, Integer>>> pairs) {
+            Object[] arr = pairs.toArray();
+            assertNotNull("Array created", arr);
+            assertEquals("Two lists", 2, arr.length);
+            for (List<Map<String, Integer>> list : pairs) {
+                for (Map<String, Integer> map : list) {
+                    Integer value = map.get("value");
+                    sum += value;
+                }
+            }
+        }
+
+        public void sumMapArray(Map<String, List<Pair>> pairs) {
+            assertEquals("Two elements", 2, pairs.size());
+            Object one = pairs.get("one");
+            assertNotNull(one);
+            Object two = pairs.get("two");
+            assertNotNull(two);
+
+            sumArray(pairs.get("two"));
+            sumArray(pairs.get("one"));
+        }
     }
 }

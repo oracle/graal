@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -134,10 +133,6 @@ public class SLObjectMessageResolution {
 
         @CompilerDirectives.TruffleBoundary
         private static Object obtainKeys(DynamicObject receiver) {
-            if (TruffleOptions.AOT) {
-                /* Temporary fix until method is implemented without using Java interop. */
-                throw new IllegalArgumentException();
-            }
             Object[] keys = receiver.getShape().getKeyList().toArray();
             return JavaInterop.asTruffleObject(keys);
         }

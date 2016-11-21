@@ -249,6 +249,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.interop.java",
         "com.oracle.truffle.api.vm",
+        "com.oracle.truffle.object.basic",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.api",
