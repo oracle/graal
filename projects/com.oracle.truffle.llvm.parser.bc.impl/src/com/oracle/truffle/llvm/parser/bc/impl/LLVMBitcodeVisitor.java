@@ -421,7 +421,9 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
     private final NativeLookup nativeLookup = new NativeLookup(null);
 
     private LLVMExpressionNode allocateGlobal(GlobalValueSymbol global) {
-        Object globalVariable = factoryFacade.allocateGlobalVariable(global);
+        final Object globalVariable = factoryFacade.allocateGlobalVariable(global);
+        assert !globalVariableScope.containsKey(global.getName());
+        globalVariableScope.put(global.getName(), globalVariable);
         return factoryFacade.createLiteral(globalVariable, LLVMBaseType.ADDRESS);
     }
 
