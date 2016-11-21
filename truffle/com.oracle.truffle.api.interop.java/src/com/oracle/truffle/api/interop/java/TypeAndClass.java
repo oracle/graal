@@ -24,14 +24,16 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import com.oracle.truffle.api.TruffleOptions;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Objects;
 
 final class TypeAndClass<T> {
-    static final TypeAndClass<Object> ANY = new TypeAndClass<>(Object.class, Object.class);
+    static final TypeAndClass<Object> ANY = new TypeAndClass<>(null, Object.class);
 
-    final Type type;
+    private final Object type;
     final Class<T> clazz;
 
     TypeAndClass(Type type, Class<T> clazz) {
@@ -44,7 +46,7 @@ final class TypeAndClass<T> {
     }
 
     TypeAndClass<?> getParameterType(int i) {
-        if (type instanceof ParameterizedType) {
+        if (!TruffleOptions.AOT && type instanceof ParameterizedType) {
             ParameterizedType parametrizedType = (ParameterizedType) type;
             final Type[] arr = parametrizedType.getActualTypeArguments();
             Class<?> elementClass = Object.class;
@@ -59,12 +61,12 @@ final class TypeAndClass<T> {
             }
             return new TypeAndClass<>(arr[i], elementClass);
         }
-        return new TypeAndClass<>(Object.class, Object.class);
+        return ANY;
     }
 
     @Override
     public String toString() {
-        return "[" + clazz + ": " + type.getTypeName() + "]";
+        return "[" + clazz + ": " + Objects.toString(type) + "]";
     }
 
     static TypeAndClass<?> forReturnType(Method method) {
