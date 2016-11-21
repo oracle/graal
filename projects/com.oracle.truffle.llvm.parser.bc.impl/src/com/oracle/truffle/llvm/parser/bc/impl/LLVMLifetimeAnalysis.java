@@ -83,7 +83,7 @@ public final class LLVMLifetimeAnalysis {
 
     private final Map<InstructionBlock, FrameSlot[]> nullableAfter;
 
-    private LLVMLifetimeAnalysis(Map<InstructionBlock, FrameSlot[]> nullableBefore, Map<InstructionBlock, FrameSlot[]> nullableAfter) {
+    public LLVMLifetimeAnalysis(Map<InstructionBlock, FrameSlot[]> nullableBefore, Map<InstructionBlock, FrameSlot[]> nullableAfter) {
         this.nullableBefore = nullableBefore;
         this.nullableAfter = nullableAfter;
     }

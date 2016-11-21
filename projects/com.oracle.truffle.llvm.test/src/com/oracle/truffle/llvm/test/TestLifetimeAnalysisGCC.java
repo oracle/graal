@@ -35,7 +35,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -46,22 +45,10 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
-import org.eclipse.emf.common.notify.Adapter;
-import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.util.EList;
-import org.eclipse.emf.common.util.TreeIterator;
-import org.eclipse.emf.ecore.EClass;
-import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.EOperation;
-import org.eclipse.emf.ecore.EReference;
-import org.eclipse.emf.ecore.EStructuralFeature;
-import org.eclipse.emf.ecore.resource.Resource;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.intel.llvm.ireditor.lLVM_IR.BasicBlock;
-import com.intel.llvm.ireditor.lLVM_IR.Instruction;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.source.Source;
@@ -70,7 +57,6 @@ import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMLifetimeAnalysis;
-import com.oracle.truffle.llvm.parser.impl.lifetime.LLVMLifeTimeAnalysisResult;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.test.util.LifetimeFileFormat;
@@ -89,7 +75,7 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
     private File referenceOutputFile;
     private final LifetimeFileFormat.Writer fileWriter;
     private BufferedReader referenceFileReader;
-    private Map<String, LLVMLifeTimeAnalysisResult> referenceResults;
+    private Map<String, LLVMLifetimeAnalysis> referenceResults;
 
     public TestLifetimeAnalysisGCC(TestCaseFiles tuple) throws IOException {
         this.tuple = tuple;
@@ -175,7 +161,7 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
                         writeInstructionBlockVariables(lifetimes.getNullableAfter());
 
                     } else {
-                        LLVMLifeTimeAnalysisResult expected = referenceResults.get(functionName);
+                        LLVMLifetimeAnalysis expected = referenceResults.get(functionName);
                         assertResultsEqual(functionName, expected, lifetimes);
                     }
 
@@ -199,28 +185,18 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         }
     }
 
-    private void assertResultsEqual(String functionName, LLVMLifeTimeAnalysisResult expected, LLVMLifetimeAnalysis actual) {
+    private void assertResultsEqual(String functionName, LLVMLifetimeAnalysis expected, LLVMLifetimeAnalysis actual) {
         if (expected == null) {
             LLVMLogger.unconditionalInfo(String.format("No reference result for test %s", tuple.getBitCodeFile().getAbsolutePath()));
             return;
         }
-        final Map<String, Set<String>> expectedBeginDead = getCommonFromBasicBlocks(expected.getBeginDead());
+        final Map<String, Set<String>> expectedBeginDead = getCommonFromInstructionBlocks(expected.getNullableBefore());
         final Map<String, Set<String>> actualBeginDead = getCommonFromInstructionBlocks(actual.getNullableBefore());
         assertMapsEqual(functionName, expectedBeginDead, actualBeginDead);
 
-        final Map<String, Set<String>> expectedEndDead = getCommonFromBasicBlocks(expected.getEndDead());
+        final Map<String, Set<String>> expectedEndDead = getCommonFromInstructionBlocks(expected.getNullableAfter());
         final Map<String, Set<String>> actualEndDead = getCommonFromInstructionBlocks(actual.getNullableAfter());
         assertMapsEqual(functionName, expectedEndDead, actualEndDead);
-    }
-
-    private static Map<String, Set<String>> getCommonFromBasicBlocks(Map<BasicBlock, FrameSlot[]> original) {
-        final Map<String, Set<String>> commonMap = new HashMap<>(original.size());
-        for (Map.Entry<BasicBlock, FrameSlot[]> entry : original.entrySet()) {
-            final String name = getQuotedName(entry.getKey().getName());
-            final Set<String> slots = getQuotedNames(entry.getValue());
-            commonMap.put(name, slots);
-        }
-        return commonMap;
     }
 
     private static Map<String, Set<String>> getCommonFromInstructionBlocks(Map<InstructionBlock, FrameSlot[]> original) {
@@ -285,123 +261,19 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         return String.format("Error in Function %s in File %s: %s", functionName, tuple.getBitCodeFile().getAbsolutePath(), message);
     }
 
-    private static BasicBlock createBasicBlock(String name) {
-        return new BasicBlock() {
-
-            @Override
-            public void eSetDeliver(boolean arg0) {
-            }
-
-            @Override
-            public void eNotify(Notification arg0) {
-            }
-
-            @Override
-            public boolean eDeliver() {
-                return false;
-            }
-
-            @Override
-            public EList<Adapter> eAdapters() {
-                return null;
-            }
-
-            @Override
-            public void eUnset(EStructuralFeature arg0) {
-            }
-
-            @Override
-            public void eSet(EStructuralFeature arg0, Object arg1) {
-            }
-
-            @Override
-            public Resource eResource() {
-                return null;
-            }
-
-            @Override
-            public boolean eIsSet(EStructuralFeature arg0) {
-                return false;
-            }
-
-            @Override
-            public boolean eIsProxy() {
-                return false;
-            }
-
-            @Override
-            public Object eInvoke(EOperation arg0, EList<?> arg1) throws InvocationTargetException {
-                return null;
-            }
-
-            @Override
-            public Object eGet(EStructuralFeature arg0, boolean arg1) {
-                return null;
-            }
-
-            @Override
-            public Object eGet(EStructuralFeature arg0) {
-                return null;
-            }
-
-            @Override
-            public EList<EObject> eCrossReferences() {
-                return null;
-            }
-
-            @Override
-            public EList<EObject> eContents() {
-                return null;
-            }
-
-            @Override
-            public EReference eContainmentFeature() {
-                return null;
-            }
-
-            @Override
-            public EStructuralFeature eContainingFeature() {
-                return null;
-            }
-
-            @Override
-            public EObject eContainer() {
-                return null;
-            }
-
-            @Override
-            public EClass eClass() {
-                return null;
-            }
-
-            @Override
-            public TreeIterator<EObject> eAllContents() {
-                return null;
-            }
-
-            @Override
-            public void setName(String arg0) {
-            }
-
-            @Override
-            public String getName() {
-                return name;
-            }
-
-            @Override
-            public EList<Instruction> getInstructions() {
-                return null;
-            }
-        };
+    private static InstructionBlock createInstructionBlock(String name) {
+        InstructionBlock namedBlock = new InstructionBlock(null, 0);
+        namedBlock.setName(name);
+        return namedBlock;
     }
 
-    private Map<String, LLVMLifeTimeAnalysisResult> parseReferenceResults() throws IOException {
-        Map<String, LLVMLifeTimeAnalysisResult> results = new HashMap<>();
+    private Map<String, LLVMLifetimeAnalysis> parseReferenceResults() throws IOException {
+        Map<String, LLVMLifetimeAnalysis> results = new HashMap<>();
 
         LifetimeFileFormat.parse(referenceFileReader, new LifetimeFileParserEventListener() {
             private FrameDescriptor descr = new FrameDescriptor();
-            private Map<BasicBlock, FrameSlot[]> beginDead = new HashMap<>();
-            private Map<BasicBlock, FrameSlot[]> endDead = new HashMap<>();
+            private Map<InstructionBlock, FrameSlot[]> beginDead = new HashMap<>();
+            private Map<InstructionBlock, FrameSlot[]> endDead = new HashMap<>();
             Set<FrameSlot> slots = new HashSet<>();
 
             private boolean deadAtBeginning = true;
@@ -429,10 +301,11 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
 
             @Override
             public void finishEntry(String block) {
+                String entryName = block.substring(1); // Remove '%' at beginning of name
                 if (deadAtBeginning) {
-                    beginDead.put(createBasicBlock(block), slots.toArray(new FrameSlot[slots.size()]));
+                    beginDead.put(createInstructionBlock(entryName), slots.toArray(new FrameSlot[slots.size()]));
                 } else {
-                    endDead.put(createBasicBlock(block), slots.toArray(new FrameSlot[slots.size()]));
+                    endDead.put(createInstructionBlock(entryName), slots.toArray(new FrameSlot[slots.size()]));
                 }
                 slots.clear();
             }
@@ -451,19 +324,8 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         return results;
     }
 
-    private static LLVMLifeTimeAnalysisResult result(Map<BasicBlock, FrameSlot[]> beginDead, Map<BasicBlock, FrameSlot[]> endDead) {
-        return new LLVMLifeTimeAnalysisResult() {
-
-            @Override
-            public Map<BasicBlock, FrameSlot[]> getEndDead() {
-                return endDead;
-            }
-
-            @Override
-            public Map<BasicBlock, FrameSlot[]> getBeginDead() {
-                return beginDead;
-            }
-        };
+    private static LLVMLifetimeAnalysis result(Map<InstructionBlock, FrameSlot[]> beginDead, Map<InstructionBlock, FrameSlot[]> endDead) {
+        return new LLVMLifetimeAnalysis(beginDead, endDead);
     }
 
 }
