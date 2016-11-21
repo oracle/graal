@@ -174,7 +174,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     private static void addCFGFileName(Map<Object, Object> properties) {
         if (Options.PrintCFG.getValue() || Options.PrintBackendCFG.getValue()) {
-            properties.put("PrintCFGFileName", Options.PrintCFGFileName.getPath().toAbsolutePath().toString());
+            properties.put("PrintCFGFileName", CFGPrinterObserver.getCFGPath().toAbsolutePath().toString());
         }
     }
 
