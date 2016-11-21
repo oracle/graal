@@ -338,9 +338,29 @@ public class JavaInteropTest {
 
     @Test
     public void truffleObjectIsntFunctionalInterface() throws Exception {
+        final boolean is = isJavaFunctionalInterface(TruffleObject.class);
+        assertFalse("TruffleObject isn't functional interface", is);
+    }
+
+    private static boolean isJavaFunctionalInterface(final Class<?> clazz) throws Exception {
         Method isFunctionaInterface = JavaInterop.class.getDeclaredMethod("isJavaFunctionInterface", Class.class);
         isFunctionaInterface.setAccessible(true);
-        assertFalse("TruffleObject isn't functional interface", (boolean) isFunctionaInterface.invoke(null, TruffleObject.class));
+        return (boolean) isFunctionaInterface.invoke(null, clazz);
+    }
+
+    @Test
+    public void functionalInterfaceWithDefaultMethods() throws Exception {
+        final boolean is = isJavaFunctionalInterface(FunctionalWithDefaults.class);
+        assertTrue("yes, it is", is);
+    }
+
+    @FunctionalInterface
+    interface FunctionalWithDefaults {
+        Object call(Object... args);
+
+        default int call(int a, int b) {
+            return (int) call(new Object[]{a, b});
+        }
     }
 
     @Test
