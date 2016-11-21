@@ -183,12 +183,6 @@ public class LLVMGlobalVariableDescriptor {
         return "LLVMGlobalVariableDescriptor [name=" + name + ", state=" + state + ", nativeStorage=" + nativeStorage + ", managedStorage=" + managedStorage + "]";
     }
 
-    public interface NativeResolver {
-
-        LLVMAddress resolve();
-
-    }
-
     public boolean isDeclared() {
         return state == State.DECLARED;
     }

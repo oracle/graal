@@ -27,26 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.context;
+package com.oracle.truffle.llvm.types;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
-import com.oracle.truffle.llvm.types.NativeResolver;
-
-public class LLVMGlobalVariableRegistry {
-
-    private final Map<String, LLVMGlobalVariableDescriptor> descriptors = new HashMap<>();
-
-    public synchronized LLVMGlobalVariableDescriptor lookupOrAdd(String name, NativeResolver nativeResolver) {
-        LLVMGlobalVariableDescriptor descriptor = descriptors.get(name);
-
-        if (descriptor == null) {
-            descriptor = new LLVMGlobalVariableDescriptor(name, nativeResolver);
-            descriptors.put(name, descriptor);
-        }
-
-        return descriptor;
-    }
+public interface NativeResolver {
+    LLVMAddress resolve();
 }
