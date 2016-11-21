@@ -106,6 +106,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "LOOP", "STATEMENT", "CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE"};
 
+    // used to test that no getSourceSection calls happen in certain situations
+    private static int rootSourceSectionQueryCount;
+
     @Override
     protected Map<String, CallTarget> createContext(TruffleLanguage.Env env) {
         return new HashMap<>();
@@ -429,6 +432,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         }
 
         @Override
+        public SourceSection getSourceSection() {
+            rootSourceSectionQueryCount++;
+            return super.getSourceSection();
+        }
+
+        @Override
         protected boolean isInstrumentable() {
             return true;
         }
@@ -453,7 +462,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
 
         @Override
         public String toString() {
-            return "Root[" + getSourceSection().toString().replaceAll("\n", "\\\\n") + "]";
+            return "Root[" + name + "]";
         }
     }
 
@@ -705,6 +714,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return false;
+    }
+
+    public static int getRootSourceSectionQueryCount() {
+        return rootSourceSectionQueryCount;
     }
 
 }
