@@ -94,7 +94,7 @@ public class RecursiveInliningTest extends GraalCompilerTest {
         }
     }
 
-    public static final boolean LOG = true;
+    public static final boolean LOG = false;
 
     public static int IterationsStart = 1;
     public static int IterationsEnd = 128;
