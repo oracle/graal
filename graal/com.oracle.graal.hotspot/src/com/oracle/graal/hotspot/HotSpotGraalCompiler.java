@@ -34,6 +34,7 @@ import java.util.Formatter;
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.GraalCompiler;
+import com.oracle.graal.compiler.common.util.CompilationAlarm;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.debug.DebugEnvironment;
@@ -104,7 +105,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         }
         ResolvedJavaMethod method = request.getMethod();
         HotSpotCompilationRequest hsRequest = (HotSpotCompilationRequest) request;
-        try (CompilationWatchDog w1 = CompilationWatchDog.watch(method, hsRequest.getId()); BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request)) {
+        try (CompilationWatchDog w1 = CompilationWatchDog.watch(method, hsRequest.getId());
+                        BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request);
+                        CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod();) {
             if (compilationCounters != null) {
                 compilationCounters.countCompilation(method);
             }
