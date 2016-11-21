@@ -200,6 +200,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final LLVMSymbolResolver symbolResolver;
 
+    private final NativeLookup nativeLookup;
+
     public LLVMBitcodeVisitor(Source source, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
                     DataLayoutConverter.DataSpecConverter layout, NodeFactoryFacade factoryFacade) {
         this.source = source;
@@ -212,6 +214,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         this.parserRuntime = new LLVMBitcodeVisitorParserRuntime();
         this.factoryFacade.setUpFacade(this.parserRuntime);
         this.symbolResolver = new LLVMSymbolResolver(this::getGlobalVariable, labels, parserRuntime);
+        nativeLookup = new NativeLookup(factoryFacade);
     }
 
     public LLVMLabelList getLabels() {
@@ -417,12 +420,8 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final Map<String, Object> globalVariableScope = new HashMap<>();
 
-    // NativeLookup expects a NodeFactoryFacade but does not use it for our purpose
-    private final NativeLookup nativeLookup = new NativeLookup(null);
-
     private LLVMExpressionNode allocateGlobal(GlobalValueSymbol global) {
         final Object globalVariable = factoryFacade.allocateGlobalVariable(global);
-        assert !globalVariableScope.containsKey(global.getName());
         globalVariableScope.put(global.getName(), globalVariable);
         return factoryFacade.createLiteral(globalVariable, LLVMBaseType.ADDRESS);
     }
