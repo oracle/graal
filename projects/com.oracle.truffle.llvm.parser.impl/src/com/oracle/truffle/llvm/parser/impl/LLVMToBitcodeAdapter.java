@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.parser.base.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
+import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 
 public final class LLVMToBitcodeAdapter {
@@ -79,14 +80,15 @@ public final class LLVMToBitcodeAdapter {
     }
 
     public static GlobalVariable resolveGlobalVariable(LLVMParserRuntimeTextual runtime, com.intel.llvm.ireditor.lLVM_IR.GlobalVariable globalVariable) {
-        Type type = TextToBCConverter.convert(runtime.resolve(globalVariable.getType()));
+        Type type = new PointerType(TextToBCConverter.convert(runtime.resolve(globalVariable.getType())));
 
         String alignString = globalVariable.getAlign();
         int align = alignString != null ? Integer.valueOf(alignString.replaceAll("align ", "")) : 0;
 
         Linkage linkage = resolveLinkage(globalVariable.getLinkage());
 
-        GlobalVariable glob = GlobalVariable.create(type, 0, align, linkage != null ? linkage.ordinal() : 0);
+        int initializer = globalVariable.getInitialValue() == null ? 0 : 1;
+        GlobalVariable glob = GlobalVariable.create(type, initializer, align, linkage != null ? linkage.ordinal() : 0);
         glob.setName(globalVariable.getName().substring(1));
 
         return glob;
