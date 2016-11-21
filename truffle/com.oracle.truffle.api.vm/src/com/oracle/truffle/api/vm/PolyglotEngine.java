@@ -812,17 +812,17 @@ public class PolyglotEngine {
          * @since 0.9
          */
         public Object get() {
-            return get(true);
+            return get(true, true);
         }
 
-        private Object get(boolean unwrapJava) {
+        private Object get(boolean unwrapJava, boolean wrapEngine) {
             assertNoTruffle();
             Object result = waitForSymbol();
             if (result instanceof TruffleObject) {
                 if (unwrapJava) {
                     result = JavaInterop.asJavaObject(Object.class, (TruffleObject) result);
                 }
-                if (executor != null && result instanceof TruffleObject) {
+                if (wrapEngine && executor != null && result instanceof TruffleObject) {
                     return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
                 }
             }
@@ -847,7 +847,7 @@ public class PolyglotEngine {
          */
         public <T> T as(final Class<T> representation) {
             assertNoTruffle();
-            final Object obj = get();
+            final Object obj = get(true, false);
             if (obj instanceof EngineTruffleObject) {
                 EngineTruffleObject eto = (EngineTruffleObject) obj;
                 if (representation.isInstance(eto.getDelegate())) {
@@ -865,7 +865,7 @@ public class PolyglotEngine {
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
             }
-            return JavaInterop.asJavaObject(representation, (TruffleObject) get(false));
+            return JavaInterop.asJavaObject(representation, (TruffleObject) get(false, true));
         }
 
         /**
