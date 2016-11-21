@@ -4,6 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Next version
 * Switching the source and target levels to 1.8
+* Significant improvements in Java/Truffle interop
 
 ## Version 0.19
 1-Nov-2016
