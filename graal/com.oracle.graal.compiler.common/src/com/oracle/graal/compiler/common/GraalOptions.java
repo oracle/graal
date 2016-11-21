@@ -213,6 +213,9 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> OptReadElimination = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Integer> ReadEliminationMaxLoopVisits = new OptionValue<>(5);
+
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> OptDeoptimizationGrouping = new OptionValue<>(true);
 
     @Option(help = "", type = OptionType.Debug)
