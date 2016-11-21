@@ -87,7 +87,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
-public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
+final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final LLVMBitcodeFunctionVisitor method;
 
@@ -99,7 +99,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final LLVMParserRuntime runtime;
 
-    public LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block, NodeFactoryFacade factoryFacade) {
+    LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block, NodeFactoryFacade factoryFacade) {
         this.method = method;
         this.block = block;
         this.symbols = method.getSymbolResolver();
@@ -125,7 +125,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(AllocateInstruction allocate) {
         final Type type = allocate.getPointeeType();
-        int alignment = 0;
+        int alignment;
         if (allocate.getAlign() == 0) {
             alignment = runtime.getByteAlignment(type);
         } else {

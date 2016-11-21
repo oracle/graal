@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -90,7 +91,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
-public class LLVMBitcodeVisitor implements ModelVisitor {
+public final class LLVMBitcodeVisitor implements ModelVisitor {
 
     public static final class BitcodeParserResult {
         private final Model model;
@@ -202,7 +203,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
     private final NativeLookup nativeLookup;
 
-    public LLVMBitcodeVisitor(Source source, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
+    private LLVMBitcodeVisitor(Source source, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
                     DataLayoutConverter.DataSpecConverter layout, NodeFactoryFacade factoryFacade) {
         this.source = source;
         this.context = context;
@@ -238,10 +239,6 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
 
         method.accept(visitor);
 
-        final int[] basicBlockIndices = new int[method.getBlockCount()];
-        for (int i = 0; i < method.getBlockCount(); i++) {
-            basicBlockIndices[i] = i;
-        }
         final LLVMStackFrameNuller[][] slotNullerBeginNodes = getSlotNuller(method, lifetimes.getNullableBefore());
         final LLVMStackFrameNuller[][] slotNullerAfterNodes = getSlotNuller(method, lifetimes.getNullableAfter());
         return factoryFacade.createFunctionBlockNode(visitor.getReturnSlot(), visitor.getBlocks(), slotNullerBeginNodes, slotNullerAfterNodes);
@@ -286,7 +283,11 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         final LLVMExpressionNode stackPointerNode = factoryFacade.createFunctionArgNode(0, LLVMBaseType.ADDRESS);
         formalParamInits.add(factoryFacade.createFrameWrite(LLVMBaseType.ADDRESS, stackPointerNode, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID)));
 
-        int argIndex = factoryFacade.getArgStartIndex().get();
+        final Optional<Integer> argStartIndex = factoryFacade.getArgStartIndex();
+        if (!argStartIndex.isPresent()) {
+            throw new IllegalStateException("Cannot find Argument Start Index!");
+        }
+        int argIndex = argStartIndex.get();
         if (method.getReturnType() instanceof StructureType) {
             final LLVMExpressionNode functionReturnParameterNode = factoryFacade.createFunctionArgNode(argIndex++, LLVMBaseType.STRUCT);
             final FrameSlot returnSlot = frame.findOrAddFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
@@ -335,15 +336,15 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         return context;
     }
 
-    public LLVMParserRuntime getParserRuntime() {
+    LLVMParserRuntime getParserRuntime() {
         return parserRuntime;
     }
 
-    public LLVMNode[] getDeallocations() {
+    private LLVMNode[] getDeallocations() {
         return deallocations.toArray(new LLVMNode[deallocations.size()]);
     }
 
-    public LLVMFunction getFunction(String name) {
+    private LLVMFunction getFunction(String name) {
         for (LLVMFunction function : functions.keySet()) {
             if (function.getName().equals(name)) {
                 return function;
@@ -356,7 +357,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         return functions;
     }
 
-    public LLVMExpressionNode getGlobalVariable(GlobalValueSymbol global) {
+    LLVMExpressionNode getGlobalVariable(GlobalValueSymbol global) {
         Symbol g = global;
         while (g instanceof GlobalAlias) {
             g = aliases.get(g);
@@ -376,7 +377,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         }
     }
 
-    public List<RootCallTarget> getStructor(String name, FrameSlot stackSlot) {
+    private List<RootCallTarget> getStructor(String name, FrameSlot stackSlot) {
         for (GlobalValueSymbol globalValueSymbol : globals.keySet()) {
             if (globalValueSymbol.getName().equals(name)) {
                 final LLVMNode[] targets = resolveStructor(globalValueSymbol, stackSlot);
@@ -426,7 +427,7 @@ public class LLVMBitcodeVisitor implements ModelVisitor {
         return factoryFacade.createLiteral(globalVariable, LLVMBaseType.ADDRESS);
     }
 
-    public List<LLVMNode> getGobalVariables() {
+    private List<LLVMNode> getGobalVariables() {
         final List<LLVMNode> globalNodes = new ArrayList<>();
         for (GlobalValueSymbol global : this.globals.keySet()) {
             final LLVMNode store = createGlobal(global);
