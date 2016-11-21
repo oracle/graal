@@ -38,25 +38,24 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
+import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMSymbolResolver;
 
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.parser.base.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 
-public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
+class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final LLVMBitcodeVisitor module;
 
     private final FrameDescriptor frame;
 
-    private final List<LLVMBasicBlockNode> blocks = new ArrayList<>();
+    private final List<LLVMNode> blocks = new ArrayList<>();
 
     private final Map<String, Integer> labels;
 
@@ -64,33 +63,36 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final List<LLVMNode> instructions = new ArrayList<>();
 
-    private final LLVMNodeGenerator symbolResolver;
+    private final LLVMSymbolResolver symbolResolver;
 
     private final NodeFactoryFacade factoryFacade;
 
     private final int argCount;
 
-    public LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<String, Integer> labels,
-                    Map<InstructionBlock, List<Phi>> phis, NodeFactoryFacade factoryFacade, int argCount) {
+    private final FunctionDefinition function;
+
+    LLVMBitcodeFunctionVisitor(LLVMBitcodeVisitor module, FrameDescriptor frame, Map<String, Integer> labels,
+                    Map<InstructionBlock, List<Phi>> phis, NodeFactoryFacade factoryFacade, int argCount, LLVMSymbolResolver symbolResolver, FunctionDefinition functionDefinition) {
         this.module = module;
         this.frame = frame;
         this.labels = labels;
         this.phis = phis;
-        this.symbolResolver = new LLVMNodeGenerator(this);
+        this.symbolResolver = symbolResolver;
         this.factoryFacade = factoryFacade;
         this.argCount = argCount;
+        this.function = functionDefinition;
     }
 
-    public void addInstruction(LLVMNode node) {
+    void addInstruction(LLVMNode node) {
         instructions.add(node);
     }
 
-    public void addTerminatingInstruction(LLVMNode node, int blockId, String blockName) {
-        blocks.add(new LLVMBasicBlockNode(getBlock(), (LLVMTerminatorNode) node, blockId, blockName));
+    void addTerminatingInstruction(LLVMNode node, int blockId, String blockName) {
+        blocks.add(factoryFacade.createBasicBlockNode(getBlock(), node, blockId, blockName));
         instructions.add(node);
     }
 
-    public int getArgCount() {
+    int getArgCount() {
         return argCount;
     }
 
@@ -98,12 +100,16 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return instructions.toArray(new LLVMNode[instructions.size()]);
     }
 
-    public List<LLVMBasicBlockNode> getBlocks() {
+    public List<LLVMNode> getBlocks() {
         return Collections.unmodifiableList(blocks);
     }
 
     public LLVMContext getContext() {
         return module.getContext();
+    }
+
+    public FunctionDefinition getFunction() {
+        return function;
     }
 
     public LLVMBitcodeVisitor getModule() {
@@ -114,19 +120,19 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return frame;
     }
 
-    public FrameSlot getReturnSlot() {
+    FrameSlot getReturnSlot() {
         return getSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
     }
 
-    public FrameSlot getSlot(String name) {
+    FrameSlot getSlot(String name) {
         return frame.findFrameSlot(name);
     }
 
-    public FrameSlot getStackSlot() {
+    FrameSlot getStackSlot() {
         return getSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID);
     }
 
-    public LLVMNodeGenerator getSymbolResolver() {
+    LLVMSymbolResolver getSymbolResolver() {
         return symbolResolver;
     }
 
@@ -138,7 +144,7 @@ public class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return labels;
     }
 
-    public Map<InstructionBlock, List<Phi>> getPhiManager() {
+    Map<InstructionBlock, List<Phi>> getPhiManager() {
         return phis;
     }
 

@@ -92,9 +92,10 @@ import com.oracle.truffle.llvm.parser.LLVMType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.FunctionType;
+import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
@@ -111,7 +112,7 @@ import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor.NativeResolver;
+import com.oracle.truffle.llvm.types.NativeResolver;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
@@ -452,17 +453,10 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMGlobalVariableDescriptor allocateGlobalVariable(GlobalVariable globalVariable) {
+    public Object allocateGlobalVariable(GlobalValueSymbol globalVariable) {
         String name = globalVariable.getName();
 
-        NativeResolver nativeResolver = new NativeResolver() {
-
-            @Override
-            public LLVMAddress resolve() {
-                return LLVMAddress.fromLong(runtime.getNativeHandle(name));
-            }
-
-        };
+        NativeResolver nativeResolver = () -> LLVMAddress.fromLong(runtime.getNativeHandle(name));
 
         LLVMGlobalVariableDescriptor descriptor;
 
@@ -473,14 +467,13 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
             descriptor = context.getGlobalVariableRegistry().lookupOrAdd(name, nativeResolver);
         }
 
-        if (!globalVariable.isExtern() && !descriptor.isDeclared()) {
-            Type resolvedType = globalVariable.getType();
+        if ((globalVariable.getInitialiser() > 0 || !globalVariable.isExtern()) && !descriptor.isDeclared()) {
+            Type resolvedType = ((PointerType) globalVariable.getType()).getPointeeType();
             int byteSize = runtime.getByteSize(resolvedType);
             LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             LLVMAddressNode addressLiteralNode = (LLVMAddressNode) createLiteral(nativeStorage, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
             descriptor.declare(nativeStorage);
-            return descriptor;
         }
 
         return descriptor;

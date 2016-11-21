@@ -403,6 +403,8 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.llvm.parser.factories",
+        # TODO: remove parser.impl and parser.bc.impl dependency here
         "com.oracle.truffle.llvm.parser.impl",
         "com.oracle.truffle.llvm.parser.bc.impl",
        ],
@@ -457,9 +459,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        # TODO: this is a temporary dependency.
-        # should be: llvm.context
-        "com.oracle.truffle.llvm.parser.factories",
+        "com.oracle.truffle.llvm.context",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",

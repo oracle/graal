@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMNodeGenerator;
+import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
@@ -87,19 +87,19 @@ import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
-public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
+final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     private final LLVMBitcodeFunctionVisitor method;
 
     private final InstructionBlock block;
 
-    private final LLVMNodeGenerator symbols;
+    private final LLVMSymbolResolver symbols;
 
     private final NodeFactoryFacade factoryFacade;
 
     private final LLVMParserRuntime runtime;
 
-    public LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block, NodeFactoryFacade factoryFacade) {
+    LLVMBitcodeInstructionVisitor(LLVMBitcodeFunctionVisitor method, InstructionBlock block, NodeFactoryFacade factoryFacade) {
         this.method = method;
         this.block = block;
         this.symbols = method.getSymbolResolver();
@@ -125,7 +125,7 @@ public final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(AllocateInstruction allocate) {
         final Type type = allocate.getPointeeType();
-        int alignment = 0;
+        int alignment;
         if (allocate.getAlign() == 0) {
             alignment = runtime.getByteAlignment(type);
         } else {
