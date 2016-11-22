@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.parser.bc.impl.nodes;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
@@ -80,12 +79,9 @@ public final class LLVMSymbolResolver {
 
     private final LLVMParserRuntime runtime;
 
-    private final Function<GlobalValueSymbol, LLVMExpressionNode> variables;
-
     private final LLVMLabelList labels;
 
-    public LLVMSymbolResolver(Function<GlobalValueSymbol, LLVMExpressionNode> variables, LLVMLabelList labels, LLVMParserRuntime runtime) {
-        this.variables = variables;
+    public LLVMSymbolResolver(LLVMLabelList labels, LLVMParserRuntime runtime) {
         this.labels = labels;
         this.runtime = runtime;
     }
@@ -370,7 +366,7 @@ public final class LLVMSymbolResolver {
             return runtime.getNodeFactoryFacade().createFrameRead(symbol.getType().getLLVMBaseType(), slot);
 
         } else if (symbol instanceof GlobalValueSymbol) {
-            return variables.apply((GlobalValueSymbol) symbol);
+            return (LLVMExpressionNode) runtime.getGlobalAddress((GlobalValueSymbol) symbol);
 
         } else if (symbol instanceof NullConstant || symbol instanceof UndefinedConstant) {
             return toNullValue(symbol.getType());
