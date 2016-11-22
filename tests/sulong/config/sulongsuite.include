@@ -45,9 +45,6 @@ c/i128/signed-right-shift.c
 c/i128/signed-right-shift2.c
 c/i128/unsigned-right-shift.c
 c/i128/unsigned-right-shift2.c
-c/ignore/switch/switch1.c
-c/ignore/switch/switch2.c
-c/ignore/switch/switch3.c
 c/intrinsics/memmove.c
 c/labeladdress/labeledgoto1.c
 c/signal/signal001.c
@@ -155,7 +152,6 @@ c/truffle-c/arrayTest/virtualArray2.c
 c/truffle-c/arrayTest/virtualArray3.c
 c/truffle-c/arrayTest/virtualArray4.c
 c/truffle-c/arrayTest/virtualArray5.c
-c/truffle-c/arrayTest/ignore/arrayTest9.c
 c/truffle-c/assignTest/assignTest0.c
 c/truffle-c/assignTest/assignTest1.c
 c/truffle-c/assignTest/assignTest10.c
@@ -229,9 +225,6 @@ c/truffle-c/bitFields/zeroSizeBitField1.c
 c/truffle-c/bitFields/zeroSizeBitField2.c
 c/truffle-c/bitFields/zeroSizeBitField3.c
 c/truffle-c/bitFields/zeroSizeBitField4.c
-c/truffle-c/bitFields/ignore/augmentedInt.c
-c/truffle-c/bitFields/ignore/multipleFieldStructTest12.c
-c/truffle-c/bitFields/ignore/multipleFieldStructTest13.c
 c/truffle-c/charTest/addition.c
 c/truffle-c/charTest/arrayAlloc.c
 c/truffle-c/charTest/arrayTest.c
@@ -250,7 +243,6 @@ c/truffle-c/charTest/not2.c
 c/truffle-c/charTest/returnTest.c
 c/truffle-c/charTest/saveIntInCharArray.c
 c/truffle-c/charTest/saveIntInCharArray2.c
-c/truffle-c/charTest/ignore/meteorMicro.c
 c/truffle-c/comparisonTest/lessEqualThan1.c
 c/truffle-c/comparisonTest/signedUnsignedInt.c
 c/truffle-c/conditionTest/conditionTest0.c
@@ -401,9 +393,6 @@ c/truffle-c/gotoTests/goto19.c
 c/truffle-c/gotoTests/goto20.c
 c/truffle-c/heapTest/heapTest0.c
 c/truffle-c/heapTest/heapTest2.c
-c/truffle-c/heapTest/ignore/heapTest1.c
-c/truffle-c/heapTest/ignore/heapTest3.c
-c/truffle-c/heapTest/ignore/heapTest4.c
 c/truffle-c/implicitCastTest/unsignedToSignedUpcast1.c
 c/truffle-c/implicitCastTest/unsignedToSignedUpcast2.c
 c/truffle-c/implicitCastTest/unsignedToSignedUpcast3.c
@@ -504,7 +493,6 @@ c/truffle-c/stringLiterals/simpleTest8.c
 c/truffle-c/stringLiterals/simpleTest9.c
 c/truffle-c/stringLiterals/structInitTest1.c
 c/truffle-c/stringLiterals/structInitTest2.c
-c/truffle-c/stringLiterals/ignore/charArrayInit3.c
 c/truffle-c/structTest/arrayStructInit1.c
 c/truffle-c/structTest/arrayStructInit2.c
 c/truffle-c/structTest/compoundLiteral.c
@@ -579,9 +567,6 @@ c/truffle-c/structTest/test007b.c
 c/truffle-c/structTest/test008.c
 c/truffle-c/structTest/test009.c
 c/truffle-c/structTest/varArrayInStruct.c
-c/truffle-c/structTest/ignore/namedMemberInit2.c
-c/truffle-c/structTest/ignore/passPerValue5.c
-c/truffle-c/structTest/ignore/structTest27.c
 c/truffle-c/structTest/noopt/structsInStruct1.c
 c/truffle-c/structTest/noopt/structTest18.c
 c/truffle-c/structTest/noopt/structTest25.c
@@ -636,12 +621,6 @@ c/truffle-c/unionTest/unionTest6.c
 c/truffle-c/unionTest/unionTest7.c
 c/truffle-c/unionTest/unionTest8.c
 c/truffle-c/unionTest/unionTest9.c
-c/truffle-c/unionTest/ignore/memberInitialization1.c
-c/truffle-c/unionTest/ignore/memberInitialization2.c
-c/truffle-c/unionTest/ignore/memberInitialization2a.c
-c/truffle-c/unionTest/ignore/unionTest10.c
-c/truffle-c/unionTest/ignore/unionTest11.c
-c/truffle-c/unionTest/ignore/unionTest2.c
 c/truffle-c/unionTest/noopt/bitField1.c
 c/truffle-c/unsignedLongTest/additionTest1.c
 c/truffle-c/unsignedLongTest/additionTest2.c
@@ -717,9 +696,7 @@ c/truffle-c/variousTest/programTest11.c
 c/truffle-c/variousTest/programTest12.c
 c/truffle-c/variousTest/programTest13.c
 c/truffle-c/variousTest/structTypeDefForwardDecl.c
-c/truffle-c/variousTest/ignore/pointerTest13.c
 c/union/simpleUnion.c
-c/varargs/ignore/var80bit.c
 c/vector/insertElement.c
 c/vector/vectorAddition.c
 c/vector/vectorAddition2.c
