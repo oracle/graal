@@ -1146,7 +1146,7 @@ checkCases = {
     'httpcheck' : checkNoHttp,
     'checkoverlap' : mx.checkoverlap,
     'clangformatcheck' : clangformatcheck,
-    'plyint' : mx.pylint,
+    'pylint' : mx.pylint,
     'eclipseformat' : (lambda args: mx.eclipseformat(['--primary'] + args))
 }
 
