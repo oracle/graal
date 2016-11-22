@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 /**
  * Creates a memory barrier.
  */
-@NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_20, size = SIZE_2)
+@NodeInfo(nameTemplate = "Membar#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_20, size = SIZE_2)
 public final class MembarNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<MembarNode> TYPE = NodeClass.create(MembarNode.class);
