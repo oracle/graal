@@ -44,7 +44,7 @@ public class BinaryOperationConstant extends AbstractConstant {
 
     private Symbol rhs;
 
-    public BinaryOperationConstant(Type type, BinaryOperator operator) {
+    private BinaryOperationConstant(Type type, BinaryOperator operator) {
         super(type);
         this.operator = operator;
         this.lhs = null;

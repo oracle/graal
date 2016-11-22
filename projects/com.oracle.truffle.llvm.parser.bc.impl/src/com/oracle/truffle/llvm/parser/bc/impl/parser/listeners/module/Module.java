@@ -180,7 +180,7 @@ public class Module implements ParserListener {
         boolean isConstant = (args[i++] & 1) == 1;
         int initialiser = (int) args[i++];
         long linkage = args[i++];
-        int align = (int) args[i++];
+        int align = (int) args[i];
 
         generator.createGlobal(type, isConstant, initialiser, align, linkage);
         symbols.add(type);

@@ -119,8 +119,8 @@ public final class VoidCallInstruction implements Call, VoidInstruction {
                 }
             }
         } else {
-            for (int i = 0; i < arguments.length; i++) {
-                inst.arguments.add(symbols.getSymbol(arguments[i], inst));
+            for (final int argument : arguments) {
+                inst.arguments.add(symbols.getSymbol(argument, inst));
             }
         }
         return inst;

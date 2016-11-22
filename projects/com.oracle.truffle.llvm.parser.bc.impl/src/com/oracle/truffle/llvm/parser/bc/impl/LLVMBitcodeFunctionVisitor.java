@@ -37,7 +37,6 @@ import java.util.Map;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
@@ -100,10 +99,6 @@ class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     public List<LLVMNode> getBlocks() {
         return Collections.unmodifiableList(blocks);
-    }
-
-    public LLVMContext getContext() {
-        return module.getContext();
     }
 
     public FunctionDefinition getFunction() {

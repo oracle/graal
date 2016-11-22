@@ -68,9 +68,7 @@ public class Parser {
         return result.getParser().operation(new UserRecordBuilder(operands));
     };
 
-    private static final Operation END_BLOCK = (parser) -> {
-        return parser.exit();
-    };
+    private static final Operation END_BLOCK = Parser::exit;
 
     private static final Operation ENTER_SUBBLOCK = (parser) -> {
         ParserResult result = parser.read(Primitive.SUBBLOCK_ID);
@@ -79,7 +77,7 @@ public class Parser {
         result = result.getParser().read(Primitive.SUBBLOCK_ID_SIZE);
         long idsize = result.getValue();
 
-        Parser p = result.getParser().align(Integer.SIZE);
+        Parser p = result.getParser().alignInt();
 
         result = p.read(Integer.SIZE);
         long size = result.getValue();
@@ -104,7 +102,7 @@ public class Parser {
         return result.getParser().handleRecord(id, operands);
     };
 
-    protected static final Operation[] DEFAULT_OPERATIONS = new Operation[]{
+    private static final Operation[] DEFAULT_OPERATIONS = new Operation[]{
                     END_BLOCK,
                     ENTER_SUBBLOCK,
                     DEFINE_ABBREV,
@@ -127,12 +125,12 @@ public class Parser {
 
     protected final long offset;
 
-    public Parser(Bitstream stream, Block block, ParserListener listener) {
-        this(Objects.requireNonNull(stream), Objects.requireNonNull(block), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2, 0);
+    public Parser(Bitstream stream, ParserListener listener) {
+        this(Objects.requireNonNull(stream), Objects.requireNonNull(Block.ROOT), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2, 0);
     }
 
-    public Parser(Bitstream stream, Block block, ParserListener listener, long offset) {
-        this(Objects.requireNonNull(stream), Objects.requireNonNull(block), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2, offset);
+    public Parser(Bitstream stream, ParserListener listener, long offset) {
+        this(Objects.requireNonNull(stream), Objects.requireNonNull(Block.ROOT), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2, offset);
     }
 
     protected Parser(Parser parser) {
@@ -154,10 +152,10 @@ public class Parser {
         return new Parser(argStream, argBlock, argListener, argParent, argOperations, argIdSize, argOffset);
     }
 
-    public Parser align(long bits) {
-        long mask = bits - 1;
+    private Parser alignInt() {
+        long mask = Integer.SIZE - 1;
         if ((offset & mask) != 0) {
-            return offset((offset & ~mask) + bits);
+            return offset((offset & ~mask) + Integer.SIZE);
         }
         return this;
     }
@@ -174,7 +172,7 @@ public class Parser {
 
     public Parser exit() {
         listener.exit();
-        return getParent().offset(align(Integer.SIZE).getOffset());
+        return getParent().offset(alignInt().getOffset());
     }
 
     public long getOffset() {
@@ -193,10 +191,6 @@ public class Parser {
         return operation(block.getId(), operation, false);
     }
 
-    public Parser operation(long id, Operation operation) {
-        return operation(id, operation, true);
-    }
-
     protected Parser operation(long id, Operation operation, boolean persist) {
         Operation[] oldOps = getOperations(id);
         Operation[] newOps = Arrays.copyOf(oldOps, oldOps.length + 1);
@@ -213,7 +207,7 @@ public class Parser {
         return instantiate(this, stream, block, listener, par, ops, idsize, offset);
     }
 
-    protected Operation[] getOperations(long blockid) {
+    private Operation[] getOperations(long blockid) {
         if (blockid < 0 || blockid >= operations.length || operations[(int) blockid] == null) {
             return DEFAULT_OPERATIONS;
         }
@@ -254,7 +248,7 @@ public class Parser {
 
     public ParserResult readVBR(long width) {
         long value = stream.readVBR(offset, width);
-        long total = stream.widthVBR(value, width);
+        long total = Bitstream.widthVBR(value, width);
         return new ParserResult(offset(offset + total), value);
     }
 }

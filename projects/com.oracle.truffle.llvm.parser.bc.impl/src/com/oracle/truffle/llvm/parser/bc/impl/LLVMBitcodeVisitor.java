@@ -218,10 +218,6 @@ public final class LLVMBitcodeVisitor implements ModelVisitor {
         nativeLookup = new NativeLookup(factoryFacade);
     }
 
-    public LLVMLabelList getLabels() {
-        return labels;
-    }
-
     private LLVMExpressionNode createFunction(FunctionDefinition method, LLVMLifetimeAnalysis lifetimes) {
         String functionName = method.getName();
 

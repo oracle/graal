@@ -83,14 +83,6 @@ public class LLVMTypeHelper {
         }
     }
 
-    public static LLVMRuntimeType[] convertTypes(LLVMType... llvmParamTypes) {
-        LLVMRuntimeType[] types = new LLVMRuntimeType[llvmParamTypes.length];
-        for (int i = 0; i < types.length; i++) {
-            types[i] = convertType(llvmParamTypes[i]);
-        }
-        return types;
-    }
-
     public static LLVMRuntimeType convertType(LLVMType llvmReturnType) {
         if (llvmReturnType.isPointer()) {
             switch (llvmReturnType.getPointee().getType()) {

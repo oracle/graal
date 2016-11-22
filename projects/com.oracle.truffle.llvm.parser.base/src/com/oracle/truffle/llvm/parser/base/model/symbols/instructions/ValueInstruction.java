@@ -36,9 +36,9 @@ public abstract class ValueInstruction implements Instruction, ValueSymbol {
 
     private final Type type;
 
-    public String name = ValueSymbol.UNKNOWN;
+    private String name = ValueSymbol.UNKNOWN;
 
-    protected ValueInstruction(Type type) {
+    ValueInstruction(Type type) {
         this.type = type;
     }
 

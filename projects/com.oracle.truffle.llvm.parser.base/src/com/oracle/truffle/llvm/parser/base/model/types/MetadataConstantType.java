@@ -60,10 +60,7 @@ public class MetadataConstantType implements Type {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof MetadataConstantType) {
-            return value == ((MetadataConstantType) obj).value;
-        }
-        return false;
+        return obj instanceof MetadataConstantType && value == ((MetadataConstantType) obj).value;
     }
 
     @Override

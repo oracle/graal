@@ -45,6 +45,6 @@ public final class UserRecordCharOperand extends UserRecordOperand {
 
     @Override
     public String toString() {
-        return String.format("char");
+        return "char";
     }
 }
