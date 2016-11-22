@@ -1576,8 +1576,13 @@ public class BytecodeParser implements GraphBuilderContext {
     protected IntrinsicGuard guardIntrinsic(ValueNode[] args, ResolvedJavaMethod targetMethod, InvocationPluginReceiver pluginReceiver) {
         ValueNode originalReceiver = args[0];
         ResolvedJavaType receiverType = StampTool.typeOrNull(originalReceiver);
-        if (receiverType != null && receiverType.resolveMethod(targetMethod, receiverType).equals(targetMethod)) {
-            assert targetMethod.getDeclaringClass().isAssignableFrom(receiverType.resolveMethod(targetMethod, receiverType).getDeclaringClass());
+        if (receiverType == null) {
+            // The verifier guarantees it to be at least type declaring targetMethod
+            receiverType = targetMethod.getDeclaringClass();
+        }
+        ResolvedJavaMethod resolvedMethod = receiverType.resolveMethod(targetMethod, receiverType);
+        if (resolvedMethod == null || resolvedMethod == targetMethod) {
+            assert resolvedMethod == null || targetMethod.getDeclaringClass().isAssignableFrom(resolvedMethod.getDeclaringClass());
             Mark mark = graph.getMark();
             FixedWithNextNode currentLastInstr = lastInstr;
             ValueNode nonNullReceiver = pluginReceiver.get();

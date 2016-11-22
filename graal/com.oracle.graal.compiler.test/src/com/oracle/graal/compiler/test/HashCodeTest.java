@@ -29,6 +29,8 @@ import com.oracle.graal.compiler.phases.HighTier;
 import com.oracle.graal.compiler.phases.MidTier;
 import com.oracle.graal.nodes.InvokeNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.extended.LoadHubNode;
+import com.oracle.graal.nodes.extended.LoadMethodNode;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.tiers.MidTierContext;
 
@@ -107,8 +109,7 @@ public class HashCodeTest extends GraalCompilerTest {
 
     @Test
     public void test05() {
-        StructuredGraph g = buildGraphAfterMidTier("hashCodeNoFoldOverridingSnippet01");
-        Assert.assertEquals(1, g.getNodes().filter(InvokeNode.class).count());
+        checkForGuardedHashCodeInline("hashCodeNoFoldOverridingSnippet01");
 
         Object nullObject = null;
         test("hashCodeNoFoldOverridingSnippet01", nullObject);
@@ -127,6 +128,24 @@ public class HashCodeTest extends GraalCompilerTest {
         initialize(DontOverrideHashCode.class);
         StructuredGraph g = buildGraphAfterMidTier("dontOverrideHashCodeFinalClass");
         Assert.assertEquals(0, g.getNodes().filter(InvokeNode.class).count());
+    }
+
+    public static final int hashCodeInterface(Appendable o) {
+        return o.hashCode();
+    }
+
+    @Test
+    public void test08() {
+        initialize(Appendable.class);
+        checkForGuardedHashCodeInline("hashCodeInterface");
+        checkForGuardedHashCodeInline("hashCodeSnippet01");
+    }
+
+    private void checkForGuardedHashCodeInline(String name) {
+        StructuredGraph g = parseForCompile(getResolvedJavaMethod(name));
+        Assert.assertEquals(1, g.getNodes().filter(InvokeNode.class).count());
+        Assert.assertEquals(1, g.getNodes().filter(LoadHubNode.class).count());
+        Assert.assertEquals(1, g.getNodes().filter(LoadMethodNode.class).count());
     }
 
     @SuppressWarnings("try")
