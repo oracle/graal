@@ -54,7 +54,7 @@ abstract class SulongEngineOption {
     protected static final String[] DYN_BITCODE_LIBRARIES = new String[0];
 
     @Option(commandLineName = "ProjectRoot", help = "Overrides the root of the project. This option exists to set the project root from mx.", name = "projectRoot") //
-    protected static final String PROJECT_ROOT = ".";
+    protected static final String PROJECT_ROOT = "./projects";
 
     @Option(commandLineName = "ExecutionCount", help = "Execute each program for as many times as specified by this option.", name = "executionCount") //
     protected static final Integer EXECUTION_COUNT = 1;

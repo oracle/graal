@@ -35,7 +35,7 @@ def runSulongSuite(vmArgs):
     """runs the Sulong test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['sulong'])
-    return mx_unittest.unittest(['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'] + vmArgs + ["com.oracle.truffle.llvm.test.alpha.SulongSuite"])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'] + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.alpha.SulongSuite"])
 
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
