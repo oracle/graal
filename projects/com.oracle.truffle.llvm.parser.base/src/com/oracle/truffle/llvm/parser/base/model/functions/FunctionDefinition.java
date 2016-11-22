@@ -263,22 +263,8 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     public boolean equals(Object obj) {
         if (obj instanceof FunctionDefinition) {
             FunctionDefinition other = (FunctionDefinition) obj;
-            if (!super.equals(other)) {
-                return false;
-            }
-            if (!Objects.equals(parameters, other.parameters)) {
-                return false;
-            }
-            if (!Objects.equals(symbols, other.symbols)) {
-                return false;
-            }
-            if (!Arrays.equals(blocks, other.blocks)) {
-                return false;
-            }
-            if (currentBlock != other.currentBlock) {
-                return false;
-            }
-            return true;
+            return super.equals(other) && Objects.equals(parameters, other.parameters) && Objects.equals(symbols, other.symbols) && Arrays.equals(blocks, other.blocks) &&
+                            currentBlock == other.currentBlock;
         }
         return false;
     }

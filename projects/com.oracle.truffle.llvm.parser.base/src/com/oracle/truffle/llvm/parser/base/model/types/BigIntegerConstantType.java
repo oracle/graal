@@ -36,7 +36,7 @@ import java.util.Objects;
 
 public final class BigIntegerConstantType implements Type {
 
-    public final IntegerType type;
+    private final IntegerType type;
 
     private final BigInteger value;
 

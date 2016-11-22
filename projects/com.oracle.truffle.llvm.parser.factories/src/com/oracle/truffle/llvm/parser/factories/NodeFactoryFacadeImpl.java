@@ -273,10 +273,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     public LLVMExpressionNode createSelect(Type type, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
         LLVMBaseType llvmType = type.getLLVMBaseType();
         if (type instanceof VectorType) {
-            final int size = runtime.getByteSize(type);
-            final int alignment = runtime.getBitAlignment(llvmType);
-            final LLVMAddressNode target = (LLVMAddressNode) createAlloc(type, size, alignment, null, null);
-
+            final LLVMAddressNode target = (LLVMAddressNode) runtime.allocateVectorResult(type);
             return LLVMSelectFactory.createSelectVector(llvmType, target, condition, trueValue, falseValue);
         } else {
             return LLVMSelectFactory.createSelect(llvmType, condition, trueValue, falseValue);

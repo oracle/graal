@@ -36,7 +36,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.FloatingPointType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
 
-public class BinaryOperationConstant extends AbstractConstant {
+public final class BinaryOperationConstant extends AbstractConstant {
 
     private final BinaryOperator operator;
 
@@ -44,7 +44,7 @@ public class BinaryOperationConstant extends AbstractConstant {
 
     private Symbol rhs;
 
-    public BinaryOperationConstant(Type type, BinaryOperator operator) {
+    private BinaryOperationConstant(Type type, BinaryOperator operator) {
         super(type);
         this.operator = operator;
         this.lhs = null;

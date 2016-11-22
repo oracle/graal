@@ -94,7 +94,7 @@ public class MetadataBlock {
         if (t instanceof MetadataConstantType) {
             int index = (int) ((MetadataConstantType) t).getValue();
             return getReference(index);
-        } else if (t instanceof MetaType && (MetaType) t == MetaType.VOID) {
+        } else if (t instanceof MetaType && t == MetaType.VOID) {
             return voidRef;
         } else if (t instanceof IntegerConstantType) {
             int index = (int) ((IntegerConstantType) t).getValue();
@@ -198,13 +198,7 @@ public class MetadataBlock {
                 return false;
             }
             Reference other = (Reference) obj;
-            if (!getOuterType().equals(other.getOuterType())) {
-                return false;
-            }
-            if (index != other.index) {
-                return false;
-            }
-            return true;
+            return getOuterType().equals(other.getOuterType()) && index == other.index;
         }
 
         @Override

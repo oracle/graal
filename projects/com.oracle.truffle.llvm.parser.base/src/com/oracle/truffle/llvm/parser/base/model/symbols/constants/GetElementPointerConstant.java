@@ -54,14 +54,6 @@ public final class GetElementPointerConstant extends AbstractConstant {
         return base;
     }
 
-    public Symbol getIndex(int index) {
-        return indices.get(index);
-    }
-
-    public int getIndexCount() {
-        return indices.size();
-    }
-
     public List<Symbol> getIndices() {
         return Collections.unmodifiableList(indices);
     }

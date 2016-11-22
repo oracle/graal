@@ -205,10 +205,6 @@ public final class Types implements ParserListener, Iterable<Type> {
         generator.createType(type);
     }
 
-    public int size() {
-        return table.length;
-    }
-
     public Type get(long index) {
         return table[(int) index];
     }

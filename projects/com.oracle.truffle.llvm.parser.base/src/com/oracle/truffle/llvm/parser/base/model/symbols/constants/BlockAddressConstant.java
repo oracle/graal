@@ -46,10 +46,6 @@ public final class BlockAddressConstant extends AbstractConstant {
         this.block = block;
     }
 
-    public int getBlock() {
-        return block;
-    }
-
     public FunctionDefinition getFunction() {
         return function;
     }
