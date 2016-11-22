@@ -35,7 +35,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
@@ -67,8 +66,6 @@ public interface LLVMParserRuntime {
     Object getGlobalAddress(GlobalValueSymbol var);
 
     FrameSlot getStackPointerSlot();
-
-    int getBitAlignment(LLVMBaseType type);
 
     int getByteAlignment(Type type);
 

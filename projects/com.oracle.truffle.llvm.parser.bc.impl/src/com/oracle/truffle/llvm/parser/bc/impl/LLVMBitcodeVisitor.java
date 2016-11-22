@@ -562,8 +562,8 @@ public final class LLVMBitcodeVisitor implements ModelVisitor {
         @Override
         public LLVMExpressionNode allocateVectorResult(Object type) {
             final Type vectorType = (Type) type;
-            final int size = ((Type) type).getSize(targetDataLayout);
-            final int alignment = vectorType.getAlignment(targetDataLayout);
+            final int size = getByteSize(vectorType);
+            final int alignment = getByteAlignment(vectorType);
             return factoryFacade.createAlloc(vectorType, size, alignment, null, null);
         }
 
@@ -575,11 +575,6 @@ public final class LLVMBitcodeVisitor implements ModelVisitor {
         @Override
         public FrameSlot getStackPointerSlot() {
             return functionVisitor != null ? functionVisitor.getStackSlot() : stack.getRootStackSlot();
-        }
-
-        @Override
-        public int getBitAlignment(LLVMBaseType type) {
-            return targetDataLayout.getBitAlignment(type);
         }
 
         @Override
