@@ -216,9 +216,11 @@ def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, 
                     tool.run(inputFile, outputFile, flags + optimization.flags)
                     if os.path.exists(outputFile):
                         yield outputFile
-                        for optimizer in optimizers:
-                            base, ext = os.path.splitext(outputFile)
-                            opt_outputFile = base + '_' + optimizer.name + ext
+                if os.path.exists(outputFile):
+                    for optimizer in optimizers:
+                        base, ext = os.path.splitext(outputFile)
+                        opt_outputFile = base + '_' + optimizer.name + ext
+                        if not isFileUpToDate(outputFile, opt_outputFile):
                             optimizer.run(outputFile, opt_outputFile, [])
                             if os.path.exists(opt_outputFile):
                                 yield opt_outputFile
