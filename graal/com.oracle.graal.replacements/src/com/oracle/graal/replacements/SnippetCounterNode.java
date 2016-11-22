@@ -122,9 +122,9 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
     }
 
     /**
-     * We do not want to use the {@link LocationIdentity} of the {@link SnippetCounter#value} field,
-     * so that the usage in snippets is always possible. If a method accesses the counter via the
-     * field and the snippet, the result might not be correct though.
+     * We do not want to use the {@link LocationIdentity} of the {@link SnippetCounter#value()}
+     * field, so that the usage in snippets is always possible. If a method accesses the counter via
+     * the field and the snippet, the result might not be correct though.
      */
     public static final LocationIdentity SNIPPET_COUNTER_LOCATION = NamedLocationIdentity.mutable("SnippetCounter");
 

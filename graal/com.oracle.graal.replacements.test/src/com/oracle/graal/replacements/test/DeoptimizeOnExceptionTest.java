@@ -39,7 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
 
     public DeoptimizeOnExceptionTest() {
-        getSuites().getHighTier().findPhase(AbstractInliningPhase.class).remove();
+        createSuites().getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }
 
     private static void raiseException(String m1, String m2, String m3, String m4, String m5) {

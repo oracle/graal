@@ -32,6 +32,7 @@ import java.util.List;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.StableOptionKey;
 import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.replacements.SnippetCounter;
@@ -58,7 +59,7 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
 
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        assert !ImmutableCode.getValue() || isCalledForSnippets(metaAccess) || SnippetGraphUnderConstruction.get() != null ||
+        assert !ImmutableCode.getValue(tool.getOptions()) || isCalledForSnippets(metaAccess) || SnippetGraphUnderConstruction.get() != null ||
                         FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : tool.getReceiver();
         if (!field.isStatic() && field.getName().equals("value")) {
             if (getStableOptionKeyType().isInstance(tool.getReceiver())) {
@@ -74,8 +75,8 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
      * In AOT mode, some fields should never be embedded even for snippets/replacements.
      */
     @Override
-    protected boolean isStaticFieldConstant(ResolvedJavaField field) {
-        return super.isStaticFieldConstant(field) && (!ImmutableCode.getValue() || ImmutableCodeLazy.isEmbeddable(field));
+    protected boolean isStaticFieldConstant(ResolvedJavaField field, OptionValues options) {
+        return super.isStaticFieldConstant(field, options) && (!ImmutableCode.getValue(options) || ImmutableCodeLazy.isEmbeddable(field));
     }
 
     @Override
@@ -175,7 +176,6 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
          * called for snippets or replacements.
          */
         static boolean isCalledForSnippets(MetaAccessProvider metaAccess) {
-            assert ImmutableCode.getValue();
             ResolvedJavaMethod makeGraphMethod = null;
             ResolvedJavaMethod initMethod = null;
             try {
@@ -203,7 +203,6 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
          * Determine if it's ok to embed the value of {@code field}.
          */
         static boolean isEmbeddable(ResolvedJavaField field) {
-            assert ImmutableCode.getValue();
             return !embeddableFields.contains(field);
         }
 

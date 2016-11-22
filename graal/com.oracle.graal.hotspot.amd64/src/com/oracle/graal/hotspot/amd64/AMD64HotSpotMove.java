@@ -123,8 +123,8 @@ public class AMD64HotSpotMove {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             boolean compressed = input.isCompressed();
-            boolean isImmutable = GraalOptions.ImmutableCode.getValue();
-            boolean generatePIC = GraalOptions.GeneratePIC.getValue();
+            boolean isImmutable = GraalOptions.ImmutableCode.getValue(crb.getOptions());
+            boolean generatePIC = GraalOptions.GeneratePIC.getValue(crb.getOptions());
             if (isRegister(result)) {
                 if (compressed) {
                     if (isImmutable && generatePIC) {

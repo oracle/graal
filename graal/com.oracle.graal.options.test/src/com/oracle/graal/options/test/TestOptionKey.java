@@ -33,13 +33,11 @@ import static com.oracle.graal.options.test.TestOptionKey.Options.SecondMutable;
 import static com.oracle.graal.options.test.TestOptionKey.Options.Stable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
 import com.oracle.graal.options.StableOptionKey;
 
 @SuppressWarnings("try")
@@ -58,69 +56,21 @@ public class TestOptionKey {
     @Test
     public void testMutable() {
         assertEquals("original", Mutable.getValue());
-        try (OverrideScope s1 = OptionKey.override(Mutable, "override1")) {
-            assertEquals("override1", Mutable.getValue());
-            try (OverrideScope s2 = OptionKey.override(Mutable, "override2")) {
-                assertEquals("override2", Mutable.getValue());
-            }
-            assertEquals("override1", Mutable.getValue());
-            try (OverrideScope s3 = OptionKey.override(Mutable, "override3")) {
-                assertEquals("override3", Mutable.getValue());
-            }
-            assertEquals("override1", Mutable.getValue());
-        }
-        assertEquals("original", Mutable.getValue());
-        try (OverrideScope s1 = OptionKey.override(Mutable, "original")) {
-            assertEquals("original", Mutable.getValue());
-        }
     }
 
     @Test
     public void testMultiple() {
         assertEquals("original", Mutable.getValue());
         assertEquals("second", SecondMutable.getValue());
-        try (OverrideScope s1 = OptionKey.override(Mutable, "override1", SecondMutable, "secondOverride1")) {
-            assertEquals("override1", Mutable.getValue());
-            assertEquals("secondOverride1", SecondMutable.getValue());
-            try (OverrideScope s2 = OptionKey.override(Mutable, "override2", SecondMutable, "secondOverride2")) {
-                assertEquals("override2", Mutable.getValue());
-                assertEquals("secondOverride2", SecondMutable.getValue());
-            }
-            assertEquals("override1", Mutable.getValue());
-            assertEquals("secondOverride1", SecondMutable.getValue());
-            try (OverrideScope s3 = OptionKey.override(Mutable, "override3", SecondMutable, "secondOverride3")) {
-                assertEquals("override3", Mutable.getValue());
-                assertEquals("secondOverride3", SecondMutable.getValue());
-            }
-            assertEquals("override1", Mutable.getValue());
-            assertEquals("secondOverride1", SecondMutable.getValue());
-        }
-        assertEquals("original", Mutable.getValue());
-        assertEquals("second", SecondMutable.getValue());
-        try (OverrideScope s1 = OptionKey.override(Mutable, "original", SecondMutable, "second")) {
-            assertEquals("original", Mutable.getValue());
-            assertEquals("second", SecondMutable.getValue());
-        }
     }
 
     @Test
     public void testStable() {
         assertTrue(Stable.getValue());
-        try (OverrideScope s = OptionKey.override(Stable, false)) {
-            fail("cannot override stable option");
-        } catch (IllegalArgumentException e) {
-            // expected
-        }
     }
 
     @Test
     public void toStringTest() {
         assertEquals("Mutable", Mutable.toString());
-        try (OverrideScope s1 = OptionKey.override(Mutable, "override1")) {
-            assertEquals("Mutable", Mutable.toString());
-            try (OverrideScope s2 = OptionKey.override(Mutable, "override2")) {
-                assertEquals("Mutable", Mutable.toString());
-            }
-        }
     }
 }

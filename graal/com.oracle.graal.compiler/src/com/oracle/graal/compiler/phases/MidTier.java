@@ -36,6 +36,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.VerifyHeapAtReturn;
 import com.oracle.graal.loop.phases.LoopSafepointEliminationPhase;
 import com.oracle.graal.loop.phases.ReassociateInvariantPhase;
 import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.DeoptimizationGroupingPhase;
@@ -58,13 +59,13 @@ import com.oracle.graal.virtual.phases.ea.EarlyReadEliminationPhase;
 
 public class MidTier extends PhaseSuite<MidTierContext> {
 
-    public MidTier() {
+    public MidTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        if (ImmutableCode.getValue()) {
+        if (ImmutableCode.getValue(options)) {
             canonicalizer.disableReadCanonicalization();
         }
 
-        if (OptPushThroughPi.getValue()) {
+        if (OptPushThroughPi.getValue(options)) {
             appendPhase(new PushThroughPiPhase());
         }
 
@@ -73,26 +74,26 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         appendPhase(new ValueAnchorCleanupPhase());
         appendPhase(new LockEliminationPhase());
 
-        if (OptReadElimination.getValue()) {
+        if (OptReadElimination.getValue(options)) {
             appendPhase(new EarlyReadEliminationPhase(canonicalizer));
         }
 
-        if (OptFloatingReads.getValue()) {
+        if (OptFloatingReads.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase()));
         }
         appendPhase(new RemoveValueProxyPhase());
 
         appendPhase(canonicalizer);
 
-        if (OptEliminatePartiallyRedundantGuards.getValue()) {
+        if (OptEliminatePartiallyRedundantGuards.getValue(options)) {
             appendPhase(new OptimizeGuardAnchorsPhase());
         }
 
-        if (ConditionalElimination.getValue()) {
+        if (ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, true));
         }
 
-        if (OptEliminatePartiallyRedundantGuards.getValue()) {
+        if (OptEliminatePartiallyRedundantGuards.getValue(options)) {
             appendPhase(new OptimizeGuardAnchorsPhase());
         }
 
@@ -104,22 +105,22 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new GuardLoweringPhase()));
 
-        if (VerifyHeapAtReturn.getValue()) {
+        if (VerifyHeapAtReturn.getValue(options)) {
             appendPhase(new VerifyHeapAtReturnPhase());
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
-        if (UseGraalInstrumentation.getValue()) {
+        if (UseGraalInstrumentation.getValue(options)) {
             appendPhase(new MidTierReconcileInstrumentationPhase());
         }
 
         appendPhase(new FrameStateAssignmentPhase());
 
-        if (ReassociateInvariants.getValue()) {
+        if (ReassociateInvariants.getValue(options)) {
             appendPhase(new ReassociateInvariantPhase());
         }
 
-        if (OptDeoptimizationGrouping.getValue()) {
+        if (OptDeoptimizationGrouping.getValue(options)) {
             appendPhase(new DeoptimizationGroupingPhase());
         }
 

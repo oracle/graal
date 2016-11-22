@@ -26,19 +26,20 @@ import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.lir.phases.LIRPhaseSuite;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.PhaseSuite;
 
 public interface CompilerConfiguration {
 
-    PhaseSuite<HighTierContext> createHighTier();
+    PhaseSuite<HighTierContext> createHighTier(OptionValues options);
 
-    PhaseSuite<MidTierContext> createMidTier();
+    PhaseSuite<MidTierContext> createMidTier(OptionValues options);
 
-    PhaseSuite<LowTierContext> createLowTier();
+    PhaseSuite<LowTierContext> createLowTier(OptionValues options);
 
-    LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage();
+    LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage(OptionValues options);
 
-    LIRPhaseSuite<AllocationContext> createAllocationStage();
+    LIRPhaseSuite<AllocationContext> createAllocationStage(OptionValues options);
 
-    LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage();
+    LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage(OptionValues options);
 }

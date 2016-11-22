@@ -34,14 +34,15 @@ import com.oracle.graal.lir.alloc.lsra.MoveResolver;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssa.SSAUtil;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.TargetDescription;
 
 public final class SSALinearScan extends LinearScan {
 
     public SSALinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
-                    boolean neverSpillConstants) {
-        super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks, neverSpillConstants);
+                    boolean neverSpillConstants, OptionValues options) {
+        super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks, neverSpillConstants, options);
     }
 
     @Override

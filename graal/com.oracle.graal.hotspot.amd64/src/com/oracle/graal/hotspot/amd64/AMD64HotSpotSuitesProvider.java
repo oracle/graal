@@ -27,6 +27,7 @@ import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.hotspot.lir.HotSpotZapRegistersPhase;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public class AMD64HotSpotSuitesProvider extends AMD64SuitesProvider {
@@ -36,9 +37,9 @@ public class AMD64HotSpotSuitesProvider extends AMD64SuitesProvider {
     }
 
     @Override
-    public LIRSuites createLIRSuites() {
-        LIRSuites lirSuites = super.createLIRSuites();
-        if (GraalOptions.DetailedAsserts.getValue()) {
+    public LIRSuites createLIRSuites(OptionValues options) {
+        LIRSuites lirSuites = super.createLIRSuites(options);
+        if (GraalOptions.DetailedAsserts.getValue(options)) {
             lirSuites.getPostAllocationOptimizationStage().appendPhase(new HotSpotZapRegistersPhase());
         }
         return lirSuites;

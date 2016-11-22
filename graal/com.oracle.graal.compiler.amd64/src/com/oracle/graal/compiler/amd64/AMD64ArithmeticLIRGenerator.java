@@ -1234,8 +1234,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return;
             } else if (c instanceof VMConstant) {
                 VMConstant vc = (VMConstant) c;
-                boolean isImmutable = GraalOptions.ImmutableCode.getValue();
-                boolean generatePIC = GraalOptions.GeneratePIC.getValue();
+                boolean isImmutable = GraalOptions.ImmutableCode.getValue(getOptions());
+                boolean generatePIC = GraalOptions.GeneratePIC.getValue(getOptions());
                 if (size == DWORD && !(isImmutable && generatePIC)) {
                     getLIRGen().append(new AMD64BinaryConsumer.VMConstOp(CMP.getMIOpcode(DWORD, false), left, vc));
                 } else {

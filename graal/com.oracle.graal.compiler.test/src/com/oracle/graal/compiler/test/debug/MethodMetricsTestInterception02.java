@@ -23,9 +23,7 @@
 package com.oracle.graal.compiler.test.debug;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
@@ -42,9 +40,6 @@ import com.oracle.graal.debug.DebugValueFactory;
 import com.oracle.graal.debug.DebugVerifyHandler;
 import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
-import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
 import com.oracle.graal.phases.Phase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -125,13 +120,6 @@ public class MethodMetricsTestInterception02 extends MethodMetricsTest {
                 return factory.createMemUseTracker(name, conditional);
             }
         });
-    }
-
-    @Override
-    protected OverrideScope getOScope() {
-        Map<OptionKey<?>, Object> mapping = new HashMap<>();
-        mapping.put(MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);
-        return OptionKey.override(mapping);
     }
 
     @Test

@@ -30,6 +30,7 @@ import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionalit
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
@@ -55,18 +56,18 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
     }
 
-    public LowTier() {
+    public LowTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        if (ImmutableCode.getValue()) {
+        if (ImmutableCode.getValue(options)) {
             canonicalizer.disableReadCanonicalization();
         }
 
-        if (Options.ProfileCompiledMethods.getValue()) {
+        if (Options.ProfileCompiledMethods.getValue(options)) {
             appendPhase(new ProfileCompiledMethodsPhase());
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER));
-        if (UseGraalInstrumentation.getValue()) {
+        if (UseGraalInstrumentation.getValue(options)) {
             appendPhase(new InlineInstrumentationPhase());
         }
 
@@ -75,7 +76,7 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         appendPhase(new ExpandLogicPhase());
 
         /* Cleanup IsNull checks resulting from MID_TIER/LOW_TIER lowering and ExpandLogic phase. */
-        if (ConditionalElimination.getValue()) {
+        if (ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
             /* Canonicalizer may create some new ShortCircuitOrNodes so clean them up. */
             appendPhase(new ExpandLogicPhase());

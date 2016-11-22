@@ -30,6 +30,7 @@ import static com.oracle.graal.graph.InputEdges.translateInto;
 import static com.oracle.graal.graph.Node.WithAllEdges;
 import static com.oracle.graal.graph.Node.newIdentityMap;
 import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -277,14 +278,14 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final NodeSize size;
 
     public NodeCycles cycles() {
-        if (Options.VerifyNodeCostOnAccess.getValue() && cycles == NodeCycles.CYCLES_UNSET) {
+        if (Options.VerifyNodeCostOnAccess.getValue(GLOBAL) && cycles == NodeCycles.CYCLES_UNSET) {
             throw new GraalError("Missing NodeCycles specification in the @NodeInfo annotation of the node %s", this);
         }
         return cycles;
     }
 
     public NodeSize size() {
-        if (Options.VerifyNodeCostOnAccess.getValue() && size == NodeSize.SIZE_UNSET) {
+        if (Options.VerifyNodeCostOnAccess.getValue(GLOBAL) && size == NodeSize.SIZE_UNSET) {
             throw new GraalError("Missing NodeSize specification in the @NodeInfo annotation of the node %s", this);
         }
         return size;

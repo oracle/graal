@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.PhaseSuite;
 
 /**
@@ -32,11 +33,11 @@ import com.oracle.graal.phases.PhaseSuite;
 public interface SuitesProvider {
 
     /**
-     * Get the default phase suites of this compiler. This will take in account any options enabled
-     * at the time of call, returning an appropriately constructed suite. The returned suite is
-     * immutable by default but {@link Suites#copy} can be used to create a customized version.
+     * Get the default phase suites of this compiler. This will take {@code options} into account,
+     * returning an appropriately constructed suite. The returned suite is immutable by default but
+     * {@link Suites#copy} can be used to create a customized version.
      */
-    Suites getDefaultSuites();
+    Suites getDefaultSuites(OptionValues values);
 
     /**
      * Get the default phase suite for creating new graphs.
@@ -49,5 +50,5 @@ public interface SuitesProvider {
      * is immutable by default but {@link LIRSuites#copy} can be used to create a customized
      * version.
      */
-    LIRSuites getDefaultLIRSuites();
+    LIRSuites getDefaultLIRSuites(OptionValues options);
 }

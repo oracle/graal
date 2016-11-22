@@ -25,6 +25,7 @@ package com.oracle.graal.java;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.phases.tiers.HighTierContext;
@@ -41,8 +42,8 @@ public class DefaultSuitesProvider extends SuitesProviderBase {
     }
 
     @Override
-    public Suites createSuites() {
-        return Suites.createSuites(compilerConfiguration);
+    public Suites createSuites(OptionValues options) {
+        return Suites.createSuites(compilerConfiguration, options);
     }
 
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite(Plugins plugins) {
@@ -52,7 +53,7 @@ public class DefaultSuitesProvider extends SuitesProviderBase {
     }
 
     @Override
-    public LIRSuites createLIRSuites() {
-        return Suites.createLIRSuites(compilerConfiguration);
+    public LIRSuites createLIRSuites(OptionValues options) {
+        return Suites.createLIRSuites(compilerConfiguration, options);
     }
 }

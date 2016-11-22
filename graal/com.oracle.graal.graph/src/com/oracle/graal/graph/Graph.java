@@ -39,8 +39,9 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
@@ -111,11 +112,16 @@ public class Graph {
      */
     private final HashMap<CacheEntry, Node> cachedLeafNodes = CollectionsFactory.newMap();
 
-    /*
+    /**
      * Indicates that the graph should no longer be modified. Frozen graphs can be used my multiple
      * threads so it's only safe to read them.
      */
     private boolean isFrozen = false;
+
+    /**
+     * The option values used while compiling this graph.
+     */
+    private final OptionValues options;
 
     /**
      * Entry in {@link Graph#cachedLeafNodes}.
@@ -226,7 +232,7 @@ public class Graph {
      * Creates an empty Graph with no name.
      */
     public Graph() {
-        this(null);
+        this(null, OptionValues.GLOBAL);
     }
 
     /**
@@ -247,11 +253,13 @@ public class Graph {
      *
      * @param name the name of the graph, used for debugging purposes
      */
-    public Graph(String name) {
+    public Graph(String name, OptionValues options) {
         nodes = new Node[INITIAL_NODES_SIZE];
         iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         this.name = name;
+        this.options = options != null ? options : OptionValues.GLOBAL;
+
         if (isModificationCountsEnabled()) {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
             nodeUsageModCounts = new int[INITIAL_NODES_SIZE];
@@ -338,12 +346,16 @@ public class Graph {
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
     protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
-        Graph copy = new Graph(newName);
+        Graph copy = new Graph(newName, options);
         Map<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (Map<Node, Node>) null);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
         return copy;
+    }
+
+    public OptionValues getOptions() {
+        return options;
     }
 
     @Override
@@ -776,14 +788,12 @@ public class Graph {
 
     static final Node PLACE_HOLDER = new PlaceHolderNode();
 
-    public static final int COMPRESSION_THRESHOLD = Options.GraphCompressionThreshold.getValue();
-
     private static final DebugCounter GraphCompressions = Debug.counter("GraphCompressions");
 
     /**
-     * If the {@linkplain #COMPRESSION_THRESHOLD compression threshold} is met, the list of nodes is
-     * compressed such that all non-null entries precede all null entries while preserving the
-     * ordering between the nodes within the list.
+     * If the {@linkplain Options#GraphCompressionThreshold compression threshold} is met, the list
+     * of nodes is compressed such that all non-null entries precede all null entries while
+     * preserving the ordering between the nodes within the list.
      */
     public boolean maybeCompress() {
         if (Debug.isDumpEnabledForMethod() || Debug.isLogEnabledForMethod()) {
@@ -791,7 +801,8 @@ public class Graph {
         }
         int liveNodeCount = getNodeCount();
         int liveNodePercent = liveNodeCount * 100 / nodesSize;
-        if (COMPRESSION_THRESHOLD == 0 || liveNodePercent >= COMPRESSION_THRESHOLD) {
+        int compressionThreshold = Options.GraphCompressionThreshold.getValue(options);
+        if (compressionThreshold == 0 || liveNodePercent >= compressionThreshold) {
             return false;
         }
         GraphCompressions.increment();
@@ -1011,7 +1022,7 @@ public class Graph {
     }
 
     public boolean verify() {
-        if (Options.VerifyGraalGraphs.getValue()) {
+        if (Options.VerifyGraalGraphs.getValue(options)) {
             for (Node node : getNodes()) {
                 try {
                     try {

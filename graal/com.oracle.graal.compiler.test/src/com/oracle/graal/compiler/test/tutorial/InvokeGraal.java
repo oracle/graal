@@ -22,14 +22,10 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.code.CompilationResult;
@@ -48,6 +44,12 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.runtime.RuntimeProvider;
+
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Sample code that shows how to invoke Graal from an application.
@@ -102,12 +104,12 @@ public class InvokeGraal {
              * The optimization phases that are applied to the graph. This is the main configuration
              * point for Graal. Add or remove phases to customize your compilation.
              */
-            Suites suites = backend.getSuites().getDefaultSuites();
+            Suites suites = backend.getSuites().getDefaultSuites(GLOBAL);
 
             /*
              * The low-level phases that are applied to the low-level representation.
              */
-            LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites();
+            LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites(GLOBAL);
 
             /*
              * We want Graal to perform all speculative optimistic optimizations, using the

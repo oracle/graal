@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.compiler.common.spi.JavaConstantFieldProvider;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -47,7 +48,7 @@ public class HotSpotConstantFieldProvider extends JavaConstantFieldProvider {
         if (!config.foldStableValues) {
             return false;
         }
-        if (field.isStatic() && !isStaticFieldConstant(field)) {
+        if (field.isStatic() && !isStaticFieldConstant(field, tool.getOptions())) {
             return false;
         }
 
@@ -59,7 +60,7 @@ public class HotSpotConstantFieldProvider extends JavaConstantFieldProvider {
 
     @Override
     protected boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        if (field.isStatic() && !isStaticFieldConstant(field)) {
+        if (field.isStatic() && !isStaticFieldConstant(field, tool.getOptions())) {
             return false;
         }
 
@@ -68,7 +69,7 @@ public class HotSpotConstantFieldProvider extends JavaConstantFieldProvider {
 
     private static final String SystemClassName = "Ljava/lang/System;";
 
-    protected boolean isStaticFieldConstant(ResolvedJavaField field) {
+    protected boolean isStaticFieldConstant(ResolvedJavaField field, @SuppressWarnings("unused") OptionValues options) {
         ResolvedJavaType declaringClass = field.getDeclaringClass();
         return declaringClass.isInitialized() && !declaringClass.getName().equals(SystemClassName);
     }

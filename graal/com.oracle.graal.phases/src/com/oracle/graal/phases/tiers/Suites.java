@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.PhaseSuite;
 
 public final class Suites {
@@ -50,12 +51,12 @@ public final class Suites {
         this.lowTier = lowTier;
     }
 
-    public static Suites createSuites(CompilerConfiguration config) {
-        return new Suites(config.createHighTier(), config.createMidTier(), config.createLowTier());
+    public static Suites createSuites(CompilerConfiguration config, OptionValues options) {
+        return new Suites(config.createHighTier(options), config.createMidTier(options), config.createLowTier(options));
     }
 
-    public static LIRSuites createLIRSuites(CompilerConfiguration config) {
-        return new LIRSuites(config.createPreAllocationOptimizationStage(), config.createAllocationStage(), config.createPostAllocationOptimizationStage());
+    public static LIRSuites createLIRSuites(CompilerConfiguration config, OptionValues options) {
+        return new LIRSuites(config.createPreAllocationOptimizationStage(options), config.createAllocationStage(options), config.createPostAllocationOptimizationStage(options));
     }
 
     public boolean isImmutable() {

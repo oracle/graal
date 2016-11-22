@@ -59,6 +59,7 @@ import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
 import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.BailoutException;
@@ -177,9 +178,10 @@ public class LinearScan {
      */
     private int numVariables;
     private final boolean neverSpillConstants;
+    private final OptionValues options;
 
     protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
-                    boolean neverSpillConstants) {
+                    boolean neverSpillConstants, OptionValues options) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -192,6 +194,11 @@ public class LinearScan {
         this.numVariables = ir.numVariables();
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.neverSpillConstants = neverSpillConstants;
+        this.options = options;
+    }
+
+    public OptionValues getOptions() {
+        return options;
     }
 
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -650,13 +657,12 @@ public class LinearScan {
     }
 
     @SuppressWarnings("try")
-    protected void allocate(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
+    protected void allocate(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
 
         /*
          * This is the point to enable debug logging for the whole register allocation.
          */
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
-            AllocationContext context = new AllocationContext(spillMoveFactory, registerAllocationConfig);
 
             createLifetimeAnalysisPhase().apply(target, lirGenRes, context);
 

@@ -27,6 +27,7 @@ import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
@@ -36,8 +37,9 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
 
     public static TruffleCompiler create(GraalTruffleRuntime runtime) {
         Backend backend = runtime.getRequiredGraalCapability(RuntimeProvider.class).getHostBackend();
-        Suites suites = backend.getSuites().getDefaultSuites();
-        LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites();
+        OptionValues options = runtime.getOptions();
+        Suites suites = backend.getSuites().getDefaultSuites(options);
+        LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites(options);
         GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
         Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
         SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);

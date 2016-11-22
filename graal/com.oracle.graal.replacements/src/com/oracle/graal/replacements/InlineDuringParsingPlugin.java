@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.common.GraalOptions.TrivialInliningSize;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
 import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -47,7 +48,7 @@ public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
             }
 
             if (!method.isSynchronized() &&
-                checkSize(method, args) &&
+                checkSize(method, args, b.getGraph()) &&
                 b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
                 return createStandardInlineInfo(method);
             }
@@ -56,13 +57,13 @@ public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
         return null;
     }
 
-    private static boolean checkSize(ResolvedJavaMethod method, ValueNode[] args) {
+    private static boolean checkSize(ResolvedJavaMethod method, ValueNode[] args, StructuredGraph graph) {
         int bonus = 1;
         for (ValueNode v : args) {
             if (v.isConstant()) {
                 bonus++;
             }
         }
-        return method.getCode().length <= TrivialInliningSize.getValue() * bonus;
+        return method.getCode().length <= TrivialInliningSize.getValue(graph.getOptions()) * bonus;
     }
 }

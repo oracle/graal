@@ -33,6 +33,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
@@ -81,9 +82,9 @@ public abstract class AbstractInlineInfo implements InlineInfo {
 
     @Override
     @SuppressWarnings("try")
-    public final void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer) {
+    public final void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer, OptionValues options) {
         for (int i = 0; i < numberOfMethods(); i++) {
-            try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(), false)) {
+            try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(options), false)) {
                 Inlineable elem = Inlineable.getInlineableElement(methodAt(i), invoke, context, canonicalizer);
                 setInlinableElement(i, elem);
             }

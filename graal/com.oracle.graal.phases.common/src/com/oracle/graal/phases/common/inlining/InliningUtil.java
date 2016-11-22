@@ -273,10 +273,10 @@ public class InliningUtil {
      */
     @SuppressWarnings("try")
     public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, List<Node> canonicalizedNodes, ResolvedJavaMethod inlineeMethod) {
-        MethodMetricsInlineeScopeInfo m = MethodMetricsInlineeScopeInfo.create();
+        FixedNode invokeNode = invoke.asNode();
+        StructuredGraph graph = invokeNode.graph();
+        MethodMetricsInlineeScopeInfo m = MethodMetricsInlineeScopeInfo.create(graph.getOptions());
         try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", m, false)) {
-            FixedNode invokeNode = invoke.asNode();
-            StructuredGraph graph = invokeNode.graph();
             if (Fingerprint.ENABLED) {
                 Fingerprint.submit("inlining %s into %s: %s", formatGraph(inlineGraph), formatGraph(invoke.asNode().graph()), inlineGraph.getNodes().snapshot());
             }

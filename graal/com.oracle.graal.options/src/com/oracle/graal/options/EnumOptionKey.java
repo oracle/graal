@@ -44,9 +44,9 @@ public class EnumOptionKey<T extends Enum<T>> extends OptionKey<T> {
     }
 
     @Override
-    public void setValue(OptionValues values, Object value) {
+    public OptionValues setValue(OptionValues options, Object value) {
         assert enumClass.isInstance(value) : value + " is not a valid value for " + getName();
-        super.setValue(values, value);
+        return super.setValue(options, value);
     }
 
     Object valueOf(String name) {

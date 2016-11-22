@@ -42,6 +42,7 @@ import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
@@ -76,8 +77,8 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     /**
      * Gets the system property assignment that would set the current value for a given option.
      */
-    public static String asSystemPropertySetting(OptionKey<?> value) {
-        return GRAAL_OPTION_PROPERTY_PREFIX + value.getName() + "=" + value.getValue();
+    public static String asSystemPropertySetting(OptionValues options, OptionKey<?> value) {
+        return GRAAL_OPTION_PROPERTY_PREFIX + value.getName() + "=" + value.getValue(options);
     }
 
     private final HotSpotGraalJVMCIServiceLocator locator;
@@ -260,8 +261,8 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         if (graalCompileOnlyFilter != null) {
             return CompilationLevelAdjustment.ByFullSignature;
         }
-        if (!Options.UseTrivialPrefixes.getValue()) {
-            if (Options.CompileGraalWithC1Only.getValue()) {
+        if (!Options.UseTrivialPrefixes.getValue(GLOBAL)) {
+            if (Options.CompileGraalWithC1Only.getValue(GLOBAL)) {
                 // We only decide using the class declaring the method
                 // so no need to have the method name and signature
                 // symbols converted to a String.

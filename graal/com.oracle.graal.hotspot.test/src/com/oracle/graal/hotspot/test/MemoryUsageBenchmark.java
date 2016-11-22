@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.debug.internal.MemUseTrackerImpl.getCurrentThreadAllocatedBytes;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.compiler.test.AllocSpy;
@@ -144,7 +145,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, jvmciEnv);
-            CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false);
+            CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false, GLOBAL);
             task.runCompilation();
         }
     }
@@ -161,7 +162,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
             try (AllocSpy as = AllocSpy.open(methodName)) {
                 HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
                 HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, JVMCICompiler.INVOCATION_ENTRY_BCI, jvmciEnv);
-                CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false);
+                CompilationTask task = new CompilationTask(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), request, true, false, GLOBAL);
                 task.runCompilation();
             }
         }
@@ -187,7 +188,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         compileAndTime("complex");
         if (CompileTheWorldOptions.CompileTheWorldClasspath.getValue() != CompileTheWorld.SUN_BOOT_CLASS_PATH) {
             HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
-            CompileTheWorld ctw = new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler());
+            CompileTheWorld ctw = new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), GLOBAL);
             try {
                 ctw.compile();
             } catch (Throwable e) {

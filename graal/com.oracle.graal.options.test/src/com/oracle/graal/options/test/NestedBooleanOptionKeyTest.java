@@ -42,7 +42,6 @@ import org.junit.Test;
 import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.OptionDescriptor;
 import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
 
 public class NestedBooleanOptionKeyTest {
 
@@ -67,23 +66,7 @@ public class NestedBooleanOptionKeyTest {
     public void runOverrides() {
         assertTrue(Master0.getValue());
         assertTrue(NestedOption0.getValue());
-        try (OverrideScope s1 = OptionKey.override(Master0, false)) {
-            assertFalse(Master0.getValue());
-            assertFalse(NestedOption0.getValue());
-            try (OverrideScope s2 = OptionKey.override(NestedOption0, false)) {
-                assertFalse(NestedOption0.getValue());
-            }
-            try (OverrideScope s2 = OptionKey.override(NestedOption0, true)) {
-                assertTrue(NestedOption0.getValue());
-            }
-        }
         assertTrue(Master0.getValue());
-        try (OverrideScope s1 = OptionKey.override(NestedOption0, false)) {
-            assertFalse(NestedOption0.getValue());
-        }
-        try (OverrideScope s1 = OptionKey.override(NestedOption0, true)) {
-            assertTrue(NestedOption0.getValue());
-        }
     }
 
     @Test

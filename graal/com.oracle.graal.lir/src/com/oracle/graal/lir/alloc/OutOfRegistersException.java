@@ -22,18 +22,12 @@
  */
 package com.oracle.graal.lir.alloc;
 
-import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
-import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.ALL_REGISTERS;
-
-import com.oracle.graal.lir.BailoutAndRestartBackendException;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
+import jdk.vm.ci.code.BailoutException;
 
 /**
  * Thrown if the register allocator runs out of registers. This should never happen in normal mode.
  */
-public class OutOfRegistersException extends BailoutAndRestartBackendException {
+public class OutOfRegistersException extends BailoutException {
 
     private static final long serialVersionUID = -3479786650143432195L;
 
@@ -71,20 +65,5 @@ public class OutOfRegistersException extends BailoutAndRestartBackendException {
 
     public String getDescription() {
         return description;
-    }
-
-    @Override
-    public boolean shouldRestart() {
-        return RegisterPressure.getValue() != null && !RegisterPressure.getValue().equals(ALL_REGISTERS);
-    }
-
-    @Override
-    public OverrideScope getOverrideScope() {
-        return OptionKey.override(RegisterPressure, ALL_REGISTERS);
-    }
-
-    @Override
-    public LIRSuites updateLIRSuites(LIRSuites lirSuites) {
-        return lirSuites;
     }
 }

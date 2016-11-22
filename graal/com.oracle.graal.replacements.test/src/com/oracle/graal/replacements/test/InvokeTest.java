@@ -33,7 +33,7 @@ import com.oracle.graal.phases.common.AbstractInliningPhase;
 public class InvokeTest extends GraalCompilerTest {
 
     public InvokeTest() {
-        getSuites().getHighTier().findPhase(AbstractInliningPhase.class).remove();
+        createSuites().getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }
 
     public interface I {

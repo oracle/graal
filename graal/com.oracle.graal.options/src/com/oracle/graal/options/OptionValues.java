@@ -31,6 +31,14 @@ import java.util.ServiceLoader;
  */
 public class OptionValues {
 
+    /**
+     * An {@link AutoCloseable} whose {@link #close()} does not throw a checked exception.
+     */
+    public interface OverrideScope extends AutoCloseable {
+        @Override
+        void close();
+    }
+
     public static final OptionValues GLOBAL = new OptionValues();
 
     private final Map<OptionKey<?>, Object> values = new HashMap<>();
@@ -52,9 +60,10 @@ public class OptionValues {
         OptionsParser.parseOption(name, value, this, loader);
     }
 
-    void set(OptionKey<?> key, Object value) {
-        Object oldValue = values.put(key, encodeNull(value));
-        key.valueUpdated(this, decodeNull(oldValue), value);
+    OptionValues set(OptionKey<?> key, Object value) {
+        Object oldValue = decodeNull(values.put(key, encodeNull(value)));
+        key.valueUpdated(this, oldValue, value);
+        return this;
     }
 
     /**
@@ -81,6 +90,33 @@ public class OptionValues {
         return key.getDescriptor() != null && values.containsKey(key);
     }
 
+    public OptionValues(OptionValues initialValues) {
+        values.putAll(initialValues.values);
+    }
+
+    public OptionValues(OptionValues initialValues, Map<OptionKey<?>, Object> overrides) {
+        values.putAll(initialValues.values);
+        values.putAll(overrides);
+    }
+
+    public OptionValues() {
+    }
+
+    /**
+     * Gets a new {@link OptionValues} object with the same values as this object except with the
+     * guarantee that the value of {@code key} in the returned object is {@code value}. That is, a
+     * new {@link OptionValues} object is returned irrespective of the value for {@code key} in this
+     * object.
+     *
+     * @return a newly created {@link OptionValues} instance where the value of {@code key} is
+     *         {@code value}
+     */
+    public OptionValues with(OptionKey<?> key, Object value) {
+        OptionValues options = new OptionValues(this);
+        key.setValue(options, value);
+        return options;
+    }
+
     @SuppressWarnings("unchecked")
     <T> T get(OptionKey<T> key) {
         if (key.getDescriptor() != null) {
@@ -96,12 +132,6 @@ public class OptionValues {
             return key.getDefaultValue();
         }
 
-    }
-
-    public void copyInto(Map<OptionKey<?>, Object> dst) {
-        for (Map.Entry<OptionKey<?>, Object> e : values.entrySet()) {
-            dst.put(e.getKey(), decodeNull(e.getValue()));
-        }
     }
 
     private static final Object NULL = new Object();

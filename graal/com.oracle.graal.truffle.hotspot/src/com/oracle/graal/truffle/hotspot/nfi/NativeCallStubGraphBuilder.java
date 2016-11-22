@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle.hotspot.nfi;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 
 import com.oracle.graal.code.CompilationResult;
@@ -122,8 +123,8 @@ public class NativeCallStubGraphBuilder {
         PhaseSuite<HighTierContext> graphBuilder = new PhaseSuite<>();
         graphBuilder.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins)));
 
-        Suites suites = providers.getSuites().getDefaultSuites();
-        LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites();
+        Suites suites = providers.getSuites().getDefaultSuites(GLOBAL);
+        LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites(GLOBAL);
 
         StructuredGraph g = new StructuredGraph(callStubMethod, AllowAssumptions.NO);
         CompilationResult compResult = GraalCompiler.compileGraph(g, callStubMethod, providers, backend, graphBuilder, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,

@@ -34,8 +34,7 @@ import org.junit.Test;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
+import com.oracle.graal.options.OptionValues.OverrideScope;
 
 public class LambdaEagerTest extends GraalCompilerTest {
 
@@ -82,7 +81,7 @@ public class LambdaEagerTest extends GraalCompilerTest {
     @Override
     @SuppressWarnings("try")
     protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile) {
-        try (OverrideScope scope = OptionKey.override(GraalOptions.InlineEverything, true)) {
+        try (OverrideScope scope = overrideOptions(GraalOptions.InlineEverything, true)) {
             return super.getCode(installedCodeOwner, graph, forceCompile);
         }
     }

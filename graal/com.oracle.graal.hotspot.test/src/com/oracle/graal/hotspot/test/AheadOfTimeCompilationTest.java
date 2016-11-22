@@ -44,8 +44,7 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.memory.FloatingReadNode;
 import com.oracle.graal.nodes.memory.ReadNode;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
+import com.oracle.graal.options.OptionValues.OverrideScope;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.phases.tiers.SuitesProvider;
@@ -210,13 +209,13 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     private StructuredGraph compile(String test, boolean compileAOT) {
-        try (OverrideScope s = OptionKey.override(ImmutableCode, compileAOT)) {
+        try (OverrideScope mark = overrideOptions(ImmutableCode, compileAOT)) {
             StructuredGraph graph = parseEager(test, AllowAssumptions.YES);
             ResolvedJavaMethod method = graph.method();
-            // create suites everytime, as we modify options for the compiler
+            // create suites every time, as we modify options for the compiler
             SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
-            final Suites suitesLocal = suitesProvider.getDefaultSuites();
-            final LIRSuites lirSuitesLocal = suitesProvider.getDefaultLIRSuites();
+            final Suites suitesLocal = suitesProvider.getDefaultSuites(options);
+            final LIRSuites lirSuitesLocal = suitesProvider.getDefaultLIRSuites(options);
             final CompilationResult compResult = compileGraph(graph, method, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, graph.getProfilingInfo(),
                             suitesLocal, lirSuitesLocal, new CompilationResult(), CompilationResultBuilderFactory.Default);
             addMethod(method, compResult);

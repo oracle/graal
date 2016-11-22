@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.phases;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 
 import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.LoweringPhase;
@@ -32,9 +33,9 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 
 public class EconomyHighTier extends PhaseSuite<HighTierContext> {
 
-    public EconomyHighTier() {
+    public EconomyHighTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        if (ImmutableCode.getValue()) {
+        if (ImmutableCode.getValue(options)) {
             canonicalizer.disableReadCanonicalization();
         }
 

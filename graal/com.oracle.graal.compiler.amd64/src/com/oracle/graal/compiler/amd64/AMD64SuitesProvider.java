@@ -26,6 +26,7 @@ import com.oracle.graal.java.DefaultSuitesProvider;
 import com.oracle.graal.lir.amd64.phases.StackMoveOptimizationPhase;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 public class AMD64SuitesProvider extends DefaultSuitesProvider {
@@ -35,9 +36,9 @@ public class AMD64SuitesProvider extends DefaultSuitesProvider {
     }
 
     @Override
-    public LIRSuites createLIRSuites() {
-        LIRSuites lirSuites = super.createLIRSuites();
-        if (StackMoveOptimizationPhase.Options.LIROptStackMoveOptimizer.getValue()) {
+    public LIRSuites createLIRSuites(OptionValues options) {
+        LIRSuites lirSuites = super.createLIRSuites(options);
+        if (StackMoveOptimizationPhase.Options.LIROptStackMoveOptimizer.getValue(options)) {
             /* Note: this phase must be inserted <b>after</b> RedundantMoveElimination */
             lirSuites.getPostAllocationOptimizationStage().appendPhase(new StackMoveOptimizationPhase());
         }

@@ -50,6 +50,7 @@ import com.oracle.graal.nodes.java.AbstractNewObjectNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
@@ -379,7 +380,8 @@ public class InliningData {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
         InlineInfo calleeInfo = calleeInvocation.callee();
         try {
-            try (Debug.Scope scope = Debug.scope("doInline", callerGraph); Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(), false)) {
+            OptionValues options = rootGraph.getOptions();
+            try (Debug.Scope scope = Debug.scope("doInline", callerGraph); Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(options), false)) {
                 Set<Node> canonicalizedNodes = Node.newSet();
                 calleeInfo.invoke().asNode().usages().snapshotTo(canonicalizedNodes);
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context));
@@ -474,7 +476,7 @@ public class InliningData {
         InlineInfo info = getInlineInfo(invoke);
 
         if (info != null) {
-            info.populateInlinableElements(context, currentGraph().graph(), canonicalizer);
+            info.populateInlinableElements(context, currentGraph().graph(), canonicalizer, rootGraph.getOptions());
             double invokeProbability = callsiteHolder.invokeProbability(invoke);
             double invokeRelevance = callsiteHolder.invokeRelevance(invoke);
             MethodInvocation methodInvocation = new MethodInvocation(info, invokeProbability, invokeRelevance, freshlyInstantiatedArguments(invoke, callsiteHolder.getFixedParams()));

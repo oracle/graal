@@ -86,8 +86,6 @@ import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
 import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
 import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionsParser;
 
@@ -116,46 +114,22 @@ public final class CompileTheWorld {
     public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
     /**
-     * A mechanism for overriding JVMCI options that affect compilation. A {@link Config} object
-     * should be used in a try-with-resources statement to ensure overriding of options is scoped
-     * properly. For example:
-     *
-     * <pre>
-     *     Config config = ...;
-     *     try (AutoCloseable s = config == null ? null : config.apply()) {
-     *         // perform a JVMCI compilation
-     *     }
-     * </pre>
+     * @param options a space separated set of option value settings with each option setting in a
+     *            {@code -Dgraal.<name>=<value>} format but without the leading {@code -Dgraal.}.
+     *            Ignored if null.
      */
-    @SuppressWarnings("serial")
-    public static class Config extends HashMap<OptionKey<?>, Object> {
-        /**
-         * Creates a {@link Config} object by parsing a set of space separated override options.
-         *
-         * @param options a space separated set of option value settings with each option setting in
-         *            a {@code -Dgraal.<name>=<value>} format but without the leading
-         *            {@code -Dgraal.}. Ignored if null.
-         */
-        public Config(String options) {
-            if (options != null) {
-                Map<String, String> optionSettings = new HashMap<>();
-                for (String optionSetting : options.split("\\s+|#")) {
-                    OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
-                }
-                OptionValues values = new OptionValues();
-                ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
-                OptionsParser.parseOptions(optionSettings, values, loader);
-                values.copyInto(this);
+    public static OptionValues parseOptions(String options, OptionValues initialOptions) {
+        if (options != null) {
+            Map<String, String> optionSettings = new HashMap<>();
+            for (String optionSetting : options.split("\\s+|#")) {
+                OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
             }
+            OptionValues values = new OptionValues(initialOptions);
+            ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+            OptionsParser.parseOptions(optionSettings, values, loader);
+            return values;
         }
-
-        /**
-         * Applies the overrides represented by this object. The overrides are in effect until
-         * {@link OverrideScope#close()} is called on the returned object.
-         */
-        OverrideScope apply() {
-            return OptionKey.override(this);
-        }
+        return initialOptions;
     }
 
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
@@ -196,7 +170,6 @@ public final class CompileTheWorld {
     private AtomicLong memoryUsed = new AtomicLong();
 
     private boolean verbose;
-    private final Config config;
 
     /**
      * Signal that the threads should start compiling in multithreaded mode.
@@ -205,17 +178,19 @@ public final class CompileTheWorld {
 
     private ThreadPoolExecutor threadPool;
 
+    private OptionValues currentOptions;
+    private final OptionValues compilationOptions;
+
     /**
      * Creates a compile-the-world instance.
-     *
      * @param files {@link File#pathSeparator} separated list of Zip/Jar files to compile
      * @param startAt index of the class file to start compilation at
      * @param stopAt index of the class file to stop compilation at
      * @param methodFilters
      * @param excludeMethodFilters
      */
-    public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, String files, Config config, int startAt, int stopAt, String methodFilters,
-                    String excludeMethodFilters, boolean verbose) {
+    public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, String files, int startAt, int stopAt, String methodFilters, String excludeMethodFilters,
+                    boolean verbose, OptionValues initialOptions, OptionValues compilationOptions) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.inputClassPath = files;
@@ -224,19 +199,26 @@ public final class CompileTheWorld {
         this.methodFilters = methodFilters == null || methodFilters.isEmpty() ? null : MethodFilter.parse(methodFilters);
         this.excludeMethodFilters = excludeMethodFilters == null || excludeMethodFilters.isEmpty() ? null : MethodFilter.parse(excludeMethodFilters);
         this.verbose = verbose;
-        this.config = config;
+        this.compilationOptions = compilationOptions;
+        this.currentOptions = initialOptions;
 
         // We don't want the VM to exit when a method fails to compile...
-        config.putIfAbsent(ExitVMOnException, false);
+        ExitVMOnException.setValue(compilationOptions, false);
 
         // ...but we want to see exceptions.
-        config.putIfAbsent(PrintBailout, true);
-        config.putIfAbsent(PrintStackTraceOnException, true);
+        PrintBailout.setValue(compilationOptions, true);
+        PrintStackTraceOnException.setValue(compilationOptions, true);
     }
 
-    public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler) {
-        this(jvmciRuntime, compiler, CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(), CompileTheWorldStopAt.getValue(),
-                        CompileTheWorldMethodFilter.getValue(), CompileTheWorldExcludeMethodFilter.getValue(), CompileTheWorldVerbose.getValue());
+    public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, OptionValues options) {
+        this(jvmciRuntime, compiler, CompileTheWorldClasspath.getValue(options),
+                        CompileTheWorldStartAt.getValue(options),
+                        CompileTheWorldStopAt.getValue(options),
+                        CompileTheWorldMethodFilter.getValue(options),
+                        CompileTheWorldExcludeMethodFilter.getValue(options),
+                        CompileTheWorldVerbose.getValue(options),
+                        options,
+                        parseOptions(CompileTheWorldConfig.getValue(options), options));
     }
 
     /**
@@ -528,7 +510,7 @@ public final class CompileTheWorld {
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             boolean useProfilingInfo = false;
             boolean installAsDefault = false;
-            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L), useProfilingInfo, installAsDefault);
+            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, new HotSpotCompilationRequest(dummyMethod, entryBCI, 0L), useProfilingInfo, installAsDefault, currentOptions);
             task.runCompilation();
         } catch (NoSuchMethodException | SecurityException e1) {
             printStackTrace(e1);
@@ -539,8 +521,8 @@ public final class CompileTheWorld {
          * DebugValueThreadFilter to filter on the thread names.
          */
         int threadCount = 1;
-        if (CompileTheWorldOptions.CompileTheWorldMultiThreaded.getValue()) {
-            threadCount = CompileTheWorldOptions.CompileTheWorldThreads.getValue();
+        if (CompileTheWorldOptions.CompileTheWorldMultiThreaded.getValue(currentOptions)) {
+            threadCount = CompileTheWorldOptions.CompileTheWorldThreads.getValue(currentOptions);
             if (threadCount == 0) {
                 threadCount = Runtime.getRuntime().availableProcessors();
             }
@@ -549,7 +531,9 @@ public final class CompileTheWorld {
         }
         threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
 
-        try (OverrideScope s = config.apply()) {
+        OptionValues savedOptions = currentOptions;
+        currentOptions = compilationOptions;
+        try {
             for (int i = 0; i < entries.length; i++) {
                 final String entry = entries[i];
 
@@ -654,6 +638,8 @@ public final class CompileTheWorld {
                 }
                 cpe.close();
             }
+        } finally {
+            currentOptions = savedOptions;
         }
 
         if (!running) {
@@ -675,7 +661,7 @@ public final class CompileTheWorld {
         long elapsedTime = System.currentTimeMillis() - start;
 
         println();
-        if (CompileTheWorldOptions.CompileTheWorldMultiThreaded.getValue()) {
+        if (CompileTheWorldOptions.CompileTheWorldMultiThreaded.getValue(currentOptions)) {
             TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms elapsed, %d ms compile time, %d bytes of memory used)", classFileCounter, compiledMethodsCounter.get(), elapsedTime,
                             compileTime.get(), memoryUsed.get());
         } else {
@@ -710,8 +696,12 @@ public final class CompileTheWorld {
             @Override
             public void run() {
                 waitToRun();
-                try (OverrideScope s = config.apply()) {
+                OptionValues savedOptions = currentOptions;
+                currentOptions = compilationOptions;
+                try {
                     compileMethod(method, classFileCounter);
+                } finally {
+                    currentOptions = savedOptions;
                 }
             }
         });
@@ -732,7 +722,7 @@ public final class CompileTheWorld {
             // For more stable CTW execution, disable use of profiling information
             boolean useProfilingInfo = false;
             boolean installAsDefault = false;
-            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
+            CompilationTask task = new CompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault, currentOptions);
             task.runCompilation();
 
             // Invalidate the generated code so the code cache doesn't fill up

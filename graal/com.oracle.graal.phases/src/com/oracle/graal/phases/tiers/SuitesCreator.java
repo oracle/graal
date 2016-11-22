@@ -23,18 +23,19 @@
 package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.lir.phases.LIRSuites;
+import com.oracle.graal.options.OptionValues;
 
 /**
  * Interface used for composing {@link SuitesProvider}s.
  */
 public interface SuitesCreator extends SuitesProvider {
     /**
-     * Create a new set of phase suites based on the current option settings.
+     * Create a new set of phase suites based on {@code options}.
      */
-    Suites createSuites();
+    Suites createSuites(OptionValues options);
 
     /**
-     * Create a new set of low-level phase suites based on the current option settings.
+     * Create a new set of low-level phase suites based on {@code options}.
      */
-    LIRSuites createLIRSuites();
+    LIRSuites createLIRSuites(OptionValues options);
 }

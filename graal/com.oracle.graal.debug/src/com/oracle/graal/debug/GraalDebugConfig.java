@@ -33,6 +33,7 @@ import java.util.Set;
 
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.BailoutException;
@@ -160,24 +161,26 @@ public class GraalDebugConfig implements DebugConfig {
         // @formatter:on
     }
 
-    public static boolean isNotEmpty(OptionKey<String> option) {
-        return option.getValue() != null && !option.getValue().isEmpty();
+    public static boolean isNotEmpty(OptionKey<String> option, OptionValues options) {
+        return option.getValue() != null && !option.getValue(options).isEmpty();
     }
 
-    public static boolean areDebugScopePatternsEnabled() {
-        return Options.DumpOnError.getValue() || Options.Dump.getValue() != null || Options.Log.getValue() != null || areScopedGlobalMetricsEnabled();
+    public static boolean areDebugScopePatternsEnabled(OptionValues options) {
+        return Options.DumpOnError.getValue(options) || Options.Dump.getValue(options) != null || Options.Log.getValue(options) != null || areScopedGlobalMetricsEnabled(options);
     }
 
-    public static boolean isGlobalMetricsInterceptedByMethodMetricsEnabled() {
-        return isNotEmpty(Options.GlobalMetricsInterceptedByMethodMetrics);
+    public static boolean isGlobalMetricsInterceptedByMethodMetricsEnabled(OptionValues options) {
+        return isNotEmpty(Options.GlobalMetricsInterceptedByMethodMetrics, options);
     }
 
     /**
      * Determines if any of {@link Options#Count}, {@link Options#Time} or
      * {@link Options#TrackMemUse} has a non-null, non-empty value.
+     *
+     * @param options
      */
-    public static boolean areScopedGlobalMetricsEnabled() {
-        return isNotEmpty(Options.Count) || isNotEmpty(Options.Time) || isNotEmpty(Options.TrackMemUse) || isNotEmpty(Options.MethodMeter);
+    public static boolean areScopedGlobalMetricsEnabled(OptionValues options) {
+        return isNotEmpty(Options.Count, options) || isNotEmpty(Options.Time, options) || isNotEmpty(Options.TrackMemUse, options) || isNotEmpty(Options.MethodMeter, options);
     }
 
     private final DebugFilter countFilter;

@@ -54,6 +54,7 @@ import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -502,5 +503,9 @@ public class CompilationResultBuilder {
     public void setOpCallback(Consumer<LIRInstruction> beforeOp, Consumer<LIRInstruction> afterOp) {
         this.beforeOp = beforeOp;
         this.afterOp = afterOp;
+    }
+
+    public OptionValues getOptions() {
+        return lir.getOptions();
     }
 }

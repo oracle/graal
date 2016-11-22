@@ -26,6 +26,7 @@ import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -67,6 +68,10 @@ public interface GraphBuilderTool {
      * Gets the graph being constructed.
      */
     StructuredGraph getGraph();
+
+    default OptionValues getOptions() {
+        return getGraph().getOptions();
+    }
 
     /**
      * Determines if this parsing context is within the bytecode of an intrinsic or a method inlined

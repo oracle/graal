@@ -92,7 +92,7 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
 
     @SuppressWarnings("unused")
     protected boolean isFinalFieldValueConstant(ResolvedJavaField field, JavaConstant value, ConstantFieldTool<?> tool) {
-        return !value.isDefaultForKind() || Options.TrustFinalDefaultFields.getValue();
+        return !value.isDefaultForKind() || Options.TrustFinalDefaultFields.getValue(tool.getOptions());
     }
 
     @SuppressWarnings("unused")

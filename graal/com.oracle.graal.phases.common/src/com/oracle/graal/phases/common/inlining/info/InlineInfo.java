@@ -27,6 +27,7 @@ import java.util.Collection;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
 import com.oracle.graal.phases.tiers.HighTierContext;
@@ -84,7 +85,7 @@ public interface InlineInfo {
 
     boolean shouldInline();
 
-    void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer);
+    void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer, OptionValues optionValues);
 
     int determineNodeCount();
 }

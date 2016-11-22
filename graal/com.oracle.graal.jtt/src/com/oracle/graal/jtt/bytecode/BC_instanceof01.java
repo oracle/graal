@@ -26,8 +26,7 @@ import org.junit.Test;
 
 import com.oracle.graal.compiler.phases.HighTier;
 import com.oracle.graal.jtt.JTTTest;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
+import com.oracle.graal.options.OptionValues.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
 
 /**
@@ -89,9 +88,9 @@ public class BC_instanceof01 extends JTTTest {
 
     @Override
     @SuppressWarnings("try")
-    protected Suites getSuites() {
-        try (OverrideScope scope = OptionKey.override(HighTier.Options.Inline, false)) {
-            return super.getSuites();
+    protected Suites createSuites() {
+        try (OverrideScope mark = overrideOptions(HighTier.Options.Inline, false)) {
+            return super.createSuites();
         }
     }
 

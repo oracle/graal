@@ -35,8 +35,7 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
+import com.oracle.graal.options.OptionValues.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -49,7 +48,7 @@ public class CompiledNullPointerExceptionTest extends GraalCompilerTest {
     @Override
     @SuppressWarnings("try")
     protected Suites createSuites() {
-        try (OverrideScope scope = OptionKey.override(HighTier.Options.Inline, false)) {
+        try (OverrideScope mark = overrideOptions(HighTier.Options.Inline, false)) {
             return super.createSuites();
         }
     }

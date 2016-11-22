@@ -33,6 +33,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleTimeThresho
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.oracle.graal.options.OptionValues;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -64,9 +65,9 @@ public class OptimizedCompilationProfile {
 
     private volatile boolean compilationFailed;
 
-    public OptimizedCompilationProfile() {
-        compilationCallThreshold = TruffleMinInvokeThreshold.getValue();
-        compilationCallAndLoopThreshold = TruffleCompilationThreshold.getValue();
+    public OptimizedCompilationProfile(OptionValues options) {
+        compilationCallThreshold = TruffleMinInvokeThreshold.getValue(options);
+        compilationCallAndLoopThreshold = TruffleCompilationThreshold.getValue(options);
     }
 
     @Override
@@ -336,8 +337,8 @@ public class OptimizedCompilationProfile {
         return timestamp;
     }
 
-    public static OptimizedCompilationProfile create() {
-        return new OptimizedCompilationProfile();
+    public static OptimizedCompilationProfile create(OptionValues options) {
+        return new OptimizedCompilationProfile(options);
     }
 
 }

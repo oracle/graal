@@ -24,16 +24,19 @@ package com.oracle.graal.lir.phases;
 
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
+import com.oracle.graal.options.OptionValues;
 
 public abstract class AllocationPhase extends LIRPhase<AllocationPhase.AllocationContext> {
 
     public static final class AllocationContext extends GenericContext {
         public final MoveFactory spillMoveFactory;
         public final RegisterAllocationConfig registerAllocationConfig;
+        public final OptionValues options;
 
-        public AllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
+        public AllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, OptionValues options) {
             this.spillMoveFactory = spillMoveFactory;
             this.registerAllocationConfig = registerAllocationConfig;
+            this.options = options;
         }
     }
 

@@ -279,11 +279,6 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (OptionKey.OverrideScope.class.isAssignableFrom(cls)) {
-            // Reading options can check override scopes
-            return true;
-        }
-
         if (hotSpotVMEventListener != null && hotSpotVMEventListener.isAssignableFrom(cls)) {
             // HotSpotVMEventListeners need to be loaded on JVMCI startup.
             return true;

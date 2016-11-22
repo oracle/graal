@@ -33,13 +33,14 @@ import com.oracle.graal.lir.amd64.AMD64BinaryConsumer.MemoryConstOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.jtt.LIRTest;
 import com.oracle.graal.lir.phases.LIRPhase;
+import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 
 public class MatchRuleTest extends LIRTest {
-    private static LIR lir;
+    private LIR lir;
 
     @Before
     public void checkAMD64() {
@@ -54,13 +55,19 @@ public class MatchRuleTest extends LIRTest {
         }
     }
 
+    @Override
+    protected LIRSuites createLIRSuites() {
+        LIRSuites suites = super.createLIRSuites();
+        suites.getPreAllocationOptimizationStage().appendPhase(new CheckPhase());
+        return suites;
+    }
+
     /**
      * Verifies, if the match rules in AMD64NodeMatchRules do work on the graphs by compiling and
      * checking if the expected LIR instruction show up.
      */
     @Test
     public void test1() {
-        getLIRSuites().getPreAllocationOptimizationStage().appendPhase(new CheckPhase());
         compile(getResolvedJavaMethod("test1Snippet"), null);
         boolean found = false;
         for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
@@ -83,7 +90,7 @@ public class MatchRuleTest extends LIRTest {
         }
     }
 
-    public static class CheckPhase extends LIRPhase<PreAllocationOptimizationContext> {
+    public class CheckPhase extends LIRPhase<PreAllocationOptimizationContext> {
         @Override
         protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PreAllocationOptimizationContext context) {
             lir = lirGenRes.getLIR();

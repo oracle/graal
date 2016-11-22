@@ -151,8 +151,8 @@ public class HashCodeTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     private StructuredGraph buildGraphAfterMidTier(String name) {
         StructuredGraph g = parseForCompile(getResolvedJavaMethod(name));
-        new HighTier().apply(g, getDefaultHighTierContext());
-        new MidTier().apply(g, new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, g.getProfilingInfo()));
+        new HighTier(options).apply(g, getDefaultHighTierContext());
+        new MidTier(options).apply(g, new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, g.getProfilingInfo()));
         return g;
     }
 

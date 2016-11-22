@@ -28,6 +28,7 @@ import com.oracle.graal.lir.phases.LIRPhaseSuite;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import com.oracle.graal.lir.phases.PostAllocationOptimizationStage;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationStage;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
@@ -38,32 +39,32 @@ import com.oracle.graal.phases.tiers.MidTierContext;
 public class CoreCompilerConfiguration implements CompilerConfiguration {
 
     @Override
-    public PhaseSuite<HighTierContext> createHighTier() {
-        return new HighTier();
+    public PhaseSuite<HighTierContext> createHighTier(OptionValues options) {
+        return new HighTier(options);
     }
 
     @Override
-    public PhaseSuite<MidTierContext> createMidTier() {
-        return new MidTier();
+    public PhaseSuite<MidTierContext> createMidTier(OptionValues options) {
+        return new MidTier(options);
     }
 
     @Override
-    public PhaseSuite<LowTierContext> createLowTier() {
-        return new LowTier();
+    public PhaseSuite<LowTierContext> createLowTier(OptionValues options) {
+        return new LowTier(options);
     }
 
     @Override
-    public LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage() {
+    public LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage(OptionValues options) {
         return new PreAllocationOptimizationStage();
     }
 
     @Override
-    public LIRPhaseSuite<AllocationContext> createAllocationStage() {
+    public LIRPhaseSuite<AllocationContext> createAllocationStage(OptionValues options) {
         return new AllocationStage();
     }
 
     @Override
-    public LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage() {
+    public LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage(OptionValues options) {
         return new PostAllocationOptimizationStage();
     }
 

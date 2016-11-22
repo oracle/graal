@@ -44,6 +44,7 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.graal.compiler.common.SuppressFBWarnings;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
 import com.oracle.truffle.api.Assumption;
@@ -238,10 +239,11 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 this.uninitializedRootNode = cloneRootNode(rootNode);
             }
             GraalTruffleRuntime runtime = runtime();
-            if (TruffleCallTargetProfiling.getValue()) {
-                this.compilationProfile = TraceCompilationProfile.create();
+            OptionValues options = runtime.getOptions();
+            if (TruffleCallTargetProfiling.getValue(options)) {
+                this.compilationProfile = TraceCompilationProfile.create(options);
             } else {
-                this.compilationProfile = OptimizedCompilationProfile.create();
+                this.compilationProfile = OptimizedCompilationProfile.create(options);
             }
             runtime.getTvmci().onFirstExecution(this);
             initialized = true;

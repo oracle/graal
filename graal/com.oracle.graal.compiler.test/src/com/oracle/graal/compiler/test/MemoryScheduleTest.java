@@ -48,8 +48,7 @@ import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.memory.FloatingReadNode;
 import com.oracle.graal.nodes.memory.WriteNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
+import com.oracle.graal.options.OptionValues.OverrideScope;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.FloatingReadPhase;
@@ -725,7 +724,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     private ScheduleResult getFinalSchedule(final String snippet, final TestMode mode, final SchedulingStrategy schedulingStrategy) {
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
-            try (OverrideScope s = OptionKey.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false)) {
+            try (OverrideScope s = overrideOptions(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false)) {
                 HighTierContext context = getDefaultHighTierContext();
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
                 canonicalizer.apply(graph, context);

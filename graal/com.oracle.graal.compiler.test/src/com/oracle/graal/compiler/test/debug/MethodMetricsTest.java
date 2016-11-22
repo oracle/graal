@@ -26,7 +26,6 @@ import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -63,8 +62,7 @@ import com.oracle.graal.nodes.calc.MulNode;
 import com.oracle.graal.nodes.calc.ShiftNode;
 import com.oracle.graal.nodes.calc.SignedDivNode;
 import com.oracle.graal.nodes.calc.SubNode;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
+import com.oracle.graal.options.OptionValues.OverrideScope;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.PhaseSuite;
@@ -254,12 +252,6 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
         return debugConfig;
     }
 
-    private static OverrideScope overrideMetricPrinterConfig() {
-        Map<OptionKey<?>, Object> mapping = new HashMap<>();
-        mapping.put(MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);
-        return OptionKey.override(mapping);
-    }
-
     abstract Phase additionalPhase();
 
     @Override
@@ -274,7 +266,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
     @Test
     @SuppressWarnings("try")
     public void test() throws Throwable {
-        try (DebugConfigScope s = Debug.setConfig(getConfig()); OverrideScope o = getOScope();) {
+        try (DebugConfigScope s = Debug.setConfig(getConfig()); OverrideScope mark = overrideOptions(MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);) {
             executeMethod(TestApplication.class.getMethod("m01", testSignature), null, testArgs);
             executeMethod(TestApplication.class.getMethod("m02", testSignature), null, testArgs);
             executeMethod(TestApplication.class.getMethod("m03", testSignature), null, testArgs);
@@ -300,10 +292,6 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
     }
 
     abstract DebugConfig getConfig();
-
-    OverrideScope getOScope() {
-        return overrideMetricPrinterConfig();
-    }
 
     abstract void assertValues() throws Throwable;
 

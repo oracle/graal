@@ -44,8 +44,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Management;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.TimeSource;
-import com.oracle.graal.options.OptionKey;
-import com.oracle.graal.options.OptionKey.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -93,6 +92,7 @@ public class CompilationTask {
     private final boolean installAsDefault;
 
     private final boolean useProfilingInfo;
+    private final OptionValues options;
 
     static class Lazy {
         /**
@@ -102,12 +102,25 @@ public class CompilationTask {
         static final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) Management.getThreadMXBean();
     }
 
-    public CompilationTask(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault) {
+    public CompilationTask(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault,
+                    OptionValues options) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.request = request;
         this.useProfilingInfo = useProfilingInfo;
         this.installAsDefault = installAsDefault;
+
+        /*
+         * Disable inlining if HotSpot has it disabled unless it's been explicitly set in Graal.
+         */
+        HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
+        GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
+        if (Inline.getValue(options) && !config.inline && !Inline.hasBeenSet(options)) {
+            this.options = new OptionValues(options);
+            Inline.setValue(this.options, false);
+        } else {
+            this.options = options;
+        }
     }
 
     public HotSpotResolvedJavaMethod getMethod() {
@@ -220,14 +233,7 @@ public class CompilationTask {
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 // Begin the compilation event.
                 compilationEvent.begin();
-                /*
-                 * Disable inlining if HotSpot has it disabled unless it's been explicitly set in
-                 * Graal.
-                 */
-                boolean disableInlining = !config.inline && !Inline.hasBeenSet();
-                try (OverrideScope s1 = disableInlining ? OptionKey.override(Inline, false) : null) {
-                    result = compiler.compile(method, entryBCI, useProfilingInfo);
-                }
+                result = compiler.compile(method, entryBCI, useProfilingInfo, options);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             } finally {

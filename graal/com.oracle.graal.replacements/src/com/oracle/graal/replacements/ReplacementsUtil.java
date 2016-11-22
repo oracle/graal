@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.replacements.nodes.AssertionNode;
 
 // JaCoCo Exclude
@@ -36,7 +35,7 @@ public final class ReplacementsUtil {
     static {
         boolean assertionsEnabled = false;
         assert (assertionsEnabled = true) != false;
-        REPLACEMENTS_ASSERTIONS_ENABLED = assertionsEnabled && GraalOptions.ImmutableCode.getValue() == false;
+        REPLACEMENTS_ASSERTIONS_ENABLED = assertionsEnabled;
     }
 
     /**

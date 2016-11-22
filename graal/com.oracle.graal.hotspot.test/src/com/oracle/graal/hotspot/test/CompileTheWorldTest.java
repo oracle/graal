@@ -28,8 +28,8 @@ import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.hotspot.CompileTheWorld;
-import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.HotSpotGraalCompiler;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -45,7 +45,9 @@ public class CompileTheWorldTest extends GraalCompilerTest {
         // Compile a couple classes in rt.jar
         HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
         System.setProperty(CompileTheWorld.LIMITMODS_PROPERTY_NAME, "java.base");
-        new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), CompileTheWorld.SUN_BOOT_CLASS_PATH, new Config("Inline=false"), 1, 5, null, null, true).compile();
+        OptionValues initialOptions = options;
+        OptionValues compilationOptions = CompileTheWorld.parseOptions("Inline=false", initialOptions);
+        new CompileTheWorld(runtime, (HotSpotGraalCompiler) runtime.getCompiler(), CompileTheWorld.SUN_BOOT_CLASS_PATH, 1, 5, null, null, true, initialOptions, compilationOptions).compile();
         assert ExitVMOnException.getValue() == originalSetting;
     }
 }
