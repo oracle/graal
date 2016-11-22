@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 public final class SulongSuite extends BaseSuite {
 
     private static final Path SULONG_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/tests/cache/tests/sulong").toPath();
-    private static final Path SULONG_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/tests/sulong/config").toPath();
+    private static final Path SULONG_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/tests/sulong/configs").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
