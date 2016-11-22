@@ -24,10 +24,12 @@ package com.oracle.truffle.object;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -520,16 +522,17 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public final List<Property> getPropertyListInternal(boolean ascending) {
-        LinkedList<Property> props = new LinkedList<>();
+        Property[] props = new Property[this.propertyMap.size()];
+        int i = ascending ? props.length : 0;
         for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
             Property current = it.next();
             if (ascending) {
-                props.addFirst(current);
+                props[--i] = current;
             } else {
-                props.add(current);
+                props[i++] = current;
             }
         }
-        return props;
+        return Arrays.asList(props);
     }
 
     /**
@@ -880,16 +883,25 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public final DynamicObjectFactory createFactory() {
-        final List<Property> properties = getPropertyListInternal(true);
-        for (Iterator<Property> iterator = properties.iterator(); iterator.hasNext();) {
+        List<Property> properties = getPropertyListInternal(true);
+        List<Property> filtered = null;
+        for (ListIterator<Property> iterator = properties.listIterator(); iterator.hasNext();) {
             Property property = iterator.next();
             // skip non-instance fields
             assert property.getLocation() != layout.getPrimitiveArrayLocation();
             if (property.getLocation() instanceof ValueLocation) {
-                iterator.remove();
+                if (filtered == null) {
+                    filtered = new ArrayList<>();
+                    filtered.addAll(properties.subList(0, iterator.previousIndex()));
+                }
+            } else if (filtered != null) {
+                filtered.add(property);
             }
         }
 
+        if (filtered != null) {
+            properties = filtered;
+        }
         return new DynamicObjectFactoryImpl(this, properties);
     }
 
@@ -937,10 +949,11 @@ public abstract class ShapeImpl extends Shape {
     private static final class DynamicObjectFactoryImpl implements DynamicObjectFactory {
         private final ShapeImpl shape;
         @CompilationFinal(dimensions = 1) private final PropertyImpl[] instanceFields;
+        private static final PropertyImpl[] EMPTY = new PropertyImpl[0];
 
         private DynamicObjectFactoryImpl(ShapeImpl shape, List<Property> properties) {
             this.shape = shape;
-            this.instanceFields = properties.toArray(new PropertyImpl[properties.size()]);
+            this.instanceFields = properties.toArray(EMPTY);
         }
 
         @ExplodeLoop
