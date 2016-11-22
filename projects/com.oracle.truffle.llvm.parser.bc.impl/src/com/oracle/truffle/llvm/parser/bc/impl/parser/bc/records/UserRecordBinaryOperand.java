@@ -45,6 +45,6 @@ public final class UserRecordBinaryOperand extends UserRecordOperand {
 
     @Override
     public String toString() {
-        return String.format("blob");
+        return "blob";
     }
 }

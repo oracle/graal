@@ -34,7 +34,7 @@ import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.Parser;
 public enum Block {
     ROOT(-1, parser -> parser),
 
-    BLOCKINFO(0, parser -> new InformationBlockParser(parser)),
+    BLOCKINFO(0, InformationBlockParser::new),
 
     MODULE(8, parser -> parser),
     PARAMATTR(9, parser -> parser),

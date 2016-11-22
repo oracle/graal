@@ -52,7 +52,7 @@ public final class StoreInstruction implements VoidInstruction {
         this.synchronizationScope = scope;
     }
 
-    public static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile, AtomicOrdering atomicOrdering, SynchronizationScope synchronizationScope) {
+    private static StoreInstruction fromSymbols(Symbols symbols, int destination, int source, int align, boolean isVolatile, AtomicOrdering atomicOrdering, SynchronizationScope synchronizationScope) {
         final StoreInstruction inst = new StoreInstruction(align, isVolatile, atomicOrdering, synchronizationScope);
         inst.destination = symbols.getSymbol(destination, inst);
         inst.source = symbols.getSymbol(source, inst);

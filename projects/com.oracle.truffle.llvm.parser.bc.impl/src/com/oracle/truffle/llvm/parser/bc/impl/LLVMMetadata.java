@@ -67,7 +67,7 @@ import com.oracle.truffle.llvm.parser.base.model.types.Type;
  * Parse all those "@llvm.dbg.declare" call instructions and add the fitting Metadata reference to
  * the referenced instruction to allow parsing of those data later one.
  */
-public final class LLVMMetadata implements ModelVisitor {
+final class LLVMMetadata implements ModelVisitor {
 
     public static LLVMMetadata generate(Model model, DataLayoutConverter.DataSpecConverter targetDataLayout) {
         LLVMMetadata visitor = new LLVMMetadata(targetDataLayout);

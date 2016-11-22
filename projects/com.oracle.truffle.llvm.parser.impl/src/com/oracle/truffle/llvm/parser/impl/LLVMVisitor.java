@@ -1502,11 +1502,6 @@ public final class LLVMVisitor implements LLVMParserRuntimeTextual {
     }
 
     @Override
-    public int getBitAlignment(LLVMBaseType type) {
-        return layoutConverter.getBitAlignment(type);
-    }
-
-    @Override
     public int getByteAlignment(com.oracle.truffle.llvm.parser.base.model.types.Type type) {
         return type.getAlignment(layoutConverter);
     }

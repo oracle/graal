@@ -72,14 +72,6 @@ public final class GetElementPointerInstruction extends ValueInstruction {
         }
     }
 
-    public Symbol getIndex(int index) {
-        return indices.get(index);
-    }
-
-    public int getIndexCount() {
-        return indices.size();
-    }
-
     public Symbol getBasePointer() {
         return base;
     }

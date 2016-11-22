@@ -54,10 +54,7 @@ public class MetadataConstantPointerType implements Type {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof MetadataConstantPointerType) {
-            return symbolIndex == ((MetadataConstantPointerType) obj).symbolIndex;
-        }
-        return false;
+        return obj instanceof MetadataConstantPointerType && symbolIndex == ((MetadataConstantPointerType) obj).symbolIndex;
     }
 
     @Override

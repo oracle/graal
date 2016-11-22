@@ -45,8 +45,6 @@ public class MetadataNode extends ArrayList<MetadataReference> implements Metada
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("MetadataNode " + super.toString());
-        return builder.toString();
+        return "MetadataNode " + super.toString();
     }
 }

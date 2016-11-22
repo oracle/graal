@@ -128,7 +128,7 @@ public class Constants implements ParserListener {
                 int i = 1;
                 int lhs = (int) args[i++];
                 int rhs = (int) args[i++];
-                int opcode = (int) args[i++];
+                int opcode = (int) args[i];
 
                 generator.createCompareExpression(type, opcode, lhs, rhs);
                 break;

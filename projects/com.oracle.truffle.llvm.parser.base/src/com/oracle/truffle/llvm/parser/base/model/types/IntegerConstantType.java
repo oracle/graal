@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.parser.base.datalayout.DataLayoutConverter;
 
 public final class IntegerConstantType implements Type {
 
-    public final IntegerType type;
+    private final IntegerType type;
 
     private final long value;
 

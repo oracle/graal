@@ -52,7 +52,7 @@ public class FunctionV32 extends FunctionV38 {
         Type type = types.get(args[i++]);
         i++; // Unused parameter
         int count = getIndexV0(args[i++]);
-        int align = getAlign(args[i++]);
+        int align = getAlign(args[i]);
 
         code.createAllocation(type, count, align);
 
@@ -115,7 +115,7 @@ public class FunctionV32 extends FunctionV38 {
         }
 
         int align = getAlign(args[i++]);
-        boolean isVolatile = args[i++] != 0;
+        boolean isVolatile = args[i] != 0;
 
         code.createLoad(type, source, align, isVolatile);
 

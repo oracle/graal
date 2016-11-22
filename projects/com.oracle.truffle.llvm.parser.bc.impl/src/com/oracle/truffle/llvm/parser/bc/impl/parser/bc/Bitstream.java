@@ -33,13 +33,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-public class Bitstream {
+public final class Bitstream {
 
     public static Bitstream create(String filename) {
         return new Bitstream(read(filename));
     }
 
-    protected static byte[] read(String filename) {
+    private static byte[] read(String filename) {
         try {
             return Files.readAllBytes(Paths.get(filename));
         } catch (IOException ignore) {
@@ -51,7 +51,7 @@ public class Bitstream {
 
     private final byte[] bitstream;
 
-    protected Bitstream(byte[] bitstream) {
+    private Bitstream(byte[] bitstream) {
         this.bitstream = bitstream;
     }
 
@@ -59,7 +59,7 @@ public class Bitstream {
         return read(offset) & ((1L << bits) - 1L);
     }
 
-    public long readVBR(long offset, long width) {
+    long readVBR(long offset, long width) {
         long value = 0;
         long shift = 0;
         long datum;
@@ -78,7 +78,7 @@ public class Bitstream {
         return bitstream.length * Byte.SIZE;
     }
 
-    public long widthVBR(long value, long width) {
+    static long widthVBR(long value, long width) {
         long total = 0;
         long v = value;
         do {
