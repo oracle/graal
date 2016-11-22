@@ -200,7 +200,7 @@ public abstract class ShapeImpl extends Shape {
     private static int makePropertyCount(ShapeImpl parent, PropertyMap propertyMap) {
         if (propertyMap.size() > parent.propertyMap.size()) {
             Property lastProperty = propertyMap.getLastProperty();
-            if (!lastProperty.isHidden() && !lastProperty.isShadow()) {
+            if (!lastProperty.isHidden()) {
                 return parent.propertyCount + 1;
             }
         }
@@ -496,20 +496,9 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public final List<Property> getPropertyList(Pred<Property> filter) {
         LinkedList<Property> props = new LinkedList<>();
-        next: for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
             Property currentProperty = it.next();
-
             if (!currentProperty.isHidden() && filter.test(currentProperty)) {
-                if (currentProperty.getLocation() instanceof DeclaredLocation) {
-                    for (Iterator<Property> iter = props.iterator(); iter.hasNext();) {
-                        Property other = iter.next();
-                        if (other.isShadow() && other.getKey().equals(currentProperty.getKey())) {
-                            iter.remove();
-                            props.addFirst(other);
-                            continue next;
-                        }
-                    }
-                }
                 props.addFirst(currentProperty);
             }
         }
@@ -555,7 +544,7 @@ public abstract class ShapeImpl extends Shape {
         LinkedList<Object> keys = new LinkedList<>();
         for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
             Property currentProperty = it.next();
-            if (!currentProperty.isHidden() && filter.test(currentProperty) && !currentProperty.isShadow()) {
+            if (!currentProperty.isHidden() && filter.test(currentProperty)) {
                 keys.addFirst(currentProperty.getKey());
             }
         }
