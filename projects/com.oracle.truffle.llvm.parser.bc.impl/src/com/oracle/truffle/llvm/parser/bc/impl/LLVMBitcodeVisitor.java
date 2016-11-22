@@ -214,7 +214,7 @@ public final class LLVMBitcodeVisitor implements ModelVisitor {
         this.factoryFacade = factoryFacade;
         this.parserRuntime = new LLVMBitcodeVisitorParserRuntime();
         this.factoryFacade.setUpFacade(this.parserRuntime);
-        this.symbolResolver = new LLVMSymbolResolver(this::getGlobalVariable, labels, parserRuntime);
+        this.symbolResolver = new LLVMSymbolResolver(labels, parserRuntime);
         nativeLookup = new NativeLookup(factoryFacade);
     }
 
@@ -357,7 +357,7 @@ public final class LLVMBitcodeVisitor implements ModelVisitor {
         return functions;
     }
 
-    LLVMExpressionNode getGlobalVariable(GlobalValueSymbol global) {
+    private LLVMExpressionNode getGlobalVariable(GlobalValueSymbol global) {
         Symbol g = global;
         while (g instanceof GlobalAlias) {
             g = aliases.get(g);
@@ -568,8 +568,8 @@ public final class LLVMBitcodeVisitor implements ModelVisitor {
         }
 
         @Override
-        public Object getGlobalAddress(GlobalVariable var) {
-            throw new UnsupportedOperationException("Not implemented!");
+        public Object getGlobalAddress(GlobalValueSymbol var) {
+            return getGlobalVariable(var);
         }
 
         @Override

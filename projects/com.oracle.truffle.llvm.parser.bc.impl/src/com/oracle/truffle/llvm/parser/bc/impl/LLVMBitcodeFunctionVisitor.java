@@ -36,7 +36,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
@@ -46,7 +45,6 @@ import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMSymbolResolver;
 
 import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.parser.base.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 
 class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
@@ -134,10 +132,6 @@ class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     LLVMSymbolResolver getSymbolResolver() {
         return symbolResolver;
-    }
-
-    public LLVMExpressionNode global(GlobalValueSymbol symbol) {
-        return module.getGlobalVariable(symbol);
     }
 
     public Map<String, Integer> labels() {

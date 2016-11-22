@@ -443,7 +443,7 @@ public final class LLVMVisitor implements LLVMParserRuntimeTextual {
     private final List<LLVMNode> globalDeallocations = new ArrayList<>();
     private boolean isGlobalScope;
 
-    private Object findOrAllocateGlobal(com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable globalVariable) {
+    private Object findOrAllocateGlobal(com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol globalVariable) {
         return factoryFacade.allocateGlobalVariable(globalVariable);
     }
 
@@ -1492,7 +1492,7 @@ public final class LLVMVisitor implements LLVMParserRuntimeTextual {
     }
 
     @Override
-    public Object getGlobalAddress(com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable var) {
+    public Object getGlobalAddress(com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol var) {
         return findOrAllocateGlobal(var);
     }
 
