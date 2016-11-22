@@ -292,7 +292,7 @@ public class Function implements ParserListener {
         PointerType type = new PointerType(types.get(args[i++]));
         i++; // Unused parameter
         int count = getIndexV0(args[i++]);
-        int align = getAlign(args[i++]);
+        int align = getAlign(args[i]);
 
         code.createAllocation(type, count, align);
 
@@ -355,7 +355,7 @@ public class Function implements ParserListener {
             i++;
         }
         Type type = types.get(args[i++]);
-        int opcode = (int) args[i++];
+        int opcode = (int) args[i];
 
         code.createCast(type, opcode, value);
 
@@ -372,7 +372,7 @@ public class Function implements ParserListener {
             operandType = types.get(args[i++]);
         }
         int rhs = getIndex(args[i++]);
-        int opcode = (int) args[i++];
+        int opcode = (int) args[i];
 
         Type type = operandType instanceof VectorType
                         ? new VectorType(IntegerType.BOOLEAN, ((VectorType) operandType).getLength())
@@ -415,7 +415,7 @@ public class Function implements ParserListener {
         boolean isInbounds = args[i++] != 0;
         i++; // Unused parameter
         int pointer = getIndex(args[i++]);
-        int[] indices = getIndices(args, i++);
+        int[] indices = getIndices(args, i);
 
         Type type = new PointerType(getElementPointerType(symbols.get(pointer).getType(), indices));
 
@@ -497,7 +497,7 @@ public class Function implements ParserListener {
         int source = getIndex(args[i++]);
         Type type = types.get(args[i++]);
         int align = getAlign(args[i++]);
-        boolean isVolatile = args[i++] != 0;
+        boolean isVolatile = args[i] != 0;
 
         code.createLoad(type, source, align, isVolatile);
 
@@ -540,7 +540,7 @@ public class Function implements ParserListener {
             type = types.get(args[i++]);
         }
         int falseValue = getIndex(args[i++]);
-        int condition = getIndex(args[i++]);
+        int condition = getIndex(args[i]);
 
         code.createSelect(type, condition, trueValue, falseValue);
 
@@ -575,7 +575,7 @@ public class Function implements ParserListener {
         }
 
         int align = getAlign(args[i++]);
-        boolean isVolatile = args[i++] != 0;
+        boolean isVolatile = args[i] != 0;
 
         code.createStore(destination, source, align, isVolatile);
     }
@@ -590,7 +590,7 @@ public class Function implements ParserListener {
 
         int source = getIndex(args[i++]);
         int align = getAlign(args[i++]);
-        boolean isVolatile = args[i++] != 0;
+        boolean isVolatile = args[i] != 0;
 
         code.createStore(destination, source, align, isVolatile);
     }
@@ -626,14 +626,14 @@ public class Function implements ParserListener {
 
     protected Type getElementPointerType(Type type, int[] indices) {
         Type elementType = type;
-        for (int i = 0; i < indices.length; i++) {
+        for (int indice : indices) {
             if (elementType instanceof PointerType) {
                 elementType = ((PointerType) elementType).getPointeeType();
             } else if (elementType instanceof ArrayType) {
                 elementType = ((ArrayType) elementType).getElementType();
             } else {
                 StructureType structure = (StructureType) elementType;
-                Type idx = symbols.get(indices[i]);
+                Type idx = symbols.get(indice);
                 if (!(idx instanceof IntegerConstantType)) {
                     throw new IllegalStateException("Cannot infer structure element from " + idx);
                 }
@@ -649,10 +649,6 @@ public class Function implements ParserListener {
         } else {
             return getIndexV1(index);
         }
-    }
-
-    protected int[] getIndices(long[] arguments) {
-        return getIndices(arguments, 0, arguments.length);
     }
 
     protected int[] getIndices(long[] arguments, int from) {

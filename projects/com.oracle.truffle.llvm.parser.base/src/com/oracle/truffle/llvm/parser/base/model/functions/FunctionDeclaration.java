@@ -40,10 +40,7 @@ public final class FunctionDeclaration extends FunctionType implements Constant 
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof FunctionDeclaration) {
-            return super.equals(obj);
-        }
-        return false;
+        return obj instanceof FunctionDeclaration && super.equals(obj);
     }
 
     @Override

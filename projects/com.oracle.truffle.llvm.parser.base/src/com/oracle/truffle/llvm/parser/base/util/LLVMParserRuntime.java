@@ -35,7 +35,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.parser.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
@@ -68,8 +67,6 @@ public interface LLVMParserRuntime {
 
     FrameSlot getStackPointerSlot();
 
-    int getBitAlignment(LLVMBaseType type);
-
     int getByteAlignment(Type type);
 
     int getByteSize(Type type);
@@ -85,7 +82,7 @@ public interface LLVMParserRuntime {
     /**
      * Adds a destructor node that is executed after returning from the main function.
      *
-     * @param destructorNode
+     * @param destructorNode a node that executes the destructor
      */
     void addDestructor(LLVMNode destructorNode);
 

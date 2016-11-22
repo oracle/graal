@@ -111,13 +111,6 @@ public enum DwTagRecord {
     DW_TAG_RETURN_VARIABLE(0x102),
     DW_TAG_VECTOR_TYPE(0x103);
 
-    private static final long DW_TAG_DECODE_DEBUG_VERSION = 0xFFFF0000;
-    private static final long DW_TAG_DECODE_DEBUG_VERSION_SHIFT = 16;
-
-    public static long getDebugVersion(long code) {
-        return (code & DW_TAG_DECODE_DEBUG_VERSION) >> DW_TAG_DECODE_DEBUG_VERSION_SHIFT;
-    }
-
     private static final long DW_TAG_DECODE_DWARF_CONSTANTS = 0x0000FFFF;
 
     public static long getDwarfConstant(long code) {

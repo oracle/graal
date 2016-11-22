@@ -33,7 +33,6 @@ import com.oracle.truffle.llvm.parser.base.model.enums.AtomicOrdering;
 import com.oracle.truffle.llvm.parser.base.model.enums.SynchronizationScope;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.base.model.types.PointerType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
 
@@ -79,10 +78,6 @@ public final class LoadInstruction extends ValueInstruction {
 
     public AtomicOrdering getAtomicOrdering() {
         return atomicOrdering;
-    }
-
-    public PointerType getPointer() {
-        return (PointerType) super.getType();
     }
 
     public Symbol getSource() {

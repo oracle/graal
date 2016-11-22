@@ -50,7 +50,7 @@ public abstract class GlobalValueSymbol implements ValueSymbol {
 
     private final Linkage linkage;
 
-    protected GlobalValueSymbol(Type type, int initialiser, int align, long linkage) {
+    GlobalValueSymbol(Type type, int initialiser, int align, long linkage) {
         this.type = type;
         this.initialiser = initialiser;
         this.align = align;
