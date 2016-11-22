@@ -82,7 +82,7 @@ public interface LLVMParserRuntime {
     /**
      * Adds a destructor node that is executed after returning from the main function.
      *
-     * @param destructorNode
+     * @param destructorNode a node that executes the destructor
      */
     void addDestructor(LLVMNode destructorNode);
 
