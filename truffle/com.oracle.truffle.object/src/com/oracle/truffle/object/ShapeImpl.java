@@ -23,11 +23,11 @@
 package com.oracle.truffle.object;
 
 import java.util.AbstractMap;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -497,20 +497,29 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public final List<Property> getPropertyList(Pred<Property> filter) {
-        LinkedList<Property> props = new LinkedList<>();
+        ArrayDeque<Property> props = new ArrayDeque<>();
         for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
             Property currentProperty = it.next();
             if (!currentProperty.isHidden() && filter.test(currentProperty)) {
                 props.addFirst(currentProperty);
             }
         }
-        return props;
+        return Arrays.asList(props.toArray(new Property[0]));
     }
 
     /** @since 0.17 or earlier */
+    @TruffleBoundary
     @Override
     public final List<Property> getPropertyList() {
-        return getPropertyList(ALL);
+        Property[] props = new Property[getPropertyCount()];
+        int i = props.length;
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property currentProperty = it.next();
+            if (!currentProperty.isHidden()) {
+                props[--i] = currentProperty;
+            }
+        }
+        return Arrays.asList(props);
     }
 
     /**
@@ -544,20 +553,29 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public final List<Object> getKeyList(Pred<Property> filter) {
-        LinkedList<Object> keys = new LinkedList<>();
+        ArrayDeque<Object> keys = new ArrayDeque<>();
         for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
             Property currentProperty = it.next();
             if (!currentProperty.isHidden() && filter.test(currentProperty)) {
                 keys.addFirst(currentProperty.getKey());
             }
         }
-        return keys;
+        return Arrays.asList(keys.toArray(new Object[0]));
     }
 
     /** @since 0.17 or earlier */
+    @TruffleBoundary
     @Override
     public final List<Object> getKeyList() {
-        return getKeyList(ALL);
+        Object[] props = new Object[getPropertyCount()];
+        int i = props.length;
+        for (Iterator<Property> it = this.propertyMap.reverseOrderedValueIterator(); it.hasNext();) {
+            Property currentProperty = it.next();
+            if (!currentProperty.isHidden()) {
+                props[--i] = currentProperty.getKey();
+            }
+        }
+        return Arrays.asList(props);
     }
 
     /** @since 0.17 or earlier */
@@ -1162,15 +1180,6 @@ public abstract class ShapeImpl extends Shape {
             return newLocation;
         }
     }
-
-    /**
-     * Match all filter.
-     */
-    private static final Pred<Property> ALL = new Pred<Property>() {
-        public boolean test(Property t) {
-            return true;
-        }
-    };
 
     private static final DebugCounter shapeCount = DebugCounter.create("Shapes allocated total");
     private static final DebugCounter shapeCloneCount = DebugCounter.create("Shapes allocated cloned");
