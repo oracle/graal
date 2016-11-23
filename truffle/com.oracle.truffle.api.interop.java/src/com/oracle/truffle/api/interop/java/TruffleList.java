@@ -46,7 +46,7 @@ final class TruffleList<T> extends AbstractList<T> {
     @Override
     public T get(int index) {
         try {
-            final Object item = ToJavaNode.message(null, Message.READ, array, index);
+            final Object item = ToJavaNode.message(type, Message.READ, array, index);
             Object javaItem = ToJavaNode.toJava(item, type);
             return type.cast(javaItem);
         } catch (InteropException e) {

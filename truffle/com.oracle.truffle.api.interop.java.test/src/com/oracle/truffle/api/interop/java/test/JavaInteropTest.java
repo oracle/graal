@@ -53,6 +53,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 public class JavaInteropTest {
     public class Data {
@@ -61,6 +62,8 @@ public class JavaInteropTest {
         public String[] arr;
         public Object value;
         public Object map;
+        public Object dataMap;
+        public Data[] data;
 
         public double plus(double a, double b) {
             return a + b;
@@ -364,6 +367,46 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void listUnwrapsTruffleObject() {
+        data.data = new Data[]{new Data()};
+        Data value = xyp.data().get(0);
+        assertSame(data.data[0], value);
+    }
+
+    @Test
+    public void mapUnwrapsTruffleObject() {
+        data.dataMap = data;
+        Data value = xyp.dataMap().get("dataMap");
+        assertSame(data, value);
+
+        Data newValue = new Data();
+        Data previousValue = xyp.dataMap().put("dataMap", newValue);
+        assertSame(data, previousValue);
+
+        assertSame(newValue, data.dataMap);
+    }
+
+    @Test
+    public void mapEntrySetUnwrapsTruffleObject() {
+        data.dataMap = data;
+        final Map<String, Data> map = xyp.dataMap();
+        Data value = map.get("dataMap");
+        assertSame(data, value);
+
+        for (Map.Entry<String, Data> entry : xyp.dataMap().entrySet()) {
+            if ("dataMap".equals(entry.getKey())) {
+                assertSame(value, entry.getValue());
+                Data newValue = new Data();
+                Data prev = entry.setValue(newValue);
+                assertSame(value, prev);
+                assertSame(newValue, map.get("dataMap"));
+                return;
+            }
+        }
+        fail("Entry dataMap not found");
+    }
+
+    @Test
     public void isBoxed() {
         assertFalse(JavaInterop.isBoxed(null));
         assertFalse(JavaInterop.isBoxed(JavaInterop.asTruffleObject(new Object())));
@@ -400,6 +443,8 @@ public class JavaInteropTest {
 
         Map<String, Object> map();
 
+        Map<String, Data> dataMap();
+
         int x();
 
         @MethodMessage(message = "WRITE")
@@ -412,6 +457,8 @@ public class JavaInteropTest {
         Integer value();
 
         XYPlus assertThis(Object obj);
+
+        List<Data> data();
     }
 
     static Object message(final Message m, TruffleObject receiver, Object... arr) {
