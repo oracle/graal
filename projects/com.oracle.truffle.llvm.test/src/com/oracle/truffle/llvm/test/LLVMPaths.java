@@ -46,7 +46,6 @@ public final class LLVMPaths {
 
     static final File PROJECT_ROOT = new File(LLVMOptions.ENGINE.projectRoot() + File.separator + LLVMPaths.class.getPackage().getName());
 
-    public static final File LOCAL_TESTS = new File(PROJECT_ROOT, "tests/");
     static final File LIFETIME_ANALYSIS_REFERENCE_FILES = new File(PROJECT_ROOT, "lifetime/");
     static final File EXTERNAL_TEST_SUITES = new File(PROJECT_ROOT, "suites/");
     static final File EXTERNAL_TEST_SUITES_EXECUTION_CONFIG = new File(PROJECT_ROOT, "suites-configs/");
@@ -73,10 +72,10 @@ public final class LLVMPaths {
     public static final File BENCHMARK_GAME_SUITE = new File(EXTERNAL_TEST_SUITES, "benchmarkgame/");
 
     // Interop test suites
-    public static final String INTEROP_TESTS = LOCAL_TESTS + "/../interoptests";
+    public static final String INTEROP_TESTS = PROJECT_ROOT + "/interoptests";
 
     // InlineAssembly test suite
-    public static final File INLINEASSEMBLY_TESTS = new File(LOCAL_TESTS + "/../inlineassemblytests");
+    public static final File INLINEASSEMBLY_TESTS = new File(PROJECT_ROOT + "/inlineassemblytests");
 
     static {
         TEMP_DIRECTORY.mkdir();

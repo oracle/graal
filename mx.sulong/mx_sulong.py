@@ -191,14 +191,6 @@ def travis4(args=None):
     with Task('TestGCCBC', tasks) as t:
         if t: runGCCTestCases(['-Dsulong.TestBinaryParser=true'])
 
-def travisTestSulong(args=None):
-    """executes the Sulong test cases (which also stress compilation)"""
-    tasks = []
-    with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
-    with Task('TestSulong', tasks) as t:
-        if t: runTruffleTestCases()
-
 def travisArgon2(args=None):
     """executes the argon2 Travis job (Javac build, argon2 test cases)"""
     tasks = []
@@ -570,13 +562,6 @@ def runLLVMTestCases(args=None):
     ensureLLVMSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMTestSuite"])
-
-def runTruffleTestCases(args=None):
-    """runs the Sulong test suite"""
-    ensureLLVMBinariesExist()
-    ensureDragonEggExists()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + ['-Dsulong.ExecutionCount=1000'] + vmArgs + ["com.oracle.truffle.llvm.test.SulongTestSuite"])
 
 def runTypeTestCases(args=None):
     """runs the type test cases"""
@@ -1122,7 +1107,6 @@ testCases = {
     'bench' : runBenchmarkTestCases,
     'gcc' : runGCCTestCases,
     'llvm' : runLLVMTestCases,
-    'sulong' : runTruffleTestCases,
     'nwcc' : runNWCCTestCases,
     'types' : runTypeTestCases,
     'polyglot' : runPolyglotTestCases,
@@ -1183,7 +1167,6 @@ mx.update_commands(_suite, {
     'su-travis2' : [travis2, ''],
     'su-travis3' : [travis3, ''],
     'su-travis4' : [travis4, ''],
-    'su-travis-sulong' : [travisTestSulong, ''],
     'su-travis-argon2' : [travisArgon2, ''],
     'su-travis-tests' : [testsuites.travisRunSuite, ''],
     'su-ecj-strict' : [compileWithEcjStrict, ''],

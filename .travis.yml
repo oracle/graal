@@ -53,8 +53,6 @@ matrix:
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis4' CLANG='suite version (3.2)'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-travis-sulong' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis-argon2' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis-tests sulong' CLANG='suite version (3.2)'
@@ -62,8 +60,6 @@ matrix:
   - env: TEST_COMMAND='mx su-travis-tests shootout' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   allow_failures:
-  - env: TEST_COMMAND='mx su-travis-tests sulong' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis-tests shootout' CLANG='suite version (3.2)'
     jdk: oraclejdk8
 after_failure:
