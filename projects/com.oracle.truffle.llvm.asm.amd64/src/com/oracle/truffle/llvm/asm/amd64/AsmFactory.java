@@ -170,7 +170,32 @@ public class AsmFactory {
         this.statements.add(LLVMWriteI32NodeGen.create(opNode, slot));
     }
 
-    public void createDivisionOperatoin(String op, String divisor) {
+    public void createCustomOperation(String operation) {
+
+        LLVMNode statement;
+        switch (operation) {
+            case "rdtsc":
+                long currentTime = System.nanoTime();
+                System.out.println("Processing rdtsc instruction: " + currentTime);
+                LLVMI32Node edxNode = new LLVMAMD64ImmNode((int) (currentTime >> 32));
+                LLVMI32Node eaxNode = new LLVMAMD64ImmNode((int) (currentTime & (1L << 32) - 1));
+                LLVMI32StructWriteNode eax = new LLVMI32StructWriteNode(eaxNode);
+                LLVMI32StructWriteNode edx = new LLVMI32StructWriteNode(edxNode);
+                LLVMExpressionNode structAllocInstr = LLVMAddressArgNodeGen.create(1);
+                FrameSlot returnValueSlot = frameDescriptor.addFrameSlot("returnValue");
+                returnValueSlot.setKind(FrameSlotKind.Object);
+                LLVMWriteAddressNode writeStructAddress = LLVMWriteAddressNodeGen.create(structAllocInstr, returnValueSlot);
+                statement = writeStructAddress;
+                LLVMAddressNode readStructAddress = LLVMAddressReadNodeGen.create(returnValueSlot);
+                result = new StructLiteralNode(new int[]{0, LLVMI32Node.BYTE_SIZE}, new LLVMStructWriteNode[]{eax, edx}, readStructAddress);
+                break;
+            default:
+                statement = LLVMWriteI32NodeGen.create(new LLVMI32UnsupportedInlineAssemblerNode(), frameDescriptor.findFrameSlot("%eax"));
+        }
+        statements.add(statement);
+    }
+
+    public void createDivisionOperation(String op, String divisor) {
         FrameSlot slot = frameDescriptor.findFrameSlot(divisor);
         LLVMI32Node divisorNode = (slot != null) ? LLVMI32ReadNodeGen.create(slot) : getImmediateNode(divisor);
         LLVMNode statement = new LLVMI32UnsupportedInlineAssemblerNode();

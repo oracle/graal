@@ -53,6 +53,11 @@ public abstract class LLVMAMD64I32BinaryNode extends LLVMI32Node {
             return left & right;
         }
 
+        @Specialization
+        protected long executeI64(long left, long right) {
+            return left & right;
+        }
+
     }
 
     public abstract static class LLVMAMD64OrlNode extends LLVMAMD64I32BinaryNode {
