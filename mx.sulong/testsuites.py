@@ -15,6 +15,8 @@ _testDir = os.path.join(_suite.dir, "tests/")
 _cacheDir = os.path.join(_testDir, "cache/")
 
 _sulongSuiteDir = os.path.join(_testDir, "sulong/")
+_benchmarksgameSuiteDir = os.path.join(_testDir, "benchmarksgame/")
+_benchmarksgameSuiteDirRoot = os.path.join(_benchmarksgameSuiteDir, "benchmarksgame-2014-08-31/benchmarksgame/bench/")
 _llvmSuiteDir = os.path.join(_testDir, "llvm/")
 _llvmSuiteDirRoot = os.path.join(_llvmSuiteDir, "test-suite-3.2.src/")
 _gccSuiteDir = os.path.join(_testDir, "gcc/")
@@ -37,6 +39,12 @@ def runSulongSuite(vmArgs):
     compileSuite(['sulong'])
     return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'] + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.alpha.SulongSuite"])
 
+def runShootoutSuite(vmArgs):
+    """runs the Sulong test suite"""
+    mx_sulong.ensureDragonEggExists()
+    compileSuite(['shootout'])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite"])
+
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
     excludes = tools.collectExcludePattern(os.path.join(_llvmSuiteDir, "configs/"))
@@ -53,10 +61,20 @@ def compileGCCSuite():
     print("Compiling GCC Suite with -O0 ", end='')
     tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GFORTRAN], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
+def compileShootoutSuite():
+    ensureShootoutsExist()
+    excludes = tools.collectExcludePattern(os.path.join(_benchmarksgameSuiteDir, "configs/"))
+    print("Compiling Shootout Suite reference executables ", end='')
+    tools.printProgress(tools.multicompileRefFolder(_benchmarksgameSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude', '-lm'], excludes=excludes))
+    print("Compiling Shootout Suite with -O1 ", end='')
+    tools.printProgress(tools.multicompileFolder(_benchmarksgameSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude', '-lm'], [tools.Optimization.O1], tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+
+
 testSuites = {
     'gcc' : (compileGCCSuite, None),
     'llvm' : (compileLLVMSuite, None),
     'sulong' : (compileSulongSuite, runSulongSuite),
+    'shootout' : (compileShootoutSuite, runShootoutSuite),
 }
 
 
@@ -94,6 +112,12 @@ def ensureLLVMSuiteExists():
     if not os.path.exists(_llvmSuiteDirRoot):
         pullTestSuite('LLVM_TEST_SUITE', _llvmSuiteDir)
 
+def ensureShootoutsExist():
+    """downloads the Shootout suite if not downloaded yet"""
+    if not os.path.exists(_benchmarksgameSuiteDirRoot):
+        pullTestSuite('SHOOTOUT_SUITE', _benchmarksgameSuiteDir, subDirInsideTar=[os.path.relpath(_benchmarksgameSuiteDirRoot, _benchmarksgameSuiteDir)], stripLevels=3)
+        renameBenchmarkFiles(_benchmarksgameSuiteDir)
+
 def ensureGCCSuiteExists():
     """downloads the GCC suite if not downloaded yet"""
     if not os.path.exists(_gccSuiteDirRoot):
@@ -108,3 +132,13 @@ def pullTestSuite(library, destDir, **kwargs):
     sha1Path = localPath + '.sha1'
     if os.path.exists(sha1Path):
         os.remove(sha1Path)
+
+def renameBenchmarkFiles(directory):
+    for path, _, files in os.walk(directory):
+        for f in files:
+            absPath = path + '/' + f
+            _, ext = os.path.splitext(absPath)
+            if ext in ['.gcc', '.cint']:
+                os.rename(absPath, absPath + '.c')
+            if ext in ['.gpp']:
+                os.rename(absPath, absPath + '.cpp')

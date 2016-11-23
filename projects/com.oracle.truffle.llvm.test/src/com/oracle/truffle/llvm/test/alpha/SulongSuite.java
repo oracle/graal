@@ -41,7 +41,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @RunWith(Parameterized.class)
-public final class SulongSuite extends BaseSuite {
+public final class SulongSuite extends BaseSuiteHarness {
 
     private static final Path SULONG_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/sulong").toPath();
     private static final Path SULONG_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/sulong/configs").toPath();

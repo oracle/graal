@@ -29,16 +29,9 @@
  */
 package com.oracle.truffle.llvm.test.alpha;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.junit.Assert;
@@ -46,23 +39,12 @@ import org.junit.Test;
 
 import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
-import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil;
 import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 
-public abstract class BaseSuite {
+public abstract class BaseSuiteHarness extends BaseTestHarness {
 
-    protected static final Set<String> supportedFiles = new HashSet<>(Arrays.asList("f90", "f", "f03", "c", "cpp", "cc", "C", "m"));
-
-    protected static final Predicate<? super Path> isExecutable = f -> f.getFileName().toString().endsWith(".out");
-    protected static final Predicate<? super Path> isIncludeFile = f -> f.getFileName().toString().endsWith(".include");
-    protected static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");
-    protected static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
-
-    protected abstract Path getSuiteDirectory();
-
-    protected abstract Path getTestDirectory();
-
+    @Override
     @Test
     public void test() throws Exception {
         assert Files.walk(getTestDirectory()).filter(isExecutable).count() == 1;
@@ -99,60 +81,4 @@ public abstract class BaseSuite {
         }
     }
 
-    /**
-     * This function can be overwritten to specify a filter on test file names. E.g. if one wants to
-     * only run unoptimized files on Sulong, use <code> s.endsWith("O0.bc") </code>
-     *
-     * @return a filter predicate
-     */
-    protected Predicate<String> filterFileName() {
-        return s -> true;
-    }
-
-    protected static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir) throws AssertionError {
-        Set<Path> whiteList = getWhiteListTestFolders(configPath, suiteDir);
-        Predicate<? super Path> whiteListFilter;
-        String testDiscoveryPath = SulongTestOptions.TEST.testDiscoveryPath();
-        if (testDiscoveryPath == null) {
-            whiteListFilter = whiteList::contains;
-        } else {
-            System.err.println(testDiscoveryPath);
-            whiteListFilter = p -> !whiteList.contains(p) && p.startsWith(new File(suiteDir.toString(), testDiscoveryPath).toPath());
-        }
-        Collection<Object[]> testCases = collectTestCases(suiteDir, whiteListFilter);
-        if (testCases.size() != whiteList.size()) {
-            // we are missing test cases that are on the whitelist!
-            throw new AssertionError(String.format("%d test cases does not match %d of whitelist entries!",
-                            testCases.size(), whiteList.size()));
-        } else {
-            System.out.println("Executing " + testCases.size() + " test cases.");
-        }
-        return testCases;
-    }
-
-    private static Collection<Object[]> collectTestCases(Path suiteDir, Predicate<? super Path> whiteListFilter) throws AssertionError {
-        try {
-            return Files.walk(suiteDir).filter(isExecutable).map(f -> f.getParent()).filter(whiteListFilter).map(f -> new Object[]{f, f.toString()}).collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new AssertionError("Test cases not found", e);
-        }
-    }
-
-    protected static final Set<Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
-        try {
-            return Files.walk(configDir).filter(isIncludeFile).flatMap(f -> {
-                try {
-                    return Files.lines(f);
-                } catch (IOException e) {
-                    throw new AssertionError("Error reading whitelist.", e);
-                }
-            }).filter(s -> s.length() > 0).map(s -> new File(suiteDirectory.toString(), removeFileEnding(s)).toPath()).collect(Collectors.toSet());
-        } catch (IOException e) {
-            throw new AssertionError("Error reading whitelist.", e);
-        }
-    }
-
-    private static String removeFileEnding(String s) {
-        return s.substring(0, s.lastIndexOf('.'));
-    }
 }

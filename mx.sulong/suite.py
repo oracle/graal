@@ -233,6 +233,13 @@ suite = {
       ],
       "sha1" : "713211883406b3839bdba4a22e7111a0cff5d09b",
     },
+    "SHOOTOUT_SUITE" : {
+      "path" : "tests/benchmarksgame-scm-latest.tar.gz",
+      "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz",
+      ],
+      "sha1" : "9684ca5aaa38ff078811f9b42f15ee65cdd259fc",
+    },
   },
 
   "projects" : {
