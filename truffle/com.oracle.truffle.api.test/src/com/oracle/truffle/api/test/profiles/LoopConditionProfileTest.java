@@ -27,6 +27,7 @@ import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
 import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
 import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertThat;
 
 import org.junit.Before;
@@ -64,6 +65,17 @@ public class LoopConditionProfileTest {
         assertThat(getTrueCount(profile), is(0L));
         assertThat(getFalseCount(profile), is(0));
         profile.toString(); // not crashing
+    }
+
+    @Test
+    public void testToString() {
+        profile.profile(true);
+        profile.profile(true);
+        profile.profile(true);
+        profile.profile(false);
+        assertThat(getTrueCount(profile), is(3L));
+        assertThat(getFalseCount(profile), is(1));
+        assertThat(profile.toString(), containsString("LoopConditionProfile(trueProbability=0.75 (trueCount=3, falseCount=1))"));
     }
 
     @Theory
