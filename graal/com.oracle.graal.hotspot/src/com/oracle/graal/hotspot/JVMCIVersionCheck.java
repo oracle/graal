@@ -37,7 +37,7 @@ import java.util.Formatter;
 class JVMCIVersionCheck {
 
     private static final int JVMCI8_MIN_MAJOR_VERSION = 0;
-    private static final int JVMCI8_MIN_MINOR_VERSION = 22;
+    private static final int JVMCI8_MIN_MINOR_VERSION = 23;
 
     // Will be updated once an ea build with the required JVMCI API is available.
     private static final int JVMCI9_MIN_EA_BUILD = 143;
