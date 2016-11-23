@@ -954,7 +954,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         for (Position pos : inputPositions()) {
             Node input = pos.get(this);
             assertTrue(pos.isInputOptional() || input != null, "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", pos, this);
-            assertTrue(input == null || input.usages().contains(this), "missing usage in input %s", input);
+            assertTrue(input == null || input.usages().contains(this), "missing usage of %s in input %s", this, input);
         }
         for (Node successor : successors()) {
             assertTrue(successor.predecessor() == this, "missing predecessor in %s (actual: %s)", successor, successor.predecessor());
