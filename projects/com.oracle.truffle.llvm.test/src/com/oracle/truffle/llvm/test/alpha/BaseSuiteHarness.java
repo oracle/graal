@@ -60,13 +60,15 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
                 continue;
             }
 
+            if (!candidate.toAbsolutePath().toFile().exists()) {
+                throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
+            }
+
             int sulongResult = -1;
             String sulongStdOut;
             try (CaptureOutput out = new CaptureOutput()) {
-                if (!candidate.toAbsolutePath().toFile().exists()) {
-                    throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
-                }
                 sulongResult = LLVM.executeMain(candidate.toAbsolutePath().toFile());
+                System.out.flush();
                 sulongStdOut = out.getResult();
             }
 
