@@ -97,12 +97,10 @@ public class SulongTestSuite extends TestSuiteBase {
         allBitcodeFiles.addAll(getClangCompiledFiles(cFiles, OptimizationLevel.O3, true));
         allBitcodeFiles.addAll(optimizedFiles);
 
-        // compile to *.bc files to test the binary parser
-        if (SulongTestOptions.TEST.useBinaryParser()) {
-            List<TestCaseFiles> allLLVMBitcodeFiles = allBitcodeFiles.stream().map(TestHelper::compileLLVMIRToLLVMBC).collect(Collectors.toList());
-            allBitcodeFiles.clear();
-            allBitcodeFiles.addAll(allLLVMBitcodeFiles);
-        }
+        List<TestCaseFiles> allLLVMBitcodeFiles = allBitcodeFiles.stream().map(TestHelper::compileLLVMIRToLLVMBC).collect(Collectors.toList());
+        // remove all testcases - Sulong testsuite will only run bc files and only test bc parser
+        allBitcodeFiles.clear();
+        allBitcodeFiles.addAll(allLLVMBitcodeFiles);
 
         return allBitcodeFiles.parallelStream().map(t -> new TestCaseFiles[]{t}).collect(Collectors.toList());
     }
