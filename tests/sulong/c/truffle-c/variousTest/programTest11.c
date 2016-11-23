@@ -14,5 +14,11 @@ int func(int a, int *b) {
 
 int main() {
   int asdf = 3;
-  return asdf + func(4, &asdf) + asdf;
+  // NOTE: unary semantics differ between
+  // GCC and Clang
+  // One unary per line hides these differences.
+  int t1 = asdf;
+  int t2 = func(4, &asdf);
+  int t3 = asdf;
+  return t1 + t2 + t3;
 }
