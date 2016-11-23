@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.function.IntFunction;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.Stamp;
@@ -44,6 +45,7 @@ import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.graph.spi.Canonicalizable;
+import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ControlSinkNode;
@@ -403,6 +405,60 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 }
             }
         }
+    }
+
+    @Override
+    protected BlockT stripKilledLoopLocations(Loop<Block> loop, BlockT originalInitialState) {
+        BlockT initialState = super.stripKilledLoopLocations(loop, originalInitialState);
+        if (loop.getDepth() > GraalOptions.EscapeAnalysisLoopCutoff.getValue()) {
+            /*
+             * After we've reached the maximum loop nesting, we'll simply materialize everything we
+             * can to make sure that the loops only need to be iterated one time. Care is taken here
+             * to not materialize virtual objects that have the "ensureVirtualized" flag set.
+             */
+            LoopBeginNode loopBegin = (LoopBeginNode) loop.getHeader().getBeginNode();
+            AbstractEndNode end = loopBegin.forwardEnd();
+            Block loopPredecessor = loop.getHeader().getFirstPredecessor();
+            assert loopPredecessor.getEndNode() == end;
+            int length = initialState.getStateCount();
+
+            boolean change;
+            boolean[] ensureVirtualized = new boolean[length];
+            for (int i = 0; i < length; i++) {
+                ObjectState state = initialState.getObjectStateOptional(i);
+                if (state != null && state.isVirtual() && state.getEnsureVirtualized()) {
+                    ensureVirtualized[i] = true;
+                }
+            }
+            do {
+                // propagate "ensureVirtualized" flag
+                change = false;
+                for (int i = 0; i < length; i++) {
+                    if (!ensureVirtualized[i]) {
+                        ObjectState state = initialState.getObjectStateOptional(i);
+                        if (state != null && state.isVirtual()) {
+                            for (ValueNode entry : state.getEntries()) {
+                                if (entry instanceof VirtualObjectNode) {
+                                    if (ensureVirtualized[((VirtualObjectNode) entry).getObjectId()]) {
+                                        change = true;
+                                        ensureVirtualized[i] = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } while (change);
+
+            for (int i = 0; i < length; i++) {
+                ObjectState state = initialState.getObjectStateOptional(i);
+                if (state != null && state.isVirtual() && !ensureVirtualized[i]) {
+                    initialState.materializeBefore(end, virtualObjects.get(i), blockEffects.get(loopPredecessor));
+                }
+            }
+        }
+        return initialState;
     }
 
     @Override

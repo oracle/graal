@@ -47,6 +47,7 @@ import com.oracle.graal.hotspot.phases.WriteBarrierVerificationPhase;
 import com.oracle.graal.hotspot.replacements.arraycopy.UnsafeArrayCopyNode;
 import com.oracle.graal.nodes.AbstractBeginNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
+import com.oracle.graal.nodes.FieldLocationIdentity;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.LoopBeginNode;
@@ -65,6 +66,8 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.MidTierContext;
+
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * The following tests validate the write barrier verification phase. For every tested snippet, an
@@ -670,6 +673,8 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
                 barriers = graph.getNodes().filter(SerialWriteBarrier.class).count() + graph.getNodes().filter(SerialArrayRangeWriteBarrier.class).count();
                 Assert.assertTrue(expectedBarriers.apply(graph) == barriers);
             }
+            ResolvedJavaField barrierIndexField = getMetaAccess().lookupJavaField(WriteBarrierVerificationTest.class.getDeclaredField("barrierIndex"));
+            LocationIdentity barrierIdentity = new FieldLocationIdentity(barrierIndexField);
             // Iterate over all write nodes and remove barriers according to input indices.
             NodeIteratorClosure<Boolean> closure = new NodeIteratorClosure<Boolean>() {
 
@@ -678,7 +683,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
                     if (node instanceof WriteNode) {
                         WriteNode write = (WriteNode) node;
                         LocationIdentity obj = write.getLocationIdentity();
-                        if (obj.toString().equals("barrierIndex")) {
+                        if (obj.equals(barrierIdentity)) {
                             /*
                              * A "barrierIndex" variable was found and is checked against the input
                              * barrier array.

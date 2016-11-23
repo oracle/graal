@@ -430,6 +430,25 @@ public class IntegerStamp extends PrimitiveStamp {
         }
     }
 
+    public static boolean subtractionCanOverflow(IntegerStamp x, IntegerStamp y) {
+        assert x.getBits() == y.getBits();
+        // Checkstyle: stop
+        long x_l = x.lowerBound();
+        long x_h = x.upperBound();
+        long y_l = y.lowerBound();
+        long y_h = y.upperBound();
+        // Checkstyle: resume
+        return subtractionOverflows(x_l, y_h, x.getBits()) || subtractionOverflows(x_h, y_l, x.getBits());
+    }
+
+    public static boolean subtractionOverflows(long x, long y, int bits) {
+        long result = x - y;
+        if (bits == 64) {
+            return (((x ^ y) & (x ^ result)) < 0);
+        }
+        return result < CodeUtil.minValue(bits) || result > CodeUtil.maxValue(bits);
+    }
+
     public static final ArithmeticOpTable OPS = new ArithmeticOpTable(
 
                     new UnaryOp.Neg() {

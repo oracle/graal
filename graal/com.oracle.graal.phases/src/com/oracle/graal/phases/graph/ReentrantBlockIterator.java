@@ -30,12 +30,15 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import com.oracle.graal.compiler.common.cfg.Loop;
+import com.oracle.graal.compiler.common.util.CompilationAlarm;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.LoopBeginNode;
 import com.oracle.graal.nodes.cfg.Block;
+
+import jdk.vm.ci.code.BailoutException;
 
 public final class ReentrantBlockIterator {
 
@@ -102,6 +105,9 @@ public final class ReentrantBlockIterator {
         Block current = start;
 
         while (true) {
+            if (CompilationAlarm.hasExpired()) {
+                throw new BailoutException("Compilation exceeded %d seconds during CFG traversal", CompilationAlarm.Options.CompilationExpirationPeriod.getValue());
+            }
             Block next = null;
             if (stopAtBlock != null && stopAtBlock.test(current)) {
                 states.put(current.getBeginNode(), state);

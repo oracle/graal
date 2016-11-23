@@ -55,7 +55,12 @@ public final class IntegerSubExactNode extends SubNode implements IntegerExactAr
 
     @Override
     public boolean inferStamp() {
-        // TODO Should probably use a specialized version which understands that it can't overflow
+        /*
+         * Note: it is not allowed to use the foldStamp method of the regular sub node as we do not
+         * know the result stamp of this node if we do not know whether we may deopt. If we know we
+         * can never overflow we will replace this node with its non overflow checking counterpart
+         * anyway.
+         */
         return false;
     }
 
@@ -71,6 +76,9 @@ public final class IntegerSubExactNode extends SubNode implements IntegerExactAr
             if (c == 0) {
                 return forX;
             }
+        }
+        if (!IntegerStamp.subtractionCanOverflow((IntegerStamp) x.stamp(), (IntegerStamp) y.stamp())) {
+            return new SubNode(x, y).canonical(tool);
         }
         return this;
     }

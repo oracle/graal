@@ -22,17 +22,21 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.compiler.common.GraalOptions.ReadEliminationMaxLoopVisits;
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import jdk.vm.ci.meta.JavaKind;
+import java.util.Set;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.LocationIdentity;
+import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.compiler.common.type.Stamp;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.FieldLocationIdentity;
 import com.oracle.graal.nodes.FixedNode;
@@ -60,6 +64,8 @@ import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.UnsafeLoadCacheEntry;
+
+import jdk.vm.ci.meta.JavaKind;
 
 public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockState> {
 
@@ -309,5 +315,63 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 newState.addCacheEntry(newIdentifier, phiNode);
             }
         }
+    }
+
+    @Override
+    protected void processKilledLoopLocations(Loop<Block> loop, ReadEliminationBlockState initialState, ReadEliminationBlockState mergedStates) {
+        assert initialState != null;
+        assert mergedStates != null;
+        if (initialState.readCache.size() > 0) {
+            LoopKillCache loopKilledLocations = loopLocationKillCache.get(loop);
+            // we have fully processed this loop the first time, remember to cache it the next time
+            // it is visited
+            if (loopKilledLocations == null) {
+                loopKilledLocations = new LoopKillCache(1/* 1.visit */);
+                loopLocationKillCache.put(loop, loopKilledLocations);
+            } else {
+                if (loopKilledLocations.visits() > ReadEliminationMaxLoopVisits.getValue()) {
+                    // we have processed the loop too many times, kill all locations so the inner
+                    // loop will never be processed more than once again on visit
+                    loopKilledLocations.setKillsAll();
+                } else {
+                    // we have fully processed this loop >1 times, update the killed locations
+                    Set<LocationIdentity> forwardEndLiveLocations = new HashSet<>();
+                    for (CacheEntry<?> entry : initialState.readCache.keySet()) {
+                        forwardEndLiveLocations.add(entry.getIdentity());
+                    }
+                    for (CacheEntry<?> entry : mergedStates.readCache.keySet()) {
+                        forwardEndLiveLocations.remove(entry.getIdentity());
+                    }
+                    // every location that is alive before the loop but not after is killed by the
+                    // loop
+                    for (LocationIdentity location : forwardEndLiveLocations) {
+                        loopKilledLocations.rememberLoopKilledLocation(location);
+                    }
+                    if (Debug.isLogEnabled() && loopKilledLocations != null) {
+                        Debug.log("[Early Read Elimination] Setting loop killed locations of loop at node %s with %s",
+                                        loop.getHeader().getBeginNode(), forwardEndLiveLocations);
+                    }
+                }
+                // remember the loop visit
+                loopKilledLocations.visited();
+            }
+        }
+    }
+
+    @Override
+    protected ReadEliminationBlockState stripKilledLoopLocations(Loop<Block> loop, ReadEliminationBlockState originalInitialState) {
+        ReadEliminationBlockState initialState = super.stripKilledLoopLocations(loop, originalInitialState);
+        LoopKillCache loopKilledLocations = loopLocationKillCache.get(loop);
+        if (loopKilledLocations != null && loopKilledLocations.loopKillsLocations()) {
+            Set<CacheEntry<?>> forwardEndLiveLocations = initialState.readCache.keySet();
+            Iterator<CacheEntry<?>> it = forwardEndLiveLocations.iterator();
+            while (it.hasNext()) {
+                CacheEntry<?> entry = it.next();
+                if (loopKilledLocations.containsLocation(entry.getIdentity())) {
+                    it.remove();
+                }
+            }
+        }
+        return initialState;
     }
 }

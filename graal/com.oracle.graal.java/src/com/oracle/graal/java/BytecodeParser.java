@@ -250,6 +250,7 @@ import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
 import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
 import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 
+import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -306,6 +307,7 @@ import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.EndNode;
 import com.oracle.graal.nodes.EntryMarkerNode;
 import com.oracle.graal.nodes.EntryProxyNode;
+import com.oracle.graal.nodes.FieldLocationIdentity;
 import com.oracle.graal.nodes.FixedGuardNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
@@ -366,6 +368,7 @@ import com.oracle.graal.nodes.extended.GuardingNode;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.nodes.extended.LoadMethodNode;
+import com.oracle.graal.nodes.extended.MembarNode;
 import com.oracle.graal.nodes.extended.ValueAnchorNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -3466,6 +3469,10 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         frameState.push(field.getJavaKind(), append(genLoadField(receiver, resolvedField)));
+        if (resolvedField.getName().equals("referent") && resolvedField.getDeclaringClass().equals(metaAccess.lookupJavaType(Reference.class))) {
+            LocationIdentity referentIdentity = new FieldLocationIdentity(resolvedField);
+            append(new MembarNode(0, referentIdentity));
+        }
     }
 
     /**

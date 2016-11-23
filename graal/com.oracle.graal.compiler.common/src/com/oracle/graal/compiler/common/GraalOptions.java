@@ -77,6 +77,9 @@ public final class GraalOptions {
     public static final OptionValue<Integer> EscapeAnalysisIterations = new OptionValue<>(2);
 
     @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Integer> EscapeAnalysisLoopCutoff = new OptionValue<>(20);
+
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<String> EscapeAnalyzeOnly = new OptionValue<>(null);
 
     @Option(help = "", type = OptionType.Expert)
@@ -211,6 +214,9 @@ public final class GraalOptions {
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> OptReadElimination = new OptionValue<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionValue<Integer> ReadEliminationMaxLoopVisits = new OptionValue<>(5);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionValue<Boolean> OptDeoptimizationGrouping = new OptionValue<>(true);

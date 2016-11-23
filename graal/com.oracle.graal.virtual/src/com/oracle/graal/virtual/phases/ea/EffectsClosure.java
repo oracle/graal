@@ -23,15 +23,19 @@
 package com.oracle.graal.virtual.phases.ea;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.debug.Indent;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeBitMap;
 import com.oracle.graal.graph.NodeMap;
@@ -68,6 +72,8 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
     private final Map<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionsFactory.newIdentityMap();
+    // Intended to be used by read-eliminating phases based on the effects phase.
+    protected final Map<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionsFactory.newIdentityMap();
     private final Map<LoopBeginNode, BlockT> loopEntryStates = Node.newIdentityMap();
     private final NodeBitMap hasScalarReplacedInputs;
 
@@ -220,6 +226,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     @Override
+    @SuppressWarnings("try")
     protected final List<BlockT> processLoop(Loop<Block> loop, BlockT initialState) {
         if (initialState.isDead()) {
             ArrayList<BlockT> states = new ArrayList<>();
@@ -228,43 +235,71 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
             return states;
         }
-
-        BlockT loopEntryState = initialState;
-        BlockT lastMergedState = cloneState(initialState);
+        /*
+         * Special case nested loops: To avoid an exponential runtime for nested loops we try to
+         * only process them as little times as possible.
+         *
+         * In the first iteration of an outer most loop we go into the inner most loop(s). We run
+         * the first iteration of the inner most loop and then, if necessary, a second iteration.
+         *
+         * We return from the recursion and finish the first iteration of the outermost loop. If we
+         * have to do a second iteration in the outer most loop we go again into the inner most
+         * loop(s) but this time we already know all states that are killed by the loop so inside
+         * the loop we will only have those changes that propagate from the first iteration of the
+         * outer most loop into the current loop. We strip the initial loop state for the inner most
+         * loops and do the first iteration with the (possible) changes from outer loops. If there
+         * are no changes we only have to do 1 iteration and are done.
+         *
+         */
+        BlockT initialStateRemovedKilledLocations = stripKilledLoopLocations(loop, cloneState(initialState));
+        BlockT loopEntryState = initialStateRemovedKilledLocations;
+        BlockT lastMergedState = cloneState(initialStateRemovedKilledLocations);
         processInitialLoopState(loop, lastMergedState);
         MergeProcessor mergeProcessor = createMergeProcessor(loop.getHeader());
         for (int iteration = 0; iteration < 10; iteration++) {
-            LoopInfo<BlockT> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(lastMergedState));
+            try (Indent i = Debug.logAndIndent("================== Process Loop Effects Closure: block:%s begin node:%s", loop.getHeader(), loop.getHeader().getBeginNode())) {
+                LoopInfo<BlockT> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(lastMergedState));
 
-            List<BlockT> states = new ArrayList<>();
-            states.add(initialState);
-            states.addAll(info.endStates);
-            doMergeWithoutDead(mergeProcessor, states);
+                List<BlockT> states = new ArrayList<>();
+                states.add(initialStateRemovedKilledLocations);
+                states.addAll(info.endStates);
+                doMergeWithoutDead(mergeProcessor, states);
 
-            Debug.log("================== %s", loop.getHeader());
-            Debug.log("%s", mergeProcessor.newState);
-            Debug.log("===== vs.");
-            Debug.log("%s", lastMergedState);
+                Debug.log("MergeProcessor New State: %s", mergeProcessor.newState);
+                Debug.log("===== vs.");
+                Debug.log("Last Merged State: %s", lastMergedState);
 
-            if (mergeProcessor.newState.equivalentTo(lastMergedState)) {
-                mergeProcessor.commitEnds(states);
+                if (mergeProcessor.newState.equivalentTo(lastMergedState)) {
+                    mergeProcessor.commitEnds(states);
 
-                blockEffects.get(loop.getHeader()).insertAll(mergeProcessor.mergeEffects, 0);
-                loopMergeEffects.put(loop, mergeProcessor.afterMergeEffects);
+                    blockEffects.get(loop.getHeader()).insertAll(mergeProcessor.mergeEffects, 0);
+                    loopMergeEffects.put(loop, mergeProcessor.afterMergeEffects);
 
-                assert info.exitStates.size() == loop.getExits().size();
-                loopEntryStates.put((LoopBeginNode) loop.getHeader().getBeginNode(), loopEntryState);
-                assert assertExitStatesNonEmpty(loop, info);
+                    assert info.exitStates.size() == loop.getExits().size();
+                    loopEntryStates.put((LoopBeginNode) loop.getHeader().getBeginNode(), loopEntryState);
+                    assert assertExitStatesNonEmpty(loop, info);
 
-                return info.exitStates;
-            } else {
-                lastMergedState = mergeProcessor.newState;
-                for (Block block : loop.getBlocks()) {
-                    blockEffects.get(block).clear();
+                    processKilledLoopLocations(loop, initialStateRemovedKilledLocations, mergeProcessor.newState);
+                    return info.exitStates;
+                } else {
+                    lastMergedState = mergeProcessor.newState;
+                    for (Block block : loop.getBlocks()) {
+                        blockEffects.get(block).clear();
+                    }
                 }
             }
         }
         throw new GraalError("too many iterations at %s", loop);
+    }
+
+    @SuppressWarnings("unused")
+    protected BlockT stripKilledLoopLocations(Loop<Block> loop, BlockT initialState) {
+        return initialState;
+    }
+
+    @SuppressWarnings("unused")
+    protected void processKilledLoopLocations(Loop<Block> loop, BlockT initialState, BlockT mergedStates) {
+        // nothing to do
     }
 
     @SuppressWarnings("unused")
@@ -408,4 +443,64 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         ValueNode result = aliases.get(node);
         return (result == null || result instanceof VirtualObjectNode) ? node : result;
     }
+
+    protected static class LoopKillCache {
+        private int visits;
+        private LocationIdentity firstLocation;
+        private Set<LocationIdentity> killedLocations;
+        private boolean killsAll;
+
+        protected LoopKillCache(int visits) {
+            this.visits = visits;
+        }
+
+        protected void visited() {
+            visits++;
+        }
+
+        protected int visits() {
+            return visits;
+        }
+
+        protected void setKillsAll() {
+            killsAll = true;
+            firstLocation = null;
+            killedLocations = null;
+        }
+
+        protected boolean containsLocation(LocationIdentity locationIdentity) {
+            if (killsAll) {
+                return true;
+            }
+            if (firstLocation == null) {
+                return false;
+            }
+            if (!firstLocation.equals(locationIdentity)) {
+                return killedLocations != null ? killedLocations.contains(locationIdentity) : false;
+            }
+            return true;
+        }
+
+        protected void rememberLoopKilledLocation(LocationIdentity locationIdentity) {
+            if (killsAll) {
+                return;
+            }
+            if (firstLocation == null || firstLocation.equals(locationIdentity)) {
+                firstLocation = locationIdentity;
+            } else {
+                if (killedLocations == null) {
+                    killedLocations = new HashSet<>();
+                }
+                killedLocations.add(locationIdentity);
+            }
+        }
+
+        protected boolean loopKillsLocations() {
+            if (killsAll) {
+                return true;
+            }
+            return firstLocation != null;
+        }
+    }
+
 }

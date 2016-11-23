@@ -30,6 +30,7 @@ import java.util.List;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
+import com.oracle.graal.compiler.common.util.CompilationAlarm;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -140,7 +141,7 @@ public abstract class TruffleCompiler {
 
         compilationNotify.notifyCompilationStarted(compilable);
 
-        try {
+        try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod()) {
             TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
 
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
