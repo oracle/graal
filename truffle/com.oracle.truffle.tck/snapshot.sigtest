@@ -57,7 +57,7 @@ meth protected java.lang.String valuesObject()
 meth protected java.lang.String writeElementToForeign()
 meth protected java.lang.String writeValueToForeign()
 meth protected void assertDouble(java.lang.String,double,double)
-meth public final static void disposePreviousVM()
+meth public static void disposePreviousVM()
 meth public void addOneToAnArrayElement() throws java.lang.Exception
 meth public void multiplyTwoVariables() throws java.lang.Exception
 meth public void readWriteBooleanValue() throws java.lang.Exception

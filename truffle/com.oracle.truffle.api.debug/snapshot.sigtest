@@ -68,9 +68,12 @@ meth public abstract boolean isReadable()
 meth public abstract boolean isWriteable()
 meth public abstract java.lang.String getName()
 meth public abstract void set(com.oracle.truffle.api.debug.DebugValue)
+meth public final boolean isArray()
+meth public final java.util.Collection<com.oracle.truffle.api.debug.DebugValue> getProperties()
+meth public final java.util.List<com.oracle.truffle.api.debug.DebugValue> getArray()
 meth public java.lang.String toString()
 supr java.lang.Object
-hcls HeapValue,StackValue
+hcls HeapValue,PropertyValue,StackValue
 
 CLSS public final com.oracle.truffle.api.debug.Debugger
 fld public final static java.lang.String CALL_TAG = "debug-CALL"
@@ -195,6 +198,8 @@ hfds name,ordinal
 
 CLSS public abstract interface java.lang.Iterable<%0 extends java.lang.Object>
 meth public abstract java.util.Iterator<{java.lang.Iterable%0}> iterator()
+meth public java.util.Spliterator<{java.lang.Iterable%0}> spliterator()
+meth public void forEach(java.util.function.Consumer<? super {java.lang.Iterable%0}>)
 
 CLSS public java.lang.Object
 cons public init()
