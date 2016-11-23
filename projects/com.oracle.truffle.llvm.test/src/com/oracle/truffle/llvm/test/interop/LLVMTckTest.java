@@ -33,6 +33,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 import org.junit.Test;
 
@@ -40,16 +41,13 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
-import com.oracle.truffle.llvm.test.LLVMPaths;
-import com.oracle.truffle.llvm.tools.Clang;
-import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
-import com.oracle.truffle.llvm.tools.Opt;
-import com.oracle.truffle.llvm.tools.Opt.OptOptions;
-import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.tck.TruffleTCK;
 
 public class LLVMTckTest extends TruffleTCK {
     private static final String FILENAME = "tck";
+    private static final Path TEST_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/interoptests").toPath();
+    private static final String FILE_SUFFIX = "_clang_O0_MEM2REG.bc";
 
     @Test
     public void testVerifyPresence() {
@@ -62,12 +60,8 @@ public class LLVMTckTest extends TruffleTCK {
     protected PolyglotEngine prepareVM(Builder builder) throws Exception {
         PolyglotEngine engine = builder.build();
         try {
-            File cFile = new File(LLVMPaths.INTEROP_TESTS, FILENAME + ".c");
-            File bcFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bc_" + FILENAME, ".ll");
-            File bcOptFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bcopt_" + FILENAME, ".ll");
-            Clang.compileToLLVMIR(cFile, bcFile, ClangOptions.builder());
-            Opt.optimizeBitcodeFile(bcFile, bcOptFile, OptOptions.builder().pass(Pass.MEM_TO_REG));
-            engine.eval(Source.newBuilder(bcOptFile).build()).as(Integer.class);
+            File file = new File(TEST_DIR.toFile(), "/" + FILENAME + "/" + FILENAME + FILE_SUFFIX);
+            engine.eval(Source.newBuilder(file).build()).as(Integer.class);
         } catch (IOException e) {
             throw new AssertionError(e);
         }
@@ -115,39 +109,8 @@ public class LLVMTckTest extends TruffleTCK {
     }
 
     @Override
-    protected String invalidCode() {
-        // @formatter:off
-        return
-                        "define i32 @main() nounwind uwtable readnone {\n" +
-                        "  ret j32 0\n" +
-                        "}";
-        /* alternatively, this should also work and will need its own test case:
-        return
-            "f unction main() {\n" +
-            "  retu rn 42;\n" +
-            "}\n";*/
-        // @formatter:on
-    }
-
-    @Override
     protected String complexAdd() {
         return "complexAdd";
-    }
-
-    @Override
-    protected String multiplyCode(String firstName, String secondName) {
-        // @formatter:off
-        return "; ModuleID = 'multiply.c'\n" +
-                        "target datalayout = \"e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-s0:64:64-f80:128:128-n8:16:32:64-S128\"\n" +
-                        "target triple = \"x86_64-unknown-linux-gnu\"\n\n" +
-                        "define i32 @main(i32 %" + firstName + ", i32 %" + secondName + ") nounwind uwtable readnone {\n" +
-                        "  %1 = mul nsw i32 %" + secondName + ", %" + firstName + "\n" +
-                        "  ret i32 %1\n" +
-                        //"}\n" +
-                        //"define i32 @main() nounwind uwtable readnone {\n" +
-                        //"  ret i32 21\n" +
-                        "}";
-        // @formatter:on
     }
 
     @Override
@@ -229,6 +192,11 @@ public class LLVMTckTest extends TruffleTCK {
 
     @Override
     public void testAddComplexNumbersWithMethod() throws Exception {
+    }
+
+    @Override
+    public void testInvalidTestMethod() throws Exception {
+        throw new Exception();
     }
 
     // ... and some other strange behavior
@@ -390,5 +358,10 @@ public class LLVMTckTest extends TruffleTCK {
 
     @Override
     public void testGetSizeOfForeign() throws Exception {
+    }
+
+    @Override
+    protected String invalidCode() {
+        return null;
     }
 }

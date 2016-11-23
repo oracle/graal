@@ -154,6 +154,7 @@ Tool.CLANG = ClangCompiler()
 Tool.GCC = GCCCompiler()
 Tool.GFORTRAN = GCCCompiler([ProgrammingLanguage.FORTRAN])
 Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
+Tool.MEM2REG = Opt('MEM2REG', ['-mem2reg'])
 
 
 def createOutputPath(inputFile, outputDir):

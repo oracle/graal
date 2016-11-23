@@ -17,6 +17,8 @@ _cacheDir = os.path.join(_testDir, "cache/")
 _sulongSuiteDir = os.path.join(_testDir, "sulong/")
 _benchmarksgameSuiteDir = os.path.join(_testDir, "benchmarksgame/")
 _benchmarksgameSuiteDirRoot = os.path.join(_benchmarksgameSuiteDir, "benchmarksgame-2014-08-31/benchmarksgame/bench/")
+_interoptestsDir = os.path.join(_testDir, "interoptests/")
+_inlineassemblytestsDir = os.path.join(_testDir, "inlineassemblytests/")
 _llvmSuiteDir = os.path.join(_testDir, "llvm/")
 _llvmSuiteDirRoot = os.path.join(_llvmSuiteDir, "test-suite-3.2.src/")
 _gccSuiteDir = os.path.join(_testDir, "gcc/")
@@ -50,6 +52,20 @@ def runLLVMSuite(vmArgs):
     compileSuite(['llvm'])
     return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + [mx_sulong.getRemoteClasspathOption(), '--verbose', "com.oracle.truffle.llvm.test.alpha.LLVMSuite"])
 
+def compileInteropTests():
+    print("Compiling Interop with clang -O0 and mem2reg", end='')
+    tools.printProgress(tools.multicompileFolder(_interoptestsDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude', '-lm'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.MEM2REG]))
+
+def runInteropTests(vmArgs):
+    """runs the Sulong test suite"""
+    compileSuite(['interop'])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.interop.LLVMInteropTest"])
+
+def runTCKTests(vmArgs):
+    """runs the Sulong test suite"""
+    compileSuite(['interop'])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.interop.LLVMTckTest"])
+
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
     excludes = tools.collectExcludePattern(os.path.join(_llvmSuiteDir, "configs/"))
@@ -80,6 +96,8 @@ testSuites = {
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'sulong' : (compileSulongSuite, runSulongSuite),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
+    'interop' : (compileInteropTests, runInteropTests),
+    'tck' : (compileInteropTests, runTCKTests),
 }
 
 

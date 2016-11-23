@@ -31,7 +31,6 @@ _toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
 _clangPath = _toolDir + 'tools/llvm/bin/clang'
 
 _sulongTestDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
-_interopTestDir = join(_root, "com.oracle.truffle.llvm.test/interoptests/")
 
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
@@ -81,7 +80,6 @@ httpCheckFiles = [
 clangFormatCheckPaths = [
     _suite.dir + '/include',
     _sulongTestDir,
-    _interopTestDir,
     _libPath,
     _captureSrcDir
 ]
@@ -144,9 +142,9 @@ def travis1(args=None):
     with Task('TestPolglot', tasks) as t:
         if t: runPolyglotTestCases()
     with Task('TestInterop', tasks) as t:
-        if t: runInteropTestCases()
+        if t: testsuites.travisRunSuite(['interop'])
     with Task('TestTck', tasks) as t:
-        if t: runTckTestCases()
+        if t: testsuites.travisRunSuite(['tck'])
     with Task('TestAsm', tasks) as t:
         if t: runAsmTestCases()
     with Task('TestTypes', tasks) as t:
@@ -554,16 +552,6 @@ def runPolyglotTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestPolyglotEngine'])
-
-def runInteropTestCases(args=None):
-    """runs the interop test cases"""
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.interop.LLVMInteropTest'])
-
-def runTckTestCases(args=None):
-    """runs the TCK test cases"""
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.interop.LLVMTckTest'])
 
 def runAsmTestCases(args=None):
     """runs the asm test cases"""
@@ -1080,8 +1068,6 @@ testCases = {
     'nwcc' : runNWCCTestCases,
     'types' : runTypeTestCases,
     'polyglot' : runPolyglotTestCases,
-    'interop' : runInteropTestCases,
-    'tck' : runTckTestCases,
     'asm' : runAsmTestCases,
     'compile' : runCompileTestCases,
     'argon2' : runTestArgon2,

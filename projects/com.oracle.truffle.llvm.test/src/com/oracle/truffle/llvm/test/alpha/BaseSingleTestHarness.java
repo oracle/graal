@@ -70,6 +70,7 @@ public abstract class BaseSingleTestHarness extends BaseTestHarness {
             String sulongStdOut;
             try (CaptureOutput out = new CaptureOutput()) {
                 sulongResult = LLVM.executeMain(candidate.toAbsolutePath().toFile(), getArguments(candidate.getParent()));
+                System.out.flush();
                 sulongStdOut = out.getResult();
             }
 
