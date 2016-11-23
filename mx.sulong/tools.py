@@ -74,7 +74,7 @@ class Tool(object):
             if errorMsg is None:
                 print('\nError: Cannot run %s' % args)
             else:
-                print('\nError: %s' % errorMsg)
+                print('\nError: %s\n%s' % (errorMsg, args))
         if f is not None:
             f.close()
         return ret
@@ -216,9 +216,11 @@ def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, 
                     tool.run(inputFile, outputFile, flags + optimization.flags)
                     if os.path.exists(outputFile):
                         yield outputFile
-                        for optimizer in optimizers:
-                            base, ext = os.path.splitext(outputFile)
-                            opt_outputFile = base + '_' + optimizer.name + ext
+                if os.path.exists(outputFile):
+                    for optimizer in optimizers:
+                        base, ext = os.path.splitext(outputFile)
+                        opt_outputFile = base + '_' + optimizer.name + ext
+                        if not isFileUpToDate(outputFile, opt_outputFile):
                             optimizer.run(outputFile, opt_outputFile, [])
                             if os.path.exists(opt_outputFile):
                                 yield opt_outputFile

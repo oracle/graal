@@ -1185,6 +1185,7 @@ mx.update_commands(_suite, {
     'su-travis4' : [travis4, ''],
     'su-travis-sulong' : [travisTestSulong, ''],
     'su-travis-argon2' : [travisArgon2, ''],
+    'su-travis-tests' : [testsuites.travisRunSuite, ''],
     'su-ecj-strict' : [compileWithEcjStrict, ''],
     'su-basic-checkcode' : [runChecks, ''],
     'su-gitlogcheck' : [logCheck, ''],
