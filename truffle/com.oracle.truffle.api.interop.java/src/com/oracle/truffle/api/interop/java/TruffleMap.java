@@ -67,7 +67,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
     public V get(Object key) {
         keyType.cast(key);
         try {
-            final Object item = ToJavaNode.message(null, Message.READ, obj, key);
+            final Object item = ToJavaNode.message(valueType, Message.READ, obj, key);
             Object javaItem = ToJavaNode.toJava(item, valueType);
             return valueType.cast(javaItem);
         } catch (InteropException e) {
@@ -80,7 +80,9 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         keyType.cast(key);
         valueType.cast(value);
         try {
-            return valueType.cast(ToJavaNode.message(null, Message.WRITE, obj, key, value));
+            V previous = get(key);
+            ToJavaNode.message(valueType, Message.WRITE, obj, key, value);
+            return previous;
         } catch (InteropException e) {
             throw new IllegalStateException(e);
         }
@@ -123,7 +125,7 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
             public Entry<K, V> next() {
                 Object key;
                 try {
-                    key = ToJavaNode.message(null, Message.READ, props, index++);
+                    key = ToJavaNode.message(keyType, Message.READ, props, index++);
                 } catch (InteropException e) {
                     throw new IllegalStateException(e);
                 }
@@ -153,7 +155,8 @@ final class TruffleMap<K, V> extends AbstractMap<K, V> {
         @Override
         public V getValue() {
             try {
-                return valueType.cast(ToJavaNode.message(null, Message.READ, obj, key));
+                final Object value = ToJavaNode.message(valueType, Message.READ, obj, key);
+                return valueType.cast(value);
             } catch (InteropException ex) {
                 throw new IllegalStateException(ex);
             }
