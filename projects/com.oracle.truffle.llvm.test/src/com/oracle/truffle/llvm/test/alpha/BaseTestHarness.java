@@ -36,21 +36,15 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.llvm.LLVM;
-import com.oracle.truffle.llvm.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.test.options.SulongTestOptions;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
 
-public abstract class BaseSuite {
+public abstract class BaseTestHarness {
 
     protected static final Set<String> supportedFiles = new HashSet<>(Arrays.asList("f90", "f", "f03", "c", "cpp", "cc", "C", "m"));
 
@@ -64,44 +58,11 @@ public abstract class BaseSuite {
     protected abstract Path getTestDirectory();
 
     @Test
-    public void test() throws Exception {
-        assert Files.walk(getTestDirectory()).filter(isExecutable).count() == 1;
-
-        Path referenceFile = Files.walk(getTestDirectory()).filter(isExecutable).findFirst().get();
-        List<Path> testCandidates = Files.walk(getTestDirectory()).filter(isFile).filter(isSulong).collect(Collectors.toList());
-        ProcessResult processResult = ProcessUtil.executeNativeCommand(referenceFile.toAbsolutePath().toString());
-        String referenceStdOut = processResult.getStdOutput();
-        final int referenceReturnValue = processResult.getReturnValue();
-
-        for (Path candidate : testCandidates) {
-            if (!filterFileName().test(candidate.getFileName().toString())) {
-                continue;
-            }
-
-            int sulongResult = -1;
-            String sulongStdOut;
-            try (CaptureOutput out = new CaptureOutput()) {
-                if (!candidate.toAbsolutePath().toFile().exists()) {
-                    throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
-                }
-                sulongResult = LLVM.executeMain(candidate.toAbsolutePath().toFile());
-                sulongStdOut = out.getResult();
-            }
-
-            if (sulongResult != (sulongResult & 0xFF)) {
-                Assert.fail("Broken unittest " + getTestDirectory() + ". Test exits with invalid value.");
-            }
-            String testName = candidate.getFileName().toString() + " in " + getTestDirectory().toAbsolutePath().toString();
-            Assert.assertEquals(testName + " failed. Posix return value missmatch.", referenceReturnValue,
-                            sulongResult);
-            Assert.assertEquals(testName + " failed. Output (stdout) missmatch.", referenceStdOut,
-                            sulongStdOut);
-        }
-    }
+    public abstract void test() throws Exception;
 
     /**
      * This function can be overwritten to specify a filter on test file names. E.g. if one wants to
-     * only run unoptimized files on Sulong, use <code> s.endsWith("O0.bc") </code>
+     * only run unoptimized files on Sulong, use <code> s.endsWith("O0.ll") </code>
      *
      * @return a filter predicate
      */
@@ -119,15 +80,7 @@ public abstract class BaseSuite {
             System.err.println(testDiscoveryPath);
             whiteListFilter = p -> !whiteList.contains(p) && p.startsWith(new File(suiteDir.toString(), testDiscoveryPath).toPath());
         }
-        Collection<Object[]> testCases = collectTestCases(suiteDir, whiteListFilter);
-        if (testCases.size() != whiteList.size()) {
-            // we are missing test cases that are on the whitelist!
-            throw new AssertionError(String.format("%d test cases does not match %d of whitelist entries!",
-                            testCases.size(), whiteList.size()));
-        } else {
-            System.out.println("Executing " + testCases.size() + " test cases.");
-        }
-        return testCases;
+        return collectTestCases(suiteDir, whiteListFilter);
     }
 
     private static Collection<Object[]> collectTestCases(Path suiteDir, Predicate<? super Path> whiteListFilter) throws AssertionError {
@@ -144,11 +97,11 @@ public abstract class BaseSuite {
                 try {
                     return Files.lines(f);
                 } catch (IOException e) {
-                    throw new AssertionError("Error reading whitelist.", e);
+                    throw new AssertionError("Error creating whitelist.", e);
                 }
-            }).filter(s -> s.length() > 0).map(s -> new File(suiteDirectory.toString(), removeFileEnding(s)).toPath()).collect(Collectors.toSet());
+            }).map(s -> new File(suiteDirectory.toString(), removeFileEnding(s)).toPath()).collect(Collectors.toSet());
         } catch (IOException e) {
-            throw new AssertionError("Error reading whitelist.", e);
+            throw new AssertionError("Error creating whitelist.", e);
         }
     }
 
