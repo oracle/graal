@@ -39,7 +39,7 @@ public final class CaptureOutput implements AutoCloseable {
 
     static {
         // temporary solution unit mx does that for us
-        System.load(new File(LLVMOptions.ENGINE.projectRoot()).getAbsolutePath() + "/mxbuild/projects/com.oracle.truffle.llvm.pipe.native/bin/libpipe.so");
+        System.load(new File(LLVMOptions.ENGINE.projectRoot()).getAbsolutePath() + "/../mxbuild/projects/com.oracle.truffle.llvm.pipe.native/bin/libpipe.so");
     }
 
     private final File captureFile;
