@@ -2,7 +2,8 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## Next version
+## Version 0.20
+23-Nov-2016
 * Switching the source and target levels to 1.8
 * Significant improvements in Java/Truffle interop
 
