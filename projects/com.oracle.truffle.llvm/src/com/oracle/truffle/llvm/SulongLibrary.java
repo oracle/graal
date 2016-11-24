@@ -33,6 +33,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
@@ -59,10 +61,7 @@ public class SulongLibrary {
 
             while (zipEntry != null) {
                 if (zipEntry.isDirectory()) {
-                    continue;
-                }
-
-                if (!(zipEntry.getName().equals("libs") || zipEntry.getName().endsWith(LLVMLanguage.LLVM_IR_EXTENSION))) {
+                    zipEntry = zipStream.getNextEntry();
                     continue;
                 }
 
@@ -76,17 +75,23 @@ public class SulongLibrary {
                     byteStream.write(buffer, 0, read);
                 }
 
-                final String string = byteStream.toString("UTF-8");
+                final byte[] bytes = byteStream.toByteArray();
 
                 if (zipEntry.getName().equals("libs")) {
-                    try (Scanner scanner = new Scanner(string)) {
+                    final String libs = byteStream.toString(StandardCharsets.UTF_8.name());
+                    try (Scanner scanner = new Scanner(libs)) {
                         while (scanner.hasNextLine()) {
                             handleLibrary.accept(scanner.nextLine());
                         }
                     }
-                } else {
-                    handleSource.accept(Source.newBuilder(string).name(file.getPath() + "@" + zipEntry.getName()).mimeType(LLVMLanguage.LLVM_IR_MIME_TYPE).build());
+                } else if (zipEntry.getName().endsWith("." + LLVMLanguage.LLVM_IR_EXTENSION)) {
+                    final String sourceCode = new String(bytes, StandardCharsets.UTF_8);
+                    handleSource.accept(Source.newBuilder(sourceCode).name(file.getPath() + "@" + zipEntry.getName()).mimeType(LLVMLanguage.LLVM_IR_MIME_TYPE).build());
+                } else if (zipEntry.getName().endsWith("." + LLVMLanguage.LLVM_BITCODE_EXTENSION)) {
+                    final String sourceCode = Base64.getEncoder().encodeToString(bytes);
+                    handleSource.accept(Source.newBuilder(sourceCode).name(file.getPath() + "@" + zipEntry.getName()).mimeType(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE).build());
                 }
+
                 zipEntry = zipStream.getNextEntry();
             }
         }

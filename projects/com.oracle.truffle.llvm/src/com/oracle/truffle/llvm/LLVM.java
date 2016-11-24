@@ -134,7 +134,7 @@ public class LLVM {
                     }
                     mainFunction[0] = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
-                } else if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE)) {
+                } else if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE) || code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
                     LLVMParserResult parserResult = parseBitcodeFile(code, context);
                     mainFunction[0] = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
@@ -147,15 +147,26 @@ public class LLVM {
                         sourceFiles.add(source);
                     });
                     for (Source source : sourceFiles) {
-                        LLVMParserResult parserResult;
+                        String mimeType = source.getMimeType();
                         try {
-                            parserResult = parseString(source, context);
-                        } catch (IOException e) {
-                            throw new UncheckedIOException(e);
-                        }
-                        handleParserResult(context, parserResult);
-                        if (parserResult.getMainFunction() != null) {
-                            mainFunction[0] = parserResult.getMainFunction();
+                            LLVMParserResult parserResult;
+                            if (mimeType.equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE) || mimeType.equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
+                                parserResult = parseBitcodeFile(source, context);
+                            } else if (mimeType.equals(LLVMLanguage.LLVM_IR_MIME_TYPE)) {
+                                try {
+                                    parserResult = parseString(source, context);
+                                } catch (IOException e) {
+                                    throw new UncheckedIOException(e);
+                                }
+                            } else {
+                                throw new UnsupportedOperationException(mimeType);
+                            }
+                            handleParserResult(context, parserResult);
+                            if (parserResult.getMainFunction() != null) {
+                                mainFunction[0] = parserResult.getMainFunction();
+                            }
+                        } catch (Throwable t) {
+                            throw new IOException("Error while trying to parse " + source.getName(), t);
                         }
                     }
                     if (mainFunction[0] == null) {

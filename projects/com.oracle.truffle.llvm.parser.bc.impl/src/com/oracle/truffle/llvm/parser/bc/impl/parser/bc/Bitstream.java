@@ -32,11 +32,28 @@ package com.oracle.truffle.llvm.parser.bc.impl.parser.bc;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Base64;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.context.LLVMLanguage;
 
 public final class Bitstream {
 
-    public static Bitstream create(String filename) {
-        return new Bitstream(read(filename));
+    public static Bitstream create(Source source) {
+        byte[] bytes;
+        switch (source.getMimeType()) {
+            case LLVMLanguage.LLVM_BITCODE_MIME_TYPE:
+                bytes = read(source.getPath());
+                break;
+
+            case LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE:
+                bytes = Base64.getDecoder().decode(source.getCode());
+                break;
+
+            default:
+                throw new UnsupportedOperationException();
+        }
+        return new Bitstream(bytes);
     }
 
     private static byte[] read(String filename) {

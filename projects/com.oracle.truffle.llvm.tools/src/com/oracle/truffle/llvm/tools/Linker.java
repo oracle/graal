@@ -110,8 +110,8 @@ public class Linker {
     }
 
     private static void help() {
-        LLVMLogger.info("su-link [-o out.su] [-l one.so -l two.so ...] one.ll two.ll ...");
-        LLVMLogger.info("  Links multiple LLVM bitcode files into a single file which can be loaded by Sulong.");
+        LLVMLogger.info("su-link [-o out.su] [-l one.so -l two.so ...] one.bc two.bc ...");
+        LLVMLogger.info("  Links zero or more LLVM binary bitcode files into a single file which can be loaded by Sulong.");
     }
 
     public static void link(String outputFileName, Collection<String> libraryNames, Collection<String> bitcodeFileNames) throws IOException, NoSuchAlgorithmException {

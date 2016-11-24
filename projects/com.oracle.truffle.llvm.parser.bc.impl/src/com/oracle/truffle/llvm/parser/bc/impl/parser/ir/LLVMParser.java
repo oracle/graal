@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.bc.impl.parser.ir;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.base.model.generators.ApplicationGenerator;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.Bitstream;
 import com.oracle.truffle.llvm.parser.bc.impl.parser.bc.Operation;
@@ -48,8 +49,8 @@ public final class LLVMParser {
         this.generator = generator;
     }
 
-    public void parse(ModuleVersion version, String bitcode) {
-        Bitstream stream = Bitstream.create(bitcode);
+    public void parse(ModuleVersion version, Source source) {
+        Bitstream stream = Bitstream.create(source);
 
         Module module = version.createModule(generator.createModule());
 
