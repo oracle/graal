@@ -210,7 +210,6 @@ def pullTools(args=None):
 def pullTestFramework(args=None):
     """downloads the test suites (GCC, LLVM, NWCC, Argon2)"""
     pullGCCSuite()
-    pullLLVMSuite()
     pullNWCCSuite()
     ensureArgon2Exists()
 
@@ -1119,7 +1118,6 @@ mx.update_commands(_suite, {
     'su-pullllvmbinaries' : [pullLLVMBinaries, ''],
     'su-pullnwccsuite' : [pullNWCCSuite, ''],
     'su-pullgccsuite' : [pullGCCSuite, ''],
-    'su-pullllvmsuite' : [pullLLVMSuite, ''],
     'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
