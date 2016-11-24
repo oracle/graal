@@ -77,7 +77,7 @@ def compileShootoutSuite():
 
 testSuites = {
     'gcc' : (compileGCCSuite, None),
-    'llvm' : (compileLLVMSuite, None),
+    'llvm' : (compileLLVMSuite, runLLVMSuite),
     'sulong' : (compileSulongSuite, runSulongSuite),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
 }
