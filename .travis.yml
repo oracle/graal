@@ -59,7 +59,7 @@ install:
       if [ "$JDK" == "jdk9" ]
       then
         JDK_TAR=$TRAVIS_BUILD_DIR/../jdk9-SNAPSHOT-release-linux-amd64.tar.gz
-        wget https://lafo.ssw.uni-linz.ac.at/slavefiles/jdk/jdk9-SNAPSHOT-release-linux-amd64.tar.gz -O $JDK_TAR
+        wget http://www.java.net/download/java/jdk9/archive/143/binaries/jdk-9-ea+143_linux-x64_bin.tar.gz -O $JDK_TAR
         tar -C $TRAVIS_BUILD_DIR/.. -xf $JDK_TAR
         export JAVA_HOME=$TRAVIS_BUILD_DIR/../jdk1.9.0
       fi
