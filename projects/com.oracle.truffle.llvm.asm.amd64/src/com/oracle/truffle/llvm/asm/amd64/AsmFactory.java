@@ -90,6 +90,8 @@ public class AsmFactory {
     private LLVMExpressionNode result;
     private String asmFlags;
     private LLVMBaseType retType;
+    private int[] returnStructOffsets;
+    private LLVMStructWriteNode[] returnStructWriteNodes;
 
     public AsmFactory(String asmFlags, LLVMBaseType retType) {
         this.asmFlags = asmFlags;
@@ -103,6 +105,15 @@ public class AsmFactory {
 
     public LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
+        if (retType == LLVMBaseType.STRUCT) {
+            LLVMExpressionNode structAllocInstr = LLVMAddressArgNodeGen.create(1);
+            FrameSlot returnValueSlot = frameDescriptor.addFrameSlot("returnValue");
+            returnValueSlot.setKind(FrameSlotKind.Object);
+            LLVMWriteAddressNode writeStructAddress = LLVMWriteAddressNodeGen.create(structAllocInstr, returnValueSlot);
+            statements.add(writeStructAddress);
+            LLVMAddressNode readStructAddress = LLVMAddressReadNodeGen.create(returnValueSlot);
+            result = new StructLiteralNode(returnStructOffsets, returnStructWriteNodes, readStructAddress);
+        }
         return new LLVMInlineAssemblyRootNode(null, frameDescriptor, statements.toArray(new LLVMNode[statements.size()]), arguments, result);
     }
 
@@ -189,7 +200,6 @@ public class AsmFactory {
     }
 
     public void createRdtscOperation() {
-        LLVMNode statement;
         LLVMI64Node rdtscCalcNode = LLVMAMD64RdtscNodeGen.create();
         FrameSlot rdtscFrameSlot = frameDescriptor.addFrameSlot("rdtscSlot");
         rdtscFrameSlot.setKind(FrameSlotKind.Long);
@@ -200,24 +210,17 @@ public class AsmFactory {
         LLVMI32Node constant32Node = new LLVMAMD64ImmNode(LLVMI32Node.BYTE_SIZE * Byte.SIZE);
         LLVMI32Node edxNode = LLVMToI32NodeFactory.LLVMI64ToI32NodeGen.create(LLVMAMD64I64ShrlNodeGen.create(constant32Node, rdtscReadNode));
         LLVMI32Node eaxNode = LLVMToI32NodeFactory.LLVMI64ToI32NodeGen.create(rdtscReadNode);
+
         LLVMI32StructWriteNode eax = new LLVMI32StructWriteNode(eaxNode);
         LLVMI32StructWriteNode edx = new LLVMI32StructWriteNode(edxNode);
 
-        LLVMExpressionNode structAllocInstr = LLVMAddressArgNodeGen.create(1);
-        FrameSlot returnValueSlot = frameDescriptor.addFrameSlot("returnValue");
-        returnValueSlot.setKind(FrameSlotKind.Object);
-        LLVMWriteAddressNode writeStructAddress = LLVMWriteAddressNodeGen.create(structAllocInstr, returnValueSlot);
-        statement = writeStructAddress;
-        LLVMAddressNode readStructAddress = LLVMAddressReadNodeGen.create(returnValueSlot);
-        result = new StructLiteralNode(new int[]{0, LLVMI32Node.BYTE_SIZE}, new LLVMStructWriteNode[]{eax, edx}, readStructAddress);
-        statements.add(statement);
+        returnStructOffsets = new int[]{0, LLVMI32Node.BYTE_SIZE};
+        returnStructWriteNodes = new LLVMStructWriteNode[]{eax, edx};
     }
 
     public void createDivisionOperation(String op, String divisor) {
         FrameSlot slot = frameDescriptor.findFrameSlot(divisor);
         LLVMI32Node divisorNode = (slot != null) ? LLVMI32ReadNodeGen.create(slot) : getImmediateNode(divisor);
-        LLVMNode statement = new LLVMI32UnsupportedInlineAssemblerNode();
-        LLVMExpressionNode returnNode = new LLVMI32UnsupportedInlineAssemblerNode();
 
         if (op.equals("idivl")) {
             FrameSlot eaxSlot = frameDescriptor.findFrameSlot("%eax");
@@ -230,27 +233,17 @@ public class AsmFactory {
                 LLVMI32Node remainderNode = LLVMAMD64ModNodeGen.create(divisorNode, eaxNode, edxNode);
                 LLVMI32StructWriteNode quotient = new LLVMI32StructWriteNode(divisionNode);
                 LLVMI32StructWriteNode remainder = new LLVMI32StructWriteNode(remainderNode);
-
-                LLVMExpressionNode structAllocInstr = LLVMAddressArgNodeGen.create(1);
-                FrameSlot returnValueSlot = frameDescriptor.addFrameSlot("returnValue");
-                returnValueSlot.setKind(FrameSlotKind.Object);
-                LLVMWriteAddressNode writeStructAddress = LLVMWriteAddressNodeGen.create(structAllocInstr, returnValueSlot);
-                statements.add(writeStructAddress);
-                LLVMAddressNode readStructAddress = LLVMAddressReadNodeGen.create(returnValueSlot);
-                returnNode = new StructLiteralNode(new int[]{0, LLVMI32Node.BYTE_SIZE}, new LLVMStructWriteNode[]{remainder, quotient}, readStructAddress);
+                returnStructOffsets = new int[]{0, LLVMI32Node.BYTE_SIZE};
+                returnStructWriteNodes = new LLVMStructWriteNode[]{remainder, quotient};
             } else if (retType == LLVMBaseType.I32) {
-                returnNode = divisionNode;
+                result = divisionNode;
             } else {
-                returnNode = new LLVMUnsupportedInlineAssemblerNode();
+                result = new LLVMUnsupportedInlineAssemblerNode();
             }
         } else {
             // TODO: Other div instruction shall go here
-            returnNode = new LLVMI32UnsupportedInlineAssemblerNode();
-            statement = returnNode;
-            this.statements.add(statement);
+            result = new LLVMI32UnsupportedInlineAssemblerNode();
         }
-
-        this.result = returnNode;
     }
 
     protected void addFrameSlot(String reg, LLVMBaseType type) {

@@ -61,12 +61,15 @@ PRODUCTIONS
 InlineAssembly<> =
 										(..)
   "\""
-  (AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<> | DivOperation<> | RdtscInstruction<>)
-  {AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<> | DivOperation<> | RdtscInstruction<>}
+  (Instruction<>)
+  {Instruction<>}
   "\""
   										(.root = factory.finishInline();.)
   .
 
+Instruction<> =
+  AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<> | DivOperation<> | RdtscInstruction<>
+.
 AddSubOperation<> =						(.String op; String left = null, right = null;.)
   AddSubOp<out op>
   ((Register<out left> "," Register<out right>)
