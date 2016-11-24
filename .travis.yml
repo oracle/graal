@@ -17,12 +17,14 @@ env:
   global:
     - MX_BINARY_SUITES="truffle"
     - JVMCI_VERSION="jvmci-0.23"
+    - JVMCI_BASE_JDK8="jdk1.8.0_111"
+    - JDK9_EA_BUILD="146"
   matrix:
     - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
     - JDK="jdk8" GATE="build,bootstraplite"
-#    - JDK="jdk9" GATE="build,test"
-#    - JDK="jdk9" GATE="build,bootstraplite"
+    - JDK="jdk9" GATE="build,test"
+    - JDK="jdk9" GATE="build,bootstraplite"
 install:
   - |
       export MX_PATH=$TRAVIS_BUILD_DIR/../mx
@@ -50,16 +52,16 @@ install:
   - |
       if [ "$JDK" == "jdk8" ]
       then
-        JDK_TAR=$TRAVIS_BUILD_DIR/../jdk1.8.0_91-$JVMCI_VERSION-linux-amd64.tar.gz
-        wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/$JVMCI_VERSION/jdk1.8.0_91-$JVMCI_VERSION-linux-amd64.tar.gz -O $JDK_TAR
+        JDK_TAR=$TRAVIS_BUILD_DIR/../$JVMCI_BASE_JDK8-$JVMCI_VERSION-linux-amd64.tar.gz
+        wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/$JVMCI_VERSION/$JVMCI_BASE_JDK8-$JVMCI_VERSION-linux-amd64.tar.gz -O $JDK_TAR
         tar -C $TRAVIS_BUILD_DIR/.. -xzf $JDK_TAR
-        export JAVA_HOME=$TRAVIS_BUILD_DIR/../jdk1.8.0_91-$JVMCI_VERSION
+        export JAVA_HOME=$TRAVIS_BUILD_DIR/../$JVMCI_BASE_JDK8-$JVMCI_VERSION
       fi
   - |
       if [ "$JDK" == "jdk9" ]
       then
         JDK_TAR=$TRAVIS_BUILD_DIR/../jdk9-SNAPSHOT-release-linux-amd64.tar.gz
-        wget http://www.java.net/download/java/jdk9/archive/143/binaries/jdk-9-ea+143_linux-x64_bin.tar.gz -O $JDK_TAR
+        wget http://www.java.net/download/java/jdk9/archive/$JDK9_EA_BUILD/binaries/jdk-9-ea+$JDK9_EA_BUILD_linux-x64_bin.tar.gz -O $JDK_TAR
         tar -C $TRAVIS_BUILD_DIR/.. -xf $JDK_TAR
         export JAVA_HOME=$TRAVIS_BUILD_DIR/../jdk1.9.0
       fi
