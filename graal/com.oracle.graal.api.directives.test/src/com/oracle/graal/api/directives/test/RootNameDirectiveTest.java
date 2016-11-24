@@ -122,7 +122,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
             Assert.assertEquals(toString(method), rootNameInCallee);
             Assert.assertEquals(rootNameInCallee, rootNameInCaller);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 
