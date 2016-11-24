@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir.aarch64;
 
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
@@ -32,6 +34,7 @@ import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
+import com.oracle.graal.asm.aarch64.AArch64Assembler.ExtendType;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.PatchLabelKind;
 import com.oracle.graal.code.CompilationResult.JumpTable;
@@ -46,13 +49,18 @@ import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.LIRInstruction.Temp;
+import com.oracle.graal.lir.LIRInstruction.Use;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.aarch64.AArch64;
 
 public class AArch64ControlFlow {
 
@@ -234,61 +242,51 @@ public class AArch64ControlFlow {
         }
     }
 
-    public static class TableSwitchOp extends AArch64BlockEndOp implements StandardOp.BlockEndOp {
+    public static final class TableSwitchOp extends AArch64BlockEndOp {
         public static final LIRInstructionClass<TableSwitchOp> TYPE = LIRInstructionClass.create(TableSwitchOp.class);
-
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
-        @Alive protected Variable keyValue;
-        @Temp protected Variable scratchValue;
+        @Use protected Value index;
+        @Temp({REG, HINT}) protected Value idxScratch;
+        @Temp protected Value scratch;
 
-        public TableSwitchOp(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Variable key, Variable scratch) {
+        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Value index, Variable scratch, Variable idxScratch) {
             super(TYPE);
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
-            this.keyValue = key;
-            this.scratchValue = scratch;
+            this.index = index;
+            this.scratch = scratch;
+            this.idxScratch = idxScratch;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            Register key = asRegister(keyValue);
-            Register scratch = asRegister(scratchValue);
-            if (lowKey != 0) {
-                if (AArch64MacroAssembler.isArithmeticImmediate(lowKey)) {
-                    masm.sub(32, key, key, lowKey);
-                } else {
-                    ConstantValue constVal = new ConstantValue(LIRKind.value(AArch64Kind.WORD), JavaConstant.forInt(lowKey));
-                    AArch64Move.move(crb, masm, scratchValue, constVal);
-                    masm.sub(32, key, key, scratch);
-                }
-            }
+            Register indexReg = asRegister(index, AArch64Kind.DWORD);
+            Register idxScratchReg = asRegister(idxScratch, AArch64Kind.DWORD);
+            Register scratchReg = asRegister(scratch, AArch64Kind.QWORD);
+
+            // Compare index against jump table bounds
+            int highKey = lowKey + targets.length - 1;
+            masm.sub(32, idxScratchReg, indexReg, lowKey);
+            masm.cmp(32, idxScratchReg, highKey - lowKey);
+
+            // Jump to default target if index is not within the jump table
             if (defaultTarget != null) {
-                // if key is not in table range, jump to default target if it exists.
-                ConstantValue constVal = new ConstantValue(LIRKind.value(AArch64Kind.WORD), JavaConstant.forInt(targets.length));
-                emitCompare(crb, masm, keyValue, scratchValue, constVal);
-                masm.branchConditionally(AArch64Assembler.ConditionFlag.HS, defaultTarget.label());
+                masm.branchConditionally(ConditionFlag.HI, defaultTarget.label());
             }
 
-            // Load the start address of the jump table - which starts 3 instructions after the adr
-            // - into scratch.
-            masm.adr(scratch, 4 * 3);
-            masm.ldr(32, scratch, AArch64Address.createRegisterOffsetAddress(scratch, key, /* scaled */true));
-            masm.jmp(scratch);
-            int jumpTablePos = masm.position();
+            Label jumpTable = new Label();
+            masm.adr(scratchReg, jumpTable);
+            masm.add(64, scratchReg, scratchReg, idxScratchReg, ExtendType.UXTW, 2);
+            masm.jmp(scratchReg);
+            masm.bind(jumpTable);
             // emit jump table entries
             for (LabelRef target : targets) {
-                Label label = target.label();
-                if (label.isBound()) {
-                    masm.emitInt(target.label().position());
-                } else {
-                    label.addPatchAt(masm.position());
-                    masm.emitInt(PatchLabelKind.JUMP_ADDRESS.encoding);
-                }
+                masm.jmp(target.label());
             }
-            JumpTable jt = new JumpTable(jumpTablePos, lowKey, lowKey + targets.length - 1, 4);
+            JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey - 1, 4);
             crb.compilationResult.addAnnotation(jt);
         }
     }

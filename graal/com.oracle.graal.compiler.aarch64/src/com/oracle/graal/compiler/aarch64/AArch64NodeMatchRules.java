@@ -24,9 +24,14 @@
 package com.oracle.graal.compiler.aarch64;
 
 import com.oracle.graal.compiler.gen.NodeMatchRules;
+import com.oracle.graal.compiler.match.ComplexMatchResult;
+import com.oracle.graal.compiler.match.MatchRule;
 import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.aarch64.AArch64AddressValue;
 import com.oracle.graal.lir.gen.LIRGeneratorTool;
 import com.oracle.graal.nodes.DeoptimizingNode;
+import com.oracle.graal.nodes.calc.SignExtendNode;
+import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.memory.Access;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -55,5 +60,19 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
 
     protected AArch64ArithmeticLIRGenerator getArithmeticLIRGenerator() {
         return (AArch64ArithmeticLIRGenerator) getLIRGeneratorTool().getArithmetic();
+    }
+
+    @MatchRule("(ZeroExtend Read=access)")
+    @MatchRule("(ZeroExtend FloatingRead=access)")
+    public ComplexMatchResult zeroExtend(ZeroExtendNode root, Access access) {
+        AArch64Kind memoryKind = getMemoryKind(access);
+        return builder -> getArithmeticLIRGenerator().emitExtendMemory(false, memoryKind, root.getResultBits(), (AArch64AddressValue) operand(access.getAddress()), getState(access));
+    }
+
+    @MatchRule("(SignExtend Read=access)")
+    @MatchRule("(SignExtend FloatingRead=access)")
+    public ComplexMatchResult signExtend(SignExtendNode root, Access access) {
+        AArch64Kind memoryKind = getMemoryKind(access);
+        return builder -> getArithmeticLIRGenerator().emitExtendMemory(true, memoryKind, root.getResultBits(), (AArch64AddressValue) operand(access.getAddress()), getState(access));
     }
 }

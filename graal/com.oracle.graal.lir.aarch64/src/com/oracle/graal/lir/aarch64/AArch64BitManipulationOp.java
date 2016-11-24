@@ -62,7 +62,7 @@ public class AArch64BitManipulationOp extends AArch64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         Register dst = asRegister(result);
         Register src = asRegister(input);
-        final int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+        final int size = input.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         switch (opcode) {
             case CLZ:
                 masm.clz(size, dst, src);
@@ -74,8 +74,8 @@ public class AArch64BitManipulationOp extends AArch64LIRInstruction {
                 masm.add(size, dst, dst, size - 1);
                 break;
             case BSF:
-                // BSF == CLZ(rev(input))
-                masm.rev(size, dst, src);
+                // BSF == CLZ(rbit(input))
+                masm.rbit(size, dst, src);
                 masm.clz(size, dst, dst);
                 break;
             case BSWP:

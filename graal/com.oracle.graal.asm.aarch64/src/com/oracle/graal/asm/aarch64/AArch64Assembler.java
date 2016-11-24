@@ -1786,7 +1786,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param dst general purpose register. May not be null, zero-register or the stackpointer.
      * @param src source register. May not be null, zero-register or the stackpointer.
      */
-    protected void rbit(int size, Register dst, Register src) {
+    public void rbit(int size, Register dst, Register src) {
         dataProcessing1SourceOp(RBIT, dst, src, generalFromSize(size));
     }
 

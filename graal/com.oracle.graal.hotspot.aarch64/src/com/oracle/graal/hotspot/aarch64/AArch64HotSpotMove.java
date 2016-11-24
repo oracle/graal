@@ -28,6 +28,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
 import com.oracle.graal.debug.GraalError;
@@ -61,7 +62,7 @@ public class AArch64HotSpotMove {
             crb.recordInlineDataInCode(constant);
             if (constant.isCompressed()) {
                 // masm.forceMov(asRegister(result), 0);
-                throw GraalError.unimplemented();
+                masm.movNarrowAddress(asRegister(result), 0);
             } else {
                 masm.movNativeAddress(asRegister(result), 0);
             }
@@ -161,12 +162,17 @@ public class AArch64HotSpotMove {
             Register base = asRegister(baseRegister);
             // result = base + (ptr << shift)
             if (nonNull) {
-                assert encoding.shift == encoding.alignment;
-                masm.add(64, resultRegister, base, ptr, AArch64Assembler.ShiftType.ASR, encoding.shift);
+                assert encoding.shift == encoding.alignment || encoding.shift == 0;
+                masm.add(64, resultRegister, base, ptr, AArch64Assembler.ShiftType.LSL, encoding.shift);
             } else {
                 // if ptr is null it has to be null after decompression
-                // masm.cmp(64, );
-                throw GraalError.unimplemented();
+                Label done = new Label();
+                if (!resultRegister.equals(ptr)) {
+                    masm.mov(32, resultRegister, ptr);
+                }
+                masm.cbz(32, resultRegister, done);
+                masm.add(64, resultRegister, base, resultRegister, AArch64Assembler.ShiftType.LSL, encoding.shift);
+                masm.bind(done);
             }
 
         }

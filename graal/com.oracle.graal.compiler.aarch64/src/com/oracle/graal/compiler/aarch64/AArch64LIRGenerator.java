@@ -42,15 +42,18 @@ import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.aarch64.AArch64AddressValue;
 import com.oracle.graal.lir.aarch64.AArch64ArithmeticOp;
+import com.oracle.graal.lir.aarch64.AArch64ByteSwapOp;
 import com.oracle.graal.lir.aarch64.AArch64Compare;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow.BranchOp;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
+import com.oracle.graal.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
 import com.oracle.graal.lir.aarch64.AArch64Move;
 import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.aarch64.AArch64Move.MembarOp;
 import com.oracle.graal.lir.aarch64.AArch64PauseOp;
+import com.oracle.graal.lir.aarch64.AArch64SignExtendOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.phases.util.Providers;
@@ -122,9 +125,12 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+        Variable prevValue = newVariable(expectedValue.getValueKind());
+        Variable scratch = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new CompareAndSwapOp(prevValue, loadReg(expectedValue), loadReg(newValue), asAllocatable(address), scratch));
+        assert trueValue.getValueKind().equals(falseValue.getValueKind());
         Variable result = newVariable(trueValue.getValueKind());
-        Variable scratch = newVariable(LIRKind.value(AArch64Kind.WORD));
-        append(new CompareAndSwapOp(result, loadNonCompareConst(expectedValue), loadReg(newValue), asAllocatable(address), scratch));
+        append(new CondMoveOp(result, ConditionFlag.EQ, asAllocatable(trueValue), asAllocatable(falseValue)));
         return result;
     }
 
@@ -271,6 +277,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         boolean mirrored;
         AArch64Kind kind = (AArch64Kind) cmpKind;
         if (kind.isInteger()) {
+
+            int compareBytes = cmpKind.getSizeInBytes();
+            // AArch64 compares 32 or 64 bits
+            if (compareBytes < a.getPlatformKind().getSizeInBytes()) {
+                a = arithmeticLIRGen.emitSignExtend(a, compareBytes * 8, 64);
+            }
+            if (compareBytes < b.getPlatformKind().getSizeInBytes()) {
+                b = arithmeticLIRGen.emitSignExtend(b, compareBytes * 8, 64);
+            }
+
             if (LIRValueUtil.isVariable(b)) {
                 left = load(b);
                 right = loadNonConst(a);
@@ -367,7 +383,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         assert ((AArch64Kind) left.getPlatformKind()).isInteger() && ((AArch64Kind) right.getPlatformKind()).isInteger();
         assert ((AArch64Kind) trueValue.getPlatformKind()).isInteger() && ((AArch64Kind) falseValue.getPlatformKind()).isInteger();
-        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(trueValue.getValueKind(), AArch64ArithmeticOp.ANDS, true, left, right);
+        ((AArch64ArithmeticLIRGenerator) getArithmetic()).emitBinary(left.getValueKind(), AArch64ArithmeticOp.ANDS, true, left, right);
         Variable result = newVariable(trueValue.getValueKind());
         append(new CondMoveOp(result, ConditionFlag.EQ, load(trueValue), load(falseValue)));
         return result;
@@ -385,16 +401,14 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        // Make copy of key since the TableSwitch destroys its input.
-        Variable tmp = emitMove(key);
-        Variable scratch = newVariable(LIRKind.value(AArch64Kind.WORD));
-        append(new AArch64ControlFlow.TableSwitchOp(lowKey, defaultTarget, targets, tmp, scratch));
+        append(new TableSwitchOp(lowKey, defaultTarget, targets, key, newVariable(LIRKind.value(target().arch.getWordKind())), newVariable(key.getValueKind())));
     }
 
     @Override
-    public Variable emitByteSwap(Value operand) {
-        // TODO (das) Do not generate until we support vector instructions
-        throw GraalError.unimplemented("Do not generate until we support vector instructions");
+    public Variable emitByteSwap(Value input) {
+        Variable result = newVariable(LIRKind.combine(input));
+        append(new AArch64ByteSwapOp(result, input));
+        return result;
     }
 
     @Override
