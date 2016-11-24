@@ -1080,6 +1080,10 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def before(self, bmSuiteArgs):
         self.workdir = mkdtemp(prefix='renaissance-work.', dir='.')
 
+    def after(self, bmSuiteArgs):
+        if self.workdir:
+            rmtree(self.workdir)
+
     def validateReturnCode(self, retcode):
         return retcode == 0
 
