@@ -36,26 +36,14 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMNode;
 import com.oracle.truffle.llvm.parser.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMSymbolResolver;
-import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
-import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
-import com.oracle.truffle.llvm.types.memory.LLVMStack;
-
-import com.oracle.truffle.llvm.parser.base.model.enums.AsmDialect;
-import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.base.model.enums.AsmDialect;
+import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.base.model.symbols.Symbol;
-import com.oracle.truffle.llvm.parser.base.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.InlineAsmConstant;
-import com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.constants.NullConstant;
+import com.oracle.truffle.llvm.parser.base.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.BinaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.base.model.symbols.instructions.BranchInstruction;
@@ -85,7 +73,17 @@ import com.oracle.truffle.llvm.parser.base.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.base.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.base.model.types.Type;
 import com.oracle.truffle.llvm.parser.base.model.types.VectorType;
+import com.oracle.truffle.llvm.parser.base.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.base.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.bc.impl.LLVMPhiManager.Phi;
+import com.oracle.truffle.llvm.parser.bc.impl.nodes.LLVMSymbolResolver;
+import com.oracle.truffle.llvm.parser.bc.impl.util.LLVMFrameIDs;
+import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.types.memory.LLVMStack;
 
 final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
@@ -205,24 +203,21 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
 
         final Symbol target = call.getCallTarget();
-        LLVMExpressionNode result;
-        if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@llvm.")) {
+        LLVMExpressionNode result = null;
+        if (target instanceof FunctionDeclaration) {
             FunctionDeclaration targetDecl = (FunctionDeclaration) target;
-            result = (LLVMExpressionNode) factoryFacade.createLLVMIntrinsic(targetDecl, argNodes, targetDecl.getArgumentTypes().length);
-
-        } else if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@truffle_")) {
-            method.addInstruction(factoryFacade.createTruffleIntrinsic(((ValueSymbol) target).getName(), argNodes));
-            return;
-
-        } else if (target instanceof InlineAsmConstant) {
-            final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-            result = (LLVMExpressionNode) createInlineAssemblerNode(inlineAsmConstant, argNodes, targetLLVMType);
-
-        } else {
-            LLVMExpressionNode function = symbols.resolve(target);
-            result = (LLVMExpressionNode) factoryFacade.createFunctionCall(function, argNodes, targetLLVMType);
+            result = (LLVMExpressionNode) factoryFacade.tryCreateFunctionSubstitution(targetDecl, argNodes, targetDecl.getArgumentTypes().length);
         }
+        if (result == null) {
+            if (target instanceof InlineAsmConstant) {
+                final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
+                result = (LLVMExpressionNode) createInlineAssemblerNode(inlineAsmConstant, argNodes, targetLLVMType);
 
+            } else {
+                LLVMExpressionNode function = symbols.resolve(target);
+                result = (LLVMExpressionNode) factoryFacade.createFunctionCall(function, argNodes, targetLLVMType);
+            }
+        }
         createFrameWrite(result, call);
     }
 
@@ -505,27 +500,21 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             args[argIndex++] = symbols.resolve(call.getArgument(i));
         }
 
-        final LLVMNode node;
-        if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@llvm.")) {
+        LLVMNode node = null;
+        if (target instanceof FunctionDeclaration) {
             // number of arguments of the caller so llvm intrinsics can distinguish varargs
             final int parentArgCount = method.getArgCount();
-            node = factoryFacade.createLLVMIntrinsic((FunctionDeclaration) target, args, parentArgCount);
-
-        } else if (target instanceof FunctionDeclaration && (((ValueSymbol) target).getName()).startsWith("@truffle_")) {
-            node = factoryFacade.createTruffleIntrinsic(((ValueSymbol) target).getName(), args);
-            if (node == null) {
-                throw new UnsupportedOperationException("Unknown Truffle Intrinsic: " + ((ValueSymbol) target).getName());
-            }
-
-        } else if (target instanceof InlineAsmConstant) {
-            final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-            node = createInlineAssemblerNode(inlineAsmConstant, args, call.getType().getLLVMBaseType());
-
-        } else {
-            LLVMExpressionNode function = symbols.resolve(target);
-            node = factoryFacade.createFunctionCall(function, args, call.getType().getLLVMBaseType());
+            node = factoryFacade.tryCreateFunctionSubstitution((FunctionDeclaration) target, args, parentArgCount);
         }
-
+        if (node == null) {
+            if (target instanceof InlineAsmConstant) {
+                final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
+                node = createInlineAssemblerNode(inlineAsmConstant, args, call.getType().getLLVMBaseType());
+            } else {
+                LLVMExpressionNode function = symbols.resolve(target);
+                node = factoryFacade.createFunctionCall(function, args, call.getType().getLLVMBaseType());
+            }
+        }
         method.addInstruction(node);
     }
 
