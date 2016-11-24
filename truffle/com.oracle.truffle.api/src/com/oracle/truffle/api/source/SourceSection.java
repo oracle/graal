@@ -362,7 +362,7 @@ public final class SourceSection {
     @Override
     public int hashCode() {
         if (!isAvailable()) {
-            return super.hashCode();
+            return System.identityHashCode(this);
         }
         final int prime = 31;
         int result = 1;
