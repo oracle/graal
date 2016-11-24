@@ -25,11 +25,11 @@ package com.oracle.graal.options;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class UniquePathUtilities {
 
-    private static final long globalTimeStamp = System.currentTimeMillis();
-
+    private static final AtomicLong globalTimeStamp = new AtomicLong();
     /**
      * This generates a per thread persistent id to aid mapping related dump files with each other.
      */
@@ -52,6 +52,13 @@ public class UniquePathUtilities {
         return "." + ext;
     }
 
+    private static long getGlobalTimeStamp() {
+        if (globalTimeStamp.get() == 0) {
+            globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
+        }
+        return globalTimeStamp.get();
+    }
+
     /**
      * Generate a {@link Path} using the format "%s-%d_%d%s" with the {@link OptionValue#getValue()
      * base filename}, a {@link #globalTimeStamp global timestamp}, {@link #getThreadDumpId a per
@@ -63,7 +70,7 @@ public class UniquePathUtilities {
         if (option.getValue() == null) {
             return null;
         }
-        String name = String.format("%s-%d_%d%s", option.getValue(), globalTimeStamp, getThreadDumpId(), formatExtension(extension));
+        String name = String.format("%s-%d_%d%s", option.getValue(), getGlobalTimeStamp(), getThreadDumpId(), formatExtension(extension));
         Path result = Paths.get(name);
         if (result.isAbsolute() || defaultDirectory == null) {
             return result;
