@@ -54,8 +54,8 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      */
     private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap();
 
-    public HotSpotLIRGenerationResult(String compilationUnitName, CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub) {
-        super(compilationUnitName, compilationId, lir, frameMapBuilder, callingConvention);
+    public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub) {
+        super(compilationId, lir, frameMapBuilder, callingConvention);
         this.stub = stub;
     }
 

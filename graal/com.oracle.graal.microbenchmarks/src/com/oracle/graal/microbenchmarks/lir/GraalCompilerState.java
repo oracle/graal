@@ -386,8 +386,7 @@ public abstract class GraalCompilerState {
 
         LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder);
         FrameMapBuilder frameMapBuilder = request.backend.newFrameMapBuilder(registerConfig);
-        String compilationUnitName = null;
-        lirGenRes = request.backend.newLIRGenerationResult(compilationUnitName, graph.compilationId(), lir, frameMapBuilder, request.graph, stub);
+        lirGenRes = request.backend.newLIRGenerationResult(graph.compilationId(), lir, frameMapBuilder, request.graph, stub);
         lirGenTool = request.backend.newLIRGenerator(lirGenRes);
         nodeLirGen = request.backend.newNodeLIRBuilder(request.graph, lirGenTool);
     }

@@ -119,7 +119,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
 
     public abstract LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes);
 
-    public abstract LIRGenerationResult newLIRGenerationResult(String compilationUnitName, CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph,
+    public abstract LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph,
                     Object stub);
 
     public abstract NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen);

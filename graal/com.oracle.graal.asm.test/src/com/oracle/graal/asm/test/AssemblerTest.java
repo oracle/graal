@@ -79,7 +79,7 @@ public abstract class AssemblerTest extends GraalTest {
         try (Scope s = Debug.scope("assembleMethod", method, codeCache)) {
             RegisterConfig registerConfig = codeCache.getRegisterConfig();
             CompilationIdentifier compilationId = backend.getCompilationIdentifier(method);
-            CallingConvention cc = backend.newLIRGenerationResult("", compilationId, null, null, new StructuredGraph(method, AllowAssumptions.NO, compilationId), null).getCallingConvention();
+            CallingConvention cc = backend.newLIRGenerationResult(compilationId, null, null, new StructuredGraph(method, AllowAssumptions.NO, compilationId), null).getCallingConvention();
 
             CompilationResult compResult = new CompilationResult();
             byte[] targetCode = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);

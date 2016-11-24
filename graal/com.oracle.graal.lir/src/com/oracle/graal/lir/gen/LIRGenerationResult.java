@@ -41,23 +41,15 @@ public class LIRGenerationResult {
      */
     private boolean hasForeignCall;
     /**
-     * Human readable name of this compilation unit.
-     */
-    private final String compilationUnitName;
-    /**
      * Unique identifier of this compilation.
      */
     private final CompilationIdentifier compilationId;
 
-    public LIRGenerationResult(String compilationUnitName, CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention) {
+    public LIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention) {
         this.lir = lir;
         this.frameMapBuilder = frameMapBuilder;
-        this.compilationUnitName = compilationUnitName;
         this.callingConvention = callingConvention;
         this.compilationId = compilationId;
-        String compName = compilationId.toString(Verbosity.NAME);
-        assert compilationUnitName == null || compilationUnitName.equals(compName) : "Name mismatch: '" + compilationUnitName + "' vs. '" +
-                        compilationId.toString(Verbosity.NAME) + "'";
     }
 
     /**
@@ -115,7 +107,10 @@ public class LIRGenerationResult {
     }
 
     public String getCompilationUnitName() {
-        return compilationUnitName;
+        if (compilationId == null || compilationId == CompilationIdentifier.INVALID_COMPILATION_ID) {
+            return "<unknown>";
+        }
+        return compilationId.toString(Verbosity.NAME);
     }
 
     /**

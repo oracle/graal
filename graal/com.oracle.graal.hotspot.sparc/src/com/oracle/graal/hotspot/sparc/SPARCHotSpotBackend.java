@@ -146,8 +146,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(String compilationUnitName, CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph, Object stub) {
-        return new HotSpotLIRGenerationResult(compilationUnitName, compilationId, lir, frameMapBuilder, makeCallingConvention(graph, (Stub) stub), stub);
+    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph, Object stub) {
+        return new HotSpotLIRGenerationResult(compilationId, lir, frameMapBuilder, makeCallingConvention(graph, (Stub) stub), stub);
     }
 
     @Override
