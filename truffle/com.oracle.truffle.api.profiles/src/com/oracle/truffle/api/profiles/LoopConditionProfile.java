@@ -212,7 +212,7 @@ public abstract class LoopConditionProfile extends ConditionProfile {
         @Override
         public String toString() {
             return toString(LoopConditionProfile.class, falseCount == 0, false, //
-                            String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", calculateProbability(trueCount, falseCount), falseCount, trueCount));
+                            String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", calculateProbability(trueCount, falseCount), trueCount, falseCount));
         }
 
         /* Needed for lazy class loading. */
