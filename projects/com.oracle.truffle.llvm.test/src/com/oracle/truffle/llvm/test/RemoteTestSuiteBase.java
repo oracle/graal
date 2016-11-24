@@ -155,7 +155,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
             reader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getInputStream()));
             errorReader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getErrorStream()));
             if (!remoteTruffleProcess.isAlive()) {
-                throw new IllegalStateException(ProcessUtil.readStream(remoteTruffleProcess.getErrorStream()));
+                throw new IllegalStateException(ProcessUtil.readStreamAndClose(remoteTruffleProcess.getErrorStream()));
             }
             TestHelper.compileToLLVMIRWithClang(LLVMPaths.FLUSH_C_FILE, LLVMPaths.FLUSH_BITCODE_FILE);
         }

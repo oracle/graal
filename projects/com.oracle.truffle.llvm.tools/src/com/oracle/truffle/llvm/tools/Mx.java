@@ -60,7 +60,7 @@ public final class Mx {
 
     private static File getProgramPathFromStdout(ProcessResult result) {
         String output = result.getStdOutput();
-        File llvmPath = new File(output);
+        File llvmPath = new File(output.trim());
         if (!llvmPath.canExecute()) {
             throw new AssertionError(output + " is not an executable program!");
         }

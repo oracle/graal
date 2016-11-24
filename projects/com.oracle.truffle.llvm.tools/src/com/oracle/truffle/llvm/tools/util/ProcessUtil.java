@@ -139,6 +139,7 @@ public class ProcessUtil {
             String readError = readStreamAndClose(process.getErrorStream());
             String inputStream = readStreamAndClose(process.getInputStream());
             int llvmResult = process.exitValue();
+            process.destroyForcibly();
             return new ProcessResult(command, llvmResult, readError, inputStream);
         } catch (Exception e) {
             throw new RuntimeException(command + " ", e);
@@ -159,16 +160,7 @@ public class ProcessUtil {
             result.write(buffer, 0, length);
         }
         inputStream.close();
-        return result.toString();
-    }
-
-    public static String readStream(InputStream inputStream) throws IOException {
-        final ByteArrayOutputStream result = new ByteArrayOutputStream();
-        final byte[] buffer = new byte[BUFFER_SIZE];
-        int length;
-        while ((length = inputStream.read(buffer)) != -1) {
-            result.write(buffer, 0, length);
-        }
+        result.close();
         return result.toString();
     }
 
