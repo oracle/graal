@@ -1576,8 +1576,13 @@ public class BytecodeParser implements GraphBuilderContext {
     protected IntrinsicGuard guardIntrinsic(ValueNode[] args, ResolvedJavaMethod targetMethod, InvocationPluginReceiver pluginReceiver) {
         ValueNode originalReceiver = args[0];
         ResolvedJavaType receiverType = StampTool.typeOrNull(originalReceiver);
-        if (receiverType != null && receiverType.resolveMethod(targetMethod, receiverType).equals(targetMethod)) {
-            assert targetMethod.getDeclaringClass().isAssignableFrom(receiverType.resolveMethod(targetMethod, receiverType).getDeclaringClass());
+        if (receiverType == null) {
+            // The verifier guarantees it to be at least type declaring targetMethod
+            receiverType = targetMethod.getDeclaringClass();
+        }
+        ResolvedJavaMethod resolvedMethod = receiverType.resolveMethod(targetMethod, method.getDeclaringClass());
+        if (resolvedMethod == null || resolvedMethod == targetMethod) {
+            assert resolvedMethod == null || targetMethod.getDeclaringClass().isAssignableFrom(resolvedMethod.getDeclaringClass());
             Mark mark = graph.getMark();
             FixedWithNextNode currentLastInstr = lastInstr;
             ValueNode nonNullReceiver = pluginReceiver.get();
@@ -1624,7 +1629,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * not override {@code targetMethod}.
      *
      * @param profile the profile to adjust
-     * @param targetMethod the virtual method for there is an intrinsic
+     * @param targetMethod the virtual method for which there is an intrinsic
      * @return the adjusted profile or the original {@code profile} object if no adjustment was made
      */
     protected JavaTypeProfile adjustProfileForInvocationPlugin(JavaTypeProfile profile, ResolvedJavaMethod targetMethod) {
@@ -1632,7 +1637,7 @@ public class BytecodeParser implements GraphBuilderContext {
             List<ProfiledType> retained = new ArrayList<>();
             double notRecordedProbability = profile.getNotRecordedProbability();
             for (ProfiledType ptype : profile.getTypes()) {
-                if (!ptype.getType().resolveMethod(targetMethod, ptype.getType()).equals(targetMethod)) {
+                if (!ptype.getType().resolveMethod(targetMethod, method.getDeclaringClass()).equals(targetMethod)) {
                     retained.add(ptype);
                 } else {
                     notRecordedProbability += ptype.getProbability();
