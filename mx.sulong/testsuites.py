@@ -52,6 +52,12 @@ def runLLVMSuite(vmArgs):
     compileSuite(['llvm'])
     return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + [mx_sulong.getRemoteClasspathOption(), '--verbose', "com.oracle.truffle.llvm.test.alpha.LLVMSuite"])
 
+def runGCCSuite(vmArgs):
+    """runs the LLVM test suite"""
+    mx_sulong.ensureDragonEggExists()
+    compileSuite(['gcc'])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + [mx_sulong.getRemoteClasspathOption(), '--verbose', "com.oracle.truffle.llvm.test.alpha.GCCSuite"])
+
 def compileInteropTests():
     print("Compiling Interop with clang -O0 and mem2reg", end='')
     tools.printProgress(tools.multicompileFolder(_interoptestsDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude', '-lm'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.MEM2REG]))
@@ -92,7 +98,7 @@ def compileShootoutSuite():
 
 
 testSuites = {
-    'gcc' : (compileGCCSuite, None),
+    'gcc' : (compileGCCSuite, runGCCSuite),
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'sulong' : (compileSulongSuite, runSulongSuite),
     'shootout' : (compileShootoutSuite, runShootoutSuite),

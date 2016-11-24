@@ -158,14 +158,6 @@ def travis1(args=None):
     with Task('TestSulong', tasks) as t:
         if t: testsuites.travisRunSuite(['sulong'])
 
-def travis2(args=None):
-    """executes the second Travis job (Javac build, GCC execution test cases)"""
-    tasks = []
-    with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
-    with Task('TestGCC', tasks) as t:
-        if t: runGCCTestCases()
-
 def travis3(args=None):
     """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
     tasks = []
@@ -177,14 +169,6 @@ def travis3(args=None):
         if t: runCompileTestCases()
     with Task('TestLifetime', tasks) as t:
         if t: runLifetimeTestCases()
-
-def travis4(args=None):
-    """executes the fourth Travis job (Javac build, LLVM and GCC test cases with BitCode parser)"""
-    tasks = []
-    with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
-    with Task('TestGCCBC', tasks) as t:
-        if t: runGCCTestCases(['-Dsulong.TestBinaryParser=true'])
 
 def travisArgon2(args=None):
     """executes the argon2 Travis job (Javac build, argon2 test cases)"""
@@ -525,14 +509,6 @@ def runBenchmarkTestCases(args=None):
     ensureBenchmarkSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.ShootoutsTestSuite"])
-
-def runGCCTestCases(args=None):
-    """runs the GCC test suite"""
-    ensureLLVMBinariesExist()
-    ensureGCCSuiteExists()
-    ensureDragonEggExists()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCSuite'])
 
 def runNWCCTestCases(args=None):
     """runs the NWCC (Nils Weller's C Compiler) test cases"""
@@ -1068,7 +1044,6 @@ def sulongBuild(args=None):
 
 testCases = {
     'bench' : runBenchmarkTestCases,
-    'gcc' : runGCCTestCases,
     'nwcc' : runNWCCTestCases,
     'types' : runTypeTestCases,
     'polyglot' : runPolyglotTestCases,
@@ -1123,9 +1098,7 @@ mx.update_commands(_suite, {
     'su-gfortran' : [dragonEggGFortran, ''],
     'su-g++' : [dragonEggGPP, ''],
     'su-travis1' : [travis1, ''],
-    'su-travis2' : [travis2, ''],
     'su-travis3' : [travis3, ''],
-    'su-travis4' : [travis4, ''],
     'su-travis-argon2' : [travisArgon2, ''],
     'su-travis-tests' : [testsuites.travisRunSuite, ''],
     'su-ecj-strict' : [compileWithEcjStrict, ''],
