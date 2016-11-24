@@ -48,14 +48,18 @@ import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVM
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64ShrlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64SublNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I32BinaryNodeFactory.LLVMAMD64XorlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64I64BinaryNodeFactory.LLVMAMD64I64ShrlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64IdivlNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ImmNode;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64InclNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64ModNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64NotlNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.asm.LLVMAMD64RdtscNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.impl.base.LLVMStructWriteNode;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.impl.cast.LLVMToI32NodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMAddressArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMArgNodeFactory.LLVMI32ArgNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.func.LLVMCallNode;
@@ -64,7 +68,10 @@ import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerN
 import com.oracle.truffle.llvm.nodes.impl.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMReadNodeFactory.LLVMI32ReadNodeGen;
+import com.oracle.truffle.llvm.nodes.impl.vars.LLVMReadNodeFactory.LLVMI64ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNode.LLVMWriteAddressNode;
+import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNode.LLVMWriteI64Node;
+import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNodeFactory;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNodeFactory.LLVMWriteAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vars.LLVMWriteNodeFactory.LLVMWriteI32NodeGen;
 import com.oracle.truffle.llvm.nodes.impl.vars.StructLiteralNode;
@@ -170,28 +177,39 @@ public class AsmFactory {
         this.statements.add(LLVMWriteI32NodeGen.create(opNode, slot));
     }
 
-    public void createCustomOperation(String operation) {
+    public void createMiscOperation(String operation) {
 
-        LLVMNode statement;
         switch (operation) {
             case "rdtsc":
-                long currentTime = System.nanoTime();
-                System.out.println("Processing rdtsc instruction: " + currentTime);
-                LLVMI32Node edxNode = new LLVMAMD64ImmNode((int) (currentTime >> 32));
-                LLVMI32Node eaxNode = new LLVMAMD64ImmNode((int) (currentTime & (1L << 32) - 1));
-                LLVMI32StructWriteNode eax = new LLVMI32StructWriteNode(eaxNode);
-                LLVMI32StructWriteNode edx = new LLVMI32StructWriteNode(edxNode);
-                LLVMExpressionNode structAllocInstr = LLVMAddressArgNodeGen.create(1);
-                FrameSlot returnValueSlot = frameDescriptor.addFrameSlot("returnValue");
-                returnValueSlot.setKind(FrameSlotKind.Object);
-                LLVMWriteAddressNode writeStructAddress = LLVMWriteAddressNodeGen.create(structAllocInstr, returnValueSlot);
-                statement = writeStructAddress;
-                LLVMAddressNode readStructAddress = LLVMAddressReadNodeGen.create(returnValueSlot);
-                result = new StructLiteralNode(new int[]{0, LLVMI32Node.BYTE_SIZE}, new LLVMStructWriteNode[]{eax, edx}, readStructAddress);
+                createRdtscOperation();
                 break;
             default:
-                statement = LLVMWriteI32NodeGen.create(new LLVMI32UnsupportedInlineAssemblerNode(), frameDescriptor.findFrameSlot("%eax"));
+                statements.add(new LLVMI32UnsupportedInlineAssemblerNode());
         }
+    }
+
+    public void createRdtscOperation() {
+        LLVMNode statement;
+        LLVMI64Node rdtscCalcNode = LLVMAMD64RdtscNodeGen.create();
+        FrameSlot rdtscFrameSlot = frameDescriptor.addFrameSlot("rdtscSlot");
+        rdtscFrameSlot.setKind(FrameSlotKind.Long);
+        LLVMWriteI64Node writeRdtscNode = LLVMWriteNodeFactory.LLVMWriteI64NodeGen.create(rdtscCalcNode, rdtscFrameSlot);
+        statements.add(writeRdtscNode);
+        // 64 bit TSC value is stored by evenly splitting in eax and edx 32 bit registers
+        LLVMI64Node rdtscReadNode = LLVMI64ReadNodeGen.create(rdtscFrameSlot);
+        LLVMI32Node constant32Node = new LLVMAMD64ImmNode(LLVMI32Node.BYTE_SIZE * Byte.SIZE);
+        LLVMI32Node edxNode = LLVMToI32NodeFactory.LLVMI64ToI32NodeGen.create(LLVMAMD64I64ShrlNodeGen.create(constant32Node, rdtscReadNode));
+        LLVMI32Node eaxNode = LLVMToI32NodeFactory.LLVMI64ToI32NodeGen.create(rdtscReadNode);
+        LLVMI32StructWriteNode eax = new LLVMI32StructWriteNode(eaxNode);
+        LLVMI32StructWriteNode edx = new LLVMI32StructWriteNode(edxNode);
+
+        LLVMExpressionNode structAllocInstr = LLVMAddressArgNodeGen.create(1);
+        FrameSlot returnValueSlot = frameDescriptor.addFrameSlot("returnValue");
+        returnValueSlot.setKind(FrameSlotKind.Object);
+        LLVMWriteAddressNode writeStructAddress = LLVMWriteAddressNodeGen.create(structAllocInstr, returnValueSlot);
+        statement = writeStructAddress;
+        LLVMAddressNode readStructAddress = LLVMAddressReadNodeGen.create(returnValueSlot);
+        result = new StructLiteralNode(new int[]{0, LLVMI32Node.BYTE_SIZE}, new LLVMStructWriteNode[]{eax, edx}, readStructAddress);
         statements.add(statement);
     }
 

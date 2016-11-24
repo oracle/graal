@@ -128,7 +128,7 @@ MoveOperation<> =						(.String op; String left = null, right = null;.)
 RdtscInstruction<> =					(.String op;.)
 	RdtscOp <out op> ";"				(.factory.addFrameSlot("%eax", LLVMBaseType.I32);
 										  factory.addFrameSlot("%edx", LLVMBaseType.I32);
-										  factory.createCustomOperation(op);.)
+										  factory.createMiscOperation(op);.)
    .
 
 AddSubOp<out String op> 				(.op = la.val;.)
