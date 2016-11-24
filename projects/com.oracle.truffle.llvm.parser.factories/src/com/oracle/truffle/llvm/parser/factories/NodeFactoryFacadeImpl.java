@@ -183,13 +183,15 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMNode createLLVMIntrinsic(FunctionType declaration, Object[] argNodes, int numberOfExplicitArguments) {
-        return LLVMIntrinsicFactory.create(declaration, argNodes, numberOfExplicitArguments, runtime);
-    }
-
-    @Override
-    public LLVMNode createTruffleIntrinsic(String functionName, LLVMExpressionNode[] argNodes) {
-        return LLVMTruffleIntrinsicFactory.create(functionName, argNodes);
+    public LLVMNode tryCreateFunctionSubstitution(FunctionType declaration, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments) {
+        String functionName = declaration.getName();
+        if (functionName.startsWith("@llvm")) {
+            return LLVMIntrinsicFactory.create(declaration, argNodes, numberOfExplicitArguments, runtime);
+        } else if (functionName.startsWith("@truffle")) {
+            return LLVMTruffleIntrinsicFactory.create(functionName, argNodes);
+        } else {
+            return null;
+        }
     }
 
     @Override
