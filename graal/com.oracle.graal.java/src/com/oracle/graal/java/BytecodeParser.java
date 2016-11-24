@@ -1580,7 +1580,7 @@ public class BytecodeParser implements GraphBuilderContext {
             // The verifier guarantees it to be at least type declaring targetMethod
             receiverType = targetMethod.getDeclaringClass();
         }
-        ResolvedJavaMethod resolvedMethod = receiverType.resolveMethod(targetMethod, receiverType);
+        ResolvedJavaMethod resolvedMethod = receiverType.resolveMethod(targetMethod, method.getDeclaringClass());
         if (resolvedMethod == null || resolvedMethod == targetMethod) {
             assert resolvedMethod == null || targetMethod.getDeclaringClass().isAssignableFrom(resolvedMethod.getDeclaringClass());
             Mark mark = graph.getMark();
@@ -1629,7 +1629,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * not override {@code targetMethod}.
      *
      * @param profile the profile to adjust
-     * @param targetMethod the virtual method for there is an intrinsic
+     * @param targetMethod the virtual method for which there is an intrinsic
      * @return the adjusted profile or the original {@code profile} object if no adjustment was made
      */
     protected JavaTypeProfile adjustProfileForInvocationPlugin(JavaTypeProfile profile, ResolvedJavaMethod targetMethod) {
@@ -1637,7 +1637,7 @@ public class BytecodeParser implements GraphBuilderContext {
             List<ProfiledType> retained = new ArrayList<>();
             double notRecordedProbability = profile.getNotRecordedProbability();
             for (ProfiledType ptype : profile.getTypes()) {
-                if (!ptype.getType().resolveMethod(targetMethod, ptype.getType()).equals(targetMethod)) {
+                if (!ptype.getType().resolveMethod(targetMethod, method.getDeclaringClass()).equals(targetMethod)) {
                     retained.add(ptype);
                 } else {
                     notRecordedProbability += ptype.getProbability();

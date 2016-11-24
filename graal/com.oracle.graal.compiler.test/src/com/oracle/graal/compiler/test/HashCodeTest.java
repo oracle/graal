@@ -109,7 +109,7 @@ public class HashCodeTest extends GraalCompilerTest {
 
     @Test
     public void test05() {
-        checkForGuardedHashCodeInline("hashCodeNoFoldOverridingSnippet01");
+        checkForGuardedIntrinsicPattern("hashCodeNoFoldOverridingSnippet01");
 
         Object nullObject = null;
         test("hashCodeNoFoldOverridingSnippet01", nullObject);
@@ -137,11 +137,11 @@ public class HashCodeTest extends GraalCompilerTest {
     @Test
     public void test08() {
         initialize(Appendable.class);
-        checkForGuardedHashCodeInline("hashCodeInterface");
-        checkForGuardedHashCodeInline("hashCodeSnippet01");
+        checkForGuardedIntrinsicPattern("hashCodeInterface");
+        checkForGuardedIntrinsicPattern("hashCodeSnippet01");
     }
 
-    private void checkForGuardedHashCodeInline(String name) {
+    private void checkForGuardedIntrinsicPattern(String name) {
         StructuredGraph g = parseForCompile(getResolvedJavaMethod(name));
         Assert.assertEquals(1, g.getNodes().filter(InvokeNode.class).count());
         Assert.assertEquals(1, g.getNodes().filter(LoadHubNode.class).count());
