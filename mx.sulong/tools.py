@@ -151,11 +151,17 @@ class Opt(Tool):
         return mx.run([mx_sulong.findLLVMProgram('opt'), '-o', outputFile] + self.passes + [inputFile])
 
 Tool.CLANG = ClangCompiler()
+Tool.CLANG_C = ClangCompiler([ProgrammingLanguage.C])
+Tool.CLANG_CPP = ClangCompiler([ProgrammingLanguage.C_PLUS_PLUS])
+
 Tool.GCC = GCCCompiler()
 Tool.GFORTRAN = GCCCompiler([ProgrammingLanguage.FORTRAN])
+
 Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
 Tool.MEM2REG = Opt('MEM2REG', ['-mem2reg'])
 
+Tool.CPP_OPT = Opt('CPP_OPT', ['-lowerinvoke', '-prune-eh', '-simplifycfg'])
+Tool.C_OPT = Opt('C_OPT', ['-mem2reg', '-always-inline', '-jump-threading', '-simplifycfg'])
 
 def createOutputPath(inputFile, outputDir):
     base, _ = os.path.splitext(inputFile)

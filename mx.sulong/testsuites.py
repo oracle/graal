@@ -85,8 +85,13 @@ def compileGCCSuite():
     excludes = tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
     print("Compiling GCC Suite reference executables ", end='')
     tools.printProgress(tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GFORTRAN], ['-Iinclude'], excludes=excludes))
-    print("Compiling GCC Suite with -O0 ", end='')
-    tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GFORTRAN], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    print("Compiling GCC files with GFORTRAN ", end='')
+    tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.GFORTRAN], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    print("Compiling GCC files with CPP ", end='')
+    tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG_CPP], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.CPP_OPT], excludes=excludes))
+    print("Compiling GCC files with C ", end='')
+    tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG_C], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.C_OPT], excludes=excludes))
+
 
 def compileShootoutSuite():
     ensureShootoutsExist()
