@@ -180,6 +180,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
             List<String> launchRemote = launchRemote(tuple);
             int sulongRetValue = parseAndRemoveReturnValue(launchRemote);
             String sulongLines = launchRemote.stream().collect(Collectors.joining("\n"));
+            sulongLines = sulongLines.length() == 0 ? sulongLines : sulongLines + "\n";
             ProcessResult processResult = TestHelper.executeLLVMBinary(tuple.getBitCodeFile());
             String expectedLines = processResult.getStdOutput();
             int expectedReturnValue = processResult.getReturnValue();
