@@ -45,19 +45,9 @@ public class OptimizeGuardAnchorsPhase extends Phase {
     private static final DebugCounter counterGuardsAnchorOptimized = Debug.counter("GuardsAnchorOptimized");
     private static final DebugCounter counterGuardsOptimizedAtSplit = Debug.counter("GuardsOptimizedAtSplit");
 
-    public static class LazyCFG {
-        private ControlFlowGraph cfg;
-        private StructuredGraph graph;
-
+    public static class LazyCFG extends LazyValue<ControlFlowGraph> {
         public LazyCFG(StructuredGraph graph) {
-            this.graph = graph;
-        }
-
-        public ControlFlowGraph get() {
-            if (cfg == null) {
-                cfg = ControlFlowGraph.compute(graph, true, false, true, true);
-            }
-            return cfg;
+            super(() -> ControlFlowGraph.compute(graph, true, false, true, true));
         }
     }
 
