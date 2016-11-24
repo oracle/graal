@@ -128,16 +128,6 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMNode createLLVMIntrinsic(FunctionType declaration, Object[] argNodes, int numberOfExplicitArguments) {
-        return null;
-    }
-
-    @Override
-    public LLVMNode createTruffleIntrinsic(String functionName, LLVMExpressionNode[] argNodes) {
-        return null;
-    }
-
-    @Override
     public LLVMNode createRetVoid() {
         return null;
     }
@@ -358,6 +348,11 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
 
     @Override
     public LLVMFunction createAndRegisterFunctionDescriptor(String name, LLVMRuntimeType convertType, boolean varArgs, LLVMRuntimeType[] convertTypes) {
+        return null;
+    }
+
+    @Override
+    public LLVMNode tryCreateFunctionSubstitution(FunctionType declaration, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments) {
         return null;
     }
 

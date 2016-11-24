@@ -99,17 +99,18 @@ public interface NodeFactoryFacade {
     LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, LLVMExpressionNode target, LLVMBaseType type);
 
     /**
-     * Creates an intrinsic for a <code>@llvm.*</code> function.
+     * This method allows to substitute calls to functions with nodes. The implementer is either
+     * expected to return <code>null</code> when not intrinsifying this method, or the node with
+     * which the function call should be substituted with.
      *
-     * @param declaration the function declaration of the function from which the intrinsic is
-     *            called
-     * @param argNodes the arguments to the intrinsic function
-     * @param numberOfExplicitArguments number of explicite arguments passed to function
+     * This method is also called for <code>@llvm.*</code> and <code>@truffle_*</code> intrinsics.
+     *
+     * @param declaration the function declaration of the function that could be intrinsified
+     * @param argNodes the arguments to the function
+     * @param numberOfExplicitArguments number of explicit arguments passed to function
      * @return the created intrinsic
      */
-    LLVMNode createLLVMIntrinsic(FunctionType declaration, Object[] argNodes, int numberOfExplicitArguments);
-
-    LLVMNode createTruffleIntrinsic(String functionName, LLVMExpressionNode[] argNodes);
+    LLVMNode tryCreateFunctionSubstitution(FunctionType declaration, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments);
 
     LLVMNode createRetVoid();
 
