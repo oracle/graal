@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.nodeinfo.NodeInfo;
@@ -147,6 +148,10 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
 
     public void removeInput(int index) {
         values().remove(index);
+    }
+
+    public NodeIterable<ValueNode> backValues() {
+        return values().subList(merge().forwardEndCount());
     }
 
     @NodeInfo

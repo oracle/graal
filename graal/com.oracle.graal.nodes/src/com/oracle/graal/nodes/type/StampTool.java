@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.type;
 
-import java.util.Collection;
 import java.util.Iterator;
 
 import com.oracle.graal.compiler.common.type.AbstractObjectStamp;
@@ -43,7 +42,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class StampTool {
 
-    public static Stamp meet(Collection<? extends ValueNode> values) {
+    public static Stamp meet(Iterable<? extends ValueNode> values) {
         Stamp stamp = meetOrNull(values, null);
         if (stamp == null) {
             return StampFactory.forVoid();
@@ -55,7 +54,7 @@ public class StampTool {
      * Meet a collection of {@link ValueNode}s optionally excluding {@code selfValue}. If no values
      * are encountered then return {@code null}.
      */
-    public static Stamp meetOrNull(Collection<? extends ValueNode> values, ValueNode selfValue) {
+    public static Stamp meetOrNull(Iterable<? extends ValueNode> values, ValueNode selfValue) {
         Iterator<? extends ValueNode> iterator = values.iterator();
         Stamp stamp = null;
         while (iterator.hasNext()) {
