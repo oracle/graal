@@ -654,17 +654,11 @@ public final class LLVMVisitor implements LLVMParserRuntimeTextual {
         LLVMExpressionNode[] finalArgs = argNodes.toArray(new LLVMExpressionNode[argNodes.size()]);
         if (callee instanceof GlobalValueRef && ((GlobalValueRef) callee).getConstant().getRef() instanceof FunctionHeader) {
             FunctionHeader functionHeader = (FunctionHeader) ((GlobalValueRef) callee).getConstant().getRef();
-            String functionName = functionHeader.getName();
-            if (functionName.startsWith("@llvm.")) {
-                return factoryFacade.createLLVMIntrinsic(LLVMToBitcodeAdapter.resolveFunctionHeader(this, functionHeader), finalArgs,
-                                LLVMToBitcodeAdapter.resolveFunctionDef(this, containingFunctionDef).getArgumentTypes().length);
-            } else if (functionName.startsWith("@truffle_")) {
-                LLVMNode truffleIntrinsic = factoryFacade.createTruffleIntrinsic(functionName, finalArgs);
-                if (truffleIntrinsic != null) {
-                    return truffleIntrinsic;
-                }
+            LLVMNode optionalSubstitutionNode = factoryFacade.tryCreateFunctionSubstitution(LLVMToBitcodeAdapter.resolveFunctionHeader(this, functionHeader), finalArgs,
+                            LLVMToBitcodeAdapter.resolveFunctionDef(this, containingFunctionDef).getArgumentTypes().length);
+            if (optionalSubstitutionNode != null) {
+                return optionalSubstitutionNode;
             }
-
         } else if (callee instanceof InlineAssembler) {
             String asmSnippet = ((InlineAssembler) callee).getAssembler();
             String asmFlags = ((InlineAssembler) callee).getFlags();
