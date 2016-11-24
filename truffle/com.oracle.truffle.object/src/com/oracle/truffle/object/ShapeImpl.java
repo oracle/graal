@@ -297,6 +297,7 @@ public abstract class ShapeImpl extends Shape {
 
     /** @since 0.17 or earlier */
     public final void addIndirectTransition(Transition transition, ShapeImpl next) {
+        assert !isShared();
         assert next.getParent() != this && !transition.isDirect();
         addTransitionInternal(transition, next);
     }
