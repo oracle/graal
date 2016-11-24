@@ -142,4 +142,5 @@ class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         this.instructions.clear();
         block.accept(new LLVMBitcodeInstructionVisitor(this, block, factoryFacade));
     }
+
 }

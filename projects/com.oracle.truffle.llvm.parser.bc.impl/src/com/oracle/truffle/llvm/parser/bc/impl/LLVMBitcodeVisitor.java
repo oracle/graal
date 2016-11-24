@@ -272,12 +272,18 @@ public final class LLVMBitcodeVisitor implements ModelVisitor {
         return factoryFacade.createFrameNuller(identifier, type, slot);
     }
 
+    boolean needsStackPointerArgument() {
+        Optional<Boolean> hasStackPointerArgument = factoryFacade.hasStackPointerArgument();
+        return hasStackPointerArgument.isPresent() && hasStackPointerArgument.get();
+    }
+
     private List<LLVMNode> createParameters(FrameDescriptor frame, FunctionDefinition method) {
         final List<FunctionParameter> parameters = method.getParameters();
         final List<LLVMNode> formalParamInits = new ArrayList<>();
-
-        final LLVMExpressionNode stackPointerNode = factoryFacade.createFunctionArgNode(0, LLVMBaseType.ADDRESS);
-        formalParamInits.add(factoryFacade.createFrameWrite(LLVMBaseType.ADDRESS, stackPointerNode, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID)));
+        if (needsStackPointerArgument()) {
+            final LLVMExpressionNode stackPointerNode = factoryFacade.createFunctionArgNode(0, LLVMBaseType.ADDRESS);
+            formalParamInits.add(factoryFacade.createFrameWrite(LLVMBaseType.ADDRESS, stackPointerNode, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID)));
+        }
 
         final Optional<Integer> argStartIndex = factoryFacade.getArgStartIndex();
         if (!argStartIndex.isPresent()) {
