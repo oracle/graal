@@ -141,7 +141,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     private static final ThreadLocal<OptionValues> optionsOverride = new ThreadLocal<>();
 
-    protected final OptionValues options = GLOBAL;
+    protected final OptionValues options = new OptionValues(GLOBAL);
 
     /**
      * Utility method that casts the singleton {@link TruffleRuntime}.
@@ -175,7 +175,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         for (int i = 0; i < overrides.length; i += 2) {
             OptionKey<?> option = (OptionKey<?>) overrides[i];
             Object overrideValue = overrides[i + 1];
-            option.setValue(options, overrideValue);
+            option.setValue(newOptions, overrideValue);
         }
         optionsOverride.set(newOptions);
         return new OverrideScope() {

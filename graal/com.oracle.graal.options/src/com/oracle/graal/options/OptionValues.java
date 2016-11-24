@@ -22,9 +22,12 @@
  */
 package com.oracle.graal.options;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 /**
  * A context for obtaining values for {@link OptionKey}s.
@@ -142,5 +145,19 @@ public class OptionValues {
 
     private static Object decodeNull(Object value) {
         return value == NULL ? null : value;
+    }
+
+    private static final Comparator<OptionKey<?>> OPTION_KEY_COMPARATOR = new Comparator<OptionKey<?>>() {
+        @Override
+        public int compare(OptionKey<?> o1, OptionKey<?> o2) {
+            return o1.getName().compareTo(o2.getName());
+        }
+    };
+
+    @Override
+    public String toString() {
+        SortedMap<OptionKey<?>, Object> sorted = new TreeMap<>(OPTION_KEY_COMPARATOR);
+        sorted.putAll(values);
+        return sorted.toString();
     }
 }

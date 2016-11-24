@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
 import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 
 import java.lang.reflect.InvocationTargetException;
@@ -149,7 +150,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * The option values used during a test. They can be overridden with
      * {@link #overrideOptions(Object...)}.
      */
-    protected OptionValues options = OptionValues.GLOBAL;
+    protected OptionValues options = new OptionValues(GLOBAL);
 
     /**
      * Changes the values for a given set of options. The {@linkplain OptionKey#getValue() value} of
@@ -169,17 +170,20 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param overrides overrides in the form {@code [option1, override1, option2, override2, ...]}
      */
     protected OverrideScope overrideOptions(Object... overrides) {
-        OptionValues savedOptions = options;
-        options = new OptionValues(savedOptions);
+        OptionValues newOptions = new OptionValues(options);
         for (int i = 0; i < overrides.length; i += 2) {
             OptionKey<?> option = (OptionKey<?>) overrides[i];
             Object overrideValue = overrides[i + 1];
-            option.setValue(options, overrideValue);
+            option.setValue(newOptions, overrideValue);
         }
+        OptionValues savedOptions = options;
+        String savedOptionsAsString = options.toString();
+        options = newOptions;
         return new OverrideScope() {
             @Override
             public void close() {
                 options = savedOptions;
+                assert options.toString().equals(savedOptionsAsString);
             }
         };
     }

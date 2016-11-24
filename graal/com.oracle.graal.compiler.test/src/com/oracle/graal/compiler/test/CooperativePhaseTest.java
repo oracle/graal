@@ -28,8 +28,7 @@ import com.oracle.graal.compiler.common.util.CompilationAlarm;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.options.OptionValues.OverrideScope;
 import com.oracle.graal.phases.Phase;
 
 import jdk.vm.ci.code.BailoutException;
@@ -103,7 +102,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     public void test01() {
         StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
-        try (OverrideScope o = OptionValue.override(CompilationAlarm.Options.CompilationExpirationPeriod, 1/* sec */);
+        try (OverrideScope o = overrideOptions(CompilationAlarm.Options.CompilationExpirationPeriod, 1/* sec */);
                         CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod()) {
             new CooperativePhase().apply(g);
         }
@@ -113,7 +112,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     public void test02() {
         StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
-        try (OverrideScope o = OptionValue.override(CompilationAlarm.Options.CompilationExpirationPeriod, 1/* sec */);
+        try (OverrideScope o = overrideOptions(CompilationAlarm.Options.CompilationExpirationPeriod, 1/* sec */);
                         CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod()) {
             new UnCooperativePhase().apply(g);
         }
@@ -124,7 +123,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     public void test03() {
         StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
         // 0 disables alarm utility
-        try (OverrideScope o = OptionValue.override(CompilationAlarm.Options.CompilationExpirationPeriod, 0);
+        try (OverrideScope o = overrideOptions(CompilationAlarm.Options.CompilationExpirationPeriod, 0);
                         CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod()) {
             new ParlyCooperativePhase().apply(g);
         }

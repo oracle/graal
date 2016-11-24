@@ -60,13 +60,13 @@ public class UniquePathUtilities {
     }
 
     /**
-     * Generate a {@link Path} using the format "%s-%d_%d%s" with the {@link OptionValue#getValue()
+     * Generate a {@link Path} using the format "%s-%d_%d%s" with the {@link OptionKey#getValue()
      * base filename}, a {@link #globalTimeStamp global timestamp}, {@link #getThreadDumpId a per
      * thread unique id} and an optional {@code extension}.
      *
      * @return the output file path or null if the flag is null
      */
-    public static Path getPath(OptionValue<String> option, OptionValue<String> defaultDirectory, String extension) {
+    public static Path getPath(OptionKey<String> option, OptionKey<String> defaultDirectory, String extension) {
         if (option.getValue() == null) {
             return null;
         }
@@ -77,5 +77,4 @@ public class UniquePathUtilities {
         }
         return Paths.get(defaultDirectory.getValue(), name);
     }
-
 }

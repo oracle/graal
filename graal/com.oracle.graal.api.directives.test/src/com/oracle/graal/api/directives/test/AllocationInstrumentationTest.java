@@ -89,7 +89,7 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
             code.executeVarargs();
             Assert.assertFalse("allocation should not take place", allocationWasExecuted);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 
@@ -110,7 +110,7 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
             code.executeVarargs();
             Assert.assertTrue("allocation should take place", allocationWasExecuted);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 
@@ -138,7 +138,7 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
             code.executeVarargs(true);
             Assert.assertTrue("allocation should take place", allocationWasExecuted);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 

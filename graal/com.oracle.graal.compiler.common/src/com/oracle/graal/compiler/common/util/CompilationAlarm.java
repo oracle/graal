@@ -23,8 +23,8 @@
 package com.oracle.graal.compiler.common.util;
 
 import com.oracle.graal.options.Option;
+import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
 
 /**
  * Utility class that allows the compiler to monitor compilations that take a very long time.
@@ -34,7 +34,7 @@ public final class CompilationAlarm implements AutoCloseable {
     public static class Options {
         // @formatter:off
         @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit).", type = OptionType.Debug)
-        public static final OptionValue<Integer> CompilationExpirationPeriod = new OptionValue<>(300);
+        public static final OptionKey<Integer> CompilationExpirationPeriod = new OptionKey<>(300);
         // @formatter:on
     }
 
