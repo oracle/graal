@@ -77,4 +77,9 @@ public final class CastInstruction extends ValueInstruction {
         inst.value = symbols.getSymbol(value, inst);
         return inst;
     }
+
+    @Override
+    public String toString() {
+        return String.format("(%s) %s", operator, value);
+    }
 }
