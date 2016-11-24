@@ -71,11 +71,8 @@ public final class LLVMPaths {
 
     public static final File BENCHMARK_GAME_SUITE = new File(EXTERNAL_TEST_SUITES, "benchmarkgame/");
 
-    // Interop test suites
-    public static final String INTEROP_TESTS = PROJECT_ROOT + "/interoptests";
-
     // InlineAssembly test suite
-    public static final File INLINEASSEMBLY_TESTS = new File(PROJECT_ROOT + "/inlineassemblytests");
+    public static final File INLINEASSEMBLY_TESTS = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/inlineassemblytests/");
 
     static {
         TEMP_DIRECTORY.mkdir();

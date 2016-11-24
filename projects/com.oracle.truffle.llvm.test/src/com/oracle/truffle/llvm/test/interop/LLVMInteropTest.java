@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.Assert;
@@ -45,12 +46,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import com.oracle.truffle.llvm.test.LLVMPaths;
-import com.oracle.truffle.llvm.tools.Clang;
-import com.oracle.truffle.llvm.tools.Clang.ClangOptions;
-import com.oracle.truffle.llvm.tools.Opt;
-import com.oracle.truffle.llvm.tools.Opt.OptOptions;
-import com.oracle.truffle.llvm.tools.Opt.OptOptions.Pass;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @SuppressWarnings({"static-method"})
 public final class LLVMInteropTest {
@@ -709,6 +705,9 @@ public final class LLVMInteropTest {
         Object eval(Object string);
     }
 
+    private static final Path TEST_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/interoptests").toPath();
+    private static final String FILE_SUFFIX = "_clang_O0_MEM2REG.bc";
+
     private static final class Runner {
         private final Builder builder = PolyglotEngine.newBuilder();
         private final String fileName;
@@ -724,12 +723,8 @@ public final class LLVMInteropTest {
         int run() {
             final PolyglotEngine engine = builder.build();
             try {
-                File cFile = new File(LLVMPaths.INTEROP_TESTS, fileName + ".c");
-                File bcFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bc_" + fileName, ".ll");
-                File bcOptFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bcopt_" + fileName, ".ll");
-                Clang.compileToLLVMIR(cFile, bcFile, ClangOptions.builder());
-                Opt.optimizeBitcodeFile(bcFile, bcOptFile, OptOptions.builder().pass(Pass.MEM_TO_REG));
-                return engine.eval(Source.newBuilder(bcOptFile).build()).as(Integer.class);
+                File file = new File(TEST_DIR.toFile(), "/" + fileName + "/" + fileName + FILE_SUFFIX);
+                return engine.eval(Source.newBuilder(file).build()).as(Integer.class);
             } catch (IOException e) {
                 throw new AssertionError(e);
             } finally {
@@ -740,12 +735,8 @@ public final class LLVMInteropTest {
         protected PolyglotEngine prepareVM() throws Exception {
             PolyglotEngine engine = builder.build();
             try {
-                File cFile = new File(LLVMPaths.INTEROP_TESTS, fileName + ".c");
-                File bcFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bc_" + fileName, ".ll");
-                File bcOptFile = File.createTempFile(LLVMPaths.INTEROP_TESTS + "/" + "bcopt_" + fileName, ".ll");
-                Clang.compileToLLVMIR(cFile, bcFile, ClangOptions.builder());
-                Opt.optimizeBitcodeFile(bcFile, bcOptFile, OptOptions.builder().pass(Pass.MEM_TO_REG));
-                engine.eval(Source.newBuilder(bcOptFile).build()).as(Integer.class);
+                File file = new File(TEST_DIR.toFile(), "/" + fileName + "/" + fileName + FILE_SUFFIX);
+                engine.eval(Source.newBuilder(file).build()).as(Integer.class);
             } catch (IOException e) {
                 throw new AssertionError(e);
             }
