@@ -153,6 +153,10 @@ def travis1(args=None):
         if t: runMainArgTestCases()
     with Task('TestPipe', tasks) as t:
         if t: runPipeTestCases()
+    with Task('TestLLVM', tasks) as t:
+        if t: testsuites.travisRunSuite(['llvm'])
+    with Task('TestSulong', tasks) as t:
+        if t: testsuites.travisRunSuite(['sulong'])
 
 def travis2(args=None):
     """executes the second Travis job (Javac build, GCC execution test cases)"""
