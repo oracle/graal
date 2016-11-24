@@ -45,6 +45,11 @@ def runShootoutSuite(vmArgs):
     compileSuite(['shootout'])
     return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite"])
 
+def runLLVMSuite(vmArgs):
+    """runs the LLVM test suite"""
+    compileSuite(['llvm'])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + [mx_sulong.getRemoteClasspathOption(), '--verbose', "com.oracle.truffle.llvm.test.alpha.LLVMSuite"])
+
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
     excludes = tools.collectExcludePattern(os.path.join(_llvmSuiteDir, "configs/"))
@@ -72,7 +77,7 @@ def compileShootoutSuite():
 
 testSuites = {
     'gcc' : (compileGCCSuite, None),
-    'llvm' : (compileLLVMSuite, None),
+    'llvm' : (compileLLVMSuite, runLLVMSuite),
     'sulong' : (compileSulongSuite, runSulongSuite),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
 }

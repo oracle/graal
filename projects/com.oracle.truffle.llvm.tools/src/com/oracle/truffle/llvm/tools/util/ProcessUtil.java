@@ -29,14 +29,14 @@
  */
 package com.oracle.truffle.llvm.tools.util;
 
-import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.concurrent.TimeUnit;
 
 public class ProcessUtil {
 
+    private static final int BUFFER_SIZE = 1024;
     private static final int PROCESS_WAIT_TIMEOUT = 5000;
 
     /**
@@ -139,6 +139,7 @@ public class ProcessUtil {
             String readError = readStreamAndClose(process.getErrorStream());
             String inputStream = readStreamAndClose(process.getInputStream());
             int llvmResult = process.exitValue();
+            process.destroyForcibly();
             return new ProcessResult(command, llvmResult, readError, inputStream);
         } catch (Exception e) {
             throw new RuntimeException(command + " ", e);
@@ -152,24 +153,15 @@ public class ProcessUtil {
     }
 
     public static String readStreamAndClose(InputStream inputStream) throws IOException {
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
+        final ByteArrayOutputStream result = new ByteArrayOutputStream();
+        final byte[] buffer = new byte[BUFFER_SIZE];
+        int length;
+        while ((length = inputStream.read(buffer)) != -1) {
+            result.write(buffer, 0, length);
         }
-        reader.close();
-        return sb.toString();
-    }
-
-    public static String readStream(InputStream inputStream) throws IOException {
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
-        }
-        return sb.toString();
+        inputStream.close();
+        result.close();
+        return result.toString();
     }
 
 }

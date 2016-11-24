@@ -27,44 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tools;
+package com.oracle.truffle.llvm.test.alpha;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.util.Collection;
 
-import com.oracle.truffle.llvm.tools.util.ProcessUtil;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-public final class Mx {
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
-    private Mx() {
+@RunWith(Parameterized.class)
+public final class LLVMSuite extends BaseSuiteHarness {
+
+    private static final Path LLVM_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/llvm").toPath();
+    private static final Path LLVM_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/llvm/configs").toPath();
+
+    @Parameter(value = 0) public Path path;
+    @Parameter(value = 1) public String testName;
+
+    @Parameters(name = "{1}")
+    public static Collection<Object[]> data() {
+        return collectTestCases(LLVM_CONFIG_DIR, LLVM_SUITE_DIR);
     }
 
-    public static ProcessResult execute(String string) {
-        String command = "mx " + string;
-        return ProcessUtil.executeNativeCommandZeroReturn(command);
+    @Override
+    protected Path getTestDirectory() {
+        return path;
     }
 
-    public static File executeGetLLVMProgramPath(String program) {
-        ProcessResult result = Mx.execute("su-get-llvm " + program);
-        assert result.getReturnValue() == 0;
-        File llvmPath = getProgramPathFromStdout(result);
-        return llvmPath;
-    }
-
-    public static File executeGetGCCProgramPath(String program) {
-        ProcessResult result = Mx.execute("su-get-gcc " + program);
-        File llvmPath = getProgramPathFromStdout(result);
-        assert result.getReturnValue() == 0;
-        return llvmPath;
-    }
-
-    private static File getProgramPathFromStdout(ProcessResult result) {
-        String output = result.getStdOutput();
-        File llvmPath = new File(output.trim());
-        if (!llvmPath.canExecute()) {
-            throw new AssertionError(output + " is not an executable program!");
-        }
-        return llvmPath;
+    @Override
+    protected Path getSuiteDirectory() {
+        return LLVM_SUITE_DIR;
     }
 
 }

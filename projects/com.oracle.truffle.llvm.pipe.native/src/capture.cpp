@@ -46,6 +46,9 @@ JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_startCapt
 }
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureOutput_stopCapturing(JNIEnv *env, jclass self, jint oldStdOut) {
+    if (check_error(env, fflush(stdout))) {
+        return;
+    }
     if (check_error(env, dup2(oldStdOut, 1))) {
         return;
     }

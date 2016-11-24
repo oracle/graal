@@ -155,7 +155,7 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
             reader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getInputStream()));
             errorReader = new BufferedReader(new InputStreamReader(remoteTruffleProcess.getErrorStream()));
             if (!remoteTruffleProcess.isAlive()) {
-                throw new IllegalStateException(ProcessUtil.readStream(remoteTruffleProcess.getErrorStream()));
+                throw new IllegalStateException(ProcessUtil.readStreamAndClose(remoteTruffleProcess.getErrorStream()));
             }
             TestHelper.compileToLLVMIRWithClang(LLVMPaths.FLUSH_C_FILE, LLVMPaths.FLUSH_BITCODE_FILE);
         }
@@ -179,7 +179,8 @@ public class RemoteTestSuiteBase extends TestSuiteBase {
         try {
             List<String> launchRemote = launchRemote(tuple);
             int sulongRetValue = parseAndRemoveReturnValue(launchRemote);
-            String sulongLines = launchRemote.stream().collect(Collectors.joining());
+            String sulongLines = launchRemote.stream().collect(Collectors.joining("\n"));
+            sulongLines = sulongLines.length() == 0 ? sulongLines : sulongLines + "\n";
             ProcessResult processResult = TestHelper.executeLLVMBinary(tuple.getBitCodeFile());
             String expectedLines = processResult.getStdOutput();
             int expectedReturnValue = processResult.getReturnValue();

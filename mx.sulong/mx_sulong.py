@@ -36,9 +36,6 @@ _interopTestDir = join(_root, "com.oracle.truffle.llvm.test/interoptests/")
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
 
-_llvmSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/llvm/")
-_llvmSuiteDirRoot = join(_llvmSuiteDir, 'test-suite-3.2.src')
-
 _nwccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/nwcc/")
 
 _benchGameSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/benchmarkgame/")
@@ -154,8 +151,6 @@ def travis1(args=None):
         if t: runAsmTestCases()
     with Task('TestTypes', tasks) as t:
         if t: runTypeTestCases()
-    with Task('TestLLVM', tasks) as t:
-        if t: runLLVMTestCases()
     with Task('TestMainArgs', tasks) as t:
         if t: runMainArgTestCases()
     with Task('TestPipe', tasks) as t:
@@ -186,8 +181,6 @@ def travis4(args=None):
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
-    with Task('TestLLVMBC', tasks) as t:
-        if t: runLLVMTestCases(['-Dsulong.TestBinaryParser=true'])
     with Task('TestGCCBC', tasks) as t:
         if t: runGCCTestCases(['-Dsulong.TestBinaryParser=true'])
 
@@ -217,7 +210,6 @@ def pullTools(args=None):
 def pullTestFramework(args=None):
     """downloads the test suites (GCC, LLVM, NWCC, Argon2)"""
     pullGCCSuite()
-    pullLLVMSuite()
     pullNWCCSuite()
     ensureArgon2Exists()
 
@@ -353,15 +345,6 @@ def pullInstallDragonEgg(args=None):
     print os.environ['LLVM_CONFIG']
     compileCommand = ['make']
     return mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
-
-# platform independent
-def pullLLVMSuite(args=None):
-    """downloads the official (non Truffle) LLVM test suite"""
-    mx.ensure_dir_exists(_llvmSuiteDir)
-    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/test-suite-3.2.src.tar.gz"]
-    localPath = pullsuite(_llvmSuiteDir, urls)
-    tar(localPath, _llvmSuiteDir)
-    os.remove(localPath)
 
 def tar(tarFile, currentDir, subDirInsideTar=None, stripLevels=None):
     with tarfile.open(tarFile) as tar:
@@ -555,13 +538,6 @@ def runNWCCTestCases(args=None):
     ensureNWCCSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.NWCCTestSuite"])
-
-def runLLVMTestCases(args=None):
-    """runs the LLVM test suite"""
-    ensureLLVMBinariesExist()
-    ensureLLVMSuiteExists()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.LLVMTestSuite"])
 
 def runTypeTestCases(args=None):
     """runs the type test cases"""
@@ -892,11 +868,6 @@ def ensureDragonEggExists():
     if not os.path.exists(_dragonEggPath):
         pullInstallDragonEgg()
 
-def ensureLLVMSuiteExists():
-    """downloads the LLVM suite if not downloaded yet"""
-    if not os.path.exists(_llvmSuiteDirRoot):
-        pullLLVMSuite()
-
 def ensureNWCCSuiteExists():
     """downloads the NWCC suite if not downloaded yet"""
     if not os.path.exists(_nwccSuiteDir + 'tests'):
@@ -1106,7 +1077,6 @@ def sulongBuild(args=None):
 testCases = {
     'bench' : runBenchmarkTestCases,
     'gcc' : runGCCTestCases,
-    'llvm' : runLLVMTestCases,
     'nwcc' : runNWCCTestCases,
     'types' : runTypeTestCases,
     'polyglot' : runPolyglotTestCases,
@@ -1148,7 +1118,6 @@ mx.update_commands(_suite, {
     'su-pullllvmbinaries' : [pullLLVMBinaries, ''],
     'su-pullnwccsuite' : [pullNWCCSuite, ''],
     'su-pullgccsuite' : [pullGCCSuite, ''],
-    'su-pullllvmsuite' : [pullLLVMSuite, ''],
     'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
