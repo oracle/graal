@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.llvm.parser.base.model.globals.GlobalConstant;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 
@@ -444,7 +445,13 @@ public final class LLVMVisitor implements LLVMParserRuntimeTextual {
     private boolean isGlobalScope;
 
     private Object findOrAllocateGlobal(com.oracle.truffle.llvm.parser.base.model.globals.GlobalValueSymbol globalVariable) {
-        return factoryFacade.allocateGlobalVariable(globalVariable);
+        if (globalVariable instanceof com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable) {
+            return factoryFacade.allocateGlobalVariable((com.oracle.truffle.llvm.parser.base.model.globals.GlobalVariable) globalVariable);
+        } else if (globalVariable instanceof GlobalConstant) {
+            return factoryFacade.allocateGlobalConstant((GlobalConstant) globalVariable);
+        } else {
+            throw new AssertionError();
+        }
     }
 
     private LLVMExpressionNode visitArrayConstantStore(ArrayConstant constant) {

@@ -367,13 +367,7 @@ public final class LLVMBitcodeVisitor implements ModelVisitor {
 
         if (g instanceof GlobalValueSymbol) {
             final GlobalValueSymbol variable = (GlobalValueSymbol) g;
-            LLVMExpressionNode address = globals.get(variable);
-
-            if (address == null) {
-                address = allocateGlobal(variable);
-                globals.put(variable, address);
-            }
-            return address;
+            return globals.computeIfAbsent(variable, k -> allocateGlobal(variable));
         } else {
             return symbolResolver.resolve(g);
         }
@@ -424,9 +418,18 @@ public final class LLVMBitcodeVisitor implements ModelVisitor {
     private final Map<String, Object> globalVariableScope = new HashMap<>();
 
     private LLVMExpressionNode allocateGlobal(GlobalValueSymbol global) {
-        final Object globalVariable = factoryFacade.allocateGlobalVariable(global);
-        globalVariableScope.put(global.getName(), globalVariable);
-        return factoryFacade.createLiteral(globalVariable, LLVMBaseType.ADDRESS);
+
+        final Object globalValue;
+        if (global instanceof GlobalVariable) {
+            globalValue = factoryFacade.allocateGlobalVariable((GlobalVariable) global);
+        } else if (global instanceof GlobalConstant) {
+            globalValue = factoryFacade.allocateGlobalConstant((GlobalConstant) global);
+        } else {
+            throw new AssertionError("Cannot allocate global: " + global);
+        }
+
+        globalVariableScope.put(global.getName(), globalValue);
+        return factoryFacade.createLiteral(globalValue, LLVMBaseType.ADDRESS);
     }
 
     private List<LLVMNode> getGobalVariables() {
