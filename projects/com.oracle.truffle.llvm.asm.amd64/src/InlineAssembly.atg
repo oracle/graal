@@ -61,12 +61,15 @@ PRODUCTIONS
 InlineAssembly<> =
 										(..)
   "\""
-  (AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<> | DivOperation<>)
-  {AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<> | DivOperation<>}
+  (Instruction<>)
+  {Instruction<>}
   "\""
   										(.root = factory.finishInline();.)
   .
 
+Instruction<> =
+  AddSubOperation<> | IncDecOperation<> | LogicOperation<> | ShiftOperation<> | MoveOperation<> | MulOperation<> | DivOperation<> | RdtscInstruction<>
+.
 AddSubOperation<> =						(.String op; String left = null, right = null;.)
   AddSubOp<out op>
   ((Register<out left> "," Register<out right>)
@@ -91,7 +94,7 @@ DivOperation<> =						(.String op; String left = null;.)
   ((Register<out left> ["," "%eax"])
   )";"									(.	factory.addFrameSlot("%eax", LLVMBaseType.I32);
 											factory.addFrameSlot("%edx", LLVMBaseType.I32);
-											factory.createDivisionOperatoin(op, left);
+											factory.createDivisionOperation(op, left);
 										.)
   .
 
@@ -124,7 +127,13 @@ MoveOperation<> =						(.String op; String left = null, right = null;.)
   (Immediate<out left> "," Register<out right>)
    )";"									(.factory.createBinaryOperation(op, left, right);.)
    .
-  
+
+RdtscInstruction<> =					(.String op;.)
+	RdtscOp <out op> ";"				(.factory.addFrameSlot("%eax", LLVMBaseType.I32);
+										  factory.addFrameSlot("%edx", LLVMBaseType.I32);
+										  factory.createMiscOperation(op);.)
+   .
+
 AddSubOp<out String op> 				(.op = la.val;.)
   = "addl"
   | "subl"
@@ -163,6 +172,10 @@ DivOp<out String op>					(.op = la.val;.)
 MoveOp<out String op>					(.op = la.val;.)
   = "movl"
   .  
+
+RdtscOp<out String op>					(.op = la.val;.)
+  = "rdtsc"
+  .
 
 Register<out String reg> =
   ( "%eax"
