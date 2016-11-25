@@ -30,16 +30,30 @@
 package com.oracle.truffle.llvm.parser.base.model.enums;
 
 public enum AtomicOrdering {
-    NOT_ATOMIC,
-    UNORDERED,
-    MONOTONIC,
-    CONSUME,
-    ACQUIRE,
-    RELEASE,
-    ACQUIRE_RELEASE,
-    SEQUENTIALLY_CONSISTENT;
+    NOT_ATOMIC(0L),
+    UNORDERED(1L),
+    MONOTONIC(2L),
+    ACQUIRE(3L),
+    RELEASE(4L),
+    ACQUIRE_RELEASE(5L),
+    SEQUENTIALLY_CONSISTENT(6L);
+
+    private final long encodedValue;
+
+    AtomicOrdering(long encodeValue) {
+        this.encodedValue = encodeValue;
+    }
+
+    public long getEncodedValue() {
+        return encodedValue;
+    }
 
     public static AtomicOrdering decode(long id) {
-        return values()[(int) id];
+        for (AtomicOrdering atomicOrdering : values()) {
+            if (atomicOrdering.getEncodedValue() == id) {
+                return atomicOrdering;
+            }
+        }
+        return SEQUENTIALLY_CONSISTENT;
     }
 }

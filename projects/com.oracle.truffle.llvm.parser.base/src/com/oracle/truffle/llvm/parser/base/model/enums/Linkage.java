@@ -31,32 +31,48 @@ package com.oracle.truffle.llvm.parser.base.model.enums;
 
 public enum Linkage {
 
-    EXTERNAL("external"),
-    WEAK("weak"),
-    APPENDING("appending"),
-    INTERNAL("internal"),
-    LINKONCE("linkonce"),
-    DLL_IMPORT("dllimport"),
-    DLL_EXPORT("dllexport"),
-    EXTERN_WEAK("extern_weak"),
-    COMMON("common"),
-    PRIVATE("private"),
-    WEAK_ODR("weak_odr"),
-    LINK_ONCE_ODR("linkonce_odr"),
-    AVAILABLE_EXTERNALLY("available_externally"),
-    LINKER_PRIVATE("linker_private"),
-    LINKER_PRIVATE_WEAK("linker_private_weak"),
-    LINK_ONCE_ODR_AUTO_HIDE("linkonce_odr_auto_hide"),
-    UNKNOWN(""); // TODO: required by LLVM IR Parser, should be removed when no longer needed
+    EXTERNAL("external", 0L),
+    WEAK("weak", 1L),
+    APPENDING("appending", 2L),
+    INTERNAL("internal", 3L),
+    LINKONCE("linkonce", 4L),
+    DLL_IMPORT("dllimport", 5L),
+    DLL_EXPORT("dllexport", 6L),
+    EXTERN_WEAK("extern_weak", 7L),
+    COMMON("common", 8L),
+    PRIVATE("private", 9L),
+    WEAK_ODR("weak_odr", 10L),
+    LINK_ONCE_ODR("linkonce_odr", 11L),
+    AVAILABLE_EXTERNALLY("available_externally", 12L),
+    LINKER_PRIVATE("linker_private", 13L),
+    LINKER_PRIVATE_WEAK("linker_private_weak", 14L),
+    LINK_ONCE_ODR_AUTO_HIDE("linkonce_odr_auto_hide", 15L),
+    UNKNOWN("", -1); // TODO: required by LLVM IR Parser, should be removed when no longer needed
 
     private final String irString;
 
-    Linkage(String irString) {
+    private final long encodedValue;
+
+    Linkage(String irString, long encodedValue) {
         this.irString = irString;
+        this.encodedValue = encodedValue;
+    }
+
+    public long getEncodedValue() {
+        return encodedValue;
     }
 
     public static Linkage decode(long value) {
-        return values()[(int) value];
+        if (value == UNKNOWN.getEncodedValue()) {
+            // TODO remove this together with UNKNOWN
+            return EXTERNAL;
+        }
+        for (Linkage linkage : values()) {
+            if (linkage.getEncodedValue() == value) {
+                return linkage;
+            }
+        }
+        return EXTERNAL;
     }
 
     public String getIrString() {
