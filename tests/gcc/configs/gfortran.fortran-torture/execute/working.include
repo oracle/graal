@@ -6,7 +6,6 @@ gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/alternate_return.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/pr19269-1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/st_function_2.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/common_size.f90
-gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/transfer1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/strarray_3.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_dprod.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/equiv_2.f90
@@ -41,7 +40,6 @@ gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/getarg_1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/pr23373-1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/der_io.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/forall_6.f90
-gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/pr32604.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/iolength_3.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/der_init_4.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/der_init.f90
@@ -180,7 +178,6 @@ gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/empty_format.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/where18.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/integer_select_1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/pr23373-2.f90
-gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/adjustr.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/function_module_1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_mmloc_3.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_matmul.f90
@@ -199,4 +196,3 @@ gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_rrspacing.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_scale.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_spacing.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/math.f90
-gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/equiv_5.f

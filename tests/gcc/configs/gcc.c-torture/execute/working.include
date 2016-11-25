@@ -1192,7 +1192,6 @@ gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/920726-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20041214-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/va-arg-2.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/va-arg-20.c
-gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr38051.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/ieee/inf-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20020411-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/complex-5.c

@@ -43,7 +43,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr19317-2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr14029.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr19317-1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/alias3.C
-gcc-5.2.0/gcc/testsuite/g++.dg/opt/tmp1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr15054-2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr17697-1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr43655.C
