@@ -100,7 +100,6 @@ gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/entry_3.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/where_2.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/unopened_unit_1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/parameter_1.f90
-gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/module_init_1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/retarray_2.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/forall_1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/pr43390.f90

@@ -100,7 +100,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr30364-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr57341.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr45623.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr52028.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr41094.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr39074-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/builtin-noret-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr58228.c
