@@ -224,6 +224,7 @@ public abstract class TestSuiteBase {
                             files.add(optimized);
                         }
                     } catch (Exception e) {
+                        System.err.println(toBeCompiled.getFile().toString());
                         return Collections.emptyList();
                     }
                 }

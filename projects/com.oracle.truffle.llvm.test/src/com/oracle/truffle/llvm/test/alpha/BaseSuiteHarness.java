@@ -47,9 +47,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
     @Override
     @Test
     public void test() throws Exception {
-        assert Files.walk(getTestDirectory()).filter(isExecutable).count() == 1;
-
-        Path referenceFile = Files.walk(getTestDirectory()).filter(isExecutable).findFirst().get();
+        Path referenceFile = Files.walk(getTestDirectory()).filter(isExecutable).collect(Collectors.toList()).get(0);
         List<Path> testCandidates = Files.walk(getTestDirectory()).filter(isFile).filter(isSulong).collect(Collectors.toList());
         ProcessResult processResult = ProcessUtil.executeNativeCommand(referenceFile.toAbsolutePath().toString());
         String referenceStdOut = processResult.getStdOutput();

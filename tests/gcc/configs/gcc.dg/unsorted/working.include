@@ -1,7 +1,6 @@
 gcc-5.2.0/gcc/testsuite/gcc.dg/20030711-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/fuse-caller-save.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pubtypes-3.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/builtins-6.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/single-precision-constant.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-13.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/complete-port.c
@@ -24,7 +23,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/20050922-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr47793.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr64087.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/max-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/builtins-8.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/c99-bool-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/vla-13.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/darwin-ld-20040828-1.c
@@ -34,7 +32,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr32338-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/bitfld-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/builtins-49.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr35616.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr46728-6.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr33645-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/bf-ms-attrib.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr9814-1.c
@@ -102,7 +99,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr36015.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/builtin-object-size-11.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/switch-warn-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-12g.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/builtins-47.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr10392-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr41033.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-18g.c
@@ -143,7 +139,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/darwin-ld-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/loop-6.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pragma-align.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/enum1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/builtins-67.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/trunc-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/profile-generate-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/profile-dir-2.c
@@ -152,7 +147,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr27639.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-23.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr26729-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr51408.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr46728-12.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr36584.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/builtin-bswap-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/Warray-bounds-7.c
@@ -192,7 +186,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr63665.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20050321-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr33645-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/builtins-51.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr18241-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/volatile-bitfields-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/falign-labels-1.c
@@ -213,7 +206,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/Wdeclaration-after-statement-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/builtin-choose-expr.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr52769.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20070507-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/unordered-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr65780-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/tm/unused.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ubsan/object-size-9.c
@@ -241,7 +233,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/openmp-simd-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr36790.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr25989.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr27573.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/for-14.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr38676.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr48716.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/sharing-1.c
@@ -356,7 +347,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-8.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-14.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-23.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-4.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-sra-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/iinline-5.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/noclone-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-18.c
@@ -368,7 +358,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/iinline-6.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-sra-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-pta-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-pta-6.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-20.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-16.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-30.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-pta-7.c
@@ -381,7 +370,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-pta-9.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-sra-9.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-32.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/pr63551.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-5.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/pr65318.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-28.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-pta-3.c
@@ -416,12 +404,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-10.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-33.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-sra-8.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/simulate-thread/subfields.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/simulate-thread/strict-align-global.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/simulate-thread/speculative-store-4.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/simulate-thread/speculative-store-2.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/simulate-thread/speculative-store.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/simulate-thread/speculative-store-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/plugin/one_time-test-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/plugin/start_unit-test-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/plugin/ggcplug-test-1.c

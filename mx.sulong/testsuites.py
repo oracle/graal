@@ -50,7 +50,13 @@ def runShootoutSuite(vmArgs):
 def runLLVMSuite(vmArgs):
     """runs the LLVM test suite"""
     compileSuite(['llvm'])
-    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + [mx_sulong.getRemoteClasspathOption(), '--verbose', "com.oracle.truffle.llvm.test.alpha.LLVMSuite"])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + [mx_sulong.getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.alpha.LLVMSuite"])
+
+def runGCCSuite(vmArgs):
+    """runs the LLVM test suite"""
+    mx_sulong.ensureDragonEggExists()
+    compileSuite(['gcc'])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--very-verbose', mx_sulong.getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.alpha.GCCSuite"])
 
 def compileInteropTests():
     print("Compiling Interop with clang -O0 and mem2reg", end='')
@@ -59,12 +65,12 @@ def compileInteropTests():
 def runInteropTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['interop'])
-    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.interop.LLVMInteropTest"])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.interop.LLVMInteropTest"])
 
 def runTCKTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['interop'])
-    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.interop.LLVMTckTest"])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.interop.LLVMTckTest"])
 
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
@@ -78,9 +84,14 @@ def compileGCCSuite():
     ensureGCCSuiteExists()
     excludes = tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/"))
     print("Compiling GCC Suite reference executables ", end='')
-    tools.printProgress(tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GFORTRAN], ['-Iinclude'], excludes=excludes))
-    print("Compiling GCC Suite with -O0 ", end='')
-    tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG, tools.Tool.GFORTRAN], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    tools.printProgress(tools.multicompileRefFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG_CPP, tools.Tool.CLANG_C, tools.Tool.GFORTRAN], ['-Iinclude'], excludes=excludes))
+    print("Compiling GCC files with GFORTRAN ", end='')
+    tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.GFORTRAN], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+    print("Compiling GCC files with CPP ", end='')
+    tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG_CPP], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.CPP_OPT], excludes=excludes))
+    print("Compiling GCC files with C ", end='')
+    tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG_C], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.C_OPT], excludes=excludes))
+
 
 def compileShootoutSuite():
     ensureShootoutsExist()
@@ -92,7 +103,7 @@ def compileShootoutSuite():
 
 
 testSuites = {
-    'gcc' : (compileGCCSuite, None),
+    'gcc' : (compileGCCSuite, runGCCSuite),
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'sulong' : (compileSulongSuite, runSulongSuite),
     'shootout' : (compileShootoutSuite, runShootoutSuite),

@@ -6,6 +6,7 @@ mx.sulong/*.pyc
 mx.sulong/env
 mx.sulong/eclipse-launches/**
 mx.sulong/libs/*.ll
+mx.sulong/libs/*.bc
 .DS_Store
 build.xml
 workingsets.xml
@@ -44,6 +45,7 @@ tests/cache/**
 tests/argon2/phc-winner-argon2/**
 tests/argon2/pthread-stub/*.ll
 tests/llvm/test-suite-3.2.src/**
+tests/gcc/gcc-5.2.0/**
 tests/benchmarksgame/binarytrees/**
 tests/benchmarksgame/binarytreesredux/**
 tests/benchmarksgame/chameneosredux/**

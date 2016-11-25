@@ -31,7 +31,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/imag-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/misaligned-expand-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/smod-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20020426-2.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr46728-9.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/bf-ms-layout-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/switch-8.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr36300-2.c
@@ -43,7 +42,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/20020312-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/darwin-ld-20040828-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/struct-ret-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/bitfld-3.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr41783.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20020210-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/volatile-bitfields-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/c99-mixdecl-1.c
@@ -61,9 +59,7 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/vla-14.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20000623-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pack-test-5.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr36017.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr61529.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr38615.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/Wtraditional-conversion.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/duff-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr50527.c
@@ -98,7 +94,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr38364.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr33434-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/c99-hexfloat-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/empty1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/Wdeclaration-after-statement-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr33136-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr11864-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr46499-1.c
@@ -120,10 +115,8 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/div-compare-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr64007.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/asr_div1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20020220-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/vshift-5.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/duff-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr62030.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr43419.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20040305-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/strlenopt-4g.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/atomic-load-2.c
@@ -152,7 +145,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr50290.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr65063.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr48784-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr47028.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/gnu89-init-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/Wchar-subscripts.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/align-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr52734.c
@@ -195,7 +187,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr32912-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20020607-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20030414-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/20040331-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/builtins-24.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/vla-15.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/c99-init-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr61220.c
@@ -241,7 +232,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/pr60485-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr57300.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr56341-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr44024.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr41963.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ctor1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr44838.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/sms-12.c
@@ -259,8 +249,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/constructor-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/alias-5.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/alias-6.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/alias-7.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/cdce1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/cdce2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-34.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/tls/alias-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/chkp-ctor-merge_0.c

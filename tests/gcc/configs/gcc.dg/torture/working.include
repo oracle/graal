@@ -100,7 +100,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr30364-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr57341.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr45623.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr52028.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr41094.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr39074-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/builtin-noret-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr58228.c
@@ -151,7 +150,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr59058.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr57521.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr33848.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr36373-2.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/torture/matrix-6.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/restrict-4.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/transpose-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr30375.c
@@ -206,7 +204,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pta-callused-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/builtin-noret-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr36227.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/restrict-2.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/torture/matrix-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/inline-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr58143-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/pr26258.c

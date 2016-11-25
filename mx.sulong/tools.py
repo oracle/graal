@@ -74,15 +74,22 @@ class Tool(object):
             if errorMsg is None:
                 print('\nError: Cannot run %s' % args)
             else:
-                print('\nError: %s\n%s' % (errorMsg, args))
+                print('\nError: %s\n%s' % (errorMsg, ' '.join(args)))
         if f is not None:
             f.close()
         return ret
 
 class ClangCompiler(Tool):
-    def __init__(self):
-        self.name = 'clang'
-        self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.OBJECTIVE_C]
+    def __init__(self, name=None, supportedLanguages=None):
+        if name is None:
+            self.name = 'clang'
+        else:
+            self.name = name
+
+        if supportedLanguages is None:
+            self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.OBJECTIVE_C]
+        else:
+            self.supportedLanguages = supportedLanguages
 
     def getTool(self, inputFile):
         inputLanguage = ProgrammingLanguage.lookupFile(inputFile)
@@ -102,8 +109,12 @@ class ClangCompiler(Tool):
         return self.runTool([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class GCCCompiler(Tool):
-    def __init__(self, supportedLanguages=None):
-        self.name = 'gcc'
+    def __init__(self, name=None, supportedLanguages=None):
+        if name is None:
+            self.name = 'gcc'
+        else:
+            self.name = name
+
         if supportedLanguages is None:
             self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.FORTRAN]
         else:
@@ -151,11 +162,17 @@ class Opt(Tool):
         return mx.run([mx_sulong.findLLVMProgram('opt'), '-o', outputFile] + self.passes + [inputFile])
 
 Tool.CLANG = ClangCompiler()
+Tool.CLANG_C = ClangCompiler('clangc', [ProgrammingLanguage.C])
+Tool.CLANG_CPP = ClangCompiler('clangcpp', [ProgrammingLanguage.C_PLUS_PLUS])
+
 Tool.GCC = GCCCompiler()
-Tool.GFORTRAN = GCCCompiler([ProgrammingLanguage.FORTRAN])
+Tool.GFORTRAN = GCCCompiler('gfortran', [ProgrammingLanguage.FORTRAN])
+
 Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
 Tool.MEM2REG = Opt('MEM2REG', ['-mem2reg'])
 
+Tool.CPP_OPT = Opt('CPP_OPT', ['-lowerinvoke', '-prune-eh', '-simplifycfg'])
+Tool.C_OPT = Opt('C_OPT', ['-mem2reg', '-always-inline', '-jump-threading', '-simplifycfg'])
 
 def createOutputPath(inputFile, outputDir):
     base, _ = os.path.splitext(inputFile)

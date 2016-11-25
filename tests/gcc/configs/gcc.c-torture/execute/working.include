@@ -222,7 +222,6 @@ gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/compare-3.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr28982a.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20040411-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20120105-1.c
-gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/float-floor.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr20187-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/loop-2e.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20080529-1.c
@@ -1007,10 +1006,7 @@ gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr15262.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/930614-2.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/gofast.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/ieee/fp-cmp-4f.c
-gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/980709-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/920810-1.c
-gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/ieee/20041213-1.c
-gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/ieee/mzero4.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr42691.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr44683.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/ieee/920810-1.c
@@ -1045,7 +1041,6 @@ gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/920520-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/990524-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/960302-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20000914-1.c
-gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/medce-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/switch-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr48809.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20011219-1.c
@@ -1197,7 +1192,6 @@ gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/920726-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20041214-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/va-arg-2.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/va-arg-20.c
-gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/pr38051.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/ieee/inf-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20020411-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/complex-5.c

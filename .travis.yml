@@ -1,6 +1,7 @@
 cache:
   directories:
   - projects/com.oracle.truffle.llvm.tools/tools
+  - tests/cache
 sudo: required
 language: java
 python:
@@ -47,11 +48,9 @@ matrix:
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis1' CLANG='suite version (3.2)'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-travis2' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-travis-tests gcc' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis3' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-travis4' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis-argon2' CLANG='suite version (3.2)'
     jdk: oraclejdk8

@@ -1,5 +1,4 @@
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/pr60461_0.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20110201-1_0.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20090914-1_0.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20100724-1_0.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20091006-2_0.c
@@ -24,7 +23,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/lto/save-temps_0.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20090126-2_0.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20090218-2_1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20100720-3_0.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/lto/pr56168_0.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/pr51572-1_0.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/20100825-1_0.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/lto/pr60911_0.c
