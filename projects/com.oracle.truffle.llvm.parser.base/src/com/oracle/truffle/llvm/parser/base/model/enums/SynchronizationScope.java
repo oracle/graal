@@ -30,10 +30,26 @@
 package com.oracle.truffle.llvm.parser.base.model.enums;
 
 public enum SynchronizationScope {
-    SINGLE_THREAD,
-    CROSS_THREAD;
+
+    SINGLE_THREAD(0L),
+    CROSS_THREAD(1L);
+
+    private final long encodedValue;
+
+    public long getEncodedValue() {
+        return encodedValue;
+    }
+
+    SynchronizationScope(long encodedValue) {
+        this.encodedValue = encodedValue;
+    }
 
     public static SynchronizationScope decode(long id) {
-        return values()[(int) id];
+        for (SynchronizationScope synchronizationScope : values()) {
+            if (synchronizationScope.getEncodedValue() == id) {
+                return synchronizationScope;
+            }
+        }
+        return CROSS_THREAD;
     }
 }
