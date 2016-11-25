@@ -64,7 +64,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
             Result result = new Result(code.executeVarargs(), null);
             assertEquals(new Result(toString(method), null), result);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 
@@ -87,7 +87,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
             Result result = new Result(code.executeVarargs(), null);
             assertEquals(new Result(toString(method), null), result);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 

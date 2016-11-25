@@ -42,6 +42,7 @@ import com.oracle.graal.debug.DebugDumpScope;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph;
+import com.oracle.graal.nodes.StructuredGraph;
 
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -122,6 +123,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             if (inlineContext != previousInlineContext) {
                 Map<Object, Object> properties = new HashMap<>();
                 properties.put("graph", graph.toString());
+                addCompilationId(properties, graph);
                 addCFGFileName(properties);
                 if (inlineContext.equals(previousInlineContext)) {
                     /*
@@ -169,6 +171,12 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
+        }
+    }
+
+    private static void addCompilationId(Map<Object, Object> properties, final Graph graph) {
+        if (graph instanceof StructuredGraph) {
+            properties.put("compilationId", ((StructuredGraph) graph).compilationId());
         }
     }
 

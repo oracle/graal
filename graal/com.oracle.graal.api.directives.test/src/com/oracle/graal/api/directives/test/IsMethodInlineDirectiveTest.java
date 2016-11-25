@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.directives.test;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
@@ -60,7 +59,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
             Result result = new Result(code.executeVarargs(), null);
             assertEquals(new Result(false, null), result);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 
@@ -82,7 +81,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
             Result result = new Result(code.executeVarargs(), null);
             assertEquals(new Result(true, null), result);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 
@@ -119,7 +118,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
             assertTrue("calleWithInstrumentationSnippet should be inlined", isCalleeInlined);
             assertFalse("callerSnippet1 should not be inlined", isCallerInlined);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 

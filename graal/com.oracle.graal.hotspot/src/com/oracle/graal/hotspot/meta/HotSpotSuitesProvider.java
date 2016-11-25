@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.compiler.common.GraalOptions.VerifyPhases;
 
@@ -114,7 +115,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
 
                 SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(),
                                 context.getStampProvider(), !ImmutableCode.getValue(), runtime.getTarget().arch);
-                StructuredGraph targetGraph = new StructuredGraph(graph.method(), AllowAssumptions.YES);
+                StructuredGraph targetGraph = new StructuredGraph(graph.method(), AllowAssumptions.YES, INVALID_COMPILATION_ID);
                 graphDecoder.decode(targetGraph, encodedGraph);
             }
         });

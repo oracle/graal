@@ -98,7 +98,7 @@ public class LockInstrumentationTest extends GraalCompilerTest {
             code.executeVarargs();
             Assert.assertFalse("expected lock was performed before checkpoint", lockAfterCheckPoint);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 
@@ -126,7 +126,7 @@ public class LockInstrumentationTest extends GraalCompilerTest {
             code.executeVarargs();
             Assert.assertTrue("expected lock was performed after checkpoint", lockAfterCheckPoint);
         } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+            throw new AssertionError(e);
         }
     }
 

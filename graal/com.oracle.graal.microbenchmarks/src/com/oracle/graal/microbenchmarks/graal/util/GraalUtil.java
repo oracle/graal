@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.microbenchmarks.graal.util;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+
 import java.lang.reflect.Method;
 import java.util.List;
 
@@ -131,7 +133,7 @@ public class GraalUtil {
     }
 
     public static StructuredGraph getGraph(GraalState graal, ResolvedJavaMethod javaMethod, boolean useProfilingInfo) {
-        StructuredGraph graph = new StructuredGraph(javaMethod, StructuredGraph.AllowAssumptions.YES, useProfilingInfo);
+        StructuredGraph graph = new StructuredGraph(javaMethod, StructuredGraph.AllowAssumptions.YES, useProfilingInfo, INVALID_COMPILATION_ID);
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
         MetaAccessProvider metaAccess = graal.providers.getMetaAccess();
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(new Plugins(new InvocationPlugins(metaAccess)))));

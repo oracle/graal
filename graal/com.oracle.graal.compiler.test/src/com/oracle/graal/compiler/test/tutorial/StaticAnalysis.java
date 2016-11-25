@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test.tutorial;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
@@ -239,7 +241,7 @@ public class StaticAnalysis {
                  * Build the Graal graph for the method using the bytecode parser provided by Graal.
                  */
 
-                StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
+                StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO, INVALID_COMPILATION_ID);
                 /*
                  * Support for graph dumping, IGV uses this information to show the method name of a
                  * graph.

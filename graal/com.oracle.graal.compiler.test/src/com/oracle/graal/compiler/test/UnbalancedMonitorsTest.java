@@ -29,6 +29,8 @@ import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+
 import org.junit.Test;
 
 import com.oracle.graal.java.GraphBuilderPhase;
@@ -79,7 +81,7 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes
     private void checkForBailout(String name) throws ClassNotFoundException {
         ResolvedJavaMethod method = getResolvedJavaMethod(LOADER.findClass(NAME), name);
         try {
-            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
+            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO, INVALID_COMPILATION_ID);
             Plugins plugins = new Plugins(new InvocationPlugins(getMetaAccess()));
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;

@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.junit.After;
@@ -51,6 +50,7 @@ import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.GraalCompiler.Request;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
@@ -528,7 +528,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getProviders().getLowerer();
     }
 
-    private static AtomicInteger compilationId = new AtomicInteger();
+    protected CompilationIdentifier getCompilationId(ResolvedJavaMethod method) {
+        return getBackend().getCompilationIdentifier(method);
+    }
 
     protected void testN(int n, final String name, final Object... args) {
         final List<Throwable> errors = new ArrayList<>(n);
@@ -774,13 +776,13 @@ public abstract class GraalCompilerTest extends GraalTest {
      * Gets installed code for a given method and graph, compiling it first if necessary.
      *
      * @param installedCodeOwner the method the compiled code will be associated with when installed
-     * @param graph the graph to be compiled. If null, a graph will be obtained from
+     * @param graph0 the graph to be compiled. If null, a graph will be obtained from
      *            {@code installedCodeOwner} via {@link #parseForCompile(ResolvedJavaMethod)}.
      * @param forceCompile specifies whether to ignore any previous code cached for the (method,
      *            key) pair
      */
     @SuppressWarnings("try")
-    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile) {
+    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph0, boolean forceCompile) {
         if (!forceCompile) {
             InstalledCode cached = cache.get(installedCodeOwner);
             if (cached != null) {
@@ -789,19 +791,20 @@ public abstract class GraalCompilerTest extends GraalTest {
                 }
             }
         }
-
-        final int id = compilationId.incrementAndGet();
+        final StructuredGraph graph = graph0 != null ? graph0 : parseForCompile(installedCodeOwner);
+        final CompilationIdentifier id = graph.compilationId();
 
         InstalledCode installedCode = null;
         try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
-                TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(), installedCodeOwner.getSignature()));
+                TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(),
+                                installedCodeOwner.getSignature()));
             }
             long start = System.currentTimeMillis();
             CompilationResult compResult = compile(installedCodeOwner, graph);
             if (printCompilation) {
-                TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
+                TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
             }
 
             try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult)) {
@@ -876,7 +879,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compilationResult) {
-        return backend.addInstalledCode(method, compilationResult);
+        return backend.addInstalledCode(method, null, compilationResult);
     }
 
     private final Map<ResolvedJavaMethod, Method> methodMap = new HashMap<>();
@@ -966,7 +969,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     @SuppressWarnings("try")
     private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
-        StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog());
+        StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog(), getCompilationId(javaMethod));
         try (Scope ds = Debug.scope("Parsing", javaMethod, graph)) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             return graph;

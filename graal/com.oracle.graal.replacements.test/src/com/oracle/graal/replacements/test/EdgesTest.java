@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements.test;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
 
@@ -64,7 +65,7 @@ public class EdgesTest extends GraalCompilerTest {
 
     }
 
-    StructuredGraph graph = new StructuredGraph(AllowAssumptions.NO);
+    StructuredGraph graph = new StructuredGraph(AllowAssumptions.NO, INVALID_COMPILATION_ID);
     TestNode node;
     ConstantNode i1;
     ConstantNode i2;
