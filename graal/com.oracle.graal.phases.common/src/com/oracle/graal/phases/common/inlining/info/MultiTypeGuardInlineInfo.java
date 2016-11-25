@@ -245,7 +245,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert invoke.next() == continuation;
         invoke.setNext(null);
         returnMerge.setNext(continuation);
-        if (UseGraalInstrumentation.getValue()) {
+        if (UseGraalInstrumentation.getValue(graph.getOptions())) {
             InliningUtil.detachInstrumentation(invoke);
         }
         if (returnValuePhi != null) {

@@ -84,6 +84,18 @@ public class LockInstrumentationTest extends GraalCompilerTest {
         }
     }
 
+    /**
+     * Tests that the effect of instrumenting {@link #lockSnippet()} is as shown below.
+     *
+     * <pre>
+     *     synchronized (lock) {
+     *         lockAfterCheckPoint = checkpoint;  <--- instrumentation
+     *         checkpoint = true;
+     *         ClassA a = new ClassA();
+     *         a.notInlinedMethod();
+     *     }
+     * </pre>
+     */
     @Test
     public void testLock() {
         try (OverrideScope s = overrideOptions(GraalOptions.UseGraalInstrumentation, true)) {
@@ -91,8 +103,6 @@ public class LockInstrumentationTest extends GraalCompilerTest {
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "lockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlags();
-            // The monitorenter anchors. We expect the instrumentation set the flag before passing
-            // the checkpoint.
             InstalledCode code = getCode(method);
             code.executeVarargs();
             Assert.assertFalse("expected lock was performed before checkpoint", lockAfterCheckPoint);
@@ -108,9 +118,20 @@ public class LockInstrumentationTest extends GraalCompilerTest {
             checkpoint = true;
             a.notInlinedMethod();
         }
-
     }
 
+    /**
+     * Tests that the effect of instrumenting of {@link #postponeLockSnippet()} is as shown below.
+     *
+     * <pre>
+     *     ClassA a = new ClassA();
+     *     synchronized (lock) {
+     *         checkpoint = true;
+     *         lockAfterCheckPoint = checkpoint;  <--- instrumentation
+     *         a.notInlinedMethod();
+     *     }
+     * </pre>
+     */
     @Test
     public void testNonEscapeLock() {
         try (OverrideScope s = overrideOptions(GraalOptions.UseGraalInstrumentation, true)) {
@@ -128,5 +149,4 @@ public class LockInstrumentationTest extends GraalCompilerTest {
             throw new AssertionError(e);
         }
     }
-
 }

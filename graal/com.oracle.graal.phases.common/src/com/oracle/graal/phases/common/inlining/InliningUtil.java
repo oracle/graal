@@ -364,7 +364,7 @@ public class InliningUtil {
                 unwindNode = (UnwindNode) duplicates.get(unwindNode);
             }
 
-            if (UseGraalInstrumentation.getValue()) {
+            if (UseGraalInstrumentation.getValue(graph.getOptions())) {
                 detachInstrumentation(invoke);
             }
             finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
@@ -779,7 +779,7 @@ public class InliningUtil {
      * This method exclude InstrumentationNode from inlining heuristics.
      */
     public static int getNodeCount(StructuredGraph graph) {
-        if (UseGraalInstrumentation.getValue()) {
+        if (UseGraalInstrumentation.getValue(graph.getOptions())) {
             return graph.getNodeCount() - graph.getNodes().filter(InstrumentationNode.class).count();
         } else {
             return graph.getNodeCount();

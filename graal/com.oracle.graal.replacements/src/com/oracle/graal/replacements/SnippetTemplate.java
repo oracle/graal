@@ -1393,7 +1393,7 @@ public class SnippetTemplate {
 
             updateStamps(replacee, duplicates);
 
-            if (UseGraalInstrumentation.getValue()) {
+            if (UseGraalInstrumentation.getValue(replaceeGraph.getOptions())) {
                 for (InstrumentationNode instrumentation : replaceeGraph.getNodes().filter(InstrumentationNode.class)) {
                     if (instrumentation.getTarget() == replacee) {
                         instrumentation.replaceFirstInput(replacee, firstCFGNodeDuplicate);
