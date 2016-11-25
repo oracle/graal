@@ -196,7 +196,7 @@ public class LLVM {
 
             private void parseDynamicBitcodeLibraries(LLVMContext context) throws IOException {
                 visitBitcodeLibraries(source -> {
-                    LLVMParserResult result = parseFile(source, context);
+                    LLVMParserResult result = parseBitcodeFile(source, context);
                     handleParserResult(context, result);
                 });
             }

@@ -631,6 +631,8 @@ public class Function implements ParserListener {
                 elementType = ((PointerType) elementType).getPointeeType();
             } else if (elementType instanceof ArrayType) {
                 elementType = ((ArrayType) elementType).getElementType();
+            } else if (elementType instanceof VectorType) {
+                elementType = ((VectorType) elementType).getElementType();
             } else {
                 StructureType structure = (StructureType) elementType;
                 Type idx = symbols.get(indice);

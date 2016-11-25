@@ -890,8 +890,8 @@ def suBench(args=None):
     """runs a given benchmark with Sulong"""
     ensureLLVMBinariesExist()
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
-    compileWithClang(['-S', '-emit-llvm', '-o', 'test.ll', sulongArgs[0]])
-    return runLLVM(getBenchmarkOptions() + ['test.ll'] + vmArgs)
+    compileWithClang(['-c', '-emit-llvm', '-o', 'test.bc', sulongArgs[0]])
+    return runLLVM(getBenchmarkOptions() + ['test.bc'] + vmArgs)
 
 def getStandardLLVMOptFlags():
     """gets the optimal LLVM opt flags for Sulong"""
@@ -915,23 +915,23 @@ def suOptimalOpt(args=None):
     """use opt with the optimal opt flags for Sulong"""
     opt(getStandardLLVMOptFlags() + args)
 
-def compileWithClangOpt(inputFile, outputFile='test.ll'):
+def compileWithClangOpt(inputFile, outputFile='test.bc'):
     """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
-        compileWithClang(['-S', '-emit-llvm', '-o', outputFile, inputFile])
+        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, inputFile])
     elif ext == '.cpp':
-        compileWithClangPP(['-S', '-emit-llvm', '-o', outputFile, inputFile])
+        compileWithClangPP(['-c', '-emit-llvm', '-o', outputFile, inputFile])
     else:
         exit(ext + " is not supported!")
-    opt(['-S', '-o', outputFile, outputFile] + getStandardLLVMOptFlags())
+    opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags())
 
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
     ensureLLVMBinariesExist()
     vmArgs, other = truffle_extract_VM_args(args)
     inputFile = other[0]
-    outputFile = 'test.ll'
+    outputFile = 'test.bc'
     compileWithClangOpt(inputFile, outputFile)
     return runLLVM(getBenchmarkOptions() + [getSearchPathOption(), outputFile] + vmArgs)
 
@@ -939,7 +939,7 @@ def suOptCompile(args=None):
     """compiles a given benchmark and optimizes it with opt"""
     ensureLLVMBinariesExist()
     inputFile = args[0]
-    outputFile = 'test.ll'
+    outputFile = 'test.bc'
     compileWithClangOpt(inputFile, outputFile)
 
 def clangBench(args=None):
@@ -994,7 +994,7 @@ def getBitcodeLibrariesOption():
             for f in files:
                 # TODO: also allow other extensions, best introduce a command "compile" that compiles C, C++, Fortran and other files
                 if f.endswith('.c'):
-                    bitcodeFile = f.rsplit(".", 1)[0] + '.ll'
+                    bitcodeFile = f.rsplit(".", 1)[0] + '.bc'
                     absBitcodeFile = path + '/' + bitcodeFile
                     if not os.path.isfile(absBitcodeFile):
                         compileWithClangOpt(path + '/' + f, absBitcodeFile)
