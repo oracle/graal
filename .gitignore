@@ -6,6 +6,7 @@ mx.sulong/*.pyc
 mx.sulong/env
 mx.sulong/eclipse-launches/**
 mx.sulong/libs/*.ll
+mx.sulong/libs/*.bc
 .DS_Store
 build.xml
 workingsets.xml
