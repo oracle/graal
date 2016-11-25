@@ -233,7 +233,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/openmp-simd-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr36790.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr25989.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr27573.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/for-14.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr38676.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/pr48716.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/gomp/sharing-1.c
@@ -348,7 +347,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-8.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-14.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-23.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-4.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-sra-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/iinline-5.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/noclone-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/ipa-icf-18.c
