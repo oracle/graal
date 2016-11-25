@@ -624,8 +624,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void add(int size, Register dst, Register src, int immediate) {
-        if ((immediate & 7) != 0)
+        if ((immediate & 7) != 0) {
             assert dst.encoding != sp.encoding;
+        }
         if (immediate < 0) {
             sub(size, dst, src, -immediate);
         } else if (!(dst.equals(src) && immediate == 0)) {
