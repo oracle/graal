@@ -59,11 +59,11 @@ public final class GCCSuite extends BaseSuiteHarness {
     protected Path getTestDirectory() {
         return path;
     }
-    
+
     @Override
     protected Predicate<String> filterFileName() {
-		return s -> !s.endsWith("clangcpp_O0.bc");
-	}
+        return s -> !s.endsWith("clangcpp_O0.bc");
+    }
 
     @Override
     protected Path getSuiteDirectory() {
