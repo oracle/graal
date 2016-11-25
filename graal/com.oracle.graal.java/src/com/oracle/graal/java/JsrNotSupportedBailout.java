@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.java;
 
-import jdk.vm.ci.code.BailoutException;
+import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 
-public class JsrNotSupportedBailout extends BailoutException {
+public class JsrNotSupportedBailout extends PermanentBailoutException {
 
     private static final long serialVersionUID = -7476925652727154272L;
 

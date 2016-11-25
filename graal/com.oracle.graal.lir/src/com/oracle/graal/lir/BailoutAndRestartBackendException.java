@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir;
 
+import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
@@ -29,14 +30,12 @@ import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.options.StableOptionValue;
 
-import jdk.vm.ci.code.BailoutException;
-
 /**
  * Restarts the {@link LIR low-level} compilation with a modified configuration.
  * {@link BailoutAndRestartBackendException.Options#LIRUnlockBackendRestart LIRUnlockBackendRestart}
  * needs to be enabled. Use only for debugging purposes only.
  */
-public abstract class BailoutAndRestartBackendException extends BailoutException {
+public abstract class BailoutAndRestartBackendException extends RetryableBailoutException {
 
     public static class Options {
         // @formatter:off
@@ -53,10 +52,6 @@ public abstract class BailoutAndRestartBackendException extends BailoutException
 
     public BailoutAndRestartBackendException(Throwable cause, String msg) {
         super(cause, msg);
-    }
-
-    public BailoutAndRestartBackendException(boolean permanent, String msg) {
-        super(permanent, msg);
     }
 
     /** Returns {@code true} if the low-level compilation should be restarted. */

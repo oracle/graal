@@ -22,14 +22,14 @@
  */
 package com.oracle.graal.code;
 
-import jdk.vm.ci.code.BailoutException;
+import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 
 /**
  * Represents an exception with a stack trace in terms of the Java source being compiled instead of
  * the stack trace of the compiler. The exception of the compiler is saved as the cause of this
  * exception.
  */
-public abstract class SourceStackTrace extends BailoutException {
+public abstract class SourceStackTrace extends PermanentBailoutException {
     private static final long serialVersionUID = 2144811793442316776L;
 
     public static SourceStackTrace create(Throwable cause, String format, StackTraceElement[] elements) {
