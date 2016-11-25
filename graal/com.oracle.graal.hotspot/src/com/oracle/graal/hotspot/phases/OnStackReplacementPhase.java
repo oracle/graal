@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
+import com.oracle.graal.compiler.PermanentBailoutException;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalError;
@@ -48,7 +49,6 @@ import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class OnStackReplacementPhase extends Phase {
@@ -130,16 +130,16 @@ public class OnStackReplacementPhase extends Phase {
         NodeIterable<EntryMarkerNode> osrNodes = graph.getNodes(EntryMarkerNode.TYPE);
         EntryMarkerNode osr = osrNodes.first();
         if (osr == null) {
-            throw new BailoutException("No OnStackReplacementNode generated");
+            throw new PermanentBailoutException("No OnStackReplacementNode generated");
         }
         if (osrNodes.count() > 1) {
             throw new GraalError("Multiple OnStackReplacementNodes generated");
         }
         if (osr.stateAfter().locksSize() != 0) {
-            throw new BailoutException("OSR with locks not supported");
+            throw new PermanentBailoutException("OSR with locks not supported");
         }
         if (osr.stateAfter().stackSize() != 0) {
-            throw new BailoutException("OSR with stack entries not supported: %s", osr.stateAfter().toString(Verbosity.Debugger));
+            throw new PermanentBailoutException("OSR with stack entries not supported: %s", osr.stateAfter().toString(Verbosity.Debugger));
         }
         return osr;
     }
