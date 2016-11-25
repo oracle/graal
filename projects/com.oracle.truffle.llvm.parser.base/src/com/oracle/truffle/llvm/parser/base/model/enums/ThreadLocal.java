@@ -31,14 +31,28 @@ package com.oracle.truffle.llvm.parser.base.model.enums;
 
 public enum ThreadLocal {
 
-    NOT_THREADLOCAL,
-    THREADLOCAL,
-    DEFAULT_TLS_MODEL,
-    LOCALDYNAMIC,
-    INITIALEXEC,
-    LOCALEXEC;
+    NOT_THREADLOCAL(0L),
+    THREADLOCAL(1L),
+    DEFAULT_TLS_MODEL(2L),
+    INITIALEXEC(3L),
+    LOCALEXEC(4L);
+
+    private final long encodedValue;
+
+    ThreadLocal(long encodedValue) {
+        this.encodedValue = encodedValue;
+    }
+
+    public long getEncodedValue() {
+        return encodedValue;
+    }
 
     public static ThreadLocal decode(long value) {
-        return values()[(int) value];
+        for (ThreadLocal threadLocal : values()) {
+            if (threadLocal.getEncodedValue() == value) {
+                return threadLocal;
+            }
+        }
+        return THREADLOCAL;
     }
 }
