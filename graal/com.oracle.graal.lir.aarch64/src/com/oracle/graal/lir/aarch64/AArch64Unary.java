@@ -74,10 +74,11 @@ public class AArch64Unary {
             }
             AArch64Address address = input.toAddress();
             Register dst = asRegister(result);
-            if (isSigned)
+            if (isSigned) {
                 masm.ldrs(targetSize, srcSize, dst, address);
-            else
+            } else {
                 masm.ldr(srcSize, dst, address);
+            }
         }
 
         @Override

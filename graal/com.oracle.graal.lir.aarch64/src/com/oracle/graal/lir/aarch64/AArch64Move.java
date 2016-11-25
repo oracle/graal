@@ -432,18 +432,20 @@ public class AArch64Move {
     }
 
     private static void emitStackMove(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
-        try (ScratchRegister r1 = masm.getScratchRegister();
-                        ScratchRegister r2 = masm.getScratchRegister()) {
-            Register rscratch1 = r1.getRegister(), rscratch2 = r2.getRegister();
-            PlatformKind kind = input.getPlatformKind();
-            final int size = kind.getSizeInBytes() <= 4 ? 32 : 64;
+        try (ScratchRegister r1 = masm.getScratchRegister()) {
+            try (ScratchRegister r2 = masm.getScratchRegister()) {
+                Register rscratch1 = r1.getRegister();
+                Register rscratch2 = r2.getRegister();
+                PlatformKind kind = input.getPlatformKind();
+                final int size = kind.getSizeInBytes() <= 4 ? 32 : 64;
 
-            // Always perform stack -> stack copies through integer registers
-            crb.blockComment("[stack -> stack copy]");
-            AArch64Address src = loadStackSlotAddress(crb, masm, asStackSlot(input), rscratch2);
-            masm.ldr(size, rscratch1, src);
-            AArch64Address dst = loadStackSlotAddress(crb, masm, asStackSlot(result), rscratch2);
-            masm.str(size, rscratch1, dst);
+                // Always perform stack -> stack copies through integer registers
+                crb.blockComment("[stack -> stack copy]");
+                AArch64Address src = loadStackSlotAddress(crb, masm, asStackSlot(input), rscratch2);
+                masm.ldr(size, rscratch1, src);
+                AArch64Address dst = loadStackSlotAddress(crb, masm, asStackSlot(result), rscratch2);
+                masm.str(size, rscratch1, dst);
+            }
         }
     }
 
