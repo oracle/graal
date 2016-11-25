@@ -29,11 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.impl.asm;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI64Node;
 
 public abstract class LLVMAMD64RdtscNode extends LLVMI64Node {
 
+    @TruffleBoundary
     @Specialization
     public long executeRdtsc() {
         return System.nanoTime();
