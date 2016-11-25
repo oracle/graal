@@ -37,14 +37,13 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
 import com.oracle.graal.compiler.common.util.IntList;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.TTY;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.Variable;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -898,10 +897,12 @@ public final class Interval {
         if (!splitChildren.isEmpty()) {
             for (Interval interval : splitChildren) {
                 if (interval != result && interval.from() <= opId && opId < interval.to() + toOffset) {
-                    TTY.println(String.format("two valid result intervals found for opId %d: %d and %d", opId, result.operandNumber, interval.operandNumber));
-                    TTY.println(result.logString(allocator));
-                    TTY.println(interval.logString(allocator));
-                    throw new BailoutException("two valid result intervals found");
+                    /*
+                     * Should not happen: Try another compilation as it is very unlikely to happen
+                     * again.
+                     */
+                    throw new RetryableBailoutException("two valid result intervals found for opId %d: %d and %d\n%s\n", opId, result.operandNumber, interval.operandNumber,
+                                    result.logString(allocator), interval.logString(allocator));
                 }
             }
         }

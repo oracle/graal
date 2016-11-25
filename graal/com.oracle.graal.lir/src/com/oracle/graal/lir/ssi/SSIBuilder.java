@@ -30,6 +30,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
 
+import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
@@ -311,7 +312,11 @@ public final class SSIBuilder extends SSIBuilderBase {
                     iterationCount++;
 
                     if (changeOccurred && iterationCount > 50) {
-                        throw new BailoutException("too many iterations in computeGlobalLiveSets");
+                        /*
+                         * Very unlikely should never happen: If it happens we cannot guarantee it
+                         * won't happen again.
+                         */
+                        throw new PermanentBailoutException("too many iterations in computeGlobalLiveSets");
                     }
                 }
             } while (changeOccurred);

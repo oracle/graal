@@ -40,6 +40,8 @@ import java.util.List;
 
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
+import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
+import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.BitMap2D;
 import com.oracle.graal.debug.Debug;
@@ -354,7 +356,11 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     iterationCount++;
 
                     if (changeOccurred && iterationCount > 50) {
-                        throw new BailoutException("too many iterations in computeGlobalLiveSets");
+                        /*
+                         * Very unlikely should never happen: If it happens we cannot guarantee it
+                         * won't happen again.
+                         */
+                        throw new PermanentBailoutException("too many iterations in computeGlobalLiveSets");
                     }
                 }
             } while (changeOccurred);
@@ -639,7 +645,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 break;
 
             default:
-                throw new BailoutException("other states not allowed at this time");
+                throw GraalError.shouldNotReachHere("other states not allowed at this time");
         }
     }
 

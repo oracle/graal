@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.Allocatab
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.Indent;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
@@ -594,7 +595,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                     break;
 
                 default:
-                    throw new BailoutException("other states not allowed at this time");
+                    throw GraalError.shouldNotReachHere("other states not allowed at this time");
             }
         } else {
             interval.setSpillState(SpillState.NoOptimization);

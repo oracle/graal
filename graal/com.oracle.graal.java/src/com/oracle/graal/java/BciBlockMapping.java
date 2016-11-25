@@ -94,6 +94,7 @@ import com.oracle.graal.bytecode.BytecodeSwitch;
 import com.oracle.graal.bytecode.BytecodeTableSwitch;
 import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.debug.Debug;
 
 import jdk.vm.ci.code.BailoutException;
@@ -694,7 +695,7 @@ public final class BciBlockMapping {
     private static void addSuccessor(BciBlock[] blockMap, int predBci, BciBlock sux) {
         BciBlock predecessor = blockMap[predBci];
         if (sux.isExceptionEntry) {
-            throw new BailoutException("Exception handler can be reached by both normal and exceptional control flow");
+            throw new PermanentBailoutException("Exception handler can be reached by both normal and exceptional control flow");
         }
         predecessor.addSuccessor(sux);
     }

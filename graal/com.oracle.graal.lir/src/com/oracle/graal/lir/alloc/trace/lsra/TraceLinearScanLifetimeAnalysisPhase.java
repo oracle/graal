@@ -376,7 +376,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                     break;
 
                 default:
-                    throw new BailoutException("other states not allowed at this time");
+                    throw GraalError.shouldNotReachHere("other states not allowed at this time");
             }
         }
 

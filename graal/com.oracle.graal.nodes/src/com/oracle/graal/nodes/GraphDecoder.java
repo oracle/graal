@@ -39,6 +39,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import com.oracle.graal.compiler.common.Fields;
+import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.compiler.common.util.TypeReader;
 import com.oracle.graal.compiler.common.util.UnsafeArrayTypeReader;
 import com.oracle.graal.debug.Debug;
@@ -1815,7 +1816,7 @@ class LoopDetector implements Runnable {
     }
 
     private static RuntimeException bailout(String msg) {
-        throw new BailoutException("Graal implementation restriction: Method with " + LoopExplosionKind.MERGE_EXPLODE + " loop explosion " + msg);
+        throw new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion %s", LoopExplosionKind.MERGE_EXPLODE, msg);
     }
 
     private static IntegerSwitchNode createSwitch(ValuePhiNode switchedValue, SortedMap<Integer, AbstractBeginNode> dispatchTable, AbstractBeginNode defaultSuccessor) {

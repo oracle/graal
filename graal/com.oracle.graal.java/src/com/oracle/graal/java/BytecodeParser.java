@@ -271,6 +271,7 @@ import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
 import com.oracle.graal.bytecode.ResolvedJavaMethodBytecodeProvider;
 import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.LocationIdentity;
+import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.compiler.common.calc.Condition;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
@@ -2945,7 +2946,7 @@ public class BytecodeParser implements GraphBuilderContext {
     public BailoutException bailout(String string) {
         FrameState currentFrameState = createFrameState(bci(), null);
         StackTraceElement[] elements = GraphUtil.approxSourceStackTraceElement(currentFrameState);
-        BailoutException bailout = new BailoutException(string);
+        BailoutException bailout = new PermanentBailoutException(string);
         throw GraphUtil.createBailoutException(string, bailout, elements);
     }
 

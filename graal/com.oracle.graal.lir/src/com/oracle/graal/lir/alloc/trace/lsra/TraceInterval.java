@@ -38,6 +38,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
@@ -702,10 +703,12 @@ final class TraceInterval extends IntervalHint {
         if (!splitChildren.isEmpty()) {
             for (TraceInterval interval : splitChildren) {
                 if (interval != result && interval.from() <= opId && opId < interval.to() + toOffset) {
-                    TTY.println(String.format("two valid result intervals found for opId %d: %d and %d", opId, result.operandNumber, interval.operandNumber));
-                    TTY.println(result.logString());
-                    TTY.println(interval.logString());
-                    throw new BailoutException("two valid result intervals found");
+                    /*
+                     * Should not happen: Try another compilation as it is very unlikely to happen
+                     * again.
+                     */
+                    throw new RetryableBailoutException("two valid result intervals found for opId %d: %d and %d\n%s\n", opId, result.operandNumber, interval.operandNumber,
+                                    result.logString(), interval.logString());
                 }
             }
         }
