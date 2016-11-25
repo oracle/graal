@@ -80,7 +80,15 @@ public abstract class BaseTestHarness {
             System.err.println(testDiscoveryPath);
             whiteListFilter = p -> !whiteList.contains(p) && p.startsWith(new File(suiteDir.toString(), testDiscoveryPath).toPath());
         }
-        return collectTestCases(suiteDir, whiteListFilter);
+        Collection<Object[]> testCases = collectTestCases(suiteDir, whiteListFilter);
+        Set<Path> collectedFiles = testCases.stream().map(a -> (Path) a[0]).collect(Collectors.toSet());
+        Set<Path> missingTestCases = whiteList.stream().filter(p -> !collectedFiles.contains(p)).collect(Collectors.toSet());
+        if (!missingTestCases.isEmpty()) {
+            throw new AssertionError("The following tests are on the white list but not found:\n" + missingTestCases.stream().map(p -> p.toString()).collect(Collectors.joining("\n")));
+        } else {
+            System.err.println(String.format("Collected %d test folders.", testCases.size()));
+        }
+        return testCases;
     }
 
     private static Collection<Object[]> collectTestCases(Path suiteDir, Predicate<? super Path> whiteListFilter) throws AssertionError {

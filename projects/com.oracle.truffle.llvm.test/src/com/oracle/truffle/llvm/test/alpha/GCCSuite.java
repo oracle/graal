@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.test.alpha;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.function.Predicate;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -58,6 +59,11 @@ public final class GCCSuite extends BaseSuiteHarness {
     protected Path getTestDirectory() {
         return path;
     }
+    
+    @Override
+    protected Predicate<String> filterFileName() {
+		return s -> !s.endsWith("clangcpp_O0.bc");
+	}
 
     @Override
     protected Path getSuiteDirectory() {
