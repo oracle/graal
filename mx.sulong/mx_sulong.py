@@ -144,7 +144,7 @@ def travis1(args=None):
     with Task('TestTck', tasks) as t:
         if t: testsuites.travisRunSuite(['tck'])
     with Task('TestAsm', tasks) as t:
-        if t: runAsmTestCases()
+        if t: testsuites.travisRunSuite(['assembly'])
     with Task('TestTypes', tasks) as t:
         if t: runTypeTestCases()
     with Task('TestMainArgs', tasks) as t:
@@ -514,11 +514,6 @@ def runPolyglotTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestPolyglotEngine'])
-
-def runAsmTestCases(args=None):
-    """runs the asm test cases"""
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), 'com.oracle.truffle.llvm.test.inlineassembly.LLVMInlineAssemblyTest'])
 
 def runMainArgTestCases(args=None):
     """runs the test cases that exercise the passing of arguments to the main function"""
@@ -1023,7 +1018,6 @@ testCases = {
     'bench' : runBenchmarkTestCases,
     'types' : runTypeTestCases,
     'polyglot' : runPolyglotTestCases,
-    'asm' : runAsmTestCases,
     'compile' : runCompileTestCases,
     'argon2' : runTestArgon2,
     'lifetime' : runLifetimeTestCases,

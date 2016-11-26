@@ -27,44 +27,47 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.inlineassembly;
+package com.oracle.truffle.llvm.test.alpha;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.stream.Collectors;
 
-import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.llvm.test.LLVMPaths;
-import com.oracle.truffle.llvm.test.RemoteTestSuiteBase;
-import com.oracle.truffle.llvm.test.TestCaseFiles;
-import com.oracle.truffle.llvm.test.options.SulongTestOptions;
-import com.oracle.truffle.llvm.test.spec.SpecificationEntry;
-import com.oracle.truffle.llvm.test.spec.SpecificationFileReader;
+import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @RunWith(Parameterized.class)
-public class LLVMInlineAssemblyTest extends RemoteTestSuiteBase {
+public final class InlineAssemblyTest extends BaseSuiteHarness {
 
-    private final TestCaseFiles tuple;
+    private static final Path ASSEMBLY_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/inlineassemblytests").toPath();
 
-    public LLVMInlineAssemblyTest(TestCaseFiles testCase) {
-        this.tuple = testCase;
-    }
+    @Parameter(value = 0) public Path path;
+    @Parameter(value = 1) public String testName;
 
-    @Parameterized.Parameters
-    public static List<TestCaseFiles[]> getTestCases() {
-        List<String> testCaseFileNames = new ArrayList<>();
-        for (File file : LLVMPaths.INLINEASSEMBLY_TESTS.listFiles()) {
-            testCaseFileNames.add(file.getName());
+    @Parameters(name = "{1}")
+    public static Collection<Object[]> data() {
+        try {
+            return Files.walk(ASSEMBLY_SUITE_DIR).filter(isExecutable).map(f -> f.getParent()).map(f -> new Object[]{f, f.toString()}).collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new AssertionError("Test cases not found", e);
         }
-        List<SpecificationEntry> testCaseFileSpecList = SpecificationFileReader.getFiles(testCaseFileNames, LLVMPaths.INLINEASSEMBLY_TESTS);
-        return collectIncludedFiles(testCaseFileSpecList, new TestCaseGeneratorImpl(false, SulongTestOptions.TEST.useBinaryParser()));
     }
 
-    @Test
-    public void test() throws Throwable {
-        remoteLaunchAndTest(tuple);
+    @Override
+    protected Path getTestDirectory() {
+        return path;
     }
+
+    @Override
+    protected Path getSuiteDirectory() {
+        return ASSEMBLY_SUITE_DIR;
+    }
+
 }
