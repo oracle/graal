@@ -45,6 +45,7 @@ tests/cache/**
 tests/argon2/phc-winner-argon2/**
 tests/argon2/pthread-stub/*.ll
 tests/llvm/test-suite-3.2.src/**
+tests/nwcc/nwcc_0.8.3/**
 tests/gcc/gcc-5.2.0/**
 tests/nwcc/nwcc_0.8.3/**
 tests/benchmarksgame/binarytrees/**
