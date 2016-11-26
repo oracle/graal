@@ -1,2 +1,0 @@
-gcc.dg/tree-ssa/ssa-sccvn-3.c
-gcc.dg/torture/pr55890-1.c

@@ -1,7 +1,0 @@
-g++.dg/conversion/cond4.C
-g++.dg/conversion/bitfield3.C
-g++.dg/conversion/ptrmem8.C
-g++.dg/conversion/bitfield1.C
-g++.dg/conversion/bitfield10.C
-g++.dg/conversion/cast1.C
-g++.dg/conversion/enum1.C

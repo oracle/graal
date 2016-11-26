@@ -35,8 +35,6 @@ _sulongTestDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
 
-_nwccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/nwcc/")
-
 _benchGameSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/benchmarkgame/")
 
 _dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
@@ -164,7 +162,7 @@ def travis3(args=None):
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestNWCC', tasks) as t:
-        if t: runNWCCTestCases()
+        if t: testsuites.travisRunSuite(['nwcc'])
     with Task('TestGCCSuiteCompile', tasks) as t:
         if t: runCompileTestCases()
     with Task('TestLifetime', tasks) as t:
@@ -194,9 +192,8 @@ def pullTools(args=None):
     pullLLVMBinaries()
 
 def pullTestFramework(args=None):
-    """downloads the test suites (GCC, LLVM, NWCC, Argon2)"""
+    """downloads the test suites (GCC, LLVM, Argon2)"""
     pullGCCSuite()
-    pullNWCCSuite()
     ensureArgon2Exists()
 
 # platform independent
@@ -400,14 +397,6 @@ def pullGCCSuite(args=None):
     tar(localPath, suiteDir, ['gcc-5.2.0/gcc/testsuite/'])
     os.remove(localPath)
 
-def pullNWCCSuite(args=None):
-    """downloads the NWCC test suite"""
-    mx.ensure_dir_exists(_nwccSuiteDir)
-    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz"]
-    localPath = pullsuite(_nwccSuiteDir, urls)
-    tar(localPath, _nwccSuiteDir, ['nwcc_0.8.3/tests/', 'nwcc_0.8.3/test2/'], stripLevels=1)
-    os.remove(localPath)
-
 def pullLifetime(args=None):
     """downloads the lifetime reference outputs"""
     mx.ensure_dir_exists(_lifetimeReferenceDir)
@@ -509,13 +498,6 @@ def runBenchmarkTestCases(args=None):
     ensureBenchmarkSuiteExists()
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.ShootoutsTestSuite"])
-
-def runNWCCTestCases(args=None):
-    """runs the NWCC (Nils Weller's C Compiler) test cases"""
-    ensureLLVMBinariesExist()
-    ensureNWCCSuiteExists()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + [getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.NWCCTestSuite"])
 
 def runTypeTestCases(args=None):
     """runs the type test cases"""
@@ -836,11 +818,6 @@ def ensureDragonEggExists():
     if not os.path.exists(_dragonEggPath):
         pullInstallDragonEgg()
 
-def ensureNWCCSuiteExists():
-    """downloads the NWCC suite if not downloaded yet"""
-    if not os.path.exists(_nwccSuiteDir + 'tests'):
-        pullNWCCSuite()
-
 def ensureBenchmarkSuiteExists():
     """downloads the language benchmark game if not downloaded yet"""
     if not os.path.exists(_benchGameSuiteDir):
@@ -1044,7 +1021,6 @@ def sulongBuild(args=None):
 
 testCases = {
     'bench' : runBenchmarkTestCases,
-    'nwcc' : runNWCCTestCases,
     'types' : runTypeTestCases,
     'polyglot' : runPolyglotTestCases,
     'asm' : runAsmTestCases,
@@ -1081,7 +1057,6 @@ mx.update_commands(_suite, {
     'su-pullbenchmarkgame' : [pullBenchmarkGame, ''],
     'su-pulldeps' : [downloadDependencies, ''],
     'su-pullllvmbinaries' : [pullLLVMBinaries, ''],
-    'su-pullnwccsuite' : [pullNWCCSuite, ''],
     'su-pullgccsuite' : [pullGCCSuite, ''],
     'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],

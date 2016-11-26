@@ -1,5 +1,0 @@
-gcc.dg/h8300-bit-insn-ice2.c
-gcc.dg/ssp-1.c
-gcc.dg/ssp-2.c
-gcc.dg/stackprotectexplicit1.c
-gcc.dg/h8300-bit-insn-ice.c

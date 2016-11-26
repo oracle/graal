@@ -1,5 +1,0 @@
-gfortran.fortran-torture/execute/slash_edit.f90
-gfortran.fortran-torture/execute/intrinsic_trailz.f90
-gfortran.fortran-torture/execute/intrinsic_leadz.f90
-gfortran.fortran-torture/execute/direct_io.f90
-gfortran.fortran-torture/execute/pr40021.f

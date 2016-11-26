@@ -1,6 +1,0 @@
-tests/gnustuff.c
-tests/trailing_comma_bug.c
-tests/init.c
-tests/structinitbug.c
-tests/structret.c
-tests/abitest.c
