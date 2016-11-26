@@ -16358,3 +16358,17 @@ gcc-5.2.0/gcc/testsuite/gfortran.dg/lto/pr45586-2_0.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/module_init_1.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/pr32140.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/dummy_procedure_3.f90
+gcc-5.2.0/gcc/testsuite/g++.dg/other/pr55650.C
+gcc-5.2.0/gcc/testsuite/gfortran.dg/optional_absent_2.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/use_25.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/matmul_9.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/proc_ptr_34.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/proc_ptr_comp_37.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/use_26.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/use_23.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/pointer_intent_6.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/intrinsic_8.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/bound_simplification_3.f90
+gcc-5.2.0/gcc/testsuite/gfortran.dg/intrinsic_size_3.f90
+
+
