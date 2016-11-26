@@ -617,7 +617,6 @@ gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20010329-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/931102-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/struct-ret-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20011008-3.c
-gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/941014-2.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/scope-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/20000422-1.c
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/execute/990527-1.c
