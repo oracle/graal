@@ -1,6 +1,6 @@
 cache:
   directories:
-  - projects/com.oracle.truffle.llvm.tools/tools
+  - tools
   - tests/cache
 sudo: required
 language: java

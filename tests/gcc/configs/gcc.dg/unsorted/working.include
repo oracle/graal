@@ -524,7 +524,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/tree-ssa/20040210-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/tree-ssa/vrp66.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/tree-ssa/20040319-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/builtin-object-size-7.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/pr43084.c UNDEFINED_RETURN_CODE
 gcc-5.2.0/gcc/testsuite/gcc.dg/builtin-object-size-13.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/pr32912-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/builtin-object-size-8.c
@@ -542,5 +541,4 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/pr16660-3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/pr16660-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/global-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/torture/stackalign/alloca-1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/autopar/pr39500-2.c UNDEFINED_RETURN_CODE
 gcc-5.2.0/gcc/testsuite/gcc.dg/ipa/inlinehint-3.c

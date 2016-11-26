@@ -27,21 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tools;
+package com.oracle.truffle.llvm.test.util;
 
-import java.io.File;
+public class PathUtil {
 
-import com.oracle.truffle.llvm.tools.LLVMToolPaths.LLVMTool;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil;
-
-public final class LLC {
-
-    private LLC() {
+    public static String replaceExtension(String str, String extension) {
+        String withoutExtension = stripExtension(str);
+        return withoutExtension + extension;
     }
 
-    public static void compileBitCodeToObjectFile(File bitcodeFile, File objectFile) {
-        String compilationCommand = LLVMToolPaths.getLLVMProgram(LLVMTool.COMPILER) + " -filetype=obj " + bitcodeFile.getAbsolutePath() + " -o " + objectFile.getAbsolutePath();
-        ProcessUtil.executeNativeCommandZeroReturn(compilationCommand);
+    public static String getExtension(String str) {
+        int pos = str.lastIndexOf(".");
+        if (pos == -1) {
+            return null;
+        }
+        return str.substring(pos);
+    }
+
+    public static String stripExtension(String str) {
+        if (str == null) {
+            throw new IllegalArgumentException("string is null!");
+        }
+        int pos = str.lastIndexOf(".");
+        if (pos == -1) {
+            return str;
+        }
+        return str.substring(0, pos);
     }
 
 }

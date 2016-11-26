@@ -27,27 +27,21 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test;
+package com.oracle.truffle.llvm.test.alpha;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.util.ArrayList;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -62,86 +56,36 @@ import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.test.util.LifetimeFileFormat;
 import com.oracle.truffle.llvm.test.util.LifetimeFileParserEventListener;
 
-@RunWith(Parameterized.class)
-public class TestLifetimeAnalysisGCC extends TestSuiteBase {
+public final class LifetimeAnalysisTest {
 
-    // TODO in the long term we should replace this
-    private static final String[] excludedFiles = new String[]{
-                    "projects/com.oracle.truffle.llvm.test/suites/gcc/gcc-5.2.0/gcc/testsuite/gcc.dg/pr43419.c",
-                    "projects/com.oracle.truffle.llvm.test/suites/gcc/gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/integer_select.f90"
-    };
-
-    private TestCaseFiles tuple;
-    private File referenceOutputFile;
     private final LifetimeFileFormat.Writer fileWriter;
-    private BufferedReader referenceFileReader;
-    private Map<String, LLVMLifetimeAnalysis> referenceResults;
+    private final Map<String, LLVMLifetimeAnalysis> referenceResults;
 
-    public TestLifetimeAnalysisGCC(TestCaseFiles tuple) throws IOException {
-        this.tuple = tuple;
-        setUpReferenceFilePath(tuple);
+    private LifetimeAnalysisTest(LifetimeFileFormat.Writer fileWriter, Map<String, LLVMLifetimeAnalysis> referenceResults) {
+        this.fileWriter = fileWriter;
+        this.referenceResults = referenceResults;
+    }
+
+    public static void test(Path bcFile, Path ltaFile, Path ltaGenDir) throws Throwable {
+        LifetimeFileFormat.Writer fileWriter;
+        Map<String, LLVMLifetimeAnalysis> referenceResults = null;
+        BufferedReader referenceFileReader;
         if (SulongTestOptions.TEST.generateLifetimeReferenceOutput()) {
-            referenceOutputFile.getParentFile().mkdirs();
-            fileWriter = new LifetimeFileFormat.Writer(new PrintStream(referenceOutputFile));
+            fileWriter = new LifetimeFileFormat.Writer(new PrintStream(ltaGenDir.toFile()));
         } else {
             fileWriter = null;
-            FileInputStream fis = new FileInputStream(referenceOutputFile);
+            FileInputStream fis = new FileInputStream(ltaFile.toFile());
             referenceFileReader = new BufferedReader(new InputStreamReader(fis));
-            referenceResults = parseReferenceResults();
+            referenceResults = parseReferenceResults(referenceFileReader);
         }
+        new LifetimeAnalysisTest(fileWriter, referenceResults).test(bcFile);
     }
 
-    private void setUpReferenceFilePath(TestCaseFiles tuple) {
-        String referenceFileRelative = tuple.getOriginalFile().getAbsolutePath().substring(LLVMPaths.GCC_TEST_SUITE.getAbsolutePath().length() + 1) + ".lifetime";
-        referenceOutputFile = new File(LLVMPaths.LIFETIME_ANALYSIS_REFERENCE_FILES, referenceFileRelative);
-    }
-
-    @Parameterized.Parameters
-    public static List<TestCaseFiles[]> getTestFiles() throws IOException {
-        File configFile = LLVMPaths.GCC_TEST_SUITE_CONFIG;
-        File testSuite = LLVMPaths.GCC_TEST_SUITE;
-        List<TestCaseFiles[]> files = getTestCasesFromConfigFile(configFile, testSuite, new TestCaseGeneratorImpl(false, true), true);
-
-        final List<TestCaseFiles[]> filteredFiles = new ArrayList<>();
-        for (int i = 0; i < files.size(); i++) {
-            TestCaseFiles[] testCaseFilesArray = files.get(i);
-            int index = 0;
-            while (index < testCaseFilesArray.length) {
-                if (isExcluded(testCaseFilesArray[index])) {
-                    final TestCaseFiles[] newTestCaseFiles = new TestCaseFiles[testCaseFilesArray.length - 1];
-                    int targetIndex = 0;
-                    for (int j = 0; j < testCaseFilesArray.length; j++) {
-                        if (index != j) {
-                            newTestCaseFiles[targetIndex++] = testCaseFilesArray[j];
-                        }
-                    }
-                    testCaseFilesArray = newTestCaseFiles;
-                } else {
-                    index++;
-                }
-            }
-            if (testCaseFilesArray.length != 0) {
-                filteredFiles.add(testCaseFilesArray);
-            }
-        }
-        return filteredFiles;
-    }
-
-    private static boolean isExcluded(TestCaseFiles testCase) {
-        for (String excludedFilename : excludedFiles) {
-            if (testCase.getOriginalFile().getAbsolutePath().endsWith(excludedFilename)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Test
-    public void test() throws Throwable {
+    private void test(Path bcFile) throws Throwable {
         try {
-            LLVMLogger.info("original file: " + tuple.getOriginalFile());
+            LLVMLogger.info("original file: " + bcFile.toString());
 
-            final LLVMBitcodeVisitor.BitcodeParserResult parserResult = LLVMBitcodeVisitor.BitcodeParserResult.getFromSource(Source.newBuilder(tuple.getBitCodeFile().getAbsoluteFile()).build());
+            final LLVMBitcodeVisitor.BitcodeParserResult parserResult = LLVMBitcodeVisitor.BitcodeParserResult.getFromSource(Source.newBuilder(bcFile.toFile().getAbsoluteFile()).build());
             parserResult.getModel().accept(new ModelVisitor() {
                 @Override
                 public void ifVisitNotOverwritten(Object obj) {
@@ -162,7 +106,7 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
 
                     } else {
                         LLVMLifetimeAnalysis expected = referenceResults.get(functionName);
-                        assertResultsEqual(functionName, expected, lifetimes);
+                        assertResultsEqual(functionName, expected, lifetimes, bcFile);
                     }
 
                 }
@@ -180,23 +124,22 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
             });
 
         } catch (Throwable e) {
-            recordError(tuple, e);
             throw e;
         }
     }
 
-    private void assertResultsEqual(String functionName, LLVMLifetimeAnalysis expected, LLVMLifetimeAnalysis actual) {
+    private static void assertResultsEqual(String functionName, LLVMLifetimeAnalysis expected, LLVMLifetimeAnalysis actual, Path bcFile) {
         if (expected == null) {
-            LLVMLogger.unconditionalInfo(String.format("No reference result for test %s", tuple.getBitCodeFile().getAbsolutePath()));
+            LLVMLogger.unconditionalInfo(String.format("No reference result for test %s", bcFile.toFile().getAbsolutePath()));
             return;
         }
         final Map<String, Set<String>> expectedBeginDead = getCommonFromInstructionBlocks(expected.getNullableBefore());
         final Map<String, Set<String>> actualBeginDead = getCommonFromInstructionBlocks(actual.getNullableBefore());
-        assertMapsEqual(functionName, expectedBeginDead, actualBeginDead);
+        assertMapsEqual(functionName, expectedBeginDead, actualBeginDead, bcFile);
 
         final Map<String, Set<String>> expectedEndDead = getCommonFromInstructionBlocks(expected.getNullableAfter());
         final Map<String, Set<String>> actualEndDead = getCommonFromInstructionBlocks(actual.getNullableAfter());
-        assertMapsEqual(functionName, expectedEndDead, actualEndDead);
+        assertMapsEqual(functionName, expectedEndDead, actualEndDead, bcFile);
     }
 
     private static Map<String, Set<String>> getCommonFromInstructionBlocks(Map<InstructionBlock, FrameSlot[]> original) {
@@ -222,20 +165,21 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         }
     }
 
-    private void assertMapsEqual(String functionName, Map<String, Set<String>> expected, Map<String, Set<String>> actual) {
+    private static void assertMapsEqual(String functionName, Map<String, Set<String>> expected, Map<String, Set<String>> actual, Path bcFile) {
         if (expected.size() != actual.size()) {
-            throw new AssertionError(buildErrorMessage(functionName, "Different Map Sizes!"));
+            throw new AssertionError(buildErrorMessage(functionName, "Different Map Sizes!", bcFile));
         }
 
         for (final String name : expected.keySet()) {
             if (!actual.containsKey(name)) {
-                throw new AssertionError(buildErrorMessage(functionName, String.format("Cannot find block %s in %s", name, asString(actual.keySet()))));
+                throw new AssertionError(buildErrorMessage(functionName, String.format("Cannot find block %s in %s", name, asString(actual.keySet())), bcFile));
             }
 
             final Set<String> expectedFrameSlots = expected.get(name);
             final Set<String> actualFrameSlots = actual.get(name);
             if (!setsEqual(expectedFrameSlots, actualFrameSlots)) {
-                throw new AssertionError(buildErrorMessage(functionName, String.format("Nullers do not match: should be %s, but are %s", asString(expectedFrameSlots), asString(actualFrameSlots))));
+                throw new AssertionError(
+                                buildErrorMessage(functionName, String.format("Nullers do not match: should be %s, but are %s", asString(expectedFrameSlots), asString(actualFrameSlots)), bcFile));
             }
         }
     }
@@ -257,8 +201,8 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         return joiner.toString();
     }
 
-    private String buildErrorMessage(String functionName, String message) {
-        return String.format("Error in Function %s in File %s: %s", functionName, tuple.getBitCodeFile().getAbsolutePath(), message);
+    private static String buildErrorMessage(String functionName, String message, Path bcFile) {
+        return String.format("Error in Function %s in File %s: %s", functionName, bcFile.toFile().getAbsolutePath(), message);
     }
 
     private static InstructionBlock createInstructionBlock(String name) {
@@ -267,7 +211,7 @@ public class TestLifetimeAnalysisGCC extends TestSuiteBase {
         return namedBlock;
     }
 
-    private Map<String, LLVMLifetimeAnalysis> parseReferenceResults() throws IOException {
+    private static Map<String, LLVMLifetimeAnalysis> parseReferenceResults(BufferedReader referenceFileReader) throws IOException {
         Map<String, LLVMLifetimeAnalysis> results = new HashMap<>();
 
         LifetimeFileFormat.parse(referenceFileReader, new LifetimeFileParserEventListener() {

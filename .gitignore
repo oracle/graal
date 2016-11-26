@@ -28,11 +28,9 @@ projects/*/\bin
 projects/*/\.checkstyle
 projects/*/*.iml
 projects/*/\.factorypath
-projects/com.oracle.truffle.llvm.test/suites/**
-projects/com.oracle.truffle.llvm.tools/tools/**
-projects/com.oracle.truffle.llvm.bench/languagegame/**
-projects/com.oracle.truffle.llvm.test/flush.temp.ll
 
+tools/**
+projects/com.oracle.truffle.llvm.bench/languagegame/**
 projects/com.intel.llvm.ireditor/plugin.xml
 projects/com.intel.llvm.ireditor/plugin.xml_gen
 projects/com.intel.llvm.ireditor/build.properties
@@ -47,6 +45,7 @@ tests/argon2/pthread-stub/*.ll
 tests/llvm/test-suite-3.2.src/**
 tests/nwcc/nwcc_0.8.3/**
 tests/gcc/gcc-5.2.0/**
+tests/gcc/lta/**
 tests/nwcc/nwcc_0.8.3/**
 tests/benchmarksgame/binarytrees/**
 tests/benchmarksgame/binarytreesredux/**

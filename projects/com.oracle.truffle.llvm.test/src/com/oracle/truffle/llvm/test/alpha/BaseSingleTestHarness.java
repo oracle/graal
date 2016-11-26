@@ -40,8 +40,8 @@ import org.junit.Test;
 
 import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil;
-import com.oracle.truffle.llvm.tools.util.ProcessUtil.ProcessResult;
+import com.oracle.truffle.llvm.test.util.ProcessUtil;
+import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
 
 public abstract class BaseSingleTestHarness extends BaseTestHarness {
 

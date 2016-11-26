@@ -24,18 +24,11 @@ _libPath = join(_mx, 'libs')
 _root = join(_suite.dir, "projects/")
 _testDir = join(_suite.dir, "tests/")
 _parserDir = join(_root, "com.intel.llvm.ireditor")
-_testProjectDir = join(_root, "com.oracle.truffle.llvm.test/")
 _argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
-_lifetimeReferenceDir = join(_testProjectDir, "lifetime/")
-_toolDir = join(_root, "com.oracle.truffle.llvm.tools/")
-_clangPath = _toolDir + 'tools/llvm/bin/clang'
+_toolDir = join(_suite.dir, "tools/")
+_clangPath = _toolDir + 'llvm/bin/clang'
 
-_sulongTestDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
-
-_gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
-_gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
-
-_dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
+_dragonEggPath = _toolDir + 'dragonegg/dragonegg-3.2.src/dragonegg.so'
 
 _inlineAssemblySrcDir = join(_root, "com.oracle.truffle.llvm.asm.amd64/src/")
 _inlineAssemblyGrammer = join(_inlineAssemblySrcDir, "InlineAssembly.atg")
@@ -75,7 +68,6 @@ httpCheckFiles = [
 # the file paths that we want to check with clang-format
 clangFormatCheckPaths = [
     _suite.dir + '/include',
-    _sulongTestDir,
     _libPath,
     _captureSrcDir
 ]
@@ -162,9 +154,9 @@ def travis3(args=None):
     with Task('TestNWCC', tasks) as t:
         if t: testsuites.travisRunSuite(['nwcc'])
     with Task('TestGCCSuiteCompile', tasks) as t:
-        if t: runCompileTestCases()
+        if t: testsuites.travisRunSuite(['parserTorture'])
     with Task('TestLifetime', tasks) as t:
-        if t: runLifetimeTestCases()
+        if t: testsuites.travisRunSuite(['lifetimeanalysis'])
 
 def travisArgon2(args=None):
     """executes the argon2 Travis job (Javac build, argon2 test cases)"""
@@ -190,13 +182,12 @@ def pullTools(args=None):
 
 def pullTestFramework(args=None):
     """downloads the test suites (GCC, LLVM, Argon2)"""
-    pullGCCSuite()
     ensureArgon2Exists()
 
 # platform dependent
 def pullLLVMBinaries(args=None):
     """downloads the LLVM binaries"""
-    toolDir = join(_toolDir, "tools/llvm")
+    toolDir = join(_toolDir, "llvm")
     mx.ensure_dir_exists(toolDir)
     osStr = mx.get_os()
     arch = mx.get_arch()
@@ -284,19 +275,19 @@ def getGPP():
 # platform independent
 def pullInstallDragonEgg(args=None):
     """downloads and installs dragonegg (assumes that compatible GCC and G++ versions are installed)"""
-    toolDir = join(_toolDir, "tools/dragonegg")
+    toolDir = join(_toolDir, "dragonegg")
     mx.ensure_dir_exists(toolDir)
     url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/dragonegg-3.2.src.tar.gz'
     localPath = pullsuite(toolDir, [url])
     tar(localPath, toolDir)
     os.remove(localPath)
     if mx.get_os() == 'darwin':
-        gccToolDir = join(_toolDir, "tools/gcc")
+        gccToolDir = join(_toolDir, "gcc")
         url = 'https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-4.6.4.tar.gz'
         localPath = pullsuite(gccToolDir, [url])
         tar(localPath, gccToolDir)
         os.remove(localPath)
-        mx.run(['patch', '-p1', _toolDir + 'tools/dragonegg/dragonegg-3.2.src/Makefile', 'mx.sulong/dragonegg-mac.patch'])
+        mx.run(['patch', '-p1', _toolDir + 'dragonegg/dragonegg-3.2.src/Makefile', 'mx.sulong/dragonegg-mac.patch'])
     os.environ['GCC'] = getGCC()
     os.environ['CXX'] = getGPP()
     os.environ['CC'] = getGCC()
@@ -304,7 +295,7 @@ def pullInstallDragonEgg(args=None):
     os.environ['LLVM_CONFIG'] = findLLVMProgram('llvm-config')
     print os.environ['LLVM_CONFIG']
     compileCommand = ['make']
-    return mx.run(compileCommand, cwd=_toolDir + 'tools/dragonegg/dragonegg-3.2.src')
+    return mx.run(compileCommand, cwd=_toolDir + 'dragonegg/dragonegg-3.2.src')
 
 def tar(tarFile, currentDir, subDirInsideTar=None, stripLevels=None):
     with tarfile.open(tarFile) as tar:
@@ -363,24 +354,6 @@ def pullTestSuite(library, destDir, **kwargs):
     sha1Path = localPath + '.sha1'
     if os.path.exists(sha1Path):
         os.remove(sha1Path)
-
-# platform independent
-def pullGCCSuite(args=None):
-    """downloads the GCC test suite"""
-    suiteDir = _gccSuiteDir
-    mx.ensure_dir_exists(suiteDir)
-    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz"]
-    localPath = pullsuite(suiteDir, urls)
-    tar(localPath, suiteDir, ['gcc-5.2.0/gcc/testsuite/'])
-    os.remove(localPath)
-
-def pullLifetime(args=None):
-    """downloads the lifetime reference outputs"""
-    mx.ensure_dir_exists(_lifetimeReferenceDir)
-    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/lifetime-analysis-ref.tar.gz"]
-    localPath = pullsuite(_lifetimeReferenceDir, urls)
-    tar(localPath, _lifetimeReferenceDir)
-    os.remove(localPath)
 
 def truffle_extract_VM_args(args, useDoubleDash=False):
     vmArgs, remainder = [], []
@@ -472,12 +445,6 @@ def runTypeTestCases(args=None):
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
 
-def runLifetimeTestCases(args=None):
-    """runs the lifetime analysis test cases"""
-    ensureLifetimeReferenceExists()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestLifetimeAnalysisGCC'])
-
 def runPolyglotTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
@@ -487,12 +454,6 @@ def runPipeTestCases(args=None):
     """runs the stdout pipe testcases """
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(vmArgs + ['com.oracle.truffle.llvm.test.alpha.CaptureOutputTest'])
-
-def runCompileTestCases(args=None):
-    """runs the compile (no execution) test cases of the GCC suite"""
-    ensureGCCSuiteExists()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestGCCCompileSuite'])
 
 def compileArgon2(main, optimize, cflags=None):
     if cflags is None:
@@ -589,9 +550,6 @@ def getCommonUnitTestOptions():
 # PE does not work yet for all test cases
 def compilationSucceedsOption():
     return "-Dgraal.TruffleCompilationExceptionsAreFatal=true"
-
-def getRemoteClasspathOption():
-    return "-Dsulong.TestRemoteBootPath=-Xbootclasspath/p:" + mx.distribution('truffle:TRUFFLE_API').path + " " + getLLVMRootOption() + " " + compilationSucceedsOption() + " -XX:-UseJVMCIClassLoader -Dsulong.Debug=false -Djvmci.Compiler=graal"
 
 def getBenchmarkOptions():
     return [
@@ -707,7 +665,7 @@ def findLLVMProgram(llvmProgram):
     if installedProgram is None:
         if not os.path.exists(_clangPath):
             pullLLVMBinaries()
-        programPath = _toolDir + 'tools/llvm/bin/' + llvmProgram
+        programPath = _toolDir + 'llvm/bin/' + llvmProgram
         if not os.path.exists(programPath):
             exit(llvmProgram + ' is not a supported LLVM program!')
         return programPath
@@ -743,7 +701,7 @@ def compileWithClang(args=None):
 def compileWithGCC(args=None):
     """runs GCC"""
     ensureLLVMBinariesExist()
-    gccPath = _toolDir + 'tools/llvm/bin/gcc'
+    gccPath = _toolDir + 'llvm/bin/gcc'
     return mx.run([gccPath] + args)
 
 def opt(args=None):
@@ -752,7 +710,7 @@ def opt(args=None):
 
 def link(args=None):
     """Links LLVM bitcode into an su file."""
-    return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.tools.Linker"] + args)
+    return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.runtime.Linker"] + args)
 
 def compileWithClangPP(args=None):
     """runs Clang++"""
@@ -765,11 +723,6 @@ def getClasspathOptions():
 def printOptions(args=None):
     """prints the Sulong Java property options"""
     return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.runtime.options.LLVMOptions"])
-
-def ensureGCCSuiteExists():
-    """downloads the GCC suite if not downloaded yet"""
-    if not os.path.exists(_gccSuiteDirRoot):
-        pullGCCSuite()
 
 def ensureDragonEggExists():
     """downloads dragonegg if not downloaded yet"""
@@ -786,11 +739,6 @@ def ensureArgon2Exists():
     """downloads Argon2 if not downloaded yet"""
     if not os.path.exists(_argon2Dir):
         pullTestSuite('ARGON2', _argon2Dir, stripLevels=1)
-
-def ensureLifetimeReferenceExists():
-    """downloads the lifetime analysis reference outputs if not downloaded yet"""
-    if not os.path.exists(_lifetimeReferenceDir):
-        pullLifetime()
 
 def suBench(args=None):
     """runs a given benchmark with Sulong"""
@@ -975,9 +923,7 @@ def sulongBuild(args=None):
 testCases = {
     'types' : runTypeTestCases,
     'polyglot' : runPolyglotTestCases,
-    'compile' : runCompileTestCases,
     'argon2' : runTestArgon2,
-    'lifetime' : runLifetimeTestCases,
     'pipe' : runPipeTestCases,
 }
 
@@ -1006,7 +952,6 @@ mx.update_commands(_suite, {
     'su-options' : [printOptions, ''],
     'su-pulldeps' : [downloadDependencies, ''],
     'su-pullllvmbinaries' : [pullLLVMBinaries, ''],
-    'su-pullgccsuite' : [pullGCCSuite, ''],
     'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],

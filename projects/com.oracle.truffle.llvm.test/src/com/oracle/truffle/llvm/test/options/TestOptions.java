@@ -34,21 +34,11 @@ import com.oracle.truffle.llvm.option.OptionCategory;
 
 @OptionCategory(name = "Test Options")
 abstract class TestOptions {
-
-    @Option(commandLineName = "TestRemoteBootPath", help = "The boot classpath for the remote JVM used to capture native printf and other output.", name = "remoteTestBootClasspath") //
-    protected static final String REMOTE_TEST_BOOT_CLASSPATH = null;
-
-    @Option(commandLineName = "LaunchRemoteTestCasesLocally", help = "Launches the test cases which are usually launched in a separate JVM in the currently running one.", name = "runRemoteTestcasesAsLocal") //
-    protected static final Boolean REMOTE_TEST_CASES_AS_LOCAL = false;
-
     @Option(commandLineName = "LifetimeTestsGenerateReferenceOutput", help = "Generate the reference output file for the lifetime test cases based on the current version of the lifetime analysis.", name = "generateLifetimeReferenceOutput") //
     protected static final Boolean LIFETIME_TEST_GENERATE_REFERENCE_OUTPUT = false;
 
     @Option(commandLineName = "TestDiscoveryPath", help = "Looks for newly supported test cases in the specified path. E.g., when executing the GCC test cases you can use /gcc.c-torture/execute to discover newly working torture test cases.", //
                     name = "testDiscoveryPath") //
     protected static final String TEST_DISCOVERY_PATH = null;
-
-    @Option(commandLineName = "TestBinaryParser", help = "Run the testsuite using the binary parser.", name = "useBinaryParser") //
-    protected static final Boolean TEST_BINARY_PARSER = false;
 
 }

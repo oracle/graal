@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -43,55 +44,48 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @RunWith(Parameterized.class)
-public final class ShootoutsSuite extends BaseSingleTestHarness {
+public final class ShootoutsSuite extends BaseSulongOnlyHarness {
 
     private static final Path SHOOTOUTS_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/benchmarksgame").toPath();
-    private static final Path SHOOTOUTS_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/benchmarksgame/configs").toPath();
 
     @Parameter(value = 0) public Path path;
-    @Parameter(value = 1) public String testName;
+    @Parameter(value = 1) public RunConfiguration configuration;
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return collectTestCases(SHOOTOUTS_CONFIG_DIR, SHOOTOUTS_SUITE_DIR);
+
+        final Map<Path, RunConfiguration> runs = new HashMap<>();
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/binarytrees/binarytrees.gcc-2.gcc").toPath(), new RunConfiguration(0, null, "12"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/binarytrees/binarytrees.gcc").toPath(), new RunConfiguration(0, null, "12"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fannkuchredux/fannkuchredux.cint").toPath(), new RunConfiguration(0, null, "9"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fannkuchredux/fannkuchredux.gcc").toPath(), new RunConfiguration(0, null, "9"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.cint").toPath(), new RunConfiguration(0, null, "100"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-4.gcc").toPath(), new RunConfiguration(0, null, "100"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-5.gcc").toPath(), new RunConfiguration(0, null, "100"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fastaredux/fastaredux.gcc-2.gcc").toPath(), new RunConfiguration(0, null));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fastaredux/fastaredux.gcc-3.gcc").toPath(), new RunConfiguration(0, null));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.cint-2.cint").toPath(), new RunConfiguration(0, null, "500"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-2.gcc").toPath(), new RunConfiguration(0, null, "500"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-8.gcc").toPath(), new RunConfiguration(0, null, "500"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-9.gcc").toPath(), new RunConfiguration(0, null, "500"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/nbody/nbody.cint").toPath(), new RunConfiguration(0, null, "10"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/spectralnorm/spectralnorm.cint").toPath(), new RunConfiguration(0, null, "150"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/spectralnorm/spectralnorm.gcc-2.gcc").toPath(), new RunConfiguration(0, null, "150"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/pidigits/pidigits.cint-4.cint").toPath(), new RunConfiguration(0, null, "10000"));
+        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/pidigits/pidigits.gcc").toPath(), new RunConfiguration(0, null, "10000"));
+
+        return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k)}).collect(Collectors.toList());
+
     }
 
     @Override
-    protected Path getTestDirectory() {
+    public Path getPath() {
         return path;
     }
 
     @Override
-    protected Path getSuiteDirectory() {
-        return SHOOTOUTS_SUITE_DIR;
-    }
-
-    private static final Map<Path, Object[]> arguments = new HashMap<>();
-    static {
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/binarytrees/binarytrees.gcc-2.gcc").toPath(), new Object[]{"12"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/binarytrees/binarytrees.gcc").toPath(), new Object[]{"12"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/fannkuchredux/fannkuchredux.cint").toPath(), new Object[]{"9"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/fannkuchredux/fannkuchredux.gcc").toPath(), new Object[]{"9"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.cint").toPath(), new Object[]{"100"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-4.gcc").toPath(), new Object[]{"100"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-5.gcc").toPath(), new Object[]{"100"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/fastaredux/fastaredux.gcc-2.gcc").toPath(), new Object[]{});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/fastaredux/fastaredux.gcc-3.gcc").toPath(), new Object[]{});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.cint-2.cint").toPath(), new Object[]{"500"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-2.gcc").toPath(), new Object[]{"500"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-8.gcc").toPath(), new Object[]{"500"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-9.gcc").toPath(), new Object[]{"500"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/nbody/nbody.cint").toPath(), new Object[]{"10"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/spectralnorm/spectralnorm.cint").toPath(), new Object[]{"150"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/spectralnorm/spectralnorm.gcc-2.gcc").toPath(), new Object[]{"150"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/pidigits/pidigits.cint-4.cint").toPath(), new Object[]{"10000"});
-        arguments.put(new File(SHOOTOUTS_SUITE_DIR + "/pidigits/pidigits.gcc").toPath(), new Object[]{"10000"});
-    }
-
-    @Override
-    protected Object[] getArguments(Path testCandidate) {
-        assert arguments.containsKey(testCandidate) : testCandidate.toString();
-        return arguments.get(testCandidate);
+    public RunConfiguration getConfiguration() {
+        return configuration;
     }
 
 }

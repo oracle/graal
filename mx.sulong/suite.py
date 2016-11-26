@@ -247,6 +247,13 @@ suite = {
       ],
       "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
     },
+    "LTA_REF" : {
+      "path" : "tests/lifetime-analysis-ref.tar.gz",
+      "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/lifetime-analysis-ref.tar.gz",
+      ],
+      "sha1" : "8bb0cd644b0dc9ec2f3000ad9cac50e9432d4e17",
+    },
   },
 
   "projects" : {
@@ -256,7 +263,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm",
-        "com.oracle.truffle.llvm.tools",
         "com.oracle.truffle.llvm.pipe",
         "truffle:TRUFFLE_TCK",
         "mx:JUNIT",
@@ -275,18 +281,6 @@ suite = {
         "com.oracle.truffle.llvm",
       ],
       "checkstyle" : "com.oracle.truffle.llvm",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-    },
-
-    "com.oracle.truffle.llvm.tools" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.llvm.runtime",
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm.nodes",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",

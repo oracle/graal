@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tools.util;
+package com.oracle.truffle.llvm.test.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

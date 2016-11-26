@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tools;
+package com.oracle.truffle.llvm.runtime;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -41,8 +41,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public class Linker {
 

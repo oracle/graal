@@ -25,6 +25,8 @@ _assemblySuiteDir = os.path.join(_testDir, "inlineassemblytests/")
 _llvmSuiteDirRoot = os.path.join(_llvmSuiteDir, "test-suite-3.2.src/")
 _gccSuiteDir = os.path.join(_testDir, "gcc/")
 _gccSuiteDirRoot = os.path.join(_gccSuiteDir, "gcc-5.2.0/gcc/testsuite/")
+_parserTortureSuiteDirRoot = os.path.join(_gccSuiteDir, "gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile")
+_LTADirRoot = os.path.join(_gccSuiteDir, "lta/gcc-5.2.0/gcc/testsuite/")
 _nwccSuiteDir = os.path.join(_testDir, "nwcc/")
 _nwccSuiteDirRoot2 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/tests/")
 _nwccSuiteDirRoot1 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/test2/")
@@ -60,18 +62,18 @@ def runShootoutSulongOnlySuite(vmArgs):
 def runLLVMSuite(vmArgs):
     """runs the LLVM test suite"""
     compileSuite(['llvm'])
-    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + [mx_sulong.getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.alpha.LLVMSuite"])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.alpha.LLVMSuite"])
 
 def runNWCCSuite(vmArgs):
     """runs the NWCC test suite"""
     compileSuite(['nwcc'])
-    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--very-verbose', mx_sulong.getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.alpha.NWCCSuite"])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--very-verbose', "com.oracle.truffle.llvm.test.alpha.NWCCSuite"])
 
 def runGCCSuite(vmArgs):
     """runs the LLVM test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc'])
-    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--very-verbose', mx_sulong.getRemoteClasspathOption(), "com.oracle.truffle.llvm.test.alpha.GCCSuite"])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--very-verbose', "com.oracle.truffle.llvm.test.alpha.GCCSuite"])
 
 def compileInteropTests():
     print("Compiling Interop with clang -O0 and mem2reg", end='')
@@ -101,6 +103,18 @@ def runInlineAssemblySuite(vmArgs):
     compileSuite(['assembly'])
     return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.alpha.InlineAssemblyTest"])
 
+def runLifetimeAnalysisTests(vmArgs):
+    """runs the LTA test suite"""
+    compileSuite(['gcc'])
+    ensureLifetimeAnalysisReferenceExists()
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--very-verbose', "com.oracle.truffle.llvm.test.alpha.LifetimeAnalysisSuite"])
+
+def runParserTortureSuite(vmArgs):
+    """runs the ParserTorture test suite"""
+    mx_sulong.ensureDragonEggExists()
+    compileSuite(['parserTorture'])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--very-verbose', "com.oracle.truffle.llvm.test.alpha.ParserTortureSuite"])
+
 
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
@@ -128,6 +142,12 @@ def compileGCCSuite():
     tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG_CPP], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.CPP_OPT], excludes=excludes))
     print("Compiling GCC files with C ", end='')
     tools.printProgress(tools.multicompileFolder(_gccSuiteDir, _cacheDir, [tools.Tool.CLANG_C], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.C_OPT], excludes=excludes))
+
+def compileParserTurtureSuite():
+    ensureGCCSuiteExists()
+    excludes = tools.collectExcludePattern(os.path.join(_gccSuiteDir, "configs/gcc.c-torture/compile/"))
+    print("Compiling parser torture files with C ", end='')
+    tools.printProgress(tools.multicompileFolder(_parserTortureSuiteDirRoot, _cacheDir, [tools.Tool.CLANG_C], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 
 def compileShootoutSuite():
@@ -157,6 +177,8 @@ testSuites = {
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'interop' : (compileInteropTests, runInteropTests),
     'tck' : (compileInteropTests, runTCKTests),
+    'lifetimeanalysis' : (compileGCCSuite, runLifetimeAnalysisTests),
+    'parserTorture' : (compileParserTurtureSuite, runParserTortureSuite),
 }
 
 
@@ -211,6 +233,11 @@ def ensureNWCCSuiteExists():
         pullTestSuite('NWCC_SUITE', _nwccSuiteDir, subDirInsideTar=[os.path.relpath(_nwccSuiteDirRoot1, _nwccSuiteDir)])
     if not os.path.exists(_nwccSuiteDirRoot2):
         pullTestSuite('NWCC_SUITE', _nwccSuiteDir, subDirInsideTar=[os.path.relpath(_nwccSuiteDirRoot2, _nwccSuiteDir)])
+
+def ensureLifetimeAnalysisReferenceExists():
+    """downloads the LTA ref files for GCC suite if not downloaded yet"""
+    if not os.path.exists(_LTADirRoot):
+        pullTestSuite('LTA_REF', _LTADirRoot)
 
 
 def pullTestSuite(library, destDir, **kwargs):

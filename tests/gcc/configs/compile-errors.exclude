@@ -16370,5 +16370,7 @@ gcc-5.2.0/gcc/testsuite/gfortran.dg/pointer_intent_6.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/intrinsic_8.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/bound_simplification_3.f90
 gcc-5.2.0/gcc/testsuite/gfortran.dg/intrinsic_size_3.f90
-
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/limits-externdecl.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/20001226-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/limits-fndefn.c
 
