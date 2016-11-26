@@ -1,8 +1,0 @@
-tests/ctrl.c
-tests/andor2.c
-tests/c.c
-tests/sillygnuwait.c
-tests/new.c
-tests/wait.c
-tests/goto.c
-tests/x2.c

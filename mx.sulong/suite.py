@@ -240,6 +240,13 @@ suite = {
       ],
       "sha1" : "9684ca5aaa38ff078811f9b42f15ee65cdd259fc",
     },
+    "NWCC_SUITE" : {
+      "path" : "tests/nwcc_0.8.3.tar.gz",
+      "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz",
+      ],
+      "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
+    },
   },
 
   "projects" : {

@@ -1,0 +1,12 @@
+nwcc_0.8.3/test2/pic2-f.c
+nwcc_0.8.3/test2/common0.c
+nwcc_0.8.3/test2/pic1-f.c
+nwcc_0.8.3/test2/tls0-f.c
+nwcc_0.8.3/test2/tls1-f.c
+nwcc_0.8.3/test2/t1-f.c
+nwcc_0.8.3/test2/pic0-f.c
+nwcc_0.8.3/test2/t0-f.c
+nwcc_0.8.3/test2/t2-f.c
+nwcc_0.8.3/test2/staticredec0-f.c
+nwcc_0.8.3/test2/staticredec1-f.c
+nwcc_0.8.3/tests/aaa_BUGunsolved_bug.c

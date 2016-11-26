@@ -1,4 +1,0 @@
-gcc.c-torture/execute/mode-dependent-address.c
-gcc.c-torture/execute/builtin-types-compatible-p.c
-gcc.c-torture/execute/ieee/unsafe-fp-assoc-1.c
-gcc.c-torture/execute/ieee/mul-subnormal-single-1.c

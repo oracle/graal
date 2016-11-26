@@ -1,0 +1,17 @@
+nwcc_0.8.3/test2/struct_pass_med-main.c
+nwcc_0.8.3/test2/struct_pass_small-main_O.c
+nwcc_0.8.3/test2/struct_pass_small-main.c
+nwcc_0.8.3/test2/struct_pass_med-main_O.c
+nwcc_0.8.3/tests/nimbus_fptr_typedef.c
+nwcc_0.8.3/tests/constexprbug0.c
+nwcc_0.8.3/tests/constexprbugs_new.c
+nwcc_0.8.3/tests/anonfunc.c
+nwcc_0.8.3/tests/kandr.c
+nwcc_0.8.3/tests/stdarg2.c
+nwcc_0.8.3/tests/indirect_va_arg.c
+nwcc_0.8.3/tests/constexprbug0.c
+nwcc_0.8.3/tests/constexprbugs_new.c
+nwcc_0.8.3/tests/anonfunc.c
+nwcc_0.8.3/tests/kandr.c
+nwcc_0.8.3/tests/stdarg2.c
+nwcc_0.8.3/tests/indirect_va_arg.c
