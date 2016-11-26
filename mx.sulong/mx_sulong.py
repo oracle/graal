@@ -35,8 +35,6 @@ _sulongTestDir = join(_root, "com.oracle.truffle.llvm.test/tests/")
 _gccSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/gcc/")
 _gccSuiteDirRoot = join(_gccSuiteDir, 'gcc-5.2.0/gcc/testsuite/')
 
-_benchGameSuiteDir = join(_root, "com.oracle.truffle.llvm.test/suites/benchmarkgame/")
-
 _dragonEggPath = _toolDir + 'tools/dragonegg/dragonegg-3.2.src/dragonegg.so'
 
 _inlineAssemblySrcDir = join(_root, "com.oracle.truffle.llvm.asm.amd64/src/")
@@ -136,7 +134,7 @@ def travis1(args=None):
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestBenchmarks', tasks) as t:
-        if t: runBenchmarkTestCases()
+        if t: testsuites.travisRunSuite(['shootoutSulongOnly'])
     with Task('TestPolglot', tasks) as t:
         if t: runPolyglotTestCases()
     with Task('TestInterop', tasks) as t:
@@ -148,7 +146,7 @@ def travis1(args=None):
     with Task('TestTypes', tasks) as t:
         if t: runTypeTestCases()
     with Task('TestMainArgs', tasks) as t:
-        if t: runMainArgTestCases()
+        if t: testsuites.travisRunSuite(['args'])
     with Task('TestPipe', tasks) as t:
         if t: runPipeTestCases()
     with Task('TestLLVM', tasks) as t:
@@ -184,7 +182,6 @@ def localGate(args=None):
 def downloadDependencies(args=None):
     """downloads the external dependencies (GCC, LLVM, benchmarks, and test suites)"""
     pullTestFramework()
-    pullBenchmarkGame()
     pullTools()
 
 def pullTools(args=None):
@@ -195,26 +192,6 @@ def pullTestFramework(args=None):
     """downloads the test suites (GCC, LLVM, Argon2)"""
     pullGCCSuite()
     ensureArgon2Exists()
-
-# platform independent
-def pullBenchmarkGame(args=None):
-    """downloads the benchmarks"""
-    mx.ensure_dir_exists(_benchGameSuiteDir)
-    urls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz"]
-    localPath = pullsuite(_benchGameSuiteDir, urls)
-    tar(localPath, _benchGameSuiteDir, ['benchmarksgame-2014-08-31/benchmarksgame/bench/'], stripLevels=3)
-    os.remove(localPath)
-    renameBenchmarkFiles()
-
-def renameBenchmarkFiles(args=None):
-    for path, _, files in os.walk(_benchGameSuiteDir):
-        for f in files:
-            absPath = path + '/' + f
-            _, ext = os.path.splitext(absPath)
-            if ext in ['.gcc', '.cint']:
-                os.rename(absPath, absPath + '.c')
-            if ext in ['.gpp']:
-                os.rename(absPath, absPath + '.cpp')
 
 # platform dependent
 def pullLLVMBinaries(args=None):
@@ -490,15 +467,6 @@ def compileWithEcjStrict(args=None):
     else:
         exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
 
-def runBenchmarkTestCases(args=None):
-    """runs the test cases from the language benchmark game"""
-    ensureLLVMBinariesExist()
-    ensureGCCSuiteExists()
-    ensureDragonEggExists()
-    ensureBenchmarkSuiteExists()
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.ShootoutsTestSuite"])
-
 def runTypeTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
@@ -514,11 +482,6 @@ def runPolyglotTestCases(args=None):
     """runs the type test cases"""
     vmArgs, _ = truffle_extract_VM_args(args)
     return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestPolyglotEngine'])
-
-def runMainArgTestCases(args=None):
-    """runs the test cases that exercise the passing of arguments to the main function"""
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.LLVMMainArgTestSuite'])
 
 def runPipeTestCases(args=None):
     """runs the stdout pipe testcases """
@@ -813,11 +776,6 @@ def ensureDragonEggExists():
     if not os.path.exists(_dragonEggPath):
         pullInstallDragonEgg()
 
-def ensureBenchmarkSuiteExists():
-    """downloads the language benchmark game if not downloaded yet"""
-    if not os.path.exists(_benchGameSuiteDir):
-        pullBenchmarkGame()
-
 def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""
     for llvmBinary in basicLLVMDependencies:
@@ -1015,13 +973,11 @@ def sulongBuild(args=None):
     originalBuildCommand(args)
 
 testCases = {
-    'bench' : runBenchmarkTestCases,
     'types' : runTypeTestCases,
     'polyglot' : runPolyglotTestCases,
     'compile' : runCompileTestCases,
     'argon2' : runTestArgon2,
     'lifetime' : runLifetimeTestCases,
-    'main-arg' : runMainArgTestCases,
     'pipe' : runPipeTestCases,
 }
 
@@ -1048,7 +1004,6 @@ mx.update_commands(_suite, {
     'gccbench' : [gccBench, ''],
     'build' : [sulongBuild, ''],
     'su-options' : [printOptions, ''],
-    'su-pullbenchmarkgame' : [pullBenchmarkGame, ''],
     'su-pulldeps' : [downloadDependencies, ''],
     'su-pullllvmbinaries' : [pullLLVMBinaries, ''],
     'su-pullgccsuite' : [pullGCCSuite, ''],

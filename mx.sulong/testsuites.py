@@ -18,6 +18,7 @@ _sulongSuiteDir = os.path.join(_testDir, "sulong/")
 _benchmarksgameSuiteDir = os.path.join(_testDir, "benchmarksgame/")
 _benchmarksgameSuiteDirRoot = os.path.join(_benchmarksgameSuiteDir, "benchmarksgame-2014-08-31/benchmarksgame/bench/")
 _interoptestsDir = os.path.join(_testDir, "interoptests/")
+_otherDir = os.path.join(_testDir, "other/")
 _inlineassemblytestsDir = os.path.join(_testDir, "inlineassemblytests/")
 _llvmSuiteDir = os.path.join(_testDir, "llvm/")
 _assemblySuiteDir = os.path.join(_testDir, "inlineassemblytests/")
@@ -50,6 +51,12 @@ def runShootoutSuite(vmArgs):
     compileSuite(['shootout'])
     return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite"])
 
+def runShootoutSulongOnlySuite(vmArgs):
+    """runs the Sulong test suite"""
+    mx_sulong.ensureDragonEggExists()
+    compileSuite(['shootout'])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ['--verbose', "com.oracle.truffle.llvm.test.alpha.ShootoutsSulongOnlySuite"])
+
 def runLLVMSuite(vmArgs):
     """runs the LLVM test suite"""
     compileSuite(['llvm'])
@@ -69,6 +76,15 @@ def runGCCSuite(vmArgs):
 def compileInteropTests():
     print("Compiling Interop with clang -O0 and mem2reg", end='')
     tools.printProgress(tools.multicompileFolder(_interoptestsDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude', '-lm'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, optimizers=[tools.Tool.MEM2REG]))
+
+def compileOtherTests():
+    print("Compiling Other with clang -O0", end='')
+    tools.printProgress(tools.multicompileFolder(_otherDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude', '-lm'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC))
+
+def runArgsTests(vmArgs):
+    """runs the Sulong test suite"""
+    compileSuite(['args'])
+    return mx_unittest.unittest(mx_sulong.getCommonUnitTestOptions() + vmArgs + ["com.oracle.truffle.llvm.test.alpha.MainArgsTest"])
 
 def runInteropTests(vmArgs):
     """runs the Sulong test suite"""
@@ -131,11 +147,13 @@ def compileNWCCSuite():
     tools.printProgress(tools.multicompileFolder(_nwccSuiteDir, _cacheDir, [tools.Tool.CLANG], ['-Iinclude'], [tools.Optimization.O0], tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
 testSuites = {
+    'args' : (compileOtherTests, runArgsTests),
     'nwcc' : (compileNWCCSuite, runNWCCSuite),
     'assembly' : (compileInlineAssemblySuite, runInlineAssemblySuite),
     'gcc' : (compileGCCSuite, runGCCSuite),
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'sulong' : (compileSulongSuite, runSulongSuite),
+    'shootoutSulongOnly' : (compileShootoutSuite, runShootoutSulongOnlySuite),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'interop' : (compileInteropTests, runInteropTests),
     'tck' : (compileInteropTests, runTCKTests),
