@@ -38,17 +38,6 @@ import java.util.List;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
 
-import org.eclipse.emf.common.util.EList;
-import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.xtext.resource.XtextResource;
-import org.eclipse.xtext.resource.XtextResourceSet;
-import org.eclipse.xtext.util.StringInputStream;
-
-import com.google.inject.Injector;
-import com.intel.llvm.ireditor.LLVM_IRStandaloneSetup;
-import com.intel.llvm.ireditor.lLVM_IR.Model;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -66,7 +55,6 @@ import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacadeProvider;
 import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
-import com.oracle.truffle.llvm.parser.impl.LLVMVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
@@ -120,21 +108,7 @@ public class LLVM {
                 Node findContext = LLVMLanguage.INSTANCE.createFindContextNode0();
                 LLVMContext context = LLVMLanguage.INSTANCE.findContext0(findContext);
                 final CallTarget[] mainFunction = new CallTarget[]{null};
-                if (code.getMimeType().equals(LLVMLanguage.LLVM_IR_MIME_TYPE)) {
-                    String path = code.getPath();
-                    LLVMParserResult parserResult;
-                    try {
-                        if (path == null) {
-                            parserResult = parseString(code, context);
-                        } else {
-                            parserResult = parseFile(code, context);
-                        }
-                    } catch (IllegalStateException e) {
-                        throw new IOException(e);
-                    }
-                    mainFunction[0] = parserResult.getMainFunction();
-                    handleParserResult(context, parserResult);
-                } else if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE) || code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
+                if (code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE) || code.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
                     LLVMParserResult parserResult = parseBitcodeFile(code, context);
                     mainFunction[0] = parserResult.getMainFunction();
                     handleParserResult(context, parserResult);
@@ -152,12 +126,6 @@ public class LLVM {
                             LLVMParserResult parserResult;
                             if (mimeType.equals(LLVMLanguage.LLVM_BITCODE_MIME_TYPE) || mimeType.equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
                                 parserResult = parseBitcodeFile(source, context);
-                            } else if (mimeType.equals(LLVMLanguage.LLVM_IR_MIME_TYPE)) {
-                                try {
-                                    parserResult = parseString(source, context);
-                                } catch (IOException e) {
-                                    throw new UncheckedIOException(e);
-                                }
                             } else {
                                 throw new UnsupportedOperationException(mimeType);
                             }
@@ -260,19 +228,6 @@ public class LLVM {
         };
     }
 
-    private static Model getModelFromSource(Source source) {
-        XtextResourceSet resourceSet = createResourceSet();
-        String path = source.getPath();
-        URI uri = URI.createURI(path);
-        Resource resource = resourceSet.getResource(uri, true);
-        EList<EObject> contents = resource.getContents();
-        if (contents.size() == 0) {
-            throw new IllegalStateException("empty file?");
-        }
-        Model model = (Model) contents.get(0);
-        return model;
-    }
-
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
             throw new IllegalArgumentException("please provide a file to execute!");
@@ -282,49 +237,6 @@ public class LLVM {
         System.arraycopy(args, 1, otherArgs, 0, otherArgs.length);
         int status = executeMain(file, otherArgs);
         System.exit(status);
-    }
-
-    public static LLVMParserResult parseString(Source source, LLVMContext context) throws IOException {
-        Model model = getModelFromString(source);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(context.getMainArguments(), source, context.getMainSourceFile());
-        LLVMParserResult parserResult = llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
-        return parserResult;
-    }
-
-    private static Model getModelFromString(Source source) throws IOException {
-        XtextResourceSet resourceSet = createResourceSet();
-        Resource resource = resourceSet.createResource(URI.createURI("dummy:/sulong.ll"));
-        try (InputStream in = new StringInputStream(source.getCode())) {
-            resource.load(in, resourceSet.getLoadOptions());
-        }
-        EList<EObject> contents = resource.getContents();
-        if (contents.size() == 0) {
-            throw new IllegalStateException("empty file?");
-        }
-        Model model = (Model) contents.get(0);
-        return model;
-    }
-
-    public static LLVMParserResult parseFile(Source source, LLVMContext context) {
-        XtextResourceSet resourceSet = createResourceSet();
-        Resource resource = resourceSet.getResource(URI.createURI(source.getPath()), true);
-        EList<EObject> contents = resource.getContents();
-        if (contents.size() == 0) {
-            throw new IllegalStateException("empty file?");
-        }
-        Model model = getModelFromSource(source);
-        LLVMVisitor llvmVisitor = new LLVMVisitor(context.getMainArguments(), source, context.getMainSourceFile());
-        LLVMParserResult parserResult = llvmVisitor.getMain(model, getNodeFactoryFacade(llvmVisitor));
-        resource.unload();
-        return parserResult;
-    }
-
-    private static XtextResourceSet createResourceSet() {
-        LLVM_IRStandaloneSetup setup = new LLVM_IRStandaloneSetup();
-        Injector injector = setup.createInjectorAndDoEMFRegistration();
-        XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
-        resourceSet.addLoadOption(XtextResource.OPTION_RESOLVE_ALL, Boolean.TRUE);
-        return resourceSet;
     }
 
     public static LLVMParserResult parseBitcodeFile(Source source, LLVMContext context) {
@@ -344,7 +256,7 @@ public class LLVM {
 
     public static int executeMain(String codeString, Object... args) {
         try {
-            Source fromText = Source.newBuilder(codeString).mimeType(LLVMLanguage.LLVM_IR_MIME_TYPE).build();
+            Source fromText = Source.newBuilder(codeString).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).build();
             LLVMLogger.info("current code string: " + codeString);
             return evaluateFromSource(fromText, args);
         } catch (MissingNameException e) {
@@ -354,8 +266,8 @@ public class LLVM {
 
     private static int evaluateFromSource(Source fileSource, Object... args) {
         Builder engineBuilder = PolyglotEngine.newBuilder();
-        engineBuilder.config(LLVMLanguage.LLVM_IR_MIME_TYPE, LLVMLanguage.MAIN_ARGS_KEY, args);
-        engineBuilder.config(LLVMLanguage.LLVM_IR_MIME_TYPE, LLVMLanguage.LLVM_SOURCE_FILE_KEY, fileSource);
+        engineBuilder.config(LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.MAIN_ARGS_KEY, args);
+        engineBuilder.config(LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_SOURCE_FILE_KEY, fileSource);
         PolyglotEngine vm = engineBuilder.build();
         try {
             Integer result = vm.eval(fileSource).as(Integer.class);

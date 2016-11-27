@@ -462,11 +462,11 @@ def compileArgon2(main, optimize, cflags=None):
     argon2Bin = '%s.su' % main
     for src in argon2Src:
         inputFile = '%s.c' % src
-        outputFile = '%s.ll' % src
-        compileWithClang(['-S', '-emit-llvm', '-o', outputFile, '-std=c89', '-Wall', '-Wextra', '-Wno-type-limits', '-I../pthread-stub', '-Iinclude', '-Isrc'] + cflags + [inputFile])
+        outputFile = '%s.bc' % src
+        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, '-std=c89', '-Wall', '-Wextra', '-Wno-type-limits', '-I../pthread-stub', '-Iinclude', '-Isrc'] + cflags + [inputFile])
         if optimize:
-            opt(['-S', '-o', outputFile, outputFile] + getStandardLLVMOptFlags())
-    link(['-o', argon2Bin] + ['%s.ll' % x for x in argon2Src])
+            opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags())
+    link(['-o', argon2Bin] + ['%s.bc' % x for x in argon2Src])
 
 def runTestArgon2Kats(args=None):
     for v in ['16', '19']:

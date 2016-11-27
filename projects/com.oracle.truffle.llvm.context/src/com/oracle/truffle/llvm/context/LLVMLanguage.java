@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 
-@TruffleLanguage.Registration(name = "Sulong", version = "0.01", mimeType = {LLVMLanguage.LLVM_IR_MIME_TYPE, LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE,
+@TruffleLanguage.Registration(name = "Sulong", version = "0.01", mimeType = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE,
                 LLVMLanguage.SULONG_LIBRARY_MIME_TYPE})
 public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
@@ -54,9 +54,6 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             throw new RuntimeException(e);
         }
     }
-
-    public static final String LLVM_IR_MIME_TYPE = "application/x-llvm-ir-text";
-    public static final String LLVM_IR_EXTENSION = "ll";
 
     public static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
     public static final String LLVM_BITCODE_EXTENSION = "bc";
