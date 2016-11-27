@@ -24,19 +24,16 @@ package com.oracle.graal.lir.aarch64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.function.Function;
 
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.asm.aarch64.AArch64Address;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
 import com.oracle.graal.asm.aarch64.AArch64Assembler.ExtendType;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.PatchLabelKind;
 import com.oracle.graal.code.CompilationResult.JumpTable;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.Condition;
@@ -49,12 +46,9 @@ import com.oracle.graal.lir.StandardOp;
 import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.LIRInstruction.Temp;
-import com.oracle.graal.lir.LIRInstruction.Use;
 import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
