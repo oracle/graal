@@ -133,7 +133,7 @@ public final class OrganizedImports {
             String qualifiedName = ElementUtils.getEnclosedQualifiedName(type);
 
             if (!qualifiedName.equals(qualifiedImport)) {
-                name = qualifiedName;
+                name = ElementUtils.getQualifiedName(type);
             }
         }
 
