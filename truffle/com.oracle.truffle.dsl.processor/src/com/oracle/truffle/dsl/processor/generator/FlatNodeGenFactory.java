@@ -53,7 +53,6 @@ import java.util.concurrent.locks.Lock;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -64,7 +63,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.api.dsl.internal.SuppressFBWarnings;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -75,6 +73,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
@@ -287,8 +286,6 @@ public class FlatNodeGenFactory {
                                 Child.class));
             }
         }
-
-        avoidFindbugsProblems(clazz);
 
         createFields(clazz);
 
@@ -575,6 +572,9 @@ public class FlatNodeGenFactory {
                         } else if (p != null && p.getSpecification().isCached()) {
                             needsState.set(true);
                         }
+                    }
+
+                    public void visitBooleanLiteral(BooleanLiteral binary) {
                     }
 
                     public void visitNegate(Negate negate) {
@@ -1234,25 +1234,6 @@ public class FlatNodeGenFactory {
     }
 
     // old code
-
-    private void avoidFindbugsProblems(CodeTypeElement clazz) {
-        TypeElement type = context.getEnvironment().getElementUtils().getTypeElement(SuppressFBWarnings.class.getName());
-        boolean foundComparison = false;
-        outer: for (SpecializationData specialization : node.getSpecializations()) {
-            for (GuardExpression guard : specialization.getGuards()) {
-                if (guard.getExpression().containsComparisons()) {
-                    foundComparison = true;
-                    break outer;
-                }
-            }
-        }
-
-        if (foundComparison) {
-            CodeAnnotationMirror annotation = new CodeAnnotationMirror((DeclaredType) type.asType());
-            annotation.setElementValue(annotation.findExecutableElement("value"), new CodeAnnotationValue("SA_LOCAL_SELF_COMPARISON"));
-            clazz.addAnnotationMirror(annotation);
-        }
-    }
 
     private CodeExecutableElement createNodeConstructor(CodeTypeElement clazz, ExecutableElement superConstructor) {
         CodeExecutableElement constructor = GeneratorUtils.createConstructorUsingFields(modifiers(), clazz, superConstructor);
@@ -2641,19 +2622,23 @@ public class FlatNodeGenFactory {
         return new IfTriple(var.createDeclaration(initializer), null, null);
     }
 
-    private static IfTriple createMethodGuardCheck(FrameState frameState, SpecializationData specialization, GuardExpression guard, boolean fastPath) {
+    private IfTriple createMethodGuardCheck(FrameState frameState, SpecializationData specialization, GuardExpression guard, boolean fastPath) {
         DSLExpression expression = guard.getExpression();
         Map<Variable, CodeTree> resolvedBindings = castBoundTypes(bindExpressionValues(frameState, expression, specialization));
 
         CodeTree expressionCode = DSLExpressionGenerator.write(expression, null, resolvedBindings);
-        CodeTree assertion = null;
-        CodeTree guardExpression = null;
-        if (!specialization.isDynamicParameterBound(expression) && fastPath) {
-            assertion = CodeTreeBuilder.createBuilder().startAssert().tree(expressionCode).end().build();
+        CodeTree assertion = null; // overrule with assertion
+        if (fastPath) {
+            if (!specialization.isDynamicParameterBound(expression)) {
+                assertion = CodeTreeBuilder.createBuilder().startAssert().tree(expressionCode).end().build();
+            }
         } else {
-            guardExpression = expressionCode;
+            if (guard.isConstantTrueInSlowPath(context)) {
+                assertion = CodeTreeBuilder.createBuilder().startStatement().string("// assert ").tree(expressionCode).end().build();
+            }
         }
-        return new IfTriple(null, guardExpression, assertion);
+
+        return new IfTriple(null, assertion == null ? expressionCode : null, assertion);
     }
 
     private static Map<Variable, CodeTree> castBoundTypes(Map<Variable, LocalVariable> bindings) {
