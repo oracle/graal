@@ -2667,7 +2667,7 @@ public class FlatNodeGenFactory {
                 targetType = variable.getResolvedType();
             }
             if (!ElementUtils.isAssignable(sourceType, targetType)) {
-                resolved = CodeTreeBuilder.createBuilder().cast(targetType, resolved).build();
+                resolved = CodeTreeBuilder.createBuilder().startParantheses().cast(targetType, resolved).end().build();
             }
             resolvedBindings.put(variable, resolved);
         }
