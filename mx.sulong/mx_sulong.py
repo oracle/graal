@@ -10,11 +10,11 @@ import mx_findbugs
 import re
 import argparse
 
-from mx_unittest import unittest, add_config_participant
+from mx_unittest import add_config_participant
 from mx_gate import Task, add_gate_runner
 from mx_gitlogcheck import logCheck
 
-import testsuites
+import mx_testsuites
 
 os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 
@@ -23,7 +23,6 @@ _mx = join(_suite.dir, "mx.sulong/")
 _libPath = join(_mx, 'libs')
 _root = join(_suite.dir, "projects/")
 _testDir = join(_suite.dir, "tests/")
-_parserDir = join(_root, "com.intel.llvm.ireditor")
 _argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
 _toolDir = join(_suite.dir, "tools/")
 _clangPath = _toolDir + 'llvm/bin/clang'
@@ -113,12 +112,9 @@ add_gate_runner(_suite, _graal_llvm_gate_runner)
 def executeGate():
     """executes the TruffleLLVM gate tasks"""
     tasks = []
-    with Task('Findbugs', tasks) as t:
-        if t: findBugs()
-    for testSuiteName in testCases.keys():
-        command = testCases[testSuiteName]
-        with Task(testSuiteName, tasks) as t:
-            if t: command()
+    with Task('BasicChecks', tasks) as t:
+        if t: runChecks()
+    mx_testsuites.runSuite()
 
 def travis1(args=None):
     """executes the first Travis job (Javac build, benchmarks, polyglot, interop, tck, asm, types, and LLVM test cases)"""
@@ -126,37 +122,37 @@ def travis1(args=None):
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestBenchmarks', tasks) as t:
-        if t: testsuites.travisRunSuite(['shootoutSulongOnly'])
+        if t: mx_testsuites.runSuite(['shootoutSulongOnly'])
     with Task('TestPolglot', tasks) as t:
-        if t: runPolyglotTestCases()
+        if t: mx_testsuites.runSuite(['polyglot'])
     with Task('TestInterop', tasks) as t:
-        if t: testsuites.travisRunSuite(['interop'])
+        if t: mx_testsuites.runSuite(['interop'])
     with Task('TestTck', tasks) as t:
-        if t: testsuites.travisRunSuite(['tck'])
+        if t: mx_testsuites.runSuite(['tck'])
     with Task('TestAsm', tasks) as t:
-        if t: testsuites.travisRunSuite(['assembly'])
+        if t: mx_testsuites.runSuite(['assembly'])
     with Task('TestTypes', tasks) as t:
-        if t: runTypeTestCases()
+        if t: mx_testsuites.runSuite(['type'])
     with Task('TestMainArgs', tasks) as t:
-        if t: testsuites.travisRunSuite(['args'])
+        if t: mx_testsuites.runSuite(['args'])
     with Task('TestPipe', tasks) as t:
-        if t: runPipeTestCases()
+        if t: mx_testsuites.runSuite(['pipe'])
     with Task('TestLLVM', tasks) as t:
-        if t: testsuites.travisRunSuite(['llvm'])
+        if t: mx_testsuites.runSuite(['llvm'])
     with Task('TestSulong', tasks) as t:
-        if t: testsuites.travisRunSuite(['sulong'])
+        if t: mx_testsuites.runSuite(['sulong'])
 
-def travis3(args=None):
+def travis2(args=None):
     """executes the third Travis job (Javac build, NWCC, GCC compilation test cases)"""
     tasks = []
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestNWCC', tasks) as t:
-        if t: testsuites.travisRunSuite(['nwcc'])
+        if t: mx_testsuites.runSuite(['nwcc'])
     with Task('TestGCCSuiteCompile', tasks) as t:
-        if t: testsuites.travisRunSuite(['parserTorture'])
+        if t: mx_testsuites.runSuite(['parserTorture'])
     with Task('TestLifetime', tasks) as t:
-        if t: testsuites.travisRunSuite(['lifetimeanalysis'])
+        if t: mx_testsuites.runSuite(['lifetimeanalysis'])
 
 def travisArgon2(args=None):
     """executes the argon2 Travis job (Javac build, argon2 test cases)"""
@@ -166,23 +162,10 @@ def travisArgon2(args=None):
     with Task('TestArgon2', tasks) as t:
         if t: runTestArgon2(optimize=False)
 
-def localGate(args=None):
-    """executes the gate without downloading the dependencies and without building"""
-    executeGate()
-
-
-def downloadDependencies(args=None):
-    """downloads the external dependencies (GCC, LLVM, benchmarks, and test suites)"""
-    pullTestFramework()
-    pullTools()
-
 def pullTools(args=None):
-    """pulls the LLVM tools (LLVM binaries)"""
+    """pulls the LLVM and Dragonegg tools"""
     pullLLVMBinaries()
-
-def pullTestFramework(args=None):
-    """downloads the test suites (GCC, LLVM, Argon2)"""
-    ensureArgon2Exists()
+    pullInstallDragonEgg()
 
 # platform dependent
 def pullLLVMBinaries(args=None):
@@ -392,17 +375,7 @@ def runLLVM(args=None, out=None):
     return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + sulongArgs, out=out, jdk=mx.get_jdk(tag='jvmci'))
 
 def runTests(args=None):
-    """runs all the test cases or selected ones (see -h or --help)"""
-    vmArgs, otherArgs = truffle_extract_VM_args(args)
-    parser = argparse.ArgumentParser(description="Executes all or selected test cases of Sulong's test suites.")
-    parser.add_argument('suite', nargs='*', help=' '.join(testCases.keys()), default=testCases.keys())
-    parser.add_argument('--verbose', dest='verbose', action='store_const', const=True, default=False, help='Display the test suite names before execution')
-    parsedArgs = parser.parse_args(otherArgs)
-    for testSuiteName in parsedArgs.suite:
-        if parsedArgs.verbose:
-            print 'executing', testSuiteName, 'test suite'
-        command = testCases[testSuiteName]
-        command(vmArgs)
+    mx_testsuites.runSuite(args)
 
 def runChecks(args=None):
     """runs all the static analysis tools or selected ones (see -h or --help)"""
@@ -439,21 +412,6 @@ def compileWithEcjStrict(args=None):
         mx.command_function('build')(['-p', '--warning-as-error'])
     else:
         exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
-
-def runTypeTestCases(args=None):
-    """runs the type test cases"""
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.types.floating.test'])
-
-def runPolyglotTestCases(args=None):
-    """runs the type test cases"""
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(getCommonUnitTestOptions() + vmArgs + ['com.oracle.truffle.llvm.test.TestPolyglotEngine'])
-
-def runPipeTestCases(args=None):
-    """runs the stdout pipe testcases """
-    vmArgs, _ = truffle_extract_VM_args(args)
-    return unittest(vmArgs + ['com.oracle.truffle.llvm.test.alpha.CaptureOutputTest'])
 
 def compileArgon2(main, optimize, cflags=None):
     if cflags is None:
@@ -920,12 +878,6 @@ def sulongBuild(args=None):
     genInlineAssemblyParser()
     originalBuildCommand(args)
 
-testCases = {
-    'types' : runTypeTestCases,
-    'polyglot' : runPolyglotTestCases,
-    'argon2' : runTestArgon2,
-    'pipe' : runPipeTestCases,
-}
 
 checkCases = {
     'gitlog' : logCheck,
@@ -949,15 +901,15 @@ mx.update_commands(_suite, {
     'clangbench' : [clangBench, ''],
     'gccbench' : [gccBench, ''],
     'build' : [sulongBuild, ''],
+    'su-checks' : [runChecks, ''],
+    'su-tests' : [runTests, ''],
+    'su-suite' : [mx_testsuites.runSuite, ''],
+    'su-clang' : [compileWithClang, ''],
     'su-options' : [printOptions, ''],
-    'su-pulldeps' : [downloadDependencies, ''],
     'su-pullllvmbinaries' : [pullLLVMBinaries, ''],
     'su-pulltools' : [pullTools, ''],
     'su-pulldragonegg' : [pullInstallDragonEgg, ''],
     'su-run' : [runLLVM, ''],
-    'su-tests' : [runTests, ''],
-    'su-local-gate' : [localGate, ''],
-    'su-clang' : [compileWithClang, ''],
     'su-clang++' : [compileWithClangPP, ''],
     'su-opt' : [opt, ''],
     'su-optimize' : [suOptimalOpt, ''],
@@ -967,16 +919,14 @@ mx.update_commands(_suite, {
     'su-gfortran' : [dragonEggGFortran, ''],
     'su-g++' : [dragonEggGPP, ''],
     'su-travis1' : [travis1, ''],
-    'su-travis3' : [travis3, ''],
+    'su-travis2' : [travis2, ''],
     'su-travis-argon2' : [travisArgon2, ''],
-    'su-travis-tests' : [testsuites.travisRunSuite, ''],
     'su-ecj-strict' : [compileWithEcjStrict, ''],
-    'su-basic-checkcode' : [runChecks, ''],
     'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, ''],
     'su-httpcheck' : [checkNoHttp, ''],
     'su-get-llvm-program' : [getLLVMProgramPath, ''],
     'su-get-gcc-program' : [getGCCProgramPath, ''],
-    'su-compile-tests' : [testsuites.compileSuite, ''],
+    'su-compile-tests' : [mx_testsuites.compileSuite, ''],
 })
