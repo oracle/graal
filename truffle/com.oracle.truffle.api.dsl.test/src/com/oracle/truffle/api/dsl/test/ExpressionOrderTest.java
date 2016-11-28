@@ -42,7 +42,7 @@ public class ExpressionOrderTest {
 
         abstract boolean execute(Object value);
 
-        @Specialization(guards = {"guard1(value)", "cacheGuard1(cache1)", "guard2(value)", "cacheGuard2(cache2)",}, //
+        @Specialization(guards = {"guard1(value)", "cacheGuard1(cache1)", "guard2(value)", "cacheGuard2(cache2)"}, //
                         assumptions = {"assumptionInitializer1(cache3)", "assumptionInitializer2()"})
         boolean s0(boolean value, @Cached("cacheInitializer1(value)") int cache1,
                         @Cached("cacheInitializer2(value)") int cache2,

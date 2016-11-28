@@ -1784,7 +1784,7 @@ public class FlatNodeGenFactory {
         private CodeTree condition;
         private CodeTree statements;
 
-        public IfTriple(CodeTree prepare, CodeTree condition, CodeTree statements) {
+        IfTriple(CodeTree prepare, CodeTree condition, CodeTree statements) {
             this.prepare = prepare;
             this.condition = condition;
             this.statements = statements;
