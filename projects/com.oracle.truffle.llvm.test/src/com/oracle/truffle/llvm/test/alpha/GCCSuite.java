@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 @RunWith(Parameterized.class)
 public final class GCCSuite extends BaseSuiteHarness {
 
-    private static final Path GCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/gcc").toPath();
+    private static final Path GCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/gcc").toPath();
     private static final Path GCC_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/gcc/configs").toPath();
 
     @Parameter(value = 0) public Path path;

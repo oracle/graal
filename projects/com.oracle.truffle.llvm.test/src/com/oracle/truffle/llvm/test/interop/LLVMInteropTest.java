@@ -705,7 +705,7 @@ public final class LLVMInteropTest {
         Object eval(Object string);
     }
 
-    private static final Path TEST_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/interoptests").toPath();
+    private static final Path TEST_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/interoptests").toPath();
     private static final String FILE_SUFFIX = "_clang_O0_MEM2REG.bc";
 
     private static final class Runner {

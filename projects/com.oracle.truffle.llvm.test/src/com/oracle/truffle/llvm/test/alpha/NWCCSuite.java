@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 @RunWith(Parameterized.class)
 public final class NWCCSuite extends BaseSuiteHarness {
 
-    private static final Path NWCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/nwcc").toPath();
+    private static final Path NWCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/nwcc").toPath();
     private static final Path NWCC_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/nwcc/configs").toPath();
 
     @Parameter(value = 0) public Path path;

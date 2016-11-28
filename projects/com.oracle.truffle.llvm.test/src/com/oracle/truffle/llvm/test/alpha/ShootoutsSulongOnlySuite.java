@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 @RunWith(Parameterized.class)
 public final class ShootoutsSulongOnlySuite extends BaseSulongOnlyHarness {
 
-    private static final Path SHOOTOUTS_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/benchmarksgame").toPath();
+    private static final Path SHOOTOUTS_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/benchmarksgame").toPath();
     private static final String benchmarkSuffix = "_clang_O1.bc";
 
     @Parameter(value = 0) public Path path;

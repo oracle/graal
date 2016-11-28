@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 @RunWith(Parameterized.class)
 public final class MainArgsTest extends BaseSulongOnlyHarness {
 
-    private static final Path OTHER_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/other/main-args").toPath();
+    private static final Path OTHER_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/other/main-args").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;

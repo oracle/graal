@@ -1,7 +1,6 @@
 cache:
   directories:
-  - tools
-  - tests/cache
+  - cache/tools
 sudo: required
 language: java
 python:

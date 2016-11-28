@@ -24,7 +24,7 @@ _libPath = join(_mx, 'libs')
 _root = join(_suite.dir, "projects/")
 _testDir = join(_suite.dir, "tests/")
 _argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
-_toolDir = join(_suite.dir, "tools/")
+_toolDir = join(_suite.dir, "cache/tools/")
 _clangPath = _toolDir + 'llvm/bin/clang'
 
 _dragonEggPath = _toolDir + 'dragonegg/dragonegg-3.2.src/dragonegg.so'

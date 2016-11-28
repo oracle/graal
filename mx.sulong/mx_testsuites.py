@@ -12,7 +12,7 @@ import mx_sulong
 
 _suite = mx.suite('sulong')
 _testDir = os.path.join(_suite.dir, "tests/")
-_cacheDir = os.path.join(_testDir, "cache/")
+_cacheDir = os.path.join(_suite.dir, "cache/tests")
 
 _sulongSuiteDir = os.path.join(_testDir, "sulong/")
 _benchmarksgameSuiteDir = os.path.join(_testDir, "benchmarksgame/")
