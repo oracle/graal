@@ -235,7 +235,7 @@ public class OptimizedCompilationProfile {
 
         long time = getTimestamp();
         if (time == 0) {
-            throw new AssertionError();
+            return false;
         }
         long timeElapsed = System.nanoTime() - time;
         if (timeElapsed > threshold * 1_000_000) {
