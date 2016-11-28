@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
@@ -53,7 +51,6 @@ import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacadeProvider;
-import com.oracle.truffle.llvm.parser.base.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
@@ -65,12 +62,6 @@ public class LLVM {
 
     static {
         LLVMLanguage.provider = getProvider();
-    }
-
-    private static NodeFactoryFacade getNodeFactoryFacade(LLVMParserRuntime parserRuntime) {
-        NodeFactoryFacade factoryFacade = getNodeFactoryFacade();
-        factoryFacade.setUpFacade(parserRuntime);
-        return factoryFacade;
     }
 
     private static NodeFactoryFacade getNodeFactoryFacade() {
@@ -195,8 +186,6 @@ public class LLVM {
             public LLVMContext createContext(Env env) {
                 NodeFactoryFacade facade = getNodeFactoryFacade();
                 LLVMContext context = new LLVMContext(facade);
-                LLVMVisitor runtime = new LLVMVisitor(context.getMainArguments(), context.getMainSourceFile(), context.getMainSourceFile());
-                facade.setUpFacade(runtime);
                 if (env != null) {
                     Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
                     if (mainArgs != null) {

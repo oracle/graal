@@ -107,7 +107,7 @@ public final class LLVMSymbolResolver {
 
     private LLVMExpressionNode toMetaData(MetadataConstant constant) {
         // TODO: point to Metadata
-        return runtime.getNodeFactoryFacade().createLiteral(constant.getValue(), LLVMBaseType.I64);
+        return runtime.getNodeFactoryFacade().createLiteral(runtime, constant.getValue(), LLVMBaseType.I64);
     }
 
     public LLVMExpressionNode resolveElementPointer(Symbol base, List<Symbol> indices) {
@@ -122,7 +122,7 @@ public final class LLVMSymbolResolver {
                 final int indexedTypeLength = runtime.getIndexOffset(1, currentType);
                 currentType = currentType.getIndexType(1);
                 final LLVMExpressionNode valueref = resolve(symbol);
-                currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(type.getLLVMBaseType(), currentAddress, valueref, indexedTypeLength);
+                currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, type.getLLVMBaseType(), currentAddress, valueref, indexedTypeLength);
 
             } else {
                 final int indexedTypeLength = runtime.getIndexOffset(constantIndex, currentType);
@@ -131,15 +131,15 @@ public final class LLVMSymbolResolver {
                     final LLVMExpressionNode constantNode;
                     switch (type.getLLVMBaseType()) {
                         case I32:
-                            constantNode = runtime.getNodeFactoryFacade().createLiteral(1, LLVMBaseType.I32);
+                            constantNode = runtime.getNodeFactoryFacade().createLiteral(runtime, 1, LLVMBaseType.I32);
                             break;
                         case I64:
-                            constantNode = runtime.getNodeFactoryFacade().createLiteral(1L, LLVMBaseType.I64);
+                            constantNode = runtime.getNodeFactoryFacade().createLiteral(runtime, 1L, LLVMBaseType.I64);
                             break;
                         default:
                             throw new AssertionError();
                     }
-                    currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(type.getLLVMBaseType(), currentAddress, constantNode, indexedTypeLength);
+                    currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, type.getLLVMBaseType(), currentAddress, constantNode, indexedTypeLength);
                 }
             }
         }
@@ -151,20 +151,20 @@ public final class LLVMSymbolResolver {
         final Type type = constant.getType();
         final LLVMBaseType baseType = type.getLLVMBaseType();
         final String stringValue = constant.toString();
-        return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(stringValue, baseType, type);
+        return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, stringValue, baseType, type);
     }
 
     private LLVMExpressionNode toBigInteger(BigIntegerConstant constant) {
         final Type type = constant.getType();
         final String stringValue = constant.toString();
-        return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(stringValue, type.getLLVMBaseType(), type);
+        return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, stringValue, type.getLLVMBaseType(), type);
     }
 
     private LLVMExpressionNode toFloat(FloatingPointConstant constant) {
         final Type type = constant.getType();
         final LLVMBaseType baseType = type.getLLVMBaseType();
         final String stringValue = constant.getStringValue();
-        return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(stringValue, baseType, type);
+        return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, stringValue, baseType, type);
     }
 
     private LLVMExpressionNode toStr(StringConstant constant) {
@@ -173,13 +173,13 @@ public final class LLVMSymbolResolver {
         final NodeFactoryFacade factoryFacade = runtime.getNodeFactoryFacade();
         final List<LLVMExpressionNode> values = new ArrayList<>(chars.length());
         for (int i = 0; i < chars.length(); i++) {
-            values.add(factoryFacade.createLiteral((byte) chars.charAt(i), LLVMBaseType.I8));
+            values.add(factoryFacade.createLiteral(runtime, (byte) chars.charAt(i), LLVMBaseType.I8));
         }
         if (constant.isCString()) {
-            values.add(factoryFacade.createLiteral((byte) 0, LLVMBaseType.I8));
+            values.add(factoryFacade.createLiteral(runtime, (byte) 0, LLVMBaseType.I8));
         }
 
-        return factoryFacade.createArrayLiteral(values, constant.getType());
+        return factoryFacade.createArrayLiteral(runtime, values, constant.getType());
     }
 
     private LLVMExpressionNode toStruct(StructureConstant constant) {
@@ -190,7 +190,7 @@ public final class LLVMSymbolResolver {
             types[i] = constant.getElementType(i);
             constants[i] = resolve(constant.getElement(i));
         }
-        return runtime.getNodeFactoryFacade().createStructureConstantNode(constant.getType(), constant.isPacked(), types, constants);
+        return runtime.getNodeFactoryFacade().createStructureConstantNode(runtime, constant.getType(), constant.isPacked(), types, constants);
     }
 
     private LLVMExpressionNode toArray(ArrayConstant array) {
@@ -200,7 +200,7 @@ public final class LLVMSymbolResolver {
             values.add(resolve(array.getElement(i)));
         }
         final Type arrayType = array.getType();
-        return runtime.getNodeFactoryFacade().createArrayLiteral(values, arrayType);
+        return runtime.getNodeFactoryFacade().createArrayLiteral(runtime, values, arrayType);
     }
 
     private LLVMExpressionNode toVector(VectorConstant constant) {
@@ -210,7 +210,7 @@ public final class LLVMSymbolResolver {
         }
 
         final LLVMExpressionNode target = runtime.allocateVectorResult(constant.getType());
-        return runtime.getNodeFactoryFacade().createVectorLiteralNode(values, target, constant.getType().getLLVMBaseType());
+        return runtime.getNodeFactoryFacade().createVectorLiteralNode(runtime, values, target, constant.getType().getLLVMBaseType());
     }
 
     private LLVMExpressionNode toFunction(FunctionType function) {
@@ -222,8 +222,8 @@ public final class LLVMSymbolResolver {
             paramTypes[i] = function.getArgumentTypes()[i].getRuntimeType();
         }
 
-        final LLVMFunction llvmFunction = runtime.getNodeFactoryFacade().createAndRegisterFunctionDescriptor(function.getName(), returnType, hasVarArgs, paramTypes);
-        return runtime.getNodeFactoryFacade().createLiteral(llvmFunction, LLVMBaseType.FUNCTION_ADDRESS);
+        final LLVMFunction llvmFunction = runtime.getNodeFactoryFacade().createAndRegisterFunctionDescriptor(runtime, function.getName(), returnType, hasVarArgs, paramTypes);
+        return runtime.getNodeFactoryFacade().createLiteral(runtime, llvmFunction, LLVMBaseType.FUNCTION_ADDRESS);
     }
 
     private LLVMExpressionNode toBinaryOperation(BinaryOperationConstant operation) {
@@ -251,12 +251,12 @@ public final class LLVMSymbolResolver {
 
         final LLVMArithmeticInstructionType arithmeticInstructionType = LLVMBitcodeTypeHelper.toArithmeticInstructionType(operation.getOperator());
         if (arithmeticInstructionType != null) {
-            return runtime.getNodeFactoryFacade().createArithmeticOperation(lhs, rhs, arithmeticInstructionType, baseType, target);
+            return runtime.getNodeFactoryFacade().createArithmeticOperation(runtime, lhs, rhs, arithmeticInstructionType, baseType, target);
         }
 
         final LLVMLogicalInstructionType logicalInstructionType = LLVMBitcodeTypeHelper.toLogicalInstructionType(operation.getOperator());
         if (logicalInstructionType != null) {
-            return runtime.getNodeFactoryFacade().createLogicalOperation(lhs, rhs, logicalInstructionType, baseType, target);
+            return runtime.getNodeFactoryFacade().createLogicalOperation(runtime, lhs, rhs, logicalInstructionType, baseType, target);
         }
 
         throw new UnsupportedOperationException("Unsupported Binary Operator: " + operation.getOperator());
@@ -264,7 +264,7 @@ public final class LLVMSymbolResolver {
 
     private LLVMExpressionNode toBlockAddress(BlockAddressConstant constant) {
         final int val = labels.labels(constant.getFunction().getName()).get(constant.getInstructionBlock().getName());
-        return runtime.getNodeFactoryFacade().createLiteral(LLVMAddress.fromLong(val), LLVMBaseType.ADDRESS);
+        return runtime.getNodeFactoryFacade().createLiteral(runtime, LLVMAddress.fromLong(val), LLVMBaseType.ADDRESS);
     }
 
     private LLVMExpressionNode toElementPointer(GetElementPointerConstant constant) {
@@ -289,8 +289,8 @@ public final class LLVMSymbolResolver {
         }
 
         if (currentOffset != 0) {
-            final LLVMExpressionNode oneValueNode = runtime.getNodeFactoryFacade().createLiteral(1, LLVMBaseType.I32);
-            currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(LLVMBaseType.I32, currentAddress, oneValueNode, currentOffset);
+            final LLVMExpressionNode oneValueNode = runtime.getNodeFactoryFacade().createLiteral(runtime, 1, LLVMBaseType.I32);
+            currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, LLVMBaseType.I32, currentAddress, oneValueNode, currentOffset);
         }
 
         return currentAddress;
@@ -299,33 +299,33 @@ public final class LLVMSymbolResolver {
     private LLVMExpressionNode toComparison(CompareConstant compare) {
         final LLVMExpressionNode lhs = resolve(compare.getLHS());
         final LLVMExpressionNode rhs = resolve(compare.getRHS());
-        return runtime.getNodeFactoryFacade().createComparison(compare.getOperator(), compare.getLHS().getType(), lhs, rhs);
+        return runtime.getNodeFactoryFacade().createComparison(runtime, compare.getOperator(), compare.getLHS().getType(), lhs, rhs);
     }
 
     private LLVMExpressionNode toCast(CastConstant constant) {
         final LLVMConversionType type = LLVMBitcodeTypeHelper.toConversionType(constant.getOperator());
         final LLVMExpressionNode fromNode = resolve(constant.getValue());
-        return runtime.getNodeFactoryFacade().createCast(fromNode, constant.getType(), constant.getValue().getType(), type);
+        return runtime.getNodeFactoryFacade().createCast(runtime, fromNode, constant.getType(), constant.getValue().getType(), type);
     }
 
     private LLVMExpressionNode toNullValue(Type type) {
         if (type instanceof IntegerType) {
             if (type.getBits() == 1) {
-                return runtime.getNodeFactoryFacade().createSimpleConstantNoArray("false", LLVMBaseType.I1, type);
+                return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, "false", LLVMBaseType.I1, type);
             } else {
-                return runtime.getNodeFactoryFacade().createSimpleConstantNoArray("0", type.getLLVMBaseType(), type);
+                return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, "0", type.getLLVMBaseType(), type);
             }
 
         } else if (type instanceof FloatingPointType) {
             final FloatingPointType floatingPointType = (FloatingPointType) type;
             if (floatingPointType == FloatingPointType.X86_FP80) {
-                return runtime.getNodeFactoryFacade().createSimpleConstantNoArray("0xK00000000000000000000", LLVMBaseType.X86_FP80, type);
+                return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, "0xK00000000000000000000", LLVMBaseType.X86_FP80, type);
             } else {
-                return runtime.getNodeFactoryFacade().createSimpleConstantNoArray("0.0", floatingPointType.getLLVMBaseType(), floatingPointType);
+                return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, "0.0", floatingPointType.getLLVMBaseType(), floatingPointType);
             }
 
         } else if (type instanceof PointerType || type instanceof FunctionType) {
-            return runtime.getNodeFactoryFacade().createSimpleConstantNoArray("null", type.getLLVMBaseType(), type);
+            return runtime.getNodeFactoryFacade().createSimpleConstantNoArray(runtime, "null", type.getLLVMBaseType(), type);
 
         } else if (type instanceof ArrayType) {
             final int size = runtime.getByteSize(type);
@@ -333,7 +333,7 @@ public final class LLVMSymbolResolver {
                 return null;
             } else {
                 final LLVMExpressionNode target = runtime.allocateFunctionLifetime(type, runtime.getByteSize(type), runtime.getByteAlignment(type));
-                return runtime.getNodeFactoryFacade().createZeroNode(target, size);
+                return runtime.getNodeFactoryFacade().createZeroNode(runtime, target, size);
             }
 
         } else if (type instanceof VectorType) {
@@ -341,18 +341,18 @@ public final class LLVMSymbolResolver {
             final int nrElements = vectorType.getLength();
             final LLVMExpressionNode target = runtime.allocateVectorResult(vectorType);
             final LLVMBaseType baseType = vectorType.getLLVMBaseType();
-            return runtime.getNodeFactoryFacade().createZeroVectorInitializer(nrElements, target, baseType);
+            return runtime.getNodeFactoryFacade().createZeroVectorInitializer(runtime, nrElements, target, baseType);
 
         } else if (type instanceof StructureType) {
             final StructureType structureType = (StructureType) type;
             final int size = runtime.getByteSize(structureType);
             if (size == 0) {
                 final LLVMAddress minusOneNode = LLVMAddress.fromLong(-1);
-                return runtime.getNodeFactoryFacade().createLiteral(minusOneNode, LLVMBaseType.ADDRESS);
+                return runtime.getNodeFactoryFacade().createLiteral(runtime, minusOneNode, LLVMBaseType.ADDRESS);
             } else {
                 final int alignment = runtime.getByteAlignment(structureType);
                 final LLVMExpressionNode addressnode = runtime.allocateFunctionLifetime(structureType, size, alignment);
-                return runtime.getNodeFactoryFacade().createZeroNode(addressnode, size);
+                return runtime.getNodeFactoryFacade().createZeroNode(runtime, addressnode, size);
             }
 
         } else {
@@ -363,7 +363,7 @@ public final class LLVMSymbolResolver {
     public LLVMExpressionNode resolve(Symbol symbol) {
         if (symbol instanceof ValueInstruction || symbol instanceof FunctionParameter) {
             final FrameSlot slot = runtime.getMethodFrameDescriptor().findFrameSlot(((ValueSymbol) symbol).getName());
-            return runtime.getNodeFactoryFacade().createFrameRead(symbol.getType().getLLVMBaseType(), slot);
+            return runtime.getNodeFactoryFacade().createFrameRead(runtime, symbol.getType().getLLVMBaseType(), slot);
 
         } else if (symbol instanceof GlobalValueSymbol) {
             return (LLVMExpressionNode) runtime.getGlobalAddress((GlobalValueSymbol) symbol);

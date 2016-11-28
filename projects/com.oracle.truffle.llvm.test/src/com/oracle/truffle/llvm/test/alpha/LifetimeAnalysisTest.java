@@ -49,7 +49,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.base.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.base.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.base.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.parser.bc.impl.LLVMBitcodeVisitor;
+import com.oracle.truffle.llvm.parser.bc.impl.BitcodeParserResult;
 import com.oracle.truffle.llvm.parser.bc.impl.LLVMLifetimeAnalysis;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.test.options.SulongTestOptions;
@@ -85,7 +85,7 @@ public final class LifetimeAnalysisTest {
         try {
             LLVMLogger.info("original file: " + bcFile.toString());
 
-            final LLVMBitcodeVisitor.BitcodeParserResult parserResult = LLVMBitcodeVisitor.BitcodeParserResult.getFromSource(Source.newBuilder(bcFile.toFile().getAbsoluteFile()).build());
+            final BitcodeParserResult parserResult = BitcodeParserResult.getFromSource(Source.newBuilder(bcFile.toFile().getAbsoluteFile()).build());
             parserResult.getModel().accept(new ModelVisitor() {
                 @Override
                 public void ifVisitNotOverwritten(Object obj) {
