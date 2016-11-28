@@ -59,6 +59,7 @@ public abstract class TruffleLocator {
             test.locate(response);
         }
         found.add(ClassLoader.getSystemClassLoader());
+        found.add(TruffleLocator.class.getClassLoader());
         return found;
     }
 

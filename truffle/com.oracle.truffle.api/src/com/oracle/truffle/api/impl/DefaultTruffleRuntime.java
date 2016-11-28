@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Iterator;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
 /**
@@ -194,7 +195,11 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     public <T> T getCapability(Class<T> capability) {
         final Iterator<T> it = ServiceLoader.load(capability).iterator();
-        return it.hasNext() ? it.next() : null;
+        try {
+            return it.hasNext() ? it.next() : null;
+        } catch (ServiceConfigurationError e) {
+            return null;
+        }
     }
 
     public void notifyTransferToInterpreter() {
