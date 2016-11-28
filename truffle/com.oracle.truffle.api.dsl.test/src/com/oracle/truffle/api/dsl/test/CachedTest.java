@@ -37,6 +37,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.BoundCacheFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.BoundCacheOverflowFactory;
@@ -52,7 +53,9 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithCachedAndD
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithJustCachedParameterFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.UnboundCacheFactory;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTest.ImplicitCast0Types;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
@@ -435,6 +438,7 @@ public class CachedTest {
     }
 
     @NodeChild
+    @TypeSystemReference(FlatDSLTypes.class)
     static class TestCodeGenerationPosNegGuard extends ValueNode {
 
         @Specialization(guards = "guard(value)")
@@ -442,10 +446,10 @@ public class CachedTest {
             return value;
         }
 
-        // @Specialization(guards = {"!guard(value)", "value != cachedValue"})
-        // static int do1(int value, @Cached("get(value)") int cachedValue) {
-        // return cachedValue;
-        // }
+        @Specialization(guards = {"!guard(value)", "value == cachedValue"})
+        static int do1(int value, @Cached("value") int cachedValue, @Cached("get(value)") int result) {
+            return result;
+        }
 
         protected static boolean guard(int i) {
             return i == 0;
@@ -457,13 +461,12 @@ public class CachedTest {
 
     }
 
-    @Ignore("Code above (uncommented) produces invalid code")
     @Test
     public void testCodeGenerationPosNegGuard() {
         CallTarget root = createCallTarget(TestCodeGenerationPosNegGuardFactory.getInstance());
         assertEquals(0, root.call(0));
         assertEquals(2, root.call(1));
-        assertEquals(2, root.call(2));
+        assertEquals(4, root.call(2));
     }
 
     @NodeChild
