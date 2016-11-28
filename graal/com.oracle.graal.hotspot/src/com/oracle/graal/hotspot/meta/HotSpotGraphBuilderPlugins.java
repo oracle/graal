@@ -23,8 +23,13 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
+import static com.oracle.graal.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
+
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateRecompile;
+import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
@@ -39,6 +44,7 @@ import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.hotspot.FingerprintUtil;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
@@ -60,6 +66,7 @@ import com.oracle.graal.hotspot.replacements.ThreadSubstitutions;
 import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyNode;
 import com.oracle.graal.hotspot.word.HotSpotWordTypes;
 import com.oracle.graal.nodes.ConstantNode;
+import com.oracle.graal.nodes.DeoptimizeNode;
 import com.oracle.graal.nodes.DynamicPiNode;
 import com.oracle.graal.nodes.FixedGuardNode;
 import com.oracle.graal.nodes.LogicNode;
@@ -76,6 +83,7 @@ import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import com.oracle.graal.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
+import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
 import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.memory.address.AddressNode;
@@ -94,6 +102,9 @@ import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -126,13 +137,54 @@ public class HotSpotGraphBuilderPlugins {
 
         plugins.appendTypePlugin(nodePlugin);
         plugins.appendNodePlugin(nodePlugin);
+        if (GeneratePIC.getValue()) {
+            // AOT needs to filter out bad invokes
+            plugins.prependNodePlugin(new NodePlugin() {
+                @Override
+                public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+                    if (b.parsingIntrinsic()) {
+                        return false;
+                    }
+                    // check if the holder has a valid fingerprint
+                    if (FingerprintUtil.getFingerprint((HotSpotResolvedObjectType) method.getDeclaringClass()) == 0) {
+                        // Deopt otherwise
+                        b.append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+                        return true;
+                    }
+                    // the last argument that may come from appendix, check if it is a supported
+                    // constant type
+                    if (args.length > 0) {
+                        JavaConstant constant = args[args.length - 1].asJavaConstant();
+                        if (constant != null && constant instanceof HotSpotObjectConstant) {
+                            HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) ((HotSpotObjectConstant) constant).getType();
+                            Class<?> clazz = type.mirror();
+                            if (clazz.equals(String.class)) {
+                                return false;
+                            }
+                            if (Class.class.isAssignableFrom(clazz) && FingerprintUtil.getFingerprint((HotSpotResolvedObjectType) type) != 0) {
+                                return false;
+                            }
+                            b.append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
+        }
         plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
-
         plugins.appendInlineInvokePlugin(replacements);
         if (InlineDuringParsing.getValue()) {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
         plugins.appendInlineInvokePlugin(new InlineGraalDirectivesPlugin());
+
+        if (GeneratePIC.getValue()) {
+            plugins.setClassInitializationPlugin(new HotSpotClassInitializationPlugin());
+            if (TieredAOT.getValue()) {
+                plugins.setProfilingPlugin(new HotSpotAOTProfilingPlugin());
+            }
+        }
 
         invocationPlugins.defer(new Runnable() {
 
@@ -163,19 +215,27 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerObjectPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
         Registration r = new Registration(plugins, Object.class, bytecodeProvider);
-        r.register1("clone", Receiver.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode object = receiver.get();
-                b.addPush(JavaKind.Object, new ObjectCloneNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), object));
-                return true;
-            }
+        if (!GeneratePIC.getValue()) {
+            // FIXME: clone() requires speculation and requires a fix in here (to check that
+            // b.getAssumptions() != null), and in ReplacementImpl.getSubstitution() where there is
+            // an instantiation of IntrinsicGraphBuilder using a constructor that sets
+            // AllowAssumptions to YES automatically. The former has to inherit the assumptions
+            // settings from the root compile instead. So, for now, I'm disabling it for
+            // GeneratePIC.
+            r.register1("clone", Receiver.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    ValueNode object = receiver.get();
+                    b.addPush(JavaKind.Object, new ObjectCloneNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), object));
+                    return true;
+                }
 
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-        });
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+            });
+        }
         r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
     }
 

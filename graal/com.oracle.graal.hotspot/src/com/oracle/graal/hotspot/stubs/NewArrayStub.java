@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayPrototypeMarkWord;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.getAndClearObjectResult;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.inlineContiguousAllocationSupported;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperElementTypeMask;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperElementTypeShift;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeMask;
@@ -52,6 +51,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.HotSpotVMConfigNode;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
@@ -116,7 +116,8 @@ public class NewArrayStub extends SnippetStub {
 
         // check that array length is small enough for fast path.
         Word thread = registerAsWord(threadRegister);
-        if (inlineContiguousAllocationSupported(INJECTED_VMCONFIG) && length >= 0 && length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
+        boolean inlineContiguousAllocationSupported = HotSpotVMConfigNode.inlineContiguousAllocationSupported();
+        if (inlineContiguousAllocationSupported && length >= 0 && length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
             Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
             if (memory.notEqual(0)) {
                 if (logging()) {

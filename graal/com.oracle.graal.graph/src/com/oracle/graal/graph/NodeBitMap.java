@@ -169,7 +169,7 @@ public final class NodeBitMap implements NodeIterable<Node> {
     }
 
     private boolean check(Node node, boolean grow) {
-        assert node.graph() == graph() : "this node is not part of the graph";
+        assert node.graph() == graph() : "this node is not part of the graph: " + node;
         assert grow || !isNew(node) : "node was added to the graph after creating the node bitmap: " + node;
         assert node.isAlive() : "node is deleted!" + node;
         return true;

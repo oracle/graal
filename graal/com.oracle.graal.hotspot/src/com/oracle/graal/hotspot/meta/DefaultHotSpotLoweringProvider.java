@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.GraalOptions.AlwaysInlineVTableStubs;
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.compiler.common.GraalOptions.InlineVTableStubs;
 import static com.oracle.graal.compiler.common.GraalOptions.OmitHotExceptionStacktrace;
 import static com.oracle.graal.compiler.common.LocationIdentity.any;
@@ -63,6 +64,10 @@ import com.oracle.graal.hotspot.nodes.G1ReferentFieldReadBarrier;
 import com.oracle.graal.hotspot.nodes.GetObjectAddressNode;
 import com.oracle.graal.hotspot.nodes.HotSpotDirectCallTargetNode;
 import com.oracle.graal.hotspot.nodes.HotSpotIndirectCallTargetNode;
+import com.oracle.graal.hotspot.nodes.InitializeKlassNode;
+import com.oracle.graal.hotspot.nodes.ProfileNode;
+import com.oracle.graal.hotspot.nodes.ResolveConstantNode;
+import com.oracle.graal.hotspot.nodes.ResolveMethodAndLoadCountersNode;
 import com.oracle.graal.hotspot.nodes.SerialArrayRangeWriteBarrier;
 import com.oracle.graal.hotspot.nodes.SerialWriteBarrier;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
@@ -78,6 +83,8 @@ import com.oracle.graal.hotspot.replacements.KlassLayoutHelperNode;
 import com.oracle.graal.hotspot.replacements.LoadExceptionObjectSnippets;
 import com.oracle.graal.hotspot.replacements.MonitorSnippets;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
+import com.oracle.graal.hotspot.replacements.ProfileSnippets;
+import com.oracle.graal.hotspot.replacements.ResolveConstantSnippets;
 import com.oracle.graal.hotspot.replacements.StringToBytesSnippets;
 import com.oracle.graal.hotspot.replacements.UnsafeLoadSnippets;
 import com.oracle.graal.hotspot.replacements.WriteBarrierSnippets;
@@ -175,6 +182,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     protected ArrayCopySnippets.Templates arraycopySnippets;
     protected StringToBytesSnippets.Templates stringToBytesSnippets;
     protected HashCodeSnippets.Templates hashCodeSnippets;
+    protected ResolveConstantSnippets.Templates resolveConstantSnippets;
+    protected ProfileSnippets.Templates profileSnippets;
 
     public DefaultHotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
@@ -199,6 +208,10 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         arraycopySnippets = new ArrayCopySnippets.Templates(providers, target);
         stringToBytesSnippets = new StringToBytesSnippets.Templates(providers, target);
         hashCodeSnippets = new HashCodeSnippets.Templates(providers, target);
+        if (GeneratePIC.getValue()) {
+            resolveConstantSnippets = new ResolveConstantSnippets.Templates(providers, target);
+            profileSnippets = new ProfileSnippets.Templates(providers, target);
+        }
         providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
     }
 
@@ -341,6 +354,14 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             }
         } else if (n instanceof IdentityHashCodeNode) {
             hashCodeSnippets.lower((IdentityHashCodeNode) n, tool);
+        } else if (n instanceof ResolveConstantNode) {
+            resolveConstantSnippets.lower((ResolveConstantNode) n, tool);
+        } else if (n instanceof ResolveMethodAndLoadCountersNode) {
+            resolveConstantSnippets.lower((ResolveMethodAndLoadCountersNode) n, tool);
+        } else if (n instanceof InitializeKlassNode) {
+            resolveConstantSnippets.lower((InitializeKlassNode) n, tool);
+        } else if (n instanceof ProfileNode) {
+            profileSnippets.lower((ProfileNode) n, tool);
         } else {
             super.lower(n, tool);
         }

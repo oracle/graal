@@ -136,7 +136,10 @@ public abstract class SnippetStub extends Stub implements Snippets {
             }
 
             graph.setGuardsStage(GuardsStage.FLOATING_GUARDS);
-            new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, new PhaseContext(providers));
+            CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+            PhaseContext context = new PhaseContext(providers);
+            canonicalizer.apply(graph, context);
+            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

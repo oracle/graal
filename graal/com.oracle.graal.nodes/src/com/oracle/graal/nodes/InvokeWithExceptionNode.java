@@ -57,6 +57,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
 
     @Successor AbstractBeginNode next;
     @Successor AbstractBeginNode exceptionEdge;
+    @OptionalInput ValueNode classInit;
     @Input(Extension) CallTargetNode callTarget;
     @OptionalInput(State) FrameState stateDuring;
     @OptionalInput(State) FrameState stateAfter;
@@ -271,5 +272,16 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     @Override
     public Stamp uncheckedStamp() {
         return this.callTarget.returnStamp().getUncheckedStamp();
+    }
+
+    @Override
+    public void setClassInit(ValueNode classInit) {
+        this.classInit = classInit;
+        updateUsages(null, classInit);
+    }
+
+    @Override
+    public ValueNode classInit() {
+        return classInit;
     }
 }

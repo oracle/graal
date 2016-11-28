@@ -70,6 +70,10 @@ public class InliningPhase extends AbstractInliningPhase {
         this.canonicalizer = canonicalizer;
     }
 
+    public CanonicalizerPhase getCanonicalizer() {
+        return canonicalizer;
+    }
+
     @Override
     public float codeSizeIncrease() {
         return 10_000f;

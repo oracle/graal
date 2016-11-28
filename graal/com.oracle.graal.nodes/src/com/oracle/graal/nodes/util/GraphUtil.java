@@ -57,6 +57,7 @@ import com.oracle.graal.nodes.spi.ValueProxy;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -727,5 +728,16 @@ public class GraphUtil {
     public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     boolean canonicalizeReads, Assumptions assumptions, LoweringProvider loweringProvider) {
         return new DefaultSimplifierTool(metaAccess, constantReflection, constantFieldProvider, canonicalizeReads, assumptions, loweringProvider);
+    }
+
+    public static Constant foldIfConstantAndRemove(ValueNode node, ValueNode constant) {
+        assert node.inputs().contains(constant);
+        if (constant.isConstant()) {
+            node.replaceFirstInput(constant, null);
+            Constant result = constant.asConstant();
+            tryKillUnused(constant);
+            return result;
+        }
+        return null;
     }
 }

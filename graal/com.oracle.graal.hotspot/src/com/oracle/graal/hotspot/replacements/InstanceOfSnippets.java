@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
@@ -78,6 +79,7 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -146,6 +148,12 @@ public class InstanceOfSnippets implements Snippets {
         return trueValue;
     }
 
+    @Snippet
+    public static Object instanceofExactPIC(Object object, KlassPointer exactHub, Object trueValue, Object falseValue) {
+        KlassPointer exactHubPIC = ResolveConstantSnippets.resolveKlassConstant(exactHub);
+        return instanceofExact(object, exactHubPIC, trueValue, falseValue);
+    }
+
     /**
      * A test against a primary type.
      */
@@ -163,6 +171,12 @@ public class InstanceOfSnippets implements Snippets {
         }
         displayHit.inc();
         return trueValue;
+    }
+
+    @Snippet
+    public static Object instanceofPrimaryPIC(KlassPointer hub, Object object, @ConstantParameter int superCheckOffset, Object trueValue, Object falseValue) {
+        KlassPointer resolvedHub = ResolveConstantSnippets.resolveKlassConstant(hub);
+        return instanceofPrimary(resolvedHub, object, superCheckOffset, trueValue, falseValue);
     }
 
     /**
@@ -191,6 +205,13 @@ public class InstanceOfSnippets implements Snippets {
             return falseValue;
         }
         return trueValue;
+    }
+
+    @Snippet
+    public static Object instanceofSecondaryPIC(KlassPointer hub, Object object, @VarargsParameter KlassPointer[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue,
+                    Object falseValue) {
+        KlassPointer resolvedHub = ResolveConstantSnippets.resolveKlassConstant(hub);
+        return instanceofSecondary(resolvedHub, object, hints, hintIsPositive, trueValue, falseValue);
     }
 
     /**
@@ -238,8 +259,11 @@ public class InstanceOfSnippets implements Snippets {
 
         private final SnippetInfo instanceofWithProfile = snippet(InstanceOfSnippets.class, "instanceofWithProfile");
         private final SnippetInfo instanceofExact = snippet(InstanceOfSnippets.class, "instanceofExact");
+        private final SnippetInfo instanceofExactPIC = snippet(InstanceOfSnippets.class, "instanceofExactPIC");
         private final SnippetInfo instanceofPrimary = snippet(InstanceOfSnippets.class, "instanceofPrimary");
+        private final SnippetInfo instanceofPrimaryPIC = snippet(InstanceOfSnippets.class, "instanceofPrimaryPIC");
         private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary", SECONDARY_SUPER_CACHE_LOCATION);
+        private final SnippetInfo instanceofSecondaryPIC = snippet(InstanceOfSnippets.class, "instanceofSecondaryPIC", SECONDARY_SUPER_CACHE_LOCATION);
         private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic", SECONDARY_SUPER_CACHE_LOCATION);
         private final SnippetInfo isAssignableFrom = snippet(InstanceOfSnippets.class, "isAssignableFrom", SECONDARY_SUPER_CACHE_LOCATION);
 
@@ -254,7 +278,13 @@ public class InstanceOfSnippets implements Snippets {
                 ValueNode object = instanceOf.getValue();
                 Assumptions assumptions = instanceOf.graph().getAssumptions();
 
-                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), assumptions, TypeCheckMinProfileHitProbability.getValue(), TypeCheckMaxHints.getValue());
+                JavaTypeProfile profile = instanceOf.profile();
+                if (GeneratePIC.getValue()) {
+                    // FIXME: We can't embed constants in hints. We can't really load them from GOT
+                    // either. Hard problem.
+                    profile = null;
+                }
+                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), profile, assumptions, TypeCheckMinProfileHitProbability.getValue(), TypeCheckMaxHints.getValue());
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type().getType();
                 ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), instanceOf.graph());
 
@@ -268,17 +298,20 @@ public class InstanceOfSnippets implements Snippets {
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
                     args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive);
                 } else if (hintInfo.exact != null) {
-                    args = new Arguments(instanceofExact, graph.getGuardsStage(), tool.getLoweringStage());
+                    SnippetInfo snippet = GeneratePIC.getValue() ? instanceofExactPIC : instanceofExact;
+                    args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
                     args.add("exactHub", ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) hintInfo.exact).klass(), providers.getMetaAccess(), graph));
                 } else if (type.isPrimaryType()) {
-                    args = new Arguments(instanceofPrimary, graph.getGuardsStage(), tool.getLoweringStage());
+                    SnippetInfo snippet = GeneratePIC.getValue() ? instanceofPrimaryPIC : instanceofPrimary;
+                    args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addConst("superCheckOffset", type.superCheckOffset());
                 } else {
                     Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
-                    args = new Arguments(instanceofSecondary, graph.getGuardsStage(), tool.getLoweringStage());
+                    SnippetInfo snippet = GeneratePIC.getValue() ? instanceofSecondaryPIC : instanceofSecondary;
+                    args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);

@@ -59,6 +59,7 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SS;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.WORD;
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.lir.LIRValueUtil.asConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
@@ -85,7 +86,6 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.AMD64Shift;
 import com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize;
 import com.oracle.graal.asm.amd64.AMD64Assembler.SSEOp;
 import com.oracle.graal.asm.amd64.AMD64Assembler.AVXOp;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.calc.FloatConvert;
 import com.oracle.graal.debug.GraalError;
@@ -1234,9 +1234,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return;
             } else if (c instanceof VMConstant) {
                 VMConstant vc = (VMConstant) c;
-                boolean isImmutable = GraalOptions.ImmutableCode.getValue();
-                boolean generatePIC = GraalOptions.GeneratePIC.getValue();
-                if (size == DWORD && !(isImmutable && generatePIC)) {
+                if (size == DWORD && !GeneratePIC.getValue()) {
                     getLIRGen().append(new AMD64BinaryConsumer.VMConstOp(CMP.getMIOpcode(DWORD, false), left, vc));
                 } else {
                     getLIRGen().append(new AMD64BinaryConsumer.DataOp(CMP.getRMOpcode(size), size, left, vc));

@@ -27,7 +27,6 @@ import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayBaseOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayIndexScale;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.cardTableShift;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.cardTableStart;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.dirtyCardValue;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1CardQueueBufferOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1CardQueueIndexOffset;
@@ -35,7 +34,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1SA
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1SATBQueueIndexOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1SATBQueueMarkingOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.g1YoungCardValue;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.logOfHeapRegionGrainBytes;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOops;
@@ -64,6 +62,7 @@ import com.oracle.graal.hotspot.nodes.G1PostWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1PreWriteBarrier;
 import com.oracle.graal.hotspot.nodes.G1ReferentFieldReadBarrier;
 import com.oracle.graal.hotspot.nodes.GetObjectAddressNode;
+import com.oracle.graal.hotspot.nodes.HotSpotVMConfigNode;
 import com.oracle.graal.hotspot.nodes.SerialArrayRangeWriteBarrier;
 import com.oracle.graal.hotspot.nodes.SerialWriteBarrier;
 import com.oracle.graal.hotspot.nodes.type.NarrowOopStamp;
@@ -115,17 +114,13 @@ public class WriteBarrierSnippets implements Snippets {
 
     private static void serialWriteBarrier(Pointer ptr) {
         serialWriteBarrierCounter.inc();
-        int cardTableShift = cardTableShift(INJECTED_VMCONFIG);
-        long cardTableAddress = cardTableStart(INJECTED_VMCONFIG);
-        Word base = (Word) ptr.unsignedShiftRight(cardTableShift);
-        long startAddress = cardTableAddress;
-        int displacement = 0;
-        if (((int) startAddress) == startAddress) {
-            displacement = (int) startAddress;
+        final long startAddress = HotSpotVMConfigNode.cardTableAddress();
+        Word base = (Word) ptr.unsignedShiftRight(cardTableShift(INJECTED_VMCONFIG));
+        if (((int) startAddress) == startAddress && HotSpotVMConfigNode.isCardTableAddressConstant()) {
+            base.writeByte((int) startAddress, (byte) 0, GC_CARD_LOCATION);
         } else {
-            base = base.add(Word.unsigned(cardTableAddress));
+            base.writeByte(Word.unsigned(startAddress), (byte) 0, GC_CARD_LOCATION);
         }
-        base.writeByte(displacement, (byte) 0, GC_CARD_LOCATION);
     }
 
     @Snippet
@@ -145,7 +140,7 @@ public class WriteBarrierSnippets implements Snippets {
         }
         Object dest = FixedValueAnchorNode.getObject(object);
         int cardShift = cardTableShift(INJECTED_VMCONFIG);
-        long cardStart = cardTableStart(INJECTED_VMCONFIG);
+        final long cardStart = HotSpotVMConfigNode.cardTableAddress();
         final int scale = arrayIndexScale(JavaKind.Object);
         int header = arrayBaseOffset(JavaKind.Object);
         long dstAddr = GetObjectAddressNode.get(dest);
@@ -235,17 +230,18 @@ public class WriteBarrierSnippets implements Snippets {
         Pointer writtenValue = Word.objectToTrackedPointer(fixedValue);
         // The result of the xor reveals whether the installed pointer crosses heap regions.
         // In case it does the write barrier has to be issued.
-        Unsigned xorResult = (oop.xor(writtenValue)).unsignedShiftRight(logOfHeapRegionGrainBytes(INJECTED_VMCONFIG));
+        final int logOfHeapRegionGrainBytes = HotSpotVMConfigNode.logOfHeapRegionGrainBytes();
+        Unsigned xorResult = (oop.xor(writtenValue)).unsignedShiftRight(logOfHeapRegionGrainBytes);
 
         // Calculate the address of the card to be enqueued to the
         // thread local card queue.
         Unsigned cardBase = oop.unsignedShiftRight(cardTableShift(INJECTED_VMCONFIG));
-        long startAddress = cardTableStart(INJECTED_VMCONFIG);
+        final long startAddress = HotSpotVMConfigNode.cardTableAddress();
         int displacement = 0;
-        if (((int) startAddress) == startAddress) {
+        if (((int) startAddress) == startAddress && HotSpotVMConfigNode.isCardTableAddressConstant()) {
             displacement = (int) startAddress;
         } else {
-            cardBase = cardBase.add(Word.unsigned(cardTableStart(INJECTED_VMCONFIG)));
+            cardBase = cardBase.add(Word.unsigned(startAddress));
         }
         Word cardAddress = (Word) cardBase.add(displacement);
 
@@ -334,7 +330,7 @@ public class WriteBarrierSnippets implements Snippets {
         long indexValue = thread.readWord(g1CardQueueIndexOffset(INJECTED_VMCONFIG)).rawValue();
 
         int cardShift = cardTableShift(INJECTED_VMCONFIG);
-        long cardStart = cardTableStart(INJECTED_VMCONFIG);
+        final long cardStart = HotSpotVMConfigNode.cardTableAddress();
         final int scale = arrayIndexScale(JavaKind.Object);
         int header = arrayBaseOffset(JavaKind.Object);
         long dstAddr = GetObjectAddressNode.get(dest);

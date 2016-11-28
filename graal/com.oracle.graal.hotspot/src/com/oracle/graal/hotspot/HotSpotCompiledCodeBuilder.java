@@ -106,6 +106,7 @@ public class HotSpotCompiledCodeBuilder {
 
         int totalFrameSize = compResult.getTotalFrameSize();
         StackSlot customStackArea = compResult.getCustomStackArea();
+        boolean isImmutablePIC = compResult.isImmutablePIC();
 
         if (method instanceof HotSpotResolvedJavaMethod) {
             HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
@@ -121,11 +122,11 @@ public class HotSpotCompiledCodeBuilder {
                 id = hsMethod.allocateCompileId(entryBCI);
                 jvmciEnv = 0L;
             }
-            return new HotSpotCompiledNmethod(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, false, totalFrameSize,
-                            customStackArea, hsMethod, entryBCI, id, jvmciEnv, hasUnsafeAccess);
+            return new HotSpotCompiledNmethod(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, isImmutablePIC,
+                            totalFrameSize, customStackArea, hsMethod, entryBCI, id, jvmciEnv, hasUnsafeAccess);
         } else {
-            return new HotSpotCompiledCode(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, false, totalFrameSize,
-                            customStackArea);
+            return new HotSpotCompiledCode(name, targetCode, targetCodeSize, sites, assumptions, methods, comments, dataSection, dataSectionAlignment, dataSectionPatches, isImmutablePIC,
+                            totalFrameSize, customStackArea);
         }
     }
 

@@ -362,7 +362,7 @@ public final class DataSection implements Iterable<Data> {
      *
      * This must only be called once this object has been {@linkplain #closed() closed}. When this
      * method returns, the buffers' position is just after the last data item.
-     * 
+     *
      * @param buffer the {@link ByteBuffer} where the data section should be built. The buffer must
      *            hold at least {@link #getSectionSize()} bytes.
      * @param patch a {@link Patches} instance to receive {@link VMConstant constants} for
@@ -388,6 +388,10 @@ public final class DataSection implements Iterable<Data> {
             }
         }
         return null;
+    }
+
+    public static void emit(ByteBuffer buffer, Data data, Patches patch) {
+        data.emit(buffer, patch);
     }
 
     @Override

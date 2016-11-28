@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
 
 import com.oracle.graal.compiler.common.calc.Condition;
@@ -212,7 +213,11 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         ConstantReflectionProvider constantReflection = tool.getConstantReflection();
         if (convert.preservesOrder(condition(), constant, constantReflection)) {
             Constant reverseConverted = convert.reverse(constant, constantReflection);
-            if (convert.convert(reverseConverted, constantReflection).equals(constant)) {
+            if (reverseConverted != null && convert.convert(reverseConverted, constantReflection).equals(constant)) {
+                if (GeneratePIC.getValue()) {
+                    // We always want uncompressed constants
+                    return null;
+                }
                 return ConstantNode.forConstant(convert.getValue().stamp(), reverseConverted, tool.getMetaAccess());
             }
         }

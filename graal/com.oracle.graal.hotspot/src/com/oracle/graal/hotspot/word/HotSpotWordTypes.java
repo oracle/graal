@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.word;
 
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
+import com.oracle.graal.hotspot.nodes.type.MethodCountersPointerStamp;
 import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
 import com.oracle.graal.word.WordTypes;
 
@@ -52,11 +53,17 @@ public class HotSpotWordTypes extends WordTypes {
      */
     private final ResolvedJavaType methodPointerType;
 
+    /**
+     * Resolved type for {@link MethodCountersPointer}.
+     */
+    private final ResolvedJavaType methodCountersPointerType;
+
     public HotSpotWordTypes(MetaAccessProvider metaAccess, JavaKind wordKind) {
         super(metaAccess, wordKind);
         this.metaspacePointerType = metaAccess.lookupJavaType(MetaspacePointer.class);
         this.klassPointerType = metaAccess.lookupJavaType(KlassPointer.class);
         this.methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
+        this.methodCountersPointerType = metaAccess.lookupJavaType(MethodCountersPointer.class);
     }
 
     @Override
@@ -81,6 +88,8 @@ public class HotSpotWordTypes extends WordTypes {
             return KlassPointerStamp.klass();
         } else if (type.equals(methodPointerType)) {
             return MethodPointerStamp.method();
+        } else if (type.equals(methodCountersPointerType)) {
+            return MethodCountersPointerStamp.methodCounters();
         }
         return super.getWordStamp(type);
     }

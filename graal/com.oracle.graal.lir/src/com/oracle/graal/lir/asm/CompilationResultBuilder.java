@@ -268,6 +268,15 @@ public class CompilationResultBuilder {
         }
     }
 
+    public void recordInlineDataInCodeWithNote(Constant data, Object note) {
+        assert data != null;
+        int pos = asm.position();
+        Debug.log("Inline data in code: pos = %d, data = %s, note = %s", pos, data, note);
+        if (data instanceof VMConstant) {
+            compilationResult.recordDataPatchWithNote(pos, new ConstantReference((VMConstant) data), note);
+        }
+    }
+
     public AbstractAddress recordDataSectionReference(Data data) {
         assert data != null;
         DataSectionReference reference = compilationResult.getDataSection().insertData(data);

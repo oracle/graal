@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.asm.NumUtil.isInt;
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rip;
@@ -92,7 +93,11 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
             JavaConstant pollingPageAddress = JavaConstant.forIntegerKind(hostWordKind, config.safepointPollingAddress);
             // This move will be patched to load the safepoint page from a data segment
             // co-located with the immutable code.
-            asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment));
+            if (GeneratePIC.getValue()) {
+                asm.movq(scratch, asm.getPlaceholder(-1));
+            } else {
+                asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment));
+            }
             final int pos = asm.position();
             crb.recordMark(atReturn ? config.MARKID_POLL_RETURN_FAR : config.MARKID_POLL_FAR);
             if (state != null) {

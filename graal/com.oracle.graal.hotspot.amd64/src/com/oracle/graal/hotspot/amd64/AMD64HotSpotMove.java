@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
@@ -34,9 +35,9 @@ import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.amd64.AMD64Address;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.CompressEncoding;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
 import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
@@ -66,6 +67,9 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (GeneratePIC.getValue()) {
+                throw GraalError.shouldNotReachHere("Object constant load should not be happening directly");
+            }
             boolean compressed = input.isCompressed();
             if (crb.target.inlineObjects) {
                 crb.recordInlineDataInCode(input);
@@ -108,6 +112,26 @@ public class AMD64HotSpotMove {
         }
     }
 
+    public static final class BaseMove extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<BaseMove> TYPE = LIRInstructionClass.create(BaseMove.class);
+
+        @Def({REG, HINT}) protected AllocatableValue result;
+        private final GraalHotSpotVMConfig config;
+
+        public BaseMove(AllocatableValue result, GraalHotSpotVMConfig config) {
+            super(TYPE);
+            this.result = result;
+            this.config = config;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            masm.movq(asRegister(result), masm.getPlaceholder(-1));
+            crb.recordMark(config.MARKID_NARROW_KLASS_BASE_ADDRESS);
+        }
+
+    }
+
     public static final class HotSpotLoadMetaspaceConstantOp extends AMD64LIRInstruction implements LoadConstantOp {
         public static final LIRInstructionClass<HotSpotLoadMetaspaceConstantOp> TYPE = LIRInstructionClass.create(HotSpotLoadMetaspaceConstantOp.class);
 
@@ -122,38 +146,23 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (GeneratePIC.getValue()) {
+                throw GraalError.shouldNotReachHere("Metaspace constant load should not be happening directly");
+            }
             boolean compressed = input.isCompressed();
-            boolean isImmutable = GraalOptions.ImmutableCode.getValue();
-            boolean generatePIC = GraalOptions.GeneratePIC.getValue();
             if (isRegister(result)) {
                 if (compressed) {
-                    if (isImmutable && generatePIC) {
-                        int alignment = crb.target.wordSize;
-                        // recordDataReferenceInCode forces the mov to be rip-relative
-                        masm.movl(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input, alignment));
-                    } else {
-                        crb.recordInlineDataInCode(input);
-                        masm.movl(asRegister(result), 0xDEADDEAD);
-                    }
+                    crb.recordInlineDataInCode(input);
+                    masm.movl(asRegister(result), 0xDEADDEAD);
                 } else {
-                    if (isImmutable && generatePIC) {
-                        int alignment = crb.target.wordSize;
-                        // recordDataReferenceInCode forces the mov to be rip-relative
-                        masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input, alignment));
-                    } else {
-                        crb.recordInlineDataInCode(input);
-                        masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
-                    }
+                    crb.recordInlineDataInCode(input);
+                    masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
                 }
             } else {
                 assert isStackSlot(result);
                 if (compressed) {
-                    if (isImmutable && generatePIC) {
-                        throw GraalError.shouldNotReachHere("Unsupported operation offset(%rip) -> mem (mem -> mem)");
-                    } else {
-                        crb.recordInlineDataInCode(input);
-                        masm.movl((AMD64Address) crb.asAddress(result), 0xDEADDEAD);
-                    }
+                    crb.recordInlineDataInCode(input);
+                    masm.movl((AMD64Address) crb.asAddress(result), 0xDEADDEAD);
                 } else {
                     throw GraalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                 }
@@ -195,7 +204,7 @@ public class AMD64HotSpotMove {
             AMD64Move.move(AMD64Kind.QWORD, crb, masm, result, input);
 
             Register resReg = asRegister(result);
-            if (encoding.base != 0) {
+            if (encoding.base != 0 || GeneratePIC.getValue()) {
                 Register baseReg = asRegister(baseRegister);
                 if (!nonNull) {
                     masm.testq(resReg, resReg);
@@ -238,7 +247,7 @@ public class AMD64HotSpotMove {
                 masm.shlq(resReg, encoding.shift);
             }
 
-            if (encoding.base != 0) {
+            if (encoding.base != 0 || GeneratePIC.getValue()) {
                 if (nonNull) {
                     masm.addq(resReg, asRegister(baseRegister));
                 } else {

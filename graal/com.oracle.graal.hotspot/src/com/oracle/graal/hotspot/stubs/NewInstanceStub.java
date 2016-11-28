@@ -35,10 +35,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.TLAB
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.TLAB_THREAD_ALLOCATED_BYTES_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayBaseOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.getAndClearObjectResult;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.heapEndAddress;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.heapTopAddress;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.initializeTlab;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.inlineContiguousAllocationSupported;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.isInstanceKlassFullyInitialized;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadKlassLayoutHelperIntrinsic;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.log2WordSize;
@@ -76,6 +73,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import com.oracle.graal.hotspot.nodes.HotSpotVMConfigNode;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
@@ -147,7 +145,8 @@ public class NewInstanceStub extends SnippetStub {
          */
         int sizeInBytes = loadKlassLayoutHelperIntrinsic(hub);
         Word thread = registerAsWord(threadRegister);
-        if (!forceSlowPath() && inlineContiguousAllocationSupported(INJECTED_VMCONFIG)) {
+        boolean inlineContiguousAllocationSupported = HotSpotVMConfigNode.inlineContiguousAllocationSupported();
+        if (!forceSlowPath() && inlineContiguousAllocationSupported) {
             if (isInstanceKlassFullyInitialized(hub)) {
                 Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
                 if (memory.notEqual(0)) {
@@ -275,8 +274,11 @@ public class NewInstanceStub extends SnippetStub {
      * @return the allocated chunk or {@link Word#zero()} if allocation fails
      */
     public static Word edenAllocate(Word sizeInBytes, boolean log) {
-        Word heapTopAddress = Word.unsigned(heapTopAddress(INJECTED_VMCONFIG));
-        Word heapEndAddress = Word.unsigned(heapEndAddress(INJECTED_VMCONFIG));
+        final long heapTopRawAddress = HotSpotVMConfigNode.heapTopAddress();
+        final long heapEndRawAddress = HotSpotVMConfigNode.heapEndAddress();
+
+        Word heapTopAddress = Word.unsigned(heapTopRawAddress);
+        Word heapEndAddress = Word.unsigned(heapEndRawAddress);
 
         while (true) {
             Word heapTop = heapTopAddress.readWord(0, HEAP_TOP_LOCATION);

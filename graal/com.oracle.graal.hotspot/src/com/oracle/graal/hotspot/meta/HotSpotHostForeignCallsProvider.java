@@ -22,8 +22,15 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_DREM;
 import static com.oracle.graal.compiler.target.Backend.ARITHMETIC_FREM;
+import static com.oracle.graal.hotspot.HotSpotBackend.INITIALIZE_KLASS_BY_SYMBOL;
+import static com.oracle.graal.hotspot.HotSpotBackend.BACKEDGE_EVENT;
+import static com.oracle.graal.hotspot.HotSpotBackend.INVOCATION_EVENT;
+import static com.oracle.graal.hotspot.HotSpotBackend.RESOLVE_KLASS_BY_SYMBOL;
+import static com.oracle.graal.hotspot.HotSpotBackend.RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS;
+import static com.oracle.graal.hotspot.HotSpotBackend.RESOLVE_STRING_BY_SYMBOL;
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT;
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_BLOCK;
 import static com.oracle.graal.hotspot.HotSpotBackend.DECRYPT_BLOCK_WITH_ORIGINAL_KEY;
@@ -48,6 +55,7 @@ import static com.oracle.graal.hotspot.HotSpotBackend.UNCOMMON_TRAP;
 import static com.oracle.graal.hotspot.HotSpotBackend.UNPACK_FRAMES;
 import static com.oracle.graal.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
 import static com.oracle.graal.hotspot.HotSpotBackend.VM_ERROR;
+import static com.oracle.graal.hotspot.HotSpotBackend.WRONG_METHOD_HANDLER;
 import static com.oracle.graal.hotspot.HotSpotBackend.Options.PreferGraalStubs;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
@@ -104,6 +112,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
+import com.oracle.graal.hotspot.CompilerRuntimeHotSpotVMConfig;
 import com.oracle.graal.hotspot.stubs.ArrayStoreExceptionStub;
 import com.oracle.graal.hotspot.stubs.ClassCastExceptionStub;
 import com.oracle.graal.hotspot.stubs.CreateExceptionStub;
@@ -120,6 +129,7 @@ import com.oracle.graal.word.Word;
 import com.oracle.graal.word.WordTypes;
 
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -305,6 +315,17 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(providers, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
+
+        if (GeneratePIC.getValue()) {
+            registerForeignCall(WRONG_METHOD_HANDLER, c.handleWrongMethodStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
+            CompilerRuntimeHotSpotVMConfig cr = new CompilerRuntimeHotSpotVMConfig(HotSpotJVMCIRuntime.runtime().getConfigStore());
+            linkForeignCall(providers, RESOLVE_STRING_BY_SYMBOL, cr.resolveStringBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+            linkForeignCall(providers, RESOLVE_KLASS_BY_SYMBOL, cr.resolveKlassBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
+            linkForeignCall(providers, RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS, cr.resolveMethodBySymbolAndLoadCounters, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
+            linkForeignCall(providers, INITIALIZE_KLASS_BY_SYMBOL, cr.initializeKlassBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
+            linkForeignCall(providers, INVOCATION_EVENT, cr.invocationEvent, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
+            linkForeignCall(providers, BACKEDGE_EVENT, cr.backedgeEvent, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
+        }
 
         // Cannot be a leaf as VM acquires Thread_lock which requires thread_in_vm state
         linkForeignCall(providers, THREAD_IS_INTERRUPTED, c.threadIsInterruptedAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());

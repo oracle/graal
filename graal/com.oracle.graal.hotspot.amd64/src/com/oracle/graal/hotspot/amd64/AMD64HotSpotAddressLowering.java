@@ -23,6 +23,7 @@
 
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
 
@@ -31,11 +32,15 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.compiler.amd64.AMD64AddressLowering;
 import com.oracle.graal.compiler.amd64.AMD64AddressNode;
 import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.hotspot.CompressEncoding;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
+import com.oracle.graal.hotspot.nodes.HotSpotVMConfigNode;
+import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
@@ -43,11 +48,13 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
 
 public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
 
     private final long heapBase;
     private final Register heapBaseRegister;
+    private final GraalHotSpotVMConfig config;
 
     @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
     public static class HeapBaseNode extends FloatingNode implements LIRLowerable {
@@ -68,9 +75,10 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
         }
     }
 
-    public AMD64HotSpotAddressLowering(long heapBase, Register heapBaseRegister) {
-        this.heapBase = heapBase;
-        if (heapBase == 0) {
+    public AMD64HotSpotAddressLowering(GraalHotSpotVMConfig config, Register heapBaseRegister) {
+        this.heapBase = config.getOopEncoding().base;
+        this.config = config;
+        if (heapBase == 0 && !GeneratePIC.getValue()) {
             this.heapBaseRegister = null;
         } else {
             this.heapBaseRegister = heapBaseRegister;
@@ -105,15 +113,26 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
             }
 
             if (heapBaseRegister != null && encoding.base == heapBase) {
-                ValueNode base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
-                addr.setBase(base);
-            } else if (encoding.base != 0) {
-                long disp = addr.getDisplacement() + encoding.base;
-                if (NumUtil.isInt(disp)) {
-                    addr.setDisplacement((int) disp);
-                    addr.setBase(null);
+                if (!GeneratePIC.getValue() || compression.stamp() instanceof ObjectStamp) {
+                    // With PIC it is only legal to do for oops since the base value may be
+                    // different at runtime.
+                    ValueNode base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
+                    addr.setBase(base);
                 } else {
                     return false;
+                }
+            } else if (encoding.base != 0 || (GeneratePIC.getValue() && compression.stamp() instanceof KlassPointerStamp)) {
+                if (GeneratePIC.getValue()) {
+                    ValueNode base = compression.graph().unique(new HotSpotVMConfigNode(config, config.MARKID_NARROW_KLASS_BASE_ADDRESS, JavaKind.Long));
+                    addr.setBase(base);
+                } else {
+                    long disp = addr.getDisplacement() + encoding.base;
+                    if (NumUtil.isInt(disp)) {
+                        addr.setDisplacement((int) disp);
+                        addr.setBase(null);
+                    } else {
+                        return false;
+                    }
                 }
             } else {
                 addr.setBase(null);

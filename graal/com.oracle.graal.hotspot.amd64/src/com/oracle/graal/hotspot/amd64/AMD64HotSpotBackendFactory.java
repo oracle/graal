@@ -30,6 +30,7 @@ import java.util.List;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.bytecode.BytecodeProvider;
+import com.oracle.graal.compiler.amd64.AMD64SuitesProvider;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
@@ -187,8 +188,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
      */
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     HotSpotRegistersProvider registers, Replacements replacements) {
-        return new HotSpotSuitesProvider(new AMD64HotSpotSuitesProvider(compilerConfiguration, plugins), config, runtime, new AMD64HotSpotAddressLowering(config.getOopEncoding().base,
-                        registers.getHeapBaseRegister()));
+        return new HotSpotSuitesProvider(new AMD64SuitesProvider(compilerConfiguration, plugins), config, runtime, new AMD64HotSpotAddressLowering(config, registers.getHeapBaseRegister()));
     }
 
     protected HotSpotSnippetReflectionProvider createSnippetReflection(HotSpotGraalRuntimeProvider runtime, HotSpotConstantReflectionProvider constantReflection, WordTypes wordTypes) {

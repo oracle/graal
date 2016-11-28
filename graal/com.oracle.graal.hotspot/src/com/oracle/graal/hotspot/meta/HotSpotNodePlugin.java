@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantFieldProvider.FieldReadEnabledInImmutableCode;
 
@@ -109,6 +110,11 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
         if (!ImmutableCode.getValue() || b.parsingIntrinsic()) {
             if (tryReadField(b, field, null)) {
                 return true;
+            }
+        }
+        if (GeneratePIC.getValue()) {
+            if (field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
+                return tryReadField(b, field, null);
             }
         }
         if (b.parsingIntrinsic() && wordOperationPlugin.handleLoadStaticField(b, field)) {

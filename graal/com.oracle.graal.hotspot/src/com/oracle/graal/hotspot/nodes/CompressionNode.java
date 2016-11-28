@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
 
@@ -175,6 +176,10 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
+            if (GeneratePIC.getValue()) {
+                // We always want uncompressed constants
+                return this;
+            }
             int stableDimension = ((ConstantNode) forValue).getStableDimension();
             boolean isDefaultStable = ((ConstantNode) forValue).isDefaultStable();
             return ConstantNode.forConstant(stamp(), convert(forValue.asConstant(), tool.getConstantReflection()), stableDimension, isDefaultStable, tool.getMetaAccess());
