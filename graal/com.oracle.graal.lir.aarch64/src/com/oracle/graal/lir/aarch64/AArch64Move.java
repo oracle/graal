@@ -194,7 +194,7 @@ public class AArch64Move {
     public static class MembarOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<MembarOp> TYPE = LIRInstructionClass.create(MembarOp.class);
 
-        private final int barriers;
+        @SuppressWarnings("unused") private final int barriers;
 
         public MembarOp(int barriers) {
             super(TYPE);
@@ -393,7 +393,7 @@ public class AArch64Move {
         }
     }
 
-    private static void emitStore(CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Kind kind, AArch64Address dst, Value src) {
+    private static void emitStore(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Kind kind, AArch64Address dst, Value src) {
         int destSize = kind.getSizeInBytes() * Byte.SIZE;
         if (kind.isInteger()) {
             masm.str(destSize, asRegister(src), dst);
@@ -402,7 +402,7 @@ public class AArch64Move {
         }
     }
 
-    public static void move(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
+    public static void move(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 reg2reg(crb, masm, result, asAllocatableValue(input));
