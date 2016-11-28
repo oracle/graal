@@ -24,6 +24,7 @@ package com.oracle.graal.lir.aarch64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.function.Function;
