@@ -54,7 +54,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 @RunWith(Parameterized.class)
 public final class ParserTortureSuite {
 
-    private static final Path GCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/gcc").toPath();
+    private static final Path GCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/gcc.c-torture").toPath();
     private static final Path GCC_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/gcc/compileConfigs").toPath();
 
     @Parameter(value = 0) public Path path;
