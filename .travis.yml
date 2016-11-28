@@ -44,20 +44,20 @@ branches:
 matrix:
   fast_finish: true
   include:
-  - env: TEST_COMMAND='mx su-basic-checkcode --verbose' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-checks --verbose' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis1' CLANG='suite version (3.2)'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-travis-tests gcc' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-suite gcc' CLANG='suite version (3.2)'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-travis3' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-travis2' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis-argon2' CLANG='suite version (3.2)'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-travis-tests shootout' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-suite shootout' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   allow_failures:
-  - env: TEST_COMMAND='mx su-travis-tests shootout' CLANG='suite version (3.2)'
+  - env: TEST_COMMAND='mx su-suite shootout' CLANG='suite version (3.2)'
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis-argon2' CLANG='suite version (3.2)'
     jdk: oraclejdk8
