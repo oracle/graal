@@ -108,7 +108,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
      * for equality.
      */
     private boolean appendGraphEncoderTest(PhaseSuite<HighTierContext> suite) {
-        suite.appendPhase(new BasePhase<HighTierContext>("VerifyEncodingDecoding") {
+        suite.appendPhase(new BasePhase<HighTierContext>() {
             @Override
             protected void run(StructuredGraph graph, HighTierContext context) {
                 EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, runtime.getTarget().arch);
@@ -117,6 +117,11 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
                                 context.getStampProvider(), !ImmutableCode.getValue(), runtime.getTarget().arch);
                 StructuredGraph targetGraph = new StructuredGraph(graph.method(), AllowAssumptions.YES, INVALID_COMPILATION_ID);
                 graphDecoder.decode(targetGraph, encodedGraph);
+            }
+
+            @Override
+            protected CharSequence createName() {
+                return "VerifyEncodingDecoding";
             }
         });
         return true;

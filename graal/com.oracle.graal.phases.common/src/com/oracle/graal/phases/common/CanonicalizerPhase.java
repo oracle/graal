@@ -168,7 +168,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         private Instance(PhaseContext context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
-            super("Canonicalizer");
             this.newNodesMark = newNodesMark;
             this.context = context;
             this.initWorkingSet = workingSet;

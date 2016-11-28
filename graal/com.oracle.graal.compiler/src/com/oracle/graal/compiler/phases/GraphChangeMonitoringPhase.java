@@ -85,7 +85,7 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
             /* rerun it on the real graph in a new Debug scope so Dump and Log can find it. */
             listener = new HashSetNodeEventListener();
             try (NodeEventScope s = graph.trackNodeEvents(listener)) {
-                try (Scope s2 = Debug.scope("WithGraphChangeMonitoring." + getName() + "-" + message)) {
+                try (Scope s2 = Debug.scope("WithGraphChangeMonitoring")) {
                     if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
                         Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "*** Before phase %s", getName());
                     }
