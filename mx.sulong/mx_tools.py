@@ -174,9 +174,9 @@ Tool.MEM2REG = Opt('MEM2REG', ['-mem2reg'])
 Tool.CPP_OPT = Opt('CPP_OPT', ['-lowerinvoke', '-prune-eh', '-simplifycfg'])
 Tool.C_OPT = Opt('C_OPT', ['-mem2reg', '-always-inline', '-jump-threading', '-simplifycfg'])
 
-def createOutputPath(inputFile, outputDir):
+def createOutputPath(path, inputFile, outputDir):
     base, _ = os.path.splitext(inputFile)
-    outputPath = os.path.join(outputDir, os.path.relpath(base))
+    outputPath = os.path.join(outputDir, os.path.relpath(base, os.path.dirname(os.path.dirname(path))))
     # ensure that there is one folder for each testfile
     outputPath = os.path.join(outputPath, os.path.basename(base))
 
@@ -186,12 +186,12 @@ def createOutputPath(inputFile, outputDir):
 
     return outputPath
 
-def getOutputName(inputFile, outputDir, tool, optimization, target):
-    outputPath = createOutputPath(inputFile, outputDir)
+def getOutputName(path, inputFile, outputDir, tool, optimization, target):
+    outputPath = createOutputPath(path, inputFile, outputDir)
     return '%s_%s_%s.%s' % (outputPath, tool.name, optimization.name, target.exts[0])
 
-def getReferenceName(inputFile, outputDir, target):
-    outputPath = createOutputPath(inputFile, outputDir)
+def getReferenceName(path, inputFile, outputDir, target):
+    outputPath = createOutputPath(path, inputFile, outputDir)
     return '%s.%s' % (outputPath, target.exts[0])
 
 def isFileUpToDate(inputFile, outputFile):
@@ -222,14 +222,14 @@ def prepareMatchPattern(patterns):
 def matches(path, pattern):
     return pattern is not None and pattern.match(path) != None
 
-def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, optimizers=None):
+def multicompileFile(path, inputFile, outputDir, tools, flags, optimizations, target, optimizers=None):
     if optimizers is None:
         optimizers = []
     lang = ProgrammingLanguage.lookupFile(inputFile)
     for tool in tools:
         if tool.supports(lang):
             for optimization in optimizations:
-                outputFile = getOutputName(inputFile, outputDir, tool, optimization, target)
+                outputFile = getOutputName(path, inputFile, outputDir, tool, optimization, target)
                 if not isFileUpToDate(inputFile, outputFile):
                     tool.run(inputFile, outputFile, flags + optimization.flags)
                     if os.path.exists(outputFile):
@@ -243,21 +243,16 @@ def multicompileFile(inputFile, outputDir, tools, flags, optimizations, target, 
                             if os.path.exists(opt_outputFile):
                                 yield opt_outputFile
 
-def multicompileFiles(inputFiles, outputDir, tools, flags, optimizations, target, optimizers=None):
-    """Produces ll files for all given input files using the provided tool, and applies all optimizations specified by the optimizer tool"""
-    for f in inputFiles:
-        yield f, list(multicompileFile(f, outputDir, tools, flags, optimizations, target, optimizers=optimizers))
-
 def multicompileFolder(path, outputDir, tools, flags, optimizations, target, optimizers=None, excludes=None):
     """Produces ll files for all files in given directory using the provided tool, and applies all optimizations specified by the optimizer tool"""
     for f in findRecursively(path, excludes):
-        yield f, list(multicompileFile(f, outputDir, tools, flags, optimizations, target, optimizers=optimizers))
+        yield f, list(multicompileFile(path, f, outputDir, tools, flags, optimizations, target, optimizers=optimizers))
 
-def multicompileRefFile(inputFile, outputDir, tools, flags):
+def multicompileRefFile(path, inputFile, outputDir, tools, flags):
     lang = ProgrammingLanguage.lookupFile(inputFile)
     for tool in tools:
         if tool.supports(lang):
-            referenceFile = getReferenceName(inputFile, outputDir, ProgrammingLanguage.EXEC)
+            referenceFile = getReferenceName(path, inputFile, outputDir, ProgrammingLanguage.EXEC)
             if not isFileUpToDate(inputFile, referenceFile):
                 tool.compileReferenceFile(inputFile, referenceFile, flags)
                 if os.path.exists(referenceFile):
@@ -266,7 +261,7 @@ def multicompileRefFile(inputFile, outputDir, tools, flags):
 def multicompileRefFolder(path, outputDir, tools, flags, excludes=None):
     """Produces executables for all files in given directory using the provided tool"""
     for f in findRecursively(path, excludes):
-        yield f, list(multicompileRefFile(f, outputDir, tools, flags))
+        yield f, list(multicompileRefFile(path, f, outputDir, tools, flags))
 
 def printProgress(iterator):
     for x in iterator:

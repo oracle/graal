@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 @RunWith(Parameterized.class)
 public final class InlineAssemblyTest extends BaseSuiteHarness {
 
-    private static final Path ASSEMBLY_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/inlineassemblytests").toPath();
+    private static final Path ASSEMBLY_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/inlineassemblytests").toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;

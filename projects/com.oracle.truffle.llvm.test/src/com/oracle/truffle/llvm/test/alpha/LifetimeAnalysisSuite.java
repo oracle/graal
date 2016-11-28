@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 @RunWith(Parameterized.class)
 public final class LifetimeAnalysisSuite {
 
-    private static final Path GCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/cache/tests/gcc").toPath();
+    private static final Path GCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/gcc").toPath();
     private static final Path GCC_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/gcc/configs").toPath();
     private static final Path GCC_LTA_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/gcc/lta").toPath();
     private static final Path GCC_LTA_GEN_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/gcc/lta_gen").toPath();
