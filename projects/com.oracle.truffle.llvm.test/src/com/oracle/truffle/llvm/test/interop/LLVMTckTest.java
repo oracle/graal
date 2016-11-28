@@ -52,7 +52,7 @@ public class LLVMTckTest extends TruffleTCK {
     @Test
     public void testVerifyPresence() {
         PolyglotEngine vm = PolyglotEngine.newBuilder().build();
-        assertTrue("Our language is present", vm.getLanguages().containsKey(LLVMLanguage.LLVM_IR_MIME_TYPE));
+        assertTrue("Our language is present", vm.getLanguages().containsKey(LLVMLanguage.LLVM_BITCODE_MIME_TYPE));
         vm.dispose();
     }
 
@@ -70,7 +70,7 @@ public class LLVMTckTest extends TruffleTCK {
 
     @Override
     protected String mimeType() {
-        return LLVMLanguage.LLVM_IR_MIME_TYPE;
+        return LLVMLanguage.LLVM_BITCODE_MIME_TYPE;
     }
 
     @Override

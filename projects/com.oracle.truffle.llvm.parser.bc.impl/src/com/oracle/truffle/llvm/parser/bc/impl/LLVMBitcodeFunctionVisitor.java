@@ -85,7 +85,7 @@ class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
     }
 
     void addTerminatingInstruction(LLVMNode node, int blockId, String blockName) {
-        blocks.add(factoryFacade.createBasicBlockNode(getBlock(), node, blockId, blockName));
+        blocks.add(factoryFacade.createBasicBlockNode(module, getBlock(), node, blockId, blockName));
         instructions.add(node);
     }
 
@@ -105,7 +105,7 @@ class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return function;
     }
 
-    public LLVMBitcodeVisitor getModule() {
+    public LLVMBitcodeVisitor getRuntime() {
         return module;
     }
 

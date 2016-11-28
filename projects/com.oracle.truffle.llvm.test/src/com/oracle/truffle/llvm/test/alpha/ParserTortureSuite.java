@@ -76,7 +76,7 @@ public final class ParserTortureSuite {
 
             try {
                 Builder engineBuilder = PolyglotEngine.newBuilder();
-                engineBuilder.config(LLVMLanguage.LLVM_IR_MIME_TYPE, LLVMLanguage.PARSE_ONLY_KEY, true);
+                engineBuilder.config(LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.PARSE_ONLY_KEY, true);
                 PolyglotEngine build = engineBuilder.build();
                 build.eval(Source.newBuilder(candidate.toFile()).build());
             } catch (Throwable e) {

@@ -84,9 +84,6 @@ public class SulongLibrary {
                             handleLibrary.accept(scanner.nextLine());
                         }
                     }
-                } else if (zipEntry.getName().endsWith("." + LLVMLanguage.LLVM_IR_EXTENSION)) {
-                    final String sourceCode = new String(bytes, StandardCharsets.UTF_8);
-                    handleSource.accept(Source.newBuilder(sourceCode).name(file.getPath() + "@" + zipEntry.getName()).mimeType(LLVMLanguage.LLVM_IR_MIME_TYPE).build());
                 } else if (zipEntry.getName().endsWith("." + LLVMLanguage.LLVM_BITCODE_EXTENSION)) {
                     final String sourceCode = Base64.getEncoder().encodeToString(bytes);
                     handleSource.accept(Source.newBuilder(sourceCode).name(file.getPath() + "@" + zipEntry.getName()).mimeType(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE).build());
