@@ -133,6 +133,7 @@ void *truffle_read_n_bytes(const char *bytes, int n);
 
 // Managed operations
 void *truffle_managed_malloc(long size);
+void *truffle_managed_memcpy(void *destination, const void *source, size_t count);
 
 #if defined(__cplusplus)
 }
