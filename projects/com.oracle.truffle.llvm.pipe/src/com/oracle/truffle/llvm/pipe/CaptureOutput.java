@@ -31,15 +31,18 @@ package com.oracle.truffle.llvm.pipe;
 
 import java.io.File;
 
-import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import java.io.IOException;
 import java.nio.file.Files;
 
 public final class CaptureOutput implements AutoCloseable {
 
     static {
-        // temporary solution unit mx does that for us
-        System.load(new File(LLVMOptions.ENGINE.projectRoot()).getAbsolutePath() + "/../mxbuild/projects/com.oracle.truffle.llvm.pipe.native/bin/libpipe.so");
+        String pipeLib = System.getProperty("test.pipe.lib");
+        if (pipeLib == null) {
+            System.loadLibrary("pipe");
+        } else {
+            System.load(pipeLib);
+        }
     }
 
     private final File captureFile;
