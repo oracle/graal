@@ -71,6 +71,7 @@ public class LLVMContext extends ExecutionContext {
     private Source mainSourceFile;
 
     private boolean parseOnly;
+    private boolean haveLoadedDynamicBitcodeLibraries;
 
     public LLVMContext(NodeFactoryFacade facade) {
         nativeLookup = new NativeLookup(facade);
@@ -225,6 +226,14 @@ public class LLVMContext extends ExecutionContext {
 
     public NativeLookup getNativeLookup() {
         return nativeLookup;
+    }
+
+    public boolean haveLoadedDynamicBitcodeLibraries() {
+        return haveLoadedDynamicBitcodeLibraries;
+    }
+
+    public void setHaveLoadedDynamicBitcodeLibraries() {
+        haveLoadedDynamicBitcodeLibraries = true;
     }
 
 }
