@@ -34,6 +34,7 @@ import java.util.Set;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
+
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaMethod;
 
@@ -156,6 +157,8 @@ public class GraalDebugConfig implements DebugConfig {
         public static final OptionValue<Boolean> ForceDebugEnable = new OptionValue<>(false);
         @Option(help = "Clear the debug metrics after bootstrap.", type = OptionType.Debug)
         public static final OptionValue<Boolean> ClearMetricsAfterBootstrap = new OptionValue<>(false);
+        @Option(help = "Do not compile anything on bootstrap but just initialize the compiler.", type = OptionType.Debug)
+        public static final OptionValue<Boolean> BootstrapInitializeOnly = new OptionValue<>(false);
         // @formatter:on
     }
 
