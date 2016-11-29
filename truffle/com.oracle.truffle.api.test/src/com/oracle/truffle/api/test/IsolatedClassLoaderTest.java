@@ -28,9 +28,8 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -58,24 +57,13 @@ public class IsolatedClassLoaderTest {
                 return super.loadClass(name);
             }
         };
-        Class<?> engine = loader.loadClass("com.oracle.truffle.api.vm.PolyglotEngine");
-        assertEquals("Right classloader", loader, engine.getClassLoader());
+        Class<?> locator = loader.loadClass("com.oracle.truffle.api.impl.TruffleLocator");
+        assertEquals("Right classloader", loader, locator.getClassLoader());
 
-        Object builder = engine.getMethod("newBuilder").invoke(null);
-        Object vm = builder.getClass().getMethod("build").invoke(builder);
-        Map<?, ?> languages = (Map<?, ?>) vm.getClass().getMethod("getLanguages").invoke(vm);
-        assertNotNull("Langauges found", languages);
-
-        assertTrue("Contains testing languages", languages.containsKey("application/x-test-hash"));
-
-        Object language = languages.get("application/x-test-hash");
-        assertNotNull("Language found", language);
-
-        Method getImpl = language.getClass().getDeclaredMethod("getImpl", boolean.class);
-        getImpl.setAccessible(true);
-        Object realLanguageImpl = getImpl.invoke(language, true);
-
-        assertNotNull("Language impl found", realLanguageImpl);
-        assertEquals("Loaded by our isolated loader", loader, realLanguageImpl.getClass().getClassLoader());
+        final Method loadersMethod = locator.getDeclaredMethod("loaders");
+        loadersMethod.setAccessible(true);
+        Set<?> loaders = (Set<?>) loadersMethod.invoke(null);
+        assertTrue("Contains locator's loader: " + loaders, loaders.contains(loader));
+        assertTrue("Contains system loader: " + loader, loaders.contains(ClassLoader.getSystemClassLoader()));
     }
 }
