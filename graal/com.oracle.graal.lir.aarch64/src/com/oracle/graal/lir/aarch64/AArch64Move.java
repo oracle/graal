@@ -402,7 +402,7 @@ public class AArch64Move {
         }
     }
 
-    public static void move(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
+    public static void move(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 reg2reg(crb, masm, result, asAllocatableValue(input));
@@ -448,7 +448,7 @@ public class AArch64Move {
         }
     }
 
-    private static void reg2reg(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
+    private static void reg2reg(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
         Register dst = asRegister(result);
         Register src = asRegister(input);
         if (src.equals(dst)) {
