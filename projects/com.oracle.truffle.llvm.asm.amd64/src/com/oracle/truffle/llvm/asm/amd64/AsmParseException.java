@@ -27,61 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.asm.amd64;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+public class AsmParseException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
 
-public abstract class LLVMAMD64ImmNode extends LLVMExpressionNode {
-    public abstract static class LLVMAMD64I8Node extends LLVMExpressionNode {
-        private final byte value;
-
-        public LLVMAMD64I8Node(byte value) {
-            this.value = value;
-        }
-
-        @Specialization
-        public byte executeI8() {
-            return value;
-        }
+    public AsmParseException(String msg) {
+        super(msg);
     }
 
-    public abstract static class LLVMAMD64I16Node extends LLVMExpressionNode {
-        private final short value;
-
-        public LLVMAMD64I16Node(short value) {
-            this.value = value;
-        }
-
-        @Specialization
-        public short executeI16() {
-            return value;
-        }
+    public AsmParseException(String msg, Throwable t) {
+        super(msg, t);
     }
 
-    public abstract static class LLVMAMD64I32Node extends LLVMExpressionNode {
-        private final int value;
-
-        public LLVMAMD64I32Node(int value) {
-            this.value = value;
-        }
-
-        @Specialization
-        public int executeI32() {
-            return value;
-        }
-    }
-
-    public abstract static class LLVMAMD64I64Node extends LLVMExpressionNode {
-        private final long value;
-
-        public LLVMAMD64I64Node(long value) {
-            this.value = value;
-        }
-
-        @Specialization
-        public long executeI64() {
-            return value;
-        }
+    public AsmParseException(Throwable t) {
+        super(t);
     }
 }

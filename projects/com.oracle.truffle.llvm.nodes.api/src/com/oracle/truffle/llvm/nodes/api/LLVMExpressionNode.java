@@ -58,13 +58,17 @@ public abstract class LLVMExpressionNode extends LLVMNode {
     public static final int FLOAT_SIZE_IN_BYTES = 4;
 
     public static final int I16_SIZE_IN_BYTES = 2;
+    public static final int I16_SIZE_IN_BITS = 16;
     public static final int I16_MASK = 0xffff;
 
     public static final int I32_SIZE_IN_BYTES = 4;
+    public static final int I32_SIZE_IN_BITS = 32;
     public static final long I32_MASK = 0xffffffffL;
 
     public static final int I64_SIZE_IN_BYTES = 8;
+    public static final int I64_SIZE_IN_BITS = 64;
 
+    public static final int I8_SIZE_IN_BITS = 8;
     public static final int I8_MASK = 0xff;
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;

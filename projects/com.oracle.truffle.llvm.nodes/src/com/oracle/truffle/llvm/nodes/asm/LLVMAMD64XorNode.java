@@ -34,13 +34,36 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild("left"), @NodeChild("rightAX"), @NodeChild("rightDX")})
-public abstract class LLVMAMD64IdivlNode extends LLVMExpressionNode {
+public abstract class LLVMAMD64XorNode extends LLVMExpressionNode {
+    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    public abstract static class LLVMAMD64XorbNode extends LLVMExpressionNode {
+        @Specialization
+        protected byte executeI16(byte left, byte right) {
+            return (byte) (left ^ right);
+        }
+    }
 
-    @Specialization
-    public int executeI32(int left, int rightAX, int rightDX) {
-        long dividend = (long) rightDX << LLVMExpressionNode.I32_SIZE_IN_BYTES * Byte.SIZE;
-        dividend = dividend | rightAX;
-        return (int) (dividend / left);
+    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    public abstract static class LLVMAMD64XorwNode extends LLVMExpressionNode {
+        @Specialization
+        protected short executeI16(short left, short right) {
+            return (short) (left ^ right);
+        }
+    }
+
+    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    public abstract static class LLVMAMD64XorlNode extends LLVMExpressionNode {
+        @Specialization
+        protected int executeI32(int left, int right) {
+            return left ^ right;
+        }
+    }
+
+    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    public abstract static class LLVMAMD64XorqNode extends LLVMExpressionNode {
+        @Specialization
+        protected long executeI64(long left, long right) {
+            return left ^ right;
+        }
     }
 }
