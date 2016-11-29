@@ -283,7 +283,7 @@ class DaCapoMoveProfilingBenchmarkMixin(MoveProfilingBenchmarkMixin):
     def vmArgs(self, bmSuiteArgs):
         # we need to boostrap to eagerly initialize Graal otherwise we cannot intercept
         # stdio since it is rerouted by the dacapo harness
-        return ['-XX:+BootstrapJVMCI'] +  super(DaCapoMoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        return ['-XX:+BootstrapJVMCI', '-Dgraal.BootstrapInitializeOnly=true'] +  super(DaCapoMoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
 
     def get_dynamic_counters_argument(self):
         # we only count the moves executed during the last (the measurement) iteration
