@@ -214,7 +214,7 @@ class MoveProfilingBenchmarkMixin(object):
 
     See com.oracle.graal.lir.profiling.MoveProfilingPhase for more details.
     """
-    benchmark_counters_file = 'benchmark-counters.csv'
+    benchmark_counters_file = 'benchmark-counters'
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = [
@@ -243,9 +243,6 @@ class MoveProfilingBenchmarkMixin(object):
     def name(self):
         return self.benchSuiteName() + "-move-profiling"
 
-    def get_csv_filename(self, benchmarks, bmSuiteArgs):
-        return MoveProfilingBenchmarkMixin.benchmark_counters_file
-
     def shorten_flags(self, args):
         def _shorten(x):
             if any(p in x for p in ["DynamicCounter", "BenchmarkCounter"]):
@@ -257,8 +254,9 @@ class MoveProfilingBenchmarkMixin(object):
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-          mx_benchmark.CSVFixedFileRule(
-            filename=self.get_csv_filename(benchmarks, bmSuiteArgs),
+          mx_benchmark.CSVStdOutFileRule(
+            pattern="Writing benchmark counters to '(?P<name>[^']*)'",
+            match_name="name",
             colnames=['type', 'group', 'name', 'value'],
             replacement={
               "benchmark": self.getBechmarkName(),
