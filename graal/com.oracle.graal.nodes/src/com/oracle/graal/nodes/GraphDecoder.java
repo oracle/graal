@@ -64,7 +64,6 @@ import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -643,7 +642,7 @@ public class GraphDecoder {
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
             if (loopScope.iterationStates.size() == 0 && loopScope.loopDepth == 1) {
                 if (methodScope.loopExplosionHead != null) {
-                    throw new BailoutException("Graal implementation restriction: Method with " + LoopExplosionKind.MERGE_EXPLODE + " loop explosion must not have more than one top-level loop");
+                    throw new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion must not have more than one top-level loop", LoopExplosionKind.MERGE_EXPLODE);
                 }
                 methodScope.loopExplosionHead = merge;
             }

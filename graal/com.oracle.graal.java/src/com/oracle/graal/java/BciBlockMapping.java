@@ -87,8 +87,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
 
-import com.oracle.graal.bytecode.BytecodeLookupSwitch;
 import com.oracle.graal.bytecode.Bytecode;
+import com.oracle.graal.bytecode.BytecodeLookupSwitch;
 import com.oracle.graal.bytecode.BytecodeStream;
 import com.oracle.graal.bytecode.BytecodeSwitch;
 import com.oracle.graal.bytecode.BytecodeTableSwitch;
@@ -97,7 +97,6 @@ import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.debug.Debug;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ExceptionHandler;
 
@@ -806,7 +805,7 @@ public final class BciBlockMapping {
                 // Therefore, the loop is non reducible (has more than one entry).
                 // We don't want to compile such methods because the IR only supports structured
                 // loops.
-                throw new BailoutException("Non-reducible loop: %016x", loop);
+                throw new PermanentBailoutException("Non-reducible loop: %016x", loop);
             }
         } while (loopChanges);
     }
@@ -820,7 +819,7 @@ public final class BciBlockMapping {
             // There is a path from a loop end to the method entry that does not pass the loop
             // header. Therefore, the loop is non reducible (has more than one entry).
             // We don't want to compile such methods because the IR only supports structured loops.
-            throw new BailoutException("Non-reducible loop");
+            throw new PermanentBailoutException("Non-reducible loop");
         }
 
         // Purge null entries for unreached blocks and sort blocks such that loop bodies are always
@@ -941,14 +940,14 @@ public final class BciBlockMapping {
                 // corner cases.
                 // Don't compile such methods for now, until we see a concrete case that allows
                 // checking for correctness.
-                throw new BailoutException("Loop formed by an exception handler");
+                throw new PermanentBailoutException("Loop formed by an exception handler");
             }
             if (nextLoop >= LOOP_HEADER_MAX_CAPACITY) {
                 // This restriction can be removed by using a fall-back to a BitSet in case we have
                 // more than 64 loops
                 // Don't compile such methods for now, until we see a concrete case that allows
                 // checking for correctness.
-                throw new BailoutException("Too many loops in method");
+                throw new PermanentBailoutException("Too many loops in method");
             }
 
             assert block.loops == 0;

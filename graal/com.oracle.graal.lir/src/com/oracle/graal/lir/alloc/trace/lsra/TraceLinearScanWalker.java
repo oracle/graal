@@ -48,7 +48,6 @@ import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterPriority;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.SpillState;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 

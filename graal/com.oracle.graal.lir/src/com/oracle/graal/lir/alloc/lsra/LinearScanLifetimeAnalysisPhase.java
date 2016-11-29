@@ -41,7 +41,6 @@ import java.util.List;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
-import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.BitMap2D;
 import com.oracle.graal.debug.Debug;
@@ -61,7 +60,6 @@ import com.oracle.graal.lir.alloc.lsra.LinearScan.BlockData;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.phases.AllocationPhase;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.StackSlot;

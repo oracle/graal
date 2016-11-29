@@ -2587,7 +2587,7 @@ public class BytecodeParser implements GraphBuilderContext {
             assert traceInstruction(bci, opcode, bci == block.startBci);
             if (parent == null && bci == entryBCI) {
                 if (block.getJsrScope() != JsrScope.EMPTY_SCOPE) {
-                    throw new BailoutException("OSR into a JSR scope is not supported");
+                    throw new JsrNotSupportedBailout("OSR into a JSR scope is not supported");
                 }
                 EntryMarkerNode x = append(new EntryMarkerNode());
                 frameState.insertProxies(value -> graph.unique(new EntryProxyNode(value, x)));
@@ -3925,8 +3925,8 @@ public class BytecodeParser implements GraphBuilderContext {
             case IFNONNULL      : genIfNull(Condition.NE); break;
             case GOTO_W         : genGoto(); break;
             case JSR_W          : genJsr(stream.readBranchDest()); break;
-            case BREAKPOINT     : throw new BailoutException("concurrent setting of breakpoint");
-            default             : throw new BailoutException("Unsupported opcode %d (%s) [bci=%d]", opcode, nameOf(opcode), bci);
+            case BREAKPOINT     : throw new PermanentBailoutException("concurrent setting of breakpoint");
+            default             : throw new PermanentBailoutException("Unsupported opcode %d (%s) [bci=%d]", opcode, nameOf(opcode), bci);
         }
         // @formatter:on
         // Checkstyle: resume

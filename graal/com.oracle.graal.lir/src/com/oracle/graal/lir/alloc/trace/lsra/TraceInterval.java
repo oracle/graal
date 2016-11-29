@@ -41,12 +41,10 @@ import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
 import com.oracle.graal.compiler.common.util.Util;
 import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.TTY;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;

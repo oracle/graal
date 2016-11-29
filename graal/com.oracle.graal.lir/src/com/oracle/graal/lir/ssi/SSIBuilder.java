@@ -42,7 +42,6 @@ import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Value;
 
 public final class SSIBuilder extends SSIBuilderBase {

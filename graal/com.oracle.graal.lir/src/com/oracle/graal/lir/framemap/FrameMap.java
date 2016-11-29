@@ -28,9 +28,9 @@ import java.util.List;
 
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.common.LIRKind;
+import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -194,7 +194,7 @@ public abstract class FrameMap {
     public void finish() {
         frameSize = currentFrameSize();
         if (frameSize > getRegisterConfig().getMaximumFrameSize()) {
-            throw new BailoutException("Frame size (%d) exceeded maximum allowed frame size (%d).", frameSize, getRegisterConfig().getMaximumFrameSize());
+            throw new PermanentBailoutException("Frame size (%d) exceeded maximum allowed frame size (%d).", frameSize, getRegisterConfig().getMaximumFrameSize());
         }
     }
 
