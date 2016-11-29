@@ -22,20 +22,35 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
-import com.oracle.truffle.dsl.processor.expression.DSLExpression;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpressionReducer;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public final class GuardExpression extends MessageContainer {
 
-    private final TemplateMethod source;
+    private static final Set<String> IDENTITY_FOLD_OPERATORS = new HashSet<>(Arrays.asList("<=", ">=", "=="));
+
+    private final SpecializationData source;
     private final DSLExpression expression;
 
-    public GuardExpression(TemplateMethod source, DSLExpression expression) {
+    public GuardExpression(SpecializationData source, DSLExpression expression) {
         this.source = source;
         this.expression = expression;
     }
@@ -57,6 +72,76 @@ public final class GuardExpression extends MessageContainer {
 
     public DSLExpression getExpression() {
         return expression;
+    }
+
+    public boolean isConstantTrueInSlowPath(ProcessorContext context) {
+        DSLExpression reducedExpression = getExpression().reduce(new AbstractDSLExpressionReducer() {
+
+            @Override
+            public DSLExpression visitVariable(Variable binary) {
+                // on the slow path we can assume all cache expressions inlined.
+                for (CacheExpression cache : source.getCaches()) {
+                    if (ElementUtils.variableEquals(cache.getParameter().getVariableElement(), binary.getResolvedVariable())) {
+                        return cache.getExpression();
+                    }
+                }
+                return super.visitVariable(binary);
+            }
+
+            @Override
+            public DSLExpression visitCall(Call binary) {
+                ExecutableElement method = binary.getResolvedMethod();
+                if (!method.getSimpleName().toString().equals("equals")) {
+                    return binary;
+                }
+                if (method.getModifiers().contains(Modifier.STATIC)) {
+                    return binary;
+                }
+                if (!ElementUtils.typeEquals(method.getReturnType(), context.getType(boolean.class))) {
+                    return binary;
+                }
+                if (method.getParameters().size() != 1) {
+                    return binary;
+                }
+                // signature: receiver.equals(receiver) can be folded to true
+                DSLExpression receiver = binary.getReceiver();
+                DSLExpression firstArg = binary.getParameters().get(0);
+                if (receiver instanceof Variable && firstArg instanceof Variable) {
+                    if (receiver.equals(firstArg)) {
+                        return new BooleanLiteral(true);
+                    }
+                }
+                return super.visitCall(binary);
+            }
+
+            @Override
+            public DSLExpression visitBinary(Binary binary) {
+                // signature: value == value can be folded to true
+                if (IDENTITY_FOLD_OPERATORS.contains(binary.getOperator())) {
+                    if (binary.getLeft() instanceof Variable && binary.getRight() instanceof Variable) {
+                        Variable leftVar = ((Variable) binary.getLeft());
+                        Variable rightVar = ((Variable) binary.getRight());
+                        if (leftVar.equals(rightVar)) {
+                            // double and float cannot be folded as NaN is never identity equal
+                            if (!ElementUtils.typeEquals(leftVar.getResolvedType(), context.getType(float.class)) &&
+                                            !ElementUtils.typeEquals(leftVar.getResolvedType(), context.getType(double.class))) {
+                                return new BooleanLiteral(true);
+                            }
+                        }
+                    }
+                }
+                return super.visitBinary(binary);
+
+            }
+        });
+
+        Object o = reducedExpression.resolveConstant();
+        if (o instanceof Boolean) {
+            if (((Boolean) o).booleanValue()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean equalsNegated(GuardExpression other) {
