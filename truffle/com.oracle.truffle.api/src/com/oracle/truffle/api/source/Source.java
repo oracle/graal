@@ -40,6 +40,7 @@ import java.nio.file.spi.FileTypeDetector;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 
 /**
@@ -140,6 +141,7 @@ public abstract class Source {
     private final String name;
     private String mimeType;
     private final boolean internal;
+    private final boolean interactive;
     private TextMap textMap;
 
     /**
@@ -557,11 +559,12 @@ public abstract class Source {
         return builder.toString();
     }
 
-    Source(Content content, String mimeType, URI uri, String name, boolean internal) {
+    Source(Content content, String mimeType, URI uri, String name, boolean internal, boolean interactive) {
         this.content = content;
         this.mimeType = mimeType;
         this.name = name;
         this.internal = internal;
+        this.interactive = interactive;
         this.uri = uri;
     }
 
@@ -614,13 +617,29 @@ public abstract class Source {
      * On the other hand, tools should be free to make <em>internal</em> sources visible in
      * (possibly privileged) modes that are useful for language implementors.
      * <p>
-     * One can specify whether a source is internal when {@link Builder#internal building it}.
+     * One can specify whether a source is internal when {@link Builder#internal() building it}.
      *
      * @return whether this source is marked as <em>internal</em>
      * @since 0.15
      */
     public boolean isInternal() {
         return internal;
+    }
+
+    /**
+     * Check whether this source has been marked as <em>interactive</em>, meaning that it has been
+     * provided by a user through an interactive shell. When <em>interactive</em> sources are
+     * executed, the appropriate result could be passed directly to the {@link Env#out() polyglot
+     * engine output stream}.
+     * <p>
+     * One can specify whether a source is interactive when {@link Builder#interactive() building
+     * it}.
+     *
+     * @return whether this source is marked as <em>interactive</em>
+     * @since 0.20
+     */
+    public boolean isInteractive() {
+        return interactive;
     }
 
     /**
@@ -1166,6 +1185,7 @@ public abstract class Source {
         private String mime;
         private String content;
         private boolean internal;
+        private boolean interactive;
 
         private Builder(Object origin) {
             this.origin = origin;
@@ -1219,6 +1239,19 @@ public abstract class Source {
          */
         public Builder<E1, E2, E3> internal() {
             this.internal = true;
+            return this;
+        }
+
+        /**
+         * Marks the source as interactive. Interactive sources are those that come from an
+         * interactive shell and an interactive response is possible. Calling this method influences
+         * result of {@link Source#isInteractive()}.
+         *
+         * @return the instance of this builder
+         * @since 0.20
+         */
+        public Builder<E1, E2, E3> interactive() {
+            this.interactive = true;
             return this;
         }
 
@@ -1301,7 +1334,7 @@ public abstract class Source {
                 if (content != null) {
                     holder.code = content;
                 }
-                SourceImpl ret = new SourceImpl(holder, type, uri, name, internal);
+                SourceImpl ret = new SourceImpl(holder, type, uri, name, internal, interactive);
                 if (ret.getName() == null) {
                     throw raise(RuntimeException.class, new MissingNameException());
                 }
