@@ -46,12 +46,12 @@ import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 
 public abstract class BaseTestHarness {
 
-    protected static final Set<String> supportedFiles = new HashSet<>(Arrays.asList("f90", "f", "f03", "c", "cpp", "cc", "C", "m"));
+    public static final Set<String> supportedFiles = new HashSet<>(Arrays.asList("f90", "f", "f03", "c", "cpp", "cc", "C", "m"));
 
-    protected static final Predicate<? super Path> isExecutable = f -> f.getFileName().toString().endsWith(".out");
-    protected static final Predicate<? super Path> isIncludeFile = f -> f.getFileName().toString().endsWith(".include");
-    protected static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");
-    protected static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
+    public static final Predicate<? super Path> isExecutable = f -> f.getFileName().toString().endsWith(".out");
+    public static final Predicate<? super Path> isIncludeFile = f -> f.getFileName().toString().endsWith(".include");
+    public static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");
+    public static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
 
     protected abstract Path getSuiteDirectory();
 
@@ -70,7 +70,7 @@ public abstract class BaseTestHarness {
         return s -> true;
     }
 
-    static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir) throws AssertionError {
+    public static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir) throws AssertionError {
         Set<Path> whiteList = getWhiteListTestFolders(configPath, suiteDir);
         Predicate<? super Path> whiteListFilter;
         String testDiscoveryPath = SulongTestOptions.TEST.testDiscoveryPath();
@@ -91,7 +91,7 @@ public abstract class BaseTestHarness {
         return testCases;
     }
 
-    static Collection<Object[]> collectTestCases(Path suiteDir, Predicate<? super Path> whiteListFilter) throws AssertionError {
+    public static Collection<Object[]> collectTestCases(Path suiteDir, Predicate<? super Path> whiteListFilter) throws AssertionError {
         try {
             return Files.walk(suiteDir).filter(isExecutable).map(f -> f.getParent()).filter(whiteListFilter).map(f -> new Object[]{f, f.toString()}).collect(Collectors.toList());
         } catch (IOException e) {
@@ -99,7 +99,7 @@ public abstract class BaseTestHarness {
         }
     }
 
-    static final Set<Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
+    public static final Set<Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
         try {
             return Files.walk(configDir).filter(isIncludeFile).flatMap(f -> {
                 try {
