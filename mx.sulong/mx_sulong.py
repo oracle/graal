@@ -1,6 +1,6 @@
 import tarfile
 import os
-from os.path import join, isfile
+from os.path import join
 import shutil
 import subprocess
 import sys
@@ -28,10 +28,6 @@ _toolDir = join(_suite.dir, "cache/tools/")
 _clangPath = _toolDir + 'llvm/bin/clang'
 
 _dragonEggPath = _toolDir + 'dragonegg/dragonegg-3.2.src/dragonegg.so'
-
-_inlineAssemblySrcDir = join(_root, "com.oracle.truffle.llvm.asm.amd64/src/")
-_inlineAssemblyGrammer = join(_inlineAssemblySrcDir, "InlineAssembly.atg")
-_inlineAssemblyPackageName = "com.oracle.truffle.llvm.asm.amd64"
 
 _captureSrcDir = join(_root, "projects/com.oracle.truffle.llvm.pipe.native/src")
 
@@ -856,29 +852,6 @@ def checkNoHttp(args=None):
                 exit(-1)
             line_number += 1
 
-def genInlineAssemblyParser(args=None, out=None):
-    """generate inline assembly parser and scanner if corresponding grammer is new"""
-    generatedParserDir = _inlineAssemblySrcDir + _inlineAssemblyPackageName.replace('.', '/') + "/"
-    generatedFiles = [generatedParserDir + "Parser.java", generatedParserDir + "Scanner.java"]
-    configFiles = [_inlineAssemblySrcDir + "InlineAssembly.atg", _inlineAssemblySrcDir + "Parser.frame", _inlineAssemblySrcDir + "Scanner.frame", _inlineAssemblySrcDir + "Copyright.frame"]
-    isAllGeneratedFilesExists = all([isfile(fileName) for fileName in generatedFiles])
-    latestGeneratedFile = sorted(generatedFiles, key=os.path.getmtime, reverse=True)[0] if isAllGeneratedFilesExists else ""
-    latestConfigFile = sorted(configFiles, key=os.path.getmtime, reverse=True)[0]
-    #If any auto-generated file is missing or any config file is updated after last auto-generation then regenerate the files
-    if not isAllGeneratedFilesExists or os.path.getmtime(latestConfigFile) >= os.path.getmtime(latestGeneratedFile):
-        localCocoJarFile = _suite.dir + "/lib/Coco.jar"
-        if not isfile(localCocoJarFile):
-            jarFileUrls = ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/Coco.jar"]
-            mx.download(localCocoJarFile, jarFileUrls)
-        command = [mx.get_jdk().java, "-jar", localCocoJarFile, "-package", _inlineAssemblyPackageName, "-o", generatedParserDir, _inlineAssemblyGrammer]
-        mx.run(command)
-
-def sulongBuild(args=None):
-    """custom build command to wrap inline assembly parser generation"""
-    genInlineAssemblyParser()
-    originalBuildCommand(args)
-
-
 checkCases = {
     'gitlog' : logCheck,
     'mdl' : mdlCheck,
@@ -893,14 +866,11 @@ checkCases = {
     'eclipseformat' : (lambda args: mx.eclipseformat(['--primary'] + args))
 }
 
-originalBuildCommand = mx.command_function('build')
-
 mx.update_commands(_suite, {
     'suoptbench' : [suOptBench, ''],
     'subench' : [suBench, ''],
     'clangbench' : [clangBench, ''],
     'gccbench' : [gccBench, ''],
-    'build' : [sulongBuild, ''],
     'su-checks' : [runChecks, ''],
     'su-tests' : [runTests, ''],
     'su-suite' : [mx_testsuites.runSuite, ''],

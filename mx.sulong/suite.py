@@ -74,6 +74,12 @@ suite = {
       ],
       "sha1" : "8bb0cd644b0dc9ec2f3000ad9cac50e9432d4e17",
     },
+    "COCO" : {
+      "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/Coco.jar"
+      ],
+      "sha1" : "f204783009ab88838b5118adce58eca4368acd94",
+    },
   },
 
   "projects" : {
@@ -215,12 +221,27 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "com.oracle.truffle.llvm.asm.amd64.parser" : {
+      "subDir" : "projects",
+      "native" : True,
+      "dependencies" : [
+        "COCO"
+      ],
+      "buildEnv" : {
+        "COCO_JAR" : "<path:COCO>",
+      },
+      "license" : "BSD-new",
+    },
+
     "com.oracle.truffle.llvm.asm.amd64" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.nodes.impl",
-       ],
+      ],
+      "buildDependencies" : [
+        "com.oracle.truffle.llvm.asm.amd64.parser",
+      ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
