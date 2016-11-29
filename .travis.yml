@@ -32,9 +32,9 @@ install:
   - export ECLIPSE_EXE=eclipse/eclipse
   - export DEFAULT_VM=server
   - export PATH=`pwd`/mx:$PATH
-  - wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.22/jdk1.8.0_91-jvmci-0.22-linux-amd64.tar.gz
-  - tar -xzf jdk1.8.0_91-jvmci-0.22-linux-amd64.tar.gz
-  - export JAVA_HOME=`pwd`/jdk1.8.0_91-jvmci-0.22
+  - wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/jvmci-0.23/jdk1.8.0_111-jvmci-0.23-linux-amd64.tar.gz
+  - tar -xzf jdk1.8.0_111-jvmci-0.23-linux-amd64.tar.gz
+  - export JAVA_HOME=`pwd`/jdk1.8.0_111-jvmci-0.23
 script:
   - $TEST_COMMAND
 branches:

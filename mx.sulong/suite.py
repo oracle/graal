@@ -1,26 +1,26 @@
 suite = {
-  "mxversion" : "5.55.0",
+  "mxversion" : "5.60.2",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
   "imports" : {
     "suites" : [
-        {
-           "name" : "graal-core",
-           "version" : "ca165d0f0de274911d1b36b0113e3fd4c6952787",
-           "urls" : [
-                {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
-                {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-            ]
-        },
-        {
-               "name" : "truffle",
-               "version" : "ca21972635d350fcce90f1934d5882e144621d18",
-               "urls" : [
-                    {"url" : "https://github.com/graalvm/truffle", "kind" : "git"},
-                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-                ]
-        },
+      {
+        "name" : "truffle",
+        "version" : "8e9d13ac45286e4b4462c90b13e6eb9cdf2ff357",
+        "urls" : [
+          {"url" : "https://github.com/graalvm/truffle", "kind" : "git"},
+          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+        ]
+      },
+      {
+        "name" : "graal-core",
+        "version" : "31b94210b0282691e20a9d55a061089c7aad0c64",
+        "urls" : [
+          {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
+          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
+        ]
+      },
     ],
   },
 
@@ -271,9 +271,9 @@ suite = {
     "com.oracle.truffle.llvm.pipe" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.llvm.runtime",
-      ],
+      "javaProperties" : {
+        "test.pipe.lib" : "<path:SULONG_TEST_NATIVE>/<lib:pipe>",
+      },
       "checkstyle" : "com.oracle.truffle.llvm.test",
       "javaCompliance" : "1.8",
       "license" : "BSD-new",
@@ -284,11 +284,15 @@ suite = {
       "native" : True,
       "vpath" : True,
       "results" : [
-        "bin/libpipe.so"
+        "bin/<lib:pipe>",
       ],
-      "dependencies" : [
+      "buildDependencies" : [
         "com.oracle.truffle.llvm.pipe",
       ],
+      "buildEnv" : {
+        "LIBPIPE" : "<lib:pipe>",
+        "OS" : "<os>",
+      },
       "checkstyle" : "com.oracle.truffle.llvm.test",
       "license" : "BSD-new",
     },
@@ -359,8 +363,18 @@ suite = {
         "graal-core:GRAAL_COMPILER",
         "graal-core:GRAAL_HOTSPOT",
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
-        "sulong:SULONG"
+        "sulong:SULONG",
+        "SULONG_TEST_NATIVE",
       ]
     },
- }
+
+    "SULONG_TEST_NATIVE" : {
+      "native" : True,
+      "platformDependent" : True,
+      "output" : "mxbuild/sulong-test-native",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.pipe.native",
+      ],
+    },
+  }
 }

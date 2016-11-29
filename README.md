@@ -65,11 +65,11 @@ Next, you need to download a recent
 [labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 Extract it inside the `sulong-dev` directory:
 
-    tar -zxf labsjdk-8u92-jvmci-0.21-linux-amd64.tar.gz
+    tar -zxf labsjdk-8u111-jvmci-0.23-linux-amd64.tar.gz
 
 Set `JAVA_HOME` to point to the extracted labsjdk from above:
 
-    echo JAVA_HOME=`pwd`/labsjdk1.8.0_92-jvmci-0.21 > sulong/mx.sulong/env
+    echo JAVA_HOME=`pwd`/labsjdk1.8.0_111-jvmci-0.23 > sulong/mx.sulong/env
 
 Finally, build the project:
 
