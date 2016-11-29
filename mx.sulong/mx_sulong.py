@@ -20,8 +20,8 @@ os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong/")
-_libPath = join(_mx, 'libs')
 _root = join(_suite.dir, "projects/")
+_libPath = join(_root, "com.oracle.truffle.llvm.libraries/src")
 _testDir = join(_suite.dir, "tests/")
 _argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
 _toolDir = join(_suite.dir, "cache/tools/")
@@ -613,6 +613,19 @@ def findInstalledProgram(program, supportedVersions, testSupportedVersion):
                     return alternativeProgramPath
     return None
 
+
+class SulongNativeProject(mx.NativeProject):
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        d = join(suite.dir, subDir, name)
+        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d)
+
+    def getBuildEnv(self, replaceVar=mx._replacePathVar):
+        ret = super(SulongNativeProject, self).getBuildEnv(replaceVar=replaceVar)
+        ret['MX_CLANG'] = findLLVMProgram('clang')
+        ret['MX_OPT'] = findLLVMProgram('opt')
+        return ret
+
+
 def findLLVMProgram(llvmProgram):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
     installedProgram = findInstalledLLVMProgram(llvmProgram)
@@ -795,18 +808,14 @@ def mdlCheck(args=None):
     if error:
         exit(-1)
 
-def getBitcodeLibrariesOption():
+def getBitcodeLibrariesOption(*args):
     libraries = []
     if 'SULONG_NO_LIBRARY' not in os.environ:
-        for path, _, files in os.walk(_libPath):
+        libpath = join(mx.project('com.oracle.truffle.llvm.libraries').getOutput(), 'bin')
+        for path, _, files in os.walk(libpath):
             for f in files:
-                # TODO: also allow other extensions, best introduce a command "compile" that compiles C, C++, Fortran and other files
-                if f.endswith('.c'):
-                    bitcodeFile = f.rsplit(".", 1)[0] + '.bc'
-                    absBitcodeFile = path + '/' + bitcodeFile
-                    if not os.path.isfile(absBitcodeFile):
-                        compileWithClangOpt(path + '/' + f, absBitcodeFile)
-                    libraries.append(absBitcodeFile)
+                if f.endswith('.bc'):
+                    libraries.append(join(path, f))
     return ['-Dsulong.DynamicBitcodeLibraries=' + ':'.join(libraries)] if libraries else []
 
 def clangformatcheck(args=None):
