@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir;
 
-import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
+import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
@@ -35,7 +35,7 @@ import com.oracle.graal.options.StableOptionValue;
  * {@link BailoutAndRestartBackendException.Options#LIRUnlockBackendRestart LIRUnlockBackendRestart}
  * needs to be enabled. Use only for debugging purposes only.
  */
-public abstract class BailoutAndRestartBackendException extends RetryableBailoutException {
+public abstract class BailoutAndRestartBackendException extends PermanentBailoutException {
 
     public static class Options {
         // @formatter:off
