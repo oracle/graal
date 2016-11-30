@@ -342,7 +342,7 @@ public class NewObjectSnippets implements Snippets {
      * Calls the runtime stub for implementing MULTIANEWARRAY.
      */
     @Snippet
-    public static Object newmultiarray(Word hub, @ConstantParameter int rank, @VarargsParameter int[] dimensions) {
+    public static Object newmultiarray(KlassPointer hub, @ConstantParameter int rank, @VarargsParameter int[] dimensions) {
         Word dims = DimensionsNode.allocaDimsArray(rank);
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < rank; i++) {
@@ -352,7 +352,7 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class, returnStampIsNonNull = true)
-    public static native Object newArrayCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dims);
+    public static native Object newArrayCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub, int rank, Word dims);
 
     /**
      * Maximum number of long stores to emit when zeroing an object with a constant size. Larger

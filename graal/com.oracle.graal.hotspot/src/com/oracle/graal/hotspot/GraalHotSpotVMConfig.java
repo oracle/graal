@@ -157,6 +157,52 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
     public final boolean useAESIntrinsics = getFlag("UseAESIntrinsics", Boolean.class);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
+
+    private final boolean useMultiplyToLenIntrinsic = getFlag("UseMultiplyToLenIntrinsic", Boolean.class);
+    private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
+    private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
+    private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
+    private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class, false);
+    private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class, false);
+    private final boolean useMulAddIntrinsic = getFlag("UseMulAddIntrinsic", Boolean.class, false);
+    private final boolean useSquareToLenIntrinsic = getFlag("UseSquareToLenIntrinsic", Boolean.class, false);
+
+    /*
+     * These are methods because in some JDKs the flags are visible but the stubs themselves haven't
+     * been exported so we have to check both if the flag is on and if we have the stub.
+     */
+    public boolean useMultiplyToLenIntrinsic() {
+        return useMultiplyToLenIntrinsic && multiplyToLen != 0;
+    }
+
+    public boolean useSHA1Intrinsics() {
+        return useSHA1Intrinsics && sha1ImplCompress != 0;
+    }
+
+    public boolean useSHA256Intrinsics() {
+        return useSHA256Intrinsics && sha256ImplCompress != 0;
+    }
+
+    public boolean useSHA512Intrinsics() {
+        return useSHA512Intrinsics && sha512ImplCompress != 0;
+    }
+
+    public boolean useMontgomeryMultiplyIntrinsic() {
+        return useMontgomeryMultiplyIntrinsic && montgomeryMultiply != 0;
+    }
+
+    public boolean useMontgomerySquareIntrinsic() {
+        return useMontgomerySquareIntrinsic && montgomerySquare != 0;
+    }
+
+    public boolean useMulAddIntrinsic() {
+        return useMulAddIntrinsic && mulAdd != 0;
+    }
+
+    public boolean useSquareToLenIntrinsic() {
+        return useSquareToLenIntrinsic && squareToLen != 0;
+    }
+
     public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);
     public final boolean useCMSGC = getFlag("UseConcMarkSweepGC", Boolean.class);
 

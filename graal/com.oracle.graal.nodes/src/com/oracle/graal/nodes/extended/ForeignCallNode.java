@@ -51,6 +51,7 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -78,6 +79,8 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
         ForeignCallNode node = new ForeignCallNode(foreignCalls, descriptor, arguments);
         node.setStamp(returnStamp);
 
+        assert verifyDescriptor(b, targetMethod, descriptor);
+
         /*
          * Need to update the BCI of a ForeignCallNode so that it gets the stateDuring in the case
          * that the foreign call can deoptimize. As with all deoptimization, we need a state in a
@@ -95,6 +98,17 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowe
             b.addPush(returnKind, node);
         }
 
+        return true;
+    }
+
+    static boolean verifyDescriptor(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor) {
+        int parameters = 1;
+        for (Class<?> arg : descriptor.getArgumentTypes()) {
+            ResolvedJavaType res = b.getMetaAccess().lookupJavaType(arg);
+            ResolvedJavaType parameterType = (ResolvedJavaType) targetMethod.getSignature().getParameterType(parameters, targetMethod.getDeclaringClass());
+            assert parameterType.equals(res) : descriptor + ": parameter " + parameters + " mismatch: " + res + " != " + parameterType;
+            parameters++;
+        }
         return true;
     }
 
