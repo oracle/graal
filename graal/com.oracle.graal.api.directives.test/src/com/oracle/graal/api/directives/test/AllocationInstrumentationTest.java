@@ -62,7 +62,7 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
 
     public static boolean allocationWasExecuted;
 
-    public static void resetFlag() {
+    private static void resetFlag() {
         allocationWasExecuted = false;
     }
 

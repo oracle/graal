@@ -43,13 +43,14 @@ public final class InstrumentationBeginNode extends AbstractStateSplit implement
 
     public static final NodeClass<InstrumentationBeginNode> TYPE = NodeClass.create(InstrumentationBeginNode.class);
 
-    @OptionalInput(value = InputType.Association) protected ValueNode target;
+    @OptionalInput(value = InputType.Unchecked) protected ValueNode target;
     private final boolean anchored;
 
     public InstrumentationBeginNode(boolean anchored) {
         super(TYPE, StampFactory.forVoid());
         this.anchored = anchored;
         this.target = null;
+
     }
 
     public boolean isAnchored() {
@@ -61,6 +62,7 @@ public final class InstrumentationBeginNode extends AbstractStateSplit implement
     }
 
     public void setTarget(ValueNode target) {
+        updateUsages(this.target, target);
         this.target = target;
     }
 

@@ -28,6 +28,7 @@ import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.NamedLocationIdentity;
@@ -41,7 +42,7 @@ import jdk.vm.ci.meta.JavaKind;
  * The {@code StringToBytesNode} transforms a compilation-time String into a byte array in the
  * compiled code.
  */
-@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
+@NodeInfo(allowedUsageTypes = InputType.Memory, cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public final class StringToBytesNode extends FixedWithNextNode implements Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<StringToBytesNode> TYPE = NodeClass.create(StringToBytesNode.class);
