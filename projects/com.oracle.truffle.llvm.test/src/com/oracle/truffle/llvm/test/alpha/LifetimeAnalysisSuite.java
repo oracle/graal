@@ -69,12 +69,9 @@ public final class LifetimeAnalysisSuite {
     // TODO: after migration of LTA tests to new infrastructure, these 44 tests fail.
     // See issue #598
     // Fix issue and remove this this hard-coded ignore list.
-    private static final String[] ignore = new String[]{"gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr47541.C",
+    private static final String[] ignore = new String[]{
                     "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr49644.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr15054-2.C",
                     "gcc-5.2.0/gcc/testsuite/g++.dg/opt/nrv14.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr17697-1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr43655.C",
                     "gcc-5.2.0/gcc/testsuite/g++.dg/template/sfinae17.C",
                     "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr49039.C",
                     "gcc-5.2.0/gcc/testsuite/g++.dg/template/condition1.C",
@@ -160,7 +157,12 @@ public final class LifetimeAnalysisSuite {
     }
 
     private static Path getTestFile(Path folder) throws IOException {
-        List<Path> collect = Files.walk(folder).filter(p -> p.toString().endsWith("_O0.bc")).collect(Collectors.toList());
+        List<Path> collect = Files.walk(folder).filter(p -> {
+            final String s = p.toString();
+            // we only support files compiled with optimizations enabled since sulong does not
+            // support the invoke instruction for exception handling
+            return s.endsWith("_OPT.bc") || s.endsWith("gfortran_O0.bc");
+        }).collect(Collectors.toList());
         if (collect.size() != 1) {
             throw new AssertionError("Found " + collect.size() + " matching files in " + folder);
         }
