@@ -24,10 +24,14 @@
  */
 package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
 import com.oracle.truffle.api.nodes.Node;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Inter-operability is based on sending messages. Standard messages are defined as as constants
@@ -47,6 +51,7 @@ public abstract class Message {
      * @since 0.8 or earlier
      */
     protected Message() {
+        registerClass(this);
     }
 
     /**
@@ -514,29 +519,69 @@ public abstract class Message {
      * {@link #toString(com.oracle.truffle.api.interop.Message)} method, it is guaranteed to be
      * successfully recognized (if the classpath of the system remains the same).
      *
-     * @param message canonical string representation of a message
+     * @param messageId canonical string representation of a message
      * @return the message
      * @throws IllegalArgumentException if the string does not represent known message
      * @since 0.9
      */
-    public static Message valueOf(String message) {
-        try {
-            return (Message) Message.class.getField(message.toUpperCase()).get(null);
-        } catch (Exception ex) {
-            try {
-                String factory = "create" + Character.toUpperCase(message.charAt(0)) + message.substring(1).toLowerCase();
-                return (Message) Message.class.getMethod(factory, int.class).invoke(null, 0);
-            } catch (Exception ex2) {
-                try {
-                    ClassLoader l = Message.class.getClassLoader();
-                    if (l == null) {
-                        l = ClassLoader.getSystemClassLoader();
-                    }
-                    return (Message) Class.forName(message, false, l).newInstance();
-                } catch (Exception ex1) {
-                    throw new IllegalArgumentException("Cannot find message for " + message, ex);
-                }
-            }
+    public static Message valueOf(String messageId) {
+        switch (messageId) {
+            case "READ":
+                return Message.READ;
+            case "WRITE":
+                return Message.WRITE;
+            case "UNBOX":
+                return Message.UNBOX;
+            case "GET_SIZE":
+                return Message.GET_SIZE;
+            case "HAS_SIZE":
+                return Message.HAS_SIZE;
+            case "IS_NULL":
+                return Message.IS_NULL;
+            case "IS_BOXED":
+                return Message.IS_BOXED;
+            case "IS_EXECUTABLE":
+                return Message.IS_EXECUTABLE;
+            case "KEYS":
+                return Message.KEYS;
+            case "EXECUTE":
+                return Message.createExecute(0);
+            case "NEW":
+                return Message.createNew(0);
+            case "INVOKE":
+                return Message.createInvoke(0);
         }
+        if (!TruffleOptions.AOT) {
+            initializeMessageClass(messageId);
+        }
+        Message instance = CLASS_TO_MESSAGE.get(messageId);
+        if (instance == null) {
+            throw new IllegalArgumentException("Cannot find existing message instance for " + messageId);
+        }
+        return instance;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void initializeMessageClass(String message) throws IllegalArgumentException {
+        try {
+            ClassLoader l = Message.class.getClassLoader();
+            if (l == null) {
+                l = ClassLoader.getSystemClassLoader();
+            }
+            Class.forName(message, false, l).newInstance();
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Cannot find message for " + message, ex);
+        }
+    }
+
+    private static final Map<String, Message> CLASS_TO_MESSAGE = new ConcurrentHashMap<>();
+
+    @CompilerDirectives.TruffleBoundary
+    private static void registerClass(Message message) {
+        if (message instanceof KnownMessage) {
+            return;
+        }
+        final String key = message.getClass().getName();
+        CLASS_TO_MESSAGE.putIfAbsent(key, message);
     }
 }
