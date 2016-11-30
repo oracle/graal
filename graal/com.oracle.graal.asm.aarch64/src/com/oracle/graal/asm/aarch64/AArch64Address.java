@@ -274,7 +274,7 @@ public final class AArch64Address extends AbstractAddress {
     /**
      * @return immediate in correct representation for the given addressing mode. For example in
      *         case of <code>addressingMode ==IMMEDIATE_UNSCALED </code> the value will be returned
-     *         as the 9bit signed representation.
+     *         as the 9-bit signed representation.
      */
     public int getImmediate() {
         switch (addressingMode) {
@@ -282,12 +282,15 @@ public final class AArch64Address extends AbstractAddress {
             case IMMEDIATE_POST_INDEXED:
             case IMMEDIATE_PRE_INDEXED:
                 // 9-bit signed value
+                assert NumUtil.isSignedNbit(9, immediate);
                 return immediate & NumUtil.getNbitNumberInt(9);
             case IMMEDIATE_SCALED:
                 // Unsigned value can be returned as-is.
+                assert NumUtil.isUnsignedNbit(9, immediate);
                 return immediate;
             case PC_LITERAL:
                 // 21-bit signed value, but lower 2 bits are always 0 and are shifted out.
+                assert NumUtil.isSignedNbit(19, immediate >> 2);
                 return (immediate >> 2) & NumUtil.getNbitNumberInt(19);
             default:
                 throw GraalError.shouldNotReachHere("Should only be called for addressing modes that use immediate values.");
