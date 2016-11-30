@@ -1371,8 +1371,12 @@ public class FlatNodeGenFactory {
                 List<CodeTree> additionalChecks = new ArrayList<>();
                 for (SpecializationData specialization : reachableSpecializations) {
                     if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
-                        CodeTree check = builder.create().string("this.", createSpecializationFieldName(specialization), " == null || ", "this.", createSpecializationFieldName(specialization),
-                                        ".next_ == null").build();
+                        String typeName = createSpecializationTypeName(specialization);
+                        String fieldName = createSpecializationFieldName(specialization);
+                        String localName = createSpecializationLocalName(specialization);
+                        builder.declaration(typeName, localName, "this." + fieldName);
+                        CodeTree check = builder.create().startParantheses().string(localName, " == null || ",
+                                        localName, ".next_ == null").end().build();
                         additionalChecks.add(check);
                     }
                 }
