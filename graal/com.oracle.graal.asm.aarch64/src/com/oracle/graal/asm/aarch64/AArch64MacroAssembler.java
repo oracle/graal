@@ -620,17 +620,23 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
      * @param src general purpose register. May not be null or stackpointer.
-     * @param immediate arithmetic immediate
+     * @param immediate 32-bit signed int
      */
     @Override
     public void add(int size, Register dst, Register src, int immediate) {
-        if ((immediate & 7) != 0) {
-            assert dst.encoding != sp.encoding;
-        }
         if (immediate < 0) {
             sub(size, dst, src, -immediate);
-        } else if (!(dst.equals(src) && immediate == 0)) {
-            super.add(size, dst, src, immediate);
+        } else if (isAimm(immediate)) {
+            if (!(dst.equals(src) && immediate == 0)) {
+                super.add(size, dst, src, immediate);
+            }
+        } else if (immediate >= -(1 << 24) && immediate < (1 << 24)) {
+            super.add(size, dst, src, immediate & -(1 << 12));
+            super.add(size, dst, dst, immediate & ((1 << 12) - 1));
+        } else {
+            assert !dst.equals(src);
+            mov(dst, immediate);
+            add(size, src, dst, dst);
         }
     }
 
@@ -657,14 +663,23 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
      * @param src general purpose register. May not be null or stackpointer.
-     * @param immediate arithmetic immediate
+     * @param immediate 32-bit signed int
      */
     @Override
     public void sub(int size, Register dst, Register src, int immediate) {
         if (immediate < 0) {
             add(size, dst, src, -immediate);
-        } else if (!dst.equals(src) || immediate != 0) {
-            super.sub(size, dst, src, immediate);
+        } else if (isAimm(immediate)) {
+            if (!(dst.equals(src) && immediate == 0)) {
+                super.sub(size, dst, src, immediate);
+            }
+        } else if (immediate >= -(1 << 24) && immediate < (1 << 24)) {
+            super.sub(size, dst, src, immediate & -(1 << 12));
+            super.sub(size, dst, dst, immediate & ((1 << 12) - 1));
+        } else {
+            assert !dst.equals(src);
+            mov(dst, immediate);
+            sub(size, src, dst, dst);
         }
     }
 
