@@ -29,9 +29,14 @@
  */
 package com.oracle.truffle.llvm.test.alpha;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.junit.Assert;
@@ -78,6 +83,99 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
                             sulongResult);
             Assert.assertEquals(testName + " failed. Output (stdout) missmatch.", referenceStdOut,
                             sulongStdOut);
+        }
+    }
+
+    private static final int PERCENT = 100;
+
+    protected static void printStatistics(String name, Path source, Path config, Predicate<Path> filter) {
+        Set<Path> whiteList = getListEntries(source, config, isIncludeFile);
+        Set<Path> blackList = getListEntries(source, config, isExcludeFile);
+        Set<Path> files = getFiles(source);
+        Map<String, Integer> statisticTotalFiles = supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
+        Map<String, Integer> statisticTotalNoExcludeFiles = supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
+        Map<String, Integer> statisticSupportedFiles = supportedFiles.stream().collect(Collectors.toMap(s -> s, s -> 0));
+
+        // count available test files
+        for (Path f : files) {
+            if (filter.test(f)) {
+                String fileEnding = getFileEnding(f.toString());
+                if (supportedFiles.contains(fileEnding)) {
+                    statisticTotalFiles.put(fileEnding, statisticTotalFiles.get(fileEnding) + 1);
+                }
+            }
+        }
+
+        // count available test files minus blackList
+        for (Path f : files) {
+            if (filter.test(f) && !blackList.contains(f)) {
+                String fileEnding = getFileEnding(f.toString());
+                if (supportedFiles.contains(fileEnding)) {
+                    statisticTotalNoExcludeFiles.put(fileEnding, statisticTotalNoExcludeFiles.get(fileEnding) + 1);
+                }
+            }
+        }
+
+        // count running test files
+        for (Path f : whiteList) {
+            if (filter.test(f)) {
+                String fileEnding = getFileEnding(f.toString());
+                if (supportedFiles.contains(fileEnding)) {
+                    statisticSupportedFiles.put(fileEnding, statisticSupportedFiles.get(fileEnding) + 1);
+                }
+            }
+        }
+
+        System.out.println();
+        System.out.println(String.format("================================= Statistics for %s suite ======================================", name));
+        System.out.println("\tFILE\t|\tALL\t|\tRUNABLE\t|\tOK\t|\tOK/ALL\t|\tOK/RUNABLE\t");
+        System.out.println("===================================================================================================");
+        for (String kind : supportedFiles) {
+            double total = statisticTotalFiles.get(kind);
+            double totalNoExclude = statisticTotalNoExcludeFiles.get(kind);
+            double supported = statisticSupportedFiles.get(kind);
+            if (total > 0) {
+                double ratioTotal = supported / total * PERCENT;
+                double ratioNoExclude = supported / totalNoExclude * PERCENT;
+                System.out.println(String.format("\t%s\t|\t%d\t|\t%d\t|\t%d\t|\t%.1f%%\t|\t%.1f%%\t", kind, (int) total, (int) totalNoExclude, (int) supported, ratioTotal, ratioNoExclude));
+            }
+        }
+        System.out.println("---------------------------------------------------------------------------------------------------");
+        double total = statisticTotalFiles.values().stream().mapToInt(i -> i).sum();
+        double totalNoExclude = statisticTotalNoExcludeFiles.values().stream().mapToInt(i -> i).sum();
+        double supported = statisticSupportedFiles.values().stream().mapToInt(i -> i).sum();
+        if (total > 0) {
+            double ratioTotal = supported / total * PERCENT;
+            double ratioNoExclude = supported / totalNoExclude * PERCENT;
+            System.out.println(String.format("\t%s\t|\t%d\t|\t%d\t|\t%d\t|\t%.1f%%\t|\t%.1f%%\t", "*.*", (int) total, (int) totalNoExclude, (int) supported, ratioTotal, ratioNoExclude));
+        } else {
+            System.out.println("   No data available.");
+        }
+    }
+
+    private static Set<Path> getFiles(Path source) {
+        try {
+            return Files.walk(source).filter(f -> supportedFiles.contains(getFileEnding(f.getFileName().toString()))).collect(Collectors.toSet());
+        } catch (IOException e) {
+            throw new AssertionError("Error getting files.", e);
+        }
+    }
+
+    private static String getFileEnding(String s) {
+        return s.substring(s.lastIndexOf('.') + 1);
+    }
+
+    private static Set<Path> getListEntries(Path suiteDirectory, Path configDir, Predicate<? super Path> filter) {
+        try {
+            return Files.walk(configDir).filter(filter).flatMap(f -> {
+                try {
+                    return Files.lines(f);
+                } catch (IOException e) {
+                    throw new AssertionError("Error creating whitelist.", e);
+                }
+            }).map(s -> new File(suiteDirectory.getParent().toString(), s).toPath()).collect(Collectors.toSet());
+        } catch (IOException e) {
+            throw new AssertionError("Error creating whitelist.", e);
         }
     }
 
