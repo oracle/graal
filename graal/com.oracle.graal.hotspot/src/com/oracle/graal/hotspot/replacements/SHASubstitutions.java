@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 
 import com.oracle.graal.api.replacements.ClassSubstitution;
@@ -43,6 +44,8 @@ public class SHASubstitutions {
 
     static final Class<?> shaClass;
 
+    public static final String implCompressName = Java8OrEarlier ? "implCompress" : "implCompress0";
+
     static {
         try {
             // Need to use the system class loader as com.sun.crypto.provider.AESCrypt
@@ -57,15 +60,11 @@ public class SHASubstitutions {
     }
 
     @MethodSubstitution(isStatic = false)
-    static void implCompress(Object receiver, byte[] buf, int ofs) {
-        implCompress0(receiver, buf, ofs);
-    }
-
-    @MethodSubstitution(isStatic = false)
     static void implCompress0(Object receiver, byte[] buf, int ofs) {
         Object realReceiver = PiNode.piCastNonNull(receiver, shaClass);
         Object state = UnsafeLoadNode.load(realReceiver, stateOffset, JavaKind.Object, LocationIdentity.any());
         Word bufAddr = Word.unsigned(ComputeObjectAddressNode.get(buf, getArrayBaseOffset(JavaKind.Byte) + ofs));
-        HotSpotBackend.shaImplCompressStub(bufAddr, state);
+        Word stateAddr = Word.unsigned(ComputeObjectAddressNode.get(state, getArrayBaseOffset(JavaKind.Int)));
+        HotSpotBackend.shaImplCompressStub(bufAddr, stateAddr);
     }
 }
