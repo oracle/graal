@@ -556,7 +556,7 @@ public abstract class Message {
         }
         Message instance = CLASS_TO_MESSAGE.get(message);
         if (instance == null) {
-            throw new IllegalArgumentException("Cannot existing message instance for " + message);
+            throw new IllegalArgumentException("Cannot find existing message instance for " + message);
         }
         return instance;
     }
