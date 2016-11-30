@@ -45,6 +45,7 @@ import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedGuardNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
+import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.FullInfopointNode;
 import com.oracle.graal.nodes.IfNode;
 import com.oracle.graal.nodes.LogicNode;
@@ -69,8 +70,11 @@ import com.oracle.graal.nodes.calc.SubNode;
 import com.oracle.graal.nodes.calc.ZeroExtendNode;
 import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 import com.oracle.graal.nodes.extended.ValueAnchorNode;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.code.BytecodeFrame;
 
 public class LoopEx {
 
@@ -432,5 +436,23 @@ public class LoopEx {
                 iv.deleteUnusedNodes();
             }
         }
+    }
+
+    /**
+     * @return true if all nodes in the loop can be duplicated.
+     */
+    public boolean canDuplicateLoop() {
+        for (Node node : inside().nodes()) {
+            if (node instanceof ControlFlowAnchorNode) {
+                return false;
+            }
+            if (node instanceof FrameState) {
+                FrameState frameState = (FrameState) node;
+                if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }
