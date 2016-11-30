@@ -630,7 +630,9 @@ public abstract class Source {
      * Check whether this source has been marked as <em>interactive</em>, meaning that it has been
      * provided by a user through an interactive shell. When <em>interactive</em> sources are
      * executed, the appropriate result could be passed directly to the {@link Env#out() polyglot
-     * engine output stream}.
+     * engine output stream}. If the output stream is used, no value should be provided as a result
+     * of the execution. When there is a need for a user input during the execution, {@link Env#in()
+     * polyglot engine input stream} can be used for that purpose.
      * <p>
      * One can specify whether a source is interactive when {@link Builder#interactive() building
      * it}.
