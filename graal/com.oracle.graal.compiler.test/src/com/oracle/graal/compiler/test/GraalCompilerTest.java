@@ -204,7 +204,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence createName() {
+            protected CharSequence getName() {
                 return "ComputeLoopFrequenciesPhase";
             }
         });
@@ -221,7 +221,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence createName() {
+            protected CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -238,7 +238,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence createName() {
+            protected CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -255,7 +255,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence createName() {
+            protected CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
