@@ -82,11 +82,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
     }
 
-    private static boolean checkName(CharSequence name) {
-        assert NamePatternHolder.NAME_PATTERN.matcher(name).matches() : "illegal phase name: " + name;
-        return true;
-    }
-
     private static class BasePhaseStatistics {
         /**
          * Records time spent in {@link #apply(StructuredGraph, Object, boolean)}.
@@ -177,7 +172,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    protected CharSequence createName() {
+    protected CharSequence getName() {
         String className = BasePhase.this.getClass().getName();
         String s = className.substring(className.lastIndexOf(".") + 1); // strip the package name
         int innerClassPos = s.indexOf('$');
@@ -189,12 +184,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             s = s.substring(0, s.length() - "Phase".length());
         }
         return s;
-    }
-
-    public final CharSequence getName() {
-        CharSequence name = createName();
-        assert checkName(name);
-        return name;
     }
 
     protected abstract void run(StructuredGraph graph, C context);

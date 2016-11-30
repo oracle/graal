@@ -120,7 +120,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             }
 
             @Override
-            protected CharSequence createName() {
+            protected CharSequence getName() {
                 return "VerifyEncodingDecoding";
             }
         });
