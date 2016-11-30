@@ -27,13 +27,13 @@ package com.oracle.truffle.api.vm;
 import java.util.concurrent.Executor;
 
 abstract class ComputeInExecutor<R> implements Runnable {
-    private final Executor executor;
+    private final Info executor;
     private R result;
     private Throwable exception;
     private boolean started;
     private boolean done;
 
-    protected ComputeInExecutor(Executor executor) {
+    protected ComputeInExecutor(Info executor) {
         this.executor = executor;
     }
 
@@ -84,6 +84,9 @@ abstract class ComputeInExecutor<R> implements Runnable {
     @Override
     public final void run() {
         try {
+            if (executor != null) {
+                executor.checkThread();
+            }
             result = compute();
         } catch (Exception ex) {
             if (ex.getClass() == RuntimeException.class && ex.getCause() != null) {
@@ -106,5 +109,32 @@ abstract class ComputeInExecutor<R> implements Runnable {
     @Override
     public final String toString() {
         return "value=" + result + ",exception=" + exception + ",computed=" + done;
+    }
+
+    public static Info wrap(Executor executor) {
+        return executor == null ? null : new Info(executor);
+    }
+
+    static final class Info {
+        private final Executor executor;
+        private Thread runThread;
+
+        private Info(Executor executor) {
+            this.executor = executor;
+        }
+
+        void execute(ComputeInExecutor<?> compute) {
+            executor.execute(compute);
+        }
+
+        private void checkThread() {
+            if (runThread == null) {
+                runThread = Thread.currentThread();
+            } else {
+                if (runThread != Thread.currentThread()) {
+                    throw new IllegalStateException("Currently executing in " + Thread.currentThread() + " while previously running in " + runThread + " that isn't allowed");
+                }
+            }
+        }
     }
 }

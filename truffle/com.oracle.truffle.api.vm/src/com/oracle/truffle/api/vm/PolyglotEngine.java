@@ -118,7 +118,7 @@ public class PolyglotEngine {
     static final Logger LOG = Logger.getLogger(PolyglotEngine.class.getName());
     private static final SPIAccessor SPI = new SPIAccessor();
     private final Thread initThread;
-    private final Executor executor;
+    private final ComputeInExecutor.Info executor;
     private final Map<String, Language> langs;
     private final InputStream in;
     private final OutputStream err;
@@ -168,7 +168,7 @@ public class PolyglotEngine {
      */
     PolyglotEngine(Executor executor, Map<String, Object> globals, OutputStream out, OutputStream err, InputStream in, EventConsumer<?>[] handlers, List<Object[]> config) {
         assertNoTruffle();
-        this.executor = executor;
+        this.executor = ComputeInExecutor.wrap(executor);
         this.out = out;
         this.err = err;
         this.in = in;
