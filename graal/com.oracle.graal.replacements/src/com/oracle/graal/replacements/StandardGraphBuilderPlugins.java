@@ -129,15 +129,13 @@ public class StandardGraphBuilderPlugins {
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization);
         registerUnsignedMathPlugins(plugins);
+        registerStringPlugins(plugins, bytecodeProvider, snippetReflection);
         registerCharacterPlugins(plugins);
         registerShortPlugins(plugins);
         registerIntegerLongPlugins(plugins, JavaKind.Int);
         registerIntegerLongPlugins(plugins, JavaKind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
-        if (Java8OrEarlier) {
-            registerStringPlugins(plugins, bytecodeProvider);
-        }
         registerArraysPlugins(plugins, bytecodeProvider);
         registerArrayPlugins(plugins, bytecodeProvider);
         registerUnsafePlugins(plugins, bytecodeProvider);
@@ -159,19 +157,32 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerStringPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+    private static void registerStringPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, String.class, bytecodeProvider);
-        r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
-
-        r = new Registration(plugins, StringSubstitutions.class);
-        r.register1("getValue", String.class, new InvocationPlugin() {
+        r.register1("hashCode", Receiver.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
-                b.addPush(JavaKind.Object, LoadFieldNode.create(b.getAssumptions(), value, field));
-                return true;
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                if (receiver.isConstant()) {
+                    String s = snippetReflection.asObject(String.class, (JavaConstant) receiver.get().asConstant());
+                    b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(s.hashCode())));
+                    return true;
+                }
+                return false;
             }
         });
+        if (Java8OrEarlier) {
+            r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
+
+            r = new Registration(plugins, StringSubstitutions.class);
+            r.register1("getValue", String.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                    ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
+                    b.addPush(JavaKind.Object, LoadFieldNode.create(b.getAssumptions(), value, field));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerArraysPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
