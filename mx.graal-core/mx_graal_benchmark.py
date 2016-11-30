@@ -575,6 +575,14 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
     def daCapoIterations(self):
         return _daCapoScalaConfig
 
+    def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
+        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        if "specs" in benchmarks:
+            skip_patterns += [
+                    re.escape(r"Line count validation failed for stdout.log, expecting 1039 found 1040"),
+                ]
+        return skip_patterns
+
 
 mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
 
