@@ -381,6 +381,7 @@ import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.InvocationPlugi
 import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
 import com.oracle.graal.nodes.java.ExceptionObjectNode;
+import com.oracle.graal.nodes.java.FinalFieldBarrierNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.java.LoadFieldNode;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
@@ -597,6 +598,9 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private int lastBCI; // BCI of lastInstr. This field is for resolving instrumentation target.
 
+    private boolean finalBarrierRequired;
+    private ValueNode originalReceiver;
+
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
                     int entryBCI, IntrinsicContext intrinsicContext) {
         this.bytecodeProvider = intrinsicContext == null ? new ResolvedJavaMethodBytecodeProvider() : intrinsicContext.getBytecodeProvider();
@@ -678,6 +682,9 @@ public class BytecodeParser implements GraphBuilderContext {
             this.blockMap = newMapping;
             this.firstInstructionArray = new FixedWithNextNode[blockMap.getBlockCount()];
             this.entryStateArray = new FrameStateBuilder[blockMap.getBlockCount()];
+            if (!method.isStatic()) {
+                originalReceiver = startFrameState.loadLocal(0, JavaKind.Object);
+            }
 
             /*
              * Configure the assertion checking behavior of the FrameStateBuilder. This needs to be
@@ -1574,10 +1581,15 @@ public class BytecodeParser implements GraphBuilderContext {
      *         {@link #afterInvocationPluginExecution} to weave code for the non-intrinsic branch
      */
     protected IntrinsicGuard guardIntrinsic(ValueNode[] args, ResolvedJavaMethod targetMethod, InvocationPluginReceiver pluginReceiver) {
-        ValueNode originalReceiver = args[0];
-        ResolvedJavaType receiverType = StampTool.typeOrNull(originalReceiver);
-        if (receiverType != null && receiverType.resolveMethod(targetMethod, receiverType).equals(targetMethod)) {
-            assert targetMethod.getDeclaringClass().isAssignableFrom(receiverType.resolveMethod(targetMethod, receiverType).getDeclaringClass());
+        ValueNode intrinsicReceiver = args[0];
+        ResolvedJavaType receiverType = StampTool.typeOrNull(intrinsicReceiver);
+        if (receiverType == null) {
+            // The verifier guarantees it to be at least type declaring targetMethod
+            receiverType = targetMethod.getDeclaringClass();
+        }
+        ResolvedJavaMethod resolvedMethod = receiverType.resolveMethod(targetMethod, method.getDeclaringClass());
+        if (resolvedMethod == null || resolvedMethod == targetMethod) {
+            assert resolvedMethod == null || targetMethod.getDeclaringClass().isAssignableFrom(resolvedMethod.getDeclaringClass());
             Mark mark = graph.getMark();
             FixedWithNextNode currentLastInstr = lastInstr;
             ValueNode nonNullReceiver = pluginReceiver.get();
@@ -1597,7 +1609,7 @@ public class BytecodeParser implements GraphBuilderContext {
                             // All profiled types select the intrinsic so
                             // emit a fixed guard instead of a if-then-else.
                             lastInstr = append(new FixedGuardNode(compare, TypeCheckedInliningViolated, InvalidateReprofile, false));
-                            return new IntrinsicGuard(currentLastInstr, originalReceiver, mark, null, null);
+                            return new IntrinsicGuard(currentLastInstr, intrinsicReceiver, mark, null, null);
                         }
                     } else {
                         // No profiled types select the intrinsic so emit a virtual call
@@ -1611,7 +1623,7 @@ public class BytecodeParser implements GraphBuilderContext {
             AbstractBeginNode nonIntrinsicBranch = graph.add(new BeginNode());
             append(new IfNode(compare, intrinsicBranch, nonIntrinsicBranch, 0.01));
             lastInstr = intrinsicBranch;
-            return new IntrinsicGuard(currentLastInstr, originalReceiver, mark, nonIntrinsicBranch, profile);
+            return new IntrinsicGuard(currentLastInstr, intrinsicReceiver, mark, nonIntrinsicBranch, profile);
         } else {
             // Receiver selects an overriding method so emit a virtual call
             return null;
@@ -1624,7 +1636,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * not override {@code targetMethod}.
      *
      * @param profile the profile to adjust
-     * @param targetMethod the virtual method for there is an intrinsic
+     * @param targetMethod the virtual method for which there is an intrinsic
      * @return the adjusted profile or the original {@code profile} object if no adjustment was made
      */
     protected JavaTypeProfile adjustProfileForInvocationPlugin(JavaTypeProfile profile, ResolvedJavaMethod targetMethod) {
@@ -1632,7 +1644,7 @@ public class BytecodeParser implements GraphBuilderContext {
             List<ProfiledType> retained = new ArrayList<>();
             double notRecordedProbability = profile.getNotRecordedProbability();
             for (ProfiledType ptype : profile.getTypes()) {
-                if (!ptype.getType().resolveMethod(targetMethod, ptype.getType()).equals(targetMethod)) {
+                if (!ptype.getType().resolveMethod(targetMethod, method.getDeclaringClass()).equals(targetMethod)) {
                     retained.add(ptype);
                 } else {
                     notRecordedProbability += ptype.getProbability();
@@ -2004,7 +2016,10 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         genInfoPointNode(InfopointReason.METHOD_END, x);
-
+        if (finalBarrierRequired) {
+            assert originalReceiver != null;
+            append(new FinalFieldBarrierNode(originalReceiver));
+        }
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
     }
 
@@ -3516,6 +3531,9 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
+        if (resolvedField.isFinal() && method.isConstructor()) {
+            finalBarrierRequired = true;
+        }
         genStoreField(receiver, resolvedField, value);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package com.oracle.graal.compiler.common;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
-
-import org.junit.Test;
-
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.replacements.test.MethodSubstitutionTest;
+import jdk.vm.ci.code.CompilationRequest;
 
 /**
- * Tests HotSpot specific substitutions for {@link Node}.
+ * A {@link CompilationIdentifier} based on a {@link CompilationRequest}.
  */
-public class HotSpotNodeSubstitutionsTest extends MethodSubstitutionTest {
+public interface CompilationRequestIdentifier extends CompilationIdentifier {
 
-    @Test
-    public void test() {
-        StructuredGraph graph = new StructuredGraph(AllowAssumptions.YES, INVALID_COMPILATION_ID);
-        test("getNodeClass", ConstantNode.forInt(42, graph));
-    }
+    CompilationRequest getRequest();
 
-    public static NodeClass<?> getNodeClass(Node n) {
-        return n.getNodeClass();
+    /**
+     * Returns the {@link CompilationRequestIdentifier#getRequest() request} from a
+     * {@link CompilationRequestIdentifier}. Returns {@code null} if the
+     * {@link CompilationIdentifier identifier} does not have one.
+     */
+    static CompilationRequest asCompilationRequest(CompilationIdentifier compilationId) {
+        if (compilationId instanceof CompilationRequestIdentifier) {
+            return ((CompilationRequestIdentifier) compilationId).getRequest();
+        }
+        return null;
     }
 }

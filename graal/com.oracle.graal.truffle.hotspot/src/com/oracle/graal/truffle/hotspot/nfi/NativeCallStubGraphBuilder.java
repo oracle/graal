@@ -125,7 +125,7 @@ public class NativeCallStubGraphBuilder {
         Suites suites = providers.getSuites().getDefaultSuites();
         LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites();
 
-        StructuredGraph g = new StructuredGraph(callStubMethod, AllowAssumptions.NO);
+        StructuredGraph g = new StructuredGraph(callStubMethod, AllowAssumptions.NO, backend.getCompilationIdentifier(callStubMethod));
         CompilationResult compResult = GraalCompiler.compileGraph(g, callStubMethod, providers, backend, graphBuilder, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
                         lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
 

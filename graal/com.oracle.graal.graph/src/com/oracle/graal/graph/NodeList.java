@@ -165,7 +165,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     private boolean assertInRange(int index) {
-        assert index < size() : index + " < " + size();
+        assert index >= 0 && index < size() : index + " < " + size();
         return true;
     }
 
@@ -279,29 +279,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     @Override
     public Iterator<T> iterator() {
-        return new Iterator<T>() {
-
-            private final int expectedModCount = NodeList.this.modCount;
-            private int index = 0;
-
-            @Override
-            public boolean hasNext() {
-                assert expectedModCount == NodeList.this.modCount;
-                return index < NodeList.this.size;
-            }
-
-            @SuppressWarnings("unchecked")
-            @Override
-            public T next() {
-                assert expectedModCount == NodeList.this.modCount;
-                return (T) NodeList.this.nodes[index++];
-            }
-
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException();
-            }
-        };
+        return new NodeListIterator<>(this, 0);
     }
 
     @Override
@@ -422,5 +400,71 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
             return get(0);
         }
         return null;
+    }
+
+    public SubList<T> subList(int startIndex) {
+        assert assertInRange(startIndex);
+        return new SubList<>(this, startIndex);
+    }
+
+    public static final class SubList<R extends Node> extends AbstractList<R> implements NodeIterable<R>, RandomAccess {
+        private final NodeList<R> list;
+        private final int offset;
+
+        private SubList(NodeList<R> list, int offset) {
+            this.list = list;
+            this.offset = offset;
+        }
+
+        @Override
+        public R get(int index) {
+            assert index >= 0 : index;
+            return list.get(offset + index);
+        }
+
+        @Override
+        public int size() {
+            return list.size() - offset;
+        }
+
+        public SubList<R> subList(int startIndex) {
+            assert startIndex >= 0 && startIndex < size() : startIndex;
+            return new SubList<>(this.list, startIndex + offset);
+        }
+
+        @Override
+        public Iterator<R> iterator() {
+            return new NodeListIterator<>(list, offset);
+        }
+    }
+
+    private static final class NodeListIterator<R extends Node> implements Iterator<R> {
+        private final NodeList<R> list;
+        private final int expectedModCount;
+        private int index;
+
+        private NodeListIterator(NodeList<R> list, int startIndex) {
+            this.list = list;
+            this.expectedModCount = list.modCount;
+            this.index = startIndex;
+        }
+
+        @Override
+        public boolean hasNext() {
+            assert expectedModCount == list.modCount;
+            return index < list.size;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public R next() {
+            assert expectedModCount == list.modCount;
+            return (R) list.nodes[index++];
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
     }
 }

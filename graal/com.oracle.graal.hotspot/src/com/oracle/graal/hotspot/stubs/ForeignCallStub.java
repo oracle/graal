@@ -28,6 +28,7 @@ import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -63,7 +64,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * A {@linkplain #getGraph() generated} stub for a {@link Transition non-leaf} foreign call from
+ * A {@linkplain #getGraph generated} stub for a {@link Transition non-leaf} foreign call from
  * compiled code. A stub is required for such calls as the caller may be scheduled for
  * deoptimization while the call is in progress. And since these are foreign/runtime calls on slow
  * paths, we don't want to force the register allocator to spill around the call. As such, this stub
@@ -218,12 +219,12 @@ public class ForeignCallStub extends Stub {
      * %r15 on AMD64) and is only prepended if {@link #prependThread} is true.
      */
     @Override
-    protected StructuredGraph getGraph() {
+    protected StructuredGraph getGraph(CompilationIdentifier compilationId) {
         WordTypes wordTypes = providers.getWordTypes();
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
         boolean isObjectResult = !LIRKind.isValue(linkage.getOutgoingCallingConvention().getReturn());
 
-        StructuredGraph graph = new StructuredGraph(toString(), null, AllowAssumptions.NO);
+        StructuredGraph graph = new StructuredGraph(toString(), null, AllowAssumptions.NO, compilationId);
         graph.disableUnsafeAccessTracking();
 
         GraphKit kit = new GraphKit(graph, providers, wordTypes, providers.getGraphBuilderPlugins());

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+
 import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
@@ -87,7 +89,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         this.stampProvider = stampProvider;
         this.code = code;
         this.method = code.getMethod();
-        this.graph = new StructuredGraph(method, allowAssumptions);
+        this.graph = new StructuredGraph(method, allowAssumptions, INVALID_COMPILATION_ID);
         this.invokeBci = invokeBci;
         this.lastInstr = graph.start();
 

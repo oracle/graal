@@ -22,10 +22,14 @@
  */
 package com.oracle.graal.replacements.test;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.junit.Test;
 
 import com.oracle.graal.api.replacements.Snippet;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.replacements.ReplacementsImpl;
@@ -48,9 +52,55 @@ public class WordTest extends GraalCompilerTest implements Snippets {
         installer = (ReplacementsImpl) getReplacements();
     }
 
+    private static class WordTestCompilationIdentifier implements CompilationIdentifier {
+
+        private static final AtomicLong uniqueStubIds = new AtomicLong();
+        private final long id;
+        private final ResolvedJavaMethod method;
+
+        WordTestCompilationIdentifier(ResolvedJavaMethod m) {
+            this.id = uniqueStubIds.getAndIncrement();
+            this.method = m;
+        }
+
+        @Override
+        public final String toString() {
+            return toString(Verbosity.DETAILED);
+        }
+
+        @Override
+        public String toString(Verbosity verbosity) {
+            switch (verbosity) {
+                case ID:
+                    return buildID();
+
+                case NAME:
+                    return buildName();
+                case DETAILED:
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(buildID());
+                    sb.append('[');
+                    sb.append(buildName());
+                    sb.append(']');
+                    return sb.toString();
+            }
+            throw new GraalError("unknown verbosity: " + verbosity);
+        }
+
+        private String buildName() {
+            return method.format("%H.%n(%p)");
+        }
+
+        private String buildID() {
+            return "StubCompilation-" + id;
+        }
+
+    }
+
     @Override
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return installer.makeGraph(m, null, null);
+        // create a copy to assign a valid compilation id
+        return installer.makeGraph(m, null, null).copyWithIdentifier(new WordTestCompilationIdentifier(m));
     }
 
     @Test

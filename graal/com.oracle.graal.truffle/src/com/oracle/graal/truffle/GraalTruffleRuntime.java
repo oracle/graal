@@ -48,6 +48,8 @@ import java.util.function.Supplier;
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.CompilerThreadFactory;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
+import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.GraalError;
@@ -479,12 +481,21 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     @SuppressWarnings("try")
     private void doCompile0(OptimizedCallTarget optimizedCallTarget) {
         try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
-            getTruffleCompiler().compileMethod(optimizedCallTarget);
+            getTruffleCompiler().compileMethod(optimizedCallTarget, this);
         } catch (Throwable e) {
             optimizedCallTarget.notifyCompilationFailed(e);
         } finally {
             optimizedCallTarget.resetCompilationTask();
         }
+    }
+
+    /**
+     * @param optimizedCallTarget
+     * @param callRootMethod
+     * @param backend
+     */
+    public CompilationIdentifier getCompilationIdentifier(OptimizedCallTarget optimizedCallTarget, ResolvedJavaMethod callRootMethod, Backend backend) {
+        return backend.getCompilationIdentifier(callRootMethod);
     }
 
     protected abstract BackgroundCompileQueue getCompileQueue();

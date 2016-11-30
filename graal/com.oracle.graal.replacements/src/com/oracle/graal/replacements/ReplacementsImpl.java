@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static com.oracle.graal.compiler.common.GraalOptions.DeoptALot;
 import static com.oracle.graal.compiler.common.GraalOptions.UseSnippetGraphCache;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
@@ -390,7 +391,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
 
-            final StructuredGraph graph = new StructuredGraph(methodToParse, AllowAssumptions.NO, NO_PROFILING_INFO);
+            final StructuredGraph graph = new StructuredGraph(methodToParse, AllowAssumptions.NO, NO_PROFILING_INFO, INVALID_COMPILATION_ID);
 
             // They are not user code so they do not participate in unsafe access tracking
             graph.disableUnsafeAccessTracking();

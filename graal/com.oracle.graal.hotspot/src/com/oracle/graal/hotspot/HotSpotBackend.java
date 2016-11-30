@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
 import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
@@ -62,15 +63,19 @@ import com.oracle.graal.phases.tiers.SuitesProvider;
 import com.oracle.graal.word.Pointer;
 import com.oracle.graal.word.Word;
 
+import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * HotSpot specific backend.
@@ -281,7 +286,17 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     }
 
     @Override
-    public CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationResult compResult) {
-        return HotSpotCompiledCodeBuilder.createCompiledCode(method, null, compResult);
+    public CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compResult) {
+        HotSpotCompilationRequest compRequest = compilationRequest instanceof HotSpotCompilationRequest ? (HotSpotCompilationRequest) compilationRequest : null;
+        return HotSpotCompiledCodeBuilder.createCompiledCode(method, compRequest, compResult);
+    }
+
+    @Override
+    public CompilationIdentifier getCompilationIdentifier(ResolvedJavaMethod resolvedJavaMethod) {
+        if (resolvedJavaMethod instanceof HotSpotResolvedJavaMethod) {
+            HotSpotCompilationRequest request = new HotSpotCompilationRequest((HotSpotResolvedJavaMethod) resolvedJavaMethod, JVMCICompiler.INVOCATION_ENTRY_BCI, 0L);
+            return new HotSpotCompilationIdentifier(request);
+        }
+        return super.getCompilationIdentifier(resolvedJavaMethod);
     }
 }

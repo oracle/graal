@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,31 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
-
 import org.junit.Test;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.replacements.test.MethodSubstitutionTest;
+import com.oracle.graal.api.directives.GraalDirectives;
 
 /**
- * Tests HotSpot specific substitutions for {@link Node}.
+ * Test on-stack-replacement with Graal. The test manually triggers a Graal OSR-compilation which is
+ * later invoked when hitting the backedge counter overflow.
  */
-public class HotSpotNodeSubstitutionsTest extends MethodSubstitutionTest {
+public class GraalOSRTest extends GraalOSRTestBase {
 
     @Test
-    public void test() {
-        StructuredGraph graph = new StructuredGraph(AllowAssumptions.YES, INVALID_COMPILATION_ID);
-        test("getNodeClass", ConstantNode.forInt(42, graph));
+    public void testOSR() {
+        testOSR("test");
     }
 
-    public static NodeClass<?> getNodeClass(Node n) {
-        return n.getNodeClass();
+    static int limit = 10000;
+
+    public static ReturnValue test() {
+        for (int i = 0; i < limit * limit; i++) {
+            GraalDirectives.blackhole(i);
+            if (GraalDirectives.inCompiledCode()) {
+                return ReturnValue.SUCCESS;
+            }
+        }
+        return ReturnValue.FAILURE;
     }
+
 }

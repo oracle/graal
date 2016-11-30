@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.lir.gen;
 
+import com.oracle.graal.compiler.common.CompilationIdentifier;
+import com.oracle.graal.compiler.common.CompilationIdentifier.Verbosity;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.framemap.FrameMap;
 import com.oracle.graal.lir.framemap.FrameMapBuilder;
@@ -39,15 +41,15 @@ public class LIRGenerationResult {
      */
     private boolean hasForeignCall;
     /**
-     * Human readable name of this compilation unit.
+     * Unique identifier of this compilation.
      */
-    private final String compilationUnitName;
+    private final CompilationIdentifier compilationId;
 
-    public LIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention) {
+    public LIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention) {
         this.lir = lir;
         this.frameMapBuilder = frameMapBuilder;
-        this.compilationUnitName = compilationUnitName;
         this.callingConvention = callingConvention;
+        this.compilationId = compilationId;
     }
 
     /**
@@ -105,6 +107,16 @@ public class LIRGenerationResult {
     }
 
     public String getCompilationUnitName() {
-        return compilationUnitName;
+        if (compilationId == null || compilationId == CompilationIdentifier.INVALID_COMPILATION_ID) {
+            return "<unknown>";
+        }
+        return compilationId.toString(Verbosity.NAME);
+    }
+
+    /**
+     * Returns a unique identifier of the current compilation.
+     */
+    public CompilationIdentifier getCompilationId() {
+        return compilationId;
     }
 }

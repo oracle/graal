@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
@@ -402,7 +404,7 @@ public class GraphEncoder {
      */
     @SuppressWarnings("try")
     public static boolean verifyEncoding(StructuredGraph originalGraph, EncodedGraph encodedGraph, Architecture architecture) {
-        StructuredGraph decodedGraph = new StructuredGraph(originalGraph.method(), AllowAssumptions.YES);
+        StructuredGraph decodedGraph = new StructuredGraph(originalGraph.method(), AllowAssumptions.YES, INVALID_COMPILATION_ID);
         GraphDecoder decoder = new GraphDecoder(architecture);
         decoder.decode(decodedGraph, encodedGraph);
 

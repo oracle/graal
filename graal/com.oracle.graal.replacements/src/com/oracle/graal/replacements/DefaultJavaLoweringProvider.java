@@ -88,6 +88,7 @@ import com.oracle.graal.nodes.java.AccessIndexedNode;
 import com.oracle.graal.nodes.java.ArrayLengthNode;
 import com.oracle.graal.nodes.java.AtomicReadAndWriteNode;
 import com.oracle.graal.nodes.java.CompareAndSwapNode;
+import com.oracle.graal.nodes.java.FinalFieldBarrierNode;
 import com.oracle.graal.nodes.java.InstanceOfDynamicNode;
 import com.oracle.graal.nodes.java.InstanceOfNode;
 import com.oracle.graal.nodes.java.LoadFieldNode;
@@ -124,6 +125,7 @@ import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -729,7 +731,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return new NewArrayNode(((VirtualArrayNode) virtual).componentType(), length, true);
     }
 
-    public static void finishAllocatedObjects(LoweringTool tool, CommitAllocationNode commit, ValueNode[] allocations) {
+    public void finishAllocatedObjects(LoweringTool tool, CommitAllocationNode commit, ValueNode[] allocations) {
         StructuredGraph graph = commit.graph();
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
             FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
@@ -748,6 +750,25 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
             addObject.replaceAtUsagesAndDelete(allocations[index]);
         }
+        insertAllocationBarrier(commit, graph);
+    }
+
+    /**
+     * Insert the required {@link MemoryBarriers#STORE_STORE} barrier for an allocation and also
+     * include the {@link MemoryBarriers#LOAD_STORE} required for final fields if any final fields
+     * are being written, as if {@link FinalFieldBarrierNode} were emitted.
+     */
+    private void insertAllocationBarrier(CommitAllocationNode commit, StructuredGraph graph) {
+        int barrier = MemoryBarriers.STORE_STORE;
+        outer: for (VirtualObjectNode vobj : commit.getVirtualObjects()) {
+            for (ResolvedJavaField field : vobj.type().getInstanceFields(true)) {
+                if (field.isFinal()) {
+                    barrier = barrier | MemoryBarriers.LOAD_STORE;
+                    break outer;
+                }
+            }
+        }
+        graph.addAfterFixed(commit, graph.add(new MembarNode(barrier, initLocationIdentity())));
     }
 
     /**
