@@ -51,6 +51,10 @@ public abstract class ExampleNode extends Node {
         return ExampleTypesGen.expectDouble(execute(frame));
     }
 
+    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+        return ExampleTypesGen.expectLong(execute(frame));
+    }
+
     @Override
     public String toString() {
         if (this instanceof SpecializedNode) {

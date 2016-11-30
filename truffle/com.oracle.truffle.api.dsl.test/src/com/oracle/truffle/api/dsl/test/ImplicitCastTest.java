@@ -22,9 +22,12 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
+
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -35,6 +38,7 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
 import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ExecuteChildWithImplicitCast1NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast0NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast1NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast2NodeFactory;
@@ -46,8 +50,11 @@ import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals2Node
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals3NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.examples.ExampleNode;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public class ImplicitCastTest {
 
@@ -398,4 +405,35 @@ public class ImplicitCastTest {
         }
 
     }
+
+    @TypeSystem
+    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
+    static class ImplicitCast4Types {
+        @ImplicitCast
+        static long castLong(int value) {
+            return value;
+        }
+    }
+
+    @Test
+    public void testExecuteChildWithImplicitCast1() throws UnexpectedResultException {
+        ExecuteChildWithImplicitCast1Node node = ExecuteChildWithImplicitCast1NodeGen.create(createArguments(1));
+        /*
+         * if executeLong is used for the initial execution of the node and the uninitialized case
+         * is not checked then this executeLong method might return 0L instead of 2L. This test
+         * verifies that this particular case does not happen.
+         */
+        Assert.assertEquals(2L, node.executeLong(Truffle.getRuntime().createVirtualFrame(new Object[]{2L}, new FrameDescriptor())));
+    }
+
+    @TypeSystemReference(ImplicitCast4Types.class)
+    public abstract static class ExecuteChildWithImplicitCast1Node extends ExampleNode {
+
+        @Specialization
+        public long sleep(long duration) {
+            return duration;
+        }
+
+    }
+
 }

@@ -32,7 +32,8 @@ import com.oracle.truffle.api.dsl.test.examples.RubyCall.InternalMethod;
 import com.oracle.truffle.api.dsl.test.examples.RubyCall.RubyObject;
 import com.oracle.truffle.api.dsl.test.examples.StableDispatch.SLFunction;
 
-@TypeSystem({int.class, double.class, boolean.class, TruffleObject.class, SLFunction.class, RubyObject.class, Function.class, InternalMethod.class, int[].class, double[].class, Object[].class})
+@TypeSystem({int.class, long.class, double.class, boolean.class, TruffleObject.class, SLFunction.class, RubyObject.class, Function.class, InternalMethod.class, int[].class, double[].class,
+                Object[].class})
 @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
 public class ExampleTypes {
 

@@ -1145,7 +1145,7 @@ public class FlatNodeGenFactory {
 
                     CodeTreeBuilder accessBuilder = builder.create();
                     accessBuilder.startParantheses();
-                    accessBuilder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard}));
+                    accessBuilder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard, node.getUninitializedSpecialization()}));
                     accessBuilder.string(" ? ");
                     accessBuilder.string(localName);
                     accessBuilder.string(" : ");
@@ -2896,7 +2896,7 @@ public class FlatNodeGenFactory {
             ExecutableTypeData executableType = resolveTargetExecutable(execution, sourceType);
             elseIf = builder.startIf(elseIf);
             throwsUnexpected |= executableType.hasUnexpectedValue(context);
-            builder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard}));
+            builder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard, node.getUninitializedSpecialization()}));
             builder.end();
             builder.startBlock();
 
