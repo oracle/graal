@@ -33,6 +33,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
 
+import org.junit.AfterClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -44,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 public final class LLVMSuite extends BaseSuiteHarness {
 
     private static final Path LLVM_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/llvm").toPath();
+    private static final Path LLVM_SOURCE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/llvm/test-suite-3.2.src/").toPath();
     private static final Path LLVM_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/llvm/configs").toPath();
 
     @Parameter(value = 0) public Path path;
@@ -64,4 +66,8 @@ public final class LLVMSuite extends BaseSuiteHarness {
         return LLVM_SUITE_DIR;
     }
 
+    @AfterClass
+    public static void printStatistics() {
+        printStatistics("LLVM", LLVM_SOURCE_DIR, LLVM_CONFIG_DIR, f -> true);
+    }
 }

@@ -50,6 +50,7 @@ public abstract class BaseTestHarness {
 
     public static final Predicate<? super Path> isExecutable = f -> f.getFileName().toString().endsWith(".out");
     public static final Predicate<? super Path> isIncludeFile = f -> f.getFileName().toString().endsWith(".include");
+    public static final Predicate<? super Path> isExcludeFile = f -> f.getFileName().toString().endsWith(".exclude");
     public static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");
     public static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
 

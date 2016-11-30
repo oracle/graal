@@ -31,9 +31,12 @@ package com.oracle.truffle.llvm.test.alpha;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.function.Predicate;
 
+import org.junit.AfterClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -45,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 public final class GCCSuite extends BaseSuiteHarness {
 
     private static final Path GCC_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/gcc").toPath();
+    private static final Path GCC_SOURCE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/gcc/gcc-5.2.0").toPath();
     private static final Path GCC_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/gcc/configs").toPath();
 
     @Parameter(value = 0) public Path path;
@@ -68,6 +72,22 @@ public final class GCCSuite extends BaseSuiteHarness {
     @Override
     protected Path getSuiteDirectory() {
         return GCC_SUITE_DIR;
+    }
+
+    @AfterClass
+    public static void printStatistics() {
+        HashSet<Path> ignoredFolders = new HashSet<>();
+        ignoredFolders.add(Paths.get("gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile"));
+        ignoredFolders.add(Paths.get("gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/compile"));
+        ignoredFolders.add(Paths.get("gcc-5.2.0/gcc/testsuite/objc/compile"));
+        ignoredFolders.add(Paths.get("gcc-5.2.0/gcc/testsuite/gcc.dg/noncompile"));
+
+        printStatistics("GCC", GCC_SOURCE_DIR, GCC_CONFIG_DIR, f -> !f.toString().contains("/compile/") && !f.toString().contains("/noncompile/"));
+
+        // gcc torture execute only
+        printStatistics("gcc.c-torture/execute", Paths.get(GCC_SOURCE_DIR.toAbsolutePath().toString() + "/gcc/testsuite/gcc.c-torture/execute"),
+                        Paths.get(GCC_CONFIG_DIR.toAbsolutePath().toString() + "/gcc.c-torture/execute"),
+                        t -> true);
     }
 
 }

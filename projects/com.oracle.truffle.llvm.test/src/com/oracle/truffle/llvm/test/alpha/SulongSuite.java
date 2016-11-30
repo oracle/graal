@@ -33,6 +33,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Collection;
 
+import org.junit.AfterClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -44,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 public final class SulongSuite extends BaseSuiteHarness {
 
     private static final Path SULONG_SUITE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../cache/tests/sulong").toPath();
+    private static final Path SULONG_SOURCE_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/sulong").toPath();
     private static final Path SULONG_CONFIG_DIR = new File(LLVMOptions.ENGINE.projectRoot() + "/../tests/sulong/configs").toPath();
 
     @Parameter(value = 0) public Path path;
@@ -64,4 +66,8 @@ public final class SulongSuite extends BaseSuiteHarness {
         return SULONG_SUITE_DIR;
     }
 
+    @AfterClass
+    public static void printStatistics() {
+        printStatistics("Sulong", SULONG_SOURCE_DIR, SULONG_CONFIG_DIR, f -> true);
+    }
 }
