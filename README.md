@@ -85,12 +85,12 @@ but also its dependencies and the Graal VM.
 Now, Sulong is ready to start. You can for example compile a C file named
 `test.c` (see further below) with mx and then use Sulong to execute it:
 
-    mx su-clang -S -emit-llvm -o test.ll test.c
-    mx su-run test.ll
+    mx su-clang -c -emit-llvm -o test.bc test.c
+    mx su-run test.bc
 
 Libraries to load can be specified using the `-l` flag, as in a compiler:
 
-    mx su-run -lz test.ll
+    mx su-run -lz test.bc
 
 If you want to use the project from within Eclipse, use the following
 command to generate the Eclipse project files (there is also mx ideinit
@@ -109,7 +109,7 @@ You can package LLVM bitcode and a list of library dependencies using the
 distribute. You can also specify other libraries to load when this library
 is loaded using the `-l` flag:
 
-    mx su-link -o test.su -lz test.ll
+    mx su-link -o test.su -lz test.bc
 
 You can run this `.su` file directly and it will know to load dependencies that
 you specified at link-time:
@@ -156,7 +156,7 @@ int main() {
 ```
 
 When compiling the C file with Clang to human readable LLVM IR with
-`clang -O3 -S -emit-llvm -o test.ll test.c` and looking at the `test.ll`
+`clang -O3 -emit-llvm -c -o test.bc test.c` and looking at the `test.ll`
 file, one can see a LLVM IR program that looks similar to the following:
 
 ```
