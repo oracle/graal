@@ -479,6 +479,36 @@ public class HotSpotReplacementsUtil {
         return config.unlockedMask;
     }
 
+    @Fold
+    public static int monitorMask(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.monitorMask;
+    }
+
+    @Fold
+    public static int objecyMonitorOwnerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.objectMonitorOwner;
+    }
+
+    @Fold
+    public static int objecyMonitorRescursionsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.objectMonitorRecursions;
+    }
+
+    @Fold
+    public static int objecyMonitorCXQOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.objectMonitorcxq;
+    }
+
+    @Fold
+    public static int objecyMonitorEntryListOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.objectMonitorEntryList;
+    }
+
+    @Fold
+    public static int objecyMonitorSuccOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.objectMonitorSucc;
+    }
+
     /**
      * Mask for a biasable, locked or unlocked mark word.
      *
@@ -625,6 +655,16 @@ public class HotSpotReplacementsUtil {
     }
 
     public static final LocationIdentity DISPLACED_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("DisplacedMarkWord");
+
+    public static final LocationIdentity OBJECT_MONITOR_OWNER_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_owner");
+
+    public static final LocationIdentity OBJECT_MONITOR_RECURSION_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_recursions");
+
+    public static final LocationIdentity OBJECT_MONITOR_CXQ_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_cxq");
+
+    public static final LocationIdentity OBJECT_MONITOR_SUCC_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_succ");
+
+    public static final LocationIdentity OBJECT_MONITOR_ENTRY_LIST_LOCATION = NamedLocationIdentity.mutable("ObjectMonitor::_EntryList");
 
     @Fold
     public static int lockDisplacedMarkOffset(@InjectedParameter GraalHotSpotVMConfig config) {

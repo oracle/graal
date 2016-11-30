@@ -30,6 +30,11 @@ import static com.oracle.graal.hotspot.nodes.EndLockScopeNode.endLockScope;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.vmError;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.DISPLACED_MARK_WORD_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_CXQ_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_ENTRY_LIST_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_OWNER_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_RECURSION_LOCATION;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_SUCC_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.ageMaskInPlace;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.biasedLockMaskInPlace;
@@ -39,6 +44,12 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.epoc
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.lockDisplacedMarkOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.monitorMask;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorCXQOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorEntryListOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorOwnerOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorRescursionsOffset;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorSuccOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.pageSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.prototypeMarkWordOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
@@ -59,6 +70,9 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_FAST_PA
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
+import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
+import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 
 import java.util.List;
 
@@ -79,7 +93,6 @@ import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.hotspot.nodes.AcquiredCASLockNode;
 import com.oracle.graal.hotspot.nodes.CurrentLockNode;
-import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
 import com.oracle.graal.hotspot.nodes.FastAcquireBiasedLockNode;
 import com.oracle.graal.hotspot.nodes.MonitorCounterNode;
 import com.oracle.graal.hotspot.word.KlassPointer;
@@ -95,6 +108,7 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.debug.DynamicCounterNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.extended.MembarNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.java.MonitorExitNode;
 import com.oracle.graal.nodes.java.RawMonitorEnterNode;
@@ -248,10 +262,7 @@ public class MonitorSnippets implements Snippets {
             }
 
             // Now check to see whether biasing is enabled for this object
-            if (probability(NOT_FREQUENT_PROBABILITY, biasableLockBits.notEqual(Word.unsigned(biasedLockPattern(INJECTED_VMCONFIG))))) {
-                // Biasing not enabled -> fall through to lightweight locking
-                unbiasable.inc();
-            } else {
+            if (probability(NOT_FREQUENT_PROBABILITY, biasableLockBits.equal(Word.unsigned(biasedLockPattern(INJECTED_VMCONFIG))))) {
                 // At this point we know that the mark word has the bias pattern and
                 // that we are not the bias owner in the current epoch. We need to
                 // figure out more details about the state of the mark word in order to
@@ -338,6 +349,9 @@ public class MonitorSnippets implements Snippets {
                     }
                     revokeBias.inc();
                 }
+            } else {
+                // Biasing not enabled -> fall through to lightweight locking
+                unbiasable.inc();
             }
         }
 
@@ -347,6 +361,9 @@ public class MonitorSnippets implements Snippets {
 
         // Copy this unlocked mark word into the lock slot on the stack
         lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), unlockedMark, DISPLACED_MARK_WORD_LOCATION);
+
+        // make sure previous store does not float below compareAndSwap
+        MembarNode.memoryBarrier(STORE_STORE);
 
         // Test if the object's mark word is unlocked, and if so, store the
         // (address of) the lock slot into the object's mark word.
@@ -370,10 +387,11 @@ public class MonitorSnippets implements Snippets {
             // significant 2 bits cleared and page_size is a power of 2
             final Word alignedMask = Word.unsigned(wordSize() - 1);
             final Word stackPointer = registerAsWord(stackPointerRegister).add(config(INJECTED_VMCONFIG).stackBias);
-            if (probability(VERY_SLOW_PATH_PROBABILITY, currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())).notEqual(0))) {
-                // Most likely not a recursive lock, go into a slow runtime call
-                traceObject(trace, "+lock{stub:failed-cas}", object, true);
-                lockStubFailedCas.inc();
+            if (probability(SLOW_PATH_PROBABILITY, currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())).notEqual(0))) {
+                // Most likely not a recursive lock
+                if (tryEnterInflated(object, lock, currentMark, threadRegister, trace)) {
+                    return;
+                }
                 monitorenterStubC(MONITORENTER, object, lock);
                 return;
             } else {
@@ -387,6 +405,47 @@ public class MonitorSnippets implements Snippets {
             lockCas.inc();
             AcquiredCASLockNode.mark(object);
         }
+    }
+
+    private static boolean inlineFastLockSupported() {
+        return monitorMask(INJECTED_VMCONFIG) >= 0 && objecyMonitorOwnerOffset(INJECTED_VMCONFIG) >=0;
+    }
+
+    private static boolean tryEnterInflated(Object object, Word lock, Word mark, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
+        if (!inlineFastLockSupported()) {
+            traceObject(trace, "+lock{stub:failed-cas}", object, true);
+            lockStubFailedCas.inc();
+            return false;
+        }
+        if (probability(NOT_FREQUENT_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
+            // Inflated case
+            // write non-zero value to lock slot
+            lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), lock, DISPLACED_MARK_WORD_LOCATION);
+            // mark is a pointer to the ObjectMonitor + monitorMask
+            Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
+            int ownerOffset = objecyMonitorOwnerOffset(INJECTED_VMCONFIG);
+            Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
+            if (owner.equal(0)) {
+                // it appears unlocked (owner == 0)
+                Word currentOwner = compareAndSwap(OffsetAddressNode.address(monitor, ownerOffset), owner, registerAsWord(threadRegister), OBJECT_MONITOR_OWNER_LOCATION);
+                if (currentOwner.equal(owner)) {
+                    // success
+                    traceObject(trace, "+lock{inflated:cas}", object, true);
+                    inflatedCas.inc();
+                    return true;
+                } else {
+                    traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
+                    inflatedFailedCas.inc();
+                }
+            } else {
+                traceObject(trace, "+lock{stub:inflated:owned}", object, true);
+                inflatedOwned.inc();
+            }
+        } else {
+            traceObject(trace, "+lock{stub:failed-cas}", object, true);
+            lockStubFailedCas.inc();
+        }
+        return false;
     }
 
     /**
@@ -407,7 +466,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     @Snippet
-    public static void monitorexit(Object object, @ConstantParameter int lockDepth, @ConstantParameter boolean trace) {
+    public static void monitorexit(Object object, @ConstantParameter int lockDepth, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
         trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
         if (useBiasedLocking(INJECTED_VMCONFIG)) {
             // Check for biased locking unlock case, which is a no-op
@@ -442,13 +501,14 @@ public class MonitorSnippets implements Snippets {
             // Test if object's mark word is pointing to the displaced mark word, and if so, restore
             // the displaced mark in the object - if the object's mark word is not pointing to
             // the displaced mark word, do unlocking via runtime call.
-            if (probability(VERY_SLOW_PATH_PROBABILITY,
-                            DirectCompareAndSwapNode.compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), lock, displacedMark, MARK_WORD_LOCATION).notEqual(lock))) {
-                // The object's mark word was not pointing to the displaced header,
-                // we do unlocking via runtime call.
-                traceObject(trace, "-lock{stub}", object, false);
-                unlockStub.inc();
-                monitorexitStubC(MONITOREXIT, object, lock);
+            Word currentMark = compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), lock, displacedMark, MARK_WORD_LOCATION);
+            if (probability(VERY_SLOW_PATH_PROBABILITY, currentMark.notEqual(lock))) {
+                // The object's mark word was not pointing to the displaced header
+                if (!tryExitInflated(object, currentMark, threadRegister, trace)) {
+                    traceObject(trace, "-lock{stub}", object, false);
+                    unlockStub.inc();
+                    monitorexitStubC(MONITOREXIT, object, lock);
+                }
             } else {
                 traceObject(trace, "-lock{cas}", object, false);
                 unlockCas.inc();
@@ -456,6 +516,76 @@ public class MonitorSnippets implements Snippets {
         }
         endLockScope();
         decCounter();
+    }
+
+    private static boolean inlineFastUnlockSupported() {
+        return objecyMonitorEntryListOffset(INJECTED_VMCONFIG) >= 0 && objecyMonitorSuccOffset(INJECTED_VMCONFIG) >= 0 && objecyMonitorCXQOffset(INJECTED_VMCONFIG) >= 0 &&
+                        monitorMask(INJECTED_VMCONFIG) >= 0 && objecyMonitorOwnerOffset(INJECTED_VMCONFIG) >=0 && objecyMonitorRescursionsOffset(INJECTED_VMCONFIG) >= 0;
+    }
+
+    private static boolean tryExitInflated(Object object, Word mark, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
+        if (!inlineFastUnlockSupported()) {
+            return false;
+        }
+        if (probability(NOT_FREQUENT_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
+            // Inflated case
+            // mark is a pointer to the ObjectMonitor + monitorMask
+            Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
+            int ownerOffset = objecyMonitorOwnerOffset(INJECTED_VMCONFIG);
+            Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
+            int recursionsOffset = objecyMonitorRescursionsOffset(INJECTED_VMCONFIG);
+            Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
+            Word thread = registerAsWord(threadRegister);
+            if (owner.xor(thread).or(recursions).equal(0)) {
+                // owner == thread && recursions == 0
+                int cxqOffset = objecyMonitorCXQOffset(INJECTED_VMCONFIG);
+                Word cxq = monitor.readWord(cxqOffset, OBJECT_MONITOR_CXQ_LOCATION);
+                int entryListOffset = objecyMonitorEntryListOffset(INJECTED_VMCONFIG);
+                Word entryList = monitor.readWord(entryListOffset, OBJECT_MONITOR_ENTRY_LIST_LOCATION);
+                if (cxq.or(entryList).equal(0)) {
+                    // cxq == 0 && entryList == 0
+                    // Nobody is waiting, success
+                    // release_store
+                    MembarNode.memoryBarrier(LOAD_STORE | STORE_STORE);
+                    monitor.writeWord(ownerOffset, Word.zero());
+                    traceObject(trace, "-lock{inflated:simple}", object, false);
+                    unlockInflatedSimple.inc();
+                    return true;
+                } else {
+                    int succOffset = objecyMonitorSuccOffset(INJECTED_VMCONFIG);
+                    Word succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
+                    if (succ.notEqual(0)) {
+                        // release_store
+                        MembarNode.memoryBarrier(LOAD_STORE | STORE_STORE);
+                        monitor.writeWord(ownerOffset, Word.zero());
+                        MembarNode.memoryBarrier(STORE_LOAD);
+                        succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
+                        if (succ.notEqual(0)) {
+                            // a thread is already looking to acquire this, we don't need to wake
+                            // anyone up: success
+                            traceObject(trace, "-lock{inflated:simple:succ-check}", object, false);
+                            unlockInflatedSimpleSucc.inc();
+                            return true;
+                        } else {
+                            // we probably need to wake-up some other thread, try to re-acquire the
+                            // monitor
+                            Word currentOwner = compareAndSwap(OffsetAddressNode.address(monitor, ownerOffset), Word.zero(), thread, OBJECT_MONITOR_OWNER_LOCATION);
+                            if (currentOwner.notEqual(Word.zero())) {
+                                // CAS failed, some thread acquired the monitor in the meanwhile
+                                // we're done and the responsibility to wake-up an other thread goes
+                                // to the thread that just acquired
+                                // Success
+                                traceObject(trace, "-lock{inflated:no-reacquire}", object, false);
+                                unlockInflatedNoReacquire.inc();
+                                return true;
+                            }
+                            // here we re-acquired the lock and we will finish in the slow-path
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -573,7 +703,7 @@ public class MonitorSnippets implements Snippets {
             template(args).instantiate(providers.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);
         }
 
-        public void lower(MonitorExitNode monitorexitNode, LoweringTool tool) {
+        public void lower(MonitorExitNode monitorexitNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = monitorexitNode.graph();
 
             Arguments args;
@@ -584,6 +714,7 @@ public class MonitorSnippets implements Snippets {
             }
             args.add("object", monitorexitNode.object());
             args.addConst("lockDepth", monitorexitNode.getMonitorId().getLockDepth());
+            args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(graph.method()));
 
             template(args).instantiate(providers.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
@@ -685,6 +816,10 @@ public class MonitorSnippets implements Snippets {
     public static final SnippetCounter lockStubRevoke = new SnippetCounter(lockCounters, "lock{stub:revoke}", "stub-locked, biased revoked");
     public static final SnippetCounter lockStubFailedCas = new SnippetCounter(lockCounters, "lock{stub:failed-cas}", "stub-locked, failed cas");
 
+    public static final SnippetCounter inflatedCas = new SnippetCounter(lockCounters, "lock{inflated:cas}", "heavyweight-locked, cas-locked");
+    public static final SnippetCounter inflatedFailedCas = new SnippetCounter(lockCounters, "lock{inflated:failed-cas}", "heavyweight-locked, failed cas");
+    public static final SnippetCounter inflatedOwned = new SnippetCounter(lockCounters, "lock{inflated:owned}", "heavyweight-locked, already owned");
+
     public static final SnippetCounter unbiasable = new SnippetCounter(lockCounters, "unbiasable", "object with unbiasable type");
     public static final SnippetCounter revokeBias = new SnippetCounter(lockCounters, "revokeBias", "object had bias revoked");
 
@@ -697,4 +832,8 @@ public class MonitorSnippets implements Snippets {
     public static final SnippetCounter unlockCas = new SnippetCounter(unlockCounters, "unlock{cas}", "cas-unlocked an object");
     public static final SnippetCounter unlockCasRecursive = new SnippetCounter(unlockCounters, "unlock{cas:recursive}", "cas-unlocked an object, recursive");
     public static final SnippetCounter unlockStub = new SnippetCounter(unlockCounters, "unlock{stub}", "stub-unlocked an object");
+
+    public static final SnippetCounter unlockInflatedSimple = new SnippetCounter(unlockCounters, "unlock{inflated}", "unlocked an object monitor");
+    public static final SnippetCounter unlockInflatedSimpleSucc = new SnippetCounter(unlockCounters, "unlock{inflated:succ-check}", "unlocked an object monitor, checked succ");
+    public static final SnippetCounter unlockInflatedNoReacquire = new SnippetCounter(unlockCounters, "unlock{inflated:no-reacquire}", "unlocked an object monitor, could not re-acquire");
 }
