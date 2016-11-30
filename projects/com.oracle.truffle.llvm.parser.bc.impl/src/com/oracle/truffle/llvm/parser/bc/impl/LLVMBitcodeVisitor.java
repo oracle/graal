@@ -84,7 +84,7 @@ import com.oracle.truffle.llvm.types.LLVMFunction;
 
 public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
 
-    public static LLVMParserResult getMain(Source source, LLVMContext context, NodeFactoryFacade factoryFacade) {
+    public static LLVMParserResult parse(Source source, LLVMContext context, NodeFactoryFacade factoryFacade) {
         final BitcodeParserResult parserResult = BitcodeParserResult.getFromSource(source);
         final Model model = parserResult.getModel();
         final StackAllocation stackAllocation = parserResult.getStackAllocation();
@@ -109,17 +109,17 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         final List<RootCallTarget> constructorFunctions = visitor.getStructor("@llvm.global_ctors", stack);
         final List<RootCallTarget> destructorFunctions = visitor.getStructor("@llvm.global_dtors", stack);
 
-        if (mainFunction == null) {
-            return new LLVMParserResultImpl(Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(stack)), globalVarInitsTarget, globalVarDeallocsTarget, constructorFunctions,
-                            destructorFunctions, visitor.getFunctions());
+        final RootCallTarget mainFunctionCallTarget;
+        if (mainFunction != null) {
+            final RootCallTarget mainCallTarget = visitor.getFunctions().get(mainFunction);
+            final RootNode globalFunction = factoryFacade.createGlobalRootNode(visitor, mainCallTarget, context.getMainArguments(), source, mainFunction.getParameterTypes());
+            final RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
+            final RootNode globalRootNode = factoryFacade.createGlobalRootNodeWrapping(visitor, globalFunctionRoot, mainFunction.getReturnType());
+            mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
+        } else {
+            mainFunctionCallTarget = null;
         }
-        RootCallTarget mainCallTarget = visitor.getFunctions().get(mainFunction);
-
-        RootNode globalFunction = factoryFacade.createGlobalRootNode(visitor, mainCallTarget, context.getMainArguments(), source, mainFunction.getParameterTypes());
-        RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
-        RootNode globalRootNode = factoryFacade.createGlobalRootNodeWrapping(visitor, globalFunctionRoot, mainFunction.getReturnType());
-        RootCallTarget wrappedCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
-        return new LLVMParserResultImpl(wrappedCallTarget, globalVarInitsTarget, globalVarDeallocsTarget, constructorFunctions, destructorFunctions, visitor.getFunctions());
+        return new LLVMParserResultImpl(mainFunctionCallTarget, globalVarInitsTarget, globalVarDeallocsTarget, constructorFunctions, destructorFunctions, visitor.getFunctions());
     }
 
     private final LLVMContext context;
