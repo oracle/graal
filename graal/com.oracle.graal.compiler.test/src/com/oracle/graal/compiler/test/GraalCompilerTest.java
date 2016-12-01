@@ -757,7 +757,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             Assert.assertEquals("Exception message", expect.exception.getMessage(), actual.exception.getMessage());
         } else {
             if (actual.exception != null) {
-                Assert.fail("expected " + expect.returnValue + " but got an exception");
+                throw new AssertionError("expected " + expect.returnValue + " but got an exception", actual.exception);
             }
             assertDeepEquals(expect.returnValue, actual.returnValue);
         }
@@ -789,6 +789,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getCode(installedCodeOwner, graph, false);
     }
 
+    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph0, boolean forceCompile) {
+        return getCode(installedCodeOwner, graph0, forceCompile, false);
+    }
+
     /**
      * Gets installed code for a given method and graph, compiling it first if necessary.
      *
@@ -797,9 +801,10 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            {@code installedCodeOwner} via {@link #parseForCompile(ResolvedJavaMethod)}.
      * @param forceCompile specifies whether to ignore any previous code cached for the (method,
      *            key) pair
+     * @param installDefault specifies whether to install as the default implementation
      */
     @SuppressWarnings("try")
-    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph0, boolean forceCompile) {
+    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph0, boolean forceCompile, boolean installDefault) {
         if (!forceCompile) {
             InstalledCode cached = cache.get(installedCodeOwner);
             if (cached != null) {
@@ -825,7 +830,11 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult)) {
-                installedCode = addMethod(installedCodeOwner, compResult);
+                if (installDefault) {
+                    installedCode = addDefaultMethod(installedCodeOwner, compResult);
+                } else {
+                    installedCode = addMethod(installedCodeOwner, compResult);
+                }
                 if (installedCode == null) {
                     throw new GraalError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
                 }
@@ -897,6 +906,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compilationResult) {
         return backend.addInstalledCode(method, null, compilationResult);
+    }
+
+    protected InstalledCode addDefaultMethod(final ResolvedJavaMethod method, final CompilationResult compilationResult) {
+        return backend.createDefaultInstalledCode(method, compilationResult);
     }
 
     private final Map<ResolvedJavaMethod, Method> methodMap = new HashMap<>();

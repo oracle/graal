@@ -481,17 +481,17 @@ public class HotSpotGraphBuilderPlugins {
         if (config.useSHA1Intrinsics()) {
             assert config.sha1ImplCompress != 0L;
             Registration r = new Registration(plugins, "sun.security.provider.SHA", bytecodeProvider);
-            r.registerMethodSubstitution(SHASubstitutions.class, Java8OrEarlier ? "implCompress" : "implCompress0", Receiver.class, byte[].class, int.class);
+            r.registerMethodSubstitution(SHASubstitutions.class, SHASubstitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
         }
         if (config.useSHA256Intrinsics()) {
             assert config.sha256ImplCompress != 0L;
             Registration r = new Registration(plugins, "sun.security.provider.SHA2", bytecodeProvider);
-            r.registerMethodSubstitution(SHA2Substitutions.class, Java8OrEarlier ? "implCompress" : "implCompress0", Receiver.class, byte[].class, int.class);
+            r.registerMethodSubstitution(SHA2Substitutions.class, SHA2Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
         }
         if (config.useSHA512Intrinsics()) {
             assert config.sha512ImplCompress != 0L;
             Registration r = new Registration(plugins, "sun.security.provider.SHA5", bytecodeProvider);
-            r.registerMethodSubstitution(SHA5Substitutions.class, Java8OrEarlier ? "implCompress" : "implCompress0", Receiver.class, byte[].class, int.class);
+            r.registerMethodSubstitution(SHA5Substitutions.class, SHA5Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
         }
     }
 
