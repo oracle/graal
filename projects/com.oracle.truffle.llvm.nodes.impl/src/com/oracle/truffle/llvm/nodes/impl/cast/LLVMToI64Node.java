@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
+import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
 
@@ -110,6 +111,17 @@ public abstract class LLVMToI64Node extends LLVMI64Node {
                         @Cached("createUnboxNode()") Node unboxNode) {
             try {
                 return (long) ForeignAccess.sendUnbox(unboxNode, frame, from);
+            } catch (UnsupportedMessageException e) {
+                throw new UnsupportedOperationException(e);
+            }
+        }
+
+        @Specialization
+        public long executeUnbox(VirtualFrame frame, LLVMTruffleObject from,
+                        @Cached("createUnboxNode()") Node unboxNode) {
+            try {
+                long head = (long) ForeignAccess.sendUnbox(unboxNode, frame, from.getObject());
+                return head + from.getOffset();
             } catch (UnsupportedMessageException e) {
                 throw new UnsupportedOperationException(e);
             }
