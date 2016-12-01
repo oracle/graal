@@ -29,14 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.llvm.nodes.base.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.impl.base.LLVMTerminatorNode;
-import com.oracle.truffle.llvm.nodes.impl.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.impl.control.LLVMBrUnconditionalNode;
-import com.oracle.truffle.llvm.nodes.impl.control.LLVMConditionalBranchNodeFactory;
-import com.oracle.truffle.llvm.nodes.impl.control.LLVMIndirectBranchNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
+import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
+import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNodeFactory;
+import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
 
 public class LLVMBranchFactory {
 

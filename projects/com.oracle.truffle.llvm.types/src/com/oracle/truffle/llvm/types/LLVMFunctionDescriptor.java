@@ -165,7 +165,7 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     public ForeignAccess getForeignAccess() {
         if (ACCESS == null) {
             try {
-                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMFunctionMessageResolutionAccessor");
+                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMFunctionMessageResolutionAccessor");
                 ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
             } catch (Exception e) {
                 throw new AssertionError(e);
