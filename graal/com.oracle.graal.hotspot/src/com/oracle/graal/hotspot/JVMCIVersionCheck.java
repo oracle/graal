@@ -99,6 +99,10 @@ class JVMCIVersionCheck {
                 // The snapshot of http://hg.openjdk.java.net/jdk9/hs tip is expected to work
                 return;
             }
+            if (vmVersion.contains("internal")) {
+                // Allow local builds
+                return;
+            }
             // http://openjdk.java.net/jeps/223
             // Only support EA builds until GA is available
             if (vmVersion.startsWith("9-ea+")) {
