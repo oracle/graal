@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases;
+package com.oracle.graal.hotspot.phases.profiling;
 
-import static com.oracle.graal.hotspot.nodes.ProfileInvokeNode.getProfileInvokeNodes;
-import static com.oracle.graal.hotspot.nodes.ProfileNode.getProfileNodes;
+import static com.oracle.graal.hotspot.nodes.profiling.ProfileInvokeNode.getProfileInvokeNodes;
+import static com.oracle.graal.hotspot.nodes.profiling.ProfileNode.getProfileNodes;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.graal.compiler.common.cfg.Loop;
-import com.oracle.graal.hotspot.nodes.ProfileInvokeNode;
-import com.oracle.graal.hotspot.nodes.ProfileNode;
-import com.oracle.graal.hotspot.nodes.RandomSeedNode;
+import com.oracle.graal.hotspot.nodes.profiling.ProfileInvokeNode;
+import com.oracle.graal.hotspot.nodes.profiling.ProfileNode;
+import com.oracle.graal.hotspot.nodes.profiling.RandomSeedNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.InvokeNode;
 import com.oracle.graal.nodes.LoopBeginNode;

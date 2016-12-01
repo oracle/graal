@@ -20,27 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.nodes.aot;
 
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
 
 import com.oracle.graal.graph.NodeClass;
+import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.DeoptimizingFixedWithNextNode;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
 
 @NodeInfo(cycles = CYCLES_3, size = SIZE_20)
-public class InitializeKlassNode extends DeoptimizingFixedWithNextNode implements Lowerable {
-    public static final NodeClass<InitializeKlassNode> TYPE = NodeClass.create(InitializeKlassNode.class);
+public class ResolveConstantNode extends FloatingNode implements Lowerable {
+    public static final NodeClass<ResolveConstantNode> TYPE = NodeClass.create(ResolveConstantNode.class);
 
     @Input ValueNode value;
+    protected HotSpotConstantLoadAction action;
 
-    public InitializeKlassNode(ValueNode value) {
+    public ResolveConstantNode(ValueNode value, HotSpotConstantLoadAction action) {
         super(TYPE, value.stamp());
         this.value = value;
+        this.action = action;
+    }
+
+    public ResolveConstantNode(ValueNode value) {
+        super(TYPE, value.stamp());
+        this.value = value;
+        this.action = HotSpotConstantLoadAction.RESOLVE;
     }
 
     @Override
@@ -52,8 +61,7 @@ public class InitializeKlassNode extends DeoptimizingFixedWithNextNode implement
         return value;
     }
 
-    @Override
-    public boolean canDeoptimize() {
-        return true;
+    public HotSpotConstantLoadAction action() {
+        return action;
     }
 }

@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases;
+package com.oracle.graal.hotspot.phases.aot;
 
+import static com.oracle.graal.hotspot.nodes.aot.LoadMethodCountersNode.getLoadMethodCountersNodes;
 import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
-import static com.oracle.graal.hotspot.nodes.LoadMethodCountersNode.getLoadMethodCountersNodes;
 
 import java.util.HashSet;
 
@@ -42,12 +42,12 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.hotspot.FingerprintUtil;
 import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
-import com.oracle.graal.hotspot.nodes.LoadConstantIndirectlyFixedNode;
-import com.oracle.graal.hotspot.nodes.InitializeKlassNode;
-import com.oracle.graal.hotspot.nodes.LoadConstantIndirectlyNode;
-import com.oracle.graal.hotspot.nodes.LoadMethodCountersNode;
-import com.oracle.graal.hotspot.nodes.ResolveConstantNode;
-import com.oracle.graal.hotspot.nodes.ResolveMethodAndLoadCountersNode;
+import com.oracle.graal.hotspot.nodes.aot.InitializeKlassNode;
+import com.oracle.graal.hotspot.nodes.aot.LoadConstantIndirectlyFixedNode;
+import com.oracle.graal.hotspot.nodes.aot.LoadConstantIndirectlyNode;
+import com.oracle.graal.hotspot.nodes.aot.LoadMethodCountersNode;
+import com.oracle.graal.hotspot.nodes.aot.ResolveConstantNode;
+import com.oracle.graal.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;

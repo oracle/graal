@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import com.oracle.graal.compiler.common.type.ObjectStamp;
 import com.oracle.graal.compiler.common.type.Stamp;
 import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.hotspot.nodes.InitializeKlassNode;
+import com.oracle.graal.hotspot.nodes.aot.InitializeKlassNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.nodes.aot;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.nodes.aot;
+
+import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
 
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.DeoptimizingFixedWithNextNode;
+import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.spi.Lowerable;
+import com.oracle.graal.nodes.spi.LoweringTool;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+@NodeInfo(cycles = CYCLES_3, size = SIZE_20)
+public class InitializeKlassNode extends DeoptimizingFixedWithNextNode implements Lowerable {
+    public static final NodeClass<InitializeKlassNode> TYPE = NodeClass.create(InitializeKlassNode.class);
 
-@NodeInfo
-public class ProfileInvokeNode extends ProfileWithNotificationNode {
-    public static final NodeClass<ProfileInvokeNode> TYPE = NodeClass.create(ProfileInvokeNode.class);
+    @Input ValueNode value;
 
-    public ProfileInvokeNode(ResolvedJavaMethod method, int freqLog, int probabilityLog) {
-        super(TYPE, method, freqLog, probabilityLog);
+    public InitializeKlassNode(ValueNode value) {
+        super(TYPE, value.stamp());
+        this.value = value;
     }
 
-    /**
-     * Gathers all the {@link ProfileInvokeNode}s that are inputs to the
-     * {@linkplain StructuredGraph#getNodes() live nodes} in a given graph.
-     */
-    public static NodeIterable<ProfileInvokeNode> getProfileInvokeNodes(StructuredGraph graph) {
-        return graph.getNodes().filter(ProfileInvokeNode.class);
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
+    }
+
+    public ValueNode value() {
+        return value;
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
     }
 }

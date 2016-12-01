@@ -54,6 +54,7 @@ import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.Hints;
+import com.oracle.graal.hotspot.replacements.aot.ResolveConstantSnippets;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.DeoptimizeNode;

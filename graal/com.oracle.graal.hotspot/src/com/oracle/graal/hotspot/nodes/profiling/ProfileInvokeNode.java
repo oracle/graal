@@ -20,33 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.hotspot.nodes.profiling;
 
-package com.oracle.graal.hotspot.nodes;
-
-import jdk.vm.ci.meta.Value;
-
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
-
-import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.hotspot.HotSpotLIRGenerator;
+import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.nodes.StructuredGraph;
 
-@NodeInfo(cycles = CYCLES_1, size = SIZE_1)
-public class RandomSeedNode extends FloatingNode implements LIRLowerable {
-    public static final NodeClass<RandomSeedNode> TYPE = NodeClass.create(RandomSeedNode.class);
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-    public RandomSeedNode() {
-        super(TYPE, StampFactory.intValue());
+@NodeInfo
+public class ProfileInvokeNode extends ProfileWithNotificationNode {
+    public static final NodeClass<ProfileInvokeNode> TYPE = NodeClass.create(ProfileInvokeNode.class);
+
+    public ProfileInvokeNode(ResolvedJavaMethod method, int freqLog, int probabilityLog) {
+        super(TYPE, method, freqLog, probabilityLog);
     }
 
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        Value result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitRandomSeed();
-        gen.setResult(this, result);
+    /**
+     * Gathers all the {@link ProfileInvokeNode}s that are inputs to the
+     * {@linkplain StructuredGraph#getNodes() live nodes} in a given graph.
+     */
+    public static NodeIterable<ProfileInvokeNode> getProfileInvokeNodes(StructuredGraph graph) {
+        return graph.getNodes().filter(ProfileInvokeNode.class);
     }
 }

@@ -20,65 +20,54 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
-
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.Value;
+package com.oracle.graal.hotspot.nodes.aot;
 
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
 
+import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
-import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
+import com.oracle.graal.nodes.DeoptimizingNode;
+import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.memory.AbstractMemoryCheckpoint;
+import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
+
 /**
  * A call to the VM via a regular stub.
  */
-@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_20)
-public class ResolveConstantStubCall extends DeoptimizingStubCall implements Canonicalizable, LIRLowerable {
-    public static final NodeClass<ResolveConstantStubCall> TYPE = NodeClass.create(ResolveConstantStubCall.class);
+@NodeInfo(allowedUsageTypes = {InputType.Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_20)
+public class InitializeKlassStubCall extends AbstractMemoryCheckpoint implements LIRLowerable, Canonicalizable, DeoptimizingNode.DeoptBefore, MemoryCheckpoint.Single {
+    public static final NodeClass<InitializeKlassStubCall> TYPE = NodeClass.create(InitializeKlassStubCall.class);
 
     @OptionalInput protected ValueNode value;
     @Input protected ValueNode string;
+    @OptionalInput(InputType.State) protected FrameState stateBefore;
     protected Constant constant;
-    protected HotSpotConstantLoadAction action;
 
-    public ResolveConstantStubCall(ValueNode value, ValueNode string) {
+    protected InitializeKlassStubCall(ValueNode value, ValueNode string) {
         super(TYPE, value.stamp());
         this.value = value;
         this.string = string;
-        this.action = HotSpotConstantLoadAction.RESOLVE;
-    }
-
-    public ResolveConstantStubCall(ValueNode value, ValueNode string, HotSpotConstantLoadAction action) {
-        super(TYPE, value.stamp());
-        this.value = value;
-        this.string = string;
-        this.action = action;
     }
 
     @NodeIntrinsic
-    public static native Object resolveObject(Object value, Object symbol);
-
-    @NodeIntrinsic
-    public static native KlassPointer resolveKlass(KlassPointer value, Object symbol);
-
-    @NodeIntrinsic
-    public static native KlassPointer resolveKlass(KlassPointer value, Object symbol, @ConstantNodeParameter HotSpotConstantLoadAction action);
+    public static native KlassPointer initializeKlass(KlassPointer value, Object string);
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
@@ -92,22 +81,31 @@ public class ResolveConstantStubCall extends DeoptimizingStubCall implements Can
     public void generate(NodeLIRBuilderTool gen) {
         assert constant != null : "Expected the value to fold: " + value;
         Value stringValue = gen.operand(string);
-        Value result;
         LIRFrameState fs = gen.state(this);
-        assert fs != null : "The stateAfter is null";
-        if (constant instanceof HotSpotObjectConstant) {
-            result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitObjectConstantRetrieval(constant, stringValue, fs);
-        } else if (constant instanceof HotSpotMetaspaceConstant) {
-            if (action == HotSpotConstantLoadAction.RESOLVE) {
-                result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitMetaspaceConstantRetrieval(constant, stringValue, fs);
-            } else {
-                assert action == HotSpotConstantLoadAction.INITIALIZE;
-                result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitKlassInitializationAndRetrieval(constant, stringValue, fs);
-            }
-        } else {
-            throw new BailoutException("Unsupported constant type: " + constant);
-        }
+        assert fs != null : "Frame state should be set";
+        assert constant instanceof HotSpotMetaspaceConstant;
+        Value result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitKlassInitializationAndRetrieval(constant, stringValue, fs);
         gen.setResult(this, result);
     }
 
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.any();
+    }
+
+    @Override
+    public FrameState stateBefore() {
+        return stateBefore;
+    }
+
+    @Override
+    public void setStateBefore(FrameState f) {
+        updateUsages(stateBefore, f);
+        stateBefore = f;
+    }
 }

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases;
+package com.oracle.graal.hotspot.phases.aot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.InlineEverything;
 import static com.oracle.graal.compiler.common.GraalOptions.TrivialInliningSize;

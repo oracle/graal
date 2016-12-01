@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import com.oracle.graal.hotspot.nodes.ProfileBranchNode;
-import com.oracle.graal.hotspot.nodes.ProfileInvokeNode;
-import com.oracle.graal.hotspot.nodes.ProfileNode;
+import com.oracle.graal.hotspot.nodes.profiling.ProfileBranchNode;
+import com.oracle.graal.hotspot.nodes.profiling.ProfileInvokeNode;
+import com.oracle.graal.hotspot.nodes.profiling.ProfileNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FrameState;
 import com.oracle.graal.nodes.LogicNode;

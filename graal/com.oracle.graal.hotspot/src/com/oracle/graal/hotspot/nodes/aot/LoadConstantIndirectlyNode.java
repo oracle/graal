@@ -20,10 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.nodes.aot;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.Value;
 
@@ -36,9 +37,7 @@ import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
 import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
-import com.oracle.graal.hotspot.nodes.type.MethodCountersPointerStamp;
-import com.oracle.graal.hotspot.word.MethodCountersPointer;
-import com.oracle.graal.hotspot.word.MethodPointer;
+import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
@@ -47,17 +46,26 @@ import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 
 @NodeInfo(cycles = CYCLES_3, size = SIZE_3)
-public class LoadMethodCountersIndirectlyNode extends FloatingNode implements Canonicalizable, LIRLowerable {
+public class LoadConstantIndirectlyNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
-    public static final NodeClass<LoadMethodCountersIndirectlyNode> TYPE = NodeClass.create(LoadMethodCountersIndirectlyNode.class);
+    public static final NodeClass<LoadConstantIndirectlyNode> TYPE = NodeClass.create(LoadConstantIndirectlyNode.class);
 
     @OptionalInput protected ValueNode value;
     protected Constant constant;
+    protected HotSpotConstantLoadAction action;
 
-    public LoadMethodCountersIndirectlyNode(ValueNode value) {
-        super(TYPE, MethodCountersPointerStamp.methodCounters());
+    public LoadConstantIndirectlyNode(ValueNode value) {
+        super(TYPE, value.stamp().unrestricted());
         this.value = value;
         this.constant = null;
+        this.action = HotSpotConstantLoadAction.RESOLVE;
+    }
+
+    public LoadConstantIndirectlyNode(ValueNode value, HotSpotConstantLoadAction action) {
+        super(TYPE, value.stamp().unrestricted());
+        this.value = value;
+        this.constant = null;
+        this.action = action;
     }
 
     @Override
@@ -72,8 +80,10 @@ public class LoadMethodCountersIndirectlyNode extends FloatingNode implements Ca
     public void generate(NodeLIRBuilderTool gen) {
         assert constant != null : "Expected the value to fold: " + value;
         Value result;
-        if (constant instanceof HotSpotMetaspaceConstant) {
-            result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitLoadMetaspaceAddress(constant, HotSpotConstantLoadAction.LOAD_COUNTERS);
+        if (constant instanceof HotSpotObjectConstant) {
+            result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitLoadObjectAddress(constant);
+        } else if (constant instanceof HotSpotMetaspaceConstant) {
+            result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitLoadMetaspaceAddress(constant, action);
         } else {
             throw new BailoutException("Unsupported constant type: " + constant);
         }
@@ -81,5 +91,12 @@ public class LoadMethodCountersIndirectlyNode extends FloatingNode implements Ca
     }
 
     @NodeIntrinsic
-    public static native MethodCountersPointer loadMethodCounters(MethodPointer methodPointer);
+    public static native KlassPointer loadKlass(KlassPointer klassPointer, @ConstantNodeParameter HotSpotConstantLoadAction action);
+
+    @NodeIntrinsic
+    public static native KlassPointer loadKlass(KlassPointer klassPointer);
+
+    @NodeIntrinsic
+    public static native Object loadObject(Object object);
+
 }

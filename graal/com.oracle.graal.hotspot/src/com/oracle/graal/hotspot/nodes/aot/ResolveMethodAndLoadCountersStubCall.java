@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.nodes.aot;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.Value;
@@ -33,6 +33,7 @@ import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
 import com.oracle.graal.graph.spi.CanonicalizerTool;
 import com.oracle.graal.hotspot.HotSpotLIRGenerator;
+import com.oracle.graal.hotspot.nodes.DeoptimizingStubCall;
 import com.oracle.graal.hotspot.nodes.type.MethodCountersPointerStamp;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.hotspot.word.MethodCountersPointer;

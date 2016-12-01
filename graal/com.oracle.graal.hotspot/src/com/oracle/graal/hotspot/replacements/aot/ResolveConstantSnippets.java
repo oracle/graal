@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.hotspot.replacements.aot;
 
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
@@ -30,15 +30,15 @@ import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.InitializeKlassNode;
-import com.oracle.graal.hotspot.nodes.InitializeKlassStubCall;
-import com.oracle.graal.hotspot.nodes.LoadConstantIndirectlyNode;
-import com.oracle.graal.hotspot.nodes.LoadMethodCountersIndirectlyNode;
-import com.oracle.graal.hotspot.nodes.ResolveConstantNode;
-import com.oracle.graal.hotspot.nodes.ResolveConstantStubCall;
-import com.oracle.graal.hotspot.nodes.ResolveMethodAndLoadCountersNode;
-import com.oracle.graal.hotspot.nodes.ResolveMethodAndLoadCountersStubCall;
 import com.oracle.graal.hotspot.nodes.EncodedSymbolNode;
+import com.oracle.graal.hotspot.nodes.aot.InitializeKlassNode;
+import com.oracle.graal.hotspot.nodes.aot.InitializeKlassStubCall;
+import com.oracle.graal.hotspot.nodes.aot.LoadConstantIndirectlyNode;
+import com.oracle.graal.hotspot.nodes.aot.LoadMethodCountersIndirectlyNode;
+import com.oracle.graal.hotspot.nodes.aot.ResolveConstantNode;
+import com.oracle.graal.hotspot.nodes.aot.ResolveConstantStubCall;
+import com.oracle.graal.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
+import com.oracle.graal.hotspot.nodes.aot.ResolveMethodAndLoadCountersStubCall;
 import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
 import com.oracle.graal.hotspot.word.KlassPointer;
 import com.oracle.graal.hotspot.word.MethodCountersPointer;

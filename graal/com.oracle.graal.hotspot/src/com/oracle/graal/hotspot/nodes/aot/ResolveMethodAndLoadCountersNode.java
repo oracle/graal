@@ -20,46 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.nodes.aot;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_3;
+import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
 
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.iterators.NodeIterable;
 import com.oracle.graal.hotspot.nodes.type.MethodCountersPointerStamp;
 import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import com.oracle.graal.nodes.spi.Lowerable;
+import com.oracle.graal.nodes.spi.LoweringTool;
 
-@NodeInfo(cycles = CYCLES_3, size = SIZE_3)
-public class LoadMethodCountersNode extends FloatingNode implements LIRLowerable {
-    public static final NodeClass<LoadMethodCountersNode> TYPE = NodeClass.create(LoadMethodCountersNode.class);
+@NodeInfo(cycles = CYCLES_3, size = SIZE_20)
+public class ResolveMethodAndLoadCountersNode extends FloatingNode implements Lowerable {
+    public static final NodeClass<ResolveMethodAndLoadCountersNode> TYPE = NodeClass.create(ResolveMethodAndLoadCountersNode.class);
 
     ResolvedJavaMethod method;
+    @Input ValueNode hub;
 
-    public LoadMethodCountersNode(ResolvedJavaMethod method) {
+    public ResolveMethodAndLoadCountersNode(ResolvedJavaMethod method, ValueNode hub) {
         super(TYPE, MethodCountersPointerStamp.methodCountersNonNull());
         this.method = method;
+        this.hub = hub;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        tool.getLowerer().lower(this, tool);
     }
 
     public ResolvedJavaMethod getMethod() {
         return method;
     }
 
-    public static NodeIterable<LoadMethodCountersNode> getLoadMethodCountersNodes(StructuredGraph graph) {
-        return graph.getNodes().filter(LoadMethodCountersNode.class);
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool generator) {
-        // TODO: With AOT we don't need this, as this node will be replaced.
-        // Implement later when profiling is needed in the JIT mode.
-        throw GraalError.unimplemented();
+    public ValueNode getHub() {
+        return hub;
     }
 }

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases;
+package com.oracle.graal.hotspot.phases.aot;
 
 import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
 
@@ -33,7 +33,7 @@ import jdk.vm.ci.meta.JavaConstant;
 
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.hotspot.nodes.InitializeKlassNode;
+import com.oracle.graal.hotspot.nodes.aot.InitializeKlassNode;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.Invoke;

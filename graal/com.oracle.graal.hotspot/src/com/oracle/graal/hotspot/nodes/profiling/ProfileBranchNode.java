@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.nodes.profiling;
 
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.iterators.NodeIterable;
