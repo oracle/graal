@@ -330,10 +330,6 @@ public class AssumptionsTest {
 
     @Test
     public void testAssumptionInvalidateTest1() {
-        /*
-         * We try to remove arbitrary indices remove node. we don't use a node, so we don't use the
-         * node subclass for the chain.
-         */
         AssumptionInvalidateTest1 node = AssumptionInvalidateTest1NodeGen.create();
         node.execute(0);
         node.execute(1);
@@ -369,10 +365,6 @@ public class AssumptionsTest {
 
     @Test
     public void testAssumptionInvalidateTest2() {
-        /*
-         * We try to remove arbitrary indices remove node. we don't use a node, so we don't use the
-         * node subclass for the chain.
-         */
         AssumptionInvalidateTest2 node = AssumptionInvalidateTest2NodeGen.create();
         node.execute(0);
         node.execute(1);
