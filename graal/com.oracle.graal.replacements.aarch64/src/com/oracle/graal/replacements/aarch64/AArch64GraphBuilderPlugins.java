@@ -22,6 +22,13 @@
  */
 package com.oracle.graal.replacements.aarch64;
 
+import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
+import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
+import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
+import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
+import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
+import static com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
+
 import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
 import com.oracle.graal.nodes.ValueNode;
@@ -30,7 +37,9 @@ import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.replacements.nodes.BitScanForwardNode;
+import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
+import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -80,16 +89,30 @@ public class AArch64GraphBuilderPlugins {
         r.registerMethodSubstitution(substituteDeclaringClass, "bitCount", type);
     }
 
-    @SuppressWarnings("unused")
     private static void registerMathPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
-        // Registration r = new Registration(plugins, Math.class);
-        // r.register1("sin", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_SIN));
-        // r.register1("cos", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_COS));
-        // r.register1("tan", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_TAN));
-        // r.register1("exp", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_EXP));
-        // r.register1("log", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_LOG));
-        // r.register1("log10", Double.TYPE, new ForeignCallPlugin(foreignCalls, ARITHMETIC_LOG10));
-        // r.register2("pow", Double.TYPE, Double.TYPE, new ForeignCallPlugin(foreignCalls,
-        // ARITHMETIC_POW));
+        Registration r = new Registration(plugins, Math.class);
+        registerUnaryMath(r, "sin", SIN);
+        registerUnaryMath(r, "cos", COS);
+        registerUnaryMath(r, "tan", TAN);
+        registerUnaryMath(r, "exp", EXP);
+        registerUnaryMath(r, "log", LOG);
+        registerUnaryMath(r, "log10", LOG10);
+        r.register2("pow", Double.TYPE, Double.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                b.push(JavaKind.Double, b.recursiveAppend(BinaryMathIntrinsicNode.create(x, y, BinaryMathIntrinsicNode.BinaryOperation.POW)));
+                return true;
+            }
+        });
+    }
+
+    private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
+        r.register1(name, Double.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Double, b.recursiveAppend(UnaryMathIntrinsicNode.create(value, operation)));
+                return true;
+            }
+        });
     }
 }
