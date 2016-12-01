@@ -68,11 +68,11 @@ public class AArch64GraphBuilderPlugins {
         r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ValueNode folded = BitScanForwardNode.tryFold(value);
+                ValueNode folded = AArch64CountTrailingZerosNode.tryFold(value);
                 if (folded != null) {
                     b.addPush(JavaKind.Int, folded);
                 } else {
-                    b.addPush(JavaKind.Int, new BitScanForwardNode(value));
+                    b.addPush(JavaKind.Int, new AArch64CountTrailingZerosNode(value));
                 }
                 return true;
             }

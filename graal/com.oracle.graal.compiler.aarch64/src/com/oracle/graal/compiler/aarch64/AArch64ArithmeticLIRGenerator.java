@@ -28,7 +28,7 @@ import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64Kind.DWORD;
 import static jdk.vm.ci.aarch64.AArch64Kind.QWORD;
-import static com.oracle.graal.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.BSF;
+import static com.oracle.graal.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.CTZ;
 import static com.oracle.graal.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.BSR;
 import static com.oracle.graal.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.CLZ;
 
@@ -387,9 +387,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Variable emitBitScanForward(Value value) {
-        Variable result = getLIRGen().newVariable(LIRKind.combine(value).changeType(AArch64Kind.DWORD));
-        getLIRGen().append(new AArch64BitManipulationOp(BSF, result, getLIRGen().asAllocatable(value)));
-        return result;
+        throw GraalError.unimplemented();
     }
 
     @Override
@@ -413,7 +411,9 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitCountTrailingZeros(Value value) {
-        throw GraalError.unimplemented();
+        Variable result = getLIRGen().newVariable(LIRKind.combine(value).changeType(AArch64Kind.DWORD));
+        getLIRGen().append(new AArch64BitManipulationOp(CTZ, result, getLIRGen().asAllocatable(value)));
+        return result;
     }
 
     private Variable emitUnary(AArch64ArithmeticOp op, Value inputVal) {
