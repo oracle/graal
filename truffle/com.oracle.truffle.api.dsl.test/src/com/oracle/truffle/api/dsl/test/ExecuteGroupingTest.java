@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
-import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createTarget;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.experimental.theories.DataPoints;
@@ -31,16 +29,10 @@ import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.dsl.CreateCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.ExecuteGroupingTestFactory.ExecuteGrouping1NodeGen;
-import com.oracle.truffle.api.dsl.test.examples.ExampleNode;
-import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
-import com.oracle.truffle.api.dsl.test.examples.MathPow.MathPowNode;
-import com.oracle.truffle.api.dsl.test.examples.MathPowFactory.MathPowNodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
