@@ -22,14 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java;
+package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
+import java.util.AbstractList;
+import java.util.List;
 
-final class JavaInteropSnippets {
-    // BEGIN: JavaInteropSnippets#isNullValue
-    public static boolean isNullValue(TruffleObject obj) {
-        return JavaInterop.isNull(obj);
+/**
+ * Translation of a list of array elements to list of debugger values. The implementation is not
+ * thread safe.
+ */
+final class ValueInteropList extends AbstractList<DebugValue> {
+
+    private final Debugger debugger;
+    private final RootNode rootNode;
+    private final List<Object> list;
+
+    ValueInteropList(Debugger debugger, RootNode rootNode, List<Object> list) {
+        this.debugger = debugger;
+        this.rootNode = rootNode;
+        this.list = list;
     }
-    // END: JavaInteropSnippets#isNullValue
+
+    @Override
+    public DebugValue get(int index) {
+        Object obj = list.get(index);
+        DebugValue dv = new DebugValue.HeapValue(debugger, rootNode, obj);
+        return dv;
+    }
+
+    @Override
+    public DebugValue set(int index, DebugValue value) {
+        DebugValue old = get(index);
+        list.set(index, value.get());
+        return old;
+    }
+
+    @Override
+    public int size() {
+        return list.size();
+    }
+
 }

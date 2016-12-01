@@ -35,9 +35,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 
-public class SourceBuilderSnippetsTest {
+public class SourceBuilderDocumentationTest {
 
-    private static final Class<?> SOURCE_SNIPPETS = loadRelative(SourceBuilderSnippetsTest.class, "SourceSnippets");
+    private static final Class<?> SOURCE_SNIPPETS = loadRelative(SourceBuilderDocumentationTest.class, "SourceSnippets");
 
     private static boolean loadedOK;
 
@@ -75,9 +75,9 @@ public class SourceBuilderSnippetsTest {
             return;
         }
 
-        URL resource = SourceBuilderSnippetsTest.class.getResource("sample.js");
+        URL resource = SourceBuilderDocumentationTest.class.getResource("sample.js");
         assertNotNull("Sample js file found", resource);
-        invokeStatic(SOURCE_SNIPPETS, "fromURL", SourceBuilderSnippetsTest.class);
+        invokeStatic(SOURCE_SNIPPETS, "fromURL", SourceBuilderDocumentationTest.class);
     }
 
     @Test
@@ -86,9 +86,9 @@ public class SourceBuilderSnippetsTest {
             return;
         }
 
-        URL resource = SourceBuilderSnippetsTest.class.getResource("sample.js");
+        URL resource = SourceBuilderDocumentationTest.class.getResource("sample.js");
         assertNotNull("Sample js file found", resource);
-        invokeStatic(SOURCE_SNIPPETS, "fromURLWithOwnContent", SourceBuilderSnippetsTest.class);
+        invokeStatic(SOURCE_SNIPPETS, "fromURLWithOwnContent", SourceBuilderDocumentationTest.class);
     }
 
     public void fileSample() throws Exception {
@@ -118,7 +118,7 @@ public class SourceBuilderSnippetsTest {
             return;
         }
 
-        Source source = (Source) invokeStatic(SOURCE_SNIPPETS, "fromReader", SourceBuilderSnippetsTest.class);
+        Source source = (Source) invokeStatic(SOURCE_SNIPPETS, "fromReader", SourceBuilderDocumentationTest.class);
         assertNotNull("Every source must have URI", source.getURI());
     }
 }

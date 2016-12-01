@@ -371,10 +371,11 @@ public class SourceBuilderTest {
     }
 
     @Test
-    public void normalSourceIsNotInternal() {
+    public void normalSourceIsNotInter() {
         Source source = Source.newBuilder("anything").mimeType("text/plain").name("anyname").build();
 
         assertFalse("Not internal", source.isInternal());
+        assertFalse("Not interactive", source.isInteractive());
     }
 
     @Test
@@ -382,6 +383,13 @@ public class SourceBuilderTest {
         Source source = Source.newBuilder("anything internal").mimeType("text/plain").name("internalsrc").internal().build();
 
         assertTrue("This source is internal", source.isInternal());
+    }
+
+    @Test
+    public void markSourceAsInteractive() {
+        Source source = Source.newBuilder("anything interactive").mimeType("text/plain").name("interactivesrc").interactive().build();
+
+        assertTrue("This source is interactive", source.isInteractive());
     }
 
     public void subSourceHashAndEquals() {

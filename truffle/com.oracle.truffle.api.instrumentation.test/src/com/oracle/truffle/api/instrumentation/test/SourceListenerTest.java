@@ -59,6 +59,8 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     private void testLoadSourceImpl(int runTimes) throws IOException {
+        int initialQueryCount = InstrumentationTestLanguage.getRootSourceSectionQueryCount();
+
         Instrument instrument = engine.getInstruments().get("testLoadSource1");
         Source source1 = lines("STATEMENT(EXPRESSION, EXPRESSION)");
         // running the same source multiple times should not have any effect on the test result.
@@ -66,12 +68,16 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             run(source1);
         }
 
+        Assert.assertEquals("unexpected getSourceSection calls without source listeners", initialQueryCount, InstrumentationTestLanguage.getRootSourceSectionQueryCount());
+
         instrument.setEnabled(true);
         TestLoadSource1 impl = instrument.lookup(TestLoadSource1.class);
         Source source2 = lines("STATEMENT(EXPRESSION)");
         for (int i = 0; i < runTimes; i++) {
             run(source2);
         }
+
+        Assert.assertNotEquals("expecting getSourceSection calls because of source listeners", initialQueryCount, InstrumentationTestLanguage.getRootSourceSectionQueryCount());
 
         assertEvents(impl.onlyNewEvents, source2);
         assertEvents(impl.allEvents, source1, source2);

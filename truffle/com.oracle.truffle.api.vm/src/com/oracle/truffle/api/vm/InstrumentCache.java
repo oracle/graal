@@ -46,6 +46,7 @@ final class InstrumentCache {
 
     static final boolean PRELOAD;
     private static final List<InstrumentCache> CACHE;
+    private static List<InstrumentCache> cache;
 
     private Class<?> instrumentClass;
     private final String className;
@@ -84,6 +85,9 @@ final class InstrumentCache {
         if (PRELOAD) {
             return CACHE;
         }
+        if (cache != null) {
+            return cache;
+        }
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
         for (ClassLoader loader : (LanguageCache.AOT_LOADERS == null ? Access.loaders() : LanguageCache.AOT_LOADERS)) {
@@ -92,10 +96,13 @@ final class InstrumentCache {
         if (!PolyglotEngine.JDK8OrEarlier) {
             loadForOne(ModuleResourceLocator.createLoader(), list, classNamesUsed);
         }
-        return list;
+        return cache = list;
     }
 
     private static void loadForOne(ClassLoader loader, List<InstrumentCache> list, Set<String> classNamesUsed) {
+        if (loader == null) {
+            return;
+        }
         Enumeration<URL> en;
         try {
             en = loader.getResources("META-INF/truffle/instrument");

@@ -181,6 +181,7 @@ public abstract class LayoutStrategy {
     }
 
     /** @since 0.17 or earlier */
+    @Deprecated
     protected static Property relocateShadow(Property property, Location newLocation) {
         return ((PropertyImpl) property).relocateShadow(newLocation);
     }

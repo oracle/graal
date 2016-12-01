@@ -48,9 +48,12 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 public class JavaInteropTest {
     public class Data {
@@ -59,6 +62,8 @@ public class JavaInteropTest {
         public String[] arr;
         public Object value;
         public Object map;
+        public Object dataMap;
+        public Data[] data;
 
         public double plus(double a, double b) {
             return a + b;
@@ -110,7 +115,35 @@ public class JavaInteropTest {
 
     @Test
     public void assertKeysAndProperties() {
+        CallTarget callTarget = sendKeys();
+        final TruffleObject ret = (TruffleObject) callTarget.call(obj);
+        List<?> list = JavaInterop.asJavaObject(List.class, ret);
+        assertTrue("Contains x " + list, list.contains("x"));
+        assertTrue("Contains y " + list, list.contains("y"));
+        assertTrue("Contains arr " + list, list.contains("arr"));
+        assertTrue("Contains value " + list, list.contains("value"));
+        assertTrue("Contains map " + list, list.contains("map"));
+    }
+
+    @Test
+    public void assertKeysFromAMap() {
+        Map<String, Integer> map = new HashMap<>();
+        map.put("one", 1);
+        map.put("null", null);
+        map.put("three", 3);
+
+        TruffleObject truffleMap = JavaInterop.asTruffleObject(map);
+        TruffleObject ret = (TruffleObject) sendKeys().call(truffleMap);
+        List<?> list = JavaInterop.asJavaObject(List.class, ret);
+        assertTrue("Contains one " + list, list.contains("one"));
+        assertTrue("Contains null " + list, list.contains("null"));
+        assertTrue("Contains three " + list, list.contains("three"));
+
+    }
+
+    private static CallTarget sendKeys() {
         final Node keysNode = Message.KEYS.createNode();
+
         class SendKeys extends RootNode {
             SendKeys() {
                 super(TruffleLanguage.class, null, null);
@@ -119,20 +152,15 @@ public class JavaInteropTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 try {
-                    return ForeignAccess.sendKeys(keysNode, frame, obj);
+                    final TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
+                    return ForeignAccess.sendKeys(keysNode, frame, receiver);
                 } catch (InteropException ex) {
                     throw ex.raise();
                 }
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new SendKeys());
-        final TruffleObject ret = (TruffleObject) callTarget.call();
-        List<?> list = JavaInterop.asJavaObject(List.class, ret);
-        assertTrue("Contains x " + list, list.contains("x"));
-        assertTrue("Contains y " + list, list.contains("y"));
-        assertTrue("Contains arr " + list, list.contains("arr"));
-        assertTrue("Contains value " + list, list.contains("value"));
-        assertTrue("Contains map " + list, list.contains("map"));
+        return callTarget;
     }
 
     class POJO {
@@ -312,6 +340,73 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void truffleObjectIsntFunctionalInterface() throws Exception {
+        final boolean is = isJavaFunctionalInterface(TruffleObject.class);
+        assertFalse("TruffleObject isn't functional interface", is);
+    }
+
+    private static boolean isJavaFunctionalInterface(final Class<?> clazz) throws Exception {
+        Method isFunctionaInterface = JavaInterop.class.getDeclaredMethod("isJavaFunctionInterface", Class.class);
+        isFunctionaInterface.setAccessible(true);
+        return (boolean) isFunctionaInterface.invoke(null, clazz);
+    }
+
+    @Test
+    public void functionalInterfaceWithDefaultMethods() throws Exception {
+        final boolean is = isJavaFunctionalInterface(FunctionalWithDefaults.class);
+        assertTrue("yes, it is", is);
+    }
+
+    @FunctionalInterface
+    interface FunctionalWithDefaults {
+        Object call(Object... args);
+
+        default int call(int a, int b) {
+            return (int) call(new Object[]{a, b});
+        }
+    }
+
+    @Test
+    public void listUnwrapsTruffleObject() {
+        data.data = new Data[]{new Data()};
+        Data value = xyp.data().get(0);
+        assertSame(data.data[0], value);
+    }
+
+    @Test
+    public void mapUnwrapsTruffleObject() {
+        data.dataMap = data;
+        Data value = xyp.dataMap().get("dataMap");
+        assertSame(data, value);
+
+        Data newValue = new Data();
+        Data previousValue = xyp.dataMap().put("dataMap", newValue);
+        assertSame(data, previousValue);
+
+        assertSame(newValue, data.dataMap);
+    }
+
+    @Test
+    public void mapEntrySetUnwrapsTruffleObject() {
+        data.dataMap = data;
+        final Map<String, Data> map = xyp.dataMap();
+        Data value = map.get("dataMap");
+        assertSame(data, value);
+
+        for (Map.Entry<String, Data> entry : xyp.dataMap().entrySet()) {
+            if ("dataMap".equals(entry.getKey())) {
+                assertSame(value, entry.getValue());
+                Data newValue = new Data();
+                Data prev = entry.setValue(newValue);
+                assertSame(value, prev);
+                assertSame(newValue, map.get("dataMap"));
+                return;
+            }
+        }
+        fail("Entry dataMap not found");
+    }
+
+    @Test
     public void isBoxed() {
         assertFalse(JavaInterop.isBoxed(null));
         assertFalse(JavaInterop.isBoxed(JavaInterop.asTruffleObject(new Object())));
@@ -348,6 +443,8 @@ public class JavaInteropTest {
 
         Map<String, Object> map();
 
+        Map<String, Data> dataMap();
+
         int x();
 
         @MethodMessage(message = "WRITE")
@@ -360,6 +457,8 @@ public class JavaInteropTest {
         Integer value();
 
         XYPlus assertThis(Object obj);
+
+        List<Data> data();
     }
 
     static Object message(final Message m, TruffleObject receiver, Object... arr) {

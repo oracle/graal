@@ -36,6 +36,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
@@ -350,6 +351,7 @@ public class StackTraceTest {
         @Override
         Object execute(VirtualFrame frame) {
             if (directCall == null || directCall.getCallTarget() != next) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 directCall = insert(Truffle.getRuntime().createDirectCallNode(next));
             }
             return directCall.call(frame, new Object[0]);

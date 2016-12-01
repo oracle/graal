@@ -24,14 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
@@ -39,6 +31,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -51,44 +44,45 @@ import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Map;
 
 abstract class ToJavaNode extends Node {
-    private static final Object[] EMPTY = {};
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
 
-    public abstract Object execute(VirtualFrame frame, Object value, Class<?> type);
+    public abstract Object execute(VirtualFrame frame, Object value, TypeAndClass<?> type);
 
     @Specialization(guards = "operand == null")
     @SuppressWarnings("unused")
-    protected Object doNull(Object operand, Class<?> type) {
+    protected Object doNull(Object operand, TypeAndClass<?> type) {
         return null;
     }
 
     @Specialization(guards = {"operand != null", "operand.getClass() == cachedOperandType", "targetType == cachedTargetType"})
-    protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") Class<?> targetType,
+    protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") TypeAndClass<?> targetType,
                     @Cached("operand.getClass()") Class<?> cachedOperandType,
-                    @Cached("targetType") Class<?> cachedTargetType) {
+                    @Cached("targetType") TypeAndClass<?> cachedTargetType) {
         return convertImpl(frame, cachedOperandType.cast(operand), cachedTargetType, cachedOperandType);
     }
 
-    private Object convertImpl(VirtualFrame frame, Object value, Class<?> targetType, Class<?> cachedOperandType) {
+    private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass<?> targetType, Class<?> cachedOperandType) {
         Object convertedValue;
         if (isPrimitiveType(cachedOperandType)) {
-            convertedValue = toPrimitive(value, targetType);
+            convertedValue = toPrimitive(value, targetType.clazz);
             assert convertedValue != null;
-        } else if (value instanceof JavaObject && targetType.isInstance(((JavaObject) value).obj)) {
+        } else if (value instanceof JavaObject && targetType.clazz.isInstance(((JavaObject) value).obj)) {
             convertedValue = ((JavaObject) value).obj;
-        } else if (value instanceof TruffleObject && isJavaFunctionInterface(targetType) && isExecutable(frame, (TruffleObject) value)) {
-            convertedValue = asJavaFunction(targetType, (TruffleObject) value);
+        } else if (!TruffleOptions.AOT && value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType.clazz) && isExecutable(frame, (TruffleObject) value)) {
+            convertedValue = JavaInteropReflect.asJavaFunction(targetType.clazz, (TruffleObject) value);
+        } else if (value == JavaObject.NULL) {
+            return null;
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject(targetType, null, (TruffleObject) value);
+            convertedValue = asJavaObject(targetType.clazz, targetType, (TruffleObject) value);
         } else {
-            assert targetType.isAssignableFrom(value.getClass());
+            assert targetType.clazz.isAssignableFrom(value.getClass());
             convertedValue = value;
         }
         return convertedValue;
     }
 
     @Specialization(guards = "operand != null", contains = "doCached")
-    protected Object doGeneric(VirtualFrame frame, Object operand, Class<?> type) {
+    protected Object doGeneric(VirtualFrame frame, Object operand, TypeAndClass<?> type) {
         // TODO this specialization should be a TruffleBoundary because it produces too much code.
         // It can't be because a frame is passed in. We need extract all uses of frame out of
         // convertImpl.
@@ -112,25 +106,7 @@ abstract class ToJavaNode extends Node {
     }
 
     @TruffleBoundary
-    private static boolean isJavaFunctionInterface(Class<?> type) {
-        if (!type.isInterface()) {
-            return false;
-        }
-        for (Annotation annotation : type.getAnnotations()) {
-            // TODO: don't compare strings here
-            // fix once Truffle uses JDK8
-            if (annotation.toString().equals("@java.lang.FunctionalInterface()")) {
-                return true;
-            }
-        }
-        if (type.getMethods().length == 1) {
-            return true;
-        }
-        return false;
-    }
-
-    @TruffleBoundary
-    private static <T> T asJavaObject(Class<T> clazz, Type type, TruffleObject foreignObject) {
+    private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject) {
         Object obj;
         if (clazz.isInstance(foreignObject)) {
             obj = foreignObject;
@@ -142,226 +118,57 @@ abstract class ToJavaNode extends Node {
                 return null;
             }
             if (clazz == List.class && Boolean.TRUE.equals(binaryMessage(Message.HAS_SIZE, foreignObject))) {
-                Class<?> elementType = Object.class;
-                if (type instanceof ParameterizedType) {
-                    ParameterizedType parametrizedType = (ParameterizedType) type;
-                    final Type[] arr = parametrizedType.getActualTypeArguments();
-                    if (arr.length == 1 && arr[0] instanceof Class) {
-                        elementType = (Class<?>) arr[0];
-                    }
-                }
+                TypeAndClass<?> elementType = type.getParameterType(0);
                 obj = TruffleList.create(elementType, foreignObject);
             } else if (clazz == Map.class) {
-                Class<?> keyType = Object.class;
-                Class<?> valueType = Object.class;
-                if (type instanceof ParameterizedType) {
-                    ParameterizedType parametrizedType = (ParameterizedType) type;
-                    final Type[] arr = parametrizedType.getActualTypeArguments();
-                    if (arr.length == 2 && arr[0] instanceof Class) {
-                        keyType = (Class<?>) arr[0];
-                    }
-                    if (arr.length == 2 && arr[1] instanceof Class) {
-                        valueType = (Class<?>) arr[1];
-                    }
-                }
+                TypeAndClass<?> keyType = type.getParameterType(0);
+                TypeAndClass<?> valueType = type.getParameterType(1);
                 obj = TruffleMap.create(keyType, valueType, foreignObject);
             } else {
-                obj = Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new TruffleHandler(foreignObject));
+                if (!TruffleOptions.AOT) {
+                    obj = JavaInteropReflect.newProxyInstance(clazz, foreignObject);
+                } else {
+                    obj = foreignObject;
+                }
             }
         }
         return clazz.cast(obj);
     }
 
-    @TruffleBoundary
-    private static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function) {
-        final SingleHandler handler = new SingleHandler(function);
-        Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
-        return functionalType.cast(obj);
-    }
+    static final class TemporaryRoot extends RootNode {
 
-    private static final class SingleHandler implements InvocationHandler {
-        private final TruffleObject symbol;
-        private CallTarget target;
-
-        SingleHandler(TruffleObject obj) {
-            this.symbol = obj;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
-            Object ret;
-            if (method.isVarArgs()) {
-                if (arguments.length == 1) {
-                    ret = call((Object[]) arguments[0]);
-                } else {
-                    final int allButOne = arguments.length - 1;
-                    Object[] last = (Object[]) arguments[allButOne];
-                    Object[] merge = new Object[allButOne + last.length];
-                    System.arraycopy(arguments, 0, merge, 0, allButOne);
-                    System.arraycopy(last, 0, merge, allButOne, last.length);
-                    ret = call(merge);
-                }
-            } else {
-                ret = call(arguments);
-            }
-            return toJava(ret, method);
-        }
-
-        private Object call(Object[] arguments) {
-            CompilerAsserts.neverPartOfCompilation();
-            Object[] args = arguments == null ? EMPTY : arguments;
-            if (target == null) {
-                Node executeMain = Message.createExecute(args.length).createNode();
-                RootNode symbolNode = new TemporaryRoot(TruffleLanguage.class, executeMain, symbol);
-                target = Truffle.getRuntime().createCallTarget(symbolNode);
-            }
-            for (int i = 0; i < args.length; i++) {
-                if (args[i] instanceof TruffleObject) {
-                    continue;
-                }
-                if (isPrimitive(args[i])) {
-                    continue;
-                }
-                arguments[i] = JavaInterop.asTruffleObject(args[i]);
-            }
-            return target.call(args);
-        }
-    }
-
-    private static final class TruffleHandler implements InvocationHandler {
-        private final TruffleObject obj;
-
-        TruffleHandler(TruffleObject obj) {
-            this.obj = obj;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
-            CompilerAsserts.neverPartOfCompilation();
-            Object[] args = arguments == null ? EMPTY : arguments;
-            Object val;
-            for (int i = 0; i < args.length; i++) {
-                if (args[i] == null) {
-                    continue;
-                }
-                if (Proxy.isProxyClass(args[i].getClass())) {
-                    InvocationHandler h = Proxy.getInvocationHandler(args[i]);
-                    if (h instanceof TruffleHandler) {
-                        args[i] = ((TruffleHandler) h).obj;
-                    }
-                }
-            }
-
-            if (Object.class == method.getDeclaringClass()) {
-                return method.invoke(obj, args);
-            }
-
-            String name = method.getName();
-            Message message = findMessage(method.getAnnotation(MethodMessage.class));
-            if (message == Message.WRITE) {
-                if (args.length != 1) {
-                    throw new IllegalStateException("Method needs to have a single argument to handle WRITE message " + method);
-                }
-                message(Message.WRITE, obj, name, args[0]);
-                return null;
-            }
-            if (message == Message.HAS_SIZE || message == Message.IS_BOXED || message == Message.IS_EXECUTABLE || message == Message.IS_NULL || message == Message.GET_SIZE) {
-                return message(message, obj);
-            }
-
-            if (message == Message.READ) {
-                val = message(Message.READ, obj, name);
-                return toJava(val, method);
-            }
-
-            if (message == Message.UNBOX) {
-                val = message(Message.UNBOX, obj);
-                return toJava(val, method);
-            }
-
-            if (Message.createExecute(0).equals(message)) {
-                List<Object> copy = new ArrayList<>(args.length);
-                copy.addAll(Arrays.asList(args));
-                message = Message.createExecute(copy.size());
-                val = message(message, obj, copy.toArray());
-                return toJava(val, method);
-            }
-
-            if (Message.createInvoke(0).equals(message)) {
-                List<Object> copy = new ArrayList<>(args.length + 1);
-                copy.add(name);
-                copy.addAll(Arrays.asList(args));
-                message = Message.createInvoke(args.length);
-                val = message(message, obj, copy.toArray());
-                return toJava(val, method);
-            }
-
-            if (Message.createNew(0).equals(message)) {
-                message = Message.createNew(args.length);
-                val = message(message, obj, args);
-                return toJava(val, method);
-            }
-
-            if (message == null) {
-                Object ret;
-                try {
-                    List<Object> callArgs = new ArrayList<>(args.length);
-                    callArgs.add(name);
-                    callArgs.addAll(Arrays.asList(args));
-                    ret = message(Message.createInvoke(args.length), obj, callArgs.toArray());
-                } catch (InteropException ex) {
-                    val = message(Message.READ, obj, name);
-                    Object primitiveVal = toPrimitive(val, method.getReturnType());
-                    if (primitiveVal != null) {
-                        return primitiveVal;
-                    }
-                    TruffleObject attr = (TruffleObject) val;
-                    if (Boolean.FALSE.equals(message(Message.IS_EXECUTABLE, attr))) {
-                        if (args.length == 0) {
-                            return toJava(attr, method);
-                        }
-                        throw new IllegalArgumentException(attr + " cannot be invoked with " + args.length + " parameters");
-                    }
-                    List<Object> callArgs = new ArrayList<>(args.length);
-                    callArgs.addAll(Arrays.asList(args));
-                    ret = message(Message.createExecute(callArgs.size()), attr, callArgs.toArray());
-                }
-                return toJava(ret, method);
-            }
-            throw new IllegalArgumentException("Unknown message: " + message);
-        }
-
-    }
-
-    private static class TemporaryRoot extends RootNode {
         @Node.Child private Node foreignAccess;
+        @Node.Child private ToJavaNode toJava;
         private final TruffleObject function;
+        private final TypeAndClass<?> type;
 
         @SuppressWarnings("rawtypes")
-        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function) {
+        TemporaryRoot(Class<? extends TruffleLanguage> lang, Node foreignAccess, TruffleObject function, TypeAndClass<?> type) {
             super(lang, null, null);
             this.foreignAccess = foreignAccess;
             this.function = function;
+            this.type = type;
+            if (type == null) {
+                this.toJava = null;
+            } else {
+                this.toJava = ToJavaNodeGen.create();
+            }
         }
 
         @SuppressWarnings("deprecation")
         @Override
         public Object execute(VirtualFrame frame) {
-            return ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
+            Object raw = ForeignAccess.execute(foreignAccess, frame, function, frame.getArguments());
+            if (toJava == null) {
+                return raw;
+            }
+            return toJava.execute(frame, raw, type);
         }
     }
 
-    private static Message findMessage(MethodMessage mm) {
+    static Object toJava(Object ret, TypeAndClass<?> type) {
         CompilerAsserts.neverPartOfCompilation();
-        if (mm == null) {
-            return null;
-        }
-        return Message.valueOf(mm.message());
-    }
-
-    private static Object toJava(Object ret, Method method) {
-        CompilerAsserts.neverPartOfCompilation();
-        Class<?> retType = method.getReturnType();
+        Class<?> retType = type.clazz;
         Object primitiveRet = toPrimitive(ret, retType);
         if (primitiveRet != null) {
             return primitiveRet;
@@ -377,7 +184,7 @@ abstract class ToJavaNode extends Node {
         if (ret instanceof TruffleObject) {
             final TruffleObject truffleObject = (TruffleObject) ret;
             if (retType.isInterface()) {
-                return asJavaObject(retType, method.getGenericReturnType(), truffleObject);
+                return asJavaObject(retType, type, truffleObject);
             }
         }
         return ret;
@@ -395,7 +202,7 @@ abstract class ToJavaNode extends Node {
                 return null;
             }
             try {
-                attr = message(Message.UNBOX, value);
+                attr = message(null, Message.UNBOX, value);
             } catch (InteropException e) {
                 throw new IllegalStateException();
             }
@@ -447,17 +254,17 @@ abstract class ToJavaNode extends Node {
         return null;
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings("all")
     @TruffleBoundary
-    static Object message(final Message m, Object receiver, Object... arr) throws InteropException {
+    static Object message(TypeAndClass<?> convertTo, final Message m, Object receiver, Object... arr) throws InteropException {
         Node n = m.createNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver));
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TemporaryRoot(TruffleLanguage.class, n, (TruffleObject) receiver, convertTo));
         return callTarget.call(arr);
     }
 
     private static Object binaryMessage(final Message m, Object receiver, Object... arr) {
         try {
-            return message(m, receiver, arr);
+            return message(null, m, receiver, arr);
         } catch (InteropException e) {
             throw new AssertionError(e);
         }

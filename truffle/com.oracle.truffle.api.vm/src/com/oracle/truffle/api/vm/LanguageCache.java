@@ -50,6 +50,8 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Access;
 final class LanguageCache {
     private static final boolean PRELOAD;
     private static final Map<String, LanguageCache> CACHE;
+
+    private static Map<String, LanguageCache> cache;
     static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? Access.loaders() : null;
     private final TruffleLanguage<?> language;
     private final String className;
@@ -116,7 +118,10 @@ final class LanguageCache {
         if (PRELOAD) {
             return CACHE;
         }
-        return createLanguages(null);
+        if (cache != null) {
+            return cache;
+        }
+        return cache = createLanguages(null);
     }
 
     private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
@@ -131,6 +136,9 @@ final class LanguageCache {
     }
 
     private static void createLanguages(ClassLoader loader, Map<String, LanguageCache> map) {
+        if (loader == null) {
+            return;
+        }
         Enumeration<URL> en;
         try {
             en = loader.getResources("META-INF/truffle/language");

@@ -47,10 +47,12 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.Profiler.Counter.TimeKind;
@@ -120,6 +122,14 @@ public final class Profiler {
     @SuppressWarnings("rawtypes") private EventBinding binding;
 
     private final Map<SourceSection, Counter> counters = new HashMap<>();
+
+    private final SourcePredicate notInternal = new SourcePredicate() {
+
+        public boolean test(Source source) {
+            return !source.isInternal();
+        }
+
+    };
 
     // TODO temporary solution until TruffleRuntime#getCallerFrame() is fast
     // I am aware that this is not thread safe. (CHumer)
@@ -302,7 +312,7 @@ public final class Profiler {
             if (mimeTypes != null) {
                 filterBuilder.mimeTypeIs(mimeTypes);
             }
-            final SourceSectionFilter filter = filterBuilder.tagIs(StandardTags.RootTag.class).build();
+            final SourceSectionFilter filter = filterBuilder.tagIs(StandardTags.RootTag.class).sourceIs(notInternal).build();
             binding = instrumenter.attachFactory(filter, new ExecutionEventNodeFactory() {
                 public ExecutionEventNode create(EventContext context) {
                     return createCountingNode(context);
@@ -368,20 +378,34 @@ public final class Profiler {
             }
         });
 
-        out.println("Truffle profiler histogram for mode " + time);
-        out.println(String.format("%12s | %7s | %11s | %7s | %11s | %-15s | %s ", //
-                        "Invoc", "Total", "PerInvoc", "SelfTime", "PerInvoc", "Name", "Source"));
-        for (Counter counter : sortedCounters) {
-            final long invocations = counter.getInvocations(time);
-            if (invocations <= 0L) {
-                continue;
+        if (isTiming) {
+            out.println("Truffle profiler histogram for mode " + time);
+            out.println(String.format("%12s | %7s | %11s | %7s | %11s | %-15s | %s ", //
+                            "Invoc", "Total", "PerInvoc", "SelfTime", "PerInvoc", "Name", "Source"));
+            for (Counter counter : sortedCounters) {
+                final long invocations = counter.getInvocations(time);
+                if (invocations <= 0L) {
+                    continue;
+                }
+                double totalTimems = counter.getTotalTime(time) / 1000000.0d;
+                double selfTimems = counter.getSelfTime(time) / 1000000.0d;
+                out.println(String.format("%12d |%6.0fms |%10.3fms |%7.0fms |%10.3fms | %-15s | %s", //
+                                invocations, totalTimems, totalTimems / invocations,  //
+                                selfTimems, selfTimems / invocations, //
+                                counter.getName(), getShortDescription(counter.getSourceSection())));
             }
-            double totalTimems = counter.getTotalTime(time) / 1000000.0d;
-            double selfTimems = counter.getSelfTime(time) / 1000000.0d;
-            out.println(String.format("%12d |%6.0fms |%10.3fms |%7.0fms |%10.3fms | %-15s | %s", //
-                            invocations, totalTimems, totalTimems / invocations,  //
-                            selfTimems, selfTimems / invocations, //
-                            counter.getName(), getShortDescription(counter.getSourceSection())));
+        } else {
+            out.println("Truffle profiler histogram for mode " + time);
+            out.println(String.format("%12s | %-15s | %s ", //
+                            "Invoc", "Name", "Source"));
+            for (Counter counter : sortedCounters) {
+                final long invocations = counter.getInvocations(time);
+                if (invocations <= 0L) {
+                    continue;
+                }
+                out.println(String.format("%12d | %-15s | %s", //
+                                invocations, counter.getName(), getShortDescription(counter.getSourceSection())));
+            }
         }
         out.println();
     }

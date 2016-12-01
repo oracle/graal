@@ -36,7 +36,7 @@ import com.oracle.truffle.object.Locations.DeclaredLocation;
 /**
  * Property objects represent the mapping between property identifiers (keys) and storage locations.
  * Optionally, properties may have metadata attached to them.
- * 
+ *
  * @since 0.17 or earlier
  */
 public class PropertyImpl extends Property {
@@ -254,6 +254,7 @@ public class PropertyImpl extends Property {
     }
 
     /** @since 0.17 or earlier */
+    @Deprecated
     @Override
     public final boolean isShadow() {
         return shadow;

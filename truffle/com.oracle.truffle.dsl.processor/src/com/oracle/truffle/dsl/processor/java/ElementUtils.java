@@ -1278,7 +1278,7 @@ public class ElementUtils {
         }
         Map<String, TypeMirror> sourceTypes = new HashMap<>();
         for (TypeMirror type : types) {
-            sourceTypes.put(ElementUtils.getTypeId(type), type);
+            sourceTypes.put(ElementUtils.getUniqueIdentifier(type), type);
         }
         return sortTypes(new ArrayList<>(sourceTypes.values()), reverse);
     }

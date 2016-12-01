@@ -27,7 +27,6 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import org.junit.Ignore;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -37,6 +36,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.BoundCacheFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.BoundCacheOverflowFactory;
@@ -47,12 +47,14 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheNodeFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCachesOrder2Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCachesOrderFactory;
-import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCodeGenerationPosNegGuardFactory;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCodeGenerationPosNegGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithCachedAndDynamicParameterFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestGuardWithJustCachedParameterFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.UnboundCacheFactory;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTest.ImplicitCast0Types;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
@@ -434,18 +436,20 @@ public class CachedTest {
         assertEquals(46, root.call(23));
     }
 
-    @NodeChild
-    static class TestCodeGenerationPosNegGuard extends ValueNode {
+    @TypeSystemReference(ExampleTypes.class)
+    abstract static class TestCodeGenerationPosNegGuard extends Node {
+
+        public abstract int execute(Object execute);
 
         @Specialization(guards = "guard(value)")
         static int do0(int value) {
             return value;
         }
 
-        // @Specialization(guards = {"!guard(value)", "value != cachedValue"})
-        // static int do1(int value, @Cached("get(value)") int cachedValue) {
-        // return cachedValue;
-        // }
+        @Specialization(guards = {"!guard(value)", "value != cachedValue"})
+        static int do1(int value, @Cached("get(value)") int cachedValue) {
+            return cachedValue;
+        }
 
         protected static boolean guard(int i) {
             return i == 0;
@@ -457,13 +461,12 @@ public class CachedTest {
 
     }
 
-    @Ignore("Code above (uncommented) produces invalid code")
     @Test
     public void testCodeGenerationPosNegGuard() {
-        CallTarget root = createCallTarget(TestCodeGenerationPosNegGuardFactory.getInstance());
-        assertEquals(0, root.call(0));
-        assertEquals(2, root.call(1));
-        assertEquals(2, root.call(2));
+        TestCodeGenerationPosNegGuard root = TestCodeGenerationPosNegGuardNodeGen.create();
+        assertEquals(0, root.execute(0));
+        assertEquals(2, root.execute(1));
+        assertEquals(4, root.execute(2));
     }
 
     @NodeChild

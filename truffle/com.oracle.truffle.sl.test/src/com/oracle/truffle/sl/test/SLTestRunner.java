@@ -54,6 +54,7 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -232,7 +233,7 @@ public class SLTestRunner extends ParentRunner<TestCase> {
                     File dir = path.getParentFile();
                     dir.mkdirs();
                     assert dir.exists();
-                    Files.copy(jarfile.getInputStream(e), path.toPath());
+                    Files.copy(jarfile.getInputStream(e), path.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 }
             }
             return jarfileDir.toFile().getAbsolutePath();
