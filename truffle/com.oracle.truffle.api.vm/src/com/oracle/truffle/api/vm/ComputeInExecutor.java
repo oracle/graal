@@ -78,10 +78,10 @@ abstract class ComputeInExecutor<R> implements Runnable {
         started = true;
         if (executor == null) {
             run();
+            exceptionCheck();
         } else {
             executor.execute(this);
         }
-        exceptionCheck();
     }
 
     @Override
