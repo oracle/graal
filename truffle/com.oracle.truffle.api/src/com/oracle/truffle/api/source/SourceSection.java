@@ -28,10 +28,9 @@ package com.oracle.truffle.api.source;
  * Description of contiguous section of text within a {@link Source} of program code.; supports
  * multiple modes of access to the text and its location.
  * <p>
- * Two source sections are considered equal if their sources, start and length are equal.
- * {@link #isAvailable() Unavailable} source sections are never equal with available ones. Source
- * sections can be used as keys in hash maps. Unavailable source sections are equal if their sources
- * are equal.
+ * Two available source sections are considered equal if their sources, start and length are equal.
+ * {@link #isAvailable() Unavailable} source sections are compared by identity. Source sections can
+ * be used as keys in hash maps.
  *
  * @see Source#createSection(String, int, int, int)
  * @see Source#createSection(String, int, int)
@@ -362,6 +361,9 @@ public final class SourceSection {
     /** @since 0.8 or earlier */
     @Override
     public int hashCode() {
+        if (!isAvailable()) {
+            return System.identityHashCode(this);
+        }
         final int prime = 31;
         int result = 1;
         result = prime * result + charIndex;
@@ -386,6 +388,10 @@ public final class SourceSection {
             return false;
         }
         SourceSection other = (SourceSection) obj;
+        if (!isAvailable()) {
+            // Unavailable SourceSections are compared by identity
+            return this == obj;
+        }
         if (charIndex != other.charIndex) {
             return false;
         }
