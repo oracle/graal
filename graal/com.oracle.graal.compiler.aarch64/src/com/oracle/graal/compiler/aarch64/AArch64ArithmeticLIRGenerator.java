@@ -116,9 +116,8 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitMul(Value a, Value b, boolean setFlags) {
-        // TODO (das) setFlags handling - should be handled higher up. Ask for ideas at mailing list
-        assert !setFlags : "Set flags on multiplication is not supported";
-        return emitBinary(LIRKind.combine(a, b), getOpCode(a, AArch64ArithmeticOp.MUL, AArch64ArithmeticOp.FMUL), true, a, b);
+        AArch64ArithmeticOp intOp = setFlags ? AArch64ArithmeticOp.MULVS : AArch64ArithmeticOp.MUL;
+        return emitBinary(LIRKind.combine(a, b), getOpCode(a, intOp, AArch64ArithmeticOp.FMUL), true, a, b);
     }
 
     @Override

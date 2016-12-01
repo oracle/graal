@@ -1486,7 +1486,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param shiftType any type but ROR.
      * @param imm must be in range 0 to size - 1.
      */
-    protected void adds(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int imm) {
+    public void adds(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int imm) {
         addSubShiftedInstruction(ADDS, dst, src1, src2, shiftType, imm, generalFromSize(size));
     }
 
@@ -1514,7 +1514,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param shiftType any type but ROR.
      * @param imm must be in range 0 to size - 1.
      */
-    protected void subs(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int imm) {
+    public void subs(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int imm) {
         addSubShiftedInstruction(SUBS, dst, src1, src2, shiftType, imm, generalFromSize(size));
     }
 
@@ -1586,7 +1586,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param extendType defines how src2 is extended to the same size as src1.
      * @param shiftAmt must be in range 0 to 4.
      */
-    protected void subs(int size, Register dst, Register src1, Register src2, ExtendType extendType, int shiftAmt) {
+    public void subs(int size, Register dst, Register src1, Register src2, ExtendType extendType, int shiftAmt) {
         assert !dst.equals(sp);
         assert !src1.equals(zr);
         assert !src2.equals(sp);
@@ -1949,7 +1949,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src2 general purpose register. May not be null or the stackpointer.
      * @param src3 general purpose register. May not be null or the stackpointer.
      */
-    protected void smaddl(Register dst, Register src1, Register src2, Register src3) {
+    public void smaddl(Register dst, Register src1, Register src2, Register src3) {
         assert !dst.equals(sp);
         assert !src1.equals(sp);
         assert !src2.equals(sp);

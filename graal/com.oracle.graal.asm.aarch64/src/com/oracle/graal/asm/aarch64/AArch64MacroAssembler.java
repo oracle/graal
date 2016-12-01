@@ -1155,6 +1155,50 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * Sets overflow flag according to result of x * y.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stack-pointer.
+     * @param x general purpose register. May not be null or stackpointer.
+     * @param y general purpose register. May not be null or stackpointer.
+     */
+    public void mulvs(int size, Register dst, Register x, Register y) {
+        try (ScratchRegister sc1 = getScratchRegister();
+                        ScratchRegister sc2 = getScratchRegister()) {
+            switch (size) {
+                case 64: {
+                    Register rscratch1 = sc1.getRegister();
+                    Register rscratch2 = sc2.getRegister();
+                    mul(64, dst, x, y);          // Result bits 0..63
+                    smulh(64, rscratch2, x, y);  // Result bits 64..127
+                    // Top is pure sign ext
+                    subs(64, zr, rscratch2, dst, ShiftType.ASR, 63);
+                    mov(rscratch1, 0x80000000);
+                    // Develop 0 (EQ), or 0x80000000 (NE)
+                    cmov(32, rscratch1, rscratch1, zr, ConditionFlag.NE);
+                    cmp(32, rscratch1, 1);
+                    // 0x80000000 - 1 => VS
+                    break;
+                }
+                case 32: {
+                    Register rscratch1 = sc1.getRegister();
+                    smaddl(rscratch1, x, y, zr);
+                    // Copy the low 32 bits of the result into dst
+                    add(32, dst, rscratch1, 0);
+                    subs(64, zr, rscratch1, rscratch1, ExtendType.SXTW, 0);
+                    // NE => overflow
+                    mov(rscratch1, 0x80000000);
+                    // Develop 0 (EQ), or 0x80000000 (NE)
+                    cmov(32, rscratch1, rscratch1, zr, ConditionFlag.NE);
+                    cmp(32, rscratch1, 1);
+                    // 0x80000000 - 1 => VS
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
      * When patching up Labels we have to know what kind of code to generate.
      */
     public enum PatchLabelKind {
