@@ -127,7 +127,7 @@ abstract class ComputeInExecutor<R> implements Runnable {
             executor.execute(compute);
         }
 
-        private void checkThread() {
+        private synchronized void checkThread() {
             if (runThread == null) {
                 runThread = Thread.currentThread();
             } else {
