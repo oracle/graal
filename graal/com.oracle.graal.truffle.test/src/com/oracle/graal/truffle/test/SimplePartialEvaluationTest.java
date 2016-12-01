@@ -27,7 +27,7 @@ import jdk.vm.ci.code.BailoutException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.code.SourceStackTrace;
+import com.oracle.graal.code.SourceStackTraceBailoutException;
 import com.oracle.graal.replacements.PEGraphDecoder;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
@@ -82,7 +82,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         try {
             assertPartialEvalEquals("constant42", new RootTestNode(fd, "neverPartOfCompilationTest", secondTree));
             Assert.fail("Expected verification error!");
-        } catch (SourceStackTrace t) {
+        } catch (SourceStackTraceBailoutException t) {
             // Expected verification error occurred.
             StackTraceElement[] trace = t.getStackTrace();
             assertStack(trace[0], "com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode", "execute", "NeverPartOfCompilationTestNode.java");

@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.test.ea;
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.code.SourceStackTrace;
+import com.oracle.graal.code.SourceStackTraceBailoutException;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 
 public class PEAAssertionsTest extends GraalCompilerTest {
@@ -48,7 +48,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         field = object; // assert here
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void test2() {
         test("snippet2", 1);
     }
@@ -59,7 +59,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         GraalDirectives.ensureVirtualized(object); // assert here
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void test3() {
         test("snippet3", 1);
     }
@@ -91,7 +91,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         GraalDirectives.ensureVirtualizedHere(object); // assert here
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void testHere3() {
         test("snippetHere3", 1);
     }
@@ -101,7 +101,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         GraalDirectives.ensureVirtualizedHere(object); // assert here
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void testBoxing1() {
         test("snippetBoxing1", 1);
     }
@@ -112,7 +112,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         field = object;
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void testBoxing2() {
         test("snippetBoxing2", 1);
     }
@@ -142,7 +142,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         field = object; // assert here
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void testControlFlow2() {
         test("snippetControlFlow2", true, 1);
     }
@@ -159,7 +159,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         field = object; // assert here
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void testControlFlow3() {
         test("snippetControlFlow3", true, 1);
     }
@@ -174,7 +174,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         GraalDirectives.ensureVirtualized(object); // assert here
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void testControlFlow4() {
         test("snippetControlFlow4", true, 1);
     }
@@ -189,7 +189,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         GraalDirectives.ensureVirtualizedHere(object); // assert here
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void testControlFlow5() {
         test("snippetControlFlow5", true, 1);
     }
@@ -212,7 +212,7 @@ public class PEAAssertionsTest extends GraalCompilerTest {
         }
     }
 
-    @Test(expected = SourceStackTrace.class)
+    @Test(expected = SourceStackTraceBailoutException.class)
     public void testIndirect1() {
         test("snippetIndirect1", true, 1);
     }
