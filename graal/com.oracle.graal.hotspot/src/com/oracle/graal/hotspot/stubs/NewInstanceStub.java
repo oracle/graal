@@ -73,7 +73,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.HotSpotVMConfigNode;
+import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
@@ -145,7 +145,7 @@ public class NewInstanceStub extends SnippetStub {
          */
         int sizeInBytes = loadKlassLayoutHelperIntrinsic(hub);
         Word thread = registerAsWord(threadRegister);
-        boolean inlineContiguousAllocationSupported = HotSpotVMConfigNode.inlineContiguousAllocationSupported();
+        boolean inlineContiguousAllocationSupported = GraalHotSpotVMConfigNode.inlineContiguousAllocationSupported();
         if (!forceSlowPath() && inlineContiguousAllocationSupported) {
             if (isInstanceKlassFullyInitialized(hub)) {
                 Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
@@ -274,8 +274,8 @@ public class NewInstanceStub extends SnippetStub {
      * @return the allocated chunk or {@link Word#zero()} if allocation fails
      */
     public static Word edenAllocate(Word sizeInBytes, boolean log) {
-        final long heapTopRawAddress = HotSpotVMConfigNode.heapTopAddress();
-        final long heapEndRawAddress = HotSpotVMConfigNode.heapEndAddress();
+        final long heapTopRawAddress = GraalHotSpotVMConfigNode.heapTopAddress();
+        final long heapEndRawAddress = GraalHotSpotVMConfigNode.heapEndAddress();
 
         Word heapTopAddress = Word.unsigned(heapTopRawAddress);
         Word heapEndAddress = Word.unsigned(heapEndRawAddress);

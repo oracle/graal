@@ -39,7 +39,7 @@ import com.oracle.graal.hotspot.CompressEncoding;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
-import com.oracle.graal.hotspot.nodes.HotSpotVMConfigNode;
+import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.ValueNode;
@@ -123,7 +123,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
                 }
             } else if (encoding.base != 0 || (GeneratePIC.getValue() && compression.stamp() instanceof KlassPointerStamp)) {
                 if (GeneratePIC.getValue()) {
-                    ValueNode base = compression.graph().unique(new HotSpotVMConfigNode(config, config.MARKID_NARROW_KLASS_BASE_ADDRESS, JavaKind.Long));
+                    ValueNode base = compression.graph().unique(new GraalHotSpotVMConfigNode(config, config.MARKID_NARROW_KLASS_BASE_ADDRESS, JavaKind.Long));
                     addr.setBase(base);
                 } else {
                     long disp = addr.getDisplacement() + encoding.base;

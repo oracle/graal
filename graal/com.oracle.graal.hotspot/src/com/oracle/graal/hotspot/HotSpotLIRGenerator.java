@@ -27,7 +27,7 @@ import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
 import com.oracle.graal.hotspot.nodes.EnterUnpackFramesStackFrameNode;
-import com.oracle.graal.hotspot.nodes.HotSpotVMConfigNode;
+import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
 import com.oracle.graal.hotspot.nodes.LeaveCurrentStackFrameNode;
 import com.oracle.graal.hotspot.nodes.LeaveDeoptimizedStackFrameNode;
 import com.oracle.graal.hotspot.nodes.LeaveUnpackFramesStackFrameNode;
@@ -150,7 +150,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
     }
 
     /**
-     * Emits code for a {@link HotSpotVMConfigNode}.
+     * Emits code for a {@link GraalHotSpotVMConfigNode}.
      *
      * @param markId type of address to load
      * @return value of loaded global in register

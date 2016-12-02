@@ -446,8 +446,8 @@ public class CompilationResult {
      * {@link DataSectionReference data section} or directly to an {@link ConstantReference inlined
      * constant}.
      *
-     * @param codePos The position in the code that needs to be patched.
-     * @param ref The reference that should be inserted in the code.
+     * @param codePos the position in the code that needs to be patched
+     * @param ref the reference that should be inserted in the code
      */
     public void recordDataPatch(int codePos, Reference ref) {
         checkOpen();
@@ -460,9 +460,9 @@ public class CompilationResult {
      * {@link DataSectionReference data section} or directly to an {@link ConstantReference inlined
      * constant}.
      *
-     * @param codePos The position in the code that needs to be patched.
-     * @param ref The reference that should be inserted in the code.
-     * @param note The note attached to data patch for use by post-processing tools
+     * @param codePos the position in the code that needs to be patched
+     * @param ref the reference that should be inserted in the code
+     * @param note a note attached to data patch for use by post-processing tools
      */
     public void recordDataPatchWithNote(int codePos, Reference ref, Object note) {
         assert codePos >= 0 && ref != null;

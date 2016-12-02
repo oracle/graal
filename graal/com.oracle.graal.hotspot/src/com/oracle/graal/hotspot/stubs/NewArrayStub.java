@@ -51,7 +51,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.HotSpotVMConfigNode;
+import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
 import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
 import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
 import com.oracle.graal.hotspot.replacements.NewObjectSnippets;
@@ -116,7 +116,7 @@ public class NewArrayStub extends SnippetStub {
 
         // check that array length is small enough for fast path.
         Word thread = registerAsWord(threadRegister);
-        boolean inlineContiguousAllocationSupported = HotSpotVMConfigNode.inlineContiguousAllocationSupported();
+        boolean inlineContiguousAllocationSupported = GraalHotSpotVMConfigNode.inlineContiguousAllocationSupported();
         if (inlineContiguousAllocationSupported && length >= 0 && length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
             Word memory = refillAllocate(thread, intArrayHub, sizeInBytes, logging());
             if (memory.notEqual(0)) {

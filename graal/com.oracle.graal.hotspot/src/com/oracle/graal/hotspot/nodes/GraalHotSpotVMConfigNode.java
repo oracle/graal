@@ -46,22 +46,28 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Represents HotSpotVMConfig values that may change after compilation.
+ * Represents {@link GraalHotSpotVMConfig} values that may change after compilation.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
-public class HotSpotVMConfigNode extends FloatingNode implements LIRLowerable, Canonicalizable {
-    public static final NodeClass<HotSpotVMConfigNode> TYPE = NodeClass.create(HotSpotVMConfigNode.class);
+public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerable, Canonicalizable {
+    public static final NodeClass<GraalHotSpotVMConfigNode> TYPE = NodeClass.create(GraalHotSpotVMConfigNode.class);
 
     private final GraalHotSpotVMConfig config;
     protected final int markId;
 
-    public HotSpotVMConfigNode(@InjectedNodeParameter GraalHotSpotVMConfig config, int markId, JavaKind kind) {
+    public GraalHotSpotVMConfigNode(@InjectedNodeParameter GraalHotSpotVMConfig config, int markId, JavaKind kind) {
         super(TYPE, StampFactory.forKind(kind));
         this.config = config;
         this.markId = markId;
     }
 
-    public HotSpotVMConfigNode(@InjectedNodeParameter GraalHotSpotVMConfig config, @SuppressWarnings("unused") int markId) {
+    /**
+     * Constructor selected by {@link #loadConfigValue(int, JavaKind)}.
+     *
+     * @param config
+     * @param markId
+     */
+    public GraalHotSpotVMConfigNode(@InjectedNodeParameter GraalHotSpotVMConfig config, int markId) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
         this.config = config;
         this.markId = 0;

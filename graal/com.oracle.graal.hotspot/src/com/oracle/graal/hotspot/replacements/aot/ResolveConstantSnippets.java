@@ -30,7 +30,7 @@ import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.EncodedSymbolNode;
+import com.oracle.graal.hotspot.nodes.aot.EncodedSymbolNode;
 import com.oracle.graal.hotspot.nodes.aot.InitializeKlassNode;
 import com.oracle.graal.hotspot.nodes.aot.InitializeKlassStubCall;
 import com.oracle.graal.hotspot.nodes.aot.LoadConstantIndirectlyNode;

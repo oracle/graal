@@ -35,7 +35,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
-import com.oracle.graal.hotspot.nodes.HotSpotVMConfigNode;
+import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.word.Word;
 
@@ -59,7 +59,7 @@ public class CRC32Substitutions {
 
     @MethodSubstitution
     static int update(int crc, int b) {
-        final long crcTableRawAddress = HotSpotVMConfigNode.crcTableAddress();
+        final long crcTableRawAddress = GraalHotSpotVMConfigNode.crcTableAddress();
 
         int c = ~crc;
         int index = (b ^ c) & 0xFF;
