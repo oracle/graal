@@ -39,7 +39,6 @@ import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.alloc.Trace;
 import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -546,7 +545,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                 }
                 return result;
             }
-            throw new PermanentBailoutException("LinearScan: interval is null");
+            throw new GraalError("LinearScan: interval is null");
         }
 
         AllocatableValue canonicalSpillOpr(TraceInterval interval) {

@@ -38,7 +38,6 @@ import java.util.List;
 
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;
@@ -621,7 +620,7 @@ public class LinearScan {
             }
             return result;
         }
-        throw new PermanentBailoutException("LinearScan: interval is null");
+        throw new GraalError("LinearScan: interval is null");
     }
 
     static AllocatableValue canonicalSpillOpr(Interval interval) {

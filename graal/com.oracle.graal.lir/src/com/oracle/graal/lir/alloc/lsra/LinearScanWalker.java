@@ -857,7 +857,6 @@ class LinearScanWalker extends IntervalWalker {
                         allocator.assignSpillSlot(interval);
                         Debug.dump(Debug.INFO_LOG_LEVEL, allocator.getLIR(), description);
                         allocator.printIntervals(description);
-
                         throw new OutOfRegistersException("LinearScan: no register found", description);
                     }
 
