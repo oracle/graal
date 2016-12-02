@@ -120,7 +120,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
       ],
-      "checkstyle" : "com.oracle.truffle.llvm.nodes",
+      "checkstyle" : "com.oracle.truffle.llvm.nodes.api",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
@@ -146,9 +146,23 @@ suite = {
         "truffle:TRUFFLE_API",
         "com.oracle.truffle.llvm.option"
       ],
-      "checkstyle" : "com.oracle.truffle.llvm.nodes",
+      "checkstyle" : "com.oracle.truffle.llvm.nodes.api",
       "annotationProcessors" : ["SULONG_OPTIONS"],
       "javaCompliance" : "1.8",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+    },
+
+    "com.oracle.truffle.llvm.nodes.api" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+        "com.oracle.truffle.llvm.types"
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.nodes.api",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
@@ -157,49 +171,21 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:TRUFFLE_API",
-        "com.oracle.truffle.llvm.types"
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm.nodes",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-    },
-
-    "com.oracle.truffle.llvm.nodes.impl" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
         "com.oracle.truffle.llvm.context",
       ],
-      "checkstyle" : "com.oracle.truffle.llvm.nodes",
+      "checkstyle" : "com.oracle.truffle.llvm.nodes.api",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
 
-    "com.oracle.truffle.llvm.parser" : {
+    "com.oracle.truffle.llvm.parser.api" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.types",
+        "com.oracle.truffle.llvm.nodes.api",
        ],
-      "checkstyle" : "com.oracle.truffle.llvm",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-    },
-
-    "com.oracle.truffle.llvm.parser.base" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.llvm.parser",
-        "com.oracle.truffle.llvm.nodes",
-        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -212,7 +198,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.parser.factories",
-        "com.oracle.truffle.llvm.parser.bc.impl",
+        "com.oracle.truffle.llvm.parser.bc",
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
@@ -237,7 +223,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.nodes.impl",
+        "com.oracle.truffle.llvm.nodes",
       ],
       "buildDependencies" : [
         "com.oracle.truffle.llvm.asm.amd64.parser",
@@ -267,7 +253,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "graal-core:GRAAL_TRUFFLE_HOTSPOT",
-        "com.oracle.truffle.llvm.parser.base"
+        "com.oracle.truffle.llvm.parser.api"
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
       "javaCompliance" : "1.8",
@@ -276,7 +262,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-    "com.oracle.truffle.llvm.parser.bc.impl" : {
+    "com.oracle.truffle.llvm.parser.bc" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [

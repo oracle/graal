@@ -61,7 +61,7 @@ public class LLVMTruffleAddress implements TruffleObject {
     public ForeignAccess getForeignAccess() {
         if (ACCESS == null) {
             try {
-                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.impl.intrinsics.interop.LLVMAddressMessageResolutionAccessor");
+                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionAccessor");
                 ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
             } catch (Exception e) {
                 throw new AssertionError(e);

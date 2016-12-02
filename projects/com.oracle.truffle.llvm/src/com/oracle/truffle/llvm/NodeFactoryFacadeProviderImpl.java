@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm;
 
-import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.base.facade.NodeFactoryFacadeProvider;
+import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacadeProvider;
 import com.oracle.truffle.llvm.parser.factories.NodeFactoryFacadeImpl;
 
 public class NodeFactoryFacadeProviderImpl implements NodeFactoryFacadeProvider {
