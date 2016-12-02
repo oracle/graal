@@ -35,7 +35,8 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
     public static class Options {
 
         // @formatter:off
-        @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying the process, usually the process id.", type = OptionType.Expert)
+        @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying "+
+        "the process, usually the process id and %t will be replaced by System.currentTimeMillis().", type = OptionType.Expert)
         public static final PrintStreamOption LogFile = new PrintStreamOption();
         // @formatter:on
     }

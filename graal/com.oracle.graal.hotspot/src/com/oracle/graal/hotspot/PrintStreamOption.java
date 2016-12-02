@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 
 import com.oracle.graal.options.OptionValue;
 
@@ -52,13 +53,17 @@ public class PrintStreamOption extends OptionValue<String> {
     private volatile PrintStream ps;
 
     /**
-     * Replace any instance of %p with a an identifying name. Try to get it from the RuntimeMXBean
-     * name.
+     * Replaces any instance of %p with an identifying name such as a process ID extracted from
+     * {@link RuntimeMXBean#getName()} and any instance of %t with the value of
+     * {@link System#currentTimeMillis()}.
      *
      * @return the name of the file to log to
      */
     private String getFilename() {
         String name = getValue();
+        if (name.contains("%t")) {
+            name = name.replaceAll("%t", String.valueOf(System.currentTimeMillis()));
+        }
         if (name.contains("%p")) {
             String runtimeName = ManagementFactory.getRuntimeMXBean().getName();
             try {
