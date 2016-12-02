@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.code;
 
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
+import com.oracle.graal.common.PermanentBailoutException;
 
 /**
  * Represents a bailout exception with a stack trace in terms of the Java source being compiled

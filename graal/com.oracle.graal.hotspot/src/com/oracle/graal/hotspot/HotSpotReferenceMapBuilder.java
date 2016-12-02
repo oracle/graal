@@ -29,8 +29,8 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;

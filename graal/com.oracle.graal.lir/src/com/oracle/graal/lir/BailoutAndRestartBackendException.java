@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir;
 
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;

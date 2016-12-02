@@ -28,8 +28,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.common.RetryableBailoutException;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopFragmentWhole;

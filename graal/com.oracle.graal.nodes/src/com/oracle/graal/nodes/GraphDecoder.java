@@ -38,8 +38,8 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.Fields;
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.compiler.common.util.TypeReader;
 import com.oracle.graal.compiler.common.util.UnsafeArrayTypeReader;
 import com.oracle.graal.debug.Debug;

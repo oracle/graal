@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
+import com.oracle.graal.common.RetryableBailoutException;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.compiler.common.util.CompilationAlarm;
 import com.oracle.graal.graph.Node;

@@ -24,7 +24,7 @@ package com.oracle.graal.phases.common.inlining.policy;
 
 import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
 
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.phases.common.inlining.InliningUtil;

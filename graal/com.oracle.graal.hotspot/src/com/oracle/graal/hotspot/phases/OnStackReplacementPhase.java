@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.cfg.Loop;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.GraalError;

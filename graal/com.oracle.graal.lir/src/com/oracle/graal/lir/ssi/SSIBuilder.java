@@ -30,7 +30,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
 
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.cfg.BlockMap;
 import com.oracle.graal.debug.Debug;

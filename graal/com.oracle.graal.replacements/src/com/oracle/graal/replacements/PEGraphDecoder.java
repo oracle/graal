@@ -36,7 +36,7 @@ import java.util.Map;
 
 import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.BytecodeProvider;
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.cfg.CFGVerifier;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;

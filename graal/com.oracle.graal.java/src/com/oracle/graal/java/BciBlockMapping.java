@@ -93,8 +93,8 @@ import com.oracle.graal.bytecode.BytecodeStream;
 import com.oracle.graal.bytecode.BytecodeSwitch;
 import com.oracle.graal.bytecode.BytecodeTableSwitch;
 import com.oracle.graal.bytecode.Bytecodes;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.CollectionsFactory;
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.debug.Debug;
 
 import jdk.vm.ci.code.BytecodeFrame;

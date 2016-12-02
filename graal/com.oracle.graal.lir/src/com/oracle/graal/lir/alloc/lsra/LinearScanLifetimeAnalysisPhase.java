@@ -38,9 +38,9 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.common.util.BitMap2D;
 import com.oracle.graal.debug.Debug;

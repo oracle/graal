@@ -42,7 +42,7 @@ import java.util.function.Function;
 
 import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;

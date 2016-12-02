@@ -25,7 +25,7 @@ package com.oracle.graal.phases.common;
 import static com.oracle.graal.graph.Graph.NodeEvent.NODE_ADDED;
 import static com.oracle.graal.graph.Graph.NodeEvent.ZERO_USAGES;
 
-import com.oracle.graal.compiler.common.bailout.RetryableBailoutException;
+import com.oracle.graal.common.RetryableBailoutException;
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.Simplifiable;

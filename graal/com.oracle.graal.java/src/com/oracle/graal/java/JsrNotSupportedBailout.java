@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.java;
 
-import com.oracle.graal.compiler.common.bailout.PermanentBailoutException;
+import com.oracle.graal.common.PermanentBailoutException;
 
 public class JsrNotSupportedBailout extends PermanentBailoutException {
 
