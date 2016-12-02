@@ -30,10 +30,6 @@ import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.phases.HighTier;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
@@ -50,23 +46,12 @@ public final class DontReuseArgumentSpaceTest extends GraalCompilerTest {
         }
     }
 
-    @Override
-    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        // Disable all inlining to make our life easier.
-        GraphBuilderConfiguration ret = super.editGraphBuilderConfiguration(conf);
-        ret.getPlugins().prependInlineInvokePlugin(new InlineInvokePlugin() {
-            @Override
-            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
-            }
-        });
-        return ret;
-    }
-
+    @BytecodeParserNeverInline
     public static int killArguments(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j) {
         return a + b + c + d + e + f + g + h + i + j;
     }
 
+    @BytecodeParserNeverInline
     public static int callTwice(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j) {
         /*
          * Call the same method twice so the arguments are in the same place each time and might

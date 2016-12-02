@@ -39,6 +39,7 @@ import com.oracle.graal.compiler.common.util.CompilationAlarm;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.TopLevelDebugConfig;
 import com.oracle.graal.debug.internal.DebugScope;
@@ -87,7 +88,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         this.graalRuntime = graalRuntime;
         // It is sufficient to have one compilation counter object per Graal compiler object.
         this.compilationCounters = Options.CompilationCountLimit.getValue() > 0 ? new CompilationCounters() : null;
-        this.bootstrapWatchDog = graalRuntime.isBootstrapping() ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
+        this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !GraalDebugConfig.Options.BootstrapInitializeOnly.getValue() ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
     }
 
     @Override
@@ -98,6 +99,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     @Override
     @SuppressWarnings("try")
     public CompilationRequestResult compileMethod(CompilationRequest request) {
+        if (graalRuntime.isBootstrapping() && GraalDebugConfig.Options.BootstrapInitializeOnly.getValue()) {
+            return HotSpotCompilationRequestResult.failure(String.format("Skip compilation because %s is enabled", GraalDebugConfig.Options.BootstrapInitializeOnly.getName()), true);
+        }
         if (bootstrapWatchDog != null && graalRuntime.isBootstrapping()) {
             if (bootstrapWatchDog.hitCriticalCompilationRateOrTimeout()) {
                 // Drain the compilation queue to expedite completion of the bootstrap

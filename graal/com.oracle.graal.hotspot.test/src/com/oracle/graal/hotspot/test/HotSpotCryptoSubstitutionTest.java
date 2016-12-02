@@ -22,14 +22,10 @@
  */
 package com.oracle.graal.hotspot.test;
 
-import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
-import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.security.AlgorithmParameters;
 import java.security.SecureRandom;
 
@@ -41,16 +37,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.hotspot.meta.HotSpotGraphBuilderPlugins;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.java.GraphBuilderPhase;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
-import com.oracle.graal.phases.OptimisticOptimizations;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -123,47 +110,24 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
      * @return true if at least one substitution was compiled and installed
      */
     private boolean compileAndInstall(String className, String... methodNames) {
-        boolean atLeastOneCompiled = false;
-        for (String methodName : methodNames) {
-            Method method = lookup(className, methodName);
-            if (method != null) {
-                ResolvedJavaMethod installedCodeOwner = getMetaAccess().lookupJavaMethod(method);
-                StructuredGraph subst = getReplacements().getSubstitution(installedCodeOwner, 0);
-                ResolvedJavaMethod substMethod = subst == null ? null : subst.method();
-                if (substMethod != null) {
-                    CompilationIdentifier compilationId = getBackend().getCompilationIdentifier(substMethod);
-                    StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES, NO_PROFILING_INFO, compilationId);
-                    Plugins plugins = new Plugins(((HotSpotProviders) getProviders()).getGraphBuilderPlugins());
-                    GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
-                    IntrinsicContext initialReplacementContext = new IntrinsicContext(installedCodeOwner, substMethod, getReplacements().getReplacementBytecodeProvider(), ROOT_COMPILATION);
-                    new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getConstantReflection(), getProviders().getConstantFieldProvider(), config,
-                                    OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
-                    Assert.assertNotNull(getCode(installedCodeOwner, graph, true));
-                    atLeastOneCompiled = true;
-                } else {
-                    Assert.assertFalse(runtime().getVMConfig().useAESIntrinsics);
-                }
-            }
+        if (!runtime().getVMConfig().useAESIntrinsics) {
+            return false;
         }
-        return atLeastOneCompiled;
-    }
-
-    private static Method lookup(String className, String methodName) {
         Class<?> c;
         try {
             c = Class.forName(className);
-            for (Method m : c.getDeclaredMethods()) {
-                if (m.getName().equals(methodName)) {
-                    return m;
-                }
-            }
-            // If the expected security provider exists, the specific method should also exist
-            throw new NoSuchMethodError(className + "." + methodName);
         } catch (ClassNotFoundException e) {
             // It's ok to not find the class - a different security provider
             // may have been installed
-            return null;
+            return false;
         }
+        boolean atLeastOneCompiled = false;
+        for (String methodName : methodNames) {
+            if (compileAndInstallSubstitution(c, methodName) != null) {
+                atLeastOneCompiled = true;
+            }
+        }
+        return atLeastOneCompiled;
     }
 
     AlgorithmParameters algorithmParameters;

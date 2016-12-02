@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.test;
 
+import static com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode.CheckAll;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -32,9 +34,8 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
@@ -55,15 +56,13 @@ public class CompiledNullPointerExceptionTest extends GraalCompilerTest {
     }
 
     @Override
+    protected InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+    }
+
+    @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        GraphBuilderConfiguration ret = super.editGraphBuilderConfiguration(conf);
-        ret.getPlugins().prependInlineInvokePlugin(new InlineInvokePlugin() {
-            @Override
-            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
-            }
-        });
-        return ret.withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
+        return super.editGraphBuilderConfiguration(conf).withBytecodeExceptionMode(CheckAll);
     }
 
     @Override
