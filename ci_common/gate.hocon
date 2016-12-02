@@ -85,6 +85,7 @@ gateStyle : ${java8Downloads} {
 
 gateCommon : {
   targets : [gate]
+  logs: ${logPatterns}
 }
 
 gateLinuxAMD64 : ${commonLinux} ${gateCommon} {

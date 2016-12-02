@@ -1,6 +1,7 @@
 # Build targets
 builds = []
 suite-root = "./"
+logPatterns = []
 
 jvm-config.default = "graal-core"
 
