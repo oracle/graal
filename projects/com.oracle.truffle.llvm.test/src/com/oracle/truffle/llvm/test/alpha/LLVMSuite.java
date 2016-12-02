@@ -53,7 +53,7 @@ public final class LLVMSuite extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return collectTestCases(LLVM_CONFIG_DIR, LLVM_SUITE_DIR);
+        return collectTestCases(LLVM_CONFIG_DIR, LLVM_SUITE_DIR, LLVM_SOURCE_DIR);
     }
 
     @Override
@@ -69,5 +69,10 @@ public final class LLVMSuite extends BaseSuiteHarness {
     @AfterClass
     public static void printStatistics() {
         printStatistics("LLVM", LLVM_SOURCE_DIR, LLVM_CONFIG_DIR, f -> true);
+    }
+
+    @Override
+    protected String getTestName() {
+        return testName;
     }
 }

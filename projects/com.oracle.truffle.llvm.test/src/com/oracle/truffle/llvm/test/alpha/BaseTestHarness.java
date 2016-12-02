@@ -29,13 +29,16 @@
  */
 package com.oracle.truffle.llvm.test.alpha;
 
-import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -58,6 +61,8 @@ public abstract class BaseTestHarness {
 
     protected abstract Path getTestDirectory();
 
+    protected abstract String getTestName();
+
     @Test
     public abstract void test() throws Exception;
 
@@ -71,36 +76,72 @@ public abstract class BaseTestHarness {
         return s -> true;
     }
 
-    public static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir) throws AssertionError {
-        Set<Path> whiteList = getWhiteListTestFolders(configPath, suiteDir);
-        Predicate<? super Path> whiteListFilter;
+    public static final Collection<Object[]> collectTestCases(Path configPath, Path suiteDir, Path sourceDir) throws AssertionError {
         String testDiscoveryPath = SulongTestOptions.TEST.testDiscoveryPath();
         if (testDiscoveryPath == null) {
-            whiteListFilter = whiteList::contains;
+            return collectRegularRun(configPath, suiteDir);
         } else {
-            System.err.println(testDiscoveryPath);
-            whiteListFilter = p -> !whiteList.contains(p) && p.startsWith(new File(suiteDir.toString(), testDiscoveryPath).toPath());
+            System.err.println("Running in discovery mode...");
+            return collectDiscoverRun(configPath, suiteDir, sourceDir, testDiscoveryPath);
         }
-        Collection<Object[]> testCases = collectTestCases(suiteDir, whiteListFilter);
-        Set<Path> collectedFiles = testCases.stream().map(a -> (Path) a[0]).collect(Collectors.toSet());
-        Set<Path> missingTestCases = whiteList.stream().filter(p -> !collectedFiles.contains(p)).collect(Collectors.toSet());
-        if (!missingTestCases.isEmpty()) {
-            throw new AssertionError("The following tests are on the white list but not found:\n" + missingTestCases.stream().map(p -> p.toString()).collect(Collectors.joining("\n")));
-        } else {
-            System.err.println(String.format("Collected %d test folders.", testCases.size()));
-        }
-        return testCases;
     }
 
-    public static Collection<Object[]> collectTestCases(Path suiteDir, Predicate<? super Path> whiteListFilter) throws AssertionError {
+    public static final Collection<Object[]> collectRegularRun(Path configPath, Path suiteDir) throws AssertionError {
+        Map<Path, Path> tests = getWhiteListTestFolders(configPath, suiteDir);
+
+        // assert that all files on the whitelist exist
+        List<Path> missingTests = tests.keySet().stream().filter(p -> !tests.get(p).toFile().exists()).collect(Collectors.toList());
+        if (!missingTests.isEmpty()) {
+            throw new AssertionError("The following tests are on the white list but not found:\n" + missingTests.stream().map(p -> p.toString()).collect(Collectors.joining("\n")));
+        } else {
+            System.err.println(String.format("Collected %d test folders.", tests.size()));
+        }
+
+        return tests.keySet().stream().map(f -> new Object[]{tests.get(f), f.toString()}).collect(Collectors.toList());
+    }
+
+    private static Collection<Object[]> collectDiscoverRun(Path configPath, Path suiteDir, Path sourceDir, String testDiscoveryPath) throws AssertionError {
+        // rel --> abs
+        Map<Path, Path> tests = getWhiteListTestFolders(configPath, suiteDir);
+        // abs
+        Set<Path> availableSourceFiles = getFiles(sourceDir);
+        // abs
+        Set<Path> compiledTests = collectTestCases(suiteDir, testDiscoveryPath);
+
+        // abs
+        Set<Path> greyList = compiledTests.stream().filter(t -> !tests.values().contains(t)).collect(Collectors.toSet());
+
+        // rel
+        Set<Path> availableSourceFilesRelative = availableSourceFiles.stream().map(e -> getRelative(sourceDir.getParent().toUri(), e.toUri())).collect(Collectors.toSet());
+
+        List<Object[]> collectedTests = greyList.stream().map(
+                        t -> new Object[]{t, availableSourceFilesRelative.stream().filter(s -> {
+                            return s.toString().startsWith(getRelative(suiteDir.toUri(), t.toUri()).toString());
+                        }).findAny().get().toString()}).collect(
+                                        Collectors.toList());
+        return collectedTests;
+    }
+
+    private static Path getRelative(URI base, URI abs) {
+        return Paths.get(base.relativize(abs).toString());
+    }
+
+    private static Set<Path> collectTestCases(Path suiteDir, String testDiscoveryPath) throws AssertionError {
         try {
-            return Files.walk(suiteDir).filter(isExecutable).map(f -> f.getParent()).filter(whiteListFilter).map(f -> new Object[]{f, f.toString()}).collect(Collectors.toList());
+            return Files.walk(suiteDir).filter(isExecutable).map(f -> f.getParent()).filter(p -> p.startsWith(Paths.get(suiteDir.toString(), testDiscoveryPath))).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
     }
 
-    public static final Set<Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
+    /**
+     * Returns a Map whitelistEntry (relative path) -> testFolder (absolute path).
+     */
+    public static final Map<Path, Path> getWhiteListTestFolders(Path configDir, Path suiteDirectory) {
+        return getWhiteListEntries(configDir).stream().collect(Collectors.toMap(wl -> wl, wl -> Paths.get(suiteDirectory.toString(), removeFileEnding(wl.toString()))));
+    }
+
+    private static Set<Path> getWhiteListEntries(Path configDir) {
         try {
             return Files.walk(configDir).filter(isIncludeFile).flatMap(f -> {
                 try {
@@ -108,7 +149,7 @@ public abstract class BaseTestHarness {
                 } catch (IOException e) {
                     throw new AssertionError("Error creating whitelist.", e);
                 }
-            }).map(s -> new File(suiteDirectory.toString(), removeFileEnding(s)).toPath()).collect(Collectors.toSet());
+            }).map(s -> Paths.get(s)).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Error creating whitelist.", e);
         }
@@ -116,5 +157,17 @@ public abstract class BaseTestHarness {
 
     private static String removeFileEnding(String s) {
         return s.substring(0, s.lastIndexOf('.'));
+    }
+
+    public static Set<Path> getFiles(Path source) {
+        try {
+            return Files.walk(source).filter(f -> supportedFiles.contains(getFileEnding(f.getFileName().toString()))).collect(Collectors.toSet());
+        } catch (IOException e) {
+            throw new AssertionError("Error getting files.", e);
+        }
+    }
+
+    public static String getFileEnding(String s) {
+        return s.substring(s.lastIndexOf('.') + 1);
     }
 }

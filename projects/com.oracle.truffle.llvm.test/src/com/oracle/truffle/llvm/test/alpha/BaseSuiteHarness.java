@@ -33,21 +33,28 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.junit.Assert;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.llvm.LLVM;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.test.options.SulongTestOptions;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
 
 public abstract class BaseSuiteHarness extends BaseTestHarness {
+
+    private static final List<Path> passingTests = new ArrayList<>();
+    private static final List<Path> failingTests = new ArrayList<>();
 
     @Override
     @Test
@@ -64,9 +71,8 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             }
 
             if (!candidate.toAbsolutePath().toFile().exists()) {
-                throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
+                fail(getTestName(), new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist."));
             }
-
             int sulongResult = -1;
             String sulongStdOut;
             try (CaptureOutput out = new CaptureOutput()) {
@@ -76,13 +82,42 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             }
 
             if (sulongResult != (sulongResult & 0xFF)) {
-                Assert.fail("Broken unittest " + getTestDirectory() + ". Test exits with invalid value.");
+                fail(getTestName(), new AssertionError("Broken unittest " + getTestDirectory() + ". Test exits with invalid value."));
             }
             String testName = candidate.getFileName().toString() + " in " + getTestDirectory().toAbsolutePath().toString();
-            Assert.assertEquals(testName + " failed. Posix return value missmatch.", referenceReturnValue,
-                            sulongResult);
-            Assert.assertEquals(testName + " failed. Output (stdout) missmatch.", referenceStdOut,
-                            sulongStdOut);
+            if (referenceReturnValue != sulongResult) {
+                fail(getTestName(), new AssertionError(testName + " failed. Posix return value missmatch. Expected: " + referenceReturnValue + " but was: " + sulongResult));
+            }
+            if (!referenceStdOut.equals(sulongStdOut)) {
+                fail(getTestName(), new AssertionError(testName + " failed. Output (stdout) missmatch. Expected: " + referenceStdOut + " but was: " + sulongStdOut));
+            }
+        }
+        pass(getTestName());
+    }
+
+    protected static void fail(String testName, AssertionError error) {
+        failingTests.add(Paths.get(testName));
+        throw error;
+    }
+
+    protected static void pass(String testName) {
+        passingTests.add(Paths.get(testName));
+    }
+
+    @BeforeClass
+    public static void resetDiscoveryReport() {
+        passingTests.clear();
+        failingTests.clear();
+    }
+
+    @AfterClass
+    public static void reportDiscoveryReport() {
+        String testDiscoveryPath = SulongTestOptions.TEST.testDiscoveryPath();
+        if (testDiscoveryPath != null) {
+            System.out.println("PASSING:");
+            System.out.println(passingTests.stream().map(p -> p.toString()).collect(Collectors.joining("\n")));
+            System.out.println("FAILING:");
+            System.out.println(failingTests.stream().map(p -> p.toString()).collect(Collectors.joining("\n")));
         }
     }
 
@@ -151,18 +186,6 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
         } else {
             System.out.println("   No data available.");
         }
-    }
-
-    private static Set<Path> getFiles(Path source) {
-        try {
-            return Files.walk(source).filter(f -> supportedFiles.contains(getFileEnding(f.getFileName().toString()))).collect(Collectors.toSet());
-        } catch (IOException e) {
-            throw new AssertionError("Error getting files.", e);
-        }
-    }
-
-    private static String getFileEnding(String s) {
-        return s.substring(s.lastIndexOf('.') + 1);
     }
 
     private static Set<Path> getListEntries(Path suiteDirectory, Path configDir, Predicate<? super Path> filter) {

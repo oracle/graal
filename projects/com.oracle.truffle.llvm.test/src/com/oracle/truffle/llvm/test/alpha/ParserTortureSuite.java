@@ -30,13 +30,10 @@
 package com.oracle.truffle.llvm.test.alpha;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.junit.Test;
@@ -62,12 +59,12 @@ public final class ParserTortureSuite {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return collectTestCases(GCC_CONFIG_DIR, GCC_SUITE_DIR);
+        return BaseTestHarness.collectRegularRun(GCC_CONFIG_DIR, GCC_SUITE_DIR);
     }
 
     @Test
     public void test() throws Exception {
-        List<Path> testCandidates = Files.walk(path).filter(isFile).filter(isSulong).collect(Collectors.toList());
+        List<Path> testCandidates = Files.walk(path).filter(BaseTestHarness.isFile).filter(BaseTestHarness.isSulong).collect(Collectors.toList());
         for (Path candidate : testCandidates) {
 
             if (!candidate.toAbsolutePath().toFile().exists()) {
@@ -86,28 +83,4 @@ public final class ParserTortureSuite {
 
     }
 
-    protected static final Predicate<? super Path> isIncludeFile = f -> f.getFileName().toString().endsWith(".include");
-    protected static final Predicate<? super Path> isSulong = f -> f.getFileName().toString().endsWith(".bc");
-    protected static final Predicate<? super Path> isFile = f -> f.toFile().isFile();
-
-    protected static Collection<Object[]> collectTestCases(Path configPath, Path suiteDir) throws AssertionError {
-        Set<Path> whiteList = BaseTestHarness.getWhiteListTestFolders(configPath, suiteDir);
-        Collection<Object[]> testCases = collectTestCases(suiteDir, whiteList::contains);
-        Set<Path> collectedFiles = testCases.stream().map(a -> (Path) a[0]).collect(Collectors.toSet());
-        Set<Path> missingTestCases = whiteList.stream().filter(p -> !collectedFiles.contains(p)).collect(Collectors.toSet());
-        if (!missingTestCases.isEmpty()) {
-            throw new AssertionError("The following tests are on the white list but not found:\n" + missingTestCases.stream().map(p -> p.toString()).collect(Collectors.joining("\n")));
-        } else {
-            System.err.println(String.format("Collected %d test folders.", testCases.size()));
-        }
-        return testCases;
-    }
-
-    private static Collection<Object[]> collectTestCases(Path suiteDir, Predicate<? super Path> whiteListFilter) throws AssertionError {
-        try {
-            return Files.walk(suiteDir).filter(isSulong).map(f -> f.getParent()).filter(whiteListFilter).map(f -> new Object[]{f, f.toString()}).collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new AssertionError("Test cases not found", e);
-        }
-    }
 }

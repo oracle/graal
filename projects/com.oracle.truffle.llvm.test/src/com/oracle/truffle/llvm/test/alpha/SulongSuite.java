@@ -53,7 +53,7 @@ public final class SulongSuite extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return collectTestCases(SULONG_CONFIG_DIR, SULONG_SUITE_DIR);
+        return collectTestCases(SULONG_CONFIG_DIR, SULONG_SUITE_DIR, SULONG_SOURCE_DIR);
     }
 
     @Override
@@ -69,5 +69,10 @@ public final class SulongSuite extends BaseSuiteHarness {
     @AfterClass
     public static void printStatistics() {
         printStatistics("Sulong", SULONG_SOURCE_DIR, SULONG_CONFIG_DIR, f -> true);
+    }
+
+    @Override
+    protected String getTestName() {
+        return testName;
     }
 }
