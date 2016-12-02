@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public class AsmImmediateOperand extends AsmOperand {
     private final String val;
     private final long ival;
@@ -48,6 +50,7 @@ public class AsmImmediateOperand extends AsmOperand {
 
     public String getLabel() {
         if (!isLabel()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("not a label!");
         }
         return val;
@@ -55,6 +58,7 @@ public class AsmImmediateOperand extends AsmOperand {
 
     public long getValue() {
         if (isLabel()) {
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("is a label!");
         }
         return ival;
