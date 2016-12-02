@@ -71,6 +71,7 @@ import com.oracle.graal.nodes.memory.FloatingReadNode;
 import com.oracle.graal.nodes.memory.MemoryCheckpoint;
 import com.oracle.graal.nodes.memory.MemoryNode;
 import com.oracle.graal.nodes.memory.MemoryPhiNode;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.Phase;
 
 public final class SchedulePhase extends Phase {
@@ -86,12 +87,12 @@ public final class SchedulePhase extends Phase {
 
     private final boolean immutableGraph;
 
-    public SchedulePhase() {
-        this(false);
+    public SchedulePhase(OptionValues options) {
+        this(false, options);
     }
 
-    public SchedulePhase(boolean immutableGraph) {
-        this(OptScheduleOutOfLoops.getValue() ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST, immutableGraph);
+    public SchedulePhase(boolean immutableGraph, OptionValues options) {
+        this(OptScheduleOutOfLoops.getValue(options) ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST, immutableGraph);
     }
 
     public SchedulePhase(SchedulingStrategy strategy) {

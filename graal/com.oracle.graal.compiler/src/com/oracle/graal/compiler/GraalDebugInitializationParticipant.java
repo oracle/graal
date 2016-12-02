@@ -39,7 +39,8 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
 public class GraalDebugInitializationParticipant implements DebugInitializationParticipant {
 
     @Override
-    public void apply(Params params, OptionValues options) {
+    public void apply(Params params) {
+        OptionValues options = OptionValues.GLOBAL;
         if (GraalDebugConfig.areDebugScopePatternsEnabled(options)) {
             params.enable = true;
         }
@@ -102,7 +103,6 @@ public class GraalDebugInitializationParticipant implements DebugInitializationP
 
         if (!intercepted) {
             TTY.println("WARNING: Ignoring GlobalMetricsInterceptedByMethodMetrics as the supplied argument does not contain Timers/Counters/MemUseTrackers.");
-            GraalDebugConfig.Options.GlobalMetricsInterceptedByMethodMetrics.setValue(options, null);
         }
     }
 }

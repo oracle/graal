@@ -29,6 +29,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.read
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionOop;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionPc;
+import static com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions.LoadExceptionObjectInVM;
 import static com.oracle.graal.nodes.PiNode.piCast;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
@@ -63,11 +64,6 @@ import jdk.vm.ci.code.TargetDescription;
  */
 public class LoadExceptionObjectSnippets implements Snippets {
 
-    /**
-     * Alternative way to implement exception object loading.
-     */
-    private static final boolean USE_C_RUNTIME = HotspotSnippetsOptions.LoadExceptionObjectInVM.getValue();
-
     @Snippet
     public static Object loadException(@ConstantParameter Register threadRegister) {
         Word thread = registerAsWord(threadRegister);
@@ -86,8 +82,8 @@ public class LoadExceptionObjectSnippets implements Snippets {
         }
 
         public void lower(LoadExceptionObjectNode loadExceptionObject, HotSpotRegistersProvider registers, LoweringTool tool) {
-            if (USE_C_RUNTIME) {
-                StructuredGraph graph = loadExceptionObject.graph();
+            StructuredGraph graph = loadExceptionObject.graph();
+            if (LoadExceptionObjectInVM.getValue(graph.getOptions())) {
                 ReadRegisterNode thread = graph.add(new ReadRegisterNode(registers.getThreadRegister(), true, false));
                 graph.addBeforeFixed(loadExceptionObject, thread);
                 ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(providers.getForeignCalls(), LOAD_AND_CLEAR_EXCEPTION, thread));

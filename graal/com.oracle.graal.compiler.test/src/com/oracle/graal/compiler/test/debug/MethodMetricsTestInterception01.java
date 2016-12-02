@@ -41,6 +41,7 @@ import com.oracle.graal.debug.internal.CounterImpl;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
 import com.oracle.graal.debug.internal.TimerImpl;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.Phase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -57,13 +58,14 @@ public class MethodMetricsTestInterception01 extends MethodMetricsTest {
     DebugConfig getConfig() {
         List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
+        OptionValues options = OptionValues.GLOBAL;
         GraalDebugConfig debugConfig = new GraalDebugConfig(
-                        GraalDebugConfig.Options.Log.getValue(),
+                        GraalDebugConfig.Options.Log.getValue(options),
                         "CountingAddPhase",
-                        GraalDebugConfig.Options.TrackMemUse.getValue(),
+                        GraalDebugConfig.Options.TrackMemUse.getValue(options),
                         "CountingAddPhase",
-                        GraalDebugConfig.Options.Dump.getValue(),
-                        GraalDebugConfig.Options.Verify.getValue(),
+                        GraalDebugConfig.Options.Dump.getValue(options),
+                        GraalDebugConfig.Options.Verify.getValue(options),
                         "MethodMetricsTest$TestApplication.*",
                         "CountingAddPhase",
                         System.out, dumpHandlers, verifyHandlers);

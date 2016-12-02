@@ -25,6 +25,7 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.compiler.common.GraalOptions.SnippetCounters;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.lang.reflect.Field;
@@ -108,7 +109,7 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
      * @return a copy of privateLocations with any needed locations added
      */
     public static LocationIdentity[] addSnippetCounters(LocationIdentity[] privateLocations) {
-        if (SnippetCounters.getValue()) {
+        if (SnippetCounters.getValue(GLOBAL)) {
             for (LocationIdentity location : privateLocations) {
                 if (location.equals(SNIPPET_COUNTER_LOCATION)) {
                     return privateLocations;

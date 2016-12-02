@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
 import static com.oracle.graal.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.getOptions;
 import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
 
 import java.nio.file.FileSystems;
@@ -74,6 +75,7 @@ import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.TruffleCallBoundary;
 import com.oracle.graal.truffle.TruffleCompiler;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionInterface;
 import com.oracle.graal.truffle.hotspot.nfi.RawNativeCallNodeFactory;
 import com.oracle.nfi.api.NativeFunctionInterface;
@@ -322,7 +324,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
-        if (TraceTruffleTransferToInterpreter.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleTransferToInterpreter)) {
             TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, getVMConfig());
         }
     }
@@ -424,7 +426,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         }
 
         private static void logTransferToInterpreter(final HotSpotTruffleRuntime runtime) {
-            final int limit = TraceTruffleStackTraceLimit.getValue();
+            final int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit);
 
             runtime.log("[truffle] transferToInterpreter at");
             runtime.iterateFrames(new FrameInstanceVisitor<Object>() {

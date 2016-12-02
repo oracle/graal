@@ -55,17 +55,16 @@ public class CoreCompilerConfiguration implements CompilerConfiguration {
 
     @Override
     public LIRPhaseSuite<PreAllocationOptimizationContext> createPreAllocationOptimizationStage(OptionValues options) {
-        return new PreAllocationOptimizationStage();
+        return new PreAllocationOptimizationStage(options);
     }
 
     @Override
     public LIRPhaseSuite<AllocationContext> createAllocationStage(OptionValues options) {
-        return new AllocationStage();
+        return new AllocationStage(options);
     }
 
     @Override
     public LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage(OptionValues options) {
-        return new PostAllocationOptimizationStage();
+        return new PostAllocationOptimizationStage(options);
     }
-
 }

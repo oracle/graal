@@ -22,17 +22,19 @@
  */
 package com.oracle.graal.hotspot.amd64.test;
 
+import static com.oracle.graal.compiler.common.GraalOptions.OptImplicitNullChecks;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.hotspot.nodes.CompressionNode;
 import com.oracle.graal.hotspot.test.HotSpotGraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.IsNullNode;
-import com.oracle.graal.options.OptionValues.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -56,16 +58,15 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         Container c = new Container();
         c.i = i;
 
-        try (OverrideScope s = overrideOptions(GraalOptions.OptImplicitNullChecks, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("testSnippet");
-            Result expect = executeExpected(method, null, c);
+        ResolvedJavaMethod method = getResolvedJavaMethod("testSnippet");
+        Result expect = executeExpected(method, null, c);
 
-            // make sure we don't get a profile that removes the implicit null check
-            method.reprofile();
+        // make sure we don't get a profile that removes the implicit null check
+        method.reprofile();
 
-            Result actual = executeActual(method, null, c);
-            assertEquals(expect, actual);
-        }
+        OptionValues options = new OptionValues(GLOBAL, OptImplicitNullChecks, true);
+        Result actual = executeActual(options, method, null, c);
+        assertEquals(expect, actual);
     }
 
     @SuppressWarnings("try")
@@ -75,9 +76,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         Container c = new Container();
         c.i = i;
 
-        try (OverrideScope s = overrideOptions(GraalOptions.OptImplicitNullChecks, false)) {
-            test("testSnippet", c);
-        }
+        test(new OptionValues(GLOBAL, OptImplicitNullChecks, false), "testSnippet", c);
     }
 
     @Test

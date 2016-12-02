@@ -27,7 +27,7 @@ package com.oracle.graal.options;
  * option}.
  * <p>
  * <li>If the option is present on the command line the specified value is used.
- * <li>Otherwise {@link #getValue()} depends on the {@link #masterOption} and evaluates as follows:
+ * <li>Otherwise {@link #getValue} depends on the {@link #masterOption} and evaluates as follows:
  * <ul>
  * <li>If {@link #masterOption} is set, this value equals to {@link #initialValue}.
  * <li>Otherwise, if {@link #masterOption} is {@code false}, this option is {@code false}.
@@ -47,10 +47,10 @@ public class NestedBooleanOptionKey extends OptionKey<Boolean> {
     }
 
     @Override
-    public Boolean getValue(OptionValues values) {
-        Boolean v = super.getValue(values);
+    public Boolean getValue(OptionValues options) {
+        Boolean v = super.getValue(options);
         if (v == null) {
-            return initialValue && masterOption.getValue(values);
+            return initialValue && masterOption.getValue(options);
         }
         return v;
     }

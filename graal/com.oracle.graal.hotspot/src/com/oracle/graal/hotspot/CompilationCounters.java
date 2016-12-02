@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotGraalCompiler.fmt;
 import static com.oracle.graal.hotspot.HotSpotGraalCompiler.str;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -35,6 +36,7 @@ import java.util.TreeSet;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.options.StableOptionKey;
 
@@ -68,16 +70,17 @@ class CompilationCounters {
         Integer val = counters.get(method);
         val = val != null ? val + 1 : 1;
         counters.put(method, val);
-        if (val > Options.CompilationCountLimit.getValue()) {
+        OptionValues options = GLOBAL;
+        if (val > Options.CompilationCountLimit.getValue(options)) {
             TTY.printf("Error. Method %s was compiled too many times. Number of compilations: %d\n", fmt(method),
-                            CompilationCounters.Options.CompilationCountLimit.getValue());
+                            CompilationCounters.Options.CompilationCountLimit.getValue(options));
             TTY.println("==================================== High compilation counters ====================================");
             SortedSet<Map.Entry<ResolvedJavaMethod, Integer>> sortedCounters = new TreeSet<>(new CounterComparator());
             for (Map.Entry<ResolvedJavaMethod, Integer> e : counters.entrySet()) {
                 sortedCounters.add(e);
             }
             for (Map.Entry<ResolvedJavaMethod, Integer> entry : sortedCounters) {
-                if (entry.getValue() >= Options.CompilationCountLimit.getValue() / 2) {
+                if (entry.getValue() >= Options.CompilationCountLimit.getValue(options) / 2) {
                     TTY.out.printf("%d\t%s%n", entry.getValue(), str(entry.getKey()));
                 }
             }

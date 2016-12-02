@@ -141,6 +141,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.replacements.DefaultJavaLoweringProvider;
 import com.oracle.graal.replacements.nodes.AssertionNode;
 
@@ -415,7 +416,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             JavaType[] signature = callTarget.targetMethod().getSignature().toParameterTypes(callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
             LoweredCallTargetNode loweredCallTarget = null;
-            if (InlineVTableStubs.getValue() && callTarget.invokeKind().isIndirect() && (AlwaysInlineVTableStubs.getValue() || invoke.isPolymorphic())) {
+            OptionValues options = graph.getOptions();
+            if (InlineVTableStubs.getValue(options) && callTarget.invokeKind().isIndirect() && (AlwaysInlineVTableStubs.getValue(options) || invoke.isPolymorphic())) {
                 HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                 ResolvedJavaType receiverType = invoke.getReceiverType();
                 if (hsMethod.isInVirtualMethodTable(receiverType)) {
@@ -595,7 +597,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     private void lowerBytecodeExceptionNode(BytecodeExceptionNode node) {
-        if (OmitHotExceptionStacktrace.getValue()) {
+        if (OmitHotExceptionStacktrace.getValue(node.getOptions())) {
             if (throwCachedException(node)) {
                 return;
             }

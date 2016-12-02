@@ -44,6 +44,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FREQUENT_PRO
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 
@@ -97,7 +98,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class WriteBarrierSnippets implements Snippets {
 
-    private static final SnippetCounter.Group countersWriteBarriers = SnippetCounters.getValue() ? new SnippetCounter.Group("WriteBarriers") : null;
+    private static final SnippetCounter.Group countersWriteBarriers = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("WriteBarriers") : null;
     private static final SnippetCounter serialWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialWriteBarrier", "Number of Serial Write Barriers");
     private static final SnippetCounter g1AttemptedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPreWriteBarrier", "Number of attempted G1 Pre Write Barriers");
     private static final SnippetCounter g1EffectivePreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectivePreWriteBarrier", "Number of effective G1 Pre Write Barriers");
@@ -437,7 +438,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.addConst("doLoad", writeBarrierPre.doLoad());
             args.addConst("nullCheck", writeBarrierPre.getNullCheck());
             args.addConst("threadRegister", registers.getThreadRegister());
-            args.addConst("trace", traceBarrier());
+            args.addConst("trace", traceBarrier(writeBarrierPre.graph()));
             template(args).instantiate(providers.getMetaAccess(), writeBarrierPre, DEFAULT_REPLACER, args);
         }
 
@@ -461,7 +462,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.addConst("doLoad", readBarrier.doLoad());
             args.addConst("nullCheck", false);
             args.addConst("threadRegister", registers.getThreadRegister());
-            args.addConst("trace", traceBarrier());
+            args.addConst("trace", traceBarrier(readBarrier.graph()));
             template(args).instantiate(providers.getMetaAccess(), readBarrier, DEFAULT_REPLACER, args);
         }
 
@@ -490,7 +491,7 @@ public class WriteBarrierSnippets implements Snippets {
 
             args.addConst("usePrecise", writeBarrierPost.usePrecise());
             args.addConst("threadRegister", registers.getThreadRegister());
-            args.addConst("trace", traceBarrier());
+            args.addConst("trace", traceBarrier(writeBarrierPost.graph()));
             template(args).instantiate(providers.getMetaAccess(), writeBarrierPost, DEFAULT_REPLACER, args);
         }
 
@@ -534,9 +535,9 @@ public class WriteBarrierSnippets implements Snippets {
         }
     }
 
-    public static boolean traceBarrier() {
-        return GraalOptions.GCDebugStartCycle.getValue() > 0 &&
-                        ((int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress(INJECTED_VMCONFIG)).readLong(0) > GraalOptions.GCDebugStartCycle.getValue());
+    public static boolean traceBarrier(StructuredGraph graph) {
+        return GraalOptions.GCDebugStartCycle.getValue(graph.getOptions()) > 0 &&
+                        ((int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress(INJECTED_VMCONFIG)).readLong(0) > GraalOptions.GCDebugStartCycle.getValue(graph.getOptions()));
     }
 
     /**

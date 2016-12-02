@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.debug;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -50,7 +52,7 @@ public class Fingerprint implements AutoCloseable {
     /**
      * Determines whether fingerprinting is enabled.
      */
-    public static final boolean ENABLED = Options.UseFingerprinting.getValue();
+    public static final boolean ENABLED = Options.UseFingerprinting.getValue(GLOBAL);
 
     private static final ThreadLocal<Fingerprint> current = ENABLED ? new ThreadLocal<>() : null;
 
@@ -112,7 +114,7 @@ public class Fingerprint implements AutoCloseable {
         }
     }
 
-    private static final int BREAKPOINT_EVENT = Options.FingerprintingBreakpointEvent.getValue();
+    private static final int BREAKPOINT_EVENT = Options.FingerprintingBreakpointEvent.getValue(GLOBAL);
 
     /**
      * Submits an execution event for the purpose of recording or verifying a fingerprint. This must
@@ -136,7 +138,7 @@ public class Fingerprint implements AutoCloseable {
         return index == -1 ? events.size() : index;
     }
 
-    private static final int MAX_EVENT_TAIL_IN_ERROR_MESSAGE = Options.FingerprintErrorEventTailLength.getValue();
+    private static final int MAX_EVENT_TAIL_IN_ERROR_MESSAGE = Options.FingerprintErrorEventTailLength.getValue(GLOBAL);
 
     private String tail() {
         int start = Math.max(index - MAX_EVENT_TAIL_IN_ERROR_MESSAGE, 0);

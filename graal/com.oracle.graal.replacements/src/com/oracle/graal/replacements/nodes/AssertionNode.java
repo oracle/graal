@@ -84,7 +84,7 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
     @Override
     public void lower(LoweringTool tool) {
         if (!compileTimeAssertion) {
-            if (GraalOptions.ImmutableCode.getValue(graph().getOptions())) {
+            if (GraalOptions.ImmutableCode.getValue(getOptions())) {
                 // Snippet assertions are disabled for AOT
                 graph().removeFixed(this);
             } else {
@@ -96,7 +96,7 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         assert compileTimeAssertion;
-        if (GraalOptions.ImmutableCode.getValue(graph().getOptions())) {
+        if (GraalOptions.ImmutableCode.getValue(getOptions())) {
             // Snippet assertions are disabled for AOT
             return;
         }

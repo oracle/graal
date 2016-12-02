@@ -105,7 +105,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         appendPhase(canonicalizer);
 
         if (PartialEscapeAnalysis.getValue(options)) {
-            appendPhase(new PartialEscapePhase(true, canonicalizer));
+            appendPhase(new PartialEscapePhase(true, canonicalizer, options));
         }
         appendPhase(new RemoveValueProxyPhase());
 

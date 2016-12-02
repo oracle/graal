@@ -35,6 +35,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.decipher;
 import static com.oracle.graal.hotspot.stubs.StubUtil.fatal;
 import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.Fold.InjectedParameter;
@@ -137,7 +138,7 @@ public class ExceptionHandlerStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return StubOptions.TraceExceptionHandlerStub.getValue();
+        return StubOptions.TraceExceptionHandlerStub.getValue(GLOBAL);
     }
 
     /**

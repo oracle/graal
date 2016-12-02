@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
 import static com.oracle.graal.debug.GraalDebugConfig.areScopedGlobalMetricsEnabled;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.Verify;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
@@ -99,14 +101,15 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     @SuppressWarnings("try")
     HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory) {
 
-        OptionValues options = OptionValues.GLOBAL;
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
         config = new GraalHotSpotVMConfig(store);
-        CompileTheWorldOptions.overrideWithNativeOptions(config);
 
+        OptionValues options;
         // Only set HotSpotPrintInlining if it still has its default value (false).
-        if (GraalOptions.HotSpotPrintInlining.getValue(options) == false && config.printInlining) {
-            GraalOptions.HotSpotPrintInlining.setValue(options, config.printInlining);
+        if (GraalOptions.HotSpotPrintInlining.getValue(GLOBAL) == false && config.printInlining) {
+            options = new OptionValues(GLOBAL, HotSpotPrintInlining, true);
+        } else {
+            options = GLOBAL;
         }
 
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();

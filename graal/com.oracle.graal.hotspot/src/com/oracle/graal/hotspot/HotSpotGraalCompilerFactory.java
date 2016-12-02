@@ -189,13 +189,13 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
                     allOptionsSettings.putAll(optionSettings);
                 }
 
-                if (Options.GraalCompileOnly.getValue() != null) {
-                    graalCompileOnlyFilter = MethodFilter.parse(Options.GraalCompileOnly.getValue());
+                if (Options.GraalCompileOnly.getValue(GLOBAL) != null) {
+                    graalCompileOnlyFilter = MethodFilter.parse(Options.GraalCompileOnly.getValue(GLOBAL));
                     if (graalCompileOnlyFilter.length == 0) {
                         graalCompileOnlyFilter = null;
                     }
                 }
-                if (graalCompileOnlyFilter != null || !Options.UseTrivialPrefixes.getValue()) {
+                if (graalCompileOnlyFilter != null || !Options.UseTrivialPrefixes.getValue(GLOBAL)) {
                     /*
                      * Exercise this code path early to encourage loading now. This doesn't solve
                      * problem of deadlock during class loading but seems to eliminate it in
@@ -248,8 +248,8 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
 
     @Override
     public String[] getTrivialPrefixes() {
-        if (Options.UseTrivialPrefixes.getValue()) {
-            if (Options.CompileGraalWithC1Only.getValue()) {
+        if (Options.UseTrivialPrefixes.getValue(GLOBAL)) {
+            if (Options.CompileGraalWithC1Only.getValue(GLOBAL)) {
                 return new String[]{"jdk/vm/ci", "com/oracle/graal"};
             }
         }

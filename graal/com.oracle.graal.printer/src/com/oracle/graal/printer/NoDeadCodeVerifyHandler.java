@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.printer;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,8 +33,9 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
 
 /**
@@ -62,7 +65,8 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
 
     @Override
     public void verify(Object object, String message) {
-        if (Options.NDCV.getValue() != OFF && object instanceof StructuredGraph) {
+        OptionValues options = GLOBAL;
+        if (Options.NDCV.getValue(options) != OFF && object instanceof StructuredGraph) {
             StructuredGraph graph = (StructuredGraph) object;
             List<Node> before = graph.getNodes().snapshot();
             new DeadCodeEliminationPhase().run(graph);
@@ -73,12 +77,12 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
                     before.removeAll(after);
                     String prefix = message == null ? "" : message + ": ";
                     GraalError error = new GraalError("%sfound dead nodes in %s: %s", prefix, graph, before);
-                    if (Options.NDCV.getValue() == INFO) {
+                    if (Options.NDCV.getValue(options) == INFO) {
                         System.out.println(error.getMessage());
-                    } else if (Options.NDCV.getValue() == VERBOSE) {
+                    } else if (Options.NDCV.getValue(options) == VERBOSE) {
                         error.printStackTrace(System.out);
                     } else {
-                        assert Options.NDCV.getValue() == FATAL;
+                        assert Options.NDCV.getValue(options) == FATAL;
                         throw error;
                     }
                 }

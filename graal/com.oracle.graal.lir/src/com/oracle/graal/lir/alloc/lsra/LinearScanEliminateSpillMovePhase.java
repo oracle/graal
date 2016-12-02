@@ -98,7 +98,7 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
              */
             Interval interval;
             interval = allocator.createUnhandledLists(mustStoreAtDefinition, null).first;
-            if (DetailedAsserts.getValue()) {
+            if (DetailedAsserts.getValue(allocator.getOptions())) {
                 checkIntervals(interval);
             }
 
@@ -120,7 +120,7 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
                              * be correct. Only moves that have been inserted by LinearScan can be
                              * removed.
                              */
-                            if (Options.LIROptLSRAEliminateSpillMoves.getValue() && canEliminateSpillMove(block, move)) {
+                            if (Options.LIROptLSRAEliminateSpillMoves.getValue(allocator.getOptions()) && canEliminateSpillMove(block, move)) {
                                 /*
                                  * Move target is a stack slot that is always correct, so eliminate
                                  * instruction.

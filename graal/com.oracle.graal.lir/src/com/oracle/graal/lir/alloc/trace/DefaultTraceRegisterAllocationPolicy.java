@@ -37,6 +37,7 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.options.EnumOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.StableOptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -137,12 +138,12 @@ public final class DefaultTraceRegisterAllocationPolicy {
     }
 
     public static TraceRegisterAllocationPolicy allocationPolicy(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig, AllocatableValue[] cachedStackSlots, TraceBuilderResult resultTraces, boolean neverSpillConstant) {
+                    RegisterAllocationConfig registerAllocationConfig, AllocatableValue[] cachedStackSlots, TraceBuilderResult resultTraces, boolean neverSpillConstant, OptionValues options) {
         TraceRegisterAllocationPolicy plan = new TraceRegisterAllocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots, resultTraces, neverSpillConstant);
-        if (Options.TraceRAtrivialBlockAllocator.getValue()) {
+        if (Options.TraceRAtrivialBlockAllocator.getValue(options)) {
             plan.appendStrategy(new TrivialTraceStrategy(plan));
         }
-        switch (Options.TraceRAPolicy.getValue()) {
+        switch (Options.TraceRAPolicy.getValue(options)) {
             case Default:
             case LinearScanOnly:
                 plan.appendStrategy(new TraceLinearScanStrategy(plan));

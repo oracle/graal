@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotGraalCompiler.fmt;
 import static com.oracle.graal.hotspot.HotSpotGraalCompilerFactory.GRAAL_OPTION_PROPERTY_PREFIX;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,8 +33,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionType;
 
 import jdk.vm.ci.code.CompilationRequest;
 
@@ -115,13 +116,13 @@ final class BootstrapWatchDog extends Thread {
     /**
      * Time in seconds before stopping a bootstrap.
      */
-    private static final int TIMEOUT = (int) (Options.BootstrapTimeout.getValue() * 60);
+    private static final int TIMEOUT = (int) (Options.BootstrapTimeout.getValue(GLOBAL) * 60);
 
     /**
      * The watch dog {@link #hitCriticalCompilationRateOrTimeout() hits} a critical compilation rate
      * if the current compilation rate falls below this ratio of the maximum compilation rate.
      */
-    private static final double MAX_RATE_DECREASE = Options.BootstrapWatchDogCriticalRateRatio.getValue();
+    private static final double MAX_RATE_DECREASE = Options.BootstrapWatchDogCriticalRateRatio.getValue(GLOBAL);
 
     @Override
     public void run() {

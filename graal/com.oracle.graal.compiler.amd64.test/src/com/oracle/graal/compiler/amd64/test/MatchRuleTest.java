@@ -35,6 +35,7 @@ import com.oracle.graal.lir.jtt.LIRTest;
 import com.oracle.graal.lir.phases.LIRPhase;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
@@ -56,8 +57,8 @@ public class MatchRuleTest extends LIRTest {
     }
 
     @Override
-    protected LIRSuites createLIRSuites() {
-        LIRSuites suites = super.createLIRSuites();
+    protected LIRSuites createLIRSuites(OptionValues options) {
+        LIRSuites suites = super.createLIRSuites(options);
         suites.getPreAllocationOptimizationStage().appendPhase(new CheckPhase());
         return suites;
     }

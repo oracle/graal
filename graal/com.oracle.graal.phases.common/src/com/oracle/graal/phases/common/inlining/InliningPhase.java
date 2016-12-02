@@ -93,7 +93,7 @@ public class InliningPhase extends AbstractInliningPhase {
 
         int count = 0;
         assert data.repOK();
-        int limit = Options.MethodInlineBailoutLimit.getValue();
+        int limit = Options.MethodInlineBailoutLimit.getValue(graph.getOptions());
         while (data.hasUnprocessedGraphs()) {
             boolean wasInlined = data.moveForward();
             assert data.repOK();

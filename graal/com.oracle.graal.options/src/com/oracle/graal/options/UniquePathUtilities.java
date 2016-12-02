@@ -60,21 +60,21 @@ public class UniquePathUtilities {
     }
 
     /**
-     * Generate a {@link Path} using the format "%s-%d_%d%s" with the {@link OptionKey#getValue()
-     * base filename}, a {@link #globalTimeStamp global timestamp}, {@link #getThreadDumpId a per
+     * Generates a {@link Path} using the format "%s-%d_%d%s" with the {@link OptionKey#getValue
+     * base filename}, a {@link #globalTimeStamp global timestamp} , {@link #getThreadDumpId a per
      * thread unique id} and an optional {@code extension}.
      *
      * @return the output file path or null if the flag is null
      */
-    public static Path getPath(OptionKey<String> option, OptionKey<String> defaultDirectory, String extension) {
-        if (option.getValue() == null) {
+    public static Path getPath(OptionValues options, OptionKey<String> option, OptionKey<String> defaultDirectory, String extension) {
+        if (option.getValue(options) == null) {
             return null;
         }
-        String name = String.format("%s-%d_%d%s", option.getValue(), getGlobalTimeStamp(), getThreadDumpId(), formatExtension(extension));
+        String name = String.format("%s-%d_%d%s", option.getValue(options), getGlobalTimeStamp(), getThreadDumpId(), formatExtension(extension));
         Path result = Paths.get(name);
         if (result.isAbsolute() || defaultDirectory == null) {
             return result;
         }
-        return Paths.get(defaultDirectory.getValue(), name);
+        return Paths.get(defaultDirectory.getValue(options), name);
     }
 }

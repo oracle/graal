@@ -31,6 +31,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.regi
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeRegisterAsWord;
 import static com.oracle.graal.hotspot.stubs.UncommonTrapStub.STACK_BANG_LOCATION;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.Fold.InjectedParameter;
@@ -100,7 +101,7 @@ public class DeoptimizationStub extends SnippetStub {
     public DeoptimizationStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(DeoptimizationStub.class, "deoptimizationHandler", providers, linkage);
         this.target = target;
-        assert PreferGraalStubs.getValue();
+        assert PreferGraalStubs.getValue(GLOBAL);
     }
 
     @Override

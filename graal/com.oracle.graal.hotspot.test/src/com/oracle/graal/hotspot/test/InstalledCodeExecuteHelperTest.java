@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
@@ -75,8 +76,8 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        StructuredGraph graph = super.parseEager(m, allowAssumptions);
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, OptionValues options) {
+        StructuredGraph graph = super.parseEager(m, allowAssumptions, options);
         if (argsToBind != null) {
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);

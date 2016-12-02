@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
@@ -122,7 +123,7 @@ public class HotSpotGraphBuilderPlugins {
         plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
 
         plugins.appendInlineInvokePlugin(replacements);
-        if (InlineDuringParsing.getValue()) {
+        if (InlineDuringParsing.getValue(GLOBAL)) {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
         plugins.appendInlineInvokePlugin(new InlineGraalDirectivesPlugin());

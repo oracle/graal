@@ -42,6 +42,7 @@ import com.oracle.graal.lir.phases.AllocationPhase;
 import com.oracle.graal.options.EnumOptionKey;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -90,9 +91,10 @@ public class TraceBuilderPhase extends AllocationPhase {
     private static TraceBuilderResult getTraceBuilderResult(LIR lir, AbstractBlockBase<?> startBlock, AbstractBlockBase<?>[] linearScanOrder) {
         TraceBuilderResult.TrivialTracePredicate pred = getTrivialTracePredicate(lir);
 
-        TraceBuilder selectedTraceBuilder = Options.TraceBuilding.getValue();
+        OptionValues options = lir.getOptions();
+        TraceBuilder selectedTraceBuilder = Options.TraceBuilding.getValue(options);
         Debug.log(TRACE_LOG_LEVEL, "Building Traces using %s", selectedTraceBuilder);
-        switch (Options.TraceBuilding.getValue()) {
+        switch (Options.TraceBuilding.getValue(options)) {
             case SingleBlock:
                 return SingleBlockTraceBuilder.computeTraces(startBlock, linearScanOrder, pred);
             case BiDirectional:
@@ -100,11 +102,11 @@ public class TraceBuilderPhase extends AllocationPhase {
             case UniDirectional:
                 return UniDirectionalTraceBuilder.computeTraces(startBlock, linearScanOrder, pred);
         }
-        throw GraalError.shouldNotReachHere("Unknown trace building algorithm: " + Options.TraceBuilding.getValue());
+        throw GraalError.shouldNotReachHere("Unknown trace building algorithm: " + Options.TraceBuilding.getValue(options));
     }
 
     public static TraceBuilderResult.TrivialTracePredicate getTrivialTracePredicate(LIR lir) {
-        if (!Options.TraceRAScheduleTrivialTracesEarly.getValue()) {
+        if (!Options.TraceRAScheduleTrivialTracesEarly.getValue(lir.getOptions())) {
             return null;
         }
         return new TrivialTracePredicate() {

@@ -95,6 +95,7 @@ import com.oracle.graal.bytecode.BytecodeTableSwitch;
 import com.oracle.graal.bytecode.Bytecodes;
 import com.oracle.graal.compiler.common.CollectionsFactory;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -458,13 +459,13 @@ public final class BciBlockMapping {
     /**
      * Builds the block map and conservative CFG and numbers blocks.
      */
-    public void build(BytecodeStream stream) {
+    public void build(BytecodeStream stream, OptionValues options) {
         int codeSize = code.getCodeSize();
         BciBlock[] blockMap = new BciBlock[codeSize];
         makeExceptionEntries(blockMap);
         iterateOverBytecodes(blockMap, stream);
         if (hasJsrBytecodes) {
-            if (!SupportJsrBytecodes.getValue()) {
+            if (!SupportJsrBytecodes.getValue(options)) {
                 throw new JsrNotSupportedBailout("jsr/ret parsing disabled");
             }
             createJsrAlternatives(blockMap, blockMap[0]);
@@ -1040,9 +1041,9 @@ public final class BciBlockMapping {
         return loops;
     }
 
-    public static BciBlockMapping create(BytecodeStream stream, Bytecode code) {
+    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options) {
         BciBlockMapping map = new BciBlockMapping(code);
-        map.build(stream);
+        map.build(stream, options);
         if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
             Debug.dump(Debug.INFO_LOG_LEVEL, map, code.getMethod().format("After block building %f %R %H.%n(%P)"));
         }

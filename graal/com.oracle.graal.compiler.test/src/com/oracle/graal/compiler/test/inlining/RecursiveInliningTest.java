@@ -132,7 +132,7 @@ public class RecursiveInliningTest extends GraalCompilerTest {
     }
 
     private long runAndTimePartialEscapeAnalysis(StructuredGraph g) {
-        PartialEscapePhase p = new PartialEscapePhase(true, new CanonicalizerPhase());
+        PartialEscapePhase p = new PartialEscapePhase(true, new CanonicalizerPhase(), g.getOptions());
         HighTierContext context = getDefaultHighTierContext();
         long start = System.currentTimeMillis();
         p.apply(g, context);
@@ -169,7 +169,7 @@ public class RecursiveInliningTest extends GraalCompilerTest {
                 canonicalizer.applyIncremental(callerGraph, context, canonicalizeNodes);
                 Debug.dump(Debug.BASIC_LOG_LEVEL, callerGraph, "After inlining %s into %s iteration %d", calleeMethod, callerMethod, i);
             }
-            new SchedulePhase().apply(callerGraph);
+            new SchedulePhase(callerGraph.getOptions()).apply(callerGraph);
             return callerGraph;
         } catch (Throwable e) {
             throw Debug.handle(e);

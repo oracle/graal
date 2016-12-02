@@ -70,7 +70,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     @Override
     public void run(StructuredGraph graph) {
-        if (optional && Options.ReduceDCE.getValue()) {
+        if (optional && Options.ReduceDCE.getValue(graph.getOptions())) {
             return;
         }
 

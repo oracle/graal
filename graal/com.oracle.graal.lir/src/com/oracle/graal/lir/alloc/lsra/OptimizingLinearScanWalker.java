@@ -191,7 +191,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
                 Debug.log("right interval : %s", splitPart.logString(allocator));
             }
 
-            if (Options.LSRAOptSplitOnly.getValue()) {
+            if (Options.LSRAOptSplitOnly.getValue(allocator.getOptions())) {
                 // just add the split interval to the unhandled list
                 unhandledLists.addToListSortedByStartAndUsePositions(RegisterBinding.Any, splitPart);
             } else {

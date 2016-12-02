@@ -22,17 +22,11 @@
  */
 package com.oracle.graal.truffle;
 
-import com.oracle.graal.options.OptionValues;
-
 public class TraceCompilationProfile extends OptimizedCompilationProfile {
 
     private int directCallCount;
     private int indirectCallCount;
     private int inlinedCallCount;
-
-    public TraceCompilationProfile(OptionValues options) {
-        super(options);
-    }
 
     @Override
     public void profileDirectCall(Object[] args) {
@@ -69,8 +63,8 @@ public class TraceCompilationProfile extends OptimizedCompilationProfile {
     }
 
     /* Lazy class loading factory method. */
-    public static OptimizedCompilationProfile create(OptionValues options) {
-        return new TraceCompilationProfile(options);
+    public static OptimizedCompilationProfile create() {
+        return new TraceCompilationProfile();
     }
 
 }

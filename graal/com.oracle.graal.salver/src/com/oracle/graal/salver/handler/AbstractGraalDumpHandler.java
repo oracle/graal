@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.salver.handler;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -52,7 +54,7 @@ public abstract class AbstractGraalDumpHandler<D extends AbstractGraalDumper> ex
     protected void ensureInitialized() throws IOException {
         if (writer == null) {
             if (failures < MAX_FAILURES) {
-                if (SalverOptions.SalverToFile.getValue()) {
+                if (SalverOptions.SalverToFile.getValue(GLOBAL)) {
                     initializeFileChannelWriter();
                 } else {
                     initializeSocketChannelWriter();

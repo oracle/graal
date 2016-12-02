@@ -68,6 +68,7 @@ import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.spi.NodeCostProvider;
 import com.oracle.graal.nodes.spi.Replacements;
 import com.oracle.graal.nodes.spi.StampProvider;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.schedule.SchedulePhase;
@@ -177,14 +178,14 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
         @Override
         public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, JavaConstant speculation, boolean negated) {
-            if (OptEliminateGuards.getValue()) {
+            StructuredGraph graph = before.graph();
+            if (OptEliminateGuards.getValue(graph.getOptions())) {
                 for (Node usage : condition.usages()) {
                     if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).isNegated() == negated) {
                         return (GuardNode) usage;
                     }
                 }
             }
-            StructuredGraph graph = before.graph();
             if (!condition.graph().getGuardsStage().allowsFloatingGuards()) {
                 FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, deoptReason, action, speculation, negated));
                 graph.addBeforeFixed(before, fixedGuard);
@@ -195,7 +196,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 return result;
             } else {
                 GuardNode newGuard = graph.unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated, speculation));
-                if (OptEliminateGuards.getValue()) {
+                if (OptEliminateGuards.getValue(graph.getOptions())) {
                     activeGuards.markAndGrow(newGuard);
                 }
                 return newGuard;
@@ -248,7 +249,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
     private void lower(StructuredGraph graph, PhaseContext context, LoweringMode mode) {
         IncrementalCanonicalizerPhase<PhaseContext> incrementalCanonicalizer = new IncrementalCanonicalizerPhase<>(canonicalizer);
-        incrementalCanonicalizer.appendPhase(new Round(context, mode));
+        incrementalCanonicalizer.appendPhase(new Round(context, mode, graph.getOptions()));
         incrementalCanonicalizer.apply(graph, context);
         assert graph.verify();
     }
@@ -299,7 +300,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         private ScheduleResult schedule;
         private final SchedulePhase schedulePhase;
 
-        private Round(PhaseContext context, LoweringMode mode) {
+        private Round(PhaseContext context, LoweringMode mode, OptionValues options) {
             this.context = context;
             this.mode = mode;
 
@@ -310,7 +311,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
              */
             boolean immutableSchedule = mode == LoweringMode.VERIFY_LOWERING;
 
-            this.schedulePhase = new SchedulePhase(immutableSchedule);
+            this.schedulePhase = new SchedulePhase(immutableSchedule, options);
         }
 
         @Override
@@ -377,7 +378,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
             @Override
             public void postprocess() {
-                if (anchor != null && OptEliminateGuards.getValue()) {
+                if (anchor != null && OptEliminateGuards.getValue(activeGuards.graph().getOptions())) {
                     for (GuardNode guard : anchor.asNode().usages().filter(GuardNode.class)) {
                         if (activeGuards.isMarkedAndGrow(guard)) {
                             activeGuards.clear(guard);

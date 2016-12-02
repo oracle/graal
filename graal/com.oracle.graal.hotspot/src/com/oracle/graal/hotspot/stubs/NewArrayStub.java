@@ -42,6 +42,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.handlePendingException;
 import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
 import static com.oracle.graal.hotspot.stubs.StubUtil.verifyObject;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.hotspot.HotSpotMetaAccessProvider.computeArrayAllocationSize;
 
 import com.oracle.graal.api.replacements.Fold;
@@ -88,7 +89,7 @@ public class NewArrayStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return StubOptions.TraceNewArrayStub.getValue();
+        return StubOptions.TraceNewArrayStub.getValue(GLOBAL);
     }
 
     /**

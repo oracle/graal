@@ -28,6 +28,7 @@ import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.replacements.ReplacementsImpl;
 import com.oracle.graal.replacements.Snippets;
 import com.oracle.graal.word.Pointer;
@@ -49,7 +50,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     }
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, OptionValues options) {
         return installer.makeGraph(m, null, null);
     }
 

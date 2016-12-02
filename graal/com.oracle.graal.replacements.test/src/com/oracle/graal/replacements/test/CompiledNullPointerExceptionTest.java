@@ -33,9 +33,9 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
-import com.oracle.graal.options.OptionValues.OverrideScope;
 import com.oracle.graal.phases.tiers.Suites;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -47,10 +47,8 @@ public class CompiledNullPointerExceptionTest extends GraalCompilerTest {
 
     @Override
     @SuppressWarnings("try")
-    protected Suites createSuites() {
-        try (OverrideScope mark = overrideOptions(HighTier.Options.Inline, false)) {
-            return super.createSuites();
-        }
+    protected Suites createSuites(OptionValues options) {
+        return super.createSuites(new OptionValues(options, HighTier.Options.Inline, false));
     }
 
     @Override
@@ -66,8 +64,8 @@ public class CompiledNullPointerExceptionTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        StructuredGraph graph = super.parseEager(m, allowAssumptions);
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, OptionValues options) {
+        StructuredGraph graph = super.parseEager(m, allowAssumptions, options);
         int handlers = graph.getNodes().filter(BytecodeExceptionNode.class).count();
         Assert.assertEquals(1, handlers);
         return graph;

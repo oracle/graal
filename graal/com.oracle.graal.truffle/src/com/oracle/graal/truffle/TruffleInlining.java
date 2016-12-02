@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleMaximumRecursiveInlining;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -91,7 +93,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
 
         int recursions = countRecursions(callStack);
         int deepNodeCount = nodeCount;
-        if (callStack.size() < 15 && recursions <= TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue()) {
+        if (callStack.size() < 15 && recursions <= TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining)) {
             /*
              * We make a preliminary optimistic inlining decision with best possible characteristics
              * to avoid the exploration of unnecessary paths in the inlining tree.

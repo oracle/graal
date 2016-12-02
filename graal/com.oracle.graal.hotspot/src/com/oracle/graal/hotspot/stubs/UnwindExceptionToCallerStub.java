@@ -30,6 +30,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.cAssertionsEnabled;
 import static com.oracle.graal.hotspot.stubs.StubUtil.decipher;
 import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
 import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.Fold.InjectedParameter;
@@ -100,7 +101,7 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return StubOptions.TraceUnwindStub.getValue();
+        return StubOptions.TraceUnwindStub.getValue(GLOBAL);
     }
 
     /**

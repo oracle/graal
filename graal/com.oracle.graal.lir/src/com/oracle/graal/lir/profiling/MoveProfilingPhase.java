@@ -54,7 +54,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable dynamic move profiling per method.", type = OptionType.Debug)
-        public static final OptionKey<Boolean> LIRDynMoveProfilMethod = new OptionKey<>(false);
+        public static final OptionKey<Boolean> LIRDynMoveProfileMethod = new OptionKey<>(false);
         // @formatter:on
     }
 
@@ -139,7 +139,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
         }
 
         protected String createGroupName() {
-            if (Options.LIRDynMoveProfilMethod.getValue()) {
+            if (Options.LIRDynMoveProfileMethod.getValue(lirGenRes.getLIR().getOptions())) {
                 return new StringBuilder('"').append(MOVE_OPERATIONS).append(':').append(lirGenRes.getCompilationUnitName()).append('"').toString();
             }
             return MOVE_OPERATIONS;

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -50,7 +52,7 @@ public class PrintStreamOptionKey extends OptionKey<String> {
      * @return the name of the file to log to
      */
     private String getFilename() {
-        String name = getValue();
+        String name = getValue(GLOBAL);
         if (name.contains("%p")) {
             String runtimeName = ManagementFactory.getRuntimeMXBean().getName();
             try {
@@ -113,7 +115,7 @@ public class PrintStreamOptionKey extends OptionKey<String> {
      * will output to HotSpot's {@link HotSpotJVMCIRuntimeProvider#getLogStream() log} stream.
      */
     public PrintStream getStream() {
-        if (getValue() != null) {
+        if (getValue(GLOBAL) != null) {
             try {
                 final boolean enableAutoflush = true;
                 PrintStream ps = new PrintStream(new FileOutputStream(getFilename()), enableAutoflush);
@@ -128,7 +130,7 @@ public class PrintStreamOptionKey extends OptionKey<String> {
                 }
                 return ps;
             } catch (FileNotFoundException e) {
-                throw new RuntimeException("couldn't open file: " + getValue(), e);
+                throw new RuntimeException("couldn't open file: " + getValue(GLOBAL), e);
             }
         } else {
             return new PrintStream(new DelayedOutputStream());

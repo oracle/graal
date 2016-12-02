@@ -52,12 +52,15 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.useT
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeTlabTop;
+import static com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions.ProfileAllocations;
+import static com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions.ProfileAllocationsContext;
 import static com.oracle.graal.nodes.PiArrayNode.piArrayCast;
 import static com.oracle.graal.nodes.PiNode.piCast;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.replacements.ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED;
 import static com.oracle.graal.replacements.ReplacementsUtil.staticAssert;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
@@ -102,6 +105,7 @@ import com.oracle.graal.nodes.java.NewMultiArrayNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
 import com.oracle.graal.nodes.util.GraphUtil;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.replacements.ReplacementsUtil;
 import com.oracle.graal.replacements.SnippetCounter;
 import com.oracle.graal.replacements.SnippetTemplate;
@@ -138,8 +142,8 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Fold
-    static String createName(String path, String typeContext) {
-        switch (HotspotSnippetsOptions.ProfileAllocationsContext.getValue()) {
+    static String createName(String path, String typeContext, OptionValues options) {
+        switch (ProfileAllocationsContext.getValue(options)) {
             case AllocatingMethod:
                 return "";
             case InstanceOrArray:
@@ -155,21 +159,21 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Fold
-    static boolean doProfile() {
-        return HotspotSnippetsOptions.ProfileAllocations.getValue();
+    static boolean doProfile(OptionValues options) {
+        return ProfileAllocations.getValue(options);
     }
 
     @Fold
-    static boolean withContext() {
-        ProfileContext context = HotspotSnippetsOptions.ProfileAllocationsContext.getValue();
+    static boolean withContext(OptionValues options) {
+        ProfileContext context = ProfileAllocationsContext.getValue(options);
         return context == ProfileContext.AllocatingMethod || context == ProfileContext.AllocatedTypesInMethod;
     }
 
-    protected static void profileAllocation(String path, long size, String typeContext) {
-        if (doProfile()) {
-            String name = createName(path, typeContext);
+    protected static void profileAllocation(String path, long size, String typeContext, OptionValues options) {
+        if (doProfile(options)) {
+            String name = createName(path, typeContext, options);
 
-            boolean context = withContext();
+            boolean context = withContext(options);
             DynamicCounterNode.counter(name, "number of bytes allocated", size, context);
             DynamicCounterNode.counter(name, "number of allocations", 1, context);
         }
@@ -192,8 +196,9 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Snippet
-    public static Object allocateInstance(@ConstantParameter int size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
-                    @ConstantParameter boolean constantSize, @ConstantParameter String typeContext) {
+    public static Object allocateInstance(@ConstantParameter int size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents,
+                    @ConstantParameter Register threadRegister,
+                    @ConstantParameter boolean constantSize, @ConstantParameter String typeContext, @ConstantParameter OptionValues options) {
         Object result;
         Word thread = registerAsWord(threadRegister);
         Word top = readTlabTop(thread);
@@ -207,7 +212,7 @@ public class NewObjectSnippets implements Snippets {
             new_stub.inc();
             result = newInstance(HotSpotBackend.NEW_INSTANCE, hub);
         }
-        profileAllocation("instance", size, typeContext);
+        profileAllocation("instance", size, typeContext, options);
         return piCast(verifyOop(result), StampFactory.forNodeIntrinsic());
     }
 
@@ -215,7 +220,8 @@ public class NewObjectSnippets implements Snippets {
     public static native Object newInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub);
 
     @Snippet
-    public static Object allocateInstanceDynamic(Class<?> type, Class<?> classClass, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister) {
+    public static Object allocateInstanceDynamic(Class<?> type, Class<?> classClass, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
+                    @ConstantParameter OptionValues options) {
         if (probability(SLOW_PATH_PROBABILITY, type == null || DynamicNewInstanceNode.throwsInstantiationException(type, classClass))) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
@@ -236,7 +242,7 @@ public class NewObjectSnippets implements Snippets {
                      * FIXME(je,ds): we should actually pass typeContext instead of "" but late
                      * binding of parameters is not yet supported by the GraphBuilderPlugin system.
                      */
-                    return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, "");
+                    return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, "", options);
                 }
             }
         }
@@ -250,13 +256,14 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateArray(KlassPointer hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
-                    @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext) {
-        Object result = allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, false);
+                    @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext,
+                    @ConstantParameter OptionValues options) {
+        Object result = allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, false, options);
         return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
 
-    private static Object allocateArrayImpl(KlassPointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents,
-                    @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, String typeContext, boolean skipNegativeCheck) {
+    private static Object allocateArrayImpl(KlassPointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, @ConstantParameter Register threadRegister,
+                    @ConstantParameter boolean maybeUnroll, String typeContext, boolean skipNegativeCheck, @ConstantParameter OptionValues options) {
         Object result;
         int alignment = wordSize();
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
@@ -273,7 +280,7 @@ public class NewObjectSnippets implements Snippets {
         } else {
             result = newArray(HotSpotBackend.NEW_ARRAY, hub, length, fillContents);
         }
-        profileAllocation("array", allocationSize, typeContext);
+        profileAllocation("array", allocationSize, typeContext, options);
         return result;
     }
 
@@ -295,13 +302,13 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateArrayDynamic(Class<?> elementType, Class<?> voidClass, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
-                    @ConstantParameter JavaKind knownElementKind, @ConstantParameter int knownLayoutHelper, Word prototypeMarkWord) {
-        Object result = allocateArrayDynamicImpl(elementType, voidClass, length, fillContents, threadRegister, knownElementKind, knownLayoutHelper, prototypeMarkWord);
+                    @ConstantParameter JavaKind knownElementKind, @ConstantParameter int knownLayoutHelper, Word prototypeMarkWord, @ConstantParameter OptionValues options) {
+        Object result = allocateArrayDynamicImpl(elementType, voidClass, length, fillContents, threadRegister, knownElementKind, knownLayoutHelper, prototypeMarkWord, options);
         return result;
     }
 
     private static Object allocateArrayDynamicImpl(Class<?> elementType, Class<?> voidClass, int length, boolean fillContents, Register threadRegister, JavaKind knownElementKind,
-                    int knownLayoutHelper, Word prototypeMarkWord) {
+                    int knownLayoutHelper, Word prototypeMarkWord, OptionValues options) {
         /*
          * We only need the dynamic check for void when we have no static information from
          * knownElementKind.
@@ -332,7 +339,7 @@ public class NewObjectSnippets implements Snippets {
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
-        Object result = allocateArrayImpl(klass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true);
+        Object result = allocateArrayImpl(klass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true, options);
         return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
 
@@ -509,13 +516,15 @@ public class NewObjectSnippets implements Snippets {
             int size = instanceSize(type);
 
             Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
+            OptionValues options = graph.getOptions();
             args.addConst("size", size);
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
             args.addConst("fillContents", newInstanceNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("constantSize", true);
-            args.addConst("typeContext", HotspotSnippetsOptions.ProfileAllocations.getValue() ? type.toJavaName(false) : "");
+            args.addConst("typeContext", ProfileAllocations.getValue(options) ? type.toJavaName(false) : "");
+            args.addConst("options", options);
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, args);
@@ -535,6 +544,7 @@ public class NewObjectSnippets implements Snippets {
             int log2ElementSize = CodeUtil.log2(HotSpotJVMCIRuntimeProvider.getArrayIndexScale(elementKind));
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
+            OptionValues options = graph.getOptions();
             args.add("hub", hub);
             ValueNode length = newArrayNode.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
@@ -545,7 +555,8 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("fillContents", newArrayNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("typeContext", HotspotSnippetsOptions.ProfileAllocations.getValue() ? arrayType.toJavaName(false) : "");
+            args.addConst("typeContext", ProfileAllocations.getValue(options) ? arrayType.toJavaName(false) : "");
+            args.addConst("options", options);
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
@@ -553,12 +564,14 @@ public class NewObjectSnippets implements Snippets {
 
         public void lower(DynamicNewInstanceNode newInstanceNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             Arguments args = new Arguments(allocateInstanceDynamic, newInstanceNode.graph().getGuardsStage(), tool.getLoweringStage());
+            OptionValues options = newInstanceNode.getOptions();
             args.add("type", newInstanceNode.getInstanceType());
             ValueNode classClass = newInstanceNode.getClassClass();
             assert classClass != null;
             args.add("classClass", classClass);
             args.addConst("fillContents", newInstanceNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
+            args.addConst("options", options);
 
             SnippetTemplate template = template(args);
             template.instantiate(providers.getMetaAccess(), newInstanceNode, DEFAULT_REPLACER, args);
@@ -566,6 +579,7 @@ public class NewObjectSnippets implements Snippets {
 
         public void lower(DynamicNewArrayNode newArrayNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = newArrayNode.graph();
+            OptionValues options = graph.getOptions();
             Arguments args = new Arguments(allocateArrayDynamic, newArrayNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("elementType", newArrayNode.getElementType());
             ValueNode voidClass = newArrayNode.getVoidClass();
@@ -586,6 +600,7 @@ public class NewObjectSnippets implements Snippets {
                 args.addConst("knownLayoutHelper", 0);
             }
             args.add("prototypeMarkWord", lookupArrayClass(tool, JavaKind.Object).prototypeMarkWord());
+            args.addConst("options", options);
             SnippetTemplate template = template(args);
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
         }
@@ -630,12 +645,12 @@ public class NewObjectSnippets implements Snippets {
         }
     }
 
-    private static final SnippetCounter.Group countersNew = SnippetCounters.getValue() ? new SnippetCounter.Group("NewInstance") : null;
+    private static final SnippetCounter.Group countersNew = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("NewInstance") : null;
     private static final SnippetCounter new_seqInit = new SnippetCounter(countersNew, "tlabSeqInit", "TLAB alloc with unrolled zeroing");
     private static final SnippetCounter new_loopInit = new SnippetCounter(countersNew, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
     private static final SnippetCounter new_stub = new SnippetCounter(countersNew, "stub", "alloc and zeroing via stub");
 
-    private static final SnippetCounter.Group countersNewArray = SnippetCounters.getValue() ? new SnippetCounter.Group("NewArray") : null;
+    private static final SnippetCounter.Group countersNewArray = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("NewArray") : null;
     private static final SnippetCounter newarray_loopInit = new SnippetCounter(countersNewArray, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
     private static final SnippetCounter newarray_stub = new SnippetCounter(countersNewArray, "stub", "alloc and zeroing via stub");
 }

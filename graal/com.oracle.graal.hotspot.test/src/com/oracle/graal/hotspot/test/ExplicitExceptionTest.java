@@ -25,7 +25,9 @@ package com.oracle.graal.hotspot.test;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -35,8 +37,8 @@ public class ExplicitExceptionTest extends GraalCompilerTest {
     private int expectedForeignCallCount;
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method) {
-        InstalledCode installedCode = super.getCode(method);
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph, boolean forceCompile, OptionValues options) {
+        InstalledCode installedCode = super.getCode(method, graph, forceCompile, options);
         assertDeepEquals(expectedForeignCallCount, lastCompiledGraph.getNodes().filter(ForeignCallNode.class).count());
         return installedCode;
     }

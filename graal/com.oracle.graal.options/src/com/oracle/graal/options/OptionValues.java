@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.options;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,14 +34,6 @@ import java.util.TreeMap;
  * A context for obtaining values for {@link OptionKey}s.
  */
 public class OptionValues {
-
-    /**
-     * An {@link AutoCloseable} whose {@link #close()} does not throw a checked exception.
-     */
-    public interface OverrideScope extends AutoCloseable {
-        @Override
-        void close();
-    }
 
     public static final OptionValues GLOBAL = new OptionValues();
 
@@ -97,27 +90,42 @@ public class OptionValues {
         values.putAll(initialValues.values);
     }
 
-    public OptionValues(OptionValues initialValues, Map<OptionKey<?>, Object> overrides) {
-        values.putAll(initialValues.values);
-        values.putAll(overrides);
+    public OptionValues(OptionValues initialValues, Map<OptionKey<?>, Object> extraPairs) {
+        if (initialValues != null) {
+            values.putAll(initialValues.values);
+        }
+        values.putAll(extraPairs);
     }
 
-    public OptionValues() {
+    public OptionValues(OptionValues initialValues, OptionKey<?> key1, Object value1, Object... extraPairs) {
+        this(initialValues, asMap(key1, value1, extraPairs));
     }
 
     /**
-     * Gets a new {@link OptionValues} object with the same values as this object except with the
-     * guarantee that the value of {@code key} in the returned object is {@code value}. That is, a
-     * new {@link OptionValues} object is returned irrespective of the value for {@code key} in this
-     * object.
-     *
-     * @return a newly created {@link OptionValues} instance where the value of {@code key} is
-     *         {@code value}
+     * Gets an immutable view of the key/value pairs in this object.
      */
-    public OptionValues with(OptionKey<?> key, Object value) {
-        OptionValues options = new OptionValues(this);
-        key.setValue(options, value);
-        return options;
+    public Map<OptionKey<?>, Object> getMap() {
+        return Collections.unmodifiableMap(values);
+    }
+
+    /**
+     * @param key1 first key in map
+     * @param value1 first value in map
+     * @param extraPairs key/value pairs of the form {@code [key1, value1, key2, value2, ...]}
+     * @return a map containing the key/value pairs as entries
+     */
+    public static Map<OptionKey<?>, Object> asMap(OptionKey<?> key1, Object value1, Object... extraPairs) {
+        Map<OptionKey<?>, Object> map = new HashMap<>();
+        map.put(key1, value1);
+        for (int i = 0; i < extraPairs.length; i += 2) {
+            OptionKey<?> key = (OptionKey<?>) extraPairs[i];
+            Object value = extraPairs[i + 1];
+            map.put(key, value);
+        }
+        return map;
+    }
+
+    public OptionValues() {
     }
 
     @SuppressWarnings("unchecked")
@@ -147,16 +155,15 @@ public class OptionValues {
         return value == NULL ? null : value;
     }
 
-    private static final Comparator<OptionKey<?>> OPTION_KEY_COMPARATOR = new Comparator<OptionKey<?>>() {
-        @Override
-        public int compare(OptionKey<?> o1, OptionKey<?> o2) {
-            return o1.getName().compareTo(o2.getName());
-        }
-    };
-
     @Override
     public String toString() {
-        SortedMap<OptionKey<?>, Object> sorted = new TreeMap<>(OPTION_KEY_COMPARATOR);
+        Comparator<OptionKey<?>> comparator = new Comparator<OptionKey<?>>() {
+            @Override
+            public int compare(OptionKey<?> o1, OptionKey<?> o2) {
+                return o1.getName().compareTo(o2.getName());
+            }
+        };
+        SortedMap<OptionKey<?>, Object> sorted = new TreeMap<>(comparator);
         sorted.putAll(values);
         return sorted.toString();
     }

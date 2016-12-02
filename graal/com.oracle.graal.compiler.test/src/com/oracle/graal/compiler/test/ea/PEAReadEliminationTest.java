@@ -197,7 +197,7 @@ public class PEAReadEliminationTest extends EarlyReadEliminationTest {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         HighTierContext context = getDefaultHighTierContext();
         new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
-        new PartialEscapePhase(false, true, new CanonicalizerPhase(), null).apply(graph, context);
+        new PartialEscapePhase(false, true, new CanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
         return graph;
     }
 }

@@ -28,6 +28,7 @@
 
 package com.oracle.graal.options.test;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.options.test.TestOptionKey.Options.Mutable;
 import static com.oracle.graal.options.test.TestOptionKey.Options.SecondMutable;
 import static com.oracle.graal.options.test.TestOptionKey.Options.Stable;
@@ -55,18 +56,18 @@ public class TestOptionKey {
 
     @Test
     public void testMutable() {
-        assertEquals("original", Mutable.getValue());
+        assertEquals("original", Mutable.getValue(GLOBAL));
     }
 
     @Test
     public void testMultiple() {
-        assertEquals("original", Mutable.getValue());
-        assertEquals("second", SecondMutable.getValue());
+        assertEquals("original", Mutable.getValue(GLOBAL));
+        assertEquals("second", SecondMutable.getValue(GLOBAL));
     }
 
     @Test
     public void testStable() {
-        assertTrue(Stable.getValue());
+        assertTrue(Stable.getValue(GLOBAL));
     }
 
     @Test

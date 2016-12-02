@@ -23,6 +23,7 @@
 package com.oracle.graal.printer;
 
 import static com.oracle.graal.debug.GraalDebugConfig.asJavaMethod;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -42,7 +43,6 @@ import com.oracle.graal.debug.DebugDumpScope;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.Graph;
-
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -109,7 +109,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     @Override
     @SuppressWarnings("try")
     public void dump(Object object, final String message) {
-        if (object instanceof Graph && Options.PrintIdealGraph.getValue()) {
+        if (object instanceof Graph && Options.PrintIdealGraph.getValue(GLOBAL)) {
             ensureInitialized();
             if (printer == null) {
                 return;
@@ -173,7 +173,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private static void addCFGFileName(Map<Object, Object> properties) {
-        if (Options.PrintCFG.getValue() || Options.PrintBackendCFG.getValue()) {
+        if (Options.PrintCFG.getValue(GLOBAL) || Options.PrintBackendCFG.getValue(GLOBAL)) {
             properties.put("PrintCFGFileName", CFGPrinterObserver.getCFGPath().toAbsolutePath().toString());
         }
     }

@@ -1153,7 +1153,7 @@ public final class Interval {
         // split list of use positions
         result.usePosList = usePosList.splitAt(splitPos);
 
-        if (DetailedAsserts.getValue()) {
+        if (DetailedAsserts.getValue(allocator.getOptions())) {
             for (int i = 0; i < usePosList.size(); i++) {
                 assert usePosList.usePos(i) < splitPos;
             }

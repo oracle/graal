@@ -24,6 +24,7 @@ package com.oracle.graal.debug;
 
 import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.LOG_METHOD;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static java.util.FormattableFlags.LEFT_JUSTIFY;
 import static java.util.FormattableFlags.UPPERCASE;
 
@@ -47,7 +48,6 @@ import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
 import com.oracle.graal.debug.internal.TimerImpl;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
-import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -70,7 +70,7 @@ public class Debug {
         // Load the service providers that may want to modify any of the
         // parameters encapsulated by the Initialization class below.
         for (DebugInitializationParticipant p : GraalServices.load(DebugInitializationParticipant.class)) {
-            p.apply(params, OptionValues.GLOBAL);
+            p.apply(params);
         }
     }
 
@@ -93,7 +93,7 @@ public class Debug {
     private static boolean initialize() {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;
-        return assertionsEnabled || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue();
+        return assertionsEnabled || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue(GLOBAL);
     }
 
     private static final boolean ENABLED = initialize();

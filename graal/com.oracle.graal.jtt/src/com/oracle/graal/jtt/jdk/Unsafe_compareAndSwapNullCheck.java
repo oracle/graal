@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.jtt.jdk;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import org.junit.Test;
 
-import sun.misc.Unsafe;
-
 import com.oracle.graal.jtt.JTTTest;
+
+import sun.misc.Unsafe;
 
 public class Unsafe_compareAndSwapNullCheck extends JTTTest {
 
@@ -51,6 +53,6 @@ public class Unsafe_compareAndSwapNullCheck extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTest(EMPTY, false, true, "test", null, 1L, 2L);
+        runTest(GLOBAL, EMPTY, false, true, "test", null, 1L, 2L);
     }
 }

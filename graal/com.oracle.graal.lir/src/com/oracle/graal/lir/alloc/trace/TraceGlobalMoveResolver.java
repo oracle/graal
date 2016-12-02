@@ -52,6 +52,7 @@ import com.oracle.graal.lir.framemap.FrameMapBuilder;
 import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.RegisterArray;
@@ -78,6 +79,7 @@ public final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhas
     private final int firstVirtualStackIndex;
     private final MoveFactory spillMoveFactory;
     private final FrameMapBuilder frameMapBuilder;
+    private final OptionValues options;
 
     private void setValueBlocked(Value location, int direction) {
         assert direction == 1 || direction == -1 : "out of bounds";
@@ -152,6 +154,7 @@ public final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhas
 
         FrameMap frameMap = frameMapBuilderTool.getFrameMap();
         this.firstVirtualStackIndex = !frameMap.frameNeedsAllocating() ? 0 : frameMap.currentFrameSize() + 1;
+        this.options = res.getLIR().getOptions();
     }
 
     private boolean checkEmpty() {
@@ -404,7 +407,7 @@ public final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhas
         Value from = mappingFrom.get(spillCandidate);
         try (Indent indent = Debug.logAndIndent("BreakCycle: %s", from)) {
             AllocatableValue spillSlot = null;
-            if (TraceRegisterAllocationPhase.Options.TraceRAreuseStackSlotsForMoveResolutionCycleBreaking.getValue() && !isStackSlotValue(from)) {
+            if (TraceRegisterAllocationPhase.Options.TraceRAreuseStackSlotsForMoveResolutionCycleBreaking.getValue(options) && !isStackSlotValue(from)) {
                 // don't use the stack slot if from is already the stack slot
                 Value fromStack = mappingFromStack.get(spillCandidate);
                 if (fromStack != null) {

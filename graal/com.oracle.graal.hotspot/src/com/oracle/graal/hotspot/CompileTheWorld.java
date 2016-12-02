@@ -183,6 +183,7 @@ public final class CompileTheWorld {
 
     /**
      * Creates a compile-the-world instance.
+     * 
      * @param files {@link File#pathSeparator} separated list of Zip/Jar files to compile
      * @param startAt index of the class file to start compilation at
      * @param stopAt index of the class file to stop compilation at

@@ -23,7 +23,6 @@
 package com.oracle.graal.debug;
 
 import com.oracle.graal.debug.Debug.Params;
-import com.oracle.graal.options.OptionValues;
 
 /**
  * Defines a service that can modify the {@linkplain Params parameters} for {@link Debug}.
@@ -32,7 +31,6 @@ public interface DebugInitializationParticipant {
 
     /**
      * Modifies the given {@link Debug} initialization parameters as necessary.
-     * @param options TODO
      */
-    void apply(Params params, OptionValues options);
+    void apply(Params params);
 }

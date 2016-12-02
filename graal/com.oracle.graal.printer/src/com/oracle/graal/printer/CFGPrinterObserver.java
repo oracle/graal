@@ -52,6 +52,7 @@ import com.oracle.graal.lir.debug.IntervalDumper;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
 import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.UniquePathUtilities;
 import com.oracle.graal.serviceprovider.GraalServices;
 
@@ -241,7 +242,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     }
 
     public static Path getCFGPath() {
-        return UniquePathUtilities.getPath(Options.PrintCFGFileName, Options.DumpPath, "cfg");
+        return UniquePathUtilities.getPath(OptionValues.GLOBAL, Options.PrintCFGFileName, Options.DumpPath, "cfg");
     }
 
     /** Lazy initialization to delay service lookup until disassembler is actually needed. */

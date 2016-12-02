@@ -28,12 +28,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.junit.Test;
 
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.options.OptionValues;
 
 public class MemoryArithmeticTest extends GraalCompilerTest {
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph) {
-        return getCode(method, graph, true);
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph, boolean forceCompile, OptionValues options) {
+        return super.getCode(method, graph, true, options);
     }
 
     /**

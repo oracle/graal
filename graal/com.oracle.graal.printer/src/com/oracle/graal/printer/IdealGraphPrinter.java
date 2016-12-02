@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.printer;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -115,9 +117,9 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             StructuredGraph structuredGraph = (StructuredGraph) graph;
             schedule = structuredGraph.getLastSchedule();
             if (schedule == null && tryToSchedule) {
-                if (Options.PrintIdealGraphSchedule.getValue()) {
+                if (Options.PrintIdealGraphSchedule.getValue(GLOBAL)) {
                     try {
-                        SchedulePhase schedulePhase = new SchedulePhase();
+                        SchedulePhase schedulePhase = new SchedulePhase(graph.getOptions());
                         schedulePhase.apply(structuredGraph);
                         schedule = structuredGraph.getLastSchedule();
                     } catch (Throwable t) {

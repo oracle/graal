@@ -658,7 +658,6 @@ public class LinearScan {
 
     @SuppressWarnings("try")
     protected void allocate(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
-
         /*
          * This is the point to enable debug logging for the whole register allocation.
          */
@@ -671,21 +670,21 @@ public class LinearScan {
 
                 createRegisterAllocationPhase().apply(target, lirGenRes, context);
 
-                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
+                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue(options)) {
                     createOptimizeSpillPositionPhase().apply(target, lirGenRes, context);
                 }
                 createResolveDataFlowPhase().apply(target, lirGenRes, context);
 
                 sortIntervalsAfterAllocation();
 
-                if (DetailedAsserts.getValue()) {
+                if (DetailedAsserts.getValue(options)) {
                     verify();
                 }
                 beforeSpillMoveElimination();
                 createSpillMoveEliminationPhase().apply(target, lirGenRes, context);
                 createAssignLocationsPhase().apply(target, lirGenRes, context);
 
-                if (DetailedAsserts.getValue()) {
+                if (DetailedAsserts.getValue(options)) {
                     verifyIntervals();
                 }
             } catch (Throwable e) {
@@ -828,7 +827,7 @@ public class LinearScan {
                     Value l1 = i1.location();
                     Value l2 = i2.location();
                     if (i1.intersects(i2) && !isIllegal(l1) && (l1.equals(l2))) {
-                        if (DetailedAsserts.getValue()) {
+                        if (DetailedAsserts.getValue(options)) {
                             Debug.log("Intervals %d and %d overlap and have the same register assigned", i1.operandNumber, i2.operandNumber);
                             Debug.log(i1.logString(this));
                             Debug.log(i2.logString(this));

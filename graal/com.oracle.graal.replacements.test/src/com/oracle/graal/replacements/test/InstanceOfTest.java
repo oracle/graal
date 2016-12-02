@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.java.InstanceOfNode;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
 
 import jdk.vm.ci.code.site.Call;
@@ -50,7 +51,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 public class InstanceOfTest extends TypeCheckTest {
 
     public InstanceOfTest() {
-        createSuites().getHighTier().findPhase(AbstractInliningPhase.class).remove();
+        createSuites(OptionValues.GLOBAL).getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }
 
     @Override

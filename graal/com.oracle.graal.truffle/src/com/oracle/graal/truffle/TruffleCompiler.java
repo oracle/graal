@@ -23,6 +23,8 @@
 package com.oracle.graal.truffle;
 
 import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleExcludeAssertions;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -100,9 +102,9 @@ public abstract class TruffleCompiler {
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
-        boolean needSourcePositions = graalTruffleRuntime.enableInfopoints() || TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
+        boolean needSourcePositions = graalTruffleRuntime.enableInfopoints() || TruffleCompilerOptions.getValue(TruffleInstrumentBranches);
         GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(plugins)).withNodeSourcePosition(needSourcePositions);
-        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.TruffleExcludeAssertions.getValue());
+        this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.getValue(TruffleExcludeAssertions));
 
         this.partialEvaluator = createPartialEvaluator();
 
@@ -141,7 +143,7 @@ public abstract class TruffleCompiler {
 
         compilationNotify.notifyCompilationStarted(compilable);
 
-        try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod()) {
+        try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(TruffleCompilerOptions.getOptions())) {
             TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
 
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();

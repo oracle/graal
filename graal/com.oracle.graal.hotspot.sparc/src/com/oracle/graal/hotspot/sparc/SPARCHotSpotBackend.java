@@ -202,7 +202,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                 }
             }
 
-            if (ZapStackOnMethodEntry.getValue()) {
+            if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                 final int slotSize = 8;
                 for (int i = 0; i < frameSize / slotSize; ++i) {
                     // 0xC1C1C1C1

@@ -22,12 +22,14 @@
  */
 package com.oracle.graal.api.directives.test;
 
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.options.OptionValues.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -57,7 +59,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
         try {
             Result result = new Result(code.executeVarargs(), null);
             assertEquals(new Result(false, null), result);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }
@@ -79,7 +81,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
         try {
             Result result = new Result(code.executeVarargs(), null);
             assertEquals(new Result(true, null), result);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }
@@ -104,7 +106,7 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     @Test
     public void testInlinedCalleeWithInstrumentation() {
-        try (OverrideScope s = overrideOptions(GraalOptions.UseGraalInstrumentation, true)) {
+        try {
             ResolvedJavaMethod method = getResolvedJavaMethod("callerSnippet1");
             executeExpected(method, null); // ensure the method is fully resolved
             isCalleeInlined = false;
@@ -112,11 +114,12 @@ public class IsMethodInlineDirectiveTest extends GraalCompilerTest {
             // calleeWithInstrumentationSnippet will be inlined. We expect the flag1 set in
             // calleeWithInstrumentationSnippet to be true, and the flag2 set in callerSnippet1 to
             // be false.
-            InstalledCode code = getCode(method);
+            OptionValues options = new OptionValues(GLOBAL, UseGraalInstrumentation, true);
+            InstalledCode code = getCode(method, options);
             code.executeVarargs();
             assertTrue("calleWithInstrumentationSnippet should be inlined", isCalleeInlined);
             assertFalse("callerSnippet1 should not be inlined", isCallerInlined);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }

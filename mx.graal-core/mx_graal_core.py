@@ -456,7 +456,7 @@ _coopFlags = ['-XX:-UseCompressedOops']
 _gcVerificationFlags = ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC']
 _g1VerificationFlags = ['-XX:-UseSerialGC', '-XX:+UseG1GC']
 _exceptionFlags = ['-Dgraal.StressInvokeWithExceptionNode=true']
-_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers, '-Dgraal.LIRUnlockBackendRestart=true']
+_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers]
 _immutableCodeFlags = ['-Dgraal.ImmutableCode=true']
 
 graal_bootstrap_tests = [

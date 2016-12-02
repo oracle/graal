@@ -58,17 +58,4 @@ public class CompileTheWorldOptions {
     @Option(help = "Number of threads to use for multithreaded CTW.  Defaults to Runtime.getRuntime().availableProcessors()", type = OptionType.Debug)
     public static final OptionKey<Integer> CompileTheWorldThreads = new OptionKey<>(0);
     // @formatter:on
-
-    /**
-     * Overrides {@link #CompileTheWorldStartAt} and {@link #CompileTheWorldStopAt} from {@code -XX}
-     * HotSpot options of the same name if the latter have non-default values.
-     */
-    public static void overrideWithNativeOptions(GraalHotSpotVMConfig c) {
-        if (c.compileTheWorldStartAt != 1) {
-            CompileTheWorldStartAt.setValue(c.compileTheWorldStartAt);
-        }
-        if (c.compileTheWorldStopAt != Integer.MAX_VALUE) {
-            CompileTheWorldStopAt.setValue(c.compileTheWorldStopAt);
-        }
-    }
 }

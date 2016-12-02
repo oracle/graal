@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.calc.SignExtendNode;
 import com.oracle.graal.nodes.extended.JavaReadNode;
 import com.oracle.graal.nodes.extended.JavaWriteNode;
 import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
@@ -66,7 +67,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     }
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, OptionValues options) {
         return installer.makeGraph(m, null, null);
     }
 

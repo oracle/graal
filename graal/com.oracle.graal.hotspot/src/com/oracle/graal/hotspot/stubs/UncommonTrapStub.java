@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.read
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writePendingDeoptimization;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeRegisterAsWord;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.Fold.InjectedParameter;
@@ -96,7 +97,7 @@ public class UncommonTrapStub extends SnippetStub {
     public UncommonTrapStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(UncommonTrapStub.class, "uncommonTrapHandler", providers, linkage);
         this.target = target;
-        assert PreferGraalStubs.getValue();
+        assert PreferGraalStubs.getValue(GLOBAL);
     }
 
     @Override

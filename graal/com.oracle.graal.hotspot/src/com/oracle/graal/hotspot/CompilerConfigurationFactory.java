@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.ArrayList;
@@ -32,8 +33,8 @@ import java.util.stream.Collectors;
 
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionType;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 import com.oracle.graal.serviceprovider.GraalServices;
 
@@ -172,7 +173,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     public static CompilerConfigurationFactory selectFactory(String name) {
         CompilerConfigurationFactory factory = null;
         try (InitTimer t = timer("CompilerConfigurationFactory.selectFactory")) {
-            String value = name == null ? Options.CompilerConfiguration.getValue() : name;
+            String value = name == null ? Options.CompilerConfiguration.getValue(GLOBAL) : name;
             if ("help".equals(value)) {
                 System.out.println("The available Graal compiler configurations are:");
                 for (CompilerConfigurationFactory candidate : getAllCandidates()) {

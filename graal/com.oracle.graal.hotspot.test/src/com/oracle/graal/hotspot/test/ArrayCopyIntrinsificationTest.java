@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.DirectCallTargetNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.LoweredCallTargetNode;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;
@@ -47,10 +48,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph g) {
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph g, boolean forceCompile, OptionValues options) {
         StructuredGraph graph = g == null ? parseForCompile(method) : g;
         int nodeCount = graph.getNodeCount();
-        InstalledCode result = super.getCode(method, graph);
+        InstalledCode result = super.getCode(method, graph, forceCompile, options);
         boolean graphWasProcessed = nodeCount != graph.getNodeCount();
         if (graphWasProcessed) {
             if (mustIntrinsify) {

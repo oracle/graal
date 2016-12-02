@@ -42,6 +42,7 @@ import java.util.function.Function;
 
 import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
+import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
@@ -347,7 +348,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     public NodeSourcePosition createBytecodePosition(int bci) {
         BytecodeParser parent = parser.getParent();
-        if (HideSubstitutionStates.getValue()) {
+        if (HideSubstitutionStates.getValue(parser.graph.getOptions())) {
             if (parser.parsingIntrinsic()) {
                 // Attribute to the method being replaced
                 return new NodeSourcePosition(constantReceiver, parent.getFrameStateBuilder().createBytecodePosition(parent.bci()), parser.intrinsicContext.getOriginalMethod(), -1);
@@ -624,7 +625,8 @@ public final class FrameStateBuilder implements SideEffectsState {
          * slots at the OSR entry aren't cleared. it is also not enough to rely on PiNodes with
          * Kind.Illegal, because the conflicting branch might not have been parsed.
          */
-        if (!parser.graphBuilderConfig.clearNonLiveLocals()) {
+
+        if (!GraalOptions.OptClearNonLiveLocals.getValue(graph.getOptions())) {
             return;
         }
         if (liveIn) {

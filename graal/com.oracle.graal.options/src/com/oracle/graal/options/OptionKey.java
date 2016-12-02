@@ -125,7 +125,7 @@ public class OptionKey<T> {
     public boolean hasBeenSet(OptionValues values) {
         assert !(this instanceof StableOptionKey);
         if (!(this instanceof StableOptionKey)) {
-            getValue(); // ensure initialized
+            getValue(values); // ensure initialized
         }
         return values.containsKey(this);
     }
@@ -151,9 +151,9 @@ public class OptionKey<T> {
     /**
      * Gets the value of this option.
      */
-    public final T getValue() {
-        return getValue(GLOBAL);
-    }
+    // public final T getValue() {
+    // return getValueXXX(GLOBAL);
+    // }
 
     /**
      * Gets the value of this option.

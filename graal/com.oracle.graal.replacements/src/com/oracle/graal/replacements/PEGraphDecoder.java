@@ -88,6 +88,7 @@ import com.oracle.graal.nodes.spi.StampProvider;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.phases.common.inlining.InliningUtil;
 
@@ -377,9 +378,12 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
+    protected final OptionValues options;
+
     public PEGraphDecoder(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, StampProvider stampProvider,
-                    Architecture architecture) {
+                    Architecture architecture, OptionValues options) {
         super(metaAccess, constantReflection, constantFieldProvider, stampProvider, true, architecture);
+        this.options = options;
     }
 
     protected static LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method, LoopExplosionPlugin loopExplosionPlugin) {
@@ -434,14 +438,14 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     protected void checkLoopExplosionIteration(MethodScope s, LoopScope loopScope) {
         PEMethodScope methodScope = (PEMethodScope) s;
 
-        if (loopScope.loopIteration > Options.MaximumLoopExplosionCount.getValue()) {
-            throw tooManyLoopExplosionIterations(methodScope);
+        if (loopScope.loopIteration > Options.MaximumLoopExplosionCount.getValue(options)) {
+            throw tooManyLoopExplosionIterations(methodScope, options);
         }
     }
 
-    private static RuntimeException tooManyLoopExplosionIterations(PEMethodScope methodScope) {
+    private static RuntimeException tooManyLoopExplosionIterations(PEMethodScope methodScope, OptionValues options) {
         String message = "too many loop explosion iterations - does the explosion not terminate for method " + methodScope.method + "?";
-        RuntimeException bailout = Options.FailedLoopExplosionIsFatal.getValue() ? new RuntimeException(message) : new BailoutException(message);
+        RuntimeException bailout = Options.FailedLoopExplosionIsFatal.getValue(options) ? new RuntimeException(message) : new BailoutException(message);
         throw GraphUtil.createBailoutException(message, bailout, GraphUtil.approxSourceStackTraceElement(methodScope.getCallerBytecodePosition()));
     }
 
@@ -580,7 +584,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return null;
         }
 
-        if (methodScope.inliningDepth > Options.InliningDepthError.getValue()) {
+        if (methodScope.inliningDepth > Options.InliningDepthError.getValue(options)) {
             throw tooDeepInlining(methodScope);
         }
 
@@ -695,7 +699,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             plugin.notifyAfterInline(inlineMethod);
         }
 
-        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL) && DumpDuringGraphBuilding.getValue()) {
+        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL) && DumpDuringGraphBuilding.getValue(options)) {
             Debug.dump(Debug.INFO_LOG_LEVEL, methodScope.graph, "Inline finished: %s.%s", inlineMethod.getDeclaringClass().getUnqualifiedName(), inlineMethod.getName());
         }
     }

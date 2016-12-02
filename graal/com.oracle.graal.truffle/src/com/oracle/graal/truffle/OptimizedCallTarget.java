@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleAssumptions;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleBackgroundCompilation;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -44,7 +46,6 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.graal.compiler.common.SuppressFBWarnings;
 import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
 import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
 import com.oracle.truffle.api.Assumption;
@@ -123,7 +124,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
      */
     private Assumption initializeNodeRewritingAssumption() {
         Assumption newAssumption = runtime().createAssumption(
-                        !TruffleCompilerOptions.TraceTruffleAssumptions.getValue() ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
+                        !TruffleCompilerOptions.getValue(TraceTruffleAssumptions) ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
         if (NODE_REWRITING_ASSUMPTION_UPDATER.compareAndSet(this, null, newAssumption)) {
             return newAssumption;
         } else {
@@ -238,14 +239,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = cloneRootNode(rootNode);
             }
-            GraalTruffleRuntime runtime = runtime();
-            OptionValues options = runtime.getOptions();
-            if (TruffleCallTargetProfiling.getValue(options)) {
-                this.compilationProfile = TraceCompilationProfile.create(options);
+            if (TruffleCompilerOptions.getValue(TruffleCallTargetProfiling)) {
+                this.compilationProfile = TraceCompilationProfile.create();
             } else {
-                this.compilationProfile = OptimizedCompilationProfile.create(options);
+                this.compilationProfile = OptimizedCompilationProfile.create();
             }
-            runtime.getTvmci().onFirstExecution(this);
+            runtime().getTvmci().onFirstExecution(this);
             initialized = true;
         }
     }
@@ -277,7 +276,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 }
             }
             if (submitted != null) {
-                boolean mayBeAsynchronous = TruffleBackgroundCompilation.getValue() && !TruffleCompilationExceptionsAreThrown.getValue();
+                boolean mayBeAsynchronous = TruffleCompilerOptions.getValue(TruffleBackgroundCompilation) && !TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown);
                 runtime().finishCompilation(this, submitted, mayBeAsynchronous);
             }
         }
@@ -343,17 +342,17 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
              */
         } else {
             compilationProfile.reportCompilationFailure();
-            if (TruffleCompilationExceptionsAreThrown.getValue()) {
+            if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown)) {
                 throw new OptimizationFailedException(t, this);
             }
             /*
              * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled
              * but respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
              */
-            boolean truffleCompilationExceptionsAreFatal = TruffleCompilationExceptionsAreFatal.getValue();
+            boolean truffleCompilationExceptionsAreFatal = TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal);
             assert TruffleCompilationExceptionsAreFatal.hasBeenSet() || (truffleCompilationExceptionsAreFatal = true) == true;
 
-            if (TruffleCompilationExceptionsArePrinted.getValue() || truffleCompilationExceptionsAreFatal) {
+            if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
                 printException(t);
                 if (truffleCompilationExceptionsAreFatal) {
                     System.exit(-1);
@@ -422,7 +421,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     /** Intrinsified in {@link TruffleGraphBuilderPlugins}. */
     public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
-        if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
+        if (TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing)) {
             return new FrameWithoutBoxing(descriptor, args);
         } else {
             return new FrameWithBoxing(descriptor, args);

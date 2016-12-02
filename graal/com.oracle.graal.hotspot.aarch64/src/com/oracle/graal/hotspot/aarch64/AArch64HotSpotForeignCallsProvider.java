@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.JUMP_ADDRESS;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.LEAF;
 import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.UPDATE_BYTES_CRC32;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r3;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
@@ -35,10 +36,10 @@ import static jdk.vm.ci.meta.Value.ILLEGAL;
 
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.debug.GraalError;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.word.WordTypes;
@@ -76,7 +77,7 @@ public class AArch64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsP
         register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, exceptionCc, null, NOT_REEXECUTABLE, any()));
         register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, exceptionCc, null, NOT_REEXECUTABLE, any()));
 
-        if (PreferGraalStubs.getValue()) {
+        if (PreferGraalStubs.getValue(GLOBAL)) {
             throw GraalError.unimplemented("PreferGraalStubs");
         }
 

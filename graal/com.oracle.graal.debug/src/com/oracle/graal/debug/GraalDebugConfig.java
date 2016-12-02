@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.debug;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
@@ -162,7 +164,7 @@ public class GraalDebugConfig implements DebugConfig {
     }
 
     public static boolean isNotEmpty(OptionKey<String> option, OptionValues options) {
-        return option.getValue() != null && !option.getValue(options).isEmpty();
+        return option.getValue(options) != null && !option.getValue(options).isEmpty();
     }
 
     public static boolean areDebugScopePatternsEnabled(OptionValues options) {
@@ -324,7 +326,7 @@ public class GraalDebugConfig implements DebugConfig {
                 } else if (methodFilter != null) {
                     JavaMethod method = asJavaMethod(o);
                     if (method != null) {
-                        if (!Options.MethodFilterRootOnly.getValue()) {
+                        if (!Options.MethodFilterRootOnly.getValue(GLOBAL)) {
                             if (com.oracle.graal.debug.MethodFilter.matches(methodFilter, method)) {
                                 return true;
                             }
@@ -374,7 +376,7 @@ public class GraalDebugConfig implements DebugConfig {
 
     @Override
     public RuntimeException interceptException(Throwable e) {
-        if (e instanceof BailoutException && !Options.InterceptBailout.getValue()) {
+        if (e instanceof BailoutException && !Options.InterceptBailout.getValue(GLOBAL)) {
             return null;
         }
         Debug.setConfig(Debug.fixedConfig(Debug.BASIC_LOG_LEVEL, Debug.BASIC_LOG_LEVEL, false, false, false, false, false, dumpHandlers, verifyHandlers, output));
@@ -384,7 +386,7 @@ public class GraalDebugConfig implements DebugConfig {
             // Only dump a context object once.
             if (!firstSeen.containsKey(o)) {
                 firstSeen.put(o, o);
-                if (Options.DumpOnError.getValue()) {
+                if (Options.DumpOnError.getValue(GLOBAL)) {
                     Debug.dump(Debug.BASIC_LOG_LEVEL, o, "Exception: %s", e);
                 } else {
                     Debug.log("Context obj %s", o);

@@ -82,13 +82,13 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceBuilderResult resultTraces = context.contextLookup(TraceBuilderResult.class);
 
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
-        AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
+        AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue(lir.getOptions()) ? new AllocatableValue[lir.numVariables()] : null;
 
         // currently this is not supported
         boolean neverSpillConstant = false;
 
         final TraceRegisterAllocationPolicy plan = DefaultTraceRegisterAllocationPolicy.allocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots,
-                        resultTraces, neverSpillConstant);
+                        resultTraces, neverSpillConstant, lir.getOptions());
 
         Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {

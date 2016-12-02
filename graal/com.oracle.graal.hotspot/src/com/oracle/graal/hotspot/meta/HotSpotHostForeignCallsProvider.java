@@ -73,6 +73,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.VM_MESSAGE_C;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.EXCEPTION_HANDLER_FOR_RETURN_ADDRESS;
 import static com.oracle.graal.nodes.NamedLocationIdentity.any;
 import static com.oracle.graal.nodes.java.ForeignCallDescriptors.REGISTER_FINALIZER;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.replacements.Log.LOG_OBJECT;
 import static com.oracle.graal.replacements.Log.LOG_PRIMITIVE;
 import static com.oracle.graal.replacements.Log.LOG_PRINTF;
@@ -229,7 +230,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     public void initialize(HotSpotProviders providers) {
         GraalHotSpotVMConfig c = runtime.getVMConfig();
-        if (!PreferGraalStubs.getValue()) {
+        if (!PreferGraalStubs.getValue(GLOBAL)) {
             registerForeignCall(DEOPTIMIZATION_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
             registerForeignCall(UNCOMMON_TRAP_HANDLER, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
         }

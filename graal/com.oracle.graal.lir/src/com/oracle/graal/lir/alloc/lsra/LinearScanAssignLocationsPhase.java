@@ -83,7 +83,7 @@ public class LinearScanAssignLocationsPhase extends AllocationPhase {
         assert interval != null : "interval must exist";
 
         if (opId != -1) {
-            if (DetailedAsserts.getValue()) {
+            if (DetailedAsserts.getValue(allocator.getOptions())) {
                 AbstractBlockBase<?> block = allocator.blockForId(opId);
                 if (block.getSuccessorCount() <= 1 && opId == allocator.getLastLirInstructionId(block)) {
                     /*

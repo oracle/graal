@@ -99,6 +99,7 @@ import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.spi.NodeValueMap;
 import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
@@ -131,7 +132,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         this.nodeMatchRules = nodeMatchRules;
         this.nodeOperands = graph.createNodeMap();
         this.debugInfoBuilder = createDebugInfoBuilder(graph, this);
-        if (MatchExpressions.getValue()) {
+        if (MatchExpressions.getValue(graph.getOptions())) {
             matchRules = MatchRuleRegistry.lookup(nodeMatchRules.getClass());
         }
 
@@ -227,7 +228,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     public final void append(LIRInstruction op) {
-        if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
+        if (Options.PrintIRWithLIR.getValue(nodeOperands.graph().getOptions()) && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
                 lastInstructionPrinted = currentInstruction;
                 InstructionPrinter ip = new InstructionPrinter(TTY.out());
@@ -318,6 +319,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     @Override
     @SuppressWarnings("try")
     public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
+        OptionValues options = graph.getOptions();
         try (BlockScope blockScope = gen.getBlockScope(block)) {
             setSourcePosition(null);
 
@@ -332,7 +334,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                     AbstractMergeNode merge = (AbstractMergeNode) begin;
                     LabelOp label = (LabelOp) gen.getResult().getLIR().getLIRforBlock(block).get(0);
                     label.setPhiValues(createPhiIn(merge));
-                    if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
+                    if (Options.PrintIRWithLIR.getValue(options) && !TTY.isSuppressed()) {
                         TTY.println("Created PhiIn: " + label);
 
                     }
@@ -349,7 +351,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 Node node = nodes.get(i);
                 if (node instanceof ValueNode) {
                     ValueNode valueNode = (ValueNode) node;
-                    if (Options.TraceLIRGeneratorLevel.getValue() >= 3) {
+                    if (Options.TraceLIRGeneratorLevel.getValue(options) >= 3) {
                         TTY.println("LIRGen for " + valueNode);
                     }
                     Value operand = getOperand(valueNode);
@@ -401,7 +403,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     protected void matchComplexExpressions(List<Node> nodes) {
         if (matchRules != null) {
             try (Scope s = Debug.scope("MatchComplexExpressions")) {
-                if (LogVerbose.getValue()) {
+                if (LogVerbose.getValue(nodeOperands.graph().getOptions())) {
                     int i = 0;
                     for (Node node : nodes) {
                         Debug.log("%d: (%s) %1S", i++, node.getUsageCount(), node);
@@ -432,7 +434,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     protected abstract boolean peephole(ValueNode valueNode);
 
     private void doRoot(ValueNode instr) {
-        if (Options.TraceLIRGeneratorLevel.getValue() >= 2) {
+        if (Options.TraceLIRGeneratorLevel.getValue(instr.getOptions()) >= 2) {
             TTY.println("Emitting LIR for instruction " + instr);
         }
         currentInstruction = instr;

@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.AbstractEndNode;
 import com.oracle.graal.nodes.AbstractMergeNode;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.LoopBeginNode;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.cfg.Block;
 
 import jdk.vm.ci.code.BailoutException;
@@ -104,9 +105,10 @@ public final class ReentrantBlockIterator {
         StateT state = initialState;
         Block current = start;
 
+        StructuredGraph graph = start.getBeginNode().graph();
         while (true) {
-            if (CompilationAlarm.hasExpired()) {
-                throw new BailoutException("Compilation exceeded %d seconds during CFG traversal", CompilationAlarm.Options.CompilationExpirationPeriod.getValue());
+            if (CompilationAlarm.hasExpired(graph.getOptions())) {
+                throw new BailoutException("Compilation exceeded %d seconds during CFG traversal", CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions()));
             }
             Block next = null;
             if (stopAtBlock != null && stopAtBlock.test(current)) {

@@ -23,13 +23,14 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotGraalCompiler.fmt;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.util.Arrays;
 
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionType;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -90,8 +91,8 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
      * this time period and thus not be actively monitored by the watch dog.
      */
     private static final int SPIN_TIMEOUT_MS = 1000;
-    private static final long START_DELAY_MS = ms(Options.CompilationWatchDogStartDelay.getValue());
-    private static final long STACK_TRACE_INTERVAL_MS = ms(Options.CompilationWatchDogStackTraceInterval.getValue());
+    private static final long START_DELAY_MS = ms(Options.CompilationWatchDogStartDelay.getValue(GLOBAL));
+    private static final long STACK_TRACE_INTERVAL_MS = ms(Options.CompilationWatchDogStackTraceInterval.getValue(GLOBAL));
     private static final boolean ENABLED = START_DELAY_MS > 0.0D;
 
     private WatchDogState state = WatchDogState.SLEEPING;
@@ -226,7 +227,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                                         numberOfIdenticalStackTraces = 0;
                                     }
                                     numberOfIdenticalStackTraces++;
-                                    if (numberOfIdenticalStackTraces > Options.NonFatalIdenticalCompilationSnapshots.getValue()) {
+                                    if (numberOfIdenticalStackTraces > Options.NonFatalIdenticalCompilationSnapshots.getValue(GLOBAL)) {
                                         synchronized (CompilationWatchDog.class) {
                                             TTY.printf("======================= WATCH DOG THREAD =======================%n" +
                                                             "%s took %d identical stack traces, which indicates a stuck compilation (id=%d) of %s%n%sExiting VM%n", this,

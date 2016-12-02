@@ -679,7 +679,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
 
             // compute the block map, setup exception handlers and get the entrypoint(s)
-            BciBlockMapping newMapping = BciBlockMapping.create(stream, code);
+            BciBlockMapping newMapping = BciBlockMapping.create(stream, code, options);
             this.blockMap = newMapping;
             this.firstInstructionArray = new FixedWithNextNode[blockMap.getBlockCount()];
             this.entryStateArray = new FrameStateBuilder[blockMap.getBlockCount()];
@@ -1432,7 +1432,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         JavaTypeProfile profile = null;
-        if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
+        if (invokeKind.isIndirect() && profilingInfo != null && this.optimisticOpts.useTypeCheckHints(getOptions())) {
             profile = profilingInfo.getTypeProfile(bci());
         }
         createNonInlinedInvoke(args, targetMethod, invokeKind, resultType, returnType, inlineInfo, profile);
@@ -1482,7 +1482,7 @@ public class BytecodeParser implements GraphBuilderContext {
             assert graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.Profile;
             // be conservative if information was not recorded (could result in endless
             // recompiles otherwise)
-            return (!StressInvokeWithExceptionNode.getValue(options) && optimisticOpts.useExceptionProbability() && profilingInfo != null &&
+            return (!StressInvokeWithExceptionNode.getValue(options) && optimisticOpts.useExceptionProbability(getOptions()) && profilingInfo != null &&
                             profilingInfo.getExceptionSeen(bci()) == TriState.FALSE);
         }
     }
@@ -1599,7 +1599,7 @@ public class BytecodeParser implements GraphBuilderContext {
             LogicNode compare = graph.unique(CompareNode.createCompareNode(Condition.EQ, actual, expected, constantReflection));
 
             JavaTypeProfile profile = null;
-            if (profilingInfo != null && this.optimisticOpts.useTypeCheckHints()) {
+            if (profilingInfo != null && this.optimisticOpts.useTypeCheckHints(getOptions())) {
                 profile = profilingInfo.getTypeProfile(bci());
                 if (profile != null) {
                     JavaTypeProfile newProfile = adjustProfileForInvocationPlugin(profile, targetMethod);
@@ -3247,7 +3247,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private JavaTypeProfile getProfileForTypeCheck(TypeReference type) {
-        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints() || type.isExact()) {
+        if (parsingIntrinsic() || profilingInfo == null || !optimisticOpts.useTypeCheckHints(getOptions()) || type.isExact()) {
             return null;
         } else {
             return profilingInfo.getTypeProfile(bci());
@@ -3501,7 +3501,7 @@ public class BytecodeParser implements GraphBuilderContext {
             if (profilingInfo == null) {
                 return receiver;
             }
-            if (optimisticOpts.useExceptionProbabilityForOperations() &&
+            if (optimisticOpts.useExceptionProbabilityForOperations(getOptions()) &&
                             profilingInfo.getExceptionSeen(bci()) == TriState.FALSE &&
                             !StressExplicitExceptionCode.getValue(options)) {
                 return receiver;
@@ -3660,7 +3660,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected boolean isNeverExecutedCode(double probability) {
-        return probability == 0 && optimisticOpts.removeNeverExecutedCode();
+        return probability == 0 && optimisticOpts.removeNeverExecutedCode(getOptions());
     }
 
     protected double branchProbability() {
@@ -3675,7 +3675,7 @@ public class BytecodeParser implements GraphBuilderContext {
             probability = 0.5;
         }
 
-        if (!optimisticOpts.removeNeverExecutedCode()) {
+        if (!optimisticOpts.removeNeverExecutedCode(getOptions())) {
             if (probability == 0) {
                 probability = 0.0000001;
             } else if (probability == 1) {

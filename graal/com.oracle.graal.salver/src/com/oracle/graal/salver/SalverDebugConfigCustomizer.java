@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.salver;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.salver.SalverOptions.Salver;
 
 import com.oracle.graal.debug.DebugConfig;
@@ -34,7 +35,7 @@ public class SalverDebugConfigCustomizer implements DebugConfigCustomizer {
 
     @Override
     public void customize(DebugConfig config, Object... extraArgs) {
-        if (Salver.getValue()) {
+        if (Salver.getValue(GLOBAL)) {
             config.dumpHandlers().add(new GraphDumpHandler());
         }
     }

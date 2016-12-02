@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.truffle.test;
 
-import jdk.vm.ci.code.BailoutException;
-
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.code.SourceStackTrace;
 import com.oracle.graal.replacements.PEGraphDecoder;
 import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
 import com.oracle.graal.truffle.test.nodes.AddTestNode;
 import com.oracle.graal.truffle.test.nodes.BlockTestNode;
@@ -51,6 +50,8 @@ import com.oracle.graal.truffle.test.nodes.SynchronizedExceptionMergeNode;
 import com.oracle.graal.truffle.test.nodes.TwoMergesExplodedLoopTestNode;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
+
+import jdk.vm.ci.code.BailoutException;
 
 public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
@@ -184,7 +185,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void allowedRecursion() {
         /* Recursion depth just below the threshold that reports it as too deep recursion. */
         FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue() - 5);
+        AbstractTestNode result = new RecursionTestNode(TruffleCompilerOptions.getValue(PEGraphDecoder.Options.InliningDepthError) - 5);
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "allowedRecursion", result));
     }
 
@@ -192,7 +193,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
     public void tooDeepRecursion() {
         /* Recursion depth just above the threshold that reports it as too deep recursion. */
         FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue());
+        AbstractTestNode result = new RecursionTestNode(TruffleCompilerOptions.getValue(PEGraphDecoder.Options.InliningDepthError));
         assertPartialEvalEquals("constant42", new RootTestNode(fd, "tooDeepRecursion", result));
     }
 

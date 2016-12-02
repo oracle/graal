@@ -49,6 +49,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.graph.NodeSourcePosition;
 import com.oracle.graal.lir.ConstantValue;
+import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRVerifier;
@@ -61,6 +62,7 @@ import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -297,12 +299,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public <I extends LIRInstruction> I append(I op) {
-        if (Options.PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
+        LIR lir = res.getLIR();
+        if (Options.PrintIRWithLIR.getValue(lir.getOptions()) && !TTY.isSuppressed()) {
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
         assert LIRVerifier.verify(op);
-        List<LIRInstruction> lirForBlock = res.getLIR().getLIRforBlock(getCurrentBlock());
+        List<LIRInstruction> lirForBlock = lir.getLIRforBlock(getCurrentBlock());
         op.setPosition(currentPosition);
         lirForBlock.add(op);
         return op;
@@ -324,7 +327,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
 
         private void doBlockStart() {
-            if (Options.PrintIRWithLIR.getValue()) {
+            OptionValues options = res.getLIR().getOptions();
+            if (Options.PrintIRWithLIR.getValue(options)) {
                 TTY.print(currentBlock.toString());
             }
 
@@ -334,17 +338,18 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
             append(new LabelOp(new Label(currentBlock.getId()), currentBlock.isAligned()));
 
-            if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
+            if (Options.TraceLIRGeneratorLevel.getValue(options) >= 1) {
                 TTY.println("BEGIN Generating LIR for block B" + currentBlock.getId());
             }
         }
 
         private void doBlockEnd() {
-            if (Options.TraceLIRGeneratorLevel.getValue() >= 1) {
+            OptionValues options = res.getLIR().getOptions();
+            if (Options.TraceLIRGeneratorLevel.getValue(options) >= 1) {
                 TTY.println("END Generating LIR for block B" + currentBlock.getId());
             }
 
-            if (Options.PrintIRWithLIR.getValue()) {
+            if (Options.PrintIRWithLIR.getValue(options)) {
                 TTY.println();
             }
             currentBlock = null;

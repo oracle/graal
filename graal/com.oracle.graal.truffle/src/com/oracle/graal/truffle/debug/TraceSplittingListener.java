@@ -27,6 +27,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleSplitt
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.OptimizedDirectCallNode;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
 
 public final class TraceSplittingListener extends AbstractDebugCompilationListener {
 
@@ -34,7 +35,7 @@ public final class TraceSplittingListener extends AbstractDebugCompilationListen
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TraceTruffleSplitting.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleSplitting)) {
             runtime.addCompilationListener(new TraceSplittingListener());
         }
     }

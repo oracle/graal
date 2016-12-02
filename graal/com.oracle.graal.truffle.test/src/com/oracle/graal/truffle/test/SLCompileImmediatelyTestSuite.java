@@ -30,8 +30,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.graal.options.OptionValues.OverrideScope;
-import com.oracle.graal.truffle.GraalTruffleRuntime;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.truffle.sl.test.SLSimpleTestSuite;
 import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
@@ -40,7 +39,7 @@ import com.oracle.truffle.sl.test.SLTestSuite;
 @SLTestSuite(value = {"tests"}, testCaseDirectory = SLSimpleTestSuite.class)
 public class SLCompileImmediatelyTestSuite {
 
-    private static OverrideScope overrideScope;
+    private static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope overrideScope;
 
     @BeforeClass
     public static void beforeClass() {
@@ -54,7 +53,7 @@ public class SLCompileImmediatelyTestSuite {
          * it has all nodes in the uninitialized specialization. This means that most methods are
          * compiled multiple times, in different specialization states.
          */
-        overrideScope = GraalTruffleRuntime.getRuntime().overrideOptions(TruffleCompileImmediately, true, TruffleBackgroundCompilation, false);
+        overrideScope = TruffleCompilerOptions.overrideOptions(TruffleCompileImmediately, true, TruffleBackgroundCompilation, false);
     }
 
     @AfterClass

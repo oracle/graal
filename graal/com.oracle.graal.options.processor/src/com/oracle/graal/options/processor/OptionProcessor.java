@@ -206,11 +206,6 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("    @Override");
             out.println("    public OptionDescriptor get(String value) {");
             out.println("        // CheckStyle: stop line length check");
-            if (info.options.size() == 1) {
-                out.println("        if (value.equals(\"" + info.options.get(0).name + "\")) {");
-            } else {
-                out.println("        switch (value) {");
-            }
             for (OptionInfo option : info.options) {
                 String name = option.name;
                 String optionField;
@@ -223,14 +218,10 @@ public class OptionProcessor extends AbstractProcessor {
                 String help = option.help;
                 String declaringClass = option.declaringClass;
                 Name fieldName = option.field.getSimpleName();
-                if (info.options.size() == 1) {
-                    out.printf("            return %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s);\n", desc, name, type, help, declaringClass, fieldName, optionField);
-                } else {
-                    out.printf("            case \"" + name + "\": return %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s);\n", desc, name, type, help, declaringClass, fieldName,
-                                    optionField);
-                }
+                out.println("        if (value.equals(\"" + name + "\")) {");
+                out.printf("            return %s.create(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s);\n", desc, name, type, help, declaringClass, fieldName, optionField);
+                out.println("        }");
             }
-            out.println("        }");
             out.println("        // CheckStyle: resume line length check");
             out.println("        return null;");
             out.println("    }");

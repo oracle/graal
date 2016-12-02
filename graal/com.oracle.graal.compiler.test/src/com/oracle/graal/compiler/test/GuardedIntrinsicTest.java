@@ -45,6 +45,7 @@ import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -111,8 +112,8 @@ public class GuardedIntrinsicTest extends GraalCompilerTest {
     private StructuredGraph parsedForCompile;
 
     @Override
-    protected StructuredGraph parseForCompile(ResolvedJavaMethod method) {
-        graph = super.parseForCompile(method);
+    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, OptionValues options) {
+        graph = super.parseForCompile(method, options);
         parsedForCompile = (StructuredGraph) graph.copy();
         return graph;
     }

@@ -163,7 +163,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                 } else {
                     asm.decrementq(rsp, frameSize);
                 }
-                if (ZapStackOnMethodEntry.getValue()) {
+                if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                     final int intSize = 4;
                     for (int i = 0; i < frameSize / intSize; ++i) {
                         asm.movl(new AMD64Address(rsp, i * intSize), 0xC1C1C1C1);
@@ -201,7 +201,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         HotSpotLIRGenerationResult gen = (HotSpotLIRGenerationResult) lirGenRen;
         LIR lir = gen.getLIR();
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
-        boolean omitFrame = CanOmitFrame.getValue() && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
+        boolean omitFrame = CanOmitFrame.getValue(lir.getOptions()) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
 
         Stub stub = gen.getStub();
         Assembler masm = createAssembler(frameMap);

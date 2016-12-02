@@ -36,6 +36,7 @@ import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.options.StableOptionKey;
 import com.oracle.graal.phases.contract.NodeCostUtil;
@@ -153,7 +154,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         try (DebugCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start()) {
             int sizeBefore = 0;
             Mark before = null;
-            if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
+            OptionValues options = graph.getOptions();
+            if (PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract()) {
                 if (context instanceof PhaseContext) {
                     sizeBefore = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
                     before = graph.getMark();
@@ -165,7 +167,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             inputNodesCount.add(graph.getNodeCount());
             this.run(graph, context);
             executionCount.increment();
-            if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
+            if (PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract()) {
                 if (context instanceof PhaseContext) {
                     if (!before.isCurrent()) {
                         int sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());

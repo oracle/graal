@@ -314,7 +314,7 @@ public class EscapeAnalysisTest extends EATestBase {
     public void testFullyUnrolledLoop() {
         prepareGraph("testFullyUnrolledLoopSnippet", false);
         new LoopFullUnrollPhase(new CanonicalizerPhase(), new DefaultLoopPolicies()).apply(graph, context);
-        new PartialEscapePhase(false, new CanonicalizerPhase()).apply(graph, context);
+        new PartialEscapePhase(false, new CanonicalizerPhase(), graph.getOptions()).apply(graph, context);
         Assert.assertEquals(1, returnNodes.size());
         Assert.assertTrue(returnNodes.get(0).result() instanceof AllocatedObjectNode);
         CommitAllocationNode commit = ((AllocatedObjectNode) returnNodes.get(0).result()).getCommit();
@@ -345,7 +345,7 @@ public class EscapeAnalysisTest extends EATestBase {
     public void testPeeledLoop() {
         prepareGraph("testPeeledLoopSnippet", false);
         new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
-        new SchedulePhase().apply(graph);
+        new SchedulePhase(graph.getOptions()).apply(graph);
     }
 
     public static void testDeoptMonitorSnippetInner(Object o2, Object t, int i) {

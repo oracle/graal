@@ -22,16 +22,11 @@
  */
 package com.oracle.graal.jtt;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static java.lang.reflect.Modifier.isStatic;
 
 import java.util.Collections;
 import java.util.Set;
-
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 
@@ -40,6 +35,13 @@ import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import com.oracle.graal.options.OptionValues;
+
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Base class for the JTT tests.
@@ -64,8 +66,8 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        StructuredGraph graph = super.parseEager(m, allowAssumptions);
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, OptionValues options) {
+        StructuredGraph graph = super.parseEager(m, allowAssumptions, options);
         if (argsToBind != null) {
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);
@@ -81,8 +83,8 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph) {
-        return super.getCode(method, graph, argsToBind != null);
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph, boolean forceCompile, OptionValues options) {
+        return super.getCode(method, graph, argsToBind != null, options);
     }
 
     Double delta;
@@ -103,14 +105,18 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(String name, Object... args) {
-        runTest(EMPTY, name, args);
+        runTest(GLOBAL, name, args);
+    }
+
+    protected void runTest(OptionValues options, String name, Object... args) {
+        runTest(options, EMPTY, true, false, name, args);
     }
 
     protected void runTest(Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
-        runTest(shouldNotDeopt, true, false, name, args);
+        runTest(GLOBAL, shouldNotDeopt, true, false, name, args);
     }
 
-    protected void runTest(Set<DeoptimizationReason> shouldNotDeopt, boolean bind, boolean noProfile, String name, Object... args) {
+    protected void runTest(OptionValues options, Set<DeoptimizationReason> shouldNotDeopt, boolean bind, boolean noProfile, String name, Object... args) {
         ResolvedJavaMethod method = getResolvedJavaMethod(name);
         Object receiver = method.isStatic() ? null : this;
 
@@ -120,14 +126,14 @@ public class JTTTest extends GraalCompilerTest {
             method.reprofile();
         }
 
-        testAgainstExpected(method, expect, shouldNotDeopt, receiver, args);
+        testAgainstExpected(options, method, expect, shouldNotDeopt, receiver, args);
         if (args.length > 0 && bind) {
             if (noProfile) {
                 method.reprofile();
             }
 
             this.argsToBind = args;
-            testAgainstExpected(method, expect, shouldNotDeopt, receiver, args);
+            testAgainstExpected(options, method, expect, shouldNotDeopt, receiver, args);
             this.argsToBind = null;
         }
     }

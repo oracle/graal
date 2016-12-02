@@ -30,13 +30,13 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.UnwindNode;
-import com.oracle.graal.options.OptionValues.OverrideScope;
 import com.oracle.graal.truffle.DefaultInliningPolicy;
 import com.oracle.graal.truffle.DefaultTruffleCompiler;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.TruffleCompiler;
 import com.oracle.graal.truffle.TruffleCompilerOptions;
+import com.oracle.graal.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import com.oracle.graal.truffle.TruffleDebugJavaMethod;
 import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.truffle.api.Truffle;
@@ -134,7 +134,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (OverrideScope o = runtime.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
             StructuredGraph graph = partialEval(callerNoException, new Object[0], AllowAssumptions.YES);
             Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
         }
@@ -157,7 +157,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (OverrideScope o = runtime.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
             StructuredGraph graph = partialEval(callerWithException, new Object[0], AllowAssumptions.YES);
             Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
         }

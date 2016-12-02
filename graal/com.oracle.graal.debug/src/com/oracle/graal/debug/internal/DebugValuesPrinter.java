@@ -27,6 +27,7 @@ import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueHumanRea
 import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueThreadFilter;
 import static com.oracle.graal.debug.GraalDebugConfig.Options.SuppressZeroDebugValues;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -71,14 +72,14 @@ public class DebugValuesPrinter {
                 ArrayList<DebugValue> sortedValues = new ArrayList<>(debugValues);
                 Collections.sort(sortedValues);
 
-                String summary = DebugValueSummary.getValue();
+                String summary = DebugValueSummary.getValue(GLOBAL);
                 if (summary == null) {
                     summary = "Complete";
                 }
-                if (DebugValueThreadFilter.getValue() != null && topLevelMaps.size() != 0) {
-                    topLevelMaps = topLevelMaps.stream().filter(map -> Pattern.compile(DebugValueThreadFilter.getValue()).matcher(map.getName()).find()).collect(Collectors.toList());
+                if (DebugValueThreadFilter.getValue(GLOBAL) != null && topLevelMaps.size() != 0) {
+                    topLevelMaps = topLevelMaps.stream().filter(map -> Pattern.compile(DebugValueThreadFilter.getValue(GLOBAL)).matcher(map.getName()).find()).collect(Collectors.toList());
                     if (topLevelMaps.size() == 0) {
-                        TTY.println("Warning: DebugValueThreadFilter=%s eliminated all maps so nothing will be printed", DebugValueThreadFilter.getValue());
+                        TTY.println("Warning: DebugValueThreadFilter=%s eliminated all maps so nothing will be printed", DebugValueThreadFilter.getValue(GLOBAL));
                     }
                 }
                 switch (summary) {
@@ -141,7 +142,7 @@ public class DebugValuesPrinter {
     }
 
     private static LogStream getLogStream(String prefix) {
-        String debugValueFile = DebugValueFile.getValue();
+        String debugValueFile = DebugValueFile.getValue(GLOBAL);
         if (debugValueFile != null) {
             try {
                 final String fileName;
@@ -229,7 +230,7 @@ public class DebugValuesPrinter {
     }
 
     private void printMap(LogStream log, DebugValueScope scope, List<DebugValue> debugValues) {
-        if (DebugValueHumanReadable.getValue()) {
+        if (DebugValueHumanReadable.getValue(GLOBAL)) {
             printMapHumanReadable(log, scope, debugValues);
         } else {
             printMapComputerReadable(log, scope, debugValues);
@@ -240,7 +241,7 @@ public class DebugValuesPrinter {
 
         for (DebugValue value : debugValues) {
             long l = scope.map.getCurrentValue(value.getIndex());
-            if (l != 0 || !SuppressZeroDebugValues.getValue()) {
+            if (l != 0 || !SuppressZeroDebugValues.getValue(GLOBAL)) {
                 CSVUtil.Escape.println(log, COMPUTER_READABLE_FMT, scope.toRawString(), value.getName(), value.toRawString(l), value.rawUnit());
             }
         }
@@ -256,7 +257,7 @@ public class DebugValuesPrinter {
 
         for (DebugValue value : debugValues) {
             long l = scope.map.getCurrentValue(value.getIndex());
-            if (l != 0 || !SuppressZeroDebugValues.getValue()) {
+            if (l != 0 || !SuppressZeroDebugValues.getValue(GLOBAL)) {
                 scope.print(log);
                 printIndent(log, scope.level + 1);
                 log.println(value.getName() + "=" + value.toString(l));

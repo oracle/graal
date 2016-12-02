@@ -116,8 +116,7 @@ public class CompilationTask {
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         if (Inline.getValue(options) && !config.inline && !Inline.hasBeenSet(options)) {
-            this.options = new OptionValues(options);
-            Inline.setValue(this.options, false);
+            this.options = new OptionValues(options, Inline, false);
         } else {
             this.options = options;
         }
@@ -213,13 +212,13 @@ public class CompilationTask {
         CompilationResult result = null;
         try (DebugCloseable a = CompilationTime.start()) {
             CompilationStatistics stats = CompilationStatistics.create(method, isOSR);
-            final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
-            final boolean printAfterCompilation = PrintAfterCompilation.getValue() && !TTY.isSuppressed();
+            final boolean printCompilation = PrintCompilation.getValue(options) && !TTY.isSuppressed();
+            final boolean printAfterCompilation = PrintAfterCompilation.getValue(options) && !TTY.isSuppressed();
             if (printCompilation) {
                 TTY.println(getMethodDescription() + "...");
             }
 
-            TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
+            TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(options), method);
             final long start;
             final long allocatedBytesBefore;
             if (printAfterCompilation || printCompilation) {
@@ -270,11 +269,11 @@ public class CompilationTask {
             return null;
         } catch (BailoutException bailout) {
             BAILOUTS.increment();
-            if (ExitVMOnBailout.getValue()) {
+            if (ExitVMOnBailout.getValue(options)) {
                 TTY.out.println(method.format("Bailout in %H.%n(%p)"));
                 bailout.printStackTrace(TTY.out);
                 System.exit(-1);
-            } else if (PrintBailout.getValue()) {
+            } else if (PrintBailout.getValue(options)) {
                 TTY.out.println(method.format("Bailout in %H.%n(%p)"));
                 bailout.printStackTrace(TTY.out);
             }
@@ -334,7 +333,7 @@ public class CompilationTask {
          * Automatically enable ExitVMOnException during bootstrap or when asserts are enabled but
          * respect ExitVMOnException if it's been explicitly set.
          */
-        boolean exitVMOnException = ExitVMOnException.getValue();
+        boolean exitVMOnException = ExitVMOnException.getValue(options);
         if (!ExitVMOnException.hasBeenSet()) {
             assert (exitVMOnException = true) == true;
             if (!exitVMOnException) {
@@ -345,7 +344,7 @@ public class CompilationTask {
             }
         }
 
-        if (PrintStackTraceOnException.getValue() || exitVMOnException) {
+        if (PrintStackTraceOnException.getValue(options) || exitVMOnException) {
             try {
                 t.printStackTrace(TTY.out);
             } catch (Throwable throwable) {

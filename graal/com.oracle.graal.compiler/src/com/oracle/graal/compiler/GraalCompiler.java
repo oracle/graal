@@ -172,7 +172,7 @@ public class GraalCompiler {
     @SuppressWarnings("try")
     public static <T extends CompilationResult> T compile(Request<T> r) {
         try (Scope s = MethodMetricsRootScopeInfo.createRootScopeIfAbsent(r.installedCodeOwner);
-                        CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod()) {
+                        CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(r.graph.getOptions())) {
             assert !r.graph.isFrozen();
             try (Scope s0 = Debug.scope("GraalCompiler", r.graph, r.providers.getCodeCache()); DebugCloseable a = CompilerTimer.start()) {
                 emitFrontEnd(r.providers, r.backend, r.graph, r.graphBuilderSuite, r.optimisticOpts, r.profilingInfo, r.suites);
@@ -224,7 +224,7 @@ public class GraalCompiler {
         try (Scope s = Debug.scope("BackEnd", graph.getLastSchedule()); DebugCloseable a = BackEnd.start()) {
             // Repeatedly run the LIR code generation pass to improve statistical profiling results.
             for (int i = 0; i < EmitLIRRepeatCount.getValue(graph.getOptions()); i++) {
-                SchedulePhase dummySchedule = new SchedulePhase();
+                SchedulePhase dummySchedule = new SchedulePhase(graph.getOptions());
                 dummySchedule.apply(graph);
                 emitLIR(backend, graph, stub, registerConfig, lirSuites, compilationResult);
             }

@@ -27,6 +27,7 @@ import org.junit.Test;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.Phase;
 import com.oracle.graal.phases.common.RemoveValueProxyPhase;
 import com.oracle.graal.phases.tiers.Suites;
@@ -137,8 +138,8 @@ public class EnumSwitchTest extends GraalCompilerTest {
     }
 
     @Override
-    protected Suites createSuites() {
-        Suites ret = super.createSuites();
+    protected Suites createSuites(OptionValues options) {
+        Suites ret = super.createSuites(options);
         ret.getHighTier().prependPhase(new Phase("CheckGraphPhase") {
             @Override
             protected void run(StructuredGraph graph) {

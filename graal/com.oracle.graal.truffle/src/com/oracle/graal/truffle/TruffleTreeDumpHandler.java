@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import com.oracle.graal.debug.DebugDumpHandler;
 import com.oracle.graal.debug.GraalDebugConfig.Options;
 import com.oracle.truffle.api.CallTarget;
@@ -50,7 +52,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
     @Override
     public void dump(Object object, final String message) {
-        if (object instanceof TruffleTreeDump && Options.PrintIdealGraph.getValue() && Options.PrintTruffleTrees.getValue()) {
+        if (object instanceof TruffleTreeDump && Options.PrintIdealGraph.getValue(GLOBAL) && TruffleCompilerOptions.getValue(Options.PrintTruffleTrees)) {
             dumpRootCallTarget(message, ((TruffleTreeDump) object).callTarget);
         }
     }

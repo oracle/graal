@@ -37,7 +37,7 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
 
     public static TruffleCompiler create(GraalTruffleRuntime runtime) {
         Backend backend = runtime.getRequiredGraalCapability(RuntimeProvider.class).getHostBackend();
-        OptionValues options = runtime.getOptions();
+        OptionValues options = TruffleCompilerOptions.getOptions();
         Suites suites = backend.getSuites().getDefaultSuites(options);
         LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites(options);
         GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();

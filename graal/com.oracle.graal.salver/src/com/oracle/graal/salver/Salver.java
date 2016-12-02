@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.salver;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.salver.SalverOptions.SalverAddress;
 import static com.oracle.graal.salver.SalverOptions.SalverPort;
 
@@ -42,6 +43,6 @@ public final class Salver {
     }
 
     public static InetSocketAddress getSocketAddress() {
-        return new InetSocketAddress(SalverAddress.getValue(), SalverPort.getValue());
+        return new InetSocketAddress(SalverAddress.getValue(GLOBAL), SalverPort.getValue(GLOBAL));
     }
 }

@@ -30,6 +30,7 @@ import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
 import com.oracle.truffle.api.nodes.Node;
@@ -38,7 +39,7 @@ import com.oracle.truffle.api.nodes.NodeClass;
 public final class TraceCompilationASTListener extends AbstractDebugCompilationListener {
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TraceTruffleCompilationAST.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationAST)) {
             runtime.addCompilationListener(new TraceCompilationASTListener());
         }
     }

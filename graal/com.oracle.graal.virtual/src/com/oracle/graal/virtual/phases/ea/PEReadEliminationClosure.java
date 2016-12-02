@@ -63,6 +63,7 @@ import com.oracle.graal.nodes.spi.LoweringProvider;
 import com.oracle.graal.nodes.type.StampTool;
 import com.oracle.graal.nodes.util.GraphUtil;
 import com.oracle.graal.nodes.virtual.VirtualArrayNode;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheEntry;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -384,7 +385,8 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 loopKilledLocations = new LoopKillCache(1/* 1.visit */);
                 loopLocationKillCache.put(loop, loopKilledLocations);
             } else {
-                if (loopKilledLocations.visits() > ReadEliminationMaxLoopVisits.getValue()) {
+                OptionValues options = loop.getHeader().getBeginNode().getOptions();
+                if (loopKilledLocations.visits() > ReadEliminationMaxLoopVisits.getValue(options)) {
                     // we have processed the loop too many times, kill all locations so the inner
                     // loop will never be processed more than once again on visit
                     loopKilledLocations.setKillsAll();

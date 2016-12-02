@@ -36,6 +36,7 @@ public final class OptionDescriptor {
     protected final String fieldName;
 
     public static OptionDescriptor create(String name, Class<?> type, String help, Class<?> declaringClass, String fieldName, OptionKey<?> option) {
+        assert option != null : declaringClass + "." + fieldName;
         OptionDescriptor result = option.getDescriptor();
         if (result == null) {
             result = new OptionDescriptor(name, type, help, declaringClass, fieldName, option);

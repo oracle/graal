@@ -40,6 +40,7 @@ import com.oracle.graal.debug.DebugValueFactory;
 import com.oracle.graal.debug.DebugVerifyHandler;
 import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.Phase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -139,13 +140,14 @@ public class MethodMetricsTestInterception02 extends MethodMetricsTest {
     DebugConfig getConfig() {
         List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
+        OptionValues options = OptionValues.GLOBAL;
         GraalDebugConfig debugConfig = new GraalDebugConfig(
-                        GraalDebugConfig.Options.Log.getValue(),
+                        GraalDebugConfig.Options.Log.getValue(options),
                         ""/* unscoped meter */,
-                        GraalDebugConfig.Options.TrackMemUse.getValue(),
+                        GraalDebugConfig.Options.TrackMemUse.getValue(options),
                         ""/* unscoped time */,
-                        GraalDebugConfig.Options.Dump.getValue(),
-                        GraalDebugConfig.Options.Verify.getValue(),
+                        GraalDebugConfig.Options.Dump.getValue(options),
+                        GraalDebugConfig.Options.Verify.getValue(options),
                         null /* no method filter */,
                         "" /* unscoped method metering */,
                         System.out, dumpHandlers, verifyHandlers);

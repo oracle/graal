@@ -129,6 +129,8 @@ public class LazyInitializationTest {
         Assume.assumeFalse("This test can only run if JVMCI is not one of the default compilers", usesJvmciCompiler);
 
         args.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
+        args.add("-dsa");
+        args.add("-da");
         args.add("com.oracle.mxtool.junit.MxJUnitWrapper");
         args.addAll(Arrays.asList(tests));
 
@@ -178,8 +180,8 @@ public class LazyInitializationTest {
     private static boolean isGraalClass(String className) {
         if (className.startsWith("com.oracle.graal.truffle.") || className.startsWith("com.oracle.graal.serviceprovider.")) {
             // Ignore classes in the com.oracle.graal.truffle package, they are all allowed.
-            // Also ignore classes in the graal serviceprovider package, as they might not be lazily
-            // loaded.
+            // Also ignore classes in the Graal service provider package, as they might not be
+            // lazily loaded.
             return false;
         } else {
             return className.startsWith("com.oracle.graal.");

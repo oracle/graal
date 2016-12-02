@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.api.directives.test;
 
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.options.OptionValues.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.code.InstalledCode;
@@ -98,16 +100,17 @@ public class LockInstrumentationTest extends GraalCompilerTest {
      */
     @Test
     public void testLock() {
-        try (OverrideScope s = overrideOptions(GraalOptions.UseGraalInstrumentation, true)) {
+        try {
             Class<?> clazz = instrumentor.instrument(LockInstrumentationTest.class, "lockSnippet", Opcodes.MONITORENTER);
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "lockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlags();
-            InstalledCode code = getCode(method);
+            OptionValues options = new OptionValues(GLOBAL, UseGraalInstrumentation, true);
+            InstalledCode code = getCode(method, options);
             code.executeVarargs();
             Assert.assertFalse("expected lock was performed before checkpoint", lockAfterCheckPoint);
-        } catch (Throwable e) {
-            Assert.fail("Unexpected exception: " + e);
+        } catch (Exception e) {
+            throw new AssertionError(e);
         }
     }
 
@@ -134,7 +137,7 @@ public class LockInstrumentationTest extends GraalCompilerTest {
      */
     @Test
     public void testNonEscapeLock() {
-        try (OverrideScope s = overrideOptions(GraalOptions.UseGraalInstrumentation, true)) {
+        try {
             Class<?> clazz = instrumentor.instrument(LockInstrumentationTest.class, "postponeLockSnippet", Opcodes.MONITORENTER);
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "postponeLockSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
@@ -142,10 +145,11 @@ public class LockInstrumentationTest extends GraalCompilerTest {
             // The lock in the snippet will be relocated before the invocation to
             // notInlinedMethod(), i.e., after the checkpoint. We expect the instrumentation follows
             // and flag will be set to true.
-            InstalledCode code = getCode(method);
+            OptionValues options = new OptionValues(GLOBAL, UseGraalInstrumentation, true);
+            InstalledCode code = getCode(method, options);
             code.executeVarargs();
             Assert.assertTrue("expected lock was performed after checkpoint", lockAfterCheckPoint);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }

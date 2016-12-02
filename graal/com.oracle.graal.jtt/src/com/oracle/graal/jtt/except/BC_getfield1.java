@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.jtt.except;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import org.junit.Test;
 
 import com.oracle.graal.jtt.JTTTest;
@@ -47,7 +49,7 @@ public class BC_getfield1 extends JTTTest {
     @Test
     public void run1() throws Throwable {
         // tests that the null check isn't removed along with the read
-        runTest(EMPTY, true, true, "test", (Object) null);
+        runTest(GLOBAL, EMPTY, true, true, "test", (Object) null);
     }
 
     @Test

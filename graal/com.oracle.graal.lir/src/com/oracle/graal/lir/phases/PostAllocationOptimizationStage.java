@@ -33,8 +33,9 @@ import com.oracle.graal.lir.profiling.MethodProfilingPhase;
 import com.oracle.graal.lir.profiling.MoveProfilingPhase;
 import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 
 public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocationOptimizationContext> {
     public static class Options {
@@ -56,23 +57,23 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
         // @formatter:on
     }
 
-    public PostAllocationOptimizationStage() {
-        if (Options.LIROptEdgeMoveOptimizer.getValue()) {
+    public PostAllocationOptimizationStage(OptionValues options) {
+        if (Options.LIROptEdgeMoveOptimizer.getValue(options)) {
             appendPhase(new EdgeMoveOptimizer());
         }
-        if (Options.LIROptControlFlowOptimizer.getValue()) {
+        if (Options.LIROptControlFlowOptimizer.getValue(options)) {
             appendPhase(new ControlFlowOptimizer());
         }
-        if (Options.LIROptRedundantMoveElimination.getValue()) {
+        if (Options.LIROptRedundantMoveElimination.getValue(options)) {
             appendPhase(new RedundantMoveElimination());
         }
-        if (Options.LIROptNullCheckOptimizer.getValue()) {
+        if (Options.LIROptNullCheckOptimizer.getValue(options)) {
             appendPhase(new NullCheckOptimizer());
         }
-        if (Options.LIRProfileMoves.getValue()) {
+        if (Options.LIRProfileMoves.getValue(options)) {
             appendPhase(new MoveProfilingPhase());
         }
-        if (Options.LIRProfileMethods.getValue()) {
+        if (Options.LIRProfileMethods.getValue(options)) {
             appendPhase(new MethodProfilingPhase());
         }
     }

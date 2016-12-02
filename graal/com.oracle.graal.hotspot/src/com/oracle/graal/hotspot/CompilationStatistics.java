@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static java.lang.Thread.currentThread;
 
 import java.io.FileNotFoundException;
@@ -45,6 +46,7 @@ import com.oracle.graal.debug.CSVUtil;
 import com.oracle.graal.debug.Management;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionValues;
 import com.sun.management.ThreadMXBean;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
@@ -61,7 +63,7 @@ public final class CompilationStatistics {
     }
 
     private static final long RESOLUTION = 100000000;
-    private static final boolean ENABLED = Options.UseCompilationStatistics.getValue();
+    private static final boolean ENABLED = Options.UseCompilationStatistics.getValue(GLOBAL);
 
     private static final CompilationStatistics DUMMY = new CompilationStatistics(null, false);
 

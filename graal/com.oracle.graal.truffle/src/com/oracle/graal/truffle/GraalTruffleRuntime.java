@@ -22,10 +22,16 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationRepeats;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompileOnly;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilerThreads;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleProfilingEnabled;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.getValue;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.overrideOptions;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -54,10 +60,9 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.options.OptionValues;
-import com.oracle.graal.options.OptionValues.OverrideScope;
 import com.oracle.graal.serviceprovider.GraalServices;
+import com.oracle.graal.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import com.oracle.graal.truffle.debug.CompilationStatisticsListener;
 import com.oracle.graal.truffle.debug.PrintCallTargetProfiling;
 import com.oracle.graal.truffle.debug.TraceCompilationASTListener;
@@ -110,7 +115,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         protected BackgroundCompileQueue() {
             CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread", this);
 
-            int selectedProcessors = TruffleCompilerOptions.TruffleCompilerThreads.getValue();
+            int selectedProcessors = TruffleCompilerOptions.getValue(TruffleCompilerThreads);
             if (selectedProcessors == 0) {
                 // No manual selection made, check how many processors are available.
                 int availableProcessors = Runtime.getRuntime().availableProcessors();
@@ -139,56 +144,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private final Supplier<GraalRuntime> graalRuntime;
     private final GraalTVMCI tvmci = new GraalTVMCI();
 
-    private static final ThreadLocal<OptionValues> optionsOverride = new ThreadLocal<>();
-
-    protected final OptionValues options = new OptionValues(GLOBAL);
-
     /**
      * Utility method that casts the singleton {@link TruffleRuntime}.
      */
     public static GraalTruffleRuntime getRuntime() {
         return (GraalTruffleRuntime) Truffle.getRuntime();
-    }
-
-    /**
-     * Overrides the option values used by the Truffle runtime on the calling thread. Only one
-     * override scope can be activated at a time for a thread.
-     *
-     * The {@linkplain OptionKey#getValue() value} of each {@code option} in {@code overrides} is
-     * set to the corresponding {@code value} in {@code overrides} until
-     * {@link OverrideScope#close()} is called on the object returned by this method.
-     * <p>
-     * Since the returned object is {@link AutoCloseable} the try-with-resource construct can be
-     * used:
-     *
-     * <pre>
-     * try (OverrideScope s = overrideOptions(myOption1, myValue1, myOption2, myValue2)) {
-     *     // code that depends on myOption == myValue
-     * }
-     * </pre>
-     *
-     * @param overrides overrides in the form {@code [option1, override1, option2, override2, ...]}
-     */
-    public OverrideScope overrideOptions(Object... overrides) {
-        assert optionsOverride.get() == null;
-        OptionValues newOptions = new OptionValues(options);
-        for (int i = 0; i < overrides.length; i += 2) {
-            OptionKey<?> option = (OptionKey<?>) overrides[i];
-            Object overrideValue = overrides[i + 1];
-            option.setValue(newOptions, overrideValue);
-        }
-        optionsOverride.set(newOptions);
-        return new OverrideScope() {
-            @Override
-            public void close() {
-                optionsOverride.set(null);
-            }
-        };
-    }
-
-    public OptionValues getOptions() {
-        OptionValues result = optionsOverride.get();
-        return result == null ? options : result;
     }
 
     public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
@@ -317,7 +277,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @Override
     public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
-        if (TruffleCompilerOptions.TruffleUseFrameWithoutBoxing.getValue()) {
+        if (TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing)) {
             return new FrameWithoutBoxing(frameDescriptor, arguments);
         } else {
             return new FrameWithBoxing(frameDescriptor, arguments);
@@ -424,7 +384,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
     final boolean acceptForCompilation(RootNode rootNode) {
-        String includesExcludes = TruffleCompileOnly.getValue(options);
+        String includesExcludes = getValue(TruffleCompileOnly);
         if (includesExcludes != null) {
             if (cachedIncludesExcludes != includesExcludes) {
                 parseCompileOnly();
@@ -458,7 +418,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         ArrayList<String> includesList = new ArrayList<>();
         ArrayList<String> excludesList = new ArrayList<>();
 
-        String[] items = TruffleCompileOnly.getValue().split(",");
+        String[] items = getValue(TruffleCompileOnly).split(",");
         for (String item : items) {
             if (item.startsWith("~")) {
                 excludesList.add(item.substring(1));
@@ -505,13 +465,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     private void shutdown() {
         getCompilationNotify().notifyShutdown(this);
-        if (TruffleCompilerOptions.TruffleInstrumentBranches.getValue()) {
-            InstrumentBranchesPhase.instrumentation.dumpAccessTable();
+        OptionValues options = TruffleCompilerOptions.getOptions();
+        if (getValue(TruffleInstrumentBranches)) {
+            InstrumentBranchesPhase.instrumentation.dumpAccessTable(options);
         }
     }
 
     protected void doCompile(OptimizedCallTarget optimizedCallTarget) {
-        int repeats = TruffleCompilerOptions.TruffleCompilationRepeats.getValue();
+        int repeats = TruffleCompilerOptions.getValue(TruffleCompilationRepeats);
         if (repeats <= 1) {
             /* Normal compilation. */
             doCompile0(optimizedCallTarget);
@@ -538,15 +499,20 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     protected abstract BackgroundCompileQueue getCompileQueue();
 
+    @SuppressWarnings("try")
     public Future<?> submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
         BackgroundCompileQueue l = getCompileQueue();
         final WeakReference<OptimizedCallTarget> weakCallTarget = new WeakReference<>(optimizedCallTarget);
+        final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
         return l.compileQueue.submit(new Runnable() {
             @Override
             public void run() {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
                 if (callTarget != null) {
-                    doCompile(callTarget);
+                    try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
+                        TruffleCompilerOptions.getOptions();
+                        doCompile(callTarget);
+                    }
                 }
             }
         });
@@ -559,7 +525,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             try {
                 future.get();
             } catch (ExecutionException e) {
-                if (TruffleCompilationExceptionsAreThrown.getValue() && !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
+                if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown) && !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
                     throw new RuntimeException(e.getCause());
                 } else {
                     // silently ignored
@@ -627,7 +593,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     public final boolean enableInfopoints() {
         /* Currently infopoints can change code generation so don't enable them automatically */
-        return platformEnableInfopoints() && TruffleEnableInfopoints.getValue();
+        return platformEnableInfopoints() && TruffleCompilerOptions.getValue(TruffleEnableInfopoints);
     }
 
     protected abstract boolean platformEnableInfopoints();
@@ -637,7 +603,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     // cached field access to make it fast in the interpreter
-    private static final boolean PROFILING_ENABLED = TruffleCompilerOptions.TruffleProfilingEnabled.getValue();
+    private static final boolean PROFILING_ENABLED = TruffleCompilerOptions.getValue(TruffleProfilingEnabled);
 
     @Override
     public final boolean isProfilingEnabled() {

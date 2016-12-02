@@ -31,6 +31,7 @@ import com.oracle.graal.hotspot.HotSpotGraalCompilerFactory;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.serviceprovider.ServiceProvider;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
 
@@ -81,7 +82,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                     return (GraalJVMCICompiler) compiler;
                 }
             }
-            CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue());
+            CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(TruffleCompilerOptions.getValue(Options.TruffleCompilerConfiguration));
             return HotSpotGraalCompilerFactory.createCompiler(JVMCI.getRuntime(), compilerConfigurationFactory);
         }
     }

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.salver.dumper;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -108,9 +110,9 @@ public class GraphDumper extends AbstractMethodScopeDumper {
             if (scheduleResult == null) {
 
                 // Also provide a schedule when an error occurs
-                if (Options.PrintIdealGraphSchedule.getValue() || Debug.contextLookup(Throwable.class) != null) {
+                if (Options.PrintIdealGraphSchedule.getValue(GLOBAL) || Debug.contextLookup(Throwable.class) != null) {
                     try {
-                        SchedulePhase schedule = new SchedulePhase();
+                        SchedulePhase schedule = new SchedulePhase(graph.getOptions());
                         schedule.apply(structuredGraph);
                     } catch (Throwable t) {
                     }
@@ -189,7 +191,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         }
 
         ControlFlowGraph cfg = schedule.getCFG();
-        if (cfg != null && Options.PrintGraphProbabilities.getValue() && node instanceof FixedNode) {
+        if (cfg != null && Options.PrintGraphProbabilities.getValue(GLOBAL) && node instanceof FixedNode) {
             try {
                 nodeDict.put("probability", cfg.blockFor(node).probability());
             } catch (Throwable t) {

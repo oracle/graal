@@ -32,12 +32,13 @@ import java.util.stream.Collectors;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
 import com.oracle.graal.truffle.TraceCompilationProfile;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.truffle.api.Truffle;
 
 public final class PrintCallTargetProfiling extends AbstractDebugCompilationListener {
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleCallTargetProfiling.getValue()) {
+        if (TruffleCompilerOptions.getValue(TruffleCallTargetProfiling)) {
             runtime.addCompilationListener(new PrintCallTargetProfiling());
         }
     }

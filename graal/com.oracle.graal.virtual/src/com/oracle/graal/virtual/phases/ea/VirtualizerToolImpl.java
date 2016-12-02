@@ -191,7 +191,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     @Override
     public int getMaximumEntryCount() {
-        return MaximumEscapeAnalysisArrayLength.getValue();
+        return MaximumEscapeAnalysisArrayLength.getValue(current.getOptions());
     }
 
     @Override

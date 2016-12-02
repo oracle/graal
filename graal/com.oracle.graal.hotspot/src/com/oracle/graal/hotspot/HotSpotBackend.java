@@ -275,7 +275,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     }
 
     protected void profileInstructions(LIR lir, CompilationResultBuilder crb) {
-        if (HotSpotBackend.Options.ASMInstructionProfiling.getValue() != null) {
+        if (HotSpotBackend.Options.ASMInstructionProfiling.getValue(lir.getOptions()) != null) {
             HotSpotInstructionProfiling.countInstructions(lir, crb.asm);
         }
     }

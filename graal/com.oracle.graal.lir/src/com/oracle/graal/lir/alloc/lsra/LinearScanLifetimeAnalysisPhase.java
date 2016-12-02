@@ -183,7 +183,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                         }
                     }
 
-                    if (DetailedAsserts.getValue()) {
+                    if (DetailedAsserts.getValue(allocator.getOptions())) {
                         verifyInput(block, liveKill, operand);
                     }
                 };
@@ -210,7 +210,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                         }
                     }
 
-                    if (DetailedAsserts.getValue()) {
+                    if (DetailedAsserts.getValue(allocator.getOptions())) {
                         /*
                          * Fixed intervals are never live at block boundaries, so they need not be
                          * processed in live sets. Process them only in debug mode so that this can
@@ -360,14 +360,14 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 }
             } while (changeOccurred);
 
-            if (DetailedAsserts.getValue()) {
+            if (DetailedAsserts.getValue(allocator.getOptions())) {
                 verifyLiveness();
             }
 
             // check that the liveIn set of the first block is empty
             AbstractBlockBase<?> startBlock = allocator.getLIR().getControlFlowGraph().getStartBlock();
             if (allocator.getBlockData(startBlock).liveIn.cardinality() != 0) {
-                if (DetailedAsserts.getValue()) {
+                if (DetailedAsserts.getValue(allocator.getOptions())) {
                     reportFailure(numBlocks);
                 }
                 // bailout if this occurs in product mode.
@@ -566,7 +566,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
             ValueMoveOp move = (ValueMoveOp) op;
             if (optimizeMethodArgument(move.getInput())) {
                 StackSlot slot = asStackSlot(move.getInput());
-                if (DetailedAsserts.getValue()) {
+                if (DetailedAsserts.getValue(allocator.getOptions())) {
                     assert op.id() > 0 : "invalid id";
                     assert allocator.blockForId(op.id()).getPredecessorCount() == 0 : "move from stack must be in first block";
                     assert isVariable(move.getResult()) : "result of move must be a variable";

@@ -27,6 +27,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleInlini
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.truffle.GraalTruffleRuntime;
 import com.oracle.graal.truffle.OptimizedCallTarget;
+import com.oracle.graal.truffle.TruffleCompilerOptions;
 import com.oracle.graal.truffle.TruffleInlining;
 import com.oracle.graal.truffle.TruffleInliningDecision;
 import com.oracle.graal.truffle.TruffleInliningProfile;
@@ -37,7 +38,7 @@ public final class TraceInliningListener extends AbstractDebugCompilationListene
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TraceTruffleInlining.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleInlining)) {
             runtime.addCompilationListener(new TraceInliningListener());
         }
     }

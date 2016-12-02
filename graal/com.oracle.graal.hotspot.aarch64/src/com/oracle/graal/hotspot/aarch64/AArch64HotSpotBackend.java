@@ -139,7 +139,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
             }
             crb.blockComment("[method prologue]");
 
-            if (ZapStackOnMethodEntry.getValue()) {
+            if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch = sc.getRegister();
                     int intSize = 4;

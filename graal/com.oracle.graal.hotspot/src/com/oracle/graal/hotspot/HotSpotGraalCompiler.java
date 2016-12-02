@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
 import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -86,7 +87,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         this.jvmciRuntime = jvmciRuntime;
         this.graalRuntime = graalRuntime;
         // It is sufficient to have one compilation counter object per Graal compiler object.
-        this.compilationCounters = Options.CompilationCountLimit.getValue() > 0 ? new CompilationCounters() : null;
+        this.compilationCounters = Options.CompilationCountLimit.getValue(GLOBAL) > 0 ? new CompilationCounters() : null;
         this.bootstrapWatchDog = graalRuntime.isBootstrapping() ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
     }
 
@@ -98,7 +99,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     @Override
     @SuppressWarnings("try")
     public CompilationRequestResult compileMethod(CompilationRequest request) {
-        OptionValues options = OptionValues.GLOBAL;
+        OptionValues options = GLOBAL;
         if (bootstrapWatchDog != null && graalRuntime.isBootstrapping()) {
             if (bootstrapWatchDog.hitCriticalCompilationRateOrTimeout()) {
                 // Drain the compilation queue to expedite completion of the bootstrap
@@ -109,7 +110,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         HotSpotCompilationRequest hsRequest = (HotSpotCompilationRequest) request;
         try (CompilationWatchDog w1 = CompilationWatchDog.watch(method, hsRequest.getId());
                         BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request);
-                        CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod();) {
+                        CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(options);) {
             if (compilationCounters != null) {
                 compilationCounters.countCompilation(method);
             }
@@ -130,11 +131,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
 
     public void compileTheWorld() throws Throwable {
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmciRuntime.getHostJVMCIBackend().getCodeCache();
-        int iterations = CompileTheWorldOptions.CompileTheWorldIterations.getValue();
+        int iterations = CompileTheWorldOptions.CompileTheWorldIterations.getValue(GLOBAL);
         for (int i = 0; i < iterations; i++) {
             codeCache.resetCompilationStatistics();
             TTY.println("CompileTheWorld : iteration " + i);
-            CompileTheWorld ctw = new CompileTheWorld(jvmciRuntime, this, OptionValues.GLOBAL);
+            this.graalRuntime.getVMConfig();
+            CompileTheWorld ctw = new CompileTheWorld(jvmciRuntime, this, GLOBAL);
             ctw.compile();
         }
         System.exit(0);
@@ -157,7 +159,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         Suites suites = getSuites(providers, options);
         LIRSuites lirSuites = getLIRSuites(providers, options);
         ProfilingInfo profilingInfo = useProfilingInfo ? method.getProfilingInfo(!isOSR, isOSR) : DefaultProfilingInfo.get(TriState.FALSE);
-        OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
+        OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo, options);
         if (isOSR) {
             // In OSR compiles, we cannot rely on never executed code profiles, because
             // all code after the OSR loop is never executed.
@@ -201,8 +203,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         return null;
     }
 
-    protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo) {
-        return new OptimisticOptimizations(profilingInfo);
+    protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo, OptionValues options) {
+        return new OptimisticOptimizations(profilingInfo, options);
     }
 
     protected Suites getSuites(HotSpotProviders providers, OptionValues options) {

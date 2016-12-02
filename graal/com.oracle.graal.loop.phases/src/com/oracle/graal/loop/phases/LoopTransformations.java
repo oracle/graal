@@ -67,7 +67,7 @@ public abstract class LoopTransformations {
             peel(loop);
             canonicalizer.applyIncremental(graph, context, mark);
             loop.invalidateFragments();
-            if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue() * 2) {
+            if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue(graph.getOptions()) * 2) {
                 throw new BailoutException("FullUnroll : Graph seems to grow out of proportion");
             }
         }

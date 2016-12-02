@@ -49,7 +49,7 @@ public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
 
             if (!method.isSynchronized() &&
                 checkSize(method, args, b.getGraph()) &&
-                b.getDepth() < InlineDuringParsingMaxDepth.getValue()) {
+                b.getDepth() < InlineDuringParsingMaxDepth.getValue(b.getOptions())) {
                 return createStandardInlineInfo(method);
             }
         }

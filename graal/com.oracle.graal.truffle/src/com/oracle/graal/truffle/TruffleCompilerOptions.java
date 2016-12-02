@@ -22,15 +22,94 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
+import java.util.Map;
+
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.StableOptionKey;
 
 /**
  * Options for the Truffle compiler.
  */
 public class TruffleCompilerOptions {
+
+    static class Lazy {
+        private static final ThreadLocal<TruffleOptionsOverrideScope> overrideScope = new ThreadLocal<>();
+    }
+
+    /**
+     * Gets the object holding the values of Truffle options, taking into account any active
+     * {@linkplain #overrideOptions(OptionKey, Object, Object...) overrides}.
+     */
+    public static OptionValues getOptions() {
+        TruffleOptionsOverrideScope scope = Lazy.overrideScope.get();
+        return scope != null ? scope.options : GLOBAL;
+    }
+
+    /**
+     * Gets the options defined in the current option
+     * {@linkplain #overrideOptions(OptionKey, Object, Object...) override} scope or {@code null} if
+     * there is no override scope active for the current thread.
+     */
+    public static OptionValues getCurrentOptionOverrides() {
+        TruffleOptionsOverrideScope scope = Lazy.overrideScope.get();
+        return scope != null ? scope.options : null;
+    }
+
+    public static class TruffleOptionsOverrideScope implements AutoCloseable {
+        private final TruffleOptionsOverrideScope outer;
+        private final OptionValues options;
+
+        TruffleOptionsOverrideScope(Map<OptionKey<?>, Object> overrides) {
+            outer = Lazy.overrideScope.get();
+            options = new OptionValues(outer == null ? GLOBAL : outer.options, overrides);
+            Lazy.overrideScope.set(this);
+        }
+
+        @Override
+        public void close() {
+            Lazy.overrideScope.set(outer);
+        }
+    }
+
+    /**
+     * Forces specified values in the object returned by {@link #getOptions()} until
+     * {@link TruffleOptionsOverrideScope#close()} is called on the object returned by this method.
+     * The values forced while the override is active are taken from the key/value pairs in
+     * {@code overrides}. The override is thread local.
+     * <p>
+     * The returned object should be used with the try-with-resource construct:
+     *
+     * <pre>
+     * try (OverrideScope s = overrideOptions(option1, value1, option2, value2)) {
+     *     ...
+     * }
+     * </pre>
+     *
+     * NOTE: This feature is only intended for testing. The caller must be aware whether or not the
+     * options being overridden are accessed inside the new override scope.
+     *
+     * @param extraOverrides overrides in the form {@code [key1, value2, key3, value3, ...]}
+     */
+    public static TruffleOptionsOverrideScope overrideOptions(OptionKey<?> key1, Object value1, Object... extraOverrides) {
+        return new TruffleOptionsOverrideScope(OptionValues.asMap(key1, value1, extraOverrides));
+    }
+
+    public static TruffleOptionsOverrideScope overrideOptions(Map<OptionKey<?>, Object> overrides) {
+        return new TruffleOptionsOverrideScope(overrides);
+    }
+
+    /**
+     * Gets the value of a given Truffle option key taking into account any active
+     * {@linkplain #overrideOptions overrides}.
+     */
+    public static <T> T getValue(OptionKey<T> key) {
+        return key.getValue(getOptions());
+    }
 
     // @formatter:off
     // configuration

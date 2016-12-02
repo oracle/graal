@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.options;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -236,7 +238,7 @@ public class OptionsParser {
         }
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             OptionDescriptor desc = e.getValue();
-            Object value = desc.getOptionKey().getValue();
+            Object value = desc.getOptionKey().getValue(GLOBAL);
             if (value instanceof String) {
                 value = '"' + String.valueOf(value) + '"';
             }

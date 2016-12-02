@@ -41,6 +41,7 @@ import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
 import com.oracle.graal.nodes.calc.FloatConvertNode;
 import com.oracle.graal.nodes.spi.LoweringTool;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.replacements.amd64.AMD64ConvertSnippets;
 import com.oracle.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
@@ -75,7 +76,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     @Override
     protected ForeignCallDescriptor toForeignCall(UnaryOperation operation) {
-        if (GraalArithmeticStubs.getValue()) {
+        if (GraalArithmeticStubs.getValue(OptionValues.GLOBAL)) {
             switch (operation) {
                 case LOG:
                     return ARITHMETIC_LOG_STUB;
@@ -99,7 +100,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     @Override
     protected ForeignCallDescriptor toForeignCall(BinaryOperation operation) {
-        if (GraalArithmeticStubs.getValue()) {
+        if (GraalArithmeticStubs.getValue(OptionValues.GLOBAL)) {
             switch (operation) {
                 case POW:
                     return ARITHMETIC_POW_STUB;

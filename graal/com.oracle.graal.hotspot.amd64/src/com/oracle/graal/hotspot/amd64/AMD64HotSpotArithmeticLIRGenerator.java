@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.COS;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.LOG;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.LOG10;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.SIN;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotMathIntrinsicOp.IntrinsicOpcode.TAN;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import com.oracle.graal.compiler.amd64.AMD64ArithmeticLIRGenerator;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.lir.Variable;
-import static com.oracle.graal.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 
 import jdk.vm.ci.meta.Value;
 
@@ -39,7 +40,7 @@ public class AMD64HotSpotArithmeticLIRGenerator extends AMD64ArithmeticLIRGenera
 
     @Override
     public Value emitMathLog(Value input, boolean base10) {
-        if (GraalArithmeticStubs.getValue()) {
+        if (GraalArithmeticStubs.getValue(GLOBAL)) {
             return super.emitMathLog(input, base10);
         }
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
@@ -49,7 +50,7 @@ public class AMD64HotSpotArithmeticLIRGenerator extends AMD64ArithmeticLIRGenera
 
     @Override
     public Value emitMathCos(Value input) {
-        if (GraalArithmeticStubs.getValue()) {
+        if (GraalArithmeticStubs.getValue(GLOBAL)) {
             return super.emitMathCos(input);
         }
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
@@ -59,7 +60,7 @@ public class AMD64HotSpotArithmeticLIRGenerator extends AMD64ArithmeticLIRGenera
 
     @Override
     public Value emitMathSin(Value input) {
-        if (GraalArithmeticStubs.getValue()) {
+        if (GraalArithmeticStubs.getValue(GLOBAL)) {
             return super.emitMathSin(input);
         }
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
@@ -69,7 +70,7 @@ public class AMD64HotSpotArithmeticLIRGenerator extends AMD64ArithmeticLIRGenera
 
     @Override
     public Value emitMathTan(Value input) {
-        if (GraalArithmeticStubs.getValue()) {
+        if (GraalArithmeticStubs.getValue(GLOBAL)) {
             return super.emitMathTan(input);
         }
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));

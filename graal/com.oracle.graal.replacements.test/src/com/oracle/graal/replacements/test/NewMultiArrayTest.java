@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.NewMultiArrayNode;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -53,8 +54,8 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     }
 
     @Override
-    protected InstalledCode getCode(final ResolvedJavaMethod method, StructuredGraph g) {
-        StructuredGraph graph = g == null ? parseForCompile(method) : g;
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph g, boolean ignore, OptionValues options) {
+        StructuredGraph graph = g == null ? parseForCompile(method, options) : g;
         boolean forceCompile = false;
         if (bottomType != null) {
             List<NewMultiArrayNode> snapshot = graph.getNodes().filter(NewMultiArrayNode.class).snapshot();
@@ -73,7 +74,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
             graph.replaceFixedWithFixed(node, repl);
             forceCompile = true;
         }
-        return super.getCode(method, graph, forceCompile);
+        return super.getCode(method, graph, forceCompile, options);
     }
 
     @Override

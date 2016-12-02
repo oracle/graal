@@ -25,6 +25,7 @@ package com.oracle.graal.truffle.phases;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPretty;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,6 +48,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.AddNode;
 import com.oracle.graal.nodes.java.LoadIndexedNode;
 import com.oracle.graal.nodes.java.StoreIndexedNode;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.truffle.TruffleCompilerOptions;
@@ -67,14 +69,14 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                     "com.oracle.graal.truffle.OptimizedDirectCallNode.call"
     };
     private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
-    static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();
+    static final int ACCESS_TABLE_SIZE = TruffleCompilerOptions.getValue(TruffleInstrumentBranchesCount);
     public static final long[] ACCESS_TABLE = new long[ACCESS_TABLE_SIZE];
     public static BranchInstrumentation instrumentation = new BranchInstrumentation();
 
     private final MethodFilter[] methodFilter;
 
-    public InstrumentBranchesPhase() {
-        String filterValue = TruffleInstrumentBranchesFilter.getValue();
+    public InstrumentBranchesPhase(OptionValues options) {
+        String filterValue = TruffleInstrumentBranchesFilter.getValue(options);
         if (filterValue != null) {
             methodFilter = MethodFilter.parse(filterValue);
         } else {
@@ -161,7 +163,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                 if (!MethodFilter.matches(methodFilter, pos.getMethod())) {
                     return null;
                 }
-                if (TruffleInstrumentBranchesPerInlineSite.getValue()) {
+                if (TruffleCompilerOptions.getValue(TruffleInstrumentBranchesPerInlineSite)) {
                     StringBuilder sb = new StringBuilder();
                     while (pos != null) {
                         MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
@@ -181,8 +183,8 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        private static String prettify(String key, Point p) {
-            if (TruffleCompilerOptions.TruffleInstrumentBranchesPretty.getValue() && TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue()) {
+        private static String prettify(String key, Point p, OptionValues options) {
+            if (TruffleInstrumentBranchesPretty.getValue(options) && TruffleInstrumentBranchesPerInlineSite.getValue(options)) {
                 StringBuilder sb = new StringBuilder();
                 NodeSourcePosition pos = p.getPosition();
                 NodeSourcePosition lastPos = null;
@@ -234,8 +236,8 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        public synchronized ArrayList<String> accessTableToList() {
-            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue()) + CodeUtil.NEW_LINE + entry.getValue()).collect(
+        public synchronized ArrayList<String> accessTableToList(OptionValues options) {
+            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue(), options) + CodeUtil.NEW_LINE + entry.getValue()).collect(
                             Collectors.toCollection(ArrayList::new));
         }
 
@@ -248,7 +250,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
             }).collect(Collectors.toCollection(ArrayList::new));
         }
 
-        public synchronized void dumpAccessTable() {
+        public synchronized void dumpAccessTable(OptionValues options) {
             // Dump accumulated profiling information.
             TTY.println("Branch execution profile (sorted by hotness)");
             TTY.println("============================================");
@@ -256,7 +258,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                 TTY.println(line);
             }
             TTY.println();
-            for (String line : accessTableToList()) {
+            for (String line : accessTableToList(options)) {
                 TTY.println(line);
                 TTY.println();
             }

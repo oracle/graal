@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -151,8 +153,8 @@ public class HashCodeTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     private StructuredGraph buildGraphAfterMidTier(String name) {
         StructuredGraph g = parseForCompile(getResolvedJavaMethod(name));
-        new HighTier(options).apply(g, getDefaultHighTierContext());
-        new MidTier(options).apply(g, new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, g.getProfilingInfo()));
+        new HighTier(GLOBAL).apply(g, getDefaultHighTierContext());
+        new MidTier(GLOBAL).apply(g, new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, g.getProfilingInfo()));
         return g;
     }
 

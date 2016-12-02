@@ -44,7 +44,7 @@ public final class TraceCompilationFailureListener extends AbstractDebugCompilat
 
     @Override
     public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
-        if (isPermanentBailout(t) || PrintBailout.getValue()) {
+        if (isPermanentBailout(t) || PrintBailout.getValue(graph.getOptions())) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("Reason", t.toString());
             log(0, "opt fail", target.toString(), properties);

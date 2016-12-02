@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.test;
 import static com.oracle.graal.compiler.GraalCompiler.compileGraph;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -44,7 +45,7 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.memory.FloatingReadNode;
 import com.oracle.graal.nodes.memory.ReadNode;
-import com.oracle.graal.options.OptionValues.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.phases.tiers.SuitesProvider;
@@ -209,17 +210,16 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     private StructuredGraph compile(String test, boolean compileAOT) {
-        try (OverrideScope mark = overrideOptions(ImmutableCode, compileAOT)) {
-            StructuredGraph graph = parseEager(test, AllowAssumptions.YES);
-            ResolvedJavaMethod method = graph.method();
-            // create suites every time, as we modify options for the compiler
-            SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
-            final Suites suitesLocal = suitesProvider.getDefaultSuites(options);
-            final LIRSuites lirSuitesLocal = suitesProvider.getDefaultLIRSuites(options);
-            final CompilationResult compResult = compileGraph(graph, method, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, graph.getProfilingInfo(),
-                            suitesLocal, lirSuitesLocal, new CompilationResult(), CompilationResultBuilderFactory.Default);
-            addMethod(method, compResult);
-            return graph;
-        }
+        OptionValues options = new OptionValues(GLOBAL, ImmutableCode, compileAOT);
+        StructuredGraph graph = parseEager(test, AllowAssumptions.YES, options);
+        ResolvedJavaMethod method = graph.method();
+        // create suites every time, as we modify options for the compiler
+        SuitesProvider suitesProvider = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites();
+        final Suites suitesLocal = suitesProvider.getDefaultSuites(options);
+        final LIRSuites lirSuitesLocal = suitesProvider.getDefaultLIRSuites(options);
+        final CompilationResult compResult = compileGraph(graph, method, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, graph.getProfilingInfo(),
+                        suitesLocal, lirSuitesLocal, new CompilationResult(), CompilationResultBuilderFactory.Default);
+        addMethod(method, compResult);
+        return graph;
     }
 }

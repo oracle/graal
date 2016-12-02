@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.jtt.backend;
 
+import static com.oracle.graal.compiler.common.GraalOptions.InlineEverything;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static jdk.internal.org.objectweb.asm.Opcodes.ACC_PUBLIC;
 import static jdk.internal.org.objectweb.asm.Opcodes.ACC_SUPER;
 import static jdk.internal.org.objectweb.asm.Opcodes.ALOAD;
@@ -39,9 +41,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.jtt.JTTTest;
-import com.oracle.graal.options.OptionValues.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.test.ExportingClassLoader;
 
 import jdk.internal.org.objectweb.asm.ClassWriter;
@@ -134,8 +135,6 @@ public class LargeConstantSectionTest extends JTTTest {
     @Test
     @SuppressWarnings("try")
     public void run0() throws Exception {
-        try (OverrideScope scope = overrideOptions(GraalOptions.InlineEverything, true)) {
-            runTest("test", LOADER.findClass(NAME).newInstance(), 0L);
-        }
+        runTest(new OptionValues(GLOBAL, InlineEverything, true), "test", LOADER.findClass(NAME).newInstance(), 0L);
     }
 }

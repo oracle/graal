@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.api.directives.test;
 
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.options.OptionValues.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -62,7 +64,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
         try {
             Result result = new Result(code.executeVarargs(), null);
             assertEquals(new Result(toString(method), null), result);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }
@@ -85,7 +87,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
         try {
             Result result = new Result(code.executeVarargs(), null);
             assertEquals(new Result(toString(method), null), result);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }
@@ -110,17 +112,18 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     @Test
     public void testRootNameWithinInstrumentationAtCallee() {
-        try (OverrideScope s = overrideOptions(GraalOptions.UseGraalInstrumentation, true)) {
+        try {
             ResolvedJavaMethod method = getResolvedJavaMethod("callerSnippet1");
             executeExpected(method, null); // ensure the method is fully resolved
             rootNameInCallee = null;
             rootNameInCaller = null;
             // We expect both rootName1 and rootName2 are set to the name of the target snippet.
-            InstalledCode code = getCode(method);
+            OptionValues options = new OptionValues(GLOBAL, UseGraalInstrumentation, true);
+            InstalledCode code = getCode(method, options);
             code.executeVarargs();
             Assert.assertEquals(toString(method), rootNameInCallee);
             Assert.assertEquals(rootNameInCallee, rootNameInCaller);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }

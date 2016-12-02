@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
-import com.oracle.graal.options.OptionValues.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.tiers.Suites;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,10 +43,8 @@ public final class DontReuseArgumentSpaceTest extends GraalCompilerTest {
 
     @Override
     @SuppressWarnings("try")
-    protected Suites createSuites() {
-        try (OverrideScope mark = overrideOptions(HighTier.Options.Inline, false)) {
-            return super.createSuites();
-        }
+    protected Suites createSuites(OptionValues options) {
+        return super.createSuites(new OptionValues(options, HighTier.Options.Inline, false));
     }
 
     @Override

@@ -56,7 +56,7 @@ public final class SSIConstructionPhase extends AllocationPhase {
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
-        if (Options.TraceRAFastSSIBuilder.getValue()) {
+        if (Options.TraceRAFastSSIBuilder.getValue(lirGenRes.getLIR().getOptions())) {
             FastSSIBuilder fastSSIBuilder = new FastSSIBuilder(lirGenRes.getLIR());
             fastSSIBuilder.build();
             fastSSIBuilder.finish();

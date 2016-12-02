@@ -67,8 +67,9 @@ import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.phases.LIRPhase;
 import com.oracle.graal.options.NestedBooleanOptionKey;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
@@ -258,6 +259,10 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
             return ((Variable) operand).index;
         }
 
+        OptionValues getOptions() {
+            return getLIR().getOptions();
+        }
+
         /**
          * Gets the number of operands. This value will increase by 1 for new variable.
          */
@@ -325,7 +330,8 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
          */
         private AllocatableValue allocateSpillSlot(TraceInterval interval) {
             int variableIndex = LIRValueUtil.asVariable(interval.splitParent().operand).index;
-            if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue()) {
+            OptionValues options = getOptions();
+            if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue(options)) {
                 AllocatableValue cachedStackSlot = cachedStackSlots[variableIndex];
                 if (cachedStackSlot != null) {
                     TraceRegisterAllocationPhase.globalStackSlots.increment();
@@ -334,7 +340,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                 }
             }
             VirtualStackSlot slot = frameMapBuilder.allocateSpillSlot(interval.kind());
-            if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue()) {
+            if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue(options)) {
                 cachedStackSlots[variableIndex] = slot;
             }
             TraceRegisterAllocationPhase.allocatedStackSlots.increment();
@@ -600,14 +606,15 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                     Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_RESOLVE_DATA_FLOW_PHASE.getName());
 
                     // eliminate spill moves
-                    if (Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
+                    OptionValues options = getOptions();
+                    if (Options.LIROptTraceRAEliminateSpillMoves.getValue(options)) {
                         TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.apply(target, lirGenRes, trace, context, false);
                         Debug.dump(TraceBuilderPhase.TRACE_DUMP_LEVEL, sortedBlocks(), "%s", TRACE_LINEAR_SCAN_ELIMINATE_SPILL_MOVE_PHASE.getName());
                     }
 
                     TRACE_LINEAR_SCAN_ASSIGN_LOCATIONS_PHASE.apply(target, lirGenRes, trace, context, false);
 
-                    if (DetailedAsserts.getValue()) {
+                    if (DetailedAsserts.getValue(options)) {
                         verifyIntervals();
                     }
                 } catch (Throwable e) {
@@ -645,6 +652,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
 
         @SuppressWarnings("try")
         protected void verifyIntervals() {
+            boolean detailedAssertions = DetailedAsserts.getValue(getOptions());
             try (Indent indent = Debug.logAndIndent("verifying intervals")) {
                 int len = intervalsSize();
 
@@ -707,7 +715,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                         Value l2 = i2.location();
                         boolean intersects = i1.intersects(i2);
                         if (intersects && !isIllegal(l1) && (l1.equals(l2))) {
-                            if (DetailedAsserts.getValue()) {
+                            if (detailedAssertions) {
                                 Debug.log("Intervals %s and %s overlap and have the same register assigned", i1, i2);
                                 Debug.log(i1.logString());
                                 Debug.log(i2.logString());
@@ -725,7 +733,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                         Value l2 = i2.location();
                         boolean intersects = i2.intersects(i1);
                         if (intersects && !isIllegal(l1) && (l1.equals(l2))) {
-                            if (DetailedAsserts.getValue()) {
+                            if (detailedAssertions) {
                                 Debug.log("Intervals %s and %s overlap and have the same register assigned", i1, i2);
                                 Debug.log(i1.logString());
                                 Debug.log(i2.logString());
@@ -761,7 +769,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                 FixedInterval fixedInts = createFixedUnhandledList();
                 // to ensure a walking until the last instruction id, add a dummy interval
                 // with a high operation id
-                otherIntervals = new TraceInterval(Value.ILLEGAL, -1);
+                otherIntervals = new TraceInterval(Value.ILLEGAL, -1, getOptions());
                 otherIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
                 TraceIntervalWalker iw = new TraceIntervalWalker(this, fixedInts, otherIntervals);
 
@@ -914,7 +922,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
         private TraceInterval createInterval(AllocatableValue operand) {
             assert isLegal(operand);
             int operandNumber = operandNumber(operand);
-            TraceInterval interval = new TraceInterval(operand, operandNumber);
+            TraceInterval interval = new TraceInterval(operand, operandNumber, getOptions());
             assert operandNumber < intervalsSize;
             assert intervals[operandNumber] == null;
             intervals[operandNumber] = interval;

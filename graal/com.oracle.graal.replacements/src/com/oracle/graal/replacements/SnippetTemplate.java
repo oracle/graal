@@ -29,6 +29,7 @@ import static com.oracle.graal.debug.Debug.applyFormattingFlagsAndWidth;
 import static com.oracle.graal.graph.iterators.NodePredicates.isNotA;
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 import static java.util.FormattableFlags.ALTERNATE;
 
@@ -566,8 +567,8 @@ public class SnippetTemplate {
             this.providers = providers;
             this.snippetReflection = snippetReflection;
             this.target = target;
-            if (Options.UseSnippetTemplateCache.getValue()) {
-                int size = Options.MaxTemplatesPerSnippet.getValue();
+            if (Options.UseSnippetTemplateCache.getValue(GLOBAL)) {
+                int size = Options.MaxTemplatesPerSnippet.getValue(GLOBAL);
                 this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
             } else {
                 this.templates = null;
@@ -596,7 +597,7 @@ public class SnippetTemplate {
             assert findMethod(declaringClass, methodName, method) == null : "found more than one method named " + methodName + " in " + declaringClass;
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
             providers.getReplacements().registerSnippet(javaMethod);
-            if (GraalOptions.EagerSnippets.getValue()) {
+            if (GraalOptions.EagerSnippets.getValue(GLOBAL)) {
                 return new EagerSnippetInfo(javaMethod, privateLocations);
             } else {
                 return new LazySnippetInfo(javaMethod, privateLocations);
@@ -608,12 +609,12 @@ public class SnippetTemplate {
          */
         @SuppressWarnings("try")
         protected SnippetTemplate template(final Arguments args) {
-            SnippetTemplate template = Options.UseSnippetTemplateCache.getValue() && args.cacheable ? templates.get(args.cacheKey) : null;
+            SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(GLOBAL) && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null) {
                 SnippetTemplates.increment();
                 try (DebugCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
                     template = new SnippetTemplate(providers, snippetReflection, args);
-                    if (Options.UseSnippetTemplateCache.getValue() && args.cacheable) {
+                    if (Options.UseSnippetTemplateCache.getValue(GLOBAL) && args.cacheable) {
                         templates.put(args.cacheKey, template);
                     }
                 } catch (Throwable e) {

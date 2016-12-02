@@ -28,6 +28,7 @@ import static com.oracle.graal.java.BytecodeParserOptions.InlineIntrinsicsDuring
 import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import java.util.Map;
@@ -128,7 +129,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         ResolvedJavaMethod subst = getSubstitutionMethod(method);
         if (subst != null) {
-            if (b.parsingIntrinsic() || InlineDuringParsing.getValue() || InlineIntrinsicsDuringParsing.getValue()) {
+            if (b.parsingIntrinsic() || InlineDuringParsing.getValue(b.getOptions()) || InlineIntrinsicsDuringParsing.getValue(b.getOptions())) {
                 // Forced inlining of intrinsics
                 return createIntrinsicInlineInfo(subst, bytecodeProvider);
             }
@@ -195,12 +196,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
 
-        StructuredGraph graph = UseSnippetGraphCache.getValue() ? graphs.get(method) : null;
+        StructuredGraph graph = UseSnippetGraphCache.getValue(GLOBAL) ? graphs.get(method) : null;
         if (graph == null) {
             try (DebugCloseable a = SnippetPreparationTime.start()) {
                 StructuredGraph newGraph = makeGraph(method, args, recursiveEntry);
                 Debug.counter("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
-                if (!UseSnippetGraphCache.getValue() || args != null) {
+                if (!UseSnippetGraphCache.getValue(GLOBAL) || args != null) {
                     return newGraph;
                 }
                 graphs.putIfAbsent(method, newGraph);
@@ -333,7 +334,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            if (!GraalOptions.SnippetCounters.getValue() || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
+            if (!GraalOptions.SnippetCounters.getValue(GLOBAL) || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
                 int sideEffectCount = 0;
                 assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
                 new ConvertDeoptimizeToGuardPhase().apply(graph, null);

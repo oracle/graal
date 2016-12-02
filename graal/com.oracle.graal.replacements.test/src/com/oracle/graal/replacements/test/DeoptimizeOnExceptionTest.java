@@ -28,6 +28,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.common.AbstractInliningPhase;
 import com.oracle.graal.test.ExportingClassLoader;
 
@@ -39,7 +40,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
 
     public DeoptimizeOnExceptionTest() {
-        createSuites().getHighTier().findPhase(AbstractInliningPhase.class).remove();
+        createSuites(OptionValues.GLOBAL).getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }
 
     private static void raiseException(String m1, String m2, String m3, String m4, String m5) {

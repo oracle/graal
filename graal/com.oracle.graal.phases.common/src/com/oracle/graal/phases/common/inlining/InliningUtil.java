@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.phases.common.inlining;
 
+import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
@@ -117,7 +118,9 @@ public class InliningUtil {
     }
 
     private static void printInlining(final ResolvedJavaMethod method, final Invoke invoke, final int inliningDepth, final boolean success, final String msg, final Object... args) {
-        Util.printInlining(method, invoke.bci(), inliningDepth, success, msg, args);
+        if (HotSpotPrintInlining.getValue(invoke.asNode().getOptions())) {
+            Util.printInlining(method, invoke.bci(), inliningDepth, success, msg, args);
+        }
     }
 
     public static void logInlinedMethod(InlineInfo info, int inliningDepth, boolean allowLogging, String msg, Object... args) {

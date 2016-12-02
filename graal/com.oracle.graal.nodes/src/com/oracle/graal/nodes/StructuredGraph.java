@@ -206,8 +206,8 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         this(name, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog, USE_PROFILING_INFO, null);
     }
 
-    public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, boolean useProfilingInfo) {
-        this(name, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog, useProfilingInfo, null);
+    public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, boolean useProfilingInfo, OptionValues options) {
+        this(name, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog, useProfilingInfo, options);
     }
 
     public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions) {
@@ -218,6 +218,10 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         this(null, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, NO_SPECULATION_LOG, useProfilingInfo, null);
     }
 
+    public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, OptionValues options) {
+        this(null, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, NO_SPECULATION_LOG, USE_PROFILING_INFO, options);
+    }
+
     public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog) {
         this(null, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog, USE_PROFILING_INFO, null);
     }
@@ -226,13 +230,13 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         this(null, method, entryBCI, allowAssumptions, speculationLog, USE_PROFILING_INFO, null);
     }
 
-    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, boolean useProfilingInfo, OptionValues optionValues) {
-        this(null, method, entryBCI, allowAssumptions, speculationLog, useProfilingInfo, optionValues);
+    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, boolean useProfilingInfo, OptionValues options) {
+        this(null, method, entryBCI, allowAssumptions, speculationLog, useProfilingInfo, options);
     }
 
     private StructuredGraph(String name, ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog,
-                    boolean useProfilingInfo, OptionValues optionValues) {
-        super(name, optionValues);
+                    boolean useProfilingInfo, OptionValues options) {
+        super(name, options);
         this.setStart(add(new StartNode()));
         this.rootMethod = method;
         this.graphId = uniqueGraphIds.incrementAndGet();

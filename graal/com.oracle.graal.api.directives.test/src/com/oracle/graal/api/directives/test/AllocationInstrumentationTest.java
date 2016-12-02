@@ -22,15 +22,17 @@
  */
 package com.oracle.graal.api.directives.test;
 
+import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.io.IOException;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.compiler.common.GraalOptions;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.options.OptionValues.OverrideScope;
+import com.oracle.graal.options.OptionValues;
 
 import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.code.InstalledCode;
@@ -78,17 +80,18 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
 
     @Test
     public void testNotEscape() {
-        try (OverrideScope s = overrideOptions(GraalOptions.UseGraalInstrumentation, true)) {
+        try {
             Class<?> clazz = instrumentor.instrument(AllocationInstrumentationTest.class, "notEscapeSnippet", Opcodes.NEW);
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "notEscapeSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlag();
             // The allocation in the snippet does not escape and will be optimized away. We expect
             // the instrumentation is removed.
-            InstalledCode code = getCode(method);
+            OptionValues options = new OptionValues(GLOBAL, UseGraalInstrumentation, true);
+            InstalledCode code = getCode(method, options);
             code.executeVarargs();
             Assert.assertFalse("allocation should not take place", allocationWasExecuted);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }
@@ -100,16 +103,17 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
 
     @Test
     public void testMustEscape() {
-        try (OverrideScope s = overrideOptions(GraalOptions.UseGraalInstrumentation, true)) {
+        try {
             Class<?> clazz = instrumentor.instrument(AllocationInstrumentationTest.class, "mustEscapeSnippet", Opcodes.NEW);
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "mustEscapeSnippet");
             executeExpected(method, null); // ensure the method is fully resolved
             resetFlag();
             // The allocation in the snippet escapes. We expect the instrumentation is preserved.
-            InstalledCode code = getCode(method);
+            OptionValues options = new OptionValues(GLOBAL, UseGraalInstrumentation, true);
+            InstalledCode code = getCode(method, options);
             code.executeVarargs();
             Assert.assertTrue("allocation should take place", allocationWasExecuted);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }
@@ -124,7 +128,7 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
 
     @Test
     public void testPartialEscape() {
-        try (OverrideScope s = overrideOptions(GraalOptions.UseGraalInstrumentation, true)) {
+        try {
             Class<?> clazz = instrumentor.instrument(AllocationInstrumentationTest.class, "partialEscapeSnippet", Opcodes.NEW);
             ResolvedJavaMethod method = getResolvedJavaMethod(clazz, "partialEscapeSnippet");
             executeExpected(method, null, true); // ensure the method is fully resolved
@@ -132,12 +136,13 @@ public class AllocationInstrumentationTest extends GraalCompilerTest {
             // The allocation in the snippet escapes in the then-clause, and will be relocated to
             // this branch. We expect the instrumentation follows and will only be effective when
             // the then-clause is taken.
-            InstalledCode code = getCode(method);
+            OptionValues options = new OptionValues(GLOBAL, UseGraalInstrumentation, true);
+            InstalledCode code = getCode(method, options);
             code.executeVarargs(false);
             Assert.assertFalse("allocation should not take place", allocationWasExecuted);
             code.executeVarargs(true);
             Assert.assertTrue("allocation should take place", allocationWasExecuted);
-        } catch (Throwable e) {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
     }

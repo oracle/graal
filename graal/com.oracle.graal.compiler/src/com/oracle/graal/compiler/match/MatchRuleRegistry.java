@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.match;
 
 import static com.oracle.graal.debug.GraalDebugConfig.Options.LogVerbose;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -85,7 +86,7 @@ public class MatchRuleRegistry {
             assert registry.get(theClass) == rules;
             result = rules;
 
-            if (LogVerbose.getValue()) {
+            if (LogVerbose.getValue(GLOBAL)) {
                 try (Scope s = Debug.scope("MatchComplexExpressions")) {
                     Debug.log("Match rules for %s", theClass.getSimpleName());
                     for (Entry<Class<? extends Node>, List<MatchStatement>> entry : result.entrySet()) {

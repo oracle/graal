@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.debug.internal.method;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -34,8 +36,8 @@ import java.util.List;
 import com.oracle.graal.debug.DebugMethodMetrics;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionKey;
+import com.oracle.graal.options.OptionType;
 
 /**
  * Interface for printing a collection of method metrics (e.g. during shutdown).
@@ -52,7 +54,7 @@ public interface MethodMetricsPrinter {
     }
 
     static boolean methodMetricsDumpingEnabled() {
-        return MethodMetricsPrinter.Options.MethodMeterPrintAscii.getValue() || MethodMetricsPrinter.Options.MethodMeterFile.getValue() != null;
+        return MethodMetricsPrinter.Options.MethodMeterPrintAscii.getValue(GLOBAL) || MethodMetricsPrinter.Options.MethodMeterFile.getValue(GLOBAL) != null;
     }
 
     /**
@@ -110,9 +112,9 @@ public interface MethodMetricsPrinter {
 
         public MethodMetricsCSVFilePrinter() {
             try {
-                fw = new FileOutputStream(new File(Options.MethodMeterFile.getValue()));
+                fw = new FileOutputStream(new File(Options.MethodMeterFile.getValue(GLOBAL)));
             } catch (IOException e) {
-                TTY.println("Cannot create file %s for method metrics dumping:%s", Options.MethodMeterFile.getValue(), e);
+                TTY.println("Cannot create file %s for method metrics dumping:%s", Options.MethodMeterFile.getValue(GLOBAL), e);
                 throw new Error(e);
             }
         }

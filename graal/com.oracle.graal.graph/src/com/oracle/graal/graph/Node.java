@@ -26,6 +26,7 @@ import static com.oracle.graal.graph.Edges.Type.Inputs;
 import static com.oracle.graal.graph.Edges.Type.Successors;
 import static com.oracle.graal.graph.Graph.isModificationCountsEnabled;
 import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
@@ -56,6 +57,7 @@ import com.oracle.graal.graph.spi.SimplifierTool;
 import com.oracle.graal.nodeinfo.InputType;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodeinfo.Verbosity;
+import com.oracle.graal.options.OptionValues;
 
 import sun.misc.Unsafe;
 
@@ -98,7 +100,7 @@ import sun.misc.Unsafe;
 public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     public static final NodeClass<?> TYPE = null;
-    public static final boolean USE_UNSAFE_TO_CLONE = Graph.Options.CloneNodesWithUnsafe.getValue();
+    public static final boolean USE_UNSAFE_TO_CLONE = Graph.Options.CloneNodesWithUnsafe.getValue(GLOBAL);
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;
@@ -312,6 +314,13 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      */
     public Graph graph() {
         return graph;
+    }
+
+    /**
+     * Gets the option values associated with this node's graph.
+     */
+    public final OptionValues getOptions() {
+        return graph.getOptions();
     }
 
     /**
@@ -938,7 +947,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     public boolean verify() {
         assertTrue(isAlive(), "cannot verify inactive nodes (id=%d)", id);
         assertTrue(graph() != null, "null graph");
-        if (Options.VerifyGraalGraphEdges.getValue()) {
+        if (Options.VerifyGraalGraphEdges.getValue(getOptions())) {
             verifyEdges();
         }
         return true;

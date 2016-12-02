@@ -67,6 +67,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
 import static com.oracle.graal.hotspot.stubs.StubUtil.verifyObject;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.Snippet;
@@ -129,7 +130,7 @@ public class NewInstanceStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return StubOptions.TraceNewInstanceStub.getValue();
+        return StubOptions.TraceNewInstanceStub.getValue(GLOBAL);
     }
 
     /**
@@ -298,7 +299,7 @@ public class NewInstanceStub extends SnippetStub {
 
     @Fold
     static boolean forceSlowPath() {
-        return StubOptions.ForceUseOfNewInstanceStub.getValue();
+        return StubOptions.ForceUseOfNewInstanceStub.getValue(GLOBAL);
     }
 
     public static final ForeignCallDescriptor NEW_INSTANCE_C = newDescriptor(NewInstanceStub.class, "newInstanceC", void.class, Word.class, KlassPointer.class);

@@ -41,7 +41,7 @@ public class RegisterAllocationTimeBenchmark extends GraalBenchmark {
         @SuppressWarnings("try")
         @Override
         protected LIRSuites createLIRSuites(OptionValues options) {
-            return super.createLIRSuites(TraceRA.setValue(new OptionValues(options), false));
+            return super.createLIRSuites(new OptionValues(options, TraceRA, false));
         }
     }
 
@@ -67,7 +67,7 @@ public class RegisterAllocationTimeBenchmark extends GraalBenchmark {
         @SuppressWarnings("try")
         @Override
         protected LIRSuites createLIRSuites(OptionValues options) {
-            return super.createLIRSuites(TraceRA.setValue(new OptionValues(options), true));
+            return super.createLIRSuites(new OptionValues(options, TraceRA, true));
         }
     }
 

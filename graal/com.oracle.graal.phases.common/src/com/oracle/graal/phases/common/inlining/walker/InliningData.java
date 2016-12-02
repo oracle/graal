@@ -135,9 +135,10 @@ public class InliningData {
     }
 
     private String checkTargetConditionsHelper(ResolvedJavaMethod method, int invokeBci) {
+        OptionValues options = rootGraph.getOptions();
         if (method == null) {
             return "the method is not resolved";
-        } else if (method.isNative() && (!Intrinsify.getValue() || !InliningUtil.canIntrinsify(context.getReplacements(), method, invokeBci))) {
+        } else if (method.isNative() && (!Intrinsify.getValue(options) || !InliningUtil.canIntrinsify(context.getReplacements(), method, invokeBci))) {
             return "it is a non-intrinsic native method";
         } else if (method.isAbstract()) {
             return "it is an abstract method";
@@ -145,12 +146,14 @@ public class InliningData {
             return "the method's class is not initialized";
         } else if (!method.canBeInlined()) {
             return "it is marked non-inlinable";
-        } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue()) {
+        } else if (countRecursiveInlining(method) > MaximumRecursiveInlining.getValue(options)) {
             return "it exceeds the maximum recursive inlining depth";
-        } else if (new OptimisticOptimizations(rootGraph.getProfilingInfo(method)).lessOptimisticThan(context.getOptimisticOptimizations())) {
-            return "the callee uses less optimistic optimizations than caller";
         } else {
-            return null;
+            if (new OptimisticOptimizations(rootGraph.getProfilingInfo(method), options).lessOptimisticThan(context.getOptimisticOptimizations())) {
+                return "the callee uses less optimistic optimizations than caller";
+            } else {
+                return null;
+            }
         }
     }
 
@@ -253,8 +256,9 @@ public class InliningData {
         ResolvedJavaType contextType = invoke.getContextType();
         double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
         final OptimisticOptimizations optimisticOpts = context.getOptimisticOptimizations();
+        OptionValues options = invoke.asNode().getOptions();
         if (ptypes.length == 1 && notRecordedTypeProbability == 0) {
-            if (!optimisticOpts.inlineMonomorphicCalls()) {
+            if (!optimisticOpts.inlineMonomorphicCalls(options)) {
                 InliningUtil.logNotInlined(invoke, inliningDepth(), targetMethod, "inlining monomorphic calls is disabled");
                 return null;
             }
@@ -269,11 +273,11 @@ public class InliningData {
         } else {
             invoke.setPolymorphic(true);
 
-            if (!optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0) {
+            if (!optimisticOpts.inlinePolymorphicCalls(options) && notRecordedTypeProbability == 0) {
                 InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
                 return null;
             }
-            if (!optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
+            if (!optimisticOpts.inlineMegamorphicCalls(options) && notRecordedTypeProbability > 0) {
                 // due to filtering impossible types, notRecordedTypeProbability can be > 0 although
                 // the number of types is lower than what can be recorded in a type profile
                 InliningUtil.logNotInlinedInvoke(invoke, inliningDepth(), targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length,
@@ -306,7 +310,7 @@ public class InliningData {
                 ArrayList<ResolvedJavaMethod> newConcreteMethods = new ArrayList<>();
                 ArrayList<Double> newConcreteMethodsProbabilities = new ArrayList<>();
                 for (int i = 0; i < concreteMethods.size(); ++i) {
-                    if (concreteMethodsProbabilities.get(i) >= MegamorphicInliningMinMethodProbability.getValue()) {
+                    if (concreteMethodsProbabilities.get(i) >= MegamorphicInliningMinMethodProbability.getValue(options)) {
                         newConcreteMethods.add(concreteMethods.get(i));
                         newConcreteMethodsProbabilities.add(concreteMethodsProbabilities.get(i));
                     }
@@ -438,7 +442,7 @@ public class InliningData {
             return true;
         }
 
-        if (context.getOptimisticOptimizations().devirtualizeInvokes()) {
+        if (context.getOptimisticOptimizations().devirtualizeInvokes(calleeInfo.graph().getOptions())) {
             calleeInfo.tryToDevirtualizeInvoke(new Providers(context));
         }
 

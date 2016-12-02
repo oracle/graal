@@ -48,6 +48,7 @@ import com.oracle.graal.nodes.debug.ControlFlowAnchorNode;
 import com.oracle.graal.nodes.java.TypeSwitchNode;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
+import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.options.OptionKey;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -66,7 +67,8 @@ public class DefaultLoopPolicies implements LoopPolicies {
     public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess) {
         LoopBeginNode loopBegin = loop.loopBegin();
         double entryProbability = cfg.blockFor(loopBegin.forwardEnd()).probability();
-        if (entryProbability > MinimumPeelProbability.getValue() && loop.size() + loopBegin.graph().getNodeCount() < MaximumDesiredSize.getValue()) {
+        OptionValues options = cfg.graph.getOptions();
+        if (entryProbability > MinimumPeelProbability.getValue(options) && loop.size() + loopBegin.graph().getNodeCount() < MaximumDesiredSize.getValue(options)) {
             // check whether we're allowed to peel this loop
             for (Node node : loop.inside().nodes()) {
                 if (node instanceof ControlFlowAnchorNode) {
@@ -90,12 +92,13 @@ public class DefaultLoopPolicies implements LoopPolicies {
         if (!loop.isCounted() || !loop.counted().isConstantMaxTripCount()) {
             return false;
         }
+        OptionValues options = loop.entryPoint().getOptions();
         CountedLoopInfo counted = loop.counted();
         long maxTrips = counted.constantMaxTripCount();
-        int maxNodes = (counted.isExactTripCount() && counted.isConstantExactTripCount()) ? ExactFullUnrollMaxNodes.getValue() : FullUnrollMaxNodes.getValue();
-        maxNodes = Math.min(maxNodes, Math.max(0, MaximumDesiredSize.getValue() - loop.loopBegin().graph().getNodeCount()));
+        int maxNodes = (counted.isExactTripCount() && counted.isConstantExactTripCount()) ? ExactFullUnrollMaxNodes.getValue(options) : FullUnrollMaxNodes.getValue(options);
+        maxNodes = Math.min(maxNodes, Math.max(0, MaximumDesiredSize.getValue(options) - loop.loopBegin().graph().getNodeCount()));
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
-        if (maxTrips <= FullUnrollMaxIterations.getValue() && size * (maxTrips - 1) <= maxNodes) {
+        if (maxTrips <= FullUnrollMaxIterations.getValue(options) && size * (maxTrips - 1) <= maxNodes) {
             // check whether we're allowed to unroll this loop
             for (Node node : loop.inside().nodes()) {
                 if (node instanceof ControlFlowAnchorNode) {
@@ -121,7 +124,8 @@ public class DefaultLoopPolicies implements LoopPolicies {
         if (loopFrequency <= 1.0) {
             return false;
         }
-        return loopBegin.unswitches() <= LoopMaxUnswitch.getValue();
+        OptionValues options = loop.entryPoint().getOptions();
+        return loopBegin.unswitches() <= LoopMaxUnswitch.getValue(options);
     }
 
     private static final class CountingClosure implements VirtualClosure {
@@ -157,10 +161,11 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
         CountingClosure stateNodesCount = new CountingClosure();
         double loopFrequency = loop.loopBegin().loopFrequency();
-        int maxDiff = LoopUnswitchTrivial.getValue() + (int) (LoopUnswitchFrequencyBoost.getValue() * (loopFrequency - 1.0 + phis));
+        OptionValues options = loop.loopBegin().getOptions();
+        int maxDiff = LoopUnswitchTrivial.getValue(options) + (int) (LoopUnswitchFrequencyBoost.getValue(options) * (loopFrequency - 1.0 + phis));
 
-        maxDiff = Math.min(maxDiff, LoopUnswitchMaxIncrease.getValue());
-        int remainingGraphSpace = MaximumDesiredSize.getValue() - loop.loopBegin().graph().getNodeCount();
+        maxDiff = Math.min(maxDiff, LoopUnswitchMaxIncrease.getValue(options));
+        int remainingGraphSpace = MaximumDesiredSize.getValue(options) - loop.loopBegin().graph().getNodeCount();
         maxDiff = Math.min(maxDiff, remainingGraphSpace);
 
         loop.loopBegin().stateAfter().applyToVirtual(stateNodesCount);
