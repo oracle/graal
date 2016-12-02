@@ -302,6 +302,7 @@ public final class Breakpoint {
      *
      * @since 0.20
      */
+    @SuppressFBWarnings("UG")
     public String getCondition() {
         return condition;
     }
