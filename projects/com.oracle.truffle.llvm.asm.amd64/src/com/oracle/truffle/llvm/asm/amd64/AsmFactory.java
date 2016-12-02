@@ -785,7 +785,11 @@ public class AsmFactory {
             }
             int start = token.indexOf('{');
             int end = token.lastIndexOf('}');
+
             // FIXME: start or end could be -1
+            assert start != -1;
+            assert end != -1;
+
             String registerName = token.substring(start + 1, end);
             // output register
             if (token.charAt(0) == '=') {
