@@ -34,7 +34,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJE
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_ENTRY_LIST_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_OWNER_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_RECURSION_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_SUCC_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.ageMaskInPlace;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.biasedLockMaskInPlace;
@@ -49,7 +48,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.obje
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorEntryListOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorOwnerOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorRescursionsOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorSuccOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.pageSize;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.prototypeMarkWordOffset;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
@@ -71,7 +69,6 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_SLOW_PA
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 
 import java.util.List;
@@ -408,7 +405,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static boolean inlineFastLockSupported() {
-        return monitorMask(INJECTED_VMCONFIG) >= 0 && objecyMonitorOwnerOffset(INJECTED_VMCONFIG) >=0;
+        return monitorMask(INJECTED_VMCONFIG) >= 0 && objecyMonitorOwnerOffset(INJECTED_VMCONFIG) >= 0;
     }
 
     private static boolean tryEnterInflated(Object object, Word lock, Word mark, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
@@ -519,8 +516,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static boolean inlineFastUnlockSupported() {
-        return objecyMonitorEntryListOffset(INJECTED_VMCONFIG) >= 0 && objecyMonitorSuccOffset(INJECTED_VMCONFIG) >= 0 && objecyMonitorCXQOffset(INJECTED_VMCONFIG) >= 0 &&
-                        monitorMask(INJECTED_VMCONFIG) >= 0 && objecyMonitorOwnerOffset(INJECTED_VMCONFIG) >=0 && objecyMonitorRescursionsOffset(INJECTED_VMCONFIG) >= 0;
+        return objecyMonitorEntryListOffset(INJECTED_VMCONFIG) >= 0 && objecyMonitorCXQOffset(INJECTED_VMCONFIG) >= 0 && monitorMask(INJECTED_VMCONFIG) >= 0 &&
+                        objecyMonitorOwnerOffset(INJECTED_VMCONFIG) >= 0 && objecyMonitorRescursionsOffset(INJECTED_VMCONFIG) >= 0;
     }
 
     private static boolean tryExitInflated(Object object, Word mark, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
@@ -551,37 +548,6 @@ public class MonitorSnippets implements Snippets {
                     traceObject(trace, "-lock{inflated:simple}", object, false);
                     unlockInflatedSimple.inc();
                     return true;
-                } else {
-                    int succOffset = objecyMonitorSuccOffset(INJECTED_VMCONFIG);
-                    Word succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
-                    if (succ.notEqual(0)) {
-                        // release_store
-                        MembarNode.memoryBarrier(LOAD_STORE | STORE_STORE);
-                        monitor.writeWord(ownerOffset, Word.zero());
-                        MembarNode.memoryBarrier(STORE_LOAD);
-                        succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
-                        if (succ.notEqual(0)) {
-                            // a thread is already looking to acquire this, we don't need to wake
-                            // anyone up: success
-                            traceObject(trace, "-lock{inflated:simple:succ-check}", object, false);
-                            unlockInflatedSimpleSucc.inc();
-                            return true;
-                        } else {
-                            // we probably need to wake-up some other thread, try to re-acquire the
-                            // monitor
-                            Word currentOwner = compareAndSwap(OffsetAddressNode.address(monitor, ownerOffset), Word.zero(), thread, OBJECT_MONITOR_OWNER_LOCATION);
-                            if (currentOwner.notEqual(Word.zero())) {
-                                // CAS failed, some thread acquired the monitor in the meanwhile
-                                // we're done and the responsibility to wake-up an other thread goes
-                                // to the thread that just acquired
-                                // Success
-                                traceObject(trace, "-lock{inflated:no-reacquire}", object, false);
-                                unlockInflatedNoReacquire.inc();
-                                return true;
-                            }
-                            // here we re-acquired the lock and we will finish in the slow-path
-                        }
-                    }
                 }
             }
         }
@@ -834,6 +800,4 @@ public class MonitorSnippets implements Snippets {
     public static final SnippetCounter unlockStub = new SnippetCounter(unlockCounters, "unlock{stub}", "stub-unlocked an object");
 
     public static final SnippetCounter unlockInflatedSimple = new SnippetCounter(unlockCounters, "unlock{inflated}", "unlocked an object monitor");
-    public static final SnippetCounter unlockInflatedSimpleSucc = new SnippetCounter(unlockCounters, "unlock{inflated:succ-check}", "unlocked an object monitor, checked succ");
-    public static final SnippetCounter unlockInflatedNoReacquire = new SnippetCounter(unlockCounters, "unlock{inflated:no-reacquire}", "unlocked an object monitor, could not re-acquire");
 }

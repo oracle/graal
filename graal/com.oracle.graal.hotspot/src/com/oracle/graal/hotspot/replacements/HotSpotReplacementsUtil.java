@@ -504,11 +504,6 @@ public class HotSpotReplacementsUtil {
         return config.objectMonitorEntryList;
     }
 
-    @Fold
-    public static int objecyMonitorSuccOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.objectMonitorSucc;
-    }
-
     /**
      * Mask for a biasable, locked or unlocked mark word.
      *
