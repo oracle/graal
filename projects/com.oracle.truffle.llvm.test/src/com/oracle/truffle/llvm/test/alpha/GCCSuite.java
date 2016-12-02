@@ -56,7 +56,7 @@ public final class GCCSuite extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return collectTestCases(GCC_CONFIG_DIR, GCC_SUITE_DIR);
+        return collectTestCases(GCC_CONFIG_DIR, GCC_SUITE_DIR, GCC_SOURCE_DIR);
     }
 
     @Override
@@ -88,6 +88,11 @@ public final class GCCSuite extends BaseSuiteHarness {
         printStatistics("gcc.c-torture/execute", Paths.get(GCC_SOURCE_DIR.toAbsolutePath().toString() + "/gcc/testsuite/gcc.c-torture/execute"),
                         Paths.get(GCC_CONFIG_DIR.toAbsolutePath().toString() + "/gcc.c-torture/execute"),
                         t -> true);
+    }
+
+    @Override
+    protected String getTestName() {
+        return testName;
     }
 
 }
