@@ -518,16 +518,8 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final byte dirtyCardValue = isJDK8 ? getFieldValue("CompilerToVM::Data::dirty_card", Byte.class, "int") : getConstant("CardTableModRefBS::dirty_card", Byte.class);
     public final byte g1YoungCardValue = isJDK8 ? getFieldValue("CompilerToVM::Data::g1_young_card", Byte.class, "int") : getConstant("G1SATBCardTableModRefBS::g1_young_gen", Byte.class);
 
-    private final long cardtableStartAddress = getFieldValue("CompilerToVM::Data::cardtable_start_address", Long.class, "jbyte*");
-    private final int cardtableShift = getFieldValue("CompilerToVM::Data::cardtable_shift", Integer.class, "int");
-
-    public long cardtableStartAddress() {
-        return cardtableStartAddress;
-    }
-
-    public int cardtableShift() {
-        return cardtableShift;
-    }
+    public final long cardtableStartAddress = getFieldValue("CompilerToVM::Data::cardtable_start_address", Long.class, "jbyte*");
+    public final int cardtableShift = getFieldValue("CompilerToVM::Data::cardtable_shift", Integer.class, "int");
 
     /**
      * This is the largest stack offset encodeable in an OopMapValue. Offsets larger than this will

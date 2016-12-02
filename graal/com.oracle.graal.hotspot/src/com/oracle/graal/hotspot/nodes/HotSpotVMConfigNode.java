@@ -144,7 +144,7 @@ public class HotSpotVMConfigNode extends FloatingNode implements LIRLowerable, C
         }
         if (!GeneratePIC.getValue()) {
             if (markId == cardTableAddressMark(config)) {
-                return ConstantNode.forLong(config.cardtableStartAddress());
+                return ConstantNode.forLong(config.cardtableStartAddress);
             } else if (markId == heapTopAddressMark(config)) {
                 return ConstantNode.forLong(config.heapTopAddress);
             } else if (markId == heapEndAddressMark(config)) {
