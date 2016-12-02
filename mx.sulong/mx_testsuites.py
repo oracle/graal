@@ -116,6 +116,7 @@ def runInlineAssemblySuite(vmArgs):
 
 def runLifetimeAnalysisTests(vmArgs):
     """runs the LTA test suite"""
+    mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc'])
     ensureLifetimeAnalysisReferenceExists()
     return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.LifetimeAnalysisSuite")
