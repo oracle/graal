@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.test.alpha;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -71,7 +72,16 @@ public final class LifetimeAnalysisTest {
         Map<String, LLVMLifetimeAnalysis> referenceResults = null;
         BufferedReader referenceFileReader;
         if (SulongTestOptions.TEST.generateLifetimeReferenceOutput()) {
-            fileWriter = new LifetimeFileFormat.Writer(new PrintStream(ltaGenDir.toFile()));
+            final File ltaGenDirFile = ltaGenDir.toFile();
+            if (!ltaGenDirFile.exists()) {
+                // noinspection ResultOfMethodCallIgnored
+                ltaGenDirFile.getParentFile().mkdirs();
+                final boolean fileCreated = ltaGenDirFile.createNewFile();
+                if (!fileCreated) {
+                    throw new AssertionError();
+                }
+            }
+            fileWriter = new LifetimeFileFormat.Writer(new PrintStream(ltaGenDirFile));
         } else {
             fileWriter = null;
             FileInputStream fis = new FileInputStream(ltaFile.toFile());
