@@ -31,6 +31,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 
 import com.oracle.graal.options.OptionValue;
+import com.oracle.graal.options.UniquePathUtilities;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -62,7 +63,7 @@ public class PrintStreamOption extends OptionValue<String> {
     private String getFilename() {
         String name = getValue();
         if (name.contains("%t")) {
-            name = name.replaceAll("%t", String.valueOf(System.currentTimeMillis()));
+            name = name.replaceAll("%t", String.valueOf(UniquePathUtilities.getGlobalTimeStamp()));
         }
         if (name.contains("%p")) {
             String runtimeName = ManagementFactory.getRuntimeMXBean().getName();
