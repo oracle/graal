@@ -580,6 +580,13 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getBackend().getCompilationIdentifier(method);
     }
 
+    protected CompilationIdentifier getOrCreateCompilationId(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
+        if (graph != null) {
+            return graph.compilationId();
+        }
+        return getCompilationId(installedCodeOwner);
+    }
+
     protected void testN(int n, final String name, final Object... args) {
         final List<Throwable> errors = new ArrayList<>(n);
         Thread[] threads = new Thread[n];
@@ -828,14 +835,14 @@ public abstract class GraalCompilerTest extends GraalTest {
      * Gets installed code for a given method and graph, compiling it first if necessary.
      *
      * @param installedCodeOwner the method the compiled code will be associated with when installed
-     * @param graph0 the graph to be compiled. If null, a graph will be obtained from
+     * @param graph the graph to be compiled. If null, a graph will be obtained from
      *            {@code installedCodeOwner} via {@link #parseForCompile(ResolvedJavaMethod)}.
      * @param forceCompile specifies whether to ignore any previous code cached for the (method,
      *            key) pair
      * @param installDefault specifies whether to install as the default implementation
      */
     @SuppressWarnings("try")
-    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph0, boolean forceCompile, boolean installDefault) {
+    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installDefault) {
         if (!forceCompile) {
             InstalledCode cached = cache.get(installedCodeOwner);
             if (cached != null) {
@@ -844,18 +851,17 @@ public abstract class GraalCompilerTest extends GraalTest {
                 }
             }
         }
-        final StructuredGraph graph = graph0 != null ? graph0 : parseForCompile(installedCodeOwner);
-        final CompilationIdentifier id = graph.compilationId();
+
+        final CompilationIdentifier id = getOrCreateCompilationId(installedCodeOwner, graph);
 
         InstalledCode installedCode = null;
-        try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+        try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(id.toString(CompilationIdentifier.Verbosity.ID), true))) {
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
-                TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(),
-                                installedCodeOwner.getSignature()));
+                TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(), installedCodeOwner.getSignature()));
             }
             long start = System.currentTimeMillis();
-            CompilationResult compResult = compile(installedCodeOwner, graph);
+            CompilationResult compResult = compile(installedCodeOwner, graph, id);
             if (printCompilation) {
                 TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
             }
@@ -894,6 +900,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return parseEager(method, AllowAssumptions.YES);
     }
 
+    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId) {
+        return parseEager(method, AllowAssumptions.YES, compilationId);
+    }
+
     /**
      * Compiles a given method.
      *
@@ -902,9 +912,12 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            be obtained from {@code installedCodeOwner} via
      *            {@link #parseForCompile(ResolvedJavaMethod)}.
      */
-    @SuppressWarnings("try")
     protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
-        return compile(installedCodeOwner, graph, new CompilationResult());
+        return compile(installedCodeOwner, graph, getOrCreateCompilationId(installedCodeOwner, graph));
+    }
+
+    protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationIdentifier compilationId) {
+        return compile(installedCodeOwner, graph, new CompilationResult(), compilationId);
     }
 
     /**
@@ -915,10 +928,11 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            be obtained from {@code installedCodeOwner} via
      *            {@link #parseForCompile(ResolvedJavaMethod)}.
      * @param compilationResult
+     * @param compilationId
      */
     @SuppressWarnings("try")
-    protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationResult compilationResult) {
-        StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner) : graph;
+    protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationResult compilationResult, CompilationIdentifier compilationId) {
+        StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner, compilationId) : graph;
         lastCompiledGraph = graphToCompile;
         try (Scope s = Debug.scope("Compile", graphToCompile)) {
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
@@ -998,7 +1012,11 @@ public abstract class GraalCompilerTest extends GraalTest {
      * produce a graph.
      */
     protected StructuredGraph parseProfiled(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return parse1(m, getDefaultGraphBuilderSuite(), allowAssumptions);
+        return parseProfiled(m, allowAssumptions, getCompilationId(m));
+    }
+
+    protected StructuredGraph parseProfiled(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
+        return parse1(m, getDefaultGraphBuilderSuite(), allowAssumptions, compilationId);
     }
 
     /**
@@ -1016,7 +1034,11 @@ public abstract class GraalCompilerTest extends GraalTest {
      * set to true to produce a graph.
      */
     protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true)), allowAssumptions);
+        return parseEager(m, allowAssumptions, getCompilationId(m));
+    }
+
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true)), allowAssumptions, compilationId);
     }
 
     /**
@@ -1024,13 +1046,17 @@ public abstract class GraalCompilerTest extends GraalTest {
      * full debug} set to true to produce a graph.
      */
     protected StructuredGraph parseDebug(ResolvedJavaMethod m, AllowAssumptions allowAssumptions) {
-        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withFullInfopoints(true)), allowAssumptions);
+        return parseDebug(m, allowAssumptions, getCompilationId(m));
+    }
+
+    protected StructuredGraph parseDebug(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
+        return parse1(m, getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withFullInfopoints(true)), allowAssumptions, compilationId);
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions) {
+    private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
-        StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog(), getCompilationId(javaMethod));
+        StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, getSpeculationLog(), compilationId);
         try (Scope ds = Debug.scope("Parsing", javaMethod, graph)) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             return graph;
