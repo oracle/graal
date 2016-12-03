@@ -3565,7 +3565,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
-        if (!parsingIntrinsic()) {
+        if (!parsingIntrinsic() && GeneratePIC.getValue()) {
             graph.recordField(resolvedField);
         }
 
@@ -3617,7 +3617,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
-        if (!parsingIntrinsic()) {
+        if (!parsingIntrinsic() && GeneratePIC.getValue()) {
             graph.recordField(resolvedField);
         }
 
@@ -3640,7 +3640,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
-        if (!parsingIntrinsic()) {
+        if (!parsingIntrinsic() && GeneratePIC.getValue()) {
             graph.recordField(resolvedField);
         }
 
@@ -3676,7 +3676,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
-        if (!parsingIntrinsic()) {
+        if (!parsingIntrinsic() && GeneratePIC.getValue()) {
             graph.recordField(resolvedField);
         }
 
