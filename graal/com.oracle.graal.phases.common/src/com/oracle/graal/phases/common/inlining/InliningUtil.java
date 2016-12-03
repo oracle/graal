@@ -450,7 +450,7 @@ public class InliningUtil {
                 assumptions.record(inlinedAssumptions);
             }
         } else {
-            assert inlinedAssumptions == null : "cannot inline graph which makes assumptions into a graph that doesn't";
+            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", inlineGraph, graph);
         }
 
         // Copy inlined methods from inlinee to caller
