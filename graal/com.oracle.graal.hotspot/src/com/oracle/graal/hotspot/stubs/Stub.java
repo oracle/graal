@@ -280,7 +280,7 @@ public abstract class Stub {
     }
 
     /**
-     * Gets the HotSpotCompiledCode that was create during installation.
+     * Gets the HotSpotCompiledCode that was created during installation.
      */
     public synchronized HotSpotCompiledCode getCompiledCode(final Backend backend) {
         getCompilationResult(backend);
