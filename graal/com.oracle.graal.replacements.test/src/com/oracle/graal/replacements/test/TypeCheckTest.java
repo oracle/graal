@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements.test;
 
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
 
@@ -41,8 +42,8 @@ public abstract class TypeCheckTest extends GraalCompilerTest {
     protected JavaTypeProfile currentProfile;
 
     @Override
-    protected StructuredGraph parseForCompile(ResolvedJavaMethod method) {
-        StructuredGraph graph = super.parseForCompile(method);
+    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId) {
+        StructuredGraph graph = super.parseForCompile(method, compilationId);
         if (currentProfile != null) {
             replaceProfile(graph, currentProfile);
         }
