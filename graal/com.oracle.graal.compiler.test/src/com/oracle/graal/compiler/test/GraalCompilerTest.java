@@ -863,7 +863,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 }
             }
         }
-        final StructuredGraph graphToCompile = graph != null ? graph : parseForCompile(installedCodeOwner);
+        final StructuredGraph graphToCompile = graph != null ? graph : parseForCompile(installedCodeOwner, options);
         final CompilationIdentifier id = graphToCompile.compilationId();
 
         InstalledCode installedCode = null;
