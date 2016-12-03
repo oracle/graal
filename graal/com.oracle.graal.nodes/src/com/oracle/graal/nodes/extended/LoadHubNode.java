@@ -67,11 +67,9 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
 
     public static ValueNode create(ValueNode value, StampProvider stampProvider, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
         Stamp stamp = hubStamp(stampProvider, value);
-        if (!GeneratePIC.getValue()) {
-            ValueNode synonym = findSynonym(value, stamp, metaAccess, constantReflection);
-            if (synonym != null) {
-                return synonym;
-            }
+        ValueNode synonym = findSynonym(value, stamp, metaAccess, constantReflection);
+        if (synonym != null) {
+            return synonym;
         }
         return new LoadHubNode(stamp, value);
     }
@@ -104,9 +102,11 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
     }
 
     public static ValueNode findSynonym(ValueNode curValue, Stamp stamp, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-        TypeReference type = StampTool.typeReferenceOrNull(curValue);
-        if (type != null && type.isExact()) {
-            return ConstantNode.forConstant(stamp, constantReflection.asObjectHub(type.getType()), metaAccess);
+        if (!GeneratePIC.getValue()) {
+            TypeReference type = StampTool.typeReferenceOrNull(curValue);
+            if (type != null && type.isExact()) {
+                return ConstantNode.forConstant(stamp, constantReflection.asObjectHub(type.getType()), metaAccess);
+            }
         }
         return null;
     }
