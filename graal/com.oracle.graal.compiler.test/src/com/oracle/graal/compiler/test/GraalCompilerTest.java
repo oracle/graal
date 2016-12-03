@@ -826,7 +826,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            {@code installedCodeOwner} via {@link #parseForCompile(ResolvedJavaMethod)}.
      */
     protected final InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph) {
-        return getCode(installedCodeOwner, graph, false, false, GLOBAL);
+        return getCode(installedCodeOwner, graph, false, false, graph == null ? GLOBAL : graph.getOptions());
     }
 
     /**
@@ -839,7 +839,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      *            key) pair
      */
     protected final InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile) {
-        return getCode(installedCodeOwner, graph, forceCompile, false, GLOBAL);
+        return getCode(installedCodeOwner, graph, forceCompile, false, graph == null ? GLOBAL : graph.getOptions());
     }
 
     /**
