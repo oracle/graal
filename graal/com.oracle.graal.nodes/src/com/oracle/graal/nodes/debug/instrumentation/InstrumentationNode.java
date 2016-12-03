@@ -52,7 +52,7 @@ public class InstrumentationNode extends DeoptimizingFixedWithNextNode implement
 
     public static final NodeClass<InstrumentationNode> TYPE = NodeClass.create(InstrumentationNode.class);
 
-    @OptionalInput(value = InputType.Association) protected ValueNode target;
+    @OptionalInput(value = InputType.Unchecked) protected ValueNode target;
     @OptionalInput protected NodeInputList<ValueNode> weakDependencies;
 
     protected StructuredGraph instrumentationGraph;

@@ -354,7 +354,7 @@ public class Graph {
         return copy;
     }
 
-    public OptionValues getOptions() {
+    public final OptionValues getOptions() {
         return options;
     }
 

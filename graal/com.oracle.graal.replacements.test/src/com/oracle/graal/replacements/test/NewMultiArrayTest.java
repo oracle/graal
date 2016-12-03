@@ -54,7 +54,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     }
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph g, boolean ignore, OptionValues options) {
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph g, boolean ignore, boolean installAsDefault, OptionValues options) {
         StructuredGraph graph = g == null ? parseForCompile(method, options) : g;
         boolean forceCompile = false;
         if (bottomType != null) {
@@ -74,7 +74,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
             graph.replaceFixedWithFixed(node, repl);
             forceCompile = true;
         }
-        return super.getCode(method, graph, forceCompile, options);
+        return super.getCode(method, graph, forceCompile, installAsDefault, options);
     }
 
     @Override

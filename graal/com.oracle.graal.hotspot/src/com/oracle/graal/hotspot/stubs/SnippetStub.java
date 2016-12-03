@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.lang.reflect.Method;
 
 import com.oracle.graal.api.replacements.Snippet;
 import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -37,7 +37,6 @@ import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -100,7 +99,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
     @Override
     @SuppressWarnings("try")
-    protected StructuredGraph getGraph() {
+    protected StructuredGraph getGraph(CompilationIdentifier compilationId) {
         Plugins defaultPlugins = providers.getGraphBuilderPlugins();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         SnippetReflectionProvider snippetReflection = providers.getSnippetReflection();
@@ -111,7 +110,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM.
-        final StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO, NO_PROFILING_INFO);
+        final StructuredGraph graph = new StructuredGraph.Builder().method(method).compilationId(compilationId).build();
         try (Scope outer = Debug.scope("SnippetStub", graph)) {
             graph.disableUnsafeAccessTracking();
 

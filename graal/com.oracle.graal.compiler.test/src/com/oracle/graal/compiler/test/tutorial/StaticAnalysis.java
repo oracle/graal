@@ -43,7 +43,6 @@ import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValuePhiNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -239,7 +238,7 @@ public class StaticAnalysis {
                  * Build the Graal graph for the method using the bytecode parser provided by Graal.
                  */
 
-                StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
+                StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
                 /*
                  * Support for graph dumping, IGV uses this information to show the method name of a
                  * graph.

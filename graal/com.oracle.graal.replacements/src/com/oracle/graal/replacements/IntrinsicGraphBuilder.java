@@ -31,6 +31,7 @@ import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.compiler.common.type.TypeReference;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.FixedNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.FrameState;
@@ -38,7 +39,6 @@ import com.oracle.graal.nodes.ParameterNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
 import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
@@ -87,7 +87,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
         this.stampProvider = stampProvider;
         this.code = code;
         this.method = code.getMethod();
-        this.graph = new StructuredGraph(method, allowAssumptions);
+        this.graph = new StructuredGraph.Builder(allowAssumptions).method(method).build();
         this.invokeBci = invokeBci;
         this.lastInstr = graph.start();
 

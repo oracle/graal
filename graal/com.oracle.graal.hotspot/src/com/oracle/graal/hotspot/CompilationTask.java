@@ -81,7 +81,7 @@ public class CompilationTask {
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
 
     private final HotSpotGraalCompiler compiler;
-    private final HotSpotCompilationRequest request;
+    private final HotSpotCompilationIdentifier compilationId;
 
     private HotSpotInstalledCode installedCode;
 
@@ -106,7 +106,7 @@ public class CompilationTask {
                     OptionValues options) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
-        this.request = request;
+        this.compilationId = new HotSpotCompilationIdentifier(request);
         this.useProfilingInfo = useProfilingInfo;
         this.installAsDefault = installAsDefault;
 
@@ -123,7 +123,7 @@ public class CompilationTask {
     }
 
     public HotSpotResolvedJavaMethod getMethod() {
-        return request.getMethod();
+        return getRequest().getMethod();
     }
 
     /**
@@ -132,11 +132,11 @@ public class CompilationTask {
      * @return compile id
      */
     public int getId() {
-        return request.getId();
+        return getRequest().getId();
     }
 
     public int getEntryBCI() {
-        return request.getEntryBCI();
+        return getRequest().getEntryBCI();
     }
 
     /**
@@ -232,7 +232,7 @@ public class CompilationTask {
             try (Scope s = Debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 // Begin the compilation event.
                 compilationEvent.begin();
-                result = compiler.compile(method, entryBCI, useProfilingInfo, options);
+                result = compiler.compile(method, entryBCI, useProfilingInfo, compilationId, options);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             } finally {
@@ -369,8 +369,8 @@ public class CompilationTask {
         installedCode = null;
         Object[] context = {new DebugDumpScope(getIdString(), true), codeCache, getMethod(), compResult};
         try (Scope s = Debug.scope("CodeInstall", context)) {
-            HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(request.getMethod(), request, compResult);
-            installedCode = (HotSpotInstalledCode) codeCache.installCode(request.getMethod(), compiledCode, null, request.getMethod().getSpeculationLog(), installAsDefault);
+            HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(getRequest().getMethod(), getRequest(), compResult);
+            installedCode = (HotSpotInstalledCode) codeCache.installCode(getRequest().getMethod(), compiledCode, null, getRequest().getMethod().getSpeculationLog(), installAsDefault);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -379,5 +379,9 @@ public class CompilationTask {
     @Override
     public String toString() {
         return "Compilation[id=" + getId() + ", " + getMethod().format("%H.%n(%p)") + (getEntryBCI() == JVMCICompiler.INVOCATION_ENTRY_BCI ? "" : "@" + getEntryBCI()) + "]";
+    }
+
+    private HotSpotCompilationRequest getRequest() {
+        return compilationId.getRequest();
     }
 }

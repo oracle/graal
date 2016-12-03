@@ -57,8 +57,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         // @formatter:on
     }
 
-    private CharSequence name;
-
     /**
      * Records time spent in {@link #apply(StructuredGraph, Object, boolean)}.
      */
@@ -83,11 +81,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     /** Lazy initialization to create pattern only when assertions are enabled. */
     static class NamePatternHolder {
         static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
-    }
-
-    private static boolean checkName(String name) {
-        assert NamePatternHolder.NAME_PATTERN.matcher(name).matches() : "illegal phase name: " + name;
-        return true;
     }
 
     private static class BasePhaseStatistics {
@@ -128,16 +121,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     };
 
     protected BasePhase() {
-        BasePhaseStatistics statistics = statisticsClassValue.get(getClass());
-        timer = statistics.timer;
-        executionCount = statistics.executionCount;
-        memUseTracker = statistics.memUseTracker;
-        inputNodesCount = statistics.inputNodesCount;
-    }
-
-    protected BasePhase(String name) {
-        assert checkName(name);
-        this.name = name;
         BasePhaseStatistics statistics = statisticsClassValue.get(getClass());
         timer = statistics.timer;
         executionCount = statistics.executionCount;
@@ -191,20 +174,18 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    protected CharSequence createName() {
+    protected CharSequence getName() {
         String className = BasePhase.this.getClass().getName();
         String s = className.substring(className.lastIndexOf(".") + 1); // strip the package name
+        int innerClassPos = s.indexOf('$');
+        if (innerClassPos > 0) {
+            /* Remove inner class name. */
+            s = s.substring(0, innerClassPos);
+        }
         if (s.endsWith("Phase")) {
             s = s.substring(0, s.length() - "Phase".length());
         }
         return s;
-    }
-
-    public final CharSequence getName() {
-        if (name == null) {
-            name = createName();
-        }
-        return name;
     }
 
     protected abstract void run(StructuredGraph graph, C context);

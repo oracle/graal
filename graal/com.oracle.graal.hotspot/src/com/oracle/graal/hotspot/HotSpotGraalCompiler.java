@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
-import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 import static com.oracle.graal.options.OptionValues.GLOBAL;
 
@@ -35,10 +34,12 @@ import java.util.Formatter;
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.GraalCompiler;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.common.util.CompilationAlarm;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.debug.DebugEnvironment;
+import com.oracle.graal.debug.GraalDebugConfig;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.debug.TopLevelDebugConfig;
 import com.oracle.graal.debug.internal.DebugScope;
@@ -88,7 +89,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         this.graalRuntime = graalRuntime;
         // It is sufficient to have one compilation counter object per Graal compiler object.
         this.compilationCounters = Options.CompilationCountLimit.getValue(GLOBAL) > 0 ? new CompilationCounters() : null;
-        this.bootstrapWatchDog = graalRuntime.isBootstrapping() ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
+        this.bootstrapWatchDog = graalRuntime.isBootstrapping() && !GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(GLOBAL) ? BootstrapWatchDog.maybeCreate(graalRuntime) : null;
     }
 
     @Override
@@ -100,10 +101,15 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
     @SuppressWarnings("try")
     public CompilationRequestResult compileMethod(CompilationRequest request) {
         OptionValues options = GLOBAL;
-        if (bootstrapWatchDog != null && graalRuntime.isBootstrapping()) {
-            if (bootstrapWatchDog.hitCriticalCompilationRateOrTimeout()) {
-                // Drain the compilation queue to expedite completion of the bootstrap
-                return HotSpotCompilationRequestResult.failure("hit critical bootstrap compilation rate or timeout", true);
+        if (graalRuntime.isBootstrapping()) {
+            if (GraalDebugConfig.Options.BootstrapInitializeOnly.getValue(options)) {
+                return HotSpotCompilationRequestResult.failure(String.format("Skip compilation because %s is enabled", GraalDebugConfig.Options.BootstrapInitializeOnly.getName()), true);
+            }
+            if (bootstrapWatchDog != null) {
+                if (bootstrapWatchDog.hitCriticalCompilationRateOrTimeout()) {
+                    // Drain the compilation queue to expedite completion of the bootstrap
+                    return HotSpotCompilationRequestResult.failure("hit critical bootstrap compilation rate or timeout", true);
+                }
             }
         }
         ResolvedJavaMethod method = request.getMethod();
@@ -142,18 +148,19 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         System.exit(0);
     }
 
-    public CompilationResult compile(ResolvedJavaMethod method, int entryBCI, boolean useProfilingInfo, OptionValues options) {
+    public CompilationResult compile(ResolvedJavaMethod method, int entryBCI, boolean useProfilingInfo, CompilationIdentifier compilationId, OptionValues options) {
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
-        StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers);
+        StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers, compilationId);
 
         if (graph == null) {
             SpeculationLog speculationLog = method.getSpeculationLog();
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
-            graph = new StructuredGraph(method, entryBCI, AllowAssumptions.from(OptAssumptions.getValue(options)), speculationLog, useProfilingInfo, options);
+            graph = new StructuredGraph.Builder(AllowAssumptions.ifTrue(OptAssumptions.getValue(options))).method(method).entryBCI(entryBCI).options(options).speculationLog(
+                            speculationLog).useProfilingInfo(useProfilingInfo).compilationId(compilationId).build();
         }
 
         Suites suites = getSuites(providers, options);
@@ -184,21 +191,27 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
      * installed for the method.
      *
      * @param method
+     * @param compilationId
      * @return an intrinsic graph that can be compiled and installed for {@code method} or null
      */
-    protected StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, HotSpotProviders providers) {
+    @SuppressWarnings("try")
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, HotSpotProviders providers, CompilationIdentifier compilationId) {
         Replacements replacements = providers.getReplacements();
         ResolvedJavaMethod substMethod = replacements.getSubstitutionMethod(method);
         if (substMethod != null) {
             assert !substMethod.equals(method);
-            StructuredGraph graph = new StructuredGraph(substMethod, AllowAssumptions.YES, NO_PROFILING_INFO);
-            Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
-            GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
-            IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, replacements.getReplacementBytecodeProvider(), ROOT_COMPILATION);
-            new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
-                            OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
-            assert !graph.isFrozen();
-            return graph;
+            StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).method(substMethod).compilationId(compilationId).build();
+            try (Debug.Scope scope = Debug.scope("GetIntrinsicGraph", graph)) {
+                Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
+                GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
+                IntrinsicContext initialReplacementContext = new IntrinsicContext(method, substMethod, replacements.getReplacementBytecodeProvider(), ROOT_COMPILATION);
+                new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
+                                OptimisticOptimizations.NONE, initialReplacementContext).apply(graph);
+                assert !graph.isFrozen();
+                return graph;
+            } catch (Throwable e) {
+                Debug.handle(e);
+            }
         }
         return null;
     }

@@ -469,7 +469,7 @@ public class InvocationPlugins {
                 } else {
                     res = declaringClass.getDeclaredMethod(name, parameterTypes);
                 }
-                assert Modifier.isStatic(res.getModifiers()) == isStatic;
+                assert Modifier.isStatic(res.getModifiers()) == isStatic : res;
                 return res;
             } catch (NoSuchMethodException | SecurityException e) {
                 if (isOptional) {

@@ -160,6 +160,8 @@ public class GraalDebugConfig implements DebugConfig {
         public static final OptionKey<Boolean> ForceDebugEnable = new OptionKey<>(false);
         @Option(help = "Clear the debug metrics after bootstrap.", type = OptionType.Debug)
         public static final OptionKey<Boolean> ClearMetricsAfterBootstrap = new OptionKey<>(false);
+        @Option(help = "Do not compile anything on bootstrap but just initialize the compiler.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> BootstrapInitializeOnly = new OptionKey<>(false);
         // @formatter:on
     }
 

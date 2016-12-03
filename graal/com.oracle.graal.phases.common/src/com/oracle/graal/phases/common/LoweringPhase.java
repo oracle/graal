@@ -315,7 +315,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        protected CharSequence createName() {
+        protected CharSequence getName() {
             switch (mode) {
                 case LOWERING:
                     return "LoweringRound";

@@ -25,7 +25,6 @@ package com.oracle.graal.replacements;
 import static com.oracle.graal.compiler.common.GraalOptions.UseSnippetGraphCache;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineDuringParsing;
 import static com.oracle.graal.java.BytecodeParserOptions.InlineIntrinsicsDuringParsing;
-import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static com.oracle.graal.options.OptionValues.GLOBAL;
@@ -58,7 +57,6 @@ import com.oracle.graal.nodes.CallTargetNode;
 import com.oracle.graal.nodes.Invoke;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -386,7 +384,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
 
-            final StructuredGraph graph = new StructuredGraph(methodToParse, AllowAssumptions.NO, NO_PROFILING_INFO);
+            final StructuredGraph graph = new StructuredGraph.Builder().method(methodToParse).build();
 
             // They are not user code so they do not participate in unsafe access tracking
             graph.disableUnsafeAccessTracking();

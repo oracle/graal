@@ -186,7 +186,7 @@ public class RecursiveInliningTest extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
-        StructuredGraph newGraph = new StructuredGraph(method, AllowAssumptions.from(caller.getAssumptions() != null));
+        StructuredGraph newGraph = new StructuredGraph.Builder(AllowAssumptions.ifNonNull(caller.getAssumptions())).method(method).build();
         if (!caller.isUnsafeAccessTrackingEnabled()) {
             newGraph.disableUnsafeAccessTracking();
         }

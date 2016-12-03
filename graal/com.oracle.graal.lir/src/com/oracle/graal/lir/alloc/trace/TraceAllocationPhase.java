@@ -52,8 +52,6 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
         }
     }
 
-    private CharSequence name;
-
     /**
      * Records time spent within {@link #apply}.
      */
@@ -92,10 +90,7 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
     }
 
     public final CharSequence getName() {
-        if (name == null) {
-            name = LIRPhase.createName(getClass());
-        }
-        return name;
+        return LIRPhase.createName(getClass());
     }
 
     @Override

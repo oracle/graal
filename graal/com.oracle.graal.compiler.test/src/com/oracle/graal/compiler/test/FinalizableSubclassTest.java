@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,7 +71,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         Constructor<?>[] constructors = cl.getConstructors();
         Assert.assertTrue(constructors.length == 1);
         final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(constructors[0]);
-        StructuredGraph graph = new StructuredGraph(javaMethod, allowAssumptions, NO_PROFILING_INFO);
+        StructuredGraph graph = new StructuredGraph.Builder(allowAssumptions).method(javaMethod).build();
 
         GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault(getDefaultGraphBuilderPlugins());
         new GraphBuilderPhase.Instance(getMetaAccess(), getProviders().getStampProvider(), getProviders().getConstantReflection(), getProviders().getConstantFieldProvider(), conf,

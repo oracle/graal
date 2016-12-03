@@ -187,7 +187,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/lang/StringBuilder.append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
                         "java/lang/StringBuilder.toString()Ljava/lang/String;",
                         "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
-                        "java/math/BigInteger.multiplyToLen([II[II[I)[I",
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;",
                         "oracle/jrockit/jfr/Timing.counterTime()J",
@@ -236,7 +235,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/math/BigInteger.implMontgomeryMultiply([I[I[IIJ[I)[I",
                         "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I",
                         "java/math/BigInteger.implMulAdd([I[IIII)I",
-                        "java/math/BigInteger.implMultiplyToLen([II[II[I)[I",
                         "java/math/BigInteger.implSquareToLen([II[II)[I",
                         "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
                         "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
@@ -400,6 +398,14 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
                                 "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
                                 "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
+            }
+        }
+        if (!config.useMultiplyToLenIntrinsic()) {
+            // Registration of the AES plugins is guarded by UseAESIntrinsics
+            if (JAVA_SPECIFICATION_VERSION < 9) {
+                add(IGNORE, "java/math/BigInteger.multiplyToLen([II[II[I)[I");
+            } else {
+                add(IGNORE, "java/math/BigInteger.implMultiplyToLen([II[II[I)[I");
             }
         }
     }

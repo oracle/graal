@@ -83,8 +83,8 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph, boolean forceCompile, OptionValues options) {
-        return super.getCode(method, graph, argsToBind != null, options);
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
+        return super.getCode(method, graph, argsToBind != null, installAsDefault, options);
     }
 
     Double delta;

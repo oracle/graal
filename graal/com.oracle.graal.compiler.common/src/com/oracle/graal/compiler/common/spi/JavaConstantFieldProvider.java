@@ -45,6 +45,7 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
     protected JavaConstantFieldProvider(MetaAccessProvider metaAccess) {
         try {
             this.stringValueField = metaAccess.lookupJavaField(String.class.getDeclaredField("value"));
+            this.stringHashField = metaAccess.lookupJavaField(String.class.getDeclaredField("hash"));
         } catch (NoSuchFieldException | SecurityException e) {
             throw new GraalError(e);
         }
@@ -103,6 +104,9 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         if (isWellKnownImplicitStableField(field)) {
             return true;
         }
+        if (field == stringHashField) {
+            return true;
+        }
         return false;
     }
 
@@ -135,6 +139,7 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
     }
 
     private final ResolvedJavaField stringValueField;
+    private final ResolvedJavaField stringHashField;
 
     protected boolean isWellKnownImplicitStableField(ResolvedJavaField field) {
         return field.equals(stringValueField);

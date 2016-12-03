@@ -62,7 +62,6 @@ import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodeinfo.NodeInfo;
 import com.oracle.graal.nodes.PhiNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
@@ -74,6 +73,7 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.phases.verify.VerifyCallerSensitiveMethods;
 import com.oracle.graal.phases.verify.VerifyDebugUsage;
+import com.oracle.graal.phases.verify.VerifyUpdateUsages;
 import com.oracle.graal.phases.verify.VerifyUsageWithEquals;
 import com.oracle.graal.phases.verify.VerifyVirtualizableUsage;
 import com.oracle.graal.runtime.RuntimeProvider;
@@ -191,7 +191,7 @@ public class CheckGraalInvariants extends GraalTest {
                     if (matches(filters, methodName)) {
                         executor.execute(() -> {
                             ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
+                            StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
                             try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
                                 graphBuilderSuite.apply(graph, context);
                                 // update phi stamps
@@ -278,7 +278,7 @@ public class CheckGraalInvariants extends GraalTest {
         new VerifyDebugUsage().apply(graph, context);
         new VerifyCallerSensitiveMethods().apply(graph, context);
         new VerifyVirtualizableUsage().apply(graph, context);
-
+        new VerifyUpdateUsages().apply(graph, context);
         if (graph.method().isBridge()) {
             BridgeMethodUtils.getBridgedMethod(graph.method());
         }

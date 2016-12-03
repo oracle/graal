@@ -30,9 +30,8 @@ import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
+import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import com.oracle.graal.nodes.java.ExceptionObjectNode;
 import com.oracle.graal.options.OptionValues;
 import com.oracle.graal.phases.tiers.Suites;
@@ -51,28 +50,12 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
     }
 
     @Override
-    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        GraphBuilderConfiguration ret = super.editGraphBuilderConfiguration(conf);
-        ret.getPlugins().prependInlineInvokePlugin(new InlineInvokePlugin() {
-
-            @Override
-            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                if (method.getName().startsWith("raiseException")) {
-                    /*
-                     * Make sure the raiseException* method invokes are not inlined and compiled
-                     * with explicit exception handler.
-                     */
-                    return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-                } else {
-                    /*
-                     * We don't care whether other invokes are inlined or not, but we definitely
-                     * don't want another explicit exception handler in the graph.
-                     */
-                    return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
-                }
-            }
-        });
-        return ret;
+    protected InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        /*
+         * We don't care whether other invokes are inlined or not, but we definitely don't want
+         * another explicit exception handler in the graph.
+         */
+        return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
     }
 
     @Override
@@ -83,6 +66,7 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
         return graph;
     }
 
+    @BytecodeParserNeverInline(invokeWithException = true)
     private static void raiseExceptionSimple(String s) {
         throw new RuntimeException("Raising exception with message \"" + s + "\"");
     }
@@ -104,6 +88,7 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
         return null;
     }
 
+    @BytecodeParserNeverInline(invokeWithException = true)
     private static void raiseException(String m1, String m2, String m3, String m4, String m5) {
         throw new RuntimeException(m1 + m2 + m3 + m4 + m5);
     }

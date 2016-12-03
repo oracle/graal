@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.lang.reflect.Method;
@@ -49,7 +48,6 @@ import com.oracle.graal.nodes.InvokeNode;
 import com.oracle.graal.nodes.LogicNode;
 import com.oracle.graal.nodes.MergeNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -314,7 +312,7 @@ public class GraphKit implements GraphBuilderTool {
         Plugins plugins = new Plugins(graphBuilderPlugins);
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
-        StructuredGraph calleeGraph = new StructuredGraph(method, AllowAssumptions.NO, NO_PROFILING_INFO);
+        StructuredGraph calleeGraph = new StructuredGraph.Builder().method(method).options(invoke.getOptions()).build();
         IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, providers.getReplacements().getReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
         GraphBuilderPhase.Instance instance = new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
                         OptimisticOptimizations.NONE,

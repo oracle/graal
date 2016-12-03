@@ -25,13 +25,25 @@ package com.oracle.graal.api.directives.test;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static com.oracle.graal.options.OptionValues.GLOBAL;
 
+import java.io.ByteArrayOutputStream;
+import java.lang.reflect.Method;
+import java.util.Formatter;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.google.monitoring.runtime.instrumentation.common.com.google.common.base.Objects;
 import com.oracle.graal.api.directives.GraalDirectives;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.Debug.Scope;
+import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.options.OptionValues;
+import com.oracle.graal.printer.IdealGraphPrinter;
 
+import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -95,6 +107,7 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
     static String rootNameInCallee;
     static String rootNameInCaller;
 
+    @BytecodeParserForceInline
     public static void rootNameWithinInstrumentationSnippet() {
         GraalDirectives.instrumentationBegin();
         rootNameInCallee = GraalDirectives.rootName();
@@ -110,6 +123,38 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
     }
 
     @SuppressWarnings("try")
+    private void assertEquals(StructuredGraph graph, InstalledCode code, Object expected, Object actual) {
+        if (!Objects.equal(expected, actual)) {
+            Formatter buf = new Formatter();
+
+            try (Scope s = Debug.sandbox("PrintingGraph", null)) {
+                Map<Object, Object> properties = new HashMap<>();
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                IdealGraphPrinter printer = new IdealGraphPrinter(baos, true, getSnippetReflection());
+                printer.beginGroup("RootNameDirectiveTest", "RootNameDirectiveTest", graph.method(), -1, null);
+                properties.put("graph", graph.toString());
+                properties.put("scope", Debug.currentScope());
+                printer.print(graph, graph.method().format("%H.%n(%p)"), properties);
+                printer.endGroup();
+                printer.close();
+                buf.format("-- Graph -- %n%s", baos.toString());
+            } catch (Throwable e) {
+                buf.format("%nError printing graph: %s", e);
+            }
+            try {
+                CodeCacheProvider codeCache = getCodeCache();
+                Method disassemble = codeCache.getClass().getMethod("disassemble", InstalledCode.class);
+                buf.format("%n-- Code -- %n%s", disassemble.invoke(codeCache, code));
+            } catch (NoSuchMethodException e) {
+                // Not a HotSpotCodeCacheProvider
+            } catch (Exception e) {
+                buf.format("%nError disassembling code: %s", e);
+            }
+            Assert.assertEquals(buf.toString(), expected, actual);
+        }
+    }
+
+    @SuppressWarnings("try")
     @Test
     public void testRootNameWithinInstrumentationAtCallee() {
         try {
@@ -119,10 +164,11 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
             rootNameInCaller = null;
             // We expect both rootName1 and rootName2 are set to the name of the target snippet.
             OptionValues options = new OptionValues(GLOBAL, UseGraalInstrumentation, true);
-            InstalledCode code = getCode(method, options);
+            StructuredGraph graph = parseForCompile(method, options);
+            InstalledCode code = getCode(method, graph);
             code.executeVarargs();
-            Assert.assertEquals(toString(method), rootNameInCallee);
-            Assert.assertEquals(rootNameInCallee, rootNameInCaller);
+            assertEquals(graph, code, toString(method), rootNameInCallee);
+            assertEquals(graph, code, rootNameInCallee, rootNameInCaller);
         } catch (Exception e) {
             throw new AssertionError(e);
         }

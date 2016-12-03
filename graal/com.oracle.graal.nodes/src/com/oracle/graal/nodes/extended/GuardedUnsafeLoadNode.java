@@ -49,6 +49,7 @@ public class GuardedUnsafeLoadNode extends UnsafeLoadNode implements GuardedNode
 
     @Override
     public void setGuard(GuardingNode guard) {
+        updateUsagesInterface(this.guard, guard);
         this.guard = guard;
     }
 }

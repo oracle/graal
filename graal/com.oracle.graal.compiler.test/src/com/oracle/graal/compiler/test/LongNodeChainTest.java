@@ -30,7 +30,6 @@ import org.junit.Test;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.calc.AddNode;
 import com.oracle.graal.nodes.debug.OpaqueNode;
@@ -53,7 +52,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
 
     private void longAddChain(boolean reverse) {
         HighTierContext context = getDefaultHighTierContext();
-        StructuredGraph graph = new StructuredGraph(AllowAssumptions.NO);
+        StructuredGraph graph = new StructuredGraph.Builder().build();
         ValueNode constant = graph.unique(ConstantNode.forPrimitive(JavaConstant.INT_1));
         ValueNode value = null;
         if (reverse) {

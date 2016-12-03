@@ -636,6 +636,9 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     public boolean isAllowedUsageType(InputType type) {
+        if (type == InputType.Value) {
+            return false;
+        }
         return getNodeClass().getAllowedUsageTypes().contains(type);
     }
 
@@ -936,10 +939,16 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     protected void afterClone(@SuppressWarnings("unused") Node other) {
     }
 
-    public boolean verifyInputs() {
-        for (Node input : inputs()) {
-            assertFalse(input.isDeleted(), "input was deleted");
-            assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
+    protected boolean verifyInputs() {
+        for (Position pos : inputPositions()) {
+            Node input = pos.get(this);
+            if (input == null) {
+                assertTrue(pos.isInputOptional(), "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", pos, this);
+            } else {
+                assertFalse(input.isDeleted(), "input was deleted");
+                assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
+                assertTrue(pos.getInputType() == InputType.Unchecked || input.isAllowedUsageType(pos.getInputType()), "invalid usage type %s %s", input, pos.getInputType());
+            }
         }
         return true;
     }
@@ -947,6 +956,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     public boolean verify() {
         assertTrue(isAlive(), "cannot verify inactive nodes (id=%d)", id);
         assertTrue(graph() != null, "null graph");
+        verifyInputs();
         if (Options.VerifyGraalGraphEdges.getValue(getOptions())) {
             verifyEdges();
         }
@@ -959,12 +969,10 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * @return true
      */
     public boolean verifyEdges() {
-        verifyInputs();
-        for (Position pos : inputPositions()) {
-            Node input = pos.get(this);
-            assertTrue(pos.isInputOptional() || input != null, "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", pos, this);
-            assertTrue(input == null || input.usages().contains(this), "missing usage in input %s", input);
+        for (Node input : inputs()) {
+            assertTrue(input == null || input.usages().contains(this), "missing usage of %s in input %s", this, input);
         }
+
         for (Node successor : successors()) {
             assertTrue(successor.predecessor() == this, "missing predecessor in %s (actual: %s)", successor, successor.predecessor());
             assertTrue(successor.graph() == graph(), "mismatching graph in successor %s", successor);

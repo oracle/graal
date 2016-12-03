@@ -44,12 +44,11 @@ public class MonitorProxyNode extends FloatingNode {
 
     public static final NodeClass<MonitorProxyNode> TYPE = NodeClass.create(MonitorProxyNode.class);
 
-    @OptionalInput(value = InputType.Association) protected ValueNode object;
+    @OptionalInput(value = InputType.Unchecked) protected ValueNode object;
     @OptionalInput(value = InputType.Association) protected MonitorIdNode monitorId;
 
     public MonitorProxyNode(ValueNode object, MonitorIdNode monitorId) {
         super(TYPE, StampFactory.forVoid());
-
         this.object = object;
         this.monitorId = monitorId;
     }

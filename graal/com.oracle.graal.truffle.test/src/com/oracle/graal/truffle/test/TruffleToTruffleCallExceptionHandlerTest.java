@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle.test;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -122,7 +124,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         compilable.call(arguments);
         compilable.call(arguments);
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions);
+            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, INVALID_COMPILATION_ID);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

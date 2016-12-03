@@ -26,9 +26,6 @@ import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
 import java.lang.reflect.Method;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -38,10 +35,9 @@ import com.oracle.graal.debug.DebugConfigScope;
 import com.oracle.graal.debug.DelegatingDebugConfig;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.VerifyPhase;
@@ -49,6 +45,9 @@ import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.util.Providers;
 import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.graal.test.GraalTest;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Test that interfaces are correctly initialized by a static field resolution during eager graph
@@ -91,7 +90,7 @@ public class StaticInterfaceFieldTest extends GraalTest {
 
         final Method m = getMethod(clazz, methodName);
         ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-        StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
+        StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
         try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("GraphBuilding", graph, method)) {
             graphBuilderSuite.apply(graph, context);
         } catch (Throwable e) {

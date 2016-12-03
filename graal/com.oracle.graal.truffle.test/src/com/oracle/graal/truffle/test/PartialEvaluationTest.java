@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.truffle.test;
 
+import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static com.oracle.graal.compiler.common.CompilationRequestIdentifier.asCompilationRequest;
+
 import org.junit.Assert;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -68,17 +72,23 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         return assertPartialEvalEquals(methodName, root, new Object[0]);
     }
 
+    private CompilationIdentifier getCompilationId(final OptimizedCallTarget compilable) {
+        return ((GraalTruffleRuntime) Truffle.getRuntime()).getCompilationIdentifier(compilable, truffleCompiler.getPartialEvaluator().getCompilationRootMethods()[0], getBackend());
+    }
+
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
-        final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
-        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
-        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable);
+        final OptimizedCallTarget compilable = (OptimizedCallTarget) (Truffle.getRuntime()).createCallTarget(root);
+        CompilationIdentifier compilationId = getCompilationId(compilable);
+        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
+        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable, asCompilationRequest(compilationId));
         return compilable;
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
-        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
-        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable);
+        CompilationIdentifier compilationId = getCompilationId(compilable);
+        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
+        truffleCompiler.compileMethodHelper(actual, methodName, null, compilable, asCompilationRequest(compilationId));
         removeFrameStates(actual);
         StructuredGraph expected = parseForComparison(methodName);
         Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(actual, true, true));
@@ -91,7 +101,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
 
     protected void assertPartialEvalNoInvokes(RootNode root, Object[] arguments) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
-        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES);
+        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, INVALID_COMPILATION_ID);
         removeFrameStates(actual);
         for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.TYPE)) {
             Assert.fail("Found invalid method call target node: " + node);
@@ -99,14 +109,14 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     @SuppressWarnings("try")
-    protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, AllowAssumptions allowAssumptions) {
+    protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
         // Executed AST so that all classes are loaded and initialized.
         compilable.call(arguments);
         compilable.call(arguments);
         compilable.call(arguments);
 
         try (Scope s = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
-            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions);
+            return truffleCompiler.getPartialEvaluator().createGraph(compilable, new TruffleInlining(compilable, new DefaultInliningPolicy()), allowAssumptions, compilationId);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

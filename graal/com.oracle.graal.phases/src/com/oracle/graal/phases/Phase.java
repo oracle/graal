@@ -32,10 +32,6 @@ public abstract class Phase extends BasePhase<Object> {
     protected Phase() {
     }
 
-    protected Phase(String name) {
-        super(name);
-    }
-
     public final void apply(final StructuredGraph graph) {
         apply(graph, true);
     }

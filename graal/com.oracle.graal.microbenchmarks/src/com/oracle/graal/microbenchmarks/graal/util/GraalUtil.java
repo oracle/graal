@@ -25,18 +25,19 @@ package com.oracle.graal.microbenchmarks.graal.util;
 import java.lang.reflect.Method;
 import java.util.List;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.phases.OptimisticOptimizations;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.tiers.HighTierContext;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class GraalUtil {
 
@@ -131,7 +132,7 @@ public class GraalUtil {
     }
 
     public static StructuredGraph getGraph(GraalState graal, ResolvedJavaMethod javaMethod, boolean useProfilingInfo) {
-        StructuredGraph graph = new StructuredGraph(javaMethod, StructuredGraph.AllowAssumptions.YES, useProfilingInfo);
+        StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).useProfilingInfo(useProfilingInfo).method(javaMethod).build();
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
         MetaAccessProvider metaAccess = graal.providers.getMetaAccess();
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(new Plugins(new InvocationPlugins(metaAccess)))));

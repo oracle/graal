@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.truffle;
 
-import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
@@ -42,6 +41,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -158,7 +158,7 @@ public class PartialEvaluator {
     }
 
     @SuppressWarnings("try")
-    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, AllowAssumptions allowAssumptions) {
+    public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
         try (Scope c = Debug.scope("TruffleTree")) {
             Debug.dump(Debug.BASIC_LOG_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "%s", callTarget);
         } catch (Throwable e) {
@@ -166,8 +166,8 @@ public class PartialEvaluator {
         }
 
         String name = callTarget.toString();
-        final StructuredGraph graph = new StructuredGraph(name, callRootMethod, allowAssumptions, callTarget.getSpeculationLog(),
-                        NO_PROFILING_INFO, TruffleCompilerOptions.getOptions());
+        final StructuredGraph graph = new StructuredGraph.Builder(allowAssumptions).name(name).method(callRootMethod).speculationLog(callTarget.getSpeculationLog()).compilationId(
+                        compilationId).options(TruffleCompilerOptions.getOptions()).build();
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
@@ -371,8 +371,7 @@ public class PartialEvaluator {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
-        return new CachingPEGraphDecoder(providers, newConfig, TruffleCompiler.Optimizations,
-                        AllowAssumptions.from(graph.getAssumptions() != null), architecture, graph.getOptions()) {
+        return new CachingPEGraphDecoder(providers, newConfig, TruffleCompiler.Optimizations, AllowAssumptions.ifNonNull(graph.getAssumptions()), architecture, graph.getOptions()) {
             @Override
             protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
                 return new GraphBuilderPhase.Instance(providers.getMetaAccess(), providers.getStampProvider(), providers.getConstantReflection(),

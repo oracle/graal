@@ -92,7 +92,6 @@ import com.oracle.graal.nodes.ReturnNode;
 import com.oracle.graal.nodes.StartNode;
 import com.oracle.graal.nodes.StateSplit;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.ValueNodeUtil;
@@ -677,7 +676,7 @@ public class SnippetTemplate {
         PhaseContext phaseContext = new PhaseContext(providers);
 
         // Copy snippet graph, replacing constant parameters with given arguments
-        final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method(), AllowAssumptions.NO);
+        final StructuredGraph snippetCopy = new StructuredGraph.Builder().name(snippetGraph.name).method(snippetGraph.method()).build();
 
         try (Debug.Scope scope = Debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {

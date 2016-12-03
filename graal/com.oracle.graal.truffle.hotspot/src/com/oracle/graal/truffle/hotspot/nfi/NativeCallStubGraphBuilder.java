@@ -38,7 +38,6 @@ import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.FixedWithNextNode;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.BoxNode;
 import com.oracle.graal.nodes.extended.UnboxNode;
@@ -126,7 +125,7 @@ public class NativeCallStubGraphBuilder {
         Suites suites = providers.getSuites().getDefaultSuites(GLOBAL);
         LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites(GLOBAL);
 
-        StructuredGraph g = new StructuredGraph(callStubMethod, AllowAssumptions.NO);
+        StructuredGraph g = new StructuredGraph.Builder().method(callStubMethod).compilationId(backend.getCompilationIdentifier(callStubMethod)).build();
         CompilationResult compResult = GraalCompiler.compileGraph(g, callStubMethod, providers, backend, graphBuilder, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
                         lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
 

@@ -26,6 +26,7 @@ import java.util.Set;
 
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
@@ -47,6 +48,7 @@ import com.oracle.graal.phases.util.Providers;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
@@ -123,7 +125,8 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
 
     public abstract LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes);
 
-    public abstract LIRGenerationResult newLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph, Object stub);
+    public abstract LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph,
+                    Object stub);
 
     public abstract NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen);
 
@@ -142,13 +145,23 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * Turns a Graal {@link CompilationResult} into a {@link CompiledCode} object that can be passed
      * to the VM for code installation.
      */
-    protected abstract CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationResult compilationResult);
+    protected abstract CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult);
+
+    /**
+     * @see #createInstalledCode(ResolvedJavaMethod, CompilationRequest, CompilationResult,
+     *      SpeculationLog, InstalledCode, boolean)
+     */
+    public InstalledCode createInstalledCode(ResolvedJavaMethod method, CompilationResult compilationResult,
+                    SpeculationLog speculationLog, InstalledCode predefinedInstalledCode, boolean isDefault) {
+        return createInstalledCode(method, null, compilationResult, speculationLog, predefinedInstalledCode, isDefault);
+    }
 
     /**
      * Installs code based on a given compilation result.
      *
      * @param method the method compiled to produce {@code compiledCode} or {@code null} if the
      *            input to {@code compResult} was not a {@link ResolvedJavaMethod}
+     * @param compilationRequest the compilation request or {@code null}
      * @param compilationResult the code to be compiled
      * @param predefinedInstalledCode a pre-allocated {@link InstalledCode} object to use as a
      *            reference to the installed code. If {@code null}, a new {@link InstalledCode}
@@ -162,10 +175,10 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * @throws BailoutException if the code installation failed
      */
     @SuppressWarnings("try")
-    public InstalledCode createInstalledCode(ResolvedJavaMethod method, CompilationResult compilationResult,
+    public InstalledCode createInstalledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult,
                     SpeculationLog speculationLog, InstalledCode predefinedInstalledCode, boolean isDefault) {
         try (Scope s2 = Debug.scope("CodeInstall", getProviders().getCodeCache(), compilationResult)) {
-            CompiledCode compiledCode = createCompiledCode(method, compilationResult);
+            CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
             return getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
         } catch (Throwable e) {
             throw Debug.handle(e);
@@ -177,12 +190,13 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      *
      * @param method the method compiled to produce {@code compiledCode} or {@code null} if the
      *            input to {@code compResult} was not a {@link ResolvedJavaMethod}
+     * @param compilationRequest the request or {@code null}
      * @param compilationResult the code to be compiled
      * @return a reference to the compiled and ready-to-run installed code
      * @throws BailoutException if the code installation failed
      */
-    public InstalledCode addInstalledCode(ResolvedJavaMethod method, CompilationResult compilationResult) {
-        return createInstalledCode(method, compilationResult, null, null, false);
+    public InstalledCode addInstalledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult) {
+        return createInstalledCode(method, compilationRequest, compilationResult, null, null, false);
     }
 
     /**
@@ -214,4 +228,13 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      */
     public abstract Set<Register> translateToCallerRegisters(Set<Register> calleeRegisters);
 
+    /**
+     * Gets the compilation id for a given {@link ResolvedJavaMethod}. Returns
+     * {@code CompilationIdentifier#INVALID_COMPILATION_ID} in case there is no such id.
+     *
+     * @param resolvedJavaMethod
+     */
+    public CompilationIdentifier getCompilationIdentifier(ResolvedJavaMethod resolvedJavaMethod) {
+        return CompilationIdentifier.INVALID_COMPILATION_ID;
+    }
 }

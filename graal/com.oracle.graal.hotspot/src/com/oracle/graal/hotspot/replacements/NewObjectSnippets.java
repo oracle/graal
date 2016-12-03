@@ -97,6 +97,7 @@ import com.oracle.graal.nodes.debug.DynamicCounterNode;
 import com.oracle.graal.nodes.debug.VerifyHeapNode;
 import com.oracle.graal.nodes.extended.BranchProbabilityNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
+import com.oracle.graal.nodes.extended.MembarNode;
 import com.oracle.graal.nodes.java.DynamicNewArrayNode;
 import com.oracle.graal.nodes.java.DynamicNewInstanceNode;
 import com.oracle.graal.nodes.java.NewArrayNode;
@@ -117,6 +118,7 @@ import com.oracle.graal.replacements.nodes.ExplodeLoopNode;
 import com.oracle.graal.word.Word;
 
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -347,7 +349,7 @@ public class NewObjectSnippets implements Snippets {
      * Calls the runtime stub for implementing MULTIANEWARRAY.
      */
     @Snippet
-    public static Object newmultiarray(Word hub, @ConstantParameter int rank, @VarargsParameter int[] dimensions) {
+    public static Object newmultiarray(KlassPointer hub, @ConstantParameter int rank, @VarargsParameter int[] dimensions) {
         Word dims = DimensionsNode.allocaDimsArray(rank);
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < rank; i++) {
@@ -357,7 +359,7 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class, returnStampIsNonNull = true)
-    public static native Object newArrayCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dims);
+    public static native Object newArrayCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub, int rank, Word dims);
 
     /**
      * Maximum number of long stores to emit when zeroing an object with a constant size. Larger
@@ -454,6 +456,7 @@ public class NewObjectSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, useSnippetCounters);
         }
+        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, INIT_LOCATION);
         return memory.toObject();
     }
 
@@ -485,6 +488,7 @@ public class NewObjectSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(allocationSize, memory, false, headerSize, maybeUnroll, useSnippetCounters);
         }
+        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, INIT_LOCATION);
         return memory.toObject();
     }
 

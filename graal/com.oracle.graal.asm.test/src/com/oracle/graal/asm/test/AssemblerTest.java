@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.asm.test;
 
+import static com.oracle.graal.compiler.common.CompilationRequestIdentifier.asCompilationRequest;
+
 import java.lang.reflect.Method;
 
 import org.junit.Assert;
@@ -29,11 +31,11 @@ import org.junit.Assert;
 import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.code.DisassemblerProvider;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.runtime.RuntimeProvider;
 import com.oracle.graal.serviceprovider.GraalServices;
 import com.oracle.graal.test.GraalTest;
@@ -75,7 +77,9 @@ public abstract class AssemblerTest extends GraalTest {
         ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(m);
         try (Scope s = Debug.scope("assembleMethod", method, codeCache)) {
             RegisterConfig registerConfig = codeCache.getRegisterConfig();
-            CallingConvention cc = backend.newLIRGenerationResult("", null, null, new StructuredGraph(method, AllowAssumptions.NO), null).getCallingConvention();
+            CompilationIdentifier compilationId = backend.getCompilationIdentifier(method);
+            StructuredGraph graph = new StructuredGraph.Builder().method(method).compilationId(compilationId).build();
+            CallingConvention cc = backend.newLIRGenerationResult(compilationId, null, null, graph, null).getCallingConvention();
 
             CompilationResult compResult = new CompilationResult();
             byte[] targetCode = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
@@ -83,7 +87,7 @@ public abstract class AssemblerTest extends GraalTest {
             compResult.setTotalFrameSize(0);
             compResult.close();
 
-            InstalledCode code = backend.addInstalledCode(method, compResult);
+            InstalledCode code = backend.addInstalledCode(method, asCompilationRequest(compilationId), compResult);
 
             for (DisassemblerProvider dis : GraalServices.load(DisassemblerProvider.class)) {
                 String disasm1 = dis.disassembleCompiledCode(codeCache, compResult);

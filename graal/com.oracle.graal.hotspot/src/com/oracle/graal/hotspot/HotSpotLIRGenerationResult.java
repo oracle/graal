@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import java.util.Map;
 
 import com.oracle.graal.compiler.common.CollectionsFactory;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.lir.LIR;
 import com.oracle.graal.lir.LIRFrameState;
@@ -53,8 +54,8 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      */
     private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap();
 
-    public HotSpotLIRGenerationResult(String compilationUnitName, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub) {
-        super(compilationUnitName, lir, frameMapBuilder, callingConvention);
+    public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub) {
+        super(compilationId, lir, frameMapBuilder, callingConvention);
         this.stub = stub;
     }
 

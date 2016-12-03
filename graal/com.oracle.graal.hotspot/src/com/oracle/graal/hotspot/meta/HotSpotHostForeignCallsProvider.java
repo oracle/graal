@@ -33,9 +33,17 @@ import static com.oracle.graal.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static com.oracle.graal.hotspot.HotSpotBackend.FETCH_UNROLL_INFO;
 import static com.oracle.graal.hotspot.HotSpotBackend.IC_MISS_HANDLER;
+import static com.oracle.graal.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
+import static com.oracle.graal.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
+import static com.oracle.graal.hotspot.HotSpotBackend.MULTIPLY_TO_LEN;
+import static com.oracle.graal.hotspot.HotSpotBackend.MUL_ADD;
 import static com.oracle.graal.hotspot.HotSpotBackend.NEW_ARRAY;
 import static com.oracle.graal.hotspot.HotSpotBackend.NEW_INSTANCE;
 import static com.oracle.graal.hotspot.HotSpotBackend.NEW_MULTI_ARRAY;
+import static com.oracle.graal.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS;
+import static com.oracle.graal.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS;
+import static com.oracle.graal.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
+import static com.oracle.graal.hotspot.HotSpotBackend.SQUARE_TO_LEN;
 import static com.oracle.graal.hotspot.HotSpotBackend.UNCOMMON_TRAP;
 import static com.oracle.graal.hotspot.HotSpotBackend.UNPACK_FRAMES;
 import static com.oracle.graal.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
@@ -317,6 +325,31 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         registerCheckcastArraycopyDescriptor(true, c.checkcastArraycopyUninit);
         registerCheckcastArraycopyDescriptor(false, c.checkcastArraycopy);
+
+        if (c.useMultiplyToLenIntrinsic()) {
+            registerForeignCall(MULTIPLY_TO_LEN, c.multiplyToLen, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int));
+        }
+        if (c.useSHA1Intrinsics()) {
+            registerForeignCall(SHA_IMPL_COMPRESS, c.sha1ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.any());
+        }
+        if (c.useSHA256Intrinsics()) {
+            registerForeignCall(SHA2_IMPL_COMPRESS, c.sha256ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.any());
+        }
+        if (c.useSHA512Intrinsics()) {
+            registerForeignCall(SHA5_IMPL_COMPRESS, c.sha512ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.any());
+        }
+        if (c.useMulAddIntrinsic()) {
+            registerForeignCall(MUL_ADD, c.mulAdd, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int));
+        }
+        if (c.useMontgomeryMultiplyIntrinsic()) {
+            registerForeignCall(MONTGOMERY_MULTIPLY, c.montgomeryMultiply, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int));
+        }
+        if (c.useMontgomerySquareIntrinsic()) {
+            registerForeignCall(MONTGOMERY_SQUARE, c.montgomerySquare, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int));
+        }
+        if (c.useSquareToLenIntrinsic()) {
+            registerForeignCall(SQUARE_TO_LEN, c.squareToLen, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int));
+        }
 
         if (c.useAESIntrinsics) {
             /*

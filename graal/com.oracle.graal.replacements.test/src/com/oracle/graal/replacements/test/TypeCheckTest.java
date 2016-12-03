@@ -51,8 +51,8 @@ public abstract class TypeCheckTest extends GraalCompilerTest {
     }
 
     @Override
-    protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph, boolean ignore, OptionValues options) {
-        return super.getCode(method, graph, currentProfile != null, options);
+    protected InstalledCode getCode(final ResolvedJavaMethod method, final StructuredGraph graph, boolean ignore, boolean installAsDefault, OptionValues options) {
+        return super.getCode(method, graph, currentProfile != null, installAsDefault, options);
     }
 
     protected JavaTypeProfile profile(Class<?>... types) {

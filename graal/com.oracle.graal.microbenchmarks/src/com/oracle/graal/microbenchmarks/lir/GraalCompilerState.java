@@ -47,6 +47,7 @@ import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.GraalCompiler.Request;
 import com.oracle.graal.compiler.LIRGenerationPhase;
 import com.oracle.graal.compiler.LIRGenerationPhase.LIRGenerationContext;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.common.alloc.ComputeBlockOrder;
 import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
 import com.oracle.graal.compiler.target.Backend;
@@ -315,7 +316,8 @@ public abstract class GraalCompilerState {
      */
     protected final void prepareRequest() {
         assert originalGraph != null : "call initialzeMethod first";
-        graph = (StructuredGraph) originalGraph.copy();
+        CompilationIdentifier compilationId = backend.getCompilationIdentifier(originalGraph.method());
+        graph = originalGraph.copyWithIdentifier(compilationId);
         assert !graph.isFrozen();
         ResolvedJavaMethod installedCodeOwner = graph.method();
         request = new Request<>(graph, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
@@ -372,8 +374,7 @@ public abstract class GraalCompilerState {
 
         LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder, graph.getOptions());
         FrameMapBuilder frameMapBuilder = request.backend.newFrameMapBuilder(registerConfig);
-        String compilationUnitName = null;
-        lirGenRes = request.backend.newLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, request.graph, stub);
+        lirGenRes = request.backend.newLIRGenerationResult(graph.compilationId(), lir, frameMapBuilder, request.graph, stub);
         lirGenTool = request.backend.newLIRGenerator(lirGenRes);
         nodeLirGen = request.backend.newNodeLIRBuilder(request.graph, lirGenTool);
     }

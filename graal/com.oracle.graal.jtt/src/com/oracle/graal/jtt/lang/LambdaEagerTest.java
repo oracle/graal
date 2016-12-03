@@ -81,8 +81,8 @@ public class LambdaEagerTest extends GraalCompilerTest {
 
     @Override
     @SuppressWarnings("try")
-    protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, OptionValues options) {
+    protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         assert graph == null;
-        return super.getCode(installedCodeOwner, graph, forceCompile, new OptionValues(options, InlineEverything, true));
+        return super.getCode(installedCodeOwner, graph, forceCompile, installAsDefault, new OptionValues(options, InlineEverything, true));
     }
 }

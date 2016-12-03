@@ -33,8 +33,8 @@ import com.oracle.graal.options.OptionValues;
 public class MemoryArithmeticTest extends GraalCompilerTest {
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph, boolean forceCompile, OptionValues options) {
-        return super.getCode(method, graph, true, options);
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
+        return super.getCode(method, graph, true, installAsDefault, options);
     }
 
     /**

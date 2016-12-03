@@ -214,7 +214,7 @@ class MoveProfilingBenchmarkMixin(object):
 
     See com.oracle.graal.lir.profiling.MoveProfilingPhase for more details.
     """
-    benchmark_counters_file = 'benchmark-counters.csv'
+    benchmark_counters_file = 'benchmark-counters'
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = [
@@ -243,9 +243,6 @@ class MoveProfilingBenchmarkMixin(object):
     def name(self):
         return self.benchSuiteName() + "-move-profiling"
 
-    def get_csv_filename(self, benchmarks, bmSuiteArgs):
-        return MoveProfilingBenchmarkMixin.benchmark_counters_file
-
     def shorten_flags(self, args):
         def _shorten(x):
             if any(p in x for p in ["DynamicCounter", "BenchmarkCounter"]):
@@ -257,8 +254,9 @@ class MoveProfilingBenchmarkMixin(object):
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-          mx_benchmark.CSVFixedFileRule(
-            filename=self.get_csv_filename(benchmarks, bmSuiteArgs),
+          mx_benchmark.CSVStdOutFileRule(
+            pattern="Writing benchmark counters to '(?P<name>[^']*)'",
+            match_name="name",
             colnames=['type', 'group', 'name', 'value'],
             replacement={
               "benchmark": self.getBechmarkName(),
@@ -285,7 +283,7 @@ class DaCapoMoveProfilingBenchmarkMixin(MoveProfilingBenchmarkMixin):
     def vmArgs(self, bmSuiteArgs):
         # we need to boostrap to eagerly initialize Graal otherwise we cannot intercept
         # stdio since it is rerouted by the dacapo harness
-        return ['-XX:+BootstrapJVMCI'] +  super(DaCapoMoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        return ['-XX:+BootstrapJVMCI', '-Dgraal.BootstrapInitializeOnly=true'] +  super(DaCapoMoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
 
     def get_dynamic_counters_argument(self):
         # we only count the moves executed during the last (the measurement) iteration
@@ -574,6 +572,14 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite):
 
     def daCapoIterations(self):
         return _daCapoScalaConfig
+
+    def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
+        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        if "specs" in benchmarks:
+            skip_patterns += [
+                    re.escape(r"Line count validation failed for stdout.log, expecting 1039 found 1040"),
+                ]
+        return skip_patterns
 
 
 mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())

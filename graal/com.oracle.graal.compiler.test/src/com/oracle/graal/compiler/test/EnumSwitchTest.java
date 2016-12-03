@@ -140,7 +140,7 @@ public class EnumSwitchTest extends GraalCompilerTest {
     @Override
     protected Suites createSuites(OptionValues options) {
         Suites ret = super.createSuites(options);
-        ret.getHighTier().prependPhase(new Phase("CheckGraphPhase") {
+        ret.getHighTier().prependPhase(new Phase() {
             @Override
             protected void run(StructuredGraph graph) {
                 /* Array load from the enum switch map. */
@@ -148,14 +148,24 @@ public class EnumSwitchTest extends GraalCompilerTest {
                 /* The actual switch. */
                 assertTrue(graph.getNodes().filter(IntegerSwitchNode.class).count() == 1);
             }
+
+            @Override
+            protected CharSequence getName() {
+                return "CheckGraphPhase";
+            }
         });
-        ret.getHighTier().findPhase(RemoveValueProxyPhase.class).add(new Phase("CheckGraphPhase") {
+        ret.getHighTier().findPhase(RemoveValueProxyPhase.class).add(new Phase() {
             @Override
             protected void run(StructuredGraph graph) {
                 /* Re-writing of the switch cases eliminates the array load. */
                 assertTrue(graph.getNodes().filter(LoadIndexedNode.class).count() == 0);
                 /* The switch is still there. */
                 assertTrue(graph.getNodes().filter(IntegerSwitchNode.class).count() == 1);
+            }
+
+            @Override
+            protected CharSequence getName() {
+                return "CheckGraphPhase";
             }
         });
         return ret;

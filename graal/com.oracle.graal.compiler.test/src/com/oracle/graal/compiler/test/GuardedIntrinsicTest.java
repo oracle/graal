@@ -40,7 +40,6 @@ import com.oracle.graal.nodes.extended.LoadHubNode;
 import com.oracle.graal.nodes.extended.LoadMethodNode;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
@@ -76,12 +75,12 @@ public class GuardedIntrinsicTest extends GraalCompilerTest {
         }
     }
 
-    // Force inlined during bytecode parsing
+    @BytecodeParserForceInline
     public static final Super createSuper() {
         return new Super();
     }
 
-    // Not inlined during bytecode parsing
+    @BytecodeParserNeverInline
     public static final Super createPerson() {
         return new Person(42);
     }
@@ -132,21 +131,6 @@ public class GuardedIntrinsicTest extends GraalCompilerTest {
                 return true;
             }
         });
-
-        conf.getPlugins().prependInlineInvokePlugin(new InlineInvokePlugin() {
-            @Override
-            public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                if (method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(GuardedIntrinsicTest.class))) {
-                    if (method.getName().equals("createPerson")) {
-                        return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
-                    } else if (method.getName().equals("createSuper")) {
-                        return InlineInfo.createStandardInlineInfo(method);
-                    }
-                }
-                return null;
-            }
-        });
-
         return super.editGraphBuilderConfiguration(conf);
     }
 

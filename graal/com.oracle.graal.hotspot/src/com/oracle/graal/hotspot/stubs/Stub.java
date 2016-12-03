@@ -31,6 +31,7 @@ import java.util.ListIterator;
 import java.util.Set;
 
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -141,8 +142,10 @@ public abstract class Stub {
 
     /**
      * Gets the graph that from which the code for this stub will be compiled.
+     *
+     * @param compilationId unique compilation id for the stub
      */
-    protected abstract StructuredGraph getGraph();
+    protected abstract StructuredGraph getGraph(CompilationIdentifier compilationId);
 
     @Override
     public String toString() {
@@ -166,7 +169,7 @@ public abstract class Stub {
     public synchronized InstalledCode getCode(final Backend backend) {
         if (code == null) {
             try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {
-                final StructuredGraph graph = getGraph();
+                final StructuredGraph graph = getGraph(getStubCompilationId());
 
                 // Stubs cannot be recompiled so they cannot be compiled with assumptions
                 assert graph.getAssumptions() == null;
@@ -204,6 +207,10 @@ public abstract class Stub {
         }
 
         return code;
+    }
+
+    public CompilationIdentifier getStubCompilationId() {
+        return new StubCompilationIdentifier(this);
     }
 
     /**

@@ -67,7 +67,7 @@ public class LockInstrumentationTest extends GraalCompilerTest {
     public static boolean lockAfterCheckPoint;
     public static boolean checkpoint;
 
-    public void resetFlags() {
+    private static void resetFlags() {
         lockAfterCheckPoint = false;
         checkpoint = false;
     }

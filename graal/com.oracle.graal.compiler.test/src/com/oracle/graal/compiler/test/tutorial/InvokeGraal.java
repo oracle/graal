@@ -23,13 +23,13 @@
 package com.oracle.graal.compiler.test.tutorial;
 
 import static com.oracle.graal.options.OptionValues.GLOBAL;
+import static com.oracle.graal.compiler.common.CompilationRequestIdentifier.asCompilationRequest;
 
 import java.lang.reflect.Method;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.oracle.graal.api.test.Graal;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.GraalCompiler;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -76,15 +76,14 @@ public class InvokeGraal {
         codeCache = providers.getCodeCache();
     }
 
-    private static AtomicInteger compilationId = new AtomicInteger();
-
     /**
      * The simplest way to compile a method, using the default behavior for everything.
      */
     @SuppressWarnings("try")
     protected InstalledCode compileAndInstallMethod(ResolvedJavaMethod method) {
-        /* Ensure every compilation gets a unique number, visible in IGV. */
-        try (Scope s = Debug.scope("compileAndInstallMethod", new DebugDumpScope(String.valueOf(compilationId.incrementAndGet()), true))) {
+        /* Create a unique compilation identifier, visible in IGV. */
+        CompilationIdentifier compilationId = backend.getCompilationIdentifier(method);
+        try (Scope s = Debug.scope("compileAndInstallMethod", new DebugDumpScope(String.valueOf(compilationId), true))) {
 
             /*
              * The graph that is compiled. We leave it empty (no nodes added yet). This means that
@@ -92,7 +91,7 @@ public class InvokeGraal {
              * that we want the compilation to make optimistic assumptions about runtime state such
              * as the loaded class hierarchy.
              */
-            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.YES);
+            StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).method(method).compilationId(compilationId).build();
 
             /*
              * The phases used to build the graph. Usually this is just the GraphBuilderPhase. If
@@ -130,7 +129,7 @@ public class InvokeGraal {
              * Install the compilation result into the VM, i.e., copy the byte[] array that contains
              * the machine code into an actual executable memory location.
              */
-            return backend.addInstalledCode(method, compilationResult);
+            return backend.addInstalledCode(method, asCompilationRequest(compilationId), compilationResult);
         } catch (Throwable ex) {
             throw Debug.handle(ex);
         }

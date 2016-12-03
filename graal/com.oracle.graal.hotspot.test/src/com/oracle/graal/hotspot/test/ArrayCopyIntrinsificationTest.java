@@ -48,10 +48,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
 
     @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph g, boolean forceCompile, OptionValues options) {
+    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph g, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         StructuredGraph graph = g == null ? parseForCompile(method) : g;
         int nodeCount = graph.getNodeCount();
-        InstalledCode result = super.getCode(method, graph, forceCompile, options);
+        InstalledCode result = super.getCode(method, graph, forceCompile, installAsDefault, options);
         boolean graphWasProcessed = nodeCount != graph.getNodeCount();
         if (graphWasProcessed) {
             if (mustIntrinsify) {

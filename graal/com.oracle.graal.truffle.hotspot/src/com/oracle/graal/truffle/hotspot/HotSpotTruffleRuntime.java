@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.api.runtime.GraalRuntime;
 import com.oracle.graal.code.CompilationResult;
+import com.oracle.graal.compiler.common.CompilationIdentifier;
+import com.oracle.graal.compiler.common.CompilationRequestIdentifier;
 import com.oracle.graal.compiler.target.Backend;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.debug.Debug.Scope;
@@ -48,6 +50,7 @@ import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.TTY;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotBackend;
+import com.oracle.graal.hotspot.HotSpotCompilationIdentifier;
 import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
@@ -55,7 +58,6 @@ import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
 import com.oracle.graal.lir.phases.LIRSuites;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
@@ -92,6 +94,7 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
@@ -100,6 +103,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal.
@@ -203,16 +207,23 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
         for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
             if (method.getAnnotation(TruffleCallBoundary.class) != null) {
-                CompilationResult compResult = compileMethod(method);
+                HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) getHotSpotBackend().getCompilationIdentifier(method);
+                CompilationResult compResult = compileMethod(method, compilationId);
                 CodeCacheProvider codeCache = providers.getCodeCache();
                 try (Scope s = Debug.scope("CodeInstall", codeCache, method, compResult)) {
-                    CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(method, null, compResult);
+                    CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(method, compilationId.getRequest(), compResult);
                     codeCache.setDefaultCode(method, compiledCode);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
             }
         }
+    }
+
+    @Override
+    public CompilationRequestIdentifier getCompilationIdentifier(OptimizedCallTarget optimizedCallTarget, ResolvedJavaMethod callRootMethod, Backend backend) {
+        HotSpotCompilationRequest request = new HotSpotCompilationRequest((HotSpotResolvedJavaMethod) callRootMethod, JVMCICompiler.INVOCATION_ENTRY_BCI, 0L);
+        return new HotSpotTruffleCompilationIdentifier(request, optimizedCallTarget);
     }
 
     private CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch) {
@@ -226,14 +237,14 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         return CompilationResultBuilderFactory.Default;
     }
 
-    private CompilationResult compileMethod(ResolvedJavaMethod javaMethod) {
+    private CompilationResult compileMethod(ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId) {
         HotSpotProviders providers = getHotSpotProviders();
         SuitesProvider suitesProvider = providers.getSuites();
         OptionValues opts = getOptions();
         Suites suites = suitesProvider.getDefaultSuites(opts).copy();
         LIRSuites lirSuites = suitesProvider.getDefaultLIRSuites(opts);
         removeInliningPhase(suites);
-        StructuredGraph graph = new StructuredGraph(javaMethod, AllowAssumptions.NO);
+        StructuredGraph graph = new StructuredGraph.Builder().method(javaMethod).compilationId(compilationId).build();
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));

@@ -33,7 +33,6 @@ import org.junit.Test;
 
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -79,7 +78,7 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes
     private void checkForBailout(String name) throws ClassNotFoundException {
         ResolvedJavaMethod method = getResolvedJavaMethod(LOADER.findClass(NAME), name);
         try {
-            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
+            StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
             Plugins plugins = new Plugins(new InvocationPlugins(getMetaAccess()));
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;

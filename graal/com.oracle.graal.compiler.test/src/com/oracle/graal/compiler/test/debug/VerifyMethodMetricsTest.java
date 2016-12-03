@@ -34,7 +34,6 @@ import com.oracle.graal.debug.DebugMethodMetrics;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
@@ -254,7 +253,7 @@ public class VerifyMethodMetricsTest {
         for (Method m : c.getDeclaredMethods()) {
             if (!Modifier.isNative(m.getModifiers()) && !Modifier.isAbstract(m.getModifiers())) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO);
+                StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
                 graphBuilderSuite.apply(graph, context);
                 try (DebugConfigScope s = Debug.disableIntercept()) {
                     new VerifyDebugUsage().apply(graph, context);

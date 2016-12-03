@@ -157,7 +157,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
          * InstrumentationNode is alive.
          */
         StructuredGraph genInstrumentationGraph(StructuredGraph oldGraph, InstrumentationNode instrumentationNode) {
-            StructuredGraph instrumentationGraph = new StructuredGraph(AllowAssumptions.YES);
+            StructuredGraph instrumentationGraph = new StructuredGraph.Builder(AllowAssumptions.YES).options(oldGraph.getOptions()).build();
             Map<Node, Node> replacements = Node.newMap();
             int index = 0; // for ParameterNode index
             for (Node current : nodes) {

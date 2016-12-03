@@ -52,7 +52,7 @@ public class IntegerStampTest {
 
     @Before
     public void before() {
-        graph = new StructuredGraph(AllowAssumptions.YES);
+        graph = new StructuredGraph.Builder(AllowAssumptions.YES).build();
     }
 
     @Test

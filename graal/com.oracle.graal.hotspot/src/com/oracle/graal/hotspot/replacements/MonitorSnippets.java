@@ -555,16 +555,20 @@ public class MonitorSnippets implements Snippets {
             Arguments args;
             if (useFastLocking) {
                 args = new Arguments(monitorenter, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("object", monitorenterNode.object());
+                args.add("hub", monitorenterNode.getHub());
+                args.addConst("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
+                args.addConst("threadRegister", registers.getThreadRegister());
+                args.addConst("stackPointerRegister", registers.getStackPointerRegister());
+                args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(graph));
+                args.addConst("options", graph.getOptions());
             } else {
                 args = new Arguments(monitorenterStub, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("object", monitorenterNode.object());
+                args.addConst("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
+                args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(graph));
+                args.addConst("options", graph.getOptions());
             }
-            args.add("object", monitorenterNode.object());
-            args.add("hub", monitorenterNode.getHub());
-            args.addConst("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
-            args.addConst("threadRegister", registers.getThreadRegister());
-            args.addConst("stackPointerRegister", registers.getStackPointerRegister());
-            args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(graph));
-            args.addConst("options", graph.getOptions());
 
             template(args).instantiate(providers.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);
         }

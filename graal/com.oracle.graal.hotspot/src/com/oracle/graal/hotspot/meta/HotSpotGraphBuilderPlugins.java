@@ -30,15 +30,20 @@ import static com.oracle.graal.options.OptionValues.GLOBAL;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.math.BigInteger;
 import java.util.zip.CRC32;
 
 import com.oracle.graal.api.replacements.SnippetReflectionProvider;
 import com.oracle.graal.bytecode.BytecodeProvider;
 import com.oracle.graal.compiler.common.LocationIdentity;
 import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.CurrentJavaThreadNode;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
+import com.oracle.graal.hotspot.replacements.BigIntegerSubstitutions;
 import com.oracle.graal.hotspot.replacements.CRC32Substitutions;
 import com.oracle.graal.hotspot.replacements.CallSiteTargetNode;
 import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
@@ -49,6 +54,9 @@ import com.oracle.graal.hotspot.replacements.ObjectCloneNode;
 import com.oracle.graal.hotspot.replacements.ObjectSubstitutions;
 import com.oracle.graal.hotspot.replacements.ReflectionGetCallerClassNode;
 import com.oracle.graal.hotspot.replacements.ReflectionSubstitutions;
+import com.oracle.graal.hotspot.replacements.SHA2Substitutions;
+import com.oracle.graal.hotspot.replacements.SHA5Substitutions;
+import com.oracle.graal.hotspot.replacements.SHASubstitutions;
 import com.oracle.graal.hotspot.replacements.ThreadSubstitutions;
 import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyNode;
 import com.oracle.graal.hotspot.word.HotSpotWordTypes;
@@ -143,6 +151,8 @@ public class HotSpotGraphBuilderPlugins {
                 registerStableOptionPlugins(invocationPlugins, snippetReflection);
                 registerAESPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerCRC32Plugins(invocationPlugins, config, replacementBytecodeProvider);
+                registerBigIntegerPlugins(invocationPlugins, config, replacementBytecodeProvider);
+                registerSHAPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacementBytecodeProvider, true);
 
                 for (NodeIntrinsicPluginFactory factory : GraalServices.load(NodeIntrinsicPluginFactory.class)) {
@@ -431,6 +441,60 @@ public class HotSpotGraphBuilderPlugins {
             r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", bytecodeProvider);
             r.registerMethodSubstitution(AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(AESCryptSubstitutions.class, aesDecryptName, aesDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, byte[].class, int.class);
+        }
+    }
+
+    private static void registerBigIntegerPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, BigInteger.class, bytecodeProvider);
+        if (config.useMultiplyToLenIntrinsic()) {
+            assert config.multiplyToLen != 0L;
+            if (Java8OrEarlier) {
+                try {
+                    Method m = BigInteger.class.getDeclaredMethod("multiplyToLen", int[].class, int.class, int[].class, int.class, int[].class);
+                    if (Modifier.isStatic(m.getModifiers())) {
+                        r.registerMethodSubstitution(BigIntegerSubstitutions.class, "multiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class, int.class,
+                                        int[].class);
+                    } else {
+                        r.registerMethodSubstitution(BigIntegerSubstitutions.class, "multiplyToLen", Receiver.class, int[].class, int.class, int[].class, int.class,
+                                        int[].class);
+                    }
+                } catch (NoSuchMethodException | SecurityException e) {
+                    throw new GraalError(e);
+                }
+            } else {
+                r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implMultiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class, int.class,
+                                int[].class);
+            }
+        }
+        if (config.useMulAddIntrinsic()) {
+            r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implMulAdd", int[].class, int[].class, int.class, int.class, int.class);
+        }
+        if (config.useMontgomeryMultiplyIntrinsic()) {
+            r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implMontgomeryMultiply", int[].class, int[].class, int[].class, int.class, long.class, int[].class);
+        }
+        if (config.useMontgomerySquareIntrinsic()) {
+            r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implMontgomerySquare", int[].class, int[].class, int.class, long.class, int[].class);
+        }
+        if (config.useSquareToLenIntrinsic()) {
+            r.registerMethodSubstitution(BigIntegerSubstitutions.class, "implSquareToLen", int[].class, int.class, int[].class, int.class);
+        }
+    }
+
+    private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+        if (config.useSHA1Intrinsics()) {
+            assert config.sha1ImplCompress != 0L;
+            Registration r = new Registration(plugins, "sun.security.provider.SHA", bytecodeProvider);
+            r.registerMethodSubstitution(SHASubstitutions.class, SHASubstitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
+        }
+        if (config.useSHA256Intrinsics()) {
+            assert config.sha256ImplCompress != 0L;
+            Registration r = new Registration(plugins, "sun.security.provider.SHA2", bytecodeProvider);
+            r.registerMethodSubstitution(SHA2Substitutions.class, SHA2Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
+        }
+        if (config.useSHA512Intrinsics()) {
+            assert config.sha512ImplCompress != 0L;
+            Registration r = new Registration(plugins, "sun.security.provider.SHA5", bytecodeProvider);
+            r.registerMethodSubstitution(SHA5Substitutions.class, SHA5Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
         }
     }
 

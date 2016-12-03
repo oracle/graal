@@ -38,7 +38,7 @@ public class HotSpotNodeSubstitutionsTest extends MethodSubstitutionTest {
 
     @Test
     public void test() {
-        StructuredGraph graph = new StructuredGraph(AllowAssumptions.YES);
+        StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).build();
         test("getNodeClass", ConstantNode.forInt(42, graph));
     }
 

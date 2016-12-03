@@ -226,11 +226,11 @@ public class GraalCompiler {
             for (int i = 0; i < EmitLIRRepeatCount.getValue(graph.getOptions()); i++) {
                 SchedulePhase dummySchedule = new SchedulePhase(graph.getOptions());
                 dummySchedule.apply(graph);
-                emitLIR(backend, graph, stub, registerConfig, lirSuites, compilationResult);
+                emitLIR(backend, graph, stub, registerConfig, lirSuites);
             }
 
             LIRGenerationResult lirGen = null;
-            lirGen = emitLIR(backend, graph, stub, registerConfig, lirSuites, compilationResult);
+            lirGen = emitLIR(backend, graph, stub, registerConfig, lirSuites);
             try (Scope s2 = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
                 int bytecodeSize = graph.method() == null ? 0 : graph.getBytecodeSize();
                 compilationResult.setHasUnsafeAccess(graph.hasUnsafeAccess());
@@ -244,16 +244,15 @@ public class GraalCompiler {
     }
 
     @SuppressWarnings("try")
-    public static <T extends CompilationResult> LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites,
-                    T compilationResult) {
+    public static LIRGenerationResult emitLIR(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites) {
         String registerPressure = GraalOptions.RegisterPressure.getValue(graph.getOptions());
         String[] allocationRestrictedTo = registerPressure == null ? null : registerPressure.split(",");
         try {
-            return emitLIR0(backend, graph, stub, registerConfig, lirSuites, compilationResult, allocationRestrictedTo);
+            return emitLIR0(backend, graph, stub, registerConfig, lirSuites, allocationRestrictedTo);
         } catch (OutOfRegistersException e) {
             if (allocationRestrictedTo != null) {
                 allocationRestrictedTo = null;
-                return emitLIR0(backend, graph, stub, registerConfig, lirSuites, compilationResult, allocationRestrictedTo);
+                return emitLIR0(backend, graph, stub, registerConfig, lirSuites, allocationRestrictedTo);
             }
             /* If the re-execution fails we convert the exception into a "hard" failure */
             throw new GraalError(e);
@@ -261,8 +260,8 @@ public class GraalCompiler {
     }
 
     @SuppressWarnings("try")
-    private static <T extends CompilationResult> LIRGenerationResult emitLIR0(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites,
-                    T compilationResult, String[] allocationRestrictedTo) {
+    private static LIRGenerationResult emitLIR0(Backend backend, StructuredGraph graph, Object stub, RegisterConfig registerConfig, LIRSuites lirSuites,
+                    String[] allocationRestrictedTo) {
         try (Scope ds = Debug.scope("EmitLIR"); DebugCloseable a = EmitLIR.start()) {
             ScheduleResult schedule = graph.getLastSchedule();
             Block[] blocks = schedule.getCFG().getBlocks();
@@ -283,8 +282,7 @@ public class GraalCompiler {
                 throw Debug.handle(e);
             }
             FrameMapBuilder frameMapBuilder = backend.newFrameMapBuilder(registerConfig);
-            String compilationUnitName = getCompilationUnitName(graph, compilationResult);
-            LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(compilationUnitName, lir, frameMapBuilder, graph, stub);
+            LIRGenerationResult lirGenRes = backend.newLIRGenerationResult(graph.compilationId(), lir, frameMapBuilder, graph, stub);
             LIRGeneratorTool lirGen = backend.newLIRGenerator(lirGenRes);
             NodeLIRBuilderTool nodeLirGen = backend.newNodeLIRBuilder(graph, lirGen);
 

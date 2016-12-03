@@ -198,7 +198,7 @@ public class SafepointRethrowDeoptPETest extends PartialEvaluationTest {
 
     private void testInner(RootNode rootNode) {
         terminate = 1; // executed 3 times
-        OptimizedCallTarget compiledMethod = compileHelper(rootNode.getClass().getSimpleName(), rootNode, new Object[0]);
+        OptimizedCallTarget compiledMethod = compileHelper(rootNode.toString(), rootNode, new Object[0]);
 
         terminate = 0;
         entered = 0;
