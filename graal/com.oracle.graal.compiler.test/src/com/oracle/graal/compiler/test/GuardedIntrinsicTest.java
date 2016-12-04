@@ -28,6 +28,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.ConstantNode;
 import com.oracle.graal.nodes.Invoke;
@@ -110,8 +111,8 @@ public class GuardedIntrinsicTest extends GraalCompilerTest {
     private StructuredGraph parsedForCompile;
 
     @Override
-    protected StructuredGraph parseForCompile(ResolvedJavaMethod method) {
-        graph = super.parseForCompile(method);
+    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId) {
+        graph = super.parseForCompile(method, compilationId);
         parsedForCompile = (StructuredGraph) graph.copy();
         return graph;
     }
