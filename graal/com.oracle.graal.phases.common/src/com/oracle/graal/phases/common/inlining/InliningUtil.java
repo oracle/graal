@@ -367,7 +367,22 @@ public class InliningUtil {
             if (UseGraalInstrumentation.getValue()) {
                 detachInstrumentation(invoke);
             }
-            finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
+            ValueNode returnValue = finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
+            if (canonicalizedNodes != null) {
+                if (returnValue != null) {
+                    for (Node usage : returnValue.usages()) {
+                        canonicalizedNodes.add(usage);
+                    }
+                }
+                for (ParameterNode parameter : inlineGraph.getNodes(ParameterNode.TYPE)) {
+                    for (Node usage : parameter.usages()) {
+                        Node duplicate = duplicates.get(usage);
+                        if (duplicate != null && duplicate.isAlive()) {
+                            canonicalizedNodes.add(duplicate);
+                        }
+                    }
+                }
+            }
 
             GraphUtil.killCFG(invokeNode);
 
@@ -665,7 +680,6 @@ public class InliningUtil {
                 if (phiResult == null && (singleResult == null || singleResult == result)) {
                     /* Only one result value, so no need yet for a phi node. */
                     singleResult = result;
-
                 } else if (phiResult == null) {
                     /* Found a second result value, so create phi node. */
                     phiResult = merge.graph().addWithoutUnique(new ValuePhiNode(result.stamp().unrestricted(), merge));
