@@ -603,13 +603,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * dst = src + immediate.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src general purpose register. May not be null or stackpointer.
+     * @param dst general purpose register. May not be null or zero-register.
+     * @param src general purpose register. May not be null or zero-register.
      * @param immediate 32-bit signed int
      */
     @Override
     public void add(int size, Register dst, Register src, int immediate) {
-        assert (!dst.equals(sp) && !src.equals(sp));
+        assert (!dst.equals(zr) && !src.equals(zr));
         if (immediate < 0) {
             sub(size, dst, src, -immediate);
         } else if (isAimm(immediate)) {
@@ -648,13 +648,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * dst = src - immediate.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src general purpose register. May not be null or stackpointer.
+     * @param dst general purpose register. May not be null or zero-register.
+     * @param src general purpose register. May not be null or zero-register.
      * @param immediate 32-bit signed int
      */
     @Override
     public void sub(int size, Register dst, Register src, int immediate) {
-        assert (!dst.equals(sp) && !src.equals(sp));
+        assert (!dst.equals(zr) && !src.equals(zr));
         if (immediate < 0) {
             add(size, dst, src, -immediate);
         } else if (isAimm(immediate)) {

@@ -165,7 +165,7 @@ public class AArch64HotSpotMove {
                 assert encoding.shift == encoding.alignment || encoding.shift == 0;
                 masm.add(64, resultRegister, base, ptr, AArch64Assembler.ShiftType.LSL, encoding.shift);
             } else if (encoding.base == 0) {
-                masm.add(64, resultRegister, zr, resultRegister, AArch64Assembler.ShiftType.LSL, encoding.shift);
+                masm.add(64, resultRegister, zr, ptr, AArch64Assembler.ShiftType.LSL, encoding.shift);
             } else {
                 // if ptr is null it has to be null after decompression
                 Label done = new Label();
