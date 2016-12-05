@@ -22,14 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes.aot;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.Value;
-
 import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_3;
 import static com.oracle.graal.nodeinfo.NodeSize.SIZE_3;
 
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeClass;
 import com.oracle.graal.graph.spi.Canonicalizable;
@@ -45,6 +41,10 @@ import com.oracle.graal.nodes.calc.FloatingNode;
 import com.oracle.graal.nodes.spi.LIRLowerable;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.graal.nodes.util.GraphUtil;
+
+import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = CYCLES_3, size = SIZE_3)
 public class LoadMethodCountersIndirectlyNode extends FloatingNode implements Canonicalizable, LIRLowerable {
@@ -75,7 +75,7 @@ public class LoadMethodCountersIndirectlyNode extends FloatingNode implements Ca
         if (constant instanceof HotSpotMetaspaceConstant) {
             result = ((HotSpotLIRGenerator) gen.getLIRGeneratorTool()).emitLoadMetaspaceAddress(constant, HotSpotConstantLoadAction.LOAD_COUNTERS);
         } else {
-            throw new BailoutException("Unsupported constant type: " + constant);
+            throw new PermanentBailoutException("Unsupported constant type: " + constant);
         }
         gen.setResult(this, result);
     }
