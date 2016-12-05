@@ -527,7 +527,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void adds(int size, Register dst, Register src1, Register src2) {
-        super.adds(size, dst, src1, src2, getNopExtendType(size), 0);
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp));
+        super.adds(size, dst, src1, src2, ShiftType.LSL, 0);
     }
 
     /**
@@ -539,24 +540,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void subs(int size, Register dst, Register src1, Register src2) {
-        super.subs(size, dst, src1, src2, getNopExtendType(size), 0);
-    }
-
-    /**
-     * Returns the ExtendType for the given size that corresponds to a no-op.
-     *
-     * I.e. when doing add X0, X1, X2, the actual instruction has the form add X0, X1, X2 UXTX.
-     *
-     * @param size
-     */
-    private static ExtendType getNopExtendType(int size) {
-        if (size == 64) {
-            return ExtendType.UXTX;
-        } else if (size == 32) {
-            return ExtendType.UXTW;
-        } else {
-            throw GraalError.shouldNotReachHere("No-op ");
-        }
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp));
+        super.subs(size, dst, src1, src2, ShiftType.LSL, 0);
     }
 
     /**
@@ -624,6 +609,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void add(int size, Register dst, Register src, int immediate) {
+        assert (!dst.equals(sp) && !src.equals(sp));
         if (immediate < 0) {
             sub(size, dst, src, -immediate);
         } else if (isAimm(immediate)) {
@@ -650,6 +636,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void adds(int size, Register dst, Register src, int immediate) {
+        assert (!dst.equals(sp) && !src.equals(zr));
         if (immediate < 0) {
             subs(size, dst, src, -immediate);
         } else if (!(dst.equals(src) && immediate == 0)) {
@@ -667,6 +654,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void sub(int size, Register dst, Register src, int immediate) {
+        assert (!dst.equals(sp) && !src.equals(sp));
         if (immediate < 0) {
             add(size, dst, src, -immediate);
         } else if (isAimm(immediate)) {
@@ -693,10 +681,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void subs(int size, Register dst, Register src, int immediate) {
+        assert (!dst.equals(sp) && !src.equals(zr));
         if (immediate < 0) {
             adds(size, dst, src, -immediate);
         } else if (!dst.equals(src) || immediate != 0) {
-            super.sub(size, dst, src, immediate);
+            super.subs(size, dst, src, immediate);
         }
     }
 
@@ -721,6 +710,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src2 general purpose register. May not be null or the stackpointer.
      */
     public void umulh(int size, Register dst, Register src1, Register src2) {
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp));
         assert size == 32 || size == 64;
         if (size == 64) {
             super.umulh(dst, src1, src2);
@@ -741,6 +731,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src2 general purpose register. May not be null or the stackpointer.
      */
     public void smulh(int size, Register dst, Register src1, Register src2) {
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp));
         assert size == 32 || size == 64;
         if (size == 64) {
             super.smulh(dst, src1, src2);
@@ -761,6 +752,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param d denominator. General purpose register. Divisor May not be null or the stackpointer.
      */
     public void rem(int size, Register dst, Register n, Register d) {
+        assert (!dst.equals(sp) && !n.equals(sp) && !d.equals(sp));
         // There is no irem or similar instruction. Instead we use the relation:
         // n % d = n - Floor(n / d) * d if nd >= 0
         // n % d = n - Ceil(n / d) * d else
@@ -1167,12 +1159,16 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                         ScratchRegister sc2 = getScratchRegister()) {
             switch (size) {
                 case 64: {
+                    // Be careful with registers: it's possible that x, y, and dst are the same
+                    // register.
                     Register rscratch1 = sc1.getRegister();
                     Register rscratch2 = sc2.getRegister();
-                    mul(64, dst, x, y);          // Result bits 0..63
+                    mul(64, rscratch1, x, y);     // Result bits 0..63
                     smulh(64, rscratch2, x, y);  // Result bits 64..127
                     // Top is pure sign ext
-                    subs(64, zr, rscratch2, dst, ShiftType.ASR, 63);
+                    subs(64, zr, rscratch2, rscratch1, ShiftType.ASR, 63);
+                    // Copy all 64 bits of the result into dst
+                    mov(64, dst, rscratch1);
                     mov(rscratch1, 0x80000000);
                     // Develop 0 (EQ), or 0x80000000 (NE)
                     cmov(32, rscratch1, rscratch1, zr, ConditionFlag.NE);
@@ -1184,7 +1180,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                     Register rscratch1 = sc1.getRegister();
                     smaddl(rscratch1, x, y, zr);
                     // Copy the low 32 bits of the result into dst
-                    add(32, dst, rscratch1, 0);
+                    mov(32, dst, rscratch1);
                     subs(64, zr, rscratch1, rscratch1, ExtendType.SXTW, 0);
                     // NE => overflow
                     mov(rscratch1, 0x80000000);
