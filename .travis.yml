@@ -22,8 +22,8 @@ env:
     - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
     - JDK="jdk8" GATE="build,bootstraplite"
-#    - JDK="jdk9" GATE="build,test"
-#    - JDK="jdk9" GATE="build,bootstraplite"
+    - JDK="jdk9" GATE="build,test"
+    - JDK="jdk9" GATE="build,bootstraplite"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx
@@ -55,6 +55,7 @@ install:
         wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/${JVMCI_BASE_JDK8}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../${JVMCI_BASE_JDK8}-${JVMCI_VERSION}
+        export EXTRA_JAVA_HOMES=""
         export MX_BINARY_SUITES="truffle"
       fi
   - |
@@ -70,6 +71,8 @@ install:
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../jdk-9
       fi
 script:
-  - mx -v --strict-compliance gate --strict-mode --tags ${GATE}
+  - echo ${EXTRA_JAVA_HOMES}
+  - echo ${JAVA_HOME}
+  - mx --java-home=${JAVA_HOME} --extra-java-homes=${EXTRA_JAVA_HOMES} --strict-compliance gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*

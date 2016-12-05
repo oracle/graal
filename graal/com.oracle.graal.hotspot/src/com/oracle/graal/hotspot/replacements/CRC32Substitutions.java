@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayBaseOffset;
 
 import java.util.zip.CRC32;
@@ -36,6 +35,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
+import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
 import com.oracle.graal.nodes.extended.ForeignCallNode;
 import com.oracle.graal.word.Word;
 
@@ -59,10 +59,12 @@ public class CRC32Substitutions {
 
     @MethodSubstitution
     static int update(int crc, int b) {
+        final long crcTableRawAddress = GraalHotSpotVMConfigNode.crcTableAddress();
+
         int c = ~crc;
         int index = (b ^ c) & 0xFF;
         int offset = index << 2;
-        int result = Word.unsigned(crcTableAddress(INJECTED_VMCONFIG)).readInt(offset);
+        int result = Word.unsigned(crcTableRawAddress).readInt(offset);
         result = result ^ (c >>> 8);
         return ~result;
     }

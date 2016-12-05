@@ -41,6 +41,7 @@ import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
 import com.oracle.graal.hotspot.nodes.UncommonTrapCallNode;
 import com.oracle.graal.hotspot.nodes.VMErrorNode;
+import com.oracle.graal.hotspot.nodes.aot.ResolveConstantStubCall;
 import com.oracle.graal.hotspot.replacements.AESCryptSubstitutions;
 import com.oracle.graal.hotspot.replacements.BigIntegerSubstitutions;
 import com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions;
@@ -113,6 +114,11 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * Descriptor for SharedRuntime::get_ic_miss_stub().
      */
     public static final ForeignCallDescriptor IC_MISS_HANDLER = new ForeignCallDescriptor("icMissHandler", void.class);
+
+    /**
+     * Descriptor for SharedRuntime::get_handle_wrong_method_stub().
+     */
+    public static final ForeignCallDescriptor WRONG_METHOD_HANDLER = new ForeignCallDescriptor("wrongMethodHandler", void.class);
 
     /**
      * Descriptor for {@link UnwindExceptionToCallerStub}. This stub is called by code generated
@@ -285,6 +291,33 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * New instance stub.
      */
     public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, KlassPointer.class);
+
+    /**
+     * @see ResolveConstantStubCall
+     */
+    public static final ForeignCallDescriptor RESOLVE_STRING_BY_SYMBOL = new ForeignCallDescriptor("resolve_string_by_symbol", Object.class, Word.class, Word.class);
+
+    /**
+     * @see ResolveConstantStubCall
+     */
+    public static final ForeignCallDescriptor RESOLVE_KLASS_BY_SYMBOL = new ForeignCallDescriptor("resolve_klass_by_symbol", Word.class, Word.class, Word.class);
+
+    /**
+     * @see ResolveConstantStubCall
+     */
+    public static final ForeignCallDescriptor INITIALIZE_KLASS_BY_SYMBOL = new ForeignCallDescriptor("initialize_klass_by_symbol", Word.class, Word.class, Word.class);
+
+    /**
+     * @see ResolveConstantStubCall
+     */
+    public static final ForeignCallDescriptor RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS = new ForeignCallDescriptor("resolve_method_by_symbol_and_load_counters", Word.class, Word.class, Word.class,
+                    Word.class);
+
+    /**
+     * Tiered support.
+     */
+    public static final ForeignCallDescriptor INVOCATION_EVENT = new ForeignCallDescriptor("invocation_event", void.class, Word.class);
+    public static final ForeignCallDescriptor BACKEDGE_EVENT = new ForeignCallDescriptor("backedge_event", void.class, Word.class, int.class, int.class);
 
     /**
      * @see UncommonTrapCallNode

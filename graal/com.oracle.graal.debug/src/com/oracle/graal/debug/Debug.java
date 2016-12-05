@@ -41,10 +41,10 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.graal.debug.DelegatingDebugConfig.Level;
+import com.oracle.graal.debug.internal.CounterImpl;
 import com.oracle.graal.debug.internal.DebugHistogramImpl;
 import com.oracle.graal.debug.internal.DebugScope;
 import com.oracle.graal.debug.internal.MemUseTrackerImpl;
-import com.oracle.graal.debug.internal.CounterImpl;
 import com.oracle.graal.debug.internal.TimerImpl;
 import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
 import com.oracle.graal.serviceprovider.GraalServices;

@@ -52,7 +52,7 @@ public class UniquePathUtilities {
         return "." + ext;
     }
 
-    private static long getGlobalTimeStamp() {
+    public static long getGlobalTimeStamp() {
         if (globalTimeStamp.get() == 0) {
             globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
         }

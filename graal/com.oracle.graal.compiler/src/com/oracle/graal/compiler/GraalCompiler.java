@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.GraalCompilerOptions.EmitLIRRepeatCount;
 import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
 import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
+import java.util.Collection;
 import java.util.List;
 
 import com.oracle.graal.code.CompilationResult;
@@ -79,6 +80,7 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
@@ -233,7 +235,7 @@ public class GraalCompiler {
             try (Scope s2 = Debug.scope("CodeGen", lirGen, lirGen.getLIR())) {
                 int bytecodeSize = graph.method() == null ? 0 : graph.getBytecodeSize();
                 compilationResult.setHasUnsafeAccess(graph.hasUnsafeAccess());
-                emitCode(backend, graph.getAssumptions(), graph.method(), graph.getMethods(), bytecodeSize, lirGen, compilationResult, installedCodeOwner, factory);
+                emitCode(backend, graph.getAssumptions(), graph.method(), graph.getMethods(), graph.getFields(), bytecodeSize, lirGen, compilationResult, installedCodeOwner, factory);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
@@ -332,7 +334,8 @@ public class GraalCompiler {
     }
 
     @SuppressWarnings("try")
-    public static void emitCode(Backend backend, Assumptions assumptions, ResolvedJavaMethod rootMethod, List<ResolvedJavaMethod> inlinedMethods, int bytecodeSize, LIRGenerationResult lirGenRes,
+    public static void emitCode(Backend backend, Assumptions assumptions, ResolvedJavaMethod rootMethod, Collection<ResolvedJavaMethod> inlinedMethods, Collection<ResolvedJavaField> accessedFields,
+                    int bytecodeSize, LIRGenerationResult lirGenRes,
                     CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner, CompilationResultBuilderFactory factory) {
         try (DebugCloseable a = EmitCode.start()) {
             FrameMap frameMap = lirGenRes.getFrameMap();
@@ -343,6 +346,7 @@ public class GraalCompiler {
             }
             if (rootMethod != null) {
                 compilationResult.setMethods(rootMethod, inlinedMethods);
+                compilationResult.setFields(accessedFields);
                 compilationResult.setBytecodeSize(bytecodeSize);
             }
             crb.finish();

@@ -28,6 +28,7 @@ import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.PD;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.PS;
 import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.lir.LIRValueUtil.asConstantValue;
 import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
 import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
@@ -398,7 +399,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         long maxOffset = linkage.getMaxCallTargetOffset();
-        if (maxOffset != (int) maxOffset) {
+        if (maxOffset != (int) maxOffset && !GeneratePIC.getValue()) {
             append(new AMD64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, info));
         } else {
             append(new AMD64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info));

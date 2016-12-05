@@ -23,8 +23,11 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
 import static com.oracle.graal.compiler.common.GraalOptions.VerifyPhases;
+
+import java.util.ListIterator;
 
 import com.oracle.graal.hotspot.HotSpotBackend;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
@@ -34,6 +37,10 @@ import com.oracle.graal.hotspot.phases.AheadOfTimeVerificationPhase;
 import com.oracle.graal.hotspot.phases.LoadJavaMirrorWithKlassPhase;
 import com.oracle.graal.hotspot.phases.WriteBarrierAdditionPhase;
 import com.oracle.graal.hotspot.phases.WriteBarrierVerificationPhase;
+import com.oracle.graal.hotspot.phases.aot.AOTInliningPolicy;
+import com.oracle.graal.hotspot.phases.aot.EliminateRedundantInitializationPhase;
+import com.oracle.graal.hotspot.phases.aot.ReplaceConstantNodesPhase;
+import com.oracle.graal.hotspot.phases.profiling.FinalizeProfileNodesPhase;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.java.SuitesProviderBase;
 import com.oracle.graal.lir.phases.LIRSuites;
@@ -47,7 +54,11 @@ import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.PhaseSuite;
 import com.oracle.graal.phases.common.AddressLoweringPhase;
 import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
+import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.common.ExpandLogicPhase;
+import com.oracle.graal.phases.common.LoopSafepointInsertionPhase;
+import com.oracle.graal.phases.common.LoweringPhase;
+import com.oracle.graal.phases.common.inlining.InliningPhase;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.tiers.Suites;
 import com.oracle.graal.phases.tiers.SuitesCreator;
@@ -80,6 +91,22 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             ret.getHighTier().appendPhase(new LoadJavaMirrorWithKlassPhase(config.classMirrorOffset, config.useCompressedOops ? config.getOopEncoding() : null));
             if (VerifyPhases.getValue()) {
                 ret.getHighTier().appendPhase(new AheadOfTimeVerificationPhase());
+            }
+            if (GeneratePIC.getValue()) {
+                // EliminateRedundantInitializationPhase must happen before the first lowering.
+                ListIterator<BasePhase<? super HighTierContext>> highTierLowering = ret.getHighTier().findPhase(LoweringPhase.class);
+                highTierLowering.previous();
+                highTierLowering.add(new EliminateRedundantInitializationPhase());
+                if (HotSpotAOTProfilingPlugin.Options.TieredAOT.getValue()) {
+                    highTierLowering.add(new FinalizeProfileNodesPhase(HotSpotAOTProfilingPlugin.Options.TierAInvokeInlineeNotifyFreqLog.getValue()));
+                }
+                ret.getMidTier().findPhase(LoopSafepointInsertionPhase.class).add(new ReplaceConstantNodesPhase());
+
+                // Replace inlining policy
+                ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(InliningPhase.class);
+                InliningPhase inlining = (InliningPhase) iter.previous();
+                CanonicalizerPhase canonicalizer = inlining.getCanonicalizer();
+                iter.set(new InliningPhase(new AOTInliningPolicy(null), canonicalizer));
             }
         }
 

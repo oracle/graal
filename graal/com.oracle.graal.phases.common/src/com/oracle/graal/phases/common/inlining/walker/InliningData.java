@@ -218,15 +218,19 @@ public class InliningData {
             }
         }
 
-        if (callTarget.graph().getAssumptions() != null) {
-            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = holder.findLeafConcreteSubtype();
-            if (leafConcreteSubtype != null) {
-                ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
-                if (resolvedMethod != null) {
+        AssumptionResult<ResolvedJavaType> leafConcreteSubtype = holder.findLeafConcreteSubtype();
+        if (leafConcreteSubtype != null) {
+            ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
+            if (resolvedMethod != null) {
+                if (callTarget.graph().getAssumptions() != null) {
                     return getAssumptionInlineInfo(invoke, resolvedMethod, leafConcreteSubtype);
+                } else {
+                    return getTypeCheckedAssumptionInfo(invoke, resolvedMethod, leafConcreteSubtype.getResult());
                 }
             }
+        }
 
+        if (callTarget.graph().getAssumptions() != null) {
             AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
             if (concrete != null) {
                 return getAssumptionInlineInfo(invoke, concrete.getResult(), concrete);
@@ -235,6 +239,13 @@ public class InliningData {
 
         // type check based inlining
         return getTypeCheckedInlineInfo(invoke, targetMethod);
+    }
+
+    private InlineInfo getTypeCheckedAssumptionInfo(Invoke invoke, ResolvedJavaMethod method, ResolvedJavaType type) {
+        if (!checkTargetConditions(invoke, method)) {
+            return null;
+        }
+        return new TypeGuardInlineInfo(invoke, method, type);
     }
 
     private InlineInfo getTypeCheckedInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod) {

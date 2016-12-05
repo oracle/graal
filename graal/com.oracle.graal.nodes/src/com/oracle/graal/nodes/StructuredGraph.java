@@ -23,9 +23,11 @@
 package com.oracle.graal.nodes;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -49,6 +51,7 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
@@ -171,6 +174,12 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * specific method is used.
      */
     private final List<ResolvedJavaMethod> methods = new ArrayList<>();
+
+    /**
+     * Records the fields that were accessed while constructing this graph.
+     */
+
+    private final Set<ResolvedJavaField> fields = new HashSet<>();
 
     private enum UnsafeAccessState {
         NO_ACCESS,
@@ -673,6 +682,29 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     public void updateMethods(StructuredGraph other) {
         assert this != other;
         this.methods.addAll(other.methods);
+    }
+
+    /**
+     * Gets the fields that were accessed while constructing this graph.
+     */
+    public Set<ResolvedJavaField> getFields() {
+        return fields;
+    }
+
+    /**
+     * Records that {@code field} was accessed in this graph.
+     */
+    public void recordField(ResolvedJavaField field) {
+        fields.add(field);
+    }
+
+    /**
+     * Updates the {@linkplain #getFields() fields} of this graph with the accessed fields of
+     * another graph.
+     */
+    public void updateFields(StructuredGraph other) {
+        assert this != other;
+        this.fields.addAll(other.fields);
     }
 
     /**

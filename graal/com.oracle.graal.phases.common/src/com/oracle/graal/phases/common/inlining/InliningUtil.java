@@ -467,6 +467,10 @@ public class InliningUtil {
 
         // Copy inlined methods from inlinee to caller
         graph.updateMethods(inlineGraph);
+
+        // Update the set of accessed fields
+        graph.updateFields(inlineGraph);
+
         if (inlineGraph.hasUnsafeAccess()) {
             graph.markUnsafeAccess();
         }

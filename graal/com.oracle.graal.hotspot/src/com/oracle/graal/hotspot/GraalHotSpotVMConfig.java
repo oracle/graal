@@ -27,6 +27,7 @@ import java.lang.reflect.Modifier;
 
 import com.oracle.graal.api.replacements.Fold;
 import com.oracle.graal.api.replacements.Fold.InjectedParameter;
+import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
@@ -138,6 +139,11 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final boolean cAssertions = getConstant("ASSERT", Boolean.class);
 
     public final int codeEntryAlignment = getFlag("CodeEntryAlignment", Integer.class);
+    public final boolean enableContended = getFlag("EnableContended", Boolean.class);
+    public final boolean restrictContended = getFlag("RestrictContended", Boolean.class);
+    public final int contendedPaddingWidth = getFlag("ContendedPaddingWidth", Integer.class);
+    public final int fieldsAllocationStyle = getFlag("FieldsAllocationStyle", Integer.class);
+    public final boolean compactFields = getFlag("CompactFields", Boolean.class);
     public final boolean verifyOops = getFlag("VerifyOops", Boolean.class);
     public final boolean ciTime = getFlag("CITime", Boolean.class);
     public final boolean ciTimeEach = getFlag("CITimeEach", Boolean.class);
@@ -483,6 +489,8 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
 
     public final int invocationCounterOffset = getFieldOffset("MethodCounters::_invocation_counter", Integer.class, "InvocationCounter");
     public final int backedgeCounterOffset = getFieldOffset("MethodCounters::_backedge_counter", Integer.class, "InvocationCounter");
+    public final int invocationCounterIncrement = getConstant("InvocationCounter::count_increment", Integer.class, intNotPresentInJDK8);
+    public final int invocationCounterShift = getConstant("InvocationCounter::count_shift", Integer.class, intNotPresentInJDK8);
 
     public final int nmethodEntryOffset = getFieldOffset("nmethod::_verified_entry_point",
                     Integer.class, "address");
@@ -510,16 +518,8 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final byte dirtyCardValue = isJDK8 ? getFieldValue("CompilerToVM::Data::dirty_card", Byte.class, "int") : getConstant("CardTableModRefBS::dirty_card", Byte.class);
     public final byte g1YoungCardValue = isJDK8 ? getFieldValue("CompilerToVM::Data::g1_young_card", Byte.class, "int") : getConstant("G1SATBCardTableModRefBS::g1_young_gen", Byte.class);
 
-    private final long cardtableStartAddress = getFieldValue("CompilerToVM::Data::cardtable_start_address", Long.class, "jbyte*");
-    private final int cardtableShift = getFieldValue("CompilerToVM::Data::cardtable_shift", Integer.class, "int");
-
-    public long cardtableStartAddress() {
-        return cardtableStartAddress;
-    }
-
-    public int cardtableShift() {
-        return cardtableShift;
-    }
+    public final long cardtableStartAddress = getFieldValue("CompilerToVM::Data::cardtable_start_address", Long.class, "jbyte*");
+    public final int cardtableShift = getFieldValue("CompilerToVM::Data::cardtable_shift", Integer.class, "int");
 
     /**
      * This is the largest stack offset encodeable in an OopMapValue. Offsets larger than this will
@@ -763,11 +763,20 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int MARKID_POLL_RETURN_FAR = getConstant("CodeInstaller::POLL_RETURN_FAR", Integer.class);
     public final int MARKID_CARD_TABLE_SHIFT = getConstant("CodeInstaller::CARD_TABLE_SHIFT", Integer.class);
     public final int MARKID_CARD_TABLE_ADDRESS = getConstant("CodeInstaller::CARD_TABLE_ADDRESS", Integer.class);
-    public final int MARKID_HEAP_TOP_ADDRESS = getConstant("CodeInstaller::HEAP_TOP_ADDRESS", Integer.class, intNotPresentInJDK8);
-    public final int MARKID_HEAP_END_ADDRESS = getConstant("CodeInstaller::HEAP_END_ADDRESS", Integer.class, intNotPresentInJDK8);
-    public final int MARKID_NARROW_KLASS_BASE_ADDRESS = getConstant("CodeInstaller::NARROW_KLASS_BASE_ADDRESS", Integer.class, intNotPresentInJDK8);
-    public final int MARKID_CRC_TABLE_ADDRESS = getConstant("CodeInstaller::CRC_TABLE_ADDRESS", Integer.class, intNotPresentInJDK8);
     public final int MARKID_INVOKE_INVALID = getConstant("CodeInstaller::INVOKE_INVALID", Integer.class);
+
+    /**
+     * The following constants are given default values here since they are missing in the native
+     * JVMCI-8 code but are still required for {@link GraalHotSpotVMConfigNode#canonical} to work in
+     * a JDK8 environment.
+     */
+    public final int MARKID_HEAP_TOP_ADDRESS = getConstant("CodeInstaller::HEAP_TOP_ADDRESS", Integer.class, 17);
+    public final int MARKID_HEAP_END_ADDRESS = getConstant("CodeInstaller::HEAP_END_ADDRESS", Integer.class, 18);
+    public final int MARKID_NARROW_KLASS_BASE_ADDRESS = getConstant("CodeInstaller::NARROW_KLASS_BASE_ADDRESS", Integer.class, 19);
+    public final int MARKID_CRC_TABLE_ADDRESS = getConstant("CodeInstaller::CRC_TABLE_ADDRESS", Integer.class, 20);
+    public final int MARKID_LOG_OF_HEAP_REGION_GRAIN_BYTES = getConstant("CodeInstaller::LOG_OF_HEAP_REGION_GRAIN_BYTES", Integer.class, 21);
+    public final int MARKID_INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED = getConstant("CodeInstaller::INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED", Integer.class, 22);
+
     // Checkstyle: resume
 
     private boolean check() {

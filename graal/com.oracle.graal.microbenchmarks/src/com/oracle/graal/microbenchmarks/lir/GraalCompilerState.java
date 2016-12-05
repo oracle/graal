@@ -464,8 +464,8 @@ public abstract class GraalCompilerState {
     protected final void emitCode() {
         int bytecodeSize = request.graph.method() == null ? 0 : request.graph.getBytecodeSize();
         request.compilationResult.setHasUnsafeAccess(request.graph.hasUnsafeAccess());
-        GraalCompiler.emitCode(request.backend, request.graph.getAssumptions(), request.graph.method(), request.graph.getMethods(), bytecodeSize, lirGenRes, request.compilationResult,
-                        request.installedCodeOwner, request.factory);
+        GraalCompiler.emitCode(request.backend, request.graph.getAssumptions(), request.graph.method(), request.graph.getMethods(), request.graph.getFields(), bytecodeSize, lirGenRes,
+                        request.compilationResult, request.installedCodeOwner, request.factory);
     }
 
     protected StructuredGraph graph() {

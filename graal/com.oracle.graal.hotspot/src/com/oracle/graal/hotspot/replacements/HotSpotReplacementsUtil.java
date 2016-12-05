@@ -565,12 +565,12 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int cardTableShift(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.cardtableShift();
+        return config.cardtableShift;
     }
 
     @Fold
     public static long cardTableStart(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.cardtableStartAddress();
+        return config.cardtableStartAddress;
     }
 
     @Fold

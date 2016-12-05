@@ -67,6 +67,7 @@ import jdk.vm.ci.meta.JavaKind;
 public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, MemoryCheckpoint.Single, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeNode> TYPE = NodeClass.create(InvokeNode.class);
 
+    @OptionalInput ValueNode classInit;
     @Input(Extension) CallTargetNode callTarget;
     @OptionalInput(State) FrameState stateDuring;
     @OptionalInput(Guard) GuardingNode guard;
@@ -228,5 +229,16 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @Override
     public Stamp uncheckedStamp() {
         return this.callTarget.returnStamp().getUncheckedStamp();
+    }
+
+    @Override
+    public void setClassInit(ValueNode classInit) {
+        this.classInit = classInit;
+        updateUsages(null, classInit);
+    }
+
+    @Override
+    public ValueNode classInit() {
+        return classInit;
     }
 }

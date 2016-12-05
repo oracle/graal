@@ -1928,6 +1928,12 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xE0 | encode);
     }
 
+    public final void jmp(AMD64Address adr) {
+        prefix(adr);
+        emitByte(0xFF);
+        emitOperandHelper(rsp, adr, 0);
+    }
+
     public final void jmpb(Label l) {
         if (l.isBound()) {
             int shortSize = 2;
@@ -3726,6 +3732,11 @@ public class AMD64Assembler extends Assembler {
         emitByte(0x0f);
         emitByte(0x0D);
         emitOperandHelper(1, src, 0);
+    }
+
+    public void rdtsc() {
+        emitByte(0x0F);
+        emitByte(0x31);
     }
 
     /**

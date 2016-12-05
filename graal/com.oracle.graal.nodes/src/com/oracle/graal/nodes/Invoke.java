@@ -44,6 +44,10 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDur
 
     Node predecessor();
 
+    ValueNode classInit();
+
+    void setClassInit(ValueNode node);
+
     void intrinsify(Node node);
 
     boolean useForInlining();

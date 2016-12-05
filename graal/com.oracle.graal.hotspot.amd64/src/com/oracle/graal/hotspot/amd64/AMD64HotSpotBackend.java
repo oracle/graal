@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.compiler.common.GraalOptions.CanOmitFrame;
+import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
 import static com.oracle.graal.compiler.common.GraalOptions.ZapStackOnMethodEntry;
 import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
@@ -38,14 +39,16 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
 import com.oracle.graal.code.CompilationResult;
 import com.oracle.graal.compiler.amd64.AMD64NodeMatchRules;
+import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.compiler.common.CompilationIdentifier;
 import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
 import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.HotSpotDataBuilder;
 import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
 import com.oracle.graal.hotspot.HotSpotHostBackend;
 import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
+import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
 import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.stubs.Stub;
@@ -65,11 +68,14 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
+import jdk.vm.ci.hotspot.HotSpotSentinelConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -277,6 +283,17 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         crb.recordMark(config.MARKID_OSR_ENTRY);
         asm.bind(verifiedEntry);
         crb.recordMark(config.MARKID_VERIFIED_ENTRY);
+
+        if (GeneratePIC.getValue()) {
+            // Check for method state
+            HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
+            if (!frameContext.isStub) {
+                crb.recordInlineDataInCodeWithNote(new HotSpotSentinelConstant(LIRKind.value(AMD64Kind.QWORD), JavaKind.Long), HotSpotConstantLoadAction.MAKE_NOT_ENTRANT);
+                asm.movq(AMD64.rax, asm.getPlaceholder(-1));
+                asm.testq(AMD64.rax, AMD64.rax);
+                AMD64Call.directConditionalJmp(crb, asm, getForeignCalls().lookupForeignCall(WRONG_METHOD_HANDLER), ConditionFlag.NotZero);
+            }
+        }
     }
 
     /**

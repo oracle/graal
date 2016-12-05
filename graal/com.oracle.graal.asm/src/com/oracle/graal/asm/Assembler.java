@@ -201,7 +201,7 @@ public abstract class Assembler {
 
     /**
      * Returns a target specific placeholder address that can be used for code patching.
-     * 
+     *
      * @param instructionStartPosition The start of the instruction, i.e., the value that is used as
      *            the key for looking up placeholder patching information.
      */
