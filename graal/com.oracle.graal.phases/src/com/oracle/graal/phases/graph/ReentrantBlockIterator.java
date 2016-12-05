@@ -105,7 +105,7 @@ public final class ReentrantBlockIterator {
 
         while (true) {
             if (CompilationAlarm.hasExpired()) {
-                throw new RetryableBailoutException("Compilation exceeded %d seconds during CFG traversal of method %s", CompilationAlarm.Options.CompilationExpirationPeriod.getValue());
+                throw new RetryableBailoutException("Compilation exceeded %d seconds during CFG traversal", CompilationAlarm.Options.CompilationExpirationPeriod.getValue());
             }
             Block next = null;
             if (stopAtBlock != null && stopAtBlock.test(current)) {
