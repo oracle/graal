@@ -61,6 +61,7 @@ import com.oracle.graal.lir.aarch64.AArch64AddressValue;
 import com.oracle.graal.lir.aarch64.AArch64Call;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.aarch64.AArch64FrameMapBuilder;
+import com.oracle.graal.lir.aarch64.AArch64Move;
 import com.oracle.graal.lir.aarch64.AArch64Move.StoreOp;
 import com.oracle.graal.lir.aarch64.AArch64PrefetchOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
@@ -219,6 +220,17 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             }
             append(new AArch64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
+        }
+    }
+
+    @Override
+    public void emitNullCheck(Value address, LIRFrameState state) {
+        if (address.getValueKind().getPlatformKind() == AArch64Kind.DWORD) {
+            CompressEncoding encoding = config.getOopEncoding();
+            Value uncompressed = emitUncompress(address, encoding, false);
+            append(new AArch64Move.NullCheckOp(asAddressValue(uncompressed), state));
+        } else {
+            super.emitNullCheck(address, state);
         }
     }
 
