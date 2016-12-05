@@ -86,8 +86,10 @@ import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.iterators.NodeIterable;
+import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
 import com.oracle.graal.hotspot.meta.HotSpotProviders;
 import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
+import com.oracle.graal.hotspot.meta.HotSpotSnippetReflectionProvider;
 import com.oracle.graal.hotspot.nodes.AcquiredCASLockNode;
 import com.oracle.graal.hotspot.nodes.CurrentLockNode;
 import com.oracle.graal.hotspot.nodes.FastAcquireBiasedLockNode;
@@ -405,7 +407,11 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static boolean inlineFastLockSupported() {
-        return monitorMask(INJECTED_VMCONFIG) >= 0 && objecyMonitorOwnerOffset(INJECTED_VMCONFIG) >= 0;
+        return inlineFastLockSupported(INJECTED_VMCONFIG);
+    }
+
+    private static boolean inlineFastLockSupported(GraalHotSpotVMConfig config) {
+        return monitorMask(config) >= 0 && objecyMonitorOwnerOffset(config) >= 0;
     }
 
     private static boolean tryEnterInflated(Object object, Word lock, Word mark, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
@@ -516,8 +522,12 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static boolean inlineFastUnlockSupported() {
-        return objecyMonitorEntryListOffset(INJECTED_VMCONFIG) >= 0 && objecyMonitorCXQOffset(INJECTED_VMCONFIG) >= 0 && monitorMask(INJECTED_VMCONFIG) >= 0 &&
-                        objecyMonitorOwnerOffset(INJECTED_VMCONFIG) >= 0 && objecyMonitorRescursionsOffset(INJECTED_VMCONFIG) >= 0;
+        return inlineFastUnlockSupported(INJECTED_VMCONFIG);
+    }
+
+    private static boolean inlineFastUnlockSupported(GraalHotSpotVMConfig config) {
+        return objecyMonitorEntryListOffset(config) >= 0 && objecyMonitorCXQOffset(config) >= 0 && monitorMask(config) >= 0 &&
+                objecyMonitorOwnerOffset(config) >= 0 && objecyMonitorRescursionsOffset(config) >= 0;
     }
 
     private static boolean tryExitInflated(Object object, Word mark, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
@@ -641,6 +651,8 @@ public class MonitorSnippets implements Snippets {
 
         public Templates(HotSpotProviders providers, TargetDescription target, boolean useFastLocking) {
             super(providers, providers.getSnippetReflection(), target);
+            GraalHotSpotVMConfig config = providers.getSnippetReflection().getInjectedNodeIntrinsicParameter(GraalHotSpotVMConfig.class);
+            System.out.println("Inflated fast-locking: " + inlineFastLockSupported(config) + ", inflated fast-unlocking: " + inlineFastUnlockSupported(config));
             this.useFastLocking = useFastLocking;
         }
 
