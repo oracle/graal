@@ -26,12 +26,12 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.aarch64.AArch64Assembler;
 import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.hotspot.CompressEncoding;
 import com.oracle.graal.lir.LIRInstructionClass;
 import com.oracle.graal.lir.StandardOp.LoadConstantOp;
@@ -164,6 +164,8 @@ public class AArch64HotSpotMove {
             if (nonNull) {
                 assert encoding.shift == encoding.alignment || encoding.shift == 0;
                 masm.add(64, resultRegister, base, ptr, AArch64Assembler.ShiftType.LSL, encoding.shift);
+            } else if (encoding.base == 0) {
+                masm.add(64, resultRegister, zr, resultRegister, AArch64Assembler.ShiftType.LSL, encoding.shift);
             } else {
                 // if ptr is null it has to be null after decompression
                 Label done = new Label();
@@ -174,7 +176,6 @@ public class AArch64HotSpotMove {
                 masm.add(64, resultRegister, base, resultRegister, AArch64Assembler.ShiftType.LSL, encoding.shift);
                 masm.bind(done);
             }
-
         }
     }
 
