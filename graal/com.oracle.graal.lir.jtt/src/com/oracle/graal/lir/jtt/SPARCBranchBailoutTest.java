@@ -27,6 +27,7 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.graal.api.directives.GraalDirectives;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LIRInstructionClass;
@@ -82,7 +83,7 @@ public class SPARCBranchBailoutTest extends LIRTest {
         try {
             compile(m, null);
         } catch (GraalError e) {
-            Assert.assertEquals(BailoutException.class, e.getCause().getClass());
+            Assert.assertEquals(PermanentBailoutException.class, e.getCause().getClass());
         }
     }
 

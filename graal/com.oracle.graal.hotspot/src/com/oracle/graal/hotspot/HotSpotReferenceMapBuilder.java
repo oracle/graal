@@ -29,13 +29,13 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.LIRKind;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Location;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.StackSlot;
@@ -140,7 +140,7 @@ public final class HotSpotReferenceMapBuilder extends ReferenceMapBuilder {
             StackSlot s = asStackSlot(v);
             int totalOffset = s.getOffset(totalFrameSize) + offset;
             if (totalOffset > maxOopMapStackOffset) {
-                throw new BailoutException("stack offset %d for oopmap is greater than encoding limit %d", totalOffset, maxOopMapStackOffset);
+                throw new PermanentBailoutException("stack offset %d for oopmap is greater than encoding limit %d", totalOffset, maxOopMapStackOffset);
             }
             return Location.stack(totalOffset);
         }

@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import org.junit.Test;
 
+import com.oracle.graal.common.RetryableBailoutException;
 import com.oracle.graal.compiler.common.util.CompilationAlarm;
 import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -31,8 +32,6 @@ import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 import com.oracle.graal.options.OptionValue;
 import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.Phase;
-
-import jdk.vm.ci.code.BailoutException;
 
 public class CooperativePhaseTest extends GraalCompilerTest {
 
@@ -61,7 +60,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
             while (true) {
                 sleep(200);
                 if (CompilationAlarm.hasExpired()) {
-                    throw new BailoutException("Expiring...");
+                    throw new RetryableBailoutException("Expiring...");
                 }
             }
         }
@@ -109,7 +108,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
         }
     }
 
-    @Test(expected = BailoutException.class, timeout = 60_000)
+    @Test(expected = RetryableBailoutException.class, timeout = 60_000)
     @SuppressWarnings("try")
     public void test02() {
         StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);

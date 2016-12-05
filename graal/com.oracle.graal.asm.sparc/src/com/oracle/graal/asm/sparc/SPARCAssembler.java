@@ -136,9 +136,9 @@ import java.util.Map;
 import com.oracle.graal.asm.Assembler;
 import com.oracle.graal.asm.Label;
 import com.oracle.graal.asm.NumUtil;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.debug.GraalError;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaConstant;
@@ -1279,7 +1279,7 @@ public abstract class SPARCAssembler extends Assembler {
         public int setDisp(int inst, int d) {
             assert this.match(inst);
             if (!isValidDisp(d)) {
-                throw new BailoutException("Too large displacement 0x%x in field %s in instruction %s", d, this.disp, this);
+                throw new PermanentBailoutException("Too large displacement 0x%x in field %s in instruction %s", d, this.disp, this);
             }
             return this.disp.setBits(inst, d);
         }

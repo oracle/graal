@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.Fields;
 import com.oracle.graal.compiler.common.util.TypeReader;
 import com.oracle.graal.compiler.common.util.UnsafeArrayTypeReader;
@@ -63,7 +64,6 @@ import com.oracle.graal.nodes.extended.IntegerSwitchNode;
 import com.oracle.graal.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -642,7 +642,7 @@ public class GraphDecoder {
         if (methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE) {
             if (loopScope.iterationStates.size() == 0 && loopScope.loopDepth == 1) {
                 if (methodScope.loopExplosionHead != null) {
-                    throw new BailoutException("Graal implementation restriction: Method with " + LoopExplosionKind.MERGE_EXPLODE + " loop explosion must not have more than one top-level loop");
+                    throw new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion must not have more than one top-level loop", LoopExplosionKind.MERGE_EXPLODE);
                 }
                 methodScope.loopExplosionHead = merge;
             }
@@ -1815,7 +1815,7 @@ class LoopDetector implements Runnable {
     }
 
     private static RuntimeException bailout(String msg) {
-        throw new BailoutException("Graal implementation restriction: Method with " + LoopExplosionKind.MERGE_EXPLODE + " loop explosion " + msg);
+        throw new PermanentBailoutException("Graal implementation restriction: Method with %s loop explosion %s", LoopExplosionKind.MERGE_EXPLODE, msg);
     }
 
     private static IntegerSwitchNode createSwitch(ValuePhiNode switchedValue, SortedMap<Integer, AbstractBeginNode> dispatchTable, AbstractBeginNode defaultSuccessor) {

@@ -28,7 +28,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import com.oracle.graal.bytecode.Bytecode;
-import com.oracle.graal.code.SourceStackTrace;
+import com.oracle.graal.code.SourceStackTraceBailoutException;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.NodeWorkList;
@@ -440,7 +440,7 @@ public class GraphUtil {
      * @return the exception
      */
     public static BailoutException createBailoutException(String message, Throwable cause, StackTraceElement[] elements) {
-        return SourceStackTrace.create(cause, message, elements);
+        return SourceStackTraceBailoutException.create(cause, message, elements);
     }
 
     /**

@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.common.RetryableBailoutException;
 import com.oracle.graal.graph.Position;
 import com.oracle.graal.loop.LoopEx;
 import com.oracle.graal.loop.LoopFragmentWhole;
@@ -43,8 +44,6 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.extended.SwitchNode;
 import com.oracle.graal.phases.common.CanonicalizerPhase;
 import com.oracle.graal.phases.tiers.PhaseContext;
-
-import jdk.vm.ci.code.BailoutException;
 
 public abstract class LoopTransformations {
 
@@ -68,7 +67,7 @@ public abstract class LoopTransformations {
             canonicalizer.applyIncremental(graph, context, mark);
             loop.invalidateFragments();
             if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue() * 2) {
-                throw new BailoutException("FullUnroll : Graph seems to grow out of proportion");
+                throw new RetryableBailoutException("FullUnroll : Graph seems to grow out of proportion");
             }
         }
     }

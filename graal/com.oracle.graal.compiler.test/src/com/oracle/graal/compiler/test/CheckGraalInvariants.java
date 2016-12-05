@@ -73,6 +73,7 @@ import com.oracle.graal.phases.VerifyPhase;
 import com.oracle.graal.phases.VerifyPhase.VerificationError;
 import com.oracle.graal.phases.tiers.HighTierContext;
 import com.oracle.graal.phases.util.Providers;
+import com.oracle.graal.phases.verify.VerifyBailoutUsage;
 import com.oracle.graal.phases.verify.VerifyCallerSensitiveMethods;
 import com.oracle.graal.phases.verify.VerifyDebugUsage;
 import com.oracle.graal.phases.verify.VerifyUpdateUsages;
@@ -281,6 +282,7 @@ public class CheckGraalInvariants extends GraalTest {
         new VerifyCallerSensitiveMethods().apply(graph, context);
         new VerifyVirtualizableUsage().apply(graph, context);
         new VerifyUpdateUsages().apply(graph, context);
+        new VerifyBailoutUsage().apply(graph, context);
         if (graph.method().isBridge()) {
             BridgeMethodUtils.getBridgedMethod(graph.method());
         }

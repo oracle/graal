@@ -67,7 +67,6 @@ import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
 import com.oracle.graal.lir.ssi.SSIUtil;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterValue;
@@ -376,7 +375,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                     break;
 
                 default:
-                    throw new BailoutException("other states not allowed at this time");
+                    throw GraalError.shouldNotReachHere("other states not allowed at this time");
             }
         }
 

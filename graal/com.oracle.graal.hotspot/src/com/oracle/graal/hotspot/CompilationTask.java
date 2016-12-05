@@ -273,9 +273,16 @@ public class CompilationTask {
                 bailout.printStackTrace(TTY.out);
             }
             /*
-             * Treat bailouts as retryable.
+             * Handling of permanent bailouts: Permanent bailouts that can happen for example due to
+             * unsupported unstructured control flow in the bytecodes of a method must not be
+             * retried. Hotspot compile broker will ensure that no recompilation at the given tier
+             * will happen if retry is false.
              */
-            return HotSpotCompilationRequestResult.failure(bailout.getMessage(), true);
+            final boolean permanentBailout = bailout.isPermanent();
+            if (permanentBailout && PrintBailout.getValue()) {
+                TTY.println("Permanent bailout %s compiling method %s %s.", bailout.getMessage(), HotSpotGraalCompiler.str(method), (isOSR ? "OSR" : ""));
+            }
+            return HotSpotCompilationRequestResult.failure(bailout.getMessage(), !permanentBailout);
         } catch (Throwable t) {
             // Log a failure event.
             EventProvider.CompilerFailureEvent event = eventProvider.newCompilerFailureEvent();

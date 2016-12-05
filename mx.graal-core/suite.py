@@ -123,6 +123,15 @@ suite = {
 
     # ------------- Graal -------------
 
+    "com.oracle.graal.common" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["JVMCI_API"],
+      "checkstyle" : "com.oracle.graal.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,Graal",
+    },
+
     "com.oracle.graal.serviceprovider" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
@@ -145,7 +154,6 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "checkstyle" : "com.oracle.graal.graph",
-      "dependencies" : ["JVMCI_API"],
       "uses" : ["com.oracle.graal.options.OptionDescriptors"],
       "javaCompliance" : "1.8",
       "workingSets" : "Graal",
@@ -210,6 +218,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.graal.graph",
+        "com.oracle.graal.common",
       ],
       "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",
@@ -499,6 +508,7 @@ suite = {
       "dependencies" : [
         "com.oracle.graal.debug",
         "com.oracle.graal.asm",
+        "com.oracle.graal.common"
       ],
       "checkstyle" : "com.oracle.graal.graph",
       "javaCompliance" : "1.8",
@@ -1008,7 +1018,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.graal.debug",
+        "com.oracle.graal.debug"
       ],
       "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
       "checkstyle" : "com.oracle.graal.graph",

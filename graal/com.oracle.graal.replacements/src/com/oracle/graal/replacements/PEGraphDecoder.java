@@ -36,6 +36,7 @@ import java.util.Map;
 
 import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.BytecodeProvider;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.cfg.CFGVerifier;
 import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
 import com.oracle.graal.compiler.common.type.StampFactory;
@@ -191,7 +192,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public BailoutException bailout(String string) {
-            BailoutException bailout = new BailoutException(string);
+            BailoutException bailout = new PermanentBailoutException(string);
             throw GraphUtil.createBailoutException(string, bailout, GraphUtil.approxSourceStackTraceElement(methodScope.getCallerBytecodePosition()));
         }
 
@@ -441,7 +442,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     private static RuntimeException tooManyLoopExplosionIterations(PEMethodScope methodScope) {
         String message = "too many loop explosion iterations - does the explosion not terminate for method " + methodScope.method + "?";
-        RuntimeException bailout = Options.FailedLoopExplosionIsFatal.getValue() ? new RuntimeException(message) : new BailoutException(message);
+        RuntimeException bailout = Options.FailedLoopExplosionIsFatal.getValue() ? new RuntimeException(message) : new PermanentBailoutException(message);
         throw GraphUtil.createBailoutException(message, bailout, GraphUtil.approxSourceStackTraceElement(methodScope.getCallerBytecodePosition()));
     }
 
@@ -725,7 +726,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         }
 
-        throw new BailoutException(msg.toString());
+        throw new PermanentBailoutException(msg.toString());
     }
 
     public FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, AbstractBeginNode lastBlock) {

@@ -33,7 +33,7 @@ import com.oracle.graal.options.OptionValue.OverrideScope;
 /**
  * Thrown if the register allocator runs out of registers. This should never happen in normal mode.
  */
-public class OutOfRegistersException extends BailoutAndRestartBackendException {
+public final class OutOfRegistersException extends BailoutAndRestartBackendException {
 
     private static final long serialVersionUID = -3479786650143432195L;
 
@@ -49,11 +49,6 @@ public class OutOfRegistersException extends BailoutAndRestartBackendException {
         this.description = "";
     }
 
-    public OutOfRegistersException(boolean permanent, String msg) {
-        super(permanent, msg);
-        this.description = "";
-    }
-
     public OutOfRegistersException(String msg, String description) {
         super(msg);
         this.description = description;
@@ -61,11 +56,6 @@ public class OutOfRegistersException extends BailoutAndRestartBackendException {
 
     public OutOfRegistersException(Throwable cause, String msg, String description) {
         super(cause, msg);
-        this.description = description;
-    }
-
-    public OutOfRegistersException(boolean permanent, String msg, String description) {
-        super(permanent, msg);
         this.description = description;
     }
 

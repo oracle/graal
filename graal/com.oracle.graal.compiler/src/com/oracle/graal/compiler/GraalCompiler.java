@@ -41,7 +41,6 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.DebugCloseable;
 import com.oracle.graal.debug.DebugCounter;
 import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.internal.method.MethodMetricsRootScopeInfo;
 import com.oracle.graal.lir.BailoutAndRestartBackendException;
 import com.oracle.graal.lir.LIR;
@@ -259,8 +258,11 @@ public class GraalCompiler {
                         continue;
                     }
                 }
-                /* If the restart fails we convert the exception into a "hard" failure */
-                throw new GraalError(e);
+                /*
+                 * The BailoutAndRestartBackendException is permanent. If restart fails or is
+                 * disabled we throw the bailout.
+                 */
+                throw e;
             }
         }
     }

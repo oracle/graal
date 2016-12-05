@@ -70,7 +70,6 @@ import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionType;
 import com.oracle.graal.options.OptionValue;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
@@ -546,8 +545,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                 }
                 return result;
             }
-
-            throw new BailoutException("LinearScan: interval is null");
+            throw new GraalError("LinearScan: interval is null");
         }
 
         AllocatableValue canonicalSpillOpr(TraceInterval interval) {
@@ -707,12 +705,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                         Value l2 = i2.location();
                         boolean intersects = i1.intersects(i2);
                         if (intersects && !isIllegal(l1) && (l1.equals(l2))) {
-                            if (DetailedAsserts.getValue()) {
-                                Debug.log("Intervals %s and %s overlap and have the same register assigned", i1, i2);
-                                Debug.log(i1.logString());
-                                Debug.log(i2.logString());
-                            }
-                            throw new BailoutException("Intervals %s and %s overlap and have the same register assigned", i1, i2);
+                            throw GraalError.shouldNotReachHere(String.format("Intervals %s and %s overlap and have the same register assigned\n%s\n%s", i1, i2, i1.logString(), i2.logString()));
                         }
                     }
                     // check fixed intervals
@@ -725,12 +718,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                         Value l2 = i2.location();
                         boolean intersects = i2.intersects(i1);
                         if (intersects && !isIllegal(l1) && (l1.equals(l2))) {
-                            if (DetailedAsserts.getValue()) {
-                                Debug.log("Intervals %s and %s overlap and have the same register assigned", i1, i2);
-                                Debug.log(i1.logString());
-                                Debug.log(i2.logString());
-                            }
-                            throw new BailoutException("");
+                            throw GraalError.shouldNotReachHere(String.format("Intervals %s and %s overlap and have the same register assigned\n%s\n%s", i1, i2, i1.logString(), i2.logString()));
                         }
                     }
                 }

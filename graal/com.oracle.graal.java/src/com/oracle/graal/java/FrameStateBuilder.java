@@ -42,6 +42,7 @@ import java.util.function.Function;
 
 import com.oracle.graal.bytecode.Bytecode;
 import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.type.StampFactory;
 import com.oracle.graal.compiler.common.type.StampPair;
 import com.oracle.graal.debug.Debug;
@@ -68,7 +69,6 @@ import com.oracle.graal.nodes.graphbuilderconf.ParameterPlugin;
 import com.oracle.graal.nodes.java.MonitorIdNode;
 import com.oracle.graal.nodes.util.GraphUtil;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
@@ -396,7 +396,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
         for (int i = 0; i < lockedObjects.length; i++) {
             if (GraphUtil.originalValue(lockedObjects[i]) != GraphUtil.originalValue(other.lockedObjects[i]) || monitorIds[i] != other.monitorIds[i]) {
-                throw new BailoutException("unbalanced monitors");
+                throw new PermanentBailoutException("unbalanced monitors");
             }
         }
         return true;

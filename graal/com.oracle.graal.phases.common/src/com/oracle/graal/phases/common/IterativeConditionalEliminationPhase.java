@@ -25,6 +25,7 @@ package com.oracle.graal.phases.common;
 import static com.oracle.graal.graph.Graph.NodeEvent.NODE_ADDED;
 import static com.oracle.graal.graph.Graph.NodeEvent.ZERO_USAGES;
 
+import com.oracle.graal.common.RetryableBailoutException;
 import com.oracle.graal.graph.Graph.NodeEventScope;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.Simplifiable;
@@ -32,8 +33,6 @@ import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.phases.BasePhase;
 import com.oracle.graal.phases.common.util.HashSetNodeEventListener;
 import com.oracle.graal.phases.tiers.PhaseContext;
-
-import jdk.vm.ci.code.BailoutException;
 
 public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext> {
 
@@ -67,7 +66,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
             canonicalizer.applyIncremental(graph, context, listener.getNodes());
             listener.getNodes().clear();
             if (++count > MAX_ITERATIONS) {
-                throw new BailoutException("Number of iterations in ConditionalEliminationPhase phase exceeds %d", MAX_ITERATIONS);
+                throw new RetryableBailoutException("Number of iterations in ConditionalEliminationPhase phase exceeds %d", MAX_ITERATIONS);
             }
         }
     }
