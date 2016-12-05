@@ -2119,16 +2119,10 @@ public class FlatNodeGenFactory {
 
             cachedTriples = IfTriple.optimize(cachedTriples);
 
-            if (!useClass) {
+            if (!useClass && specialization != null) {
                 IfTriple singleCondition = null;
-                for (IfTriple triple : cachedTriples) {
-                    if (!IfTriple.isEmpty(triple.condition)) {
-                        if (singleCondition != null) {
-                            singleCondition = null;
-                            break;
-                        }
-                        singleCondition = triple;
-                    }
+                if (cachedTriples.size() == 1) {
+                    singleCondition = cachedTriples.get(0);
                 }
                 if (singleCondition != null) {
                     int index = cachedTriples.indexOf(singleCondition);
