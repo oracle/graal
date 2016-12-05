@@ -222,7 +222,7 @@ public class InliningData {
         if (leafConcreteSubtype != null) {
             ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
             if (resolvedMethod != null) {
-                if (callTarget.graph().getAssumptions() != null) {
+                if (leafConcreteSubtype.canRecordTo(callTarget.graph().getAssumptions())) {
                     return getAssumptionInlineInfo(invoke, resolvedMethod, leafConcreteSubtype);
                 } else {
                     return getTypeCheckedAssumptionInfo(invoke, resolvedMethod, leafConcreteSubtype.getResult());
@@ -230,11 +230,9 @@ public class InliningData {
             }
         }
 
-        if (callTarget.graph().getAssumptions() != null) {
-            AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
-            if (concrete != null) {
-                return getAssumptionInlineInfo(invoke, concrete.getResult(), concrete);
-            }
+        AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
+        if (concrete != null && concrete.canRecordTo(callTarget.graph().getAssumptions())) {
+            return getAssumptionInlineInfo(invoke, concrete.getResult(), concrete);
         }
 
         // type check based inlining
