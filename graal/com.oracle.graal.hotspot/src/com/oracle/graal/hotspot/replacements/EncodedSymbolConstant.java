@@ -26,9 +26,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 
+import com.oracle.graal.common.PermanentBailoutException;
 import com.oracle.graal.compiler.common.type.DataPointerConstant;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -69,7 +69,7 @@ public final class EncodedSymbolConstant extends DataPointerConstant {
             stream.writeUTF(s);
             return bytes.toByteArray();
         } catch (Exception e) {
-            throw new BailoutException(e, "String conversion failed: %s", s);
+            throw new PermanentBailoutException(e, "String conversion failed: %s", s);
         }
     }
 
@@ -98,7 +98,7 @@ public final class EncodedSymbolConstant extends DataPointerConstant {
             }
 
         }
-        throw new BailoutException("Encoding of constant %s failed", constant);
+        throw new PermanentBailoutException("Encoding of constant %s failed", constant);
     }
 
     public byte[] getEncodedConstant() {

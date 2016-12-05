@@ -36,8 +36,7 @@ public class PermanentBailoutException extends BailoutException {
         super(true, reason);
     }
 
-    public PermanentBailoutException(Throwable cause, String format) {
-        super(cause, format);
-
+    public PermanentBailoutException(Throwable cause, String format, Object... args) {
+        super(cause, format, args);
     }
 }
