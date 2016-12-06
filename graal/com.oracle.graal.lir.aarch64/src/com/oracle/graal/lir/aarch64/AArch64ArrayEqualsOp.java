@@ -66,8 +66,6 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     @Temp({REG}) protected Value temp2;
     @Temp({REG}) protected Value temp3;
     @Temp({REG}) protected Value temp4;
-    @Temp({REG, ILLEGAL}) protected Value vectorTemp1;
-    @Temp({REG, ILLEGAL}) protected Value vectorTemp2;
 
     public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, Value result, Value array1, Value array2, Value length) {
         super(TYPE);
@@ -87,9 +85,6 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         this.temp2 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));
         this.temp3 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
         this.temp4 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
-
-        this.vectorTemp1 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
-        this.vectorTemp2 = tool.newVariable(LIRKind.value(tool.target().arch.getWordKind()));
     }
 
     @Override
@@ -99,9 +94,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         Register array2 = asRegister(temp2);
         Register length = asRegister(temp3);
 
-        Label trueLabel = new Label();
-        Label falseLabel = new Label();
-        Label done = new Label();
+        Label breakLabel = new Label();
 
         try (ScratchRegister sc1 = masm.getScratchRegister()) {
             Register rscratch1 = sc1.getRegister();
@@ -114,20 +107,13 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             masm.smaddl(length, asRegister(lengthValue), rscratch1, zr);
             masm.mov(64, result, length); // copy
 
-            emit8ByteCompare(crb, masm, result, array1, array2, length, trueLabel, falseLabel, rscratch1);
-            emitTailCompares(masm, result, array1, array2, trueLabel, falseLabel, rscratch1);
+            emit8ByteCompare(crb, masm, result, array1, array2, length, breakLabel, rscratch1);
+            emitTailCompares(masm, result, array1, array2, breakLabel, rscratch1);
 
-            // Return true
-            masm.bind(trueLabel);
-            masm.mov(result, 1);
-            masm.jmp(done);
-
-            // Return false
-            masm.bind(falseLabel);
-            masm.mov(32, result, zr);
-
-            // That's it
-            masm.bind(done);
+            // Return: rscratch1 is non-zero iff the arrays differ
+            masm.bind(breakLabel);
+            masm.cmp(64, rscratch1, zr);
+            masm.cset(result, ConditionFlag.EQ);
         }
     }
 
@@ -140,7 +126,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
      * Emits code that uses 8-byte vector compares.
      *
      */
-    private void emit8ByteCompare(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel,
+    private void emit8ByteCompare(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, Register array1, Register array2, Register length, Label breakLabel,
                     Register rscratch1) {
         Label loop = new Label();
         Label compareTail = new Label();
@@ -162,12 +148,12 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(array1, length, false));
             masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(array2, length, false));
             masm.eor(64, rscratch1, temp, rscratch1);
-            masm.cbnz(64, rscratch1, falseLabel);
+            masm.cbnz(64, rscratch1, breakLabel);
             masm.add(64, length, length, VECTOR_SIZE);
             masm.cbnz(64, length, loop);
         }
 
-        masm.cbz(64, result, trueLabel);
+        masm.cbz(64, result, breakLabel);
 
         /*
          * Compare the remaining bytes with an unaligned memory load aligned to the end of the
@@ -178,20 +164,19 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(array1, result, false));
         masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(array2, result, false));
         masm.eor(64, rscratch1, temp, rscratch1);
-        masm.cbnz(64, rscratch1, falseLabel);
-        masm.jmp(trueLabel);
+        masm.jmp(breakLabel);
 
         masm.bind(compareTail);
-        masm.mov(64, length, result);
     }
 
     /**
      * Emits code to compare the remaining 1 to 4 bytes.
      *
      */
-    private void emitTailCompares(AArch64MacroAssembler masm, Register result, Register array1, Register array2, Label trueLabel, Label falseLabel, Register rscratch1) {
+    private void emitTailCompares(AArch64MacroAssembler masm, Register result, Register array1, Register array2, Label breakLabel, Register rscratch1) {
         Label compare2Bytes = new Label();
         Label compare1Byte = new Label();
+        Label end = new Label();
 
         Register temp = asRegister(temp4);
 
@@ -199,39 +184,31 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             // Compare trailing 4 bytes, if any.
             masm.ands(32, zr, result, 4);
             masm.branchConditionally(ConditionFlag.EQ, compare2Bytes);
-            masm.ldr(32, temp, AArch64Address.createBaseRegisterOnlyAddress(array1));
-            masm.ldr(32, rscratch1, AArch64Address.createBaseRegisterOnlyAddress(array2));
+            masm.ldr(32, temp, AArch64Address.createPostIndexedImmediateAddress(array1, 4));
+            masm.ldr(32, rscratch1, AArch64Address.createPostIndexedImmediateAddress(array2, 4));
             masm.eor(32, rscratch1, temp, rscratch1);
-            masm.cbnz(32, rscratch1, falseLabel);
+            masm.cbnz(32, rscratch1, breakLabel);
 
             if (kind.getByteCount() <= 2) {
-                // Move array pointers forward.
-                masm.lea(array1, AArch64Address.createUnscaledImmediateAddress(array1, 4));
-                masm.lea(array2, AArch64Address.createUnscaledImmediateAddress(array2, 4));
-
                 // Compare trailing 2 bytes, if any.
                 masm.bind(compare2Bytes);
                 masm.ands(32, zr, result, 2);
                 masm.branchConditionally(ConditionFlag.EQ, compare1Byte);
-                masm.ldr(16, temp, AArch64Address.createBaseRegisterOnlyAddress(array1));
-                masm.ldr(16, rscratch1, AArch64Address.createBaseRegisterOnlyAddress(array2));
+                masm.ldr(16, temp, AArch64Address.createPostIndexedImmediateAddress(array1, 2));
+                masm.ldr(16, rscratch1, AArch64Address.createPostIndexedImmediateAddress(array2, 2));
                 masm.eor(32, rscratch1, temp, rscratch1);
-                masm.cbnz(32, rscratch1, falseLabel);
+                masm.cbnz(32, rscratch1, breakLabel);
 
                 // The one-byte tail compare is only required for boolean and byte arrays.
                 if (kind.getByteCount() <= 1) {
-                    // Move array pointers forward before we compare the last trailing byte.
-                    masm.lea(array1, AArch64Address.createUnscaledImmediateAddress(array1, 2));
-                    masm.lea(array2, AArch64Address.createUnscaledImmediateAddress(array2, 2));
-
                     // Compare trailing byte, if any.
                     masm.bind(compare1Byte);
                     masm.ands(32, zr, result, 1);
-                    masm.branchConditionally(ConditionFlag.EQ, trueLabel);
+                    masm.branchConditionally(ConditionFlag.EQ, end);
                     masm.ldr(8, temp, AArch64Address.createBaseRegisterOnlyAddress(array1));
                     masm.ldr(8, rscratch1, AArch64Address.createBaseRegisterOnlyAddress(array2));
                     masm.eor(32, rscratch1, temp, rscratch1);
-                    masm.cbnz(32, rscratch1, falseLabel);
+                    masm.cbnz(32, rscratch1, breakLabel);
                 } else {
                     masm.bind(compare1Byte);
                 }
@@ -239,6 +216,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
                 masm.bind(compare2Bytes);
             }
         }
+        masm.bind(end);
+        masm.mov(64, rscratch1, zr);
     }
 
     private static final Unsafe UNSAFE = initUnsafe();
