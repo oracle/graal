@@ -58,7 +58,7 @@ public final class SSALinearScan extends LinearScan {
 
     @Override
     protected LinearScanResolveDataFlowPhase createResolveDataFlowPhase() {
-        return new SSALinarScanResolveDataFlowPhase(this);
+        return new SSALinearScanResolveDataFlowPhase(this);
     }
 
     @Override
