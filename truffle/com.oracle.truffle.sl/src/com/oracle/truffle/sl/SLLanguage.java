@@ -50,10 +50,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -87,7 +85,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     }
 
     @Override
-    protected CallTarget parse(Source source, Node node, String... argumentNames) {
+    protected CallTarget parse(ParsingRequest request) throws Exception {
+        Source source = request.getSource();
         Map<String, SLRootNode> functions;
         /*
          * Parse the provided source. At this point, we do not have a SLContext yet. Registration of
@@ -131,11 +130,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return object instanceof SLFunction;
-    }
-
-    @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
-        throw new IllegalStateException("evalInContext not supported in SL");
     }
 
     @Override

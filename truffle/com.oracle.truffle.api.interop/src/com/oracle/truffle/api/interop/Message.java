@@ -56,7 +56,7 @@ public abstract class Message {
 
     /**
      * Message to read an object field. The
-     * {@link Factory#access(com.oracle.truffle.api.interop.Message) target} created for this
+     * {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) target} created for this
      * message accepts (in addition to a
      * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}) a single
      * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) argument} identifying a
@@ -115,8 +115,9 @@ public abstract class Message {
     public static final Message UNBOX = Unbox.INSTANCE;
 
     /**
-     * Message to write a field. The {@link Factory#access(com.oracle.truffle.api.interop.Message)
-     * target} created for this message accepts the object to modify as a
+     * Message to write a field. The
+     * {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) target} created for this
+     * message accepts the object to modify as a
      * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver} and two
      * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) arguments}. The first
      * one identifies a field to read - e.g. either {@link String} or an {@link Integer} - if access
@@ -216,13 +217,14 @@ public abstract class Message {
      * Message to check executability of a
      * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) foreign object}.
      * <p>
-     * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
-     * this message accepts {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) no
-     * arguments} and a single non-null
-     * {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver}. The call
-     * should yield value of {@link Boolean}. Either {@link Boolean#TRUE} if the receiver can be
-     * executed (e.g. accepts {@link #createExecute(int)} message, or {@link Boolean#FALSE}
-     * otherwise. This is the way to send the <code>IS_EXECUTABLE</code> message:
+     * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
+     * created for this message accepts
+     * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) no arguments} and a
+     * single non-null {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame)
+     * receiver}. The call should yield value of {@link Boolean}. Either {@link Boolean#TRUE} if the
+     * receiver can be executed (e.g. accepts {@link #createExecute(int)} message, or
+     * {@link Boolean#FALSE} otherwise. This is the way to send the <code>IS_EXECUTABLE</code>
+     * message:
      *
      * <pre>
      * {@link Boolean} canBeExecuted = ({@link Boolean}) {@link ForeignAccess}.sendIsExecutable(
@@ -357,8 +359,8 @@ public abstract class Message {
      * </pre>
      *
      * <p>
-     * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
-     * this message should yield value of {@link Boolean}.
+     * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
+     * created for this message should yield value of {@link Boolean}.
      * <p>
      * To achieve good performance it is essential to cache/keep reference to the
      * {@link Message#createNode() created node}.
@@ -372,8 +374,8 @@ public abstract class Message {
      * <em>has a size</em>, it is expected it represents array-like structure and it also properly
      * responds to {@link #GET_SIZE} message
      * <p>
-     * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
-     * this message should yield value of {@link Boolean}.
+     * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
+     * created for this message should yield value of {@link Boolean}.
      *
      * @since 0.8 or earlier
      * @see ForeignAccess#sendHasSize(com.oracle.truffle.api.nodes.Node,
@@ -388,8 +390,8 @@ public abstract class Message {
      * {@link Integer} parameters from range <code>0</code> to <code>GET_SIZE - 1</code> are
      * required.
      * <p>
-     * Calling {@link Factory#access(com.oracle.truffle.api.interop.Message) the target} created for
-     * this message should yield value of {@link Integer}.
+     * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
+     * created for this message should yield value of {@link Integer}.
      * <p>
      * If the object does not support the {@link #GET_SIZE} message, an
      * {@link UnsupportedMessageException} has to be thrown.

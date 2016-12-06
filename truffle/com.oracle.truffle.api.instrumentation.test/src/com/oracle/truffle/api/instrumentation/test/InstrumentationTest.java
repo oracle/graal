@@ -33,7 +33,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -229,10 +228,10 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        protected CallTarget parse(final Source code, Node context, String... argumentNames) {
+        protected CallTarget parse(ParsingRequest request) {
             return Truffle.getRuntime().createCallTarget(new RootNode(TestLanguageInstrumentationLanguage.class, null, null) {
 
-                @Child private BaseNode base = InstrumentationTestLanguage.parse(code);
+                @Child private BaseNode base = InstrumentationTestLanguage.parse(request.getSource());
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -254,11 +253,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
-            return null;
         }
 
     }
@@ -846,10 +840,10 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        protected CallTarget parse(final Source code, Node context, String... argumentNames) {
+        protected CallTarget parse(ParsingRequest request) {
             return Truffle.getRuntime().createCallTarget(new RootNode(TestIsNodeTaggedWith1Language.class, null, null) {
 
-                @Child private BaseNode base = InstrumentationTestLanguage.parse(code);
+                @Child private BaseNode base = InstrumentationTestLanguage.parse(request.getSource());
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -871,11 +865,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
-            return null;
         }
 
     }

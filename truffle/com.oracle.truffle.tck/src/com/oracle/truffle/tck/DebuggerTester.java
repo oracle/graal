@@ -202,6 +202,12 @@ public final class DebuggerTester implements AutoCloseable {
         } else if (event instanceof SuspendedEvent) {
             this.handler = previous;
         } else {
+            if (event instanceof Error) {
+                throw (Error) event;
+            }
+            if (event instanceof RuntimeException) {
+                throw (RuntimeException) event;
+            }
             throw new AssertionError("Got unknown event.", (event instanceof Throwable ? (Throwable) event : null));
         }
     }

@@ -166,19 +166,10 @@ public abstract class Accessor {
             }
 
             @Override
-            protected CallTarget parse(Source code, Node context, String... argumentNames) {
-                throw new IllegalStateException();
-            }
-
-            @Override
             protected Object createContext(TruffleLanguage.Env env) {
                 return null;
             }
 
-            @Override
-            protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
-                return null;
-            }
         };
         lng.hashCode();
         new Node() {

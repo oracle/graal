@@ -24,9 +24,6 @@ package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 
 @TruffleLanguage.Registration(mimeType = "application/x-test", name = "InteropProcessorTest", version = "1.0")
 public final class TestTruffleLanguage extends TruffleLanguage<Object> {
@@ -39,7 +36,7 @@ public final class TestTruffleLanguage extends TruffleLanguage<Object> {
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) {
+    protected CallTarget parse(ParsingRequest env) {
         return null;
     }
 
@@ -56,10 +53,5 @@ public final class TestTruffleLanguage extends TruffleLanguage<Object> {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return false;
-    }
-
-    @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
-        return null;
     }
 }
