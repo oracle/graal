@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.nodes.api.LLVMNode;
  */
 public abstract class LLVMTerminatorNode extends LLVMNode {
 
-    @CompilationFinal private final int[] successors;
+    @CompilationFinal(dimensions = 1) private final int[] successors;
 
     public LLVMTerminatorNode(int... successors) {
         this.successors = successors;
