@@ -68,11 +68,11 @@ suite = {
       "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
     },
     "LTA_REF" : {
-      "path" : "tests/lifetime-analysis-ref.tar.gz",
+      "path" : "tests/lifetime-analysis-ref-2.tar.gz",
       "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/lifetime-analysis-ref.tar.gz",
+        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/lifetime-analysis-ref-2.tar.gz",
       ],
-      "sha1" : "8bb0cd644b0dc9ec2f3000ad9cac50e9432d4e17",
+      "sha1" : "7dc0cda1b644a9c27464cf5ad3780ffd92097aa3",
     },
     "COCO" : {
       "urls" : [

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.test.alpha;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -40,7 +41,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -71,7 +71,16 @@ public final class LifetimeAnalysisTest {
         Map<String, LLVMLifetimeAnalysis> referenceResults = null;
         BufferedReader referenceFileReader;
         if (SulongTestOptions.TEST.generateLifetimeReferenceOutput()) {
-            fileWriter = new LifetimeFileFormat.Writer(new PrintStream(ltaGenDir.toFile()));
+            final File ltaGenDirFile = ltaGenDir.toFile();
+            if (!ltaGenDirFile.exists()) {
+                // noinspection ResultOfMethodCallIgnored
+                ltaGenDirFile.getParentFile().mkdirs();
+                final boolean fileCreated = ltaGenDirFile.createNewFile();
+                if (!fileCreated) {
+                    throw new AssertionError();
+                }
+            }
+            fileWriter = new LifetimeFileFormat.Writer(new PrintStream(ltaGenDirFile));
         } else {
             fileWriter = null;
             FileInputStream fis = new FileInputStream(ltaFile.toFile());
@@ -167,19 +176,20 @@ public final class LifetimeAnalysisTest {
 
     private static void assertMapsEqual(String functionName, Map<String, Set<String>> expected, Map<String, Set<String>> actual, Path bcFile) {
         if (expected.size() != actual.size()) {
-            throw new AssertionError(buildErrorMessage(functionName, "Different Map Sizes!", bcFile));
+            throw new AssertionError(buildErrorMessage(functionName, String.format("Different Map Sizes, should be %d, but is %d!", expected.size(), actual.size()), bcFile, expected, actual));
         }
 
         for (final String name : expected.keySet()) {
             if (!actual.containsKey(name)) {
-                throw new AssertionError(buildErrorMessage(functionName, String.format("Cannot find block %s in %s", name, asString(actual.keySet())), bcFile));
+                throw new AssertionError(buildErrorMessage(functionName, String.format("Cannot find block %s in %s", name, asString(actual.keySet())), bcFile, expected, actual));
             }
 
             final Set<String> expectedFrameSlots = expected.get(name);
             final Set<String> actualFrameSlots = actual.get(name);
             if (!setsEqual(expectedFrameSlots, actualFrameSlots)) {
                 throw new AssertionError(
-                                buildErrorMessage(functionName, String.format("Nullers do not match: should be %s, but are %s", asString(expectedFrameSlots), asString(actualFrameSlots)), bcFile));
+                                buildErrorMessage(functionName, String.format("Nullers do not match: should be %s, but are %s", asString(expectedFrameSlots), asString(actualFrameSlots)), bcFile,
+                                                expected, actual));
             }
         }
     }
@@ -194,15 +204,21 @@ public final class LifetimeAnalysisTest {
     }
 
     private static String asString(Set<String> names) {
-        final StringJoiner joiner = new StringJoiner(", ", "[", "]");
-        for (final String name : names) {
-            joiner.add(name);
-        }
-        return joiner.toString();
+        return names.stream().collect(Collectors.joining(", ", "[", "]"));
     }
 
-    private static String buildErrorMessage(String functionName, String message, Path bcFile) {
-        return String.format("Error in Function %s in File %s: %s", functionName, bcFile.toFile().getAbsolutePath(), message);
+    private static String buildErrorMessage(String functionName, String message, Path bcFile, Map<String, Set<String>> expected, Map<String, Set<String>> actual) {
+        return String.format(
+                        "Error in Function %s in File %s: %s\nexpected: \n%s\nactual: \n%s\n",
+                        functionName,
+                        bcFile.toFile().getAbsolutePath(),
+                        message,
+                        printResult(expected),
+                        printResult(actual));
+    }
+
+    private static String printResult(Map<String, Set<String>> result) {
+        return result.entrySet().stream().map(e -> String.format("    %s : %s", e.getKey(), asString(e.getValue()))).collect(Collectors.joining(",\n", "{\n", "\n}"));
     }
 
     private static InstructionBlock createInstructionBlock(String name) {

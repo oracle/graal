@@ -33,7 +33,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -66,62 +65,9 @@ public final class LifetimeAnalysisSuite {
         return collectTestCases(GCC_CONFIG_DIR, GCC_SUITE_DIR, GCC_LTA_DIR, GCC_LTA_GEN_DIR);
     }
 
-    // TODO: after migration of LTA tests to new infrastructure, these 44 tests fail.
-    // See issue #598
-    // Fix issue and remove this this hard-coded ignore list.
-    private static final String[] ignore = new String[]{"gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr47541.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr49644.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr15054-2.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/nrv14.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr17697-1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr43655.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/template/sfinae17.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr49039.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/template/condition1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr37922.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr6713.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr42462.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr36187.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr40924.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/nrv6.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr16372-1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/expect1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/template/array25.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr40335.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr44069.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/range-test-2.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/template/partial10.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr7503-1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/cond1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr56837.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr30567.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr50189.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/strength-reduce.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/range-test-1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr35634.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr59163.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/20100825.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/fold2.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr14029.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/dtor4.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/dtor1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/template/explicit-args4.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/template/repo9.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/nrv13.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/bool1.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/opt/pr30590.C",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/torture/pr37146-2.C",
-                    "gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/integer_select.f90",
-                    "gcc-5.2.0/gcc/testsuite/g++.dg/template/pretty1.C",
-                    "gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/transfer2.f90"};
-    private final List<String> ignoreList = Arrays.asList(ignore);
-
     @Test
     public void test() throws Exception {
         try {
-            if (ignoreList.contains(testName)) {
-                return;
-            }
             LifetimeAnalysisTest.test(bcFile, ltaFile, ltaGenFile);
         } catch (Throwable e) {
             throw new AssertionError(e);
@@ -160,7 +106,12 @@ public final class LifetimeAnalysisSuite {
     }
 
     private static Path getTestFile(Path folder) throws IOException {
-        List<Path> collect = Files.walk(folder).filter(p -> p.toString().endsWith("_O0.bc")).collect(Collectors.toList());
+        List<Path> collect = Files.walk(folder).filter(p -> {
+            final String s = p.toString();
+            // we only support files compiled with optimizations enabled since sulong does not
+            // support the invoke instruction for exception handling
+            return s.endsWith("_OPT.bc") || s.endsWith("gfortran_O0.bc");
+        }).collect(Collectors.toList());
         if (collect.size() != 1) {
             throw new AssertionError("Found " + collect.size() + " matching files in " + folder);
         }
