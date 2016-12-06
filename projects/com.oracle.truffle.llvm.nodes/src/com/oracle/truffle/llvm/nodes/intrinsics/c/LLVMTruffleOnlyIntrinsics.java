@@ -44,8 +44,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI32Intrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI64Intrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
@@ -55,7 +54,7 @@ public final class LLVMTruffleOnlyIntrinsics {
     private LLVMTruffleOnlyIntrinsics() {
     }
 
-    public abstract static class LLVMTruffleOnlyI64Intrinsic extends LLVMI64Intrinsic {
+    public abstract static class LLVMTruffleOnlyI64Intrinsic extends LLVMIntrinsic {
 
         protected final NativeFunctionHandle handle;
 
@@ -70,7 +69,7 @@ public final class LLVMTruffleOnlyIntrinsics {
         }
     }
 
-    public abstract static class LLVMTruffleOnlyI32Intrinsic extends LLVMI32Intrinsic {
+    public abstract static class LLVMTruffleOnlyI32Intrinsic extends LLVMIntrinsic {
 
         protected final NativeFunctionHandle handle;
 

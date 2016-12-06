@@ -33,9 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMDoubleIntrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI32Intrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI64Intrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 
 /**
  * Implements the C functions from math.h.
@@ -43,7 +41,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI64Intrin
 public abstract class LLVMCMathsIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMSqrt extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMSqrt extends LLVMIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -53,7 +51,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMLog extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMLog extends LLVMIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -63,7 +61,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMLog10 extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMLog10 extends LLVMIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -73,7 +71,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMRint extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMRint extends LLVMIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -83,7 +81,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMCeil extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMCeil extends LLVMIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -93,7 +91,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMFloor extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMFloor extends LLVMIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -103,7 +101,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMAbs extends LLVMI32Intrinsic {
+    public abstract static class LLVMAbs extends LLVMIntrinsic {
 
         @Specialization
         public int executeIntrinsic(int value) {
@@ -113,7 +111,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMFAbs extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMFAbs extends LLVMIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -123,7 +121,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMExp extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMExp extends LLVMIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double value) {
@@ -133,7 +131,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMPow extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMPow extends LLVMIntrinsic {
 
         @Specialization
         public double executeIntrinsic(double a, double b) {
@@ -143,7 +141,7 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMLAbs extends LLVMI64Intrinsic {
+    public abstract static class LLVMLAbs extends LLVMIntrinsic {
 
         @Specialization
         public long executeIntrinsic(long value) {

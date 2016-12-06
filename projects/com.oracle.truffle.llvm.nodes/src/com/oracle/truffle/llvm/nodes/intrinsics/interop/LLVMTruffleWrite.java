@@ -41,7 +41,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 
@@ -71,7 +71,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteP extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteP extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -89,7 +89,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteI extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteI extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -107,7 +107,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteL extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteL extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -125,7 +125,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteC extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteC extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -143,7 +143,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteF extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteF extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -161,7 +161,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteD extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteD extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -179,7 +179,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteB extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteB extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -198,7 +198,7 @@ public final class LLVMTruffleWrite {
 
     // INDEXED:
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteIdxP extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteIdxP extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -216,7 +216,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteIdxI extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteIdxI extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -234,7 +234,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteIdxL extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteIdxL extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -252,7 +252,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteIdxC extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteIdxC extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -270,7 +270,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteIdxF extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteIdxF extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -288,7 +288,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteIdxD extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteIdxD extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
@@ -306,7 +306,7 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteIdxB extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteIdxB extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 

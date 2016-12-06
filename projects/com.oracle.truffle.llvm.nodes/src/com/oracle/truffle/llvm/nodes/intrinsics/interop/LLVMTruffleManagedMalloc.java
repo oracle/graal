@@ -40,10 +40,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleManagedMalloc extends LLVMAddressIntrinsic {
+public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
 
     @MessageResolution(receiverType = ManagedMallocObject.class, language = LLVMLanguage.class)
     public static class ManagedMallocForeignAccess {

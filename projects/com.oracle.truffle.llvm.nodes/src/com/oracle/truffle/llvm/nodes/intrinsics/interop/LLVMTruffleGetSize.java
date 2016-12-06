@@ -39,11 +39,11 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI32Intrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-public abstract class LLVMTruffleGetSize extends LLVMI32Intrinsic {
+public abstract class LLVMTruffleGetSize extends LLVMIntrinsic {
 
     private Object getSize(VirtualFrame frame, LLVMTruffleObject value) {
         try {

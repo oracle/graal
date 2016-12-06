@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode.LLVMUnresolvedCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI32Intrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMAddressLiteralNode;
 import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
@@ -50,7 +50,7 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "func")
-public abstract class LLVMAtExit extends LLVMI32Intrinsic {
+public abstract class LLVMAtExit extends LLVMIntrinsic {
 
     @Specialization
     @TruffleBoundary

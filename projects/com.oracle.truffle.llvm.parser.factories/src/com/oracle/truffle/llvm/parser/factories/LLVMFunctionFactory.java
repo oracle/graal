@@ -66,8 +66,6 @@ import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI8CallUnb
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMStructCallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMVarBitCallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMVectorCallUnboxNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNode.LLVMIntrinsicVoidNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.api.LLVMType;
@@ -209,13 +207,7 @@ public final class LLVMFunctionFactory {
     }
 
     public static RootNode createFunctionSubstitutionRootNode(LLVMExpressionNode intrinsicNode) {
-        RootNode functionRoot;
-        if (intrinsicNode instanceof LLVMVoidIntrinsic) {
-            functionRoot = new LLVMIntrinsicVoidNode(intrinsicNode);
-        } else {
-            functionRoot = LLVMIntrinsicExpressionNodeGen.create(intrinsicNode);
-        }
-        return functionRoot;
+        return LLVMIntrinsicExpressionNodeGen.create(intrinsicNode);
     }
 
 }

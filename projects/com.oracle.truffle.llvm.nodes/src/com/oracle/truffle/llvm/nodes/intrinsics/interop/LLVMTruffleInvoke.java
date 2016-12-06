@@ -44,13 +44,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMBooleanIntrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMDoubleIntrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMFloatIntrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI32Intrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI64Intrinsic;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI8Intrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 
@@ -85,7 +79,7 @@ public final class LLVMTruffleInvoke {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleInvokeP extends LLVMAddressIntrinsic {
+    public abstract static class LLVMTruffleInvokeP extends LLVMIntrinsic {
 
         @Child private Node foreignInvoke;
         @Child private ToLLVMNode toLLVM = new ToLLVMNode();
@@ -112,7 +106,7 @@ public final class LLVMTruffleInvoke {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleInvokeI extends LLVMI32Intrinsic {
+    public abstract static class LLVMTruffleInvokeI extends LLVMIntrinsic {
 
         @Child private Node foreignInvoke;
         @Child private ToLLVMNode toLLVM = new ToLLVMNode();
@@ -139,7 +133,7 @@ public final class LLVMTruffleInvoke {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleInvokeL extends LLVMI64Intrinsic {
+    public abstract static class LLVMTruffleInvokeL extends LLVMIntrinsic {
 
         @Child private Node foreignInvoke;
         @Child private ToLLVMNode toLLVM = new ToLLVMNode();
@@ -166,7 +160,7 @@ public final class LLVMTruffleInvoke {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleInvokeC extends LLVMI8Intrinsic {
+    public abstract static class LLVMTruffleInvokeC extends LLVMIntrinsic {
 
         @Child private Node foreignInvoke;
         @Child private ToLLVMNode toLLVM = new ToLLVMNode();
@@ -193,7 +187,7 @@ public final class LLVMTruffleInvoke {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleInvokeF extends LLVMFloatIntrinsic {
+    public abstract static class LLVMTruffleInvokeF extends LLVMIntrinsic {
 
         @Child private Node foreignInvoke;
         @Child private ToLLVMNode toLLVM = new ToLLVMNode();
@@ -220,7 +214,7 @@ public final class LLVMTruffleInvoke {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleInvokeD extends LLVMDoubleIntrinsic {
+    public abstract static class LLVMTruffleInvokeD extends LLVMIntrinsic {
 
         @Child private Node foreignInvoke;
         @Child private ToLLVMNode toLLVM = new ToLLVMNode();
@@ -247,7 +241,7 @@ public final class LLVMTruffleInvoke {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleInvokeB extends LLVMBooleanIntrinsic {
+    public abstract static class LLVMTruffleInvokeB extends LLVMIntrinsic {
 
         @Child private Node foreignInvoke;
         @Child private ToLLVMNode toLLVM = new ToLLVMNode();

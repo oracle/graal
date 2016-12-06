@@ -32,46 +32,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
-public interface LLVMIntrinsic {
-
-    @GenerateNodeFactory
-    abstract class LLVMVoidIntrinsic extends LLVMExpressionNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMAddressIntrinsic extends LLVMExpressionNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMFloatIntrinsic extends LLVMExpressionNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMDoubleIntrinsic extends LLVMExpressionNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMBooleanIntrinsic extends LLVMExpressionNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMI8Intrinsic extends LLVMExpressionNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMI32Intrinsic extends LLVMExpressionNode implements LLVMIntrinsic {
-
-    }
-
-    @GenerateNodeFactory
-    abstract class LLVMI64Intrinsic extends LLVMExpressionNode implements LLVMIntrinsic {
-
-    }
+@GenerateNodeFactory
+public abstract class LLVMIntrinsic extends LLVMExpressionNode {
 
 }
