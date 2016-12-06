@@ -70,6 +70,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMFreeFactory;
 import com.oracle.truffle.llvm.nodes.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressZeroNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
 import com.oracle.truffle.llvm.nodes.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode;
@@ -94,6 +95,7 @@ import com.oracle.truffle.llvm.parser.api.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.api.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.api.model.types.PointerType;
+import com.oracle.truffle.llvm.parser.api.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.types.VectorType;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
@@ -288,6 +290,27 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     public LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, LLVMBaseType llvmType, LLVMExpressionNode numElements) {
         if (numElements == null) {
             assert llvmType == null;
+            if (type instanceof StructureType) {
+                StructureType struct = (StructureType) type;
+                final int[] offsets = new int[struct.getLength()];
+                final LLVMBaseType[] types = new LLVMBaseType[struct.getLength()];
+                int currentOffset = 0;
+                for (int i = 0; i < struct.getLength(); i++) {
+                    final Type elemType = struct.getElementType(i);
+
+                    if (!struct.isPacked()) {
+                        currentOffset += runtime.getBytePadding(currentOffset, elemType);
+                    }
+
+                    offsets[i] = currentOffset;
+                    types[i] = elemType.getLLVMBaseType();
+                    currentOffset += runtime.getByteSize(elemType);
+                }
+                LLVMAllocaInstruction alloc = LLVMAllocFactory.createAlloc(runtime, byteSize, alignment);
+                alloc.setTypes(types);
+                alloc.setOffsets(offsets);
+                return alloc;
+            }
             return LLVMAllocFactory.createAlloc(runtime, byteSize, alignment);
         } else {
             return LLVMAllocFactory.createAlloc(runtime, llvmType, numElements, byteSize, alignment);
