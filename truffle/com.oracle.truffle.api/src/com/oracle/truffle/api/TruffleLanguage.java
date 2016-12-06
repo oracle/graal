@@ -123,6 +123,20 @@ public abstract class TruffleLanguage<C> {
          * @return array of MIME types assigned to your language files
          */
         String[] mimeType();
+
+        /**
+         * Determines if the language needs a special support for interactiveness. When
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is used over
+         * {@link Source#isInteractive() interactive source}, it prints the result to
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard
+         * output} by default. Should a language need a special support, it has to specify
+         * <code>true</code> for the <code>interactiveness</code> attribute and then treat
+         * {@link Source#isInteractive interactive sources} in its own special way.
+         *
+         * @return false if the default support for interactive sources is enough
+         * @since 0.22
+         */
+        boolean interactiveness() default false;
     }
 
     /**

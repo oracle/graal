@@ -61,6 +61,8 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 
 /**
@@ -450,6 +452,11 @@ public class PolyglotEngine {
      * Evaluates provided source. Chooses language registered for a particular
      * {@link Source#getMimeType() MIME type} (throws an {@link IllegalStateException} if there is
      * none). The language is then allowed to parse and execute the source.
+     * <p>
+     * Since version 0.22 a special support for {@link Source#isInteractive() interactive source} is
+     * provided: When an interactive source is evaluated, the returned value is printed to
+     * {@link PolyglotEngine.Builder#setOut(OutputStream)} before it is returned from this eval
+     * method.
      *
      * @param source code snippet to execute
      * @return a {@link Value} object that holds result of an execution, never <code>null</code>
@@ -543,7 +550,19 @@ public class PolyglotEngine {
             target = Truffle.getRuntime().createCallTarget(new PolyglotEvalRootNode(this, l, source));
             l.cache.put(source, target);
         }
-        return target.call((Object) langTarget);
+        Object value = target.call((Object) langTarget);
+        if (source.isInteractive() && !l.getInteractiveness() && value != null) {
+            // print res to standard out stream:
+            String stringResult = Access.LANGS.toString(langTarget[0], findEnv(langTarget[0].getClass()), value);
+            try {
+                PolyglotEngine.this.out.write(stringResult.getBytes(StandardCharsets.UTF_8));
+                PolyglotEngine.this.out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
+            } catch (IOException ioex) {
+                // out stream has problems.
+                throw new IllegalStateException(ioex);
+            }
+        }
+        return value;
     }
 
     ContextStore context() {
@@ -1151,6 +1170,17 @@ public class PolyglotEngine {
          */
         public String getVersion() {
             return info.getVersion();
+        }
+
+        /**
+         * Language interactiveness.
+         *
+         * @return <code>true</code> if the language needs special support for interactiveness,
+         *         <code>false</code> if the default printing of the evaluated result is sufficient.
+         * @since 0.22
+         */
+        public boolean getInteractiveness() {
+            return info.getInteractiveness();
         }
 
         /**

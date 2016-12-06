@@ -637,7 +637,7 @@ public abstract class Source {
      * it}.
      *
      * @return whether this source is marked as <em>interactive</em>
-     * @since 0.20
+     * @since 0.21
      */
     public boolean isInteractive() {
         return interactive;
@@ -1250,7 +1250,7 @@ public abstract class Source {
          * result of {@link Source#isInteractive()}.
          *
          * @return the instance of this builder
-         * @since 0.20
+         * @since 0.21
          */
         public Builder<E1, E2, E3> interactive() {
             this.interactive = true;
