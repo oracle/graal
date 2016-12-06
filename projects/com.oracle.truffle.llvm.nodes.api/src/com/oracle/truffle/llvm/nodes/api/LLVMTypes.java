@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.nodes.api;
 
 import com.oracle.truffle.api.dsl.TypeSystem;
+import com.oracle.truffle.api.dsl.internal.DSLOptions;
+import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -53,6 +55,7 @@ import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
                 LLVM80BitFloat.class,
                 LLVMFunctionDescriptor.class,
                 LLVMAddress.class, TruffleObject.class, LLVMFunction.class})
+@DSLOptions(defaultGenerator = DSLGenerator.FLAT)
 public class LLVMTypes {
 
 }
