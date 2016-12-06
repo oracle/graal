@@ -42,12 +42,12 @@ import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
 
 import jdk.vm.ci.meta.Value;
 
-class SSALinarScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
+class SSALinearScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
 
     private static final DebugCounter numPhiResolutionMoves = Debug.counter("SSA LSRA[numPhiResolutionMoves]");
     private static final DebugCounter numStackToStackMoves = Debug.counter("SSA LSRA[numStackToStackMoves]");
 
-    SSALinarScanResolveDataFlowPhase(LinearScan allocator) {
+    SSALinearScanResolveDataFlowPhase(LinearScan allocator) {
         super(allocator);
     }
 
