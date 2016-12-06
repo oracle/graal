@@ -190,90 +190,79 @@ public class AsmFactory {
         LLVMExpressionNode src;
         LLVMExpressionNode out;
         AsmOperand dst = operand;
-        LLVMBaseType dstType = LLVMBaseType.I64;
+        LLVMBaseType dstType;
+        assert operation.length() > 0;
+        switch (operation.charAt(operation.length() - 1)) {
+            case 'b':
+                src = getOperandLoad(LLVMBaseType.I8, operand);
+                dstType = LLVMBaseType.I8;
+                break;
+            case 'w':
+                src = getOperandLoad(LLVMBaseType.I16, operand);
+                dstType = LLVMBaseType.I16;
+                break;
+            case 'l':
+                src = getOperandLoad(LLVMBaseType.I32, operand);
+                dstType = LLVMBaseType.I32;
+                break;
+            case 'q':
+                src = getOperandLoad(LLVMBaseType.I64, operand);
+                dstType = LLVMBaseType.I64;
+                break;
+            default:
+                src = null;
+                dstType = LLVMBaseType.I64;
+        }
         switch (operation) {
             case "incb":
-                src = getOperandLoad(LLVMBaseType.I8, operand);
                 out = LLVMAMD64IncbNodeGen.create(src);
-                dstType = LLVMBaseType.I8;
                 break;
             case "incw":
-                src = getOperandLoad(LLVMBaseType.I16, operand);
                 out = LLVMAMD64IncwNodeGen.create(src);
-                dstType = LLVMBaseType.I16;
                 break;
             case "incl":
-                src = getOperandLoad(LLVMBaseType.I32, operand);
                 out = LLVMAMD64InclNodeGen.create(src);
-                dstType = LLVMBaseType.I32;
                 break;
             case "incq":
-                src = getOperandLoad(LLVMBaseType.I64, operand);
                 out = LLVMAMD64IncqNodeGen.create(src);
-                dstType = LLVMBaseType.I64;
                 break;
             case "decb":
-                src = getOperandLoad(LLVMBaseType.I8, operand);
                 out = LLVMAMD64DecbNodeGen.create(src);
-                dstType = LLVMBaseType.I8;
                 break;
             case "decw":
-                src = getOperandLoad(LLVMBaseType.I16, operand);
                 out = LLVMAMD64DecwNodeGen.create(src);
-                dstType = LLVMBaseType.I16;
                 break;
             case "decl":
-                src = getOperandLoad(LLVMBaseType.I32, operand);
                 out = LLVMAMD64DeclNodeGen.create(src);
-                dstType = LLVMBaseType.I32;
                 break;
             case "decq":
-                src = getOperandLoad(LLVMBaseType.I64, operand);
                 out = LLVMAMD64DecqNodeGen.create(src);
-                dstType = LLVMBaseType.I64;
                 break;
             case "negb":
-                src = getOperandLoad(LLVMBaseType.I8, operand);
                 out = LLVMAMD64NegbNodeGen.create(src);
-                dstType = LLVMBaseType.I8;
                 break;
             case "negw":
-                src = getOperandLoad(LLVMBaseType.I16, operand);
                 out = LLVMAMD64NegwNodeGen.create(src);
-                dstType = LLVMBaseType.I16;
                 break;
             case "negl":
-                src = getOperandLoad(LLVMBaseType.I32, operand);
                 out = LLVMAMD64NeglNodeGen.create(src);
-                dstType = LLVMBaseType.I32;
                 break;
             case "negq":
-                src = getOperandLoad(LLVMBaseType.I64, operand);
                 out = LLVMAMD64NegqNodeGen.create(src);
-                dstType = LLVMBaseType.I64;
                 break;
             case "notb":
-                src = getOperandLoad(LLVMBaseType.I8, operand);
                 out = LLVMAMD64NotbNodeGen.create(src);
-                dstType = LLVMBaseType.I8;
                 break;
             case "notw":
-                src = getOperandLoad(LLVMBaseType.I16, operand);
                 out = LLVMAMD64NotwNodeGen.create(src);
-                dstType = LLVMBaseType.I16;
                 break;
             case "notl":
-                src = getOperandLoad(LLVMBaseType.I32, operand);
                 out = LLVMAMD64NotlNodeGen.create(src);
-                dstType = LLVMBaseType.I32;
                 break;
             case "notq":
-                src = getOperandLoad(LLVMBaseType.I64, operand);
                 out = LLVMAMD64NotqNodeGen.create(src);
-                dstType = LLVMBaseType.I64;
                 break;
             case "idivb":
-                src = getOperandLoad(LLVMBaseType.I8, operand);
                 out = LLVMAMD64IdivbNodeGen.create(getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
                 dstType = LLVMBaseType.I16;
@@ -281,7 +270,6 @@ public class AsmFactory {
             case "idivw": {
                 LLVMAMD64WriteI16RegisterNode rem = getRegisterStore("dx");
                 LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("dx"));
-                src = getOperandLoad(LLVMBaseType.I16, operand);
                 out = LLVMAMD64IdivwNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
                 dstType = LLVMBaseType.I16;
@@ -290,7 +278,6 @@ public class AsmFactory {
             case "idivl": {
                 LLVMAMD64WriteI32RegisterNode rem = getRegisterStore("edx");
                 LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("edx"));
-                src = getOperandLoad(LLVMBaseType.I32, operand);
                 out = LLVMAMD64IdivlNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
                 dst = new AsmRegisterOperand("eax");
                 dstType = LLVMBaseType.I32;
@@ -299,21 +286,18 @@ public class AsmFactory {
             case "idivq": {
                 LLVMAMD64WriteI64RegisterNode rem = getRegisterStore("rdx");
                 LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("rdx"));
-                src = getOperandLoad(LLVMBaseType.I64, operand);
                 out = LLVMAMD64IdivqNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
                 dst = new AsmRegisterOperand("rax");
                 dstType = LLVMBaseType.I64;
                 break;
             }
             case "imulb":
-                src = getOperandLoad(LLVMBaseType.I8, operand);
                 out = LLVMAMD64ImulbNodeGen.create(getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
                 dstType = LLVMBaseType.I16;
                 break;
             case "imulw": {
                 LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
-                src = getOperandLoad(LLVMBaseType.I16, operand);
                 out = LLVMAMD64ImulwNodeGen.create(high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
                 dstType = LLVMBaseType.I16;
@@ -321,7 +305,6 @@ public class AsmFactory {
             }
             case "imull": {
                 LLVMAMD64WriteI32RegisterNode high = getRegisterStore("edx");
-                src = getOperandLoad(LLVMBaseType.I32, operand);
                 out = LLVMAMD64ImullNodeGen.create(high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
                 dst = new AsmRegisterOperand("eax");
                 dstType = LLVMBaseType.I32;
@@ -329,7 +312,6 @@ public class AsmFactory {
             }
             case "imulq": {
                 LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
-                src = getOperandLoad(LLVMBaseType.I64, operand);
                 out = LLVMAMD64ImulqNodeGen.create(high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
                 dst = new AsmRegisterOperand("rax");
                 dstType = LLVMBaseType.I64;
@@ -337,7 +319,6 @@ public class AsmFactory {
             }
             // TODO: implement properly
             case "divb":
-                src = getOperandLoad(LLVMBaseType.I8, operand);
                 out = LLVMAMD64IdivbNodeGen.create(getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
                 dstType = LLVMBaseType.I16;
@@ -345,7 +326,6 @@ public class AsmFactory {
             case "divw": {
                 LLVMAMD64WriteI16RegisterNode rem = getRegisterStore("dx");
                 LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("dx"));
-                src = getOperandLoad(LLVMBaseType.I16, operand);
                 out = LLVMAMD64IdivwNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
                 dstType = LLVMBaseType.I16;
@@ -354,7 +334,6 @@ public class AsmFactory {
             case "divl": {
                 LLVMAMD64WriteI32RegisterNode rem = getRegisterStore("edx");
                 LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("edx"));
-                src = getOperandLoad(LLVMBaseType.I32, operand);
                 out = LLVMAMD64IdivlNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
                 dst = new AsmRegisterOperand("eax");
                 dstType = LLVMBaseType.I32;
@@ -363,7 +342,6 @@ public class AsmFactory {
             case "divq": {
                 LLVMAMD64WriteI64RegisterNode rem = getRegisterStore("rdx");
                 LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("rdx"));
-                src = getOperandLoad(LLVMBaseType.I64, operand);
                 out = LLVMAMD64IdivqNodeGen.create(rem, high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
                 dst = new AsmRegisterOperand("rax");
                 dstType = LLVMBaseType.I64;
@@ -377,7 +355,6 @@ public class AsmFactory {
                 break;
             case "mulw": {
                 LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
-                src = getOperandLoad(LLVMBaseType.I16, operand);
                 out = LLVMAMD64MulwNodeGen.create(high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
                 dstType = LLVMBaseType.I16;
@@ -385,7 +362,6 @@ public class AsmFactory {
             }
             case "mull": {
                 LLVMAMD64WriteI32RegisterNode high = getRegisterStore("edx");
-                src = getOperandLoad(LLVMBaseType.I32, operand);
                 out = LLVMAMD64MullNodeGen.create(high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
                 dst = new AsmRegisterOperand("eax");
                 dstType = LLVMBaseType.I32;
@@ -393,7 +369,6 @@ public class AsmFactory {
             }
             case "mulq": {
                 LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
-                src = getOperandLoad(LLVMBaseType.I64, operand);
                 out = LLVMAMD64MulqNodeGen.create(high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
                 dst = new AsmRegisterOperand("rax");
                 dstType = LLVMBaseType.I64;
@@ -412,55 +387,57 @@ public class AsmFactory {
         LLVMExpressionNode srcB;
         LLVMExpressionNode out;
         AsmOperand dst = b;
-        LLVMBaseType dstType = LLVMBaseType.I8;
+        LLVMBaseType dstType;
+        switch (operation.charAt(operation.length() - 1)) {
+            case 'b':
+                srcA = getOperandLoad(LLVMBaseType.I8, a);
+                srcB = getOperandLoad(LLVMBaseType.I8, b);
+                dstType = LLVMBaseType.I8;
+                break;
+            case 'w':
+                srcA = getOperandLoad(LLVMBaseType.I16, a);
+                srcB = getOperandLoad(LLVMBaseType.I16, b);
+                dstType = LLVMBaseType.I16;
+                break;
+            case 'l':
+                srcA = getOperandLoad(LLVMBaseType.I32, a);
+                srcB = getOperandLoad(LLVMBaseType.I32, b);
+                dstType = LLVMBaseType.I32;
+                break;
+            case 'q':
+                srcA = getOperandLoad(LLVMBaseType.I64, a);
+                srcB = getOperandLoad(LLVMBaseType.I64, b);
+                dstType = LLVMBaseType.I64;
+                break;
+            default:
+                srcA = null;
+                srcB = null;
+                dstType = LLVMBaseType.I8;
+        }
         switch (operation) {
             case "addb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
                 out = LLVMAMD64AddbNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I8;
                 break;
             case "addw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 out = LLVMAMD64AddwNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I16;
                 break;
             case "addl":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 out = LLVMAMD64AddlNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I32;
                 break;
             case "addq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 out = LLVMAMD64AddqNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I64;
                 break;
             case "subb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
                 out = LLVMAMD64SubbNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I8;
                 break;
             case "subw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 out = LLVMAMD64SubwNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I16;
                 break;
             case "subl":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 out = LLVMAMD64SublNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I32;
                 break;
             case "subq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 out = LLVMAMD64SubqNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I64;
                 break;
             case "idivb":
                 srcA = getOperandLoad(LLVMBaseType.I8, a);
@@ -470,33 +447,24 @@ public class AsmFactory {
                 dstType = LLVMBaseType.I16;
                 break;
             case "idivw": {
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 LLVMAMD64WriteI16RegisterNode rem = getRegisterStore("dx");
                 LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("dx"));
                 out = LLVMAMD64IdivwNodeGen.create(rem, high, srcB, srcA);
                 dst = new AsmRegisterOperand("ax");
-                dstType = LLVMBaseType.I16;
                 break;
             }
             case "idivl": {
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 LLVMAMD64WriteI32RegisterNode rem = getRegisterStore("edx");
                 LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("edx"));
                 out = LLVMAMD64IdivlNodeGen.create(rem, high, srcB, srcA);
                 dst = new AsmRegisterOperand("eax");
-                dstType = LLVMBaseType.I32;
                 break;
             }
             case "idivq": {
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 LLVMAMD64WriteI64RegisterNode rem = getRegisterStore("rdx");
                 LLVMExpressionNode high = getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("rdx"));
                 out = LLVMAMD64IdivqNodeGen.create(rem, high, srcB, srcA);
                 dst = new AsmRegisterOperand("rax");
-                dstType = LLVMBaseType.I64;
                 break;
             }
             case "imulb":
@@ -506,216 +474,109 @@ public class AsmFactory {
                 dstType = LLVMBaseType.I16;
                 break;
             case "imulw": {
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
                 out = LLVMAMD64ImulwNodeGen.create(high, srcA, srcB);
-                dstType = LLVMBaseType.I16;
                 break;
             }
             case "imull": {
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 LLVMAMD64WriteI32RegisterNode high = getRegisterStore("edx");
                 out = LLVMAMD64ImullNodeGen.create(high, srcA, srcB);
-                dstType = LLVMBaseType.I32;
                 break;
             }
             case "imulq": {
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
                 out = LLVMAMD64ImulqNodeGen.create(high, srcA, srcB);
-                dstType = LLVMBaseType.I64;
                 break;
             }
             case "movb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                dstType = LLVMBaseType.I8;
-                out = srcA;
-                break;
             case "movw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                dstType = LLVMBaseType.I16;
-                out = srcA;
-                break;
             case "movl":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                dstType = LLVMBaseType.I32;
-                out = srcA;
-                break;
             case "movq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                dstType = LLVMBaseType.I64;
                 out = srcA;
                 break;
             case "salb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
                 out = LLVMAMD64SalbNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I8;
                 break;
             case "salw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 out = LLVMAMD64SalwNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I16;
                 break;
             case "sall":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 out = LLVMAMD64SallNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I32;
                 break;
             case "salq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 out = LLVMAMD64SalqNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I64;
                 break;
             case "sarb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
                 out = LLVMAMD64SarbNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I8;
                 break;
             case "sarw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 out = LLVMAMD64SarwNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I16;
                 break;
             case "sarl":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 out = LLVMAMD64SarlNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I32;
                 break;
             case "sarq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 out = LLVMAMD64SarqNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I64;
                 break;
             case "shlb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
                 out = LLVMAMD64ShlbNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I8;
                 break;
             case "shlw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 out = LLVMAMD64ShlwNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I16;
                 break;
             case "shll":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 out = LLVMAMD64ShllNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I32;
                 break;
             case "shlq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 out = LLVMAMD64ShlqNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I64;
                 break;
             case "shrb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
                 out = LLVMAMD64ShrbNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I8;
                 break;
             case "shrw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 out = LLVMAMD64ShrwNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I16;
                 break;
             case "shrl":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 out = LLVMAMD64ShrlNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I32;
                 break;
             case "shrq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 out = LLVMAMD64ShrqNodeGen.create(srcB, srcA);
-                dstType = LLVMBaseType.I64;
                 break;
             case "andb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
                 out = LLVMAMD64AndbNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I8;
                 break;
             case "andw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 out = LLVMAMD64AndwNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I16;
                 break;
             case "andl":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 out = LLVMAMD64AndlNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I32;
                 break;
             case "andq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 out = LLVMAMD64AndqNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I64;
                 break;
             case "orb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
                 out = LLVMAMD64OrbNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I8;
                 break;
             case "orw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 out = LLVMAMD64OrwNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I16;
                 break;
             case "orl":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 out = LLVMAMD64OrlNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I32;
                 break;
             case "orq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 out = LLVMAMD64OrqNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I64;
                 break;
             case "xorb":
-                srcA = getOperandLoad(LLVMBaseType.I8, a);
-                srcB = getOperandLoad(LLVMBaseType.I8, b);
                 out = LLVMAMD64XorbNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I8;
                 break;
             case "xorw":
-                srcA = getOperandLoad(LLVMBaseType.I16, a);
-                srcB = getOperandLoad(LLVMBaseType.I16, b);
                 out = LLVMAMD64XorwNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I16;
                 break;
             case "xorl":
-                srcA = getOperandLoad(LLVMBaseType.I32, a);
-                srcB = getOperandLoad(LLVMBaseType.I32, b);
                 out = LLVMAMD64XorlNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I32;
                 break;
             case "xorq":
-                srcA = getOperandLoad(LLVMBaseType.I64, a);
-                srcB = getOperandLoad(LLVMBaseType.I64, b);
                 out = LLVMAMD64XorqNodeGen.create(srcA, srcB);
-                dstType = LLVMBaseType.I64;
                 break;
             default:
                 statements.add(new LLVMI32UnsupportedInlineAssemblerNode());
