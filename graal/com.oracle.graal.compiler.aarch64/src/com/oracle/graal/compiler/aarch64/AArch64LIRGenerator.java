@@ -42,6 +42,7 @@ import com.oracle.graal.lir.SwitchStrategy;
 import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.aarch64.AArch64AddressValue;
 import com.oracle.graal.lir.aarch64.AArch64ArithmeticOp;
+import com.oracle.graal.lir.aarch64.AArch64ArrayEqualsOp;
 import com.oracle.graal.lir.aarch64.AArch64ByteSwapOp;
 import com.oracle.graal.lir.aarch64.AArch64Compare;
 import com.oracle.graal.lir.aarch64.AArch64ControlFlow;
@@ -53,7 +54,6 @@ import com.oracle.graal.lir.aarch64.AArch64Move;
 import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.aarch64.AArch64Move.MembarOp;
 import com.oracle.graal.lir.aarch64.AArch64PauseOp;
-import com.oracle.graal.lir.aarch64.AArch64SignExtendOp;
 import com.oracle.graal.lir.gen.LIRGenerationResult;
 import com.oracle.graal.lir.gen.LIRGenerator;
 import com.oracle.graal.phases.util.Providers;
@@ -413,8 +413,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length) {
-        // TODO (das) Do not generate until we support vector instructions
-        throw GraalError.unimplemented("Do not generate until we support vector instructions");
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length)));
+        return result;
     }
 
     @Override

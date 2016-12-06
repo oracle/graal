@@ -1505,4 +1505,14 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public AbstractAddress getPlaceholder(int instructionStartPosition) {
         return AArch64Address.PLACEHOLDER;
     }
+
+    /**
+     * Loads an address into Register d.
+     *
+     * @param d general purpose register. May not be null.
+     * @param a AArch64Address the address of an operand.
+     */
+    public void lea(Register d, AArch64Address a) {
+        a.lea(this, d);
+    }
 }
