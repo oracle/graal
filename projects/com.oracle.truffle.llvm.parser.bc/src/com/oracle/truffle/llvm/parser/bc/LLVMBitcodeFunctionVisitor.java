@@ -36,6 +36,8 @@ import java.util.Map;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionBlock;
@@ -51,7 +53,7 @@ class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final FrameDescriptor frame;
 
-    private final List<LLVMNode> blocks = new ArrayList<>();
+    private final List<LLVMExpressionNode> blocks = new ArrayList<>();
 
     private final Map<String, Integer> labels;
 
@@ -83,7 +85,7 @@ class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         instructions.add(node);
     }
 
-    void addTerminatingInstruction(LLVMNode node, int blockId, String blockName) {
+    void addTerminatingInstruction(LLVMControlFlowNode node, int blockId, String blockName) {
         blocks.add(factoryFacade.createBasicBlockNode(module, getBlock(), node, blockId, blockName));
         instructions.add(node);
     }
@@ -92,11 +94,11 @@ class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         return argCount;
     }
 
-    public LLVMNode[] getBlock() {
-        return instructions.toArray(new LLVMNode[instructions.size()]);
+    public LLVMExpressionNode[] getBlock() {
+        return instructions.toArray(new LLVMExpressionNode[instructions.size()]);
     }
 
-    public List<LLVMNode> getBlocks() {
+    public List<LLVMExpressionNode> getBlocks() {
         return Collections.unmodifiableList(blocks);
     }
 

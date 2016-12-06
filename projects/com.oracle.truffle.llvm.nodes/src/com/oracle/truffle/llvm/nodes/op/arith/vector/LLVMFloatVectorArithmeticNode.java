@@ -32,13 +32,12 @@ package com.oracle.truffle.llvm.nodes.op.arith.vector;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMFloatVectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
 
-@NodeChildren({@NodeChild(value = "addressNode", type = LLVMAddressNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
-public abstract class LLVMFloatVectorArithmeticNode extends LLVMFloatVectorNode {
+@NodeChildren({@NodeChild(value = "addressNode", type = LLVMExpressionNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
+public abstract class LLVMFloatVectorArithmeticNode extends LLVMExpressionNode {
 
     public abstract static class LLVMFloatVectorAddNode extends LLVMFloatVectorArithmeticNode {
         @Specialization

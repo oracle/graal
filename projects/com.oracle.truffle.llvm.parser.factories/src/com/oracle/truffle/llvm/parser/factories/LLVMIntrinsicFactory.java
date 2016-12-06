@@ -35,13 +35,10 @@ import java.util.Map;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16Factory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32Factory;
@@ -85,7 +82,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 
 public final class LLVMIntrinsicFactory {
 
-    private static final Map<String, NodeFactory<? extends LLVMNode>> factories = new HashMap<>();
+    private static final Map<String, NodeFactory<? extends LLVMExpressionNode>> factories = new HashMap<>();
 
     static {
         // memset
@@ -133,51 +130,52 @@ public final class LLVMIntrinsicFactory {
     // The nodes are directly inserted in the current LLVM AST for the moment. To change this later
     // one,
     // reuse the same intrinsic node classes but pass arg read nodes as there arguments.
-    public static LLVMNode create(FunctionType declaration, Object[] argNodes, int numberOfExplicitArguments, LLVMParserRuntime runtime) {
+    public static LLVMExpressionNode create(FunctionType declaration, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, LLVMParserRuntime runtime) {
         return create(declaration.getName(), argNodes, numberOfExplicitArguments, runtime.getStackPointerSlot());
     }
 
-    public static LLVMNode create(String functionName, Object[] argNodes, int numberOfExplicitArguments, FrameSlot stack) {
-        NodeFactory<? extends LLVMNode> factory = factories.get(functionName);
+    public static LLVMExpressionNode create(String functionName, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, FrameSlot stack) {
+        NodeFactory<? extends LLVMExpressionNode> factory = factories.get(functionName);
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-        LLVMAddressNode readStackPointerNode = (LLVMAddressNode) argNodes[0];
+        LLVMExpressionNode readStackPointerNode = argNodes[0];
         Object[] realArgNodes = new Object[argNodes.length - LLVMCallNode.ARG_START_INDEX];
         System.arraycopy(argNodes, LLVMCallNode.ARG_START_INDEX, realArgNodes, 0, realArgNodes.length);
         if (factory == null) {
             if (functionName.equals("@llvm.uadd.with.overflow.i32")) {
-                return LLVMUAddWithOverflowI32NodeGen.create((LLVMI32Node) realArgNodes[1], (LLVMI32Node) realArgNodes[2], (LLVMAddressNode) realArgNodes[0]);
+                return LLVMUAddWithOverflowI32NodeGen.create((LLVMExpressionNode) realArgNodes[1], (LLVMExpressionNode) realArgNodes[2], (LLVMExpressionNode) realArgNodes[0]);
             } else if (functionName.equals("@llvm.stacksave")) {
                 return LLVMStackSaveNodeGen.create(readStackPointerNode);
             } else if (functionName.equals("@llvm.stackrestore")) {
-                return LLVMStackRestoreNodeGen.create((LLVMAddressNode) realArgNodes[0], context, stack);
+                return LLVMStackRestoreNodeGen.create((LLVMExpressionNode) realArgNodes[0], context, stack);
             } else if (functionName.equals("@llvm.frameaddress")) {
-                return LLVMFrameAddressNodeGen.create((LLVMI32Node) realArgNodes[0], stack);
+                return LLVMFrameAddressNodeGen.create((LLVMExpressionNode) realArgNodes[0], stack);
             } else if (functionName.startsWith("@llvm.va_start")) {
-                return new LLVMX86_64BitVAStart(numberOfExplicitArguments, (LLVMAddressNode) realArgNodes[0]);
+                return new LLVMX86_64BitVAStart(numberOfExplicitArguments, (LLVMExpressionNode) realArgNodes[0]);
             } else if (functionName.startsWith("@llvm.va_end")) {
-                return new LLVMX86_64BitVAEnd((LLVMAddressNode) realArgNodes[0]);
+                return new LLVMX86_64BitVAEnd((LLVMExpressionNode) realArgNodes[0]);
             } else if (functionName.startsWith("@llvm.va_copy")) {
-                return LLVMX86_64BitVACopyNodeGen.create((LLVMAddressNode) realArgNodes[0], (LLVMAddressNode) realArgNodes[1], numberOfExplicitArguments);
+                return LLVMX86_64BitVACopyNodeGen.create((LLVMExpressionNode) realArgNodes[0], (LLVMExpressionNode) realArgNodes[1], numberOfExplicitArguments);
             } else if (functionName.equals("@llvm.eh.sjlj.longjmp") || functionName.equals("@llvm.eh.sjlj.setjmp")) {
                 throw new LLVMUnsupportedException(UnsupportedReason.SET_JMP_LONG_JMP);
             } else if (functionName.startsWith("@llvm.objectsize.i64")) {
-                return LLVMI64ObjectSizeNodeGen.create((LLVMAddressNode) realArgNodes[0], (LLVMI1Node) realArgNodes[1]);
+                return LLVMI64ObjectSizeNodeGen.create((LLVMExpressionNode) realArgNodes[0], (LLVMExpressionNode) realArgNodes[1]);
             } else if (functionName.startsWith("@llvm.expect")) {
                 return getExpect(realArgNodes, functionName);
             } else if (functionName.startsWith("@llvm.dbg.declare")) {
-                return new LLVMNode() {
+                return new LLVMExpressionNode() {
 
                     @Override
-                    public void executeVoid(VirtualFrame frame) {
+                    public Object executeGeneric(VirtualFrame frame) {
                         // TODO: implement debugging support
+                        return null;
                     }
 
                 };
             } else if (functionName.startsWith("@llvm.dbg.value")) {
-                return new LLVMNode() {
+                return new LLVMExpressionNode() {
 
                     @Override
-                    public void executeVoid(VirtualFrame frame) {
+                    public Object executeGeneric(VirtualFrame frame) {
                         /*
                          * TODO: implement
                          *
@@ -186,6 +184,7 @@ public final class LLVMIntrinsicFactory {
                          *
                          * $ opt -O3 mycode.ll -S -o mycode.opt.ll
                          */
+                        return null;
                     }
 
                 };
@@ -198,21 +197,25 @@ public final class LLVMIntrinsicFactory {
 
     }
 
-    private static LLVMNode getExpect(Object[] argNodes, String functionName) {
-        if (functionName.startsWith("@llvm.expect.i1")) {
-            boolean expectedValue = ((LLVMI1Node) argNodes[1]).executeI1(null);
-            LLVMI1Node actualValueNode = (LLVMI1Node) argNodes[0];
-            return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode);
-        } else if (functionName.startsWith("@llvm.expect.i32")) {
-            int expectedValue = ((LLVMI32Node) argNodes[1]).executeI32(null);
-            LLVMI32Node actualValueNode = (LLVMI32Node) argNodes[0];
-            return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode);
-        } else if (functionName.startsWith("@llvm.expect.i64")) {
-            long expectedValue = ((LLVMI64Node) argNodes[1]).executeI64(null);
-            LLVMI64Node actualValueNode = (LLVMI64Node) argNodes[0];
-            return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
-        } else {
-            throw new IllegalStateException(functionName);
+    private static LLVMExpressionNode getExpect(Object[] argNodes, String functionName) {
+        try {
+            if (functionName.startsWith("@llvm.expect.i1")) {
+                boolean expectedValue = ((LLVMExpressionNode) argNodes[1]).executeI1(null);
+                LLVMExpressionNode actualValueNode = (LLVMExpressionNode) argNodes[0];
+                return LLVMExpectI1NodeGen.create(expectedValue, actualValueNode);
+            } else if (functionName.startsWith("@llvm.expect.i32")) {
+                int expectedValue = ((LLVMExpressionNode) argNodes[1]).executeI32(null);
+                LLVMExpressionNode actualValueNode = (LLVMExpressionNode) argNodes[0];
+                return LLVMExpectI32NodeGen.create(expectedValue, actualValueNode);
+            } else if (functionName.startsWith("@llvm.expect.i64")) {
+                long expectedValue = ((LLVMExpressionNode) argNodes[1]).executeI64(null);
+                LLVMExpressionNode actualValueNode = (LLVMExpressionNode) argNodes[0];
+                return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
+            } else {
+                throw new IllegalStateException(functionName);
+            }
+        } catch (UnexpectedResultException e) {
+            throw new IllegalStateException(e);
         }
     }
 

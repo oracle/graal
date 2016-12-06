@@ -44,8 +44,8 @@ import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeLibraryHandle;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.api.LLVMType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -64,8 +64,6 @@ public class NativeLookup {
     private final Map<LLVMFunction, Integer> nativeFunctionLookupStats;
 
     private final Map<LLVMFunction, NativeFunctionHandle> cachedNativeFunctions = new WeakHashMap<>();
-
-    private final NodeFactoryFacade facade;
 
     public static NativeFunctionInterface getNFI() {
         CompilerAsserts.neverPartOfCompilation();
@@ -101,8 +99,7 @@ public class NativeLookup {
         return handles;
     }
 
-    public NativeLookup(NodeFactoryFacade facade) {
-        this.facade = facade;
+    public NativeLookup() {
         if (LLVMOptions.DEBUG.printNativeCallStatistics()) {
             nativeFunctionLookupStats = new TreeMap<>();
         } else {
@@ -153,12 +150,12 @@ public class NativeLookup {
         return lookupSymbol(name.substring(1));
     }
 
-    public NativeFunctionHandle getNativeHandle(LLVMFunction function, LLVMExpressionNode[] args) {
+    public NativeFunctionHandle getNativeHandle(LLVMFunction function, LLVMType[] argTypes) {
         CompilerAsserts.neverPartOfCompilation();
         if (cachedNativeFunctions.containsKey(function)) {
             return cachedNativeFunctions.get(function);
         } else {
-            NativeFunctionHandle handle = uncachedGetNativeFunctionHandle(function, args);
+            NativeFunctionHandle handle = uncachedGetNativeFunctionHandle(function, argTypes);
             // FIXME we should also cache var args!
             if (!function.isVarArgs()) {
                 cachedNativeFunctions.put(function, handle);
@@ -167,9 +164,9 @@ public class NativeLookup {
         }
     }
 
-    private NativeFunctionHandle uncachedGetNativeFunctionHandle(LLVMFunction function, LLVMExpressionNode[] args) {
+    private NativeFunctionHandle uncachedGetNativeFunctionHandle(LLVMFunction function, LLVMType[] argTypes) {
         Class<?> retType = getJavaClass(function.getReturnType());
-        Class<?>[] paramTypes = getJavaClassses(args);
+        Class<?>[] paramTypes = getJavaClassses(argTypes);
         String functionName = function.getName().substring(1);
         NativeFunctionHandle functionHandle;
         if (functionName.equals("fork") || functionName.equals("pthread_create") || functionName.equals("pipe")) {
@@ -199,10 +196,10 @@ public class NativeLookup {
     }
 
     // TODO: are there cases where the nodes alone are not sufficient, and we also need the types??
-    private Class<?>[] getJavaClassses(LLVMExpressionNode[] args) {
-        Class<?>[] types = new Class<?>[args.length];
-        for (int i = 0; i < args.length; i++) {
-            types[i] = facade.getJavaClass(args[i]);
+    private static Class<?>[] getJavaClassses(LLVMType[] argsTypes) {
+        Class<?>[] types = new Class<?>[argsTypes.length];
+        for (int i = 0; i < argsTypes.length; i++) {
+            types[i] = getJavaClass(argsTypes[i]);
         }
         return types;
     }
@@ -242,6 +239,33 @@ public class NativeLookup {
                 return long.class;
             default:
                 throw new AssertionError(type);
+        }
+    }
+
+    // from facade
+    private static Class<?> getJavaClass(LLVMType arg) {
+        if (arg.getType() == LLVMBaseType.I1) {
+            return boolean.class;
+        } else if (arg.getType() == LLVMBaseType.I8) {
+            return byte.class;
+        } else if (arg.getType() == LLVMBaseType.I16) {
+            return short.class;
+        } else if (arg.getType() == LLVMBaseType.I32) {
+            return int.class;
+        } else if (arg.getType() == LLVMBaseType.I64) {
+            return long.class;
+        } else if (arg.getType() == LLVMBaseType.FLOAT) {
+            return float.class;
+        } else if (arg.getType() == LLVMBaseType.DOUBLE) {
+            return double.class;
+        } else if (arg.getType() == LLVMBaseType.ADDRESS) {
+            return long.class;
+        } else if (arg.getType() == LLVMBaseType.X86_FP80) {
+            return byte[].class;
+        } else if (arg.getType() == LLVMBaseType.FUNCTION_ADDRESS) {
+            return long.class;
+        } else {
+            throw new AssertionError(arg);
         }
     }
 

@@ -30,15 +30,15 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 
-public abstract class LLVMAbort extends LLVMVoidIntrinsic {
+public abstract class LLVMAbort extends LLVMIntrinsic {
 
     public static final int UNIX_SIGABORT = 134;
 
     @Specialization
-    public void execute() {
+    public Object execute() {
         throw new LLVMExitException(UNIX_SIGABORT);
     }
 

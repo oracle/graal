@@ -34,11 +34,10 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild(type = LLVMDoubleNode.class), @NodeChild(type = LLVMDoubleNode.class)})
-public abstract class LLVMDoubleCompareNode extends LLVMI1Node {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMDoubleCompareNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     private static boolean areOrdered(double... vals) {

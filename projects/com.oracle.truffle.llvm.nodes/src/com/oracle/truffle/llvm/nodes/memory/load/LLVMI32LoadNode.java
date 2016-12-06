@@ -39,21 +39,20 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.IntValueProfile;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-@NodeChild(type = LLVMAddressNode.class)
-public abstract class LLVMI32LoadNode extends LLVMI32Node {
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
 
     protected int doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
         try {
-            int index = (int) (addr.getOffset() / LLVMI32Node.BYTE_SIZE);
+            int index = (int) (addr.getOffset() / LLVMExpressionNode.I32_SIZE_IN_BYTES);
             Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
             return toLLVM.convert(frame, value, int.class);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {

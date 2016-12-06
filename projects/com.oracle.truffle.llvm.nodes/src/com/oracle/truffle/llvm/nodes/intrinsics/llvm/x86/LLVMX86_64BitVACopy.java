@@ -34,20 +34,19 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
-@NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 @NodeField(type = int.class, name = "numberExplicitArguments")
-public abstract class LLVMX86_64BitVACopy extends LLVMNode {
+public abstract class LLVMX86_64BitVACopy extends LLVMExpressionNode {
 
     public abstract int getNumberExplicitArguments();
 
     @Specialization
-    public void executeVoid(VirtualFrame frame, LLVMAddress dest, LLVMAddress source) {
+    public Object executeVoid(VirtualFrame frame, LLVMAddress dest, LLVMAddress source) {
         int varArgsStartIndex = 1 + getNumberExplicitArguments();
         int argumentsLength = frame.getArguments().length;
         if (varArgsStartIndex != argumentsLength) {
@@ -55,6 +54,7 @@ public abstract class LLVMX86_64BitVACopy extends LLVMNode {
             int size = LLVMX86_64BitVAStart.getSize(types);
             LLVMHeap.memCopy(dest, source, size);
         }
+        return null;
     }
 
 }

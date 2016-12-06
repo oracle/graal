@@ -35,13 +35,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-public abstract class LLVMTruffleGetArg extends LLVMAddressIntrinsic {
+public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(VirtualFrame frame, int index) {
+    public Object doIntrinsic(VirtualFrame frame, int index) {
         assert index >= 0;
         Object[] arguments = frame.getArguments();
         return arguments[LLVMCallNode.ARG_START_INDEX + index];

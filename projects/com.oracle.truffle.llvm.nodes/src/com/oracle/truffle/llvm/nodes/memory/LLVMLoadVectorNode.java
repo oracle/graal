@@ -32,14 +32,7 @@ package com.oracle.truffle.llvm.nodes.memory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMDoubleVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMFloatVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI16VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI1VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI64VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI8VectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
@@ -52,9 +45,9 @@ import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 
 public class LLVMLoadVectorNode {
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI1VectorNode extends LLVMI1VectorNode {
+    public abstract static class LLVMLoadI1VectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
 
@@ -64,9 +57,9 @@ public class LLVMLoadVectorNode {
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI8VectorNode extends LLVMI8VectorNode {
+    public abstract static class LLVMLoadI8VectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
 
@@ -76,9 +69,9 @@ public class LLVMLoadVectorNode {
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI16VectorNode extends LLVMI16VectorNode {
+    public abstract static class LLVMLoadI16VectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
 
@@ -88,9 +81,9 @@ public class LLVMLoadVectorNode {
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI32VectorNode extends LLVMI32VectorNode {
+    public abstract static class LLVMLoadI32VectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
 
@@ -100,9 +93,9 @@ public class LLVMLoadVectorNode {
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI64VectorNode extends LLVMI64VectorNode {
+    public abstract static class LLVMLoadI64VectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
 
@@ -112,9 +105,9 @@ public class LLVMLoadVectorNode {
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadFloatVectorNode extends LLVMFloatVectorNode {
+    public abstract static class LLVMLoadFloatVectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
 
@@ -124,9 +117,9 @@ public class LLVMLoadVectorNode {
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadDoubleVectorNode extends LLVMDoubleVectorNode {
+    public abstract static class LLVMLoadDoubleVectorNode extends LLVMExpressionNode {
 
         public abstract int getSize();
 

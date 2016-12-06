@@ -29,25 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.literals;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMDoubleVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMFloatVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI16VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI1VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI64VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI8VectorNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
@@ -59,12 +47,12 @@ import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 
 public class LLVMVectorLiteralNode {
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMVectorI1LiteralNode extends LLVMI1VectorNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMVectorI1LiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI1Node[] values;
+        @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI1LiteralNode(LLVMI1Node[] values) {
+        public LLVMVectorI1LiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -73,19 +61,24 @@ public class LLVMVectorLiteralNode {
         public LLVMI1Vector executeI1Vector(VirtualFrame frame, LLVMAddress target) {
             boolean[] vals = new boolean[values.length];
             for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeI1(frame);
+                try {
+                    vals[i] = values[i].executeI1(frame);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return LLVMI1Vector.fromI1Array(target, vals);
         }
 
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMVectorI8LiteralNode extends LLVMI8VectorNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMVectorI8LiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI8Node[] values;
+        @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI8LiteralNode(LLVMI8Node[] values) {
+        public LLVMVectorI8LiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -94,19 +87,24 @@ public class LLVMVectorLiteralNode {
         public LLVMI8Vector executeI8Vector(VirtualFrame frame, LLVMAddress target) {
             byte[] vals = new byte[values.length];
             for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeI8(frame);
+                try {
+                    vals[i] = values[i].executeI8(frame);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return LLVMI8Vector.fromI8Array(target, vals);
         }
 
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMVectorI16LiteralNode extends LLVMI16VectorNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMVectorI16LiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI16Node[] values;
+        @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI16LiteralNode(LLVMI16Node[] values) {
+        public LLVMVectorI16LiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -115,18 +113,23 @@ public class LLVMVectorLiteralNode {
         public LLVMI16Vector executeI16Vector(VirtualFrame frame, LLVMAddress target) {
             short[] vals = new short[values.length];
             for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeI16(frame);
+                try {
+                    vals[i] = values[i].executeI16(frame);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return LLVMI16Vector.fromI16Array(target, vals);
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMVectorI32LiteralNode extends LLVMI32VectorNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMVectorI32LiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI32Node[] values;
+        @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI32LiteralNode(LLVMI32Node[] values) {
+        public LLVMVectorI32LiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -135,18 +138,23 @@ public class LLVMVectorLiteralNode {
         public LLVMI32Vector executeI32Vector(VirtualFrame frame, LLVMAddress target) {
             int[] vals = new int[values.length];
             for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeI32(frame);
+                try {
+                    vals[i] = values[i].executeI32(frame);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return LLVMI32Vector.fromI32Array(target, vals);
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMVectorI64LiteralNode extends LLVMI64VectorNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMVectorI64LiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI64Node[] values;
+        @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorI64LiteralNode(LLVMI64Node[] values) {
+        public LLVMVectorI64LiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -155,18 +163,23 @@ public class LLVMVectorLiteralNode {
         public LLVMI64Vector executeI64Vector(VirtualFrame frame, LLVMAddress target) {
             long[] vals = new long[values.length];
             for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeI64(frame);
+                try {
+                    vals[i] = values[i].executeI64(frame);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return LLVMI64Vector.fromI64Array(target, vals);
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMVectorFloatLiteralNode extends LLVMFloatVectorNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMVectorFloatLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMFloatNode[] values;
+        @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorFloatLiteralNode(LLVMFloatNode[] values) {
+        public LLVMVectorFloatLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -175,19 +188,24 @@ public class LLVMVectorLiteralNode {
         public LLVMFloatVector executeFloatVector(VirtualFrame frame, LLVMAddress target) {
             float[] vals = new float[values.length];
             for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeFloat(frame);
+                try {
+                    vals[i] = values[i].executeFloat(frame);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return LLVMFloatVector.fromFloatArray(target, vals);
         }
 
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMVectorDoubleLiteralNode extends LLVMDoubleVectorNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMVectorDoubleLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMDoubleNode[] values;
+        @Children private final LLVMExpressionNode[] values;
 
-        public LLVMVectorDoubleLiteralNode(LLVMDoubleNode[] values) {
+        public LLVMVectorDoubleLiteralNode(LLVMExpressionNode[] values) {
             this.values = values;
         }
 
@@ -196,7 +214,12 @@ public class LLVMVectorLiteralNode {
         public LLVMDoubleVector executeDoubleVector(VirtualFrame frame, LLVMAddress target) {
             double[] vals = new double[values.length];
             for (int i = 0; i < values.length; i++) {
-                vals[i] = values[i].executeDouble(frame);
+                try {
+                    vals[i] = values[i].executeDouble(frame);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return LLVMDoubleVector.fromDoubleArray(target, vals);
         }

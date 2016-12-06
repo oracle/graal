@@ -33,18 +33,16 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI1VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
 
 @NodeChildren({
-                @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
-                @NodeChild(value = "leftNode", type = LLVMI32VectorNode.class),
-                @NodeChild(value = "rightNode", type = LLVMI32VectorNode.class)})
-public abstract class LLVMI32VectorCompareNode extends LLVMI1VectorNode {
+                @NodeChild(value = "addressNode", type = LLVMExpressionNode.class),
+                @NodeChild(value = "leftNode", type = LLVMExpressionNode.class),
+                @NodeChild(value = "rightNode", type = LLVMExpressionNode.class)})
+public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     protected LLVMI1Vector executeI1VectorBody(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {

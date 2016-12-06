@@ -34,13 +34,12 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-public abstract class LLVMNeqNode extends LLVMI1Node {
+public abstract class LLVMNeqNode extends LLVMExpressionNode {
 
     @Specialization
     public boolean executeI1(boolean val1, boolean val2) {

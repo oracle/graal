@@ -40,7 +40,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
@@ -52,14 +52,14 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
  *
  * @see <a href="http://llvm.org/docs/LangRef.html#functions">basic blocks in LLVM IR</a>
  */
-public class LLVMBasicBlockNode extends LLVMNode {
+public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
     public static final int DEFAULT_SUCCESSOR = 0;
 
     private static final boolean TRACE = LLVMOptions.DEBUG.traceExecution();
 
-    @Children private final LLVMNode[] statements;
+    @Children private final LLVMExpressionNode[] statements;
     @Child private LLVMTerminatorNode termInstruction;
 
     @CompilationFinal(dimensions = 1) private final long[] successorCount;
@@ -72,11 +72,12 @@ public class LLVMBasicBlockNode extends LLVMNode {
     @CompilationFinal private SourceSection sourceSection;
 
     @Override
-    public void executeVoid(VirtualFrame frame) {
+    public Object executeGeneric(VirtualFrame frame) {
         executeGetSuccessorIndex(frame);
+        return null;
     }
 
-    public LLVMBasicBlockNode(LLVMNode[] statements, LLVMTerminatorNode termInstruction, int blockId, String blockName) {
+    public LLVMBasicBlockNode(LLVMExpressionNode[] statements, LLVMTerminatorNode termInstruction, int blockId, String blockName) {
         this.statements = statements;
         this.termInstruction = termInstruction;
         this.blockId = blockId;
@@ -86,12 +87,12 @@ public class LLVMBasicBlockNode extends LLVMNode {
 
     @ExplodeLoop
     public int executeGetSuccessorIndex(VirtualFrame frame) {
-        for (LLVMNode statement : statements) {
+        for (LLVMExpressionNode statement : statements) {
             try {
                 if (TRACE) {
                     trace(statement);
                 }
-                statement.executeVoid(frame);
+                statement.executeGeneric(frame);
             } catch (ControlFlowException e) {
                 controlFlowExceptionProfile.enter();
                 throw e;
@@ -111,7 +112,7 @@ public class LLVMBasicBlockNode extends LLVMNode {
     }
 
     @TruffleBoundary
-    private static void trace(LLVMNode statement) {
+    private static void trace(LLVMExpressionNode statement) {
         LLVMLogger.unconditionalInfo(String.format("[sulong] %s in %s", statement.getSourceDescription(), statement.getEncapsulatingSourceSection().getSource().getName()));
     }
 

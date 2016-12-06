@@ -32,12 +32,12 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleReadBytes extends LLVMAddressIntrinsic {
+public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
     @Specialization
     public Object executeIntrinsic(LLVMAddress value) {
         byte c;

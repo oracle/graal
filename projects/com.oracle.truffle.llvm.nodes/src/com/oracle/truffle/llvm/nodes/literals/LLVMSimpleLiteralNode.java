@@ -30,23 +30,14 @@
 package com.oracle.truffle.llvm.nodes.literals;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public class LLVMSimpleLiteralNode {
 
-    public static class LLVMIVarBitLiteralNode extends LLVMIVarBitNode {
+    public static class LLVMIVarBitLiteralNode extends LLVMExpressionNode {
 
         private final LLVMIVarBit literal;
 
@@ -55,13 +46,18 @@ public class LLVMSimpleLiteralNode {
         }
 
         @Override
-        public LLVMIVarBit executeVarI(VirtualFrame frame) {
+        public LLVMIVarBit executeLLVMIVarBit(VirtualFrame frame) {
             return literal;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeLLVMIVarBit(frame);
         }
 
     }
 
-    public static class LLVMI1LiteralNode extends LLVMI1Node {
+    public static class LLVMI1LiteralNode extends LLVMExpressionNode {
 
         private final boolean literal;
 
@@ -74,9 +70,14 @@ public class LLVMSimpleLiteralNode {
             return literal;
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI1(frame);
+        }
+
     }
 
-    public static class LLVMI8LiteralNode extends LLVMI8Node {
+    public static class LLVMI8LiteralNode extends LLVMExpressionNode {
 
         private final byte literal;
 
@@ -89,9 +90,14 @@ public class LLVMSimpleLiteralNode {
             return literal;
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI8(frame);
+        }
+
     }
 
-    public static class LLVMI16LiteralNode extends LLVMI16Node {
+    public static class LLVMI16LiteralNode extends LLVMExpressionNode {
 
         private final short literal;
 
@@ -104,9 +110,14 @@ public class LLVMSimpleLiteralNode {
             return literal;
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI16(frame);
+        }
+
     }
 
-    public static class LLVMI32LiteralNode extends LLVMI32Node {
+    public static class LLVMI32LiteralNode extends LLVMExpressionNode {
 
         private final int literal;
 
@@ -119,9 +130,14 @@ public class LLVMSimpleLiteralNode {
             return literal;
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI32(frame);
+        }
+
     }
 
-    public static class LLVMI64LiteralNode extends LLVMI64Node {
+    public static class LLVMI64LiteralNode extends LLVMExpressionNode {
 
         private final long literal;
 
@@ -134,9 +150,14 @@ public class LLVMSimpleLiteralNode {
             return literal;
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI64(frame);
+        }
+
     }
 
-    public static class LLVMFloatLiteralNode extends LLVMFloatNode {
+    public static class LLVMFloatLiteralNode extends LLVMExpressionNode {
 
         private final float literal;
 
@@ -149,9 +170,13 @@ public class LLVMSimpleLiteralNode {
             return literal;
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeFloat(frame);
+        }
     }
 
-    public static class LLVMDoubleLiteralNode extends LLVMDoubleNode {
+    public static class LLVMDoubleLiteralNode extends LLVMExpressionNode {
 
         private final double literal;
 
@@ -164,9 +189,14 @@ public class LLVMSimpleLiteralNode {
             return literal;
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeDouble(frame);
+        }
+
     }
 
-    public static class LLVM80BitFloatLiteralNode extends LLVM80BitFloatNode {
+    public static class LLVM80BitFloatLiteralNode extends LLVMExpressionNode {
 
         private final LLVM80BitFloat literal;
 
@@ -175,13 +205,17 @@ public class LLVMSimpleLiteralNode {
         }
 
         @Override
-        public LLVM80BitFloat execute80BitFloat(VirtualFrame frame) {
+        public LLVM80BitFloat executeLLVM80BitFloat(VirtualFrame frame) {
             return literal;
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeLLVM80BitFloat(frame);
+        }
     }
 
-    public static class LLVMAddressLiteralNode extends LLVMAddressNode {
+    public static class LLVMAddressLiteralNode extends LLVMExpressionNode {
 
         private final LLVMAddress address;
 
@@ -190,8 +224,13 @@ public class LLVMSimpleLiteralNode {
         }
 
         @Override
-        public LLVMAddress executePointee(VirtualFrame frame) {
+        public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
             return address;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeLLVMAddress(frame);
         }
 
     }

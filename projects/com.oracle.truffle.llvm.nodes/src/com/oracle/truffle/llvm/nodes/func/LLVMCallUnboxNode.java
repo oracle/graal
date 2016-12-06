@@ -33,19 +33,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
@@ -61,60 +48,60 @@ import com.oracle.truffle.llvm.types.vector.LLVMVector;
 public abstract class LLVMCallUnboxNode {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMI1CallUnboxNode extends LLVMI1Node {
+    public abstract static class LLVMI1CallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public boolean executeI1(Object value) {
-            return (boolean) value;
+        public boolean executeI1(boolean value) {
+            return value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMI8CallUnboxNode extends LLVMI8Node {
+    public abstract static class LLVMI8CallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public byte executeI8(Object value) {
-            return (byte) value;
+        public byte executeI8(byte value) {
+            return value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMI16CallUnboxNode extends LLVMI16Node {
+    public abstract static class LLVMI16CallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public short executeI16(Object value) {
-            return (short) (int) value;
+        public short executeI16(int value) {
+            return (short) value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMI32CallUnboxNode extends LLVMI32Node {
+    public abstract static class LLVMI32CallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public int executeI32(Object value) {
-            return (int) value;
+        public int executeI32(int value) {
+            return value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMI64CallUnboxNode extends LLVMI64Node {
+    public abstract static class LLVMI64CallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public long executeI64(Object value) {
-            return (long) value;
+        public long executeI64(long value) {
+            return value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMVarBitCallUnboxNode extends LLVMIVarBitNode {
+    public abstract static class LLVMVarBitCallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMIVarBit executeVarI(Object value) {
-            return (LLVMIVarBit) value;
+        public LLVMIVarBit executeVarI(LLVMIVarBit value) {
+            return value;
         }
     }
 
-    public static class LLVMVoidCallUnboxNode extends LLVMNode {
+    public static class LLVMVoidCallUnboxNode extends LLVMExpressionNode {
 
         @Child private LLVMExpressionNode functionCallNode;
 
@@ -123,49 +110,50 @@ public abstract class LLVMCallUnboxNode {
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame) {
-            functionCallNode.executeVoid(frame);
+        public Object executeGeneric(VirtualFrame frame) {
+            functionCallNode.executeGeneric(frame);
+            return null;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMFloatCallUnboxNode extends LLVMFloatNode {
+    public abstract static class LLVMFloatCallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public float executeFloat(Object value) {
-            return (float) value;
+        public float executeFloat(float value) {
+            return value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMDoubleCallUnboxNode extends LLVMDoubleNode {
+    public abstract static class LLVMDoubleCallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public double executeDouble(Object value) {
-            return (double) value;
+        public double executeDouble(double value) {
+            return value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVM80BitFloatCallUnboxNode extends LLVM80BitFloatNode {
+    public abstract static class LLVM80BitFloatCallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVM80BitFloat execute80BitFloat(Object value) {
-            return (LLVM80BitFloat) value;
+        public LLVM80BitFloat execute80BitFloat(LLVM80BitFloat value) {
+            return value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMVectorCallUnboxNode extends LLVMVectorNode {
+    public abstract static class LLVMVectorCallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMVector<?> executeVector(Object value) {
-            return (LLVMVector<?>) value;
+        public LLVMVector<?> executeVector(LLVMVector<?> value) {
+            return value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMAddressCallUnboxNode extends LLVMAddressNode {
+    public abstract static class LLVMAddressCallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
         public Object executeObject(Object value) {
@@ -174,20 +162,20 @@ public abstract class LLVMCallUnboxNode {
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMFunctionCallUnboxNode extends LLVMFunctionNode {
+    public abstract static class LLVMFunctionCallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMFunctionDescriptor executeFunction(Object value) {
-            return (LLVMFunctionDescriptor) value;
+        public LLVMFunctionDescriptor executeFunction(LLVMFunctionDescriptor value) {
+            return value;
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "functionCallNode")
-    public abstract static class LLVMStructCallUnboxNode extends LLVMAddressNode {
+    public abstract static class LLVMStructCallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMAddress executePointee(Object value) {
-            return (LLVMAddress) value;
+        public LLVMAddress executePointee(LLVMAddress value) {
+            return value;
         }
     }
 }

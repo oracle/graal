@@ -33,12 +33,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
 
 @ImportStatic(LLVMGlobalVariableDescriptorGuards.class)
-public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMAddressNode {
+public abstract class LLVMAccessGlobalVariableStorageNode extends LLVMExpressionNode {
 
     protected final LLVMGlobalVariableDescriptor descriptor;
 

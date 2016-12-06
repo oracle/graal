@@ -31,18 +31,12 @@ package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMToI1Node {
+public abstract class LLVMToI1Node extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMI8Node.class)
-    public abstract static class LLVMI8ToI1Node extends LLVMI1Node {
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMI8ToI1Node extends LLVMToI1Node {
 
         @Specialization
         public boolean executeI1(byte from) {
@@ -50,8 +44,8 @@ public abstract class LLVMToI1Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI16Node.class)
-    public abstract static class LLVMI16ToI1Node extends LLVMI1Node {
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMI16ToI1Node extends LLVMToI1Node {
 
         @Specialization
         public boolean executeI1(short from) {
@@ -59,8 +53,8 @@ public abstract class LLVMToI1Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI32Node.class)
-    public abstract static class LLVMI32ToI1Node extends LLVMI1Node {
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMI32ToI1Node extends LLVMToI1Node {
 
         @Specialization
         public boolean executeI1(int from) {
@@ -68,8 +62,8 @@ public abstract class LLVMToI1Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
-    public abstract static class LLVMI64ToI1Node extends LLVMI1Node {
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMI64ToI1Node extends LLVMToI1Node {
 
         @Specialization
         public boolean executeI1(long from) {
@@ -77,8 +71,8 @@ public abstract class LLVMToI1Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMFloatNode.class)
-    public abstract static class LLVMFloatToI1Node extends LLVMI1Node {
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMFloatToI1Node extends LLVMToI1Node {
 
         @Specialization
         public boolean executeI1(float from) {
@@ -86,8 +80,8 @@ public abstract class LLVMToI1Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMDoubleNode.class)
-    public abstract static class LLVMDoubleToI1Node extends LLVMI1Node {
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+    public abstract static class LLVMDoubleToI1Node extends LLVMToI1Node {
 
         @Specialization
         public boolean executeI1(double from) {

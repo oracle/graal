@@ -32,10 +32,10 @@ package com.oracle.truffle.llvm.nodes.op.arith.floating;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
-public abstract class LLVMFloatArithmeticNode extends LLVMFloatNode {
+public abstract class LLVMFloatArithmeticNode extends LLVMExpressionNode {
 
     public abstract static class LLVMFloatAddNode extends LLVMFloatArithmeticNode {
         @Specialization

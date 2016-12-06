@@ -33,14 +33,13 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMPow {
 
     @GenerateNodeFactory
     @NodeChildren({@NodeChild(value = "val"), @NodeChild(value = "power")})
-    public abstract static class LLVMPowFloat extends LLVMFloatNode {
+    public abstract static class LLVMPowFloat extends LLVMExpressionNode {
 
         @Specialization
         public float executeDouble(float val, float pow) {
@@ -50,7 +49,7 @@ public abstract class LLVMPow {
 
     @GenerateNodeFactory
     @NodeChildren({@NodeChild(value = "val"), @NodeChild(value = "power")})
-    public abstract static class LLVMPowDouble extends LLVMDoubleNode {
+    public abstract static class LLVMPowDouble extends LLVMExpressionNode {
 
         @Specialization
         public double executeDouble(double val, double pow) {

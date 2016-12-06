@@ -39,7 +39,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalAlias;
@@ -85,14 +84,14 @@ public final class LLVMModelVisitor implements ModelVisitor {
     public void visit(FunctionDefinition method) {
         FrameDescriptor frame = visitor.getStack().getFrame(method.getName());
 
-        List<LLVMNode> parameters = visitor.createParameters(frame, method);
+        List<LLVMExpressionNode> parameters = visitor.createParameters(frame, method);
 
         final LLVMLifetimeAnalysis lifetimes = LLVMLifetimeAnalysis.getResult(method, frame, visitor.getPhis().getPhiMap(method.getName()));
 
         LLVMExpressionNode body = visitor.createFunction(method, lifetimes);
 
-        LLVMNode[] beforeFunction = parameters.toArray(new LLVMNode[parameters.size()]);
-        LLVMNode[] afterFunction = new LLVMNode[0];
+        LLVMExpressionNode[] beforeFunction = parameters.toArray(new LLVMExpressionNode[parameters.size()]);
+        LLVMExpressionNode[] afterFunction = new LLVMExpressionNode[0];
 
         final SourceSection sourceSection = visitor.getSource().createSection(1);
         RootNode rootNode = visitor.getNodeFactoryFacade().createFunctionStartNode(visitor, body, beforeFunction, afterFunction, sourceSection, frame, method);

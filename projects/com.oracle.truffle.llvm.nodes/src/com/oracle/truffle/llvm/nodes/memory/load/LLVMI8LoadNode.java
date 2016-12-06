@@ -39,15 +39,14 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-@NodeChild(type = LLVMAddressNode.class)
-public abstract class LLVMI8LoadNode extends LLVMI8Node {
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMI8LoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
 

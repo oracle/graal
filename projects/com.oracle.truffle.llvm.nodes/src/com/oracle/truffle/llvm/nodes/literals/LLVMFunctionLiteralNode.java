@@ -31,11 +31,11 @@ package com.oracle.truffle.llvm.nodes.literals;
 
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
 @NodeField(type = LLVMFunctionDescriptor.class, name = "function")
-public abstract class LLVMFunctionLiteralNode extends LLVMFunctionNode {
+public abstract class LLVMFunctionLiteralNode extends LLVMExpressionNode {
 
     public abstract LLVMFunctionDescriptor getFunction();
 

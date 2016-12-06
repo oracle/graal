@@ -33,14 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMDoubleVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMFloatVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI16VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI1VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI64VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI8VectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
@@ -53,11 +46,11 @@ import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 public abstract class LLVMVectorSelectNode {
 
     @NodeChildren({
-                    @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
-                    @NodeChild(value = "conditionNode", type = LLVMI1VectorNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMI1VectorNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMI1VectorNode.class)})
-    public abstract static class LLVMI1VectorSelectNode extends LLVMI1VectorNode {
+                    @NodeChild(value = "addressNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI1VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
@@ -76,11 +69,11 @@ public abstract class LLVMVectorSelectNode {
     }
 
     @NodeChildren({
-                    @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
-                    @NodeChild(value = "conditionNode", type = LLVMI1VectorNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMI8VectorNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMI8VectorNode.class)})
-    public abstract static class LLVMI8VectorSelectNode extends LLVMI8VectorNode {
+                    @NodeChild(value = "addressNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI8VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
@@ -99,11 +92,11 @@ public abstract class LLVMVectorSelectNode {
     }
 
     @NodeChildren({
-                    @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
-                    @NodeChild(value = "conditionNode", type = LLVMI1VectorNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMI16VectorNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMI16VectorNode.class)})
-    public abstract static class LLVMI16VectorSelectNode extends LLVMI16VectorNode {
+                    @NodeChild(value = "addressNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI16VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
@@ -122,11 +115,11 @@ public abstract class LLVMVectorSelectNode {
     }
 
     @NodeChildren({
-                    @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
-                    @NodeChild(value = "conditionNode", type = LLVMI1VectorNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMI32VectorNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMI32VectorNode.class)})
-    public abstract static class LLVMI32VectorSelectNode extends LLVMI32VectorNode {
+                    @NodeChild(value = "addressNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI32VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
@@ -145,11 +138,11 @@ public abstract class LLVMVectorSelectNode {
     }
 
     @NodeChildren({
-                    @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
-                    @NodeChild(value = "conditionNode", type = LLVMI1VectorNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMI64VectorNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMI64VectorNode.class)})
-    public abstract static class LLVMI64VectorSelectNode extends LLVMI64VectorNode {
+                    @NodeChild(value = "addressNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI64VectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
@@ -168,11 +161,11 @@ public abstract class LLVMVectorSelectNode {
     }
 
     @NodeChildren({
-                    @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
-                    @NodeChild(value = "conditionNode", type = LLVMI1VectorNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMFloatVectorNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMFloatVectorNode.class)})
-    public abstract static class LLVMFloatVectorSelectNode extends LLVMFloatVectorNode {
+                    @NodeChild(value = "addressNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMFloatVectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
@@ -191,11 +184,11 @@ public abstract class LLVMVectorSelectNode {
     }
 
     @NodeChildren({
-                    @NodeChild(value = "addressNode", type = LLVMAddressNode.class),
-                    @NodeChild(value = "conditionNode", type = LLVMI1VectorNode.class),
-                    @NodeChild(value = "trueNode", type = LLVMDoubleVectorNode.class),
-                    @NodeChild(value = "elseNode", type = LLVMDoubleVectorNode.class)})
-    public abstract static class LLVMDoubleVectorSelectNode extends LLVMDoubleVectorNode {
+                    @NodeChild(value = "addressNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "conditionNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "trueNode", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMDoubleVectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop

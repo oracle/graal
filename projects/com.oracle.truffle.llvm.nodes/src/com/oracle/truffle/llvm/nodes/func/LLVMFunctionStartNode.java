@@ -38,18 +38,18 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 
 public class LLVMFunctionStartNode extends RootNode {
 
     @Child private LLVMExpressionNode node;
-    @Children private final LLVMNode[] beforeFunction;
-    @Children private final LLVMNode[] afterFunction;
+    @Children private final LLVMExpressionNode[] beforeFunction;
+    @Children private final LLVMExpressionNode[] afterFunction;
     private final String functionName;
     @CompilationFinal private LLVMStackFrameNuller[] nullers;
 
-    public LLVMFunctionStartNode(LLVMExpressionNode node, LLVMNode[] beforeFunction, LLVMNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor, String functionName,
+    public LLVMFunctionStartNode(LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor,
+                    String functionName,
                     LLVMStackFrameNuller[] initNullers) {
         super(LLVMLanguage.class, sourceSection, frameDescriptor);
         this.node = node;
@@ -66,13 +66,13 @@ public class LLVMFunctionStartNode extends RootNode {
             nuller.nullifySlot(frame);
         }
         CompilerAsserts.compilationConstant(beforeFunction);
-        for (LLVMNode before : beforeFunction) {
-            before.executeVoid(frame);
+        for (LLVMExpressionNode before : beforeFunction) {
+            before.executeGeneric(frame);
         }
         Object result = node.executeGeneric(frame);
         CompilerAsserts.compilationConstant(afterFunction);
-        for (LLVMNode after : afterFunction) {
-            after.executeVoid(frame);
+        for (LLVMExpressionNode after : afterFunction) {
+            after.executeGeneric(frame);
         }
         return result;
     }

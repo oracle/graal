@@ -33,20 +33,19 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
 
-@NodeChild(type = LLVMI1Node.class)
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMConditionalBranchNode extends LLVMTerminatorNode {
 
-    @Children final LLVMNode[] truePhiWriteNodes;
-    @Children final LLVMNode[] falsePhiWriteNodes;
+    @Children final LLVMExpressionNode[] truePhiWriteNodes;
+    @Children final LLVMExpressionNode[] falsePhiWriteNodes;
 
     public static final int TRUE_SUCCESSOR = 0;
     public static final int FALSE_SUCCESSOR = 1;
 
-    public LLVMConditionalBranchNode(int trueSuccessor, int falseSuccessor, LLVMNode[] truePhiWriteNodes, LLVMNode[] falsePhiWriteNodes) {
+    public LLVMConditionalBranchNode(int trueSuccessor, int falseSuccessor, LLVMExpressionNode[] truePhiWriteNodes, LLVMExpressionNode[] falsePhiWriteNodes) {
         super(trueSuccessor, falseSuccessor);
         this.truePhiWriteNodes = truePhiWriteNodes;
         this.falsePhiWriteNodes = falsePhiWriteNodes;
@@ -55,7 +54,7 @@ public abstract class LLVMConditionalBranchNode extends LLVMTerminatorNode {
     // TODO find a better name
     public abstract static class LLVMBrConditionalNode extends LLVMConditionalBranchNode {
 
-        public LLVMBrConditionalNode(int trueSuccessor, int falseSuccessor, LLVMNode[] truePhiWriteNodes, LLVMNode[] falsePhiWriteNodes) {
+        public LLVMBrConditionalNode(int trueSuccessor, int falseSuccessor, LLVMExpressionNode[] truePhiWriteNodes, LLVMExpressionNode[] falsePhiWriteNodes) {
             super(trueSuccessor, falseSuccessor, truePhiWriteNodes, falsePhiWriteNodes);
         }
 
@@ -64,12 +63,12 @@ public abstract class LLVMConditionalBranchNode extends LLVMTerminatorNode {
         public int executeGetSuccessorIndex(VirtualFrame frame, boolean condition) {
             if (condition) {
                 for (int i = 0; i < truePhiWriteNodes.length; i++) {
-                    truePhiWriteNodes[i].executeVoid(frame);
+                    truePhiWriteNodes[i].executeGeneric(frame);
                 }
                 return TRUE_SUCCESSOR;
             } else {
                 for (int i = 0; i < falsePhiWriteNodes.length; i++) {
-                    falsePhiWriteNodes[i].executeVoid(frame);
+                    falsePhiWriteNodes[i].executeGeneric(frame);
                 }
                 return FALSE_SUCCESSOR;
             }

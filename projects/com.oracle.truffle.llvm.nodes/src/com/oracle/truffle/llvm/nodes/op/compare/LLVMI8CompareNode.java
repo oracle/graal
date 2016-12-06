@@ -32,11 +32,10 @@ package com.oracle.truffle.llvm.nodes.op.compare;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild(type = LLVMI8Node.class), @NodeChild(type = LLVMI8Node.class)})
-public abstract class LLVMI8CompareNode extends LLVMI1Node {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMI8CompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI8SltNode extends LLVMI8CompareNode {
         @Specialization

@@ -49,16 +49,15 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.api.LLVMThread;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode.LLVMUnresolvedCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMAddressLiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
+import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
+import com.oracle.truffle.llvm.parser.api.LLVMType;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
@@ -68,8 +67,8 @@ import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
 @GenerateNodeFactory
-@NodeChildren({@NodeChild(type = LLVMI32Node.class, value = "signal"), @NodeChild(type = LLVMFunctionNode.class, value = "handler")})
-public abstract class LLVMSignal extends LLVMFunctionNode {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "signal"), @NodeChild(type = LLVMExpressionNode.class, value = "handler")})
+public abstract class LLVMSignal extends LLVMExpressionNode {
 
     // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
     private static final LLVMFunctionDescriptor LLVM_SIG_DFL = LLVMFunctionDescriptor.create(0);
@@ -81,7 +80,7 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
     private static final LLVMFunctionDescriptor LLVM_SIG_ERR = LLVMFunctionDescriptor.create(-1);
 
     @Specialization
-    public LLVMFunctionDescriptor executeAddress(int signal, LLVMFunctionDescriptor handler) {
+    public LLVMFunctionDescriptor doSignal(int signal, LLVMFunctionDescriptor handler) {
         return setSignalHandler(signal, handler);
     }
 
@@ -194,14 +193,18 @@ public abstract class LLVMSignal extends LLVMFunctionNode {
                 LLVMI32LiteralNode sigNumArg = new LLVMI32LiteralNode(signal.getNumber());
                 LLVMExpressionNode[] args = {signalStack, sigNumArg};
 
-                LLVMFunctionNode functionNode = LLVMFunctionLiteralNodeGen.create(function);
+                LLVMType argType0 = new LLVMType(LLVMBaseType.ADDRESS);
+                LLVMType argType1 = new LLVMType(LLVMBaseType.I32);
+                LLVMType[] argsTypes = {argType0, argType1};
 
-                LLVMUnresolvedCallNode callNode = new LLVMUnresolvedCallNode(functionNode, args, LLVMRuntimeType.VOID, context);
+                LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(function);
+
+                LLVMUnresolvedCallNode callNode = new LLVMUnresolvedCallNode(functionNode, args, argsTypes, LLVMRuntimeType.VOID, context);
 
                 callTarget = Truffle.getRuntime().createCallTarget(
                                 new LLVMFunctionStartNode(callNode,
-                                                new LLVMNode[]{},
-                                                new LLVMNode[]{},
+                                                new LLVMExpressionNode[]{},
+                                                new LLVMExpressionNode[]{},
                                                 null,
                                                 new FrameDescriptor(), "", new LLVMStackFrameNuller[0]));
 

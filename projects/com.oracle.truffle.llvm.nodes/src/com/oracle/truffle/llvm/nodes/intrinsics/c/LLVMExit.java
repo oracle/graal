@@ -31,15 +31,15 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 
-@NodeChild(type = LLVMI32Node.class)
-public abstract class LLVMExit extends LLVMVoidIntrinsic {
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMExit extends LLVMIntrinsic {
 
     @Specialization
-    public void execute(int value) {
+    public Object execute(int value) {
         throw new LLVMExitException(value);
     }
 

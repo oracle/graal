@@ -31,18 +31,12 @@ package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
-public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
+public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMI8Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI8ToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
@@ -51,7 +45,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI8Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI8ToLLVM80BitFloatZeroExtNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
@@ -60,7 +54,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI16Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI16ToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
@@ -69,7 +63,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI32Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI32ToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
@@ -78,7 +72,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI32Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI32ToLLVM80BitFloatUnsignedNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
@@ -87,7 +81,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI64ToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
@@ -96,7 +90,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI64ToLLVM80BitFloatUnsignedNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
@@ -105,7 +99,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMFloatNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMFloatToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization
@@ -115,7 +109,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVM80BitFloatNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMDoubleNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMDoubleToLLVM80BitFloatNode extends LLVMTo80BitFloatingNode {
 
         @Specialization

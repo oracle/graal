@@ -29,32 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.types.LLVMAddress;
 
-/**
- * A {@link LLVMNode} is the super class of all LLVM nodes. Nodes that directly inherit from it are
- * usually instructions in the LLVM IR. Nodes that produce a result should inherit from
- * {@link LLVMExpressionNode}. <br />
- * <br />
- * For example, in <code>result = add i32 4, var</code> the whole instruction corresponds to the
- * notion of a statement since its result is not returned to the enclosing block and thus inherits
- * from {@link LLVMNode}. Since the addition produces a result further used for assignment, it
- * inherits from {@link LLVMExpressionNode}.
- *
- * @see LLVMExpressionNode
- */
 public abstract class LLVMNode extends Node {
-
-    public abstract void executeVoid(VirtualFrame frame);
-
-    protected boolean isLLVMAddress(Object object) {
-        return object instanceof LLVMAddress;
-    }
-
-    public String getSourceDescription() {
-        return null;
-    }
-
+    // empty
 }

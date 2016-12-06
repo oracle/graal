@@ -38,13 +38,13 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMBooleanIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 
 public final class LLVMTruffleBinary {
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleIsBoxed extends LLVMBooleanIntrinsic {
+    public abstract static class LLVMTruffleIsBoxed extends LLVMIntrinsic {
 
         @Child private Node foreignIsBoxed = Message.IS_BOXED.createNode();
 
@@ -63,7 +63,7 @@ public final class LLVMTruffleBinary {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleIsExecutable extends LLVMBooleanIntrinsic {
+    public abstract static class LLVMTruffleIsExecutable extends LLVMIntrinsic {
 
         @Child private Node foreignIsExecutable = Message.IS_EXECUTABLE.createNode();
 
@@ -82,7 +82,7 @@ public final class LLVMTruffleBinary {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleIsNull extends LLVMBooleanIntrinsic {
+    public abstract static class LLVMTruffleIsNull extends LLVMIntrinsic {
 
         @Child private Node foreignIsNull = Message.IS_NULL.createNode();
 
@@ -101,7 +101,7 @@ public final class LLVMTruffleBinary {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleHasSize extends LLVMBooleanIntrinsic {
+    public abstract static class LLVMTruffleHasSize extends LLVMIntrinsic {
 
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
 

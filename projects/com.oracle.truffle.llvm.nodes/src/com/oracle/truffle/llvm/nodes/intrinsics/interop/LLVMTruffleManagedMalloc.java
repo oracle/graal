@@ -40,11 +40,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleManagedMalloc extends LLVMAddressIntrinsic {
+public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
 
     @MessageResolution(receiverType = ManagedMallocObject.class, language = LLVMLanguage.class)
     public static class ManagedMallocForeignAccess {
@@ -131,14 +130,14 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMAddressIntrinsic {
             throw new IllegalArgumentException("Can't truffle_managed_malloc less than zero bytes");
         }
 
-        long roundedSize = size + ((LLVMAddressNode.BYTE_SIZE - size) % LLVMAddressNode.BYTE_SIZE);
+        long roundedSize = size + ((LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES - size) % LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES);
 
-        if (roundedSize / LLVMAddressNode.BYTE_SIZE > Integer.MAX_VALUE) {
+        if (roundedSize / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES > Integer.MAX_VALUE) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException("Can't truffle_managed_malloc for more than 2^31 objects");
         }
 
-        return new ManagedMallocObject((int) (roundedSize / LLVMAddressNode.BYTE_SIZE));
+        return new ManagedMallocObject((int) (roundedSize / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES));
     }
 
 }

@@ -32,21 +32,7 @@ package com.oracle.truffle.llvm.nodes.vector;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMDoubleVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMFloatVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI16VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI1VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI64VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI8VectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
@@ -58,9 +44,9 @@ import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 
 public abstract class LLVMInsertElementNode {
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI1VectorNode.class), @NodeChild(type = LLVMI1Node.class, value = "element"),
-                    @NodeChild(type = LLVMI32Node.class, value = "index")})
-    public abstract static class LLVMI1InsertElementNode extends LLVMI1VectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
+    public abstract static class LLVMI1InsertElementNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1(LLVMAddress address, LLVMI1Vector vector, boolean element, int index) {
@@ -68,9 +54,9 @@ public abstract class LLVMInsertElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI8VectorNode.class), @NodeChild(type = LLVMI8Node.class, value = "element"),
-                    @NodeChild(type = LLVMI32Node.class, value = "index")})
-    public abstract static class LLVMI8InsertElementNode extends LLVMI8VectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
+    public abstract static class LLVMI8InsertElementNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI8Vector executeI8(LLVMAddress address, LLVMI8Vector vector, byte element, int index) {
@@ -78,9 +64,9 @@ public abstract class LLVMInsertElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI16VectorNode.class), @NodeChild(type = LLVMI16Node.class, value = "element"),
-                    @NodeChild(type = LLVMI32Node.class, value = "index")})
-    public abstract static class LLVMI16InsertElementNode extends LLVMI16VectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
+    public abstract static class LLVMI16InsertElementNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI16Vector executeI16(LLVMAddress address, LLVMI16Vector vector, short element, int index) {
@@ -88,9 +74,9 @@ public abstract class LLVMInsertElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32VectorNode.class), @NodeChild(type = LLVMI32Node.class, value = "element"),
-                    @NodeChild(type = LLVMI32Node.class, value = "index")})
-    public abstract static class LLVMI32InsertElementNode extends LLVMI32VectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
+    public abstract static class LLVMI32InsertElementNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI32Vector executeI32(LLVMAddress address, LLVMI32Vector vector, int element, int index) {
@@ -98,9 +84,9 @@ public abstract class LLVMInsertElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI64VectorNode.class), @NodeChild(type = LLVMI64Node.class, value = "element"),
-                    @NodeChild(type = LLVMI32Node.class, value = "index")})
-    public abstract static class LLVMI64InsertElementNode extends LLVMI64VectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
+    public abstract static class LLVMI64InsertElementNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI64Vector executeI64(LLVMAddress address, LLVMI64Vector vector, long element, int index) {
@@ -108,9 +94,9 @@ public abstract class LLVMInsertElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMFloatVectorNode.class), @NodeChild(type = LLVMFloatNode.class, value = "element"),
-                    @NodeChild(type = LLVMI32Node.class, value = "index")})
-    public abstract static class LLVMFloatInsertElementNode extends LLVMFloatVectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
+    public abstract static class LLVMFloatInsertElementNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMFloatVector executeFloat(LLVMAddress address, LLVMFloatVector vector, float element, int index) {
@@ -118,9 +104,9 @@ public abstract class LLVMInsertElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMDoubleVectorNode.class), @NodeChild(type = LLVMDoubleNode.class, value = "element"),
-                    @NodeChild(type = LLVMI32Node.class, value = "index")})
-    public abstract static class LLVMDoubleInsertElementNode extends LLVMDoubleVectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
+    public abstract static class LLVMDoubleInsertElementNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMDoubleVector executeDouble(LLVMAddress address, LLVMDoubleVector vector, double element, int index) {

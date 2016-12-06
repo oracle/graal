@@ -39,8 +39,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeFactory.LLVMI16DirectLoadNodeGen;
 import com.oracle.truffle.llvm.types.LLVMAddress;
@@ -48,14 +47,14 @@ import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 // Truffle has no branch profiles for short
-@NodeChild(type = LLVMAddressNode.class)
-public abstract class LLVMI16LoadNode extends LLVMI16Node {
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
 
     protected short doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
         try {
-            int index = (int) (addr.getOffset() / LLVMI16Node.BYTE_SIZE);
+            int index = (int) (addr.getOffset() / LLVMExpressionNode.I16_SIZE_IN_BYTES);
             Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
             return toLLVM.convert(frame, value, short.class);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
@@ -84,9 +83,9 @@ public abstract class LLVMI16LoadNode extends LLVMI16Node {
 
     public static class LLVMI16UninitializedLoadNode extends LLVMI16LoadNode {
 
-        @Child private LLVMAddressNode addressNode;
+        @Child private LLVMExpressionNode addressNode;
 
-        public LLVMI16UninitializedLoadNode(LLVMAddressNode addressNode) {
+        public LLVMI16UninitializedLoadNode(LLVMExpressionNode addressNode) {
             this.addressNode = addressNode;
         }
 
@@ -106,14 +105,19 @@ public abstract class LLVMI16LoadNode extends LLVMI16Node {
             return val;
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI16(frame);
+        }
+
     }
 
     public static class LLVMI16ProfilingLoadNode extends LLVMI16LoadNode {
 
         private final short profiledValue;
-        @Child private LLVMAddressNode addressNode;
+        @Child private LLVMExpressionNode addressNode;
 
-        public LLVMI16ProfilingLoadNode(LLVMAddressNode addressNode, short profiledValue) {
+        public LLVMI16ProfilingLoadNode(LLVMExpressionNode addressNode, short profiledValue) {
             this.addressNode = addressNode;
             this.profiledValue = profiledValue;
         }
@@ -136,6 +140,11 @@ public abstract class LLVMI16LoadNode extends LLVMI16Node {
                 replace(LLVMI16DirectLoadNodeGen.create(addressNode));
                 return value;
             }
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI16(frame);
         }
 
     }

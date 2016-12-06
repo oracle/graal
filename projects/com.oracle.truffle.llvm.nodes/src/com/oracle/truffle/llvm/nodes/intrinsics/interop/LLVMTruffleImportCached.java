@@ -36,11 +36,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleImportCachedFactory.ImportCacheNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleImportCached extends LLVMAddressIntrinsic {
+public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
 
     @Child private ImportCache cache = ImportCacheNodeGen.create();
 

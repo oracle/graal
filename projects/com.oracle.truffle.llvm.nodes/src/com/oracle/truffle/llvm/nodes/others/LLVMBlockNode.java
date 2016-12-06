@@ -38,7 +38,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNode;
@@ -120,10 +119,10 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
 
     public static class LLVMBlockNoControlFlowNode extends LLVMBlockNode {
 
-        @Children private final LLVMNode[] bodyNodes;
+        @Children private final LLVMExpressionNode[] bodyNodes;
         private final FrameSlot returnSlot;
 
-        public LLVMBlockNoControlFlowNode(LLVMNode[] bodyNodes, FrameSlot returnSlot) {
+        public LLVMBlockNoControlFlowNode(LLVMExpressionNode[] bodyNodes, FrameSlot returnSlot) {
             this.bodyNodes = bodyNodes;
             this.returnSlot = returnSlot;
         }
@@ -133,7 +132,7 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
         public Object executeGeneric(VirtualFrame frame) {
             CompilerAsserts.compilationConstant(bodyNodes.length);
             for (int i = 0; i < bodyNodes.length; i++) {
-                bodyNodes[i].executeVoid(frame);
+                bodyNodes[i].executeGeneric(frame);
             }
             return frame.getValue(returnSlot);
         }

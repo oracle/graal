@@ -29,166 +29,213 @@
  */
 package com.oracle.truffle.llvm.nodes.vars;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public class StructLiteralNode extends LLVMAddressNode {
+public class StructLiteralNode extends LLVMExpressionNode {
 
     public static class LLVMI1StructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMI1Node valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVMI1StructWriteNode(LLVMI1Node valueNode) {
+        public LLVMI1StructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            boolean value = valueNode.executeI1(frame);
-            LLVMMemory.putI1(address, value);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                boolean value = valueNode.executeI1(frame);
+                LLVMMemory.putI1(address, value);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
     }
 
     public static class LLVMI8StructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMI8Node valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVMI8StructWriteNode(LLVMI8Node valueNode) {
+        public LLVMI8StructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            byte value = valueNode.executeI8(frame);
-            LLVMMemory.putI8(address, value);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                byte value = valueNode.executeI8(frame);
+                LLVMMemory.putI8(address, value);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
     }
 
     public static class LLVMI16StructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMI16Node valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVMI16StructWriteNode(LLVMI16Node valueNode) {
+        public LLVMI16StructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            short value = valueNode.executeI16(frame);
-            LLVMMemory.putI16(address, value);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                short value = valueNode.executeI16(frame);
+                LLVMMemory.putI16(address, value);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
     }
 
     public static class LLVMI32StructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMI32Node valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVMI32StructWriteNode(LLVMI32Node valueNode) {
+        public LLVMI32StructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            int value = valueNode.executeI32(frame);
-            LLVMMemory.putI32(address, value);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                int value = valueNode.executeI32(frame);
+                LLVMMemory.putI32(address, value);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
     }
 
     public static class LLVMI64StructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMI64Node valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVMI64StructWriteNode(LLVMI64Node valueNode) {
+        public LLVMI64StructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            long value = valueNode.executeI64(frame);
-            LLVMMemory.putI64(address, value);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                long value = valueNode.executeI64(frame);
+                LLVMMemory.putI64(address, value);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
 
     }
 
     public static class LLVMFloatStructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMFloatNode valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVMFloatStructWriteNode(LLVMFloatNode valueNode) {
+        public LLVMFloatStructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            float value = valueNode.executeFloat(frame);
-            LLVMMemory.putFloat(address, value);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                float value = valueNode.executeFloat(frame);
+                LLVMMemory.putFloat(address, value);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
 
     }
 
     public static class LLVMDoubleStructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMDoubleNode valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVMDoubleStructWriteNode(LLVMDoubleNode valueNode) {
+        public LLVMDoubleStructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            double value = valueNode.executeDouble(frame);
-            LLVMMemory.putDouble(address, value);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                double value = valueNode.executeDouble(frame);
+                LLVMMemory.putDouble(address, value);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
 
     }
 
     public static class LLVM80BitFloatStructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVM80BitFloatNode valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVM80BitFloatStructWriteNode(LLVM80BitFloatNode valueNode) {
+        public LLVM80BitFloatStructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            LLVM80BitFloat value = valueNode.execute80BitFloat(frame);
-            LLVMMemory.put80BitFloat(address, value);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                LLVM80BitFloat value = valueNode.executeLLVM80BitFloat(frame);
+                LLVMMemory.put80BitFloat(address, value);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
 
     }
 
     public static class LLVMCompoundStructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMAddressNode valueNode;
+        @Child private LLVMExpressionNode valueNode;
         private int size;
 
-        public LLVMCompoundStructWriteNode(LLVMAddressNode valueNode, int size) {
+        public LLVMCompoundStructWriteNode(LLVMExpressionNode valueNode, int size) {
             this.valueNode = valueNode;
             this.size = size;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            LLVMAddress value = valueNode.executePointee(frame);
-            LLVMHeap.memCopy(address, value, size);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                LLVMAddress value = valueNode.executeLLVMAddress(frame);
+                LLVMHeap.memCopy(address, value, size);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
 
     }
@@ -196,17 +243,17 @@ public class StructLiteralNode extends LLVMAddressNode {
     public static class LLVMEmptyStructWriteNode extends LLVMStructWriteNode {
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            return null;
         }
 
     }
 
-    @Child private LLVMAddressNode address;
+    @Child private LLVMExpressionNode address;
     @CompilationFinal private final int[] offsets;
     @Children private final LLVMStructWriteNode[] elementWriteNodes;
 
-    public StructLiteralNode(int[] offsets, LLVMStructWriteNode[] elementWriteNodes, LLVMAddressNode address) {
+    public StructLiteralNode(int[] offsets, LLVMStructWriteNode[] elementWriteNodes, LLVMExpressionNode address) {
         this.offsets = offsets;
         this.elementWriteNodes = elementWriteNodes;
         this.address = address;
@@ -214,43 +261,65 @@ public class StructLiteralNode extends LLVMAddressNode {
 
     @Override
     @ExplodeLoop
-    public LLVMAddress executePointee(VirtualFrame frame) {
-        LLVMAddress addr = address.executePointee(frame);
-        for (int i = 0; i < offsets.length; i++) {
-            LLVMAddress currentAddr = addr.increment(offsets[i]);
-            elementWriteNodes[i].executeWrite(frame, currentAddr);
+    public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
+        try {
+            LLVMAddress addr = address.executeLLVMAddress(frame);
+            for (int i = 0; i < offsets.length; i++) {
+                LLVMAddress currentAddr = addr.increment(offsets[i]);
+                elementWriteNodes[i].executeWrite(frame, currentAddr);
+            }
+            return addr;
+        } catch (UnexpectedResultException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(e);
         }
-        return addr;
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return executeLLVMAddress(frame);
     }
 
     public static class LLVMAddressStructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMAddressNode valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVMAddressStructWriteNode(LLVMAddressNode valueNode) {
+        public LLVMAddressStructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            LLVMAddress value = valueNode.executePointee(frame);
-            LLVMMemory.putAddress(address, value);
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                LLVMAddress value = valueNode.executeLLVMAddress(frame);
+                LLVMMemory.putAddress(address, value);
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
 
     }
 
     public static class LLVMFunctionStructWriteNode extends LLVMStructWriteNode {
 
-        @Child private LLVMFunctionNode valueNode;
+        @Child private LLVMExpressionNode valueNode;
 
-        public LLVMFunctionStructWriteNode(LLVMFunctionNode valueNode) {
+        public LLVMFunctionStructWriteNode(LLVMExpressionNode valueNode) {
             this.valueNode = valueNode;
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, LLVMAddress address) {
-            LLVMFunctionDescriptor value = (LLVMFunctionDescriptor) valueNode.executeFunction(frame);
-            LLVMHeap.putFunctionIndex(address, value.getFunctionIndex());
+        public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
+            try {
+                LLVMFunctionDescriptor value = valueNode.executeLLVMFunctionDescriptor(frame);
+                LLVMHeap.putFunctionIndex(address, value.getFunctionIndex());
+                return null;
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
 
     }

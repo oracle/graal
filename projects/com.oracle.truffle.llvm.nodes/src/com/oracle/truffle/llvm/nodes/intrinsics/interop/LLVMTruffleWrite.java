@@ -41,13 +41,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMVoidIntrinsic;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 
@@ -77,227 +71,255 @@ public final class LLVMTruffleWrite {
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteP extends LLVMVoidIntrinsic {
+    public abstract static class LLVMTruffleWriteP extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, Object v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, Object v) {
             doWrite(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, Object v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, Object v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class)})
-    public abstract static class LLVMTruffleWriteI extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteI extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, int v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, int v) {
             doWrite(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, int v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, int v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI64Node.class)})
-    public abstract static class LLVMTruffleWriteL extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteL extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, long v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, long v) {
             doWrite(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, long v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, long v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI8Node.class)})
-    public abstract static class LLVMTruffleWriteC extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteC extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, byte v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, byte v) {
             doWrite(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, byte v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, byte v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMFloatNode.class)})
-    public abstract static class LLVMTruffleWriteF extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteF extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, float v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, float v) {
             doWrite(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, float v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, float v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMDoubleNode.class)})
-    public abstract static class LLVMTruffleWriteD extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteD extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, double v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, double v) {
             doWrite(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, double v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, double v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI1Node.class)})
-    public abstract static class LLVMTruffleWriteB extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteB extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, boolean v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, boolean v) {
             doWrite(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, boolean v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id, boolean v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
     // INDEXED:
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleWriteIdxP extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteIdxP extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, Object v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, Object v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, Object v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, Object v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI32Node.class)})
-    public abstract static class LLVMTruffleWriteIdxI extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteIdxI extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, int v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, int v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, int v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, int v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI64Node.class)})
-    public abstract static class LLVMTruffleWriteIdxL extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteIdxL extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, long v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, long v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, long v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, long v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI8Node.class)})
-    public abstract static class LLVMTruffleWriteIdxC extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteIdxC extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, byte v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, byte v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, byte v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, byte v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMFloatNode.class)})
-    public abstract static class LLVMTruffleWriteIdxF extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteIdxF extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, float v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, float v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, float v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, float v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMDoubleNode.class)})
-    public abstract static class LLVMTruffleWriteIdxD extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteIdxD extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, double v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, double v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, double v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, double v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI1Node.class)})
-    public abstract static class LLVMTruffleWriteIdxB extends LLVMVoidIntrinsic {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleWriteIdxB extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, boolean v) {
+        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, boolean v) {
             doWriteIdx(frame, foreignWrite, value, id, v);
+            return null;
         }
 
         @Specialization
-        public void executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, boolean v) {
+        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, boolean v) {
             executeIntrinsic(frame, new LLVMTruffleObject(value), id, v);
+            return null;
         }
     }
 }

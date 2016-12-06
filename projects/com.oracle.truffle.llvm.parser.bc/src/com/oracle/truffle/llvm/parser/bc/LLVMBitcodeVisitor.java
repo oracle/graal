@@ -45,7 +45,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.context.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.api.LLVMParserResult;
@@ -99,10 +98,10 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
 
         FrameSlot stack = stackAllocation.getRootStackSlot();
 
-        LLVMNode[] globals = visitor.getGobalVariables().toArray(new LLVMNode[0]);
+        LLVMExpressionNode[] globals = visitor.getGobalVariables().toArray(new LLVMExpressionNode[0]);
         RootNode globalVarInits = factoryFacade.createStaticInitsRootNode(visitor, globals);
         RootCallTarget globalVarInitsTarget = Truffle.getRuntime().createCallTarget(globalVarInits);
-        LLVMNode[] deallocs = visitor.getDeallocations();
+        LLVMExpressionNode[] deallocs = visitor.getDeallocations();
         RootNode globalVarDeallocs = factoryFacade.createStaticInitsRootNode(visitor, deallocs);
         RootCallTarget globalVarDeallocsTarget = Truffle.getRuntime().createCallTarget(globalVarDeallocs);
 
@@ -128,7 +127,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
 
     private final LLVMPhiManager phis;
 
-    private final List<LLVMNode> deallocations = new ArrayList<>();
+    private final List<LLVMExpressionNode> deallocations = new ArrayList<>();
 
     private final Map<GlobalAlias, Symbol> aliases = new HashMap<>();
 
@@ -158,7 +157,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         this.targetDataLayout = layout;
         this.factoryFacade = factoryFacade;
         this.symbolResolver = new LLVMSymbolResolver(labels, this);
-        nativeLookup = new NativeLookup(factoryFacade);
+        nativeLookup = new NativeLookup();
     }
 
     LLVMExpressionNode createFunction(FunctionDefinition method, LLVMLifetimeAnalysis lifetimes) {
@@ -220,9 +219,9 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         return hasStackPointerArgument.isPresent() && hasStackPointerArgument.get();
     }
 
-    List<LLVMNode> createParameters(FrameDescriptor frame, FunctionDefinition method) {
+    List<LLVMExpressionNode> createParameters(FrameDescriptor frame, FunctionDefinition method) {
         final List<FunctionParameter> parameters = method.getParameters();
-        final List<LLVMNode> formalParamInits = new ArrayList<>();
+        final List<LLVMExpressionNode> formalParamInits = new ArrayList<>();
         if (needsStackPointerArgument()) {
             final LLVMExpressionNode stackPointerNode = factoryFacade.createFunctionArgNode(0, LLVMBaseType.ADDRESS);
             formalParamInits.add(factoryFacade.createFrameWrite(this, LLVMBaseType.ADDRESS, stackPointerNode, frame.findFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID)));
@@ -237,7 +236,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
             final LLVMExpressionNode functionReturnParameterNode = factoryFacade.createFunctionArgNode(argIndex++, LLVMBaseType.STRUCT);
             final FrameSlot returnSlot = frame.findOrAddFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
             final LLVMBaseType baseType = method.getReturnType().getLLVMBaseType();
-            final LLVMNode returnValue = factoryFacade.createFrameWrite(this, baseType, functionReturnParameterNode, returnSlot);
+            final LLVMExpressionNode returnValue = factoryFacade.createFrameWrite(this, baseType, functionReturnParameterNode, returnSlot);
             formalParamInits.add(returnValue);
         }
         for (final FunctionParameter parameter : parameters) {
@@ -249,7 +248,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         return formalParamInits;
     }
 
-    private LLVMNode createGlobal(GlobalValueSymbol global) {
+    private LLVMExpressionNode createGlobal(GlobalValueSymbol global) {
         if (global == null || global.getValue() == null) {
             return null;
         }
@@ -263,7 +262,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
             final LLVMExpressionNode globalVarAddress = getGlobalVariable(global);
 
             if (size != 0) {
-                final LLVMNode store;
+                final LLVMExpressionNode store;
                 if (baseType == LLVMBaseType.ARRAY || baseType == LLVMBaseType.STRUCT) {
                     store = factoryFacade.createStore(this, globalVarAddress, constant, type);
                 } else {
@@ -281,8 +280,8 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         return context;
     }
 
-    private LLVMNode[] getDeallocations() {
-        return deallocations.toArray(new LLVMNode[deallocations.size()]);
+    private LLVMExpressionNode[] getDeallocations() {
+        return deallocations.toArray(new LLVMExpressionNode[deallocations.size()]);
     }
 
     private LLVMFunction getFunction(String name) {
@@ -315,7 +314,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
     private List<RootCallTarget> getStructor(String name, FrameSlot stackSlot) {
         for (GlobalValueSymbol globalValueSymbol : globals.keySet()) {
             if (globalValueSymbol.getName().equals(name)) {
-                final LLVMNode[] targets = resolveStructor(globalValueSymbol, stackSlot);
+                final LLVMExpressionNode[] targets = resolveStructor(globalValueSymbol, stackSlot);
                 final RootCallTarget constructorFunctionsRootCallTarget = Truffle.getRuntime().createCallTarget(factoryFacade.createStaticInitsRootNode(this, targets));
                 final List<RootCallTarget> targetList = new ArrayList<>(1);
                 targetList.add(constructorFunctionsRootCallTarget);
@@ -325,7 +324,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         return Collections.emptyList();
     }
 
-    private LLVMNode[] resolveStructor(GlobalValueSymbol globalVar, FrameSlot stackSlot) {
+    private LLVMExpressionNode[] resolveStructor(GlobalValueSymbol globalVar, FrameSlot stackSlot) {
         final Object globalVariableDescriptor = globalVariableScope.get(globalVar.getName());
         final ArrayConstant arrayConstant = (ArrayConstant) globalVar.getValue();
         final int elemCount = arrayConstant.getElementCount();
@@ -336,7 +335,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
         final int indexedTypeLength = getByteAlignment(functionType);
 
-        final LLVMNode[] structors = new LLVMNode[elemCount];
+        final LLVMExpressionNode[] structors = new LLVMExpressionNode[elemCount];
         for (int i = 0; i < elemCount; i++) {
             final LLVMExpressionNode globalVarAddress = factoryFacade.createLiteral(this, globalVariableDescriptor, LLVMBaseType.ADDRESS);
             final LLVMExpressionNode iNode = factoryFacade.createLiteral(this, i, LLVMBaseType.I32);
@@ -347,7 +346,8 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
             final LLVMExpressionNode functionLoadTarget = factoryFacade.createGetElementPtr(this, LLVMBaseType.I32, loadedStruct, oneLiteralNode, indexedTypeLength);
             final LLVMExpressionNode loadedFunction = factoryFacade.createLoad(this, functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{factoryFacade.createFrameRead(this, LLVMBaseType.ADDRESS, stackSlot)};
-            final LLVMNode functionCall = factoryFacade.createFunctionCall(this, loadedFunction, argNodes, LLVMBaseType.VOID);
+            final LLVMType[] argTypes = new LLVMType[]{new LLVMType(LLVMBaseType.ADDRESS)};
+            final LLVMExpressionNode functionCall = factoryFacade.createFunctionCall(this, loadedFunction, argNodes, argTypes, LLVMBaseType.VOID);
             structors[i] = functionCall;
         }
 
@@ -371,10 +371,10 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         return factoryFacade.createLiteral(this, globalValue, LLVMBaseType.ADDRESS);
     }
 
-    private List<LLVMNode> getGobalVariables() {
-        final List<LLVMNode> globalNodes = new ArrayList<>();
+    private List<LLVMExpressionNode> getGobalVariables() {
+        final List<LLVMExpressionNode> globalNodes = new ArrayList<>();
         for (GlobalValueSymbol global : this.globals.keySet()) {
-            final LLVMNode store = createGlobal(global);
+            final LLVMExpressionNode store = createGlobal(global);
             if (store != null) {
                 globalNodes.add(store);
             }
@@ -499,7 +499,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
     }
 
     @Override
-    public void addDestructor(LLVMNode destructorNode) {
+    public void addDestructor(LLVMExpressionNode destructorNode) {
         deallocations.add(destructorNode);
     }
 

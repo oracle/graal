@@ -33,34 +33,31 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 @GenerateNodeFactory
-public abstract class LLVMMemSet extends LLVMNode {
+public abstract class LLVMMemSet extends LLVMExpressionNode {
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI8Node.class), @NodeChild(type = LLVMI64Node.class), @NodeChild(type = LLVMI32Node.class),
-                    @NodeChild(type = LLVMI1Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class),
+                    @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMMemSetI64 extends LLVMMemSet {
         @Specialization
-        public void executeVoid(LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
+        public Object executeVoid(LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
             LLVMHeap.memSet(address, value, length, align, isVolatile);
+            return null;
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI8Node.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI32Node.class),
-                    @NodeChild(type = LLVMI1Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class),
+                    @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMMemSetI32 extends LLVMMemSet {
 
         @Specialization
-        public void executeVoid(LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
+        public Object executeVoid(LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
             LLVMHeap.memSet(address, value, length, align, isVolatile);
+            return null;
         }
     }
 

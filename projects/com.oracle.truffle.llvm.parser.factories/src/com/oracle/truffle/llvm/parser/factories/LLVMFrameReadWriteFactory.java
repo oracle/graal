@@ -32,18 +32,6 @@ package com.oracle.truffle.llvm.parser.factories;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVM80BitFloatReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMDoubleReadNodeGen;
@@ -73,10 +61,10 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI32NodeG
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI8NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteIVarBitNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMWriteVectorNodeGen;
 import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
-import com.oracle.truffle.llvm.nodes.vars.LLVMWriteVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 
@@ -133,33 +121,33 @@ public final class LLVMFrameReadWriteFactory {
         }
     }
 
-    public static LLVMNode createFrameWrite(LLVMBaseType llvmType, LLVMExpressionNode result, FrameSlot slot) {
+    public static LLVMExpressionNode createFrameWrite(LLVMBaseType llvmType, LLVMExpressionNode result, FrameSlot slot) {
         if (LLVMTypeHelper.isVectorType(llvmType)) {
-            return LLVMWriteVectorNodeGen.create((LLVMVectorNode) result, slot);
+            return LLVMWriteVectorNodeGen.create(result, slot);
         }
         switch (llvmType) {
             case I1:
-                return LLVMWriteI1NodeGen.create((LLVMI1Node) result, slot);
+                return LLVMWriteI1NodeGen.create(result, slot);
             case I8:
-                return LLVMWriteI8NodeGen.create((LLVMI8Node) result, slot);
+                return LLVMWriteI8NodeGen.create(result, slot);
             case I16:
-                return LLVMWriteI16NodeGen.create((LLVMI16Node) result, slot);
+                return LLVMWriteI16NodeGen.create(result, slot);
             case I32:
-                return LLVMWriteI32NodeGen.create((LLVMI32Node) result, slot);
+                return LLVMWriteI32NodeGen.create(result, slot);
             case I64:
-                return LLVMWriteI64NodeGen.create((LLVMI64Node) result, slot);
+                return LLVMWriteI64NodeGen.create(result, slot);
             case I_VAR_BITWIDTH:
-                return LLVMWriteIVarBitNodeGen.create((LLVMIVarBitNode) result, slot);
+                return LLVMWriteIVarBitNodeGen.create(result, slot);
             case FLOAT:
-                return LLVMWriteFloatNodeGen.create((LLVMFloatNode) result, slot);
+                return LLVMWriteFloatNodeGen.create(result, slot);
             case DOUBLE:
-                return LLVMWriteDoubleNodeGen.create((LLVMDoubleNode) result, slot);
+                return LLVMWriteDoubleNodeGen.create(result, slot);
             case X86_FP80:
-                return LLVMWrite80BitFloatingNodeGen.create((LLVM80BitFloatNode) result, slot);
+                return LLVMWrite80BitFloatingNodeGen.create(result, slot);
             case ADDRESS:
                 return LLVMWriteAddressNodeGen.create(result, slot);
             case FUNCTION_ADDRESS:
-                return LLVMWriteFunctionNodeGen.create((LLVMFunctionNode) result, slot);
+                return LLVMWriteFunctionNodeGen.create(result, slot);
             case STRUCT:
             case ARRAY:
                 return LLVMWriteAddressNodeGen.create(result, slot);

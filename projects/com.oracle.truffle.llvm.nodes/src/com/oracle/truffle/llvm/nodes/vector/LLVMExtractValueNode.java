@@ -32,23 +32,15 @@ package com.oracle.truffle.llvm.nodes.vector;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 public class LLVMExtractValueNode {
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMExtractI1ValueNode extends LLVMI1Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMExtractI1ValueNode extends LLVMExpressionNode {
 
         @Specialization
         public boolean executeI1(LLVMAddress address) {
@@ -57,8 +49,8 @@ public class LLVMExtractValueNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMExtractI8ValueNode extends LLVMI8Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMExtractI8ValueNode extends LLVMExpressionNode {
 
         @Specialization
         public byte executeI8(LLVMAddress address) {
@@ -67,8 +59,8 @@ public class LLVMExtractValueNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMExtractI16ValueNode extends LLVMI16Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMExtractI16ValueNode extends LLVMExpressionNode {
 
         @Specialization
         public short executeI16(LLVMAddress address) {
@@ -77,8 +69,8 @@ public class LLVMExtractValueNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMExtractI32ValueNode extends LLVMI32Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMExtractI32ValueNode extends LLVMExpressionNode {
 
         @Specialization
         public int executeI32(LLVMAddress address) {
@@ -87,8 +79,8 @@ public class LLVMExtractValueNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMExtractI64ValueNode extends LLVMI64Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMExtractI64ValueNode extends LLVMExpressionNode {
 
         @Specialization
         public long executeI64(LLVMAddress address) {
@@ -97,8 +89,8 @@ public class LLVMExtractValueNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMExtractFloatValueNode extends LLVMFloatNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMExtractFloatValueNode extends LLVMExpressionNode {
 
         @Specialization
         public float executeFloat(LLVMAddress address) {
@@ -107,8 +99,8 @@ public class LLVMExtractValueNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMExtractDoubleValueNode extends LLVMDoubleNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMExtractDoubleValueNode extends LLVMExpressionNode {
 
         @Specialization
         public double executeDouble(LLVMAddress address) {
@@ -117,8 +109,8 @@ public class LLVMExtractValueNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMExtract80BitFloatValueNode extends LLVM80BitFloatNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMExtract80BitFloatValueNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVM80BitFloat execute80BitFloat(LLVMAddress address) {
@@ -127,8 +119,8 @@ public class LLVMExtractValueNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMExtractAddressValueNode extends LLVMAddressNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMExtractAddressValueNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMAddress executePointee(LLVMAddress address) {

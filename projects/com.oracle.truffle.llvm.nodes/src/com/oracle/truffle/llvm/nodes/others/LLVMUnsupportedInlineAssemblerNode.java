@@ -31,16 +31,6 @@ package com.oracle.truffle.llvm.nodes.others;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.types.LLVMAddress;
@@ -49,94 +39,136 @@ import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
-    public static class LLVMI1UnsupportedInlineAssemblerNode extends LLVMI1Node {
+    public static class LLVMI1UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
         @Override
         public boolean executeI1(VirtualFrame frame) {
             throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI1(frame);
+        }
+
     }
 
-    public static class LLVMI8UnsupportedInlineAssemblerNode extends LLVMI8Node {
+    public static class LLVMI8UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
         @Override
         public byte executeI8(VirtualFrame frame) {
             throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI8(frame);
+        }
     }
 
-    public static class LLVMI16UnsupportedInlineAssemblerNode extends LLVMI16Node {
+    public static class LLVMI16UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
         @Override
         public short executeI16(VirtualFrame frame) {
             throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI16(frame);
+        }
     }
 
-    public static class LLVMI32UnsupportedInlineAssemblerNode extends LLVMI32Node {
+    public static class LLVMI32UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
         @Override
         public int executeI32(VirtualFrame frame) {
             throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI32(frame);
+        }
     }
 
-    public static class LLVMI64UnsupportedInlineAssemblerNode extends LLVMI64Node {
+    public static class LLVMI64UnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
         @Override
         public long executeI64(VirtualFrame frame) {
             throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeI64(frame);
+        }
     }
 
-    public static class LLVMFloatUnsupportedInlineAssemblerNode extends LLVMFloatNode {
+    public static class LLVMFloatUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
         @Override
         public float executeFloat(VirtualFrame frame) {
             throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeFloat(frame);
+        }
     }
 
-    public static class LLVMDoubleUnsupportedInlineAssemblerNode extends LLVMDoubleNode {
+    public static class LLVMDoubleUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
         @Override
         public double executeDouble(VirtualFrame frame) {
             throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
         }
 
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeDouble(frame);
+        }
     }
 
-    public static class LLVM80BitFloatUnsupportedInlineAssemblerNode extends LLVM80BitFloatNode {
+    public static class LLVM80BitFloatUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
         @Override
-        public LLVM80BitFloat execute80BitFloat(VirtualFrame frame) {
+        public LLVM80BitFloat executeLLVM80BitFloat(VirtualFrame frame) {
             throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeLLVM80BitFloat(frame);
+        }
+    }
+
+    public static class LLVMAddressUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
+
+        @Override
+        public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeLLVMAddress(frame);
         }
 
     }
 
-    public static class LLVMAddressUnsupportedInlineAssemblerNode extends LLVMAddressNode {
+    public static class LLVMFunctionUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
 
         @Override
-        public LLVMAddress executePointee(VirtualFrame frame) {
+        public LLVMFunctionDescriptor executeLLVMFunctionDescriptor(VirtualFrame frame) {
             throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
         }
 
-    }
-
-    public static class LLVMFunctionUnsupportedInlineAssemblerNode extends LLVMFunctionNode {
-
         @Override
-        public LLVMFunctionDescriptor executeFunction(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER);
+        public Object executeGeneric(VirtualFrame frame) {
+            return executeLLVMFunctionDescriptor(frame);
         }
-
     }
 
     @Override

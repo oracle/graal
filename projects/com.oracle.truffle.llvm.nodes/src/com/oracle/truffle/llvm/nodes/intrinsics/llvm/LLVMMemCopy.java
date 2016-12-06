@@ -33,36 +33,36 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 public abstract class LLVMMemCopy {
 
     @GenerateNodeFactory
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class, value = "destination"), @NodeChild(type = LLVMAddressNode.class, value = "source"), @NodeChild(type = LLVMI32Node.class, value = "length"),
-                    @NodeChild(type = LLVMI32Node.class, value = "align"), @NodeChild(type = LLVMI1Node.class, value = "isVolatile")})
-    public abstract static class LLVMMemI32Copy extends LLVMNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "destination"), @NodeChild(type = LLVMExpressionNode.class, value = "source"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "length"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
+    public abstract static class LLVMMemI32Copy extends LLVMExpressionNode {
 
         @Specialization
-        public void executeVoid(LLVMAddress target, LLVMAddress source, int length, int align, boolean isVolatile) {
+        public Object executeVoid(LLVMAddress target, LLVMAddress source, int length, int align, boolean isVolatile) {
             LLVMHeap.memCopy(target, source, length, align, isVolatile);
+            return null;
         }
 
     }
 
     @GenerateNodeFactory
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class, value = "destination"), @NodeChild(type = LLVMAddressNode.class, value = "source"), @NodeChild(type = LLVMI64Node.class, value = "length"),
-                    @NodeChild(type = LLVMI32Node.class, value = "align"), @NodeChild(type = LLVMI1Node.class, value = "isVolatile")})
-    public abstract static class LLVMMemI64Copy extends LLVMNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "destination"), @NodeChild(type = LLVMExpressionNode.class, value = "source"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "length"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
+    public abstract static class LLVMMemI64Copy extends LLVMExpressionNode {
 
         @Specialization
-        public void executeVoid(LLVMAddress target, LLVMAddress source, long length, int align, boolean isVolatile) {
+        public Object executeVoid(LLVMAddress target, LLVMAddress source, long length, int align, boolean isVolatile) {
             LLVMHeap.memCopy(target, source, length, align, isVolatile);
+            return null;
         }
 
     }

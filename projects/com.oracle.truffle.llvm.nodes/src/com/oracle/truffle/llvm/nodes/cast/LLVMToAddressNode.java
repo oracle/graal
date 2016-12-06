@@ -31,17 +31,13 @@ package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 
-public abstract class LLVMToAddressNode extends LLVMAddressNode {
+public abstract class LLVMToAddressNode extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMI1Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI1ToAddressNode extends LLVMToAddressNode {
 
         @Specialization
@@ -50,7 +46,7 @@ public abstract class LLVMToAddressNode extends LLVMAddressNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI8Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI8ToAddressNode extends LLVMToAddressNode {
 
         @Specialization
@@ -59,7 +55,7 @@ public abstract class LLVMToAddressNode extends LLVMAddressNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI64ToAddressNode extends LLVMToAddressNode {
 
         @Specialization
@@ -68,7 +64,7 @@ public abstract class LLVMToAddressNode extends LLVMAddressNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMFunctionNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMFunctionToAddressNode extends LLVMToAddressNode {
 
         @Specialization

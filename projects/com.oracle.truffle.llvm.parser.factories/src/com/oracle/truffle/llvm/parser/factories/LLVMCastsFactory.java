@@ -30,20 +30,6 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMFloatVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI8VectorNode;
 import com.oracle.truffle.llvm.nodes.cast.LLVMTo80BitFloatingNodeFactory.LLVMDoubleToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMTo80BitFloatingNodeFactory.LLVMFloatToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMTo80BitFloatingNodeFactory.LLVMI32ToLLVM80BitFloatNodeGen;
@@ -184,35 +170,35 @@ public final class LLVMCastsFactory {
     private static LLVMExpressionNode cast(LLVMCastsFactory factory, LLVMBaseType fromType, LLVMExpressionNode fromNode) {
         switch (fromType) {
             case I1:
-                return factory.castFromI1((LLVMI1Node) fromNode);
+                return factory.castFromI1(fromNode);
             case I8:
-                return factory.castFromI8((LLVMI8Node) fromNode);
+                return factory.castFromI8(fromNode);
             case I16:
-                return factory.castFromI16((LLVMI16Node) fromNode);
+                return factory.castFromI16(fromNode);
             case I32:
-                return factory.castFromI32((LLVMI32Node) fromNode);
+                return factory.castFromI32(fromNode);
             case I_VAR_BITWIDTH:
-                return factory.castFromIVar((LLVMIVarBitNode) fromNode);
+                return factory.castFromIVar(fromNode);
             case I64:
-                return factory.castFromI64((LLVMI64Node) fromNode);
+                return factory.castFromI64(fromNode);
             case FLOAT:
-                return factory.castFromFloat((LLVMFloatNode) fromNode);
+                return factory.castFromFloat(fromNode);
             case DOUBLE:
-                return factory.castFromDouble((LLVMDoubleNode) fromNode);
+                return factory.castFromDouble(fromNode);
             case X86_FP80:
-                return factory.castFrom80BitFloat((LLVM80BitFloatNode) fromNode);
+                return factory.castFrom80BitFloat(fromNode);
             case ADDRESS:
-                return factory.castFromPointer((LLVMAddressNode) fromNode);
+                return factory.castFromPointer(fromNode);
             case FUNCTION_ADDRESS:
-                return factory.castFromFunctionPointer((LLVMFunctionNode) fromNode);
+                return factory.castFromFunctionPointer(fromNode);
             case FLOAT_VECTOR:
-                return factory.castFromFloatVector((LLVMFloatVectorNode) fromNode);
+                return factory.castFromFloatVector(fromNode);
             default:
                 throw new AssertionError(fromType);
         }
     }
 
-    private LLVMExpressionNode castFromFloatVector(LLVMFloatVectorNode fromNode) {
+    private LLVMExpressionNode castFromFloatVector(LLVMExpressionNode fromNode) {
         switch (targetType) {
             case I64:
                 return LLVMAnyToI64NodeGen.create(fromNode);
@@ -221,16 +207,16 @@ public final class LLVMCastsFactory {
         }
     }
 
-    public static LLVMExpressionNode castVector(LLVMBaseType fromType, LLVMExpressionNode fromNode, LLVMAddressNode target, LLVMBaseType targetType, LLVMConversionType conv) {
+    public static LLVMExpressionNode castVector(LLVMBaseType fromType, LLVMExpressionNode fromNode, LLVMExpressionNode target, LLVMBaseType targetType, LLVMConversionType conv) {
         if (fromNode == null || targetType == null || fromType == null || conv == null) {
             throw new AssertionError();
         }
         LLVMCastsFactory factory = new LLVMCastsFactory(targetType, conv, 0);
         switch (fromType) {
             case I8_VECTOR:
-                return factory.castFromI8Vector(target, (LLVMI8VectorNode) fromNode);
+                return factory.castFromI8Vector(target, fromNode);
             case I32_VECTOR:
-                return factory.castFromI32Vector(target, (LLVMI32VectorNode) fromNode);
+                return factory.castFromI32Vector(target, fromNode);
             case I1_VECTOR:
             case I16_VECTOR:
             case I64_VECTOR:
@@ -241,7 +227,7 @@ public final class LLVMCastsFactory {
         }
     }
 
-    private LLVMExpressionNode castFromIVar(LLVMIVarBitNode fromNode) {
+    private LLVMExpressionNode castFromIVar(LLVMExpressionNode fromNode) {
         if (hasJavaCastSemantics()) {
             switch (targetType) {
                 case I8:
@@ -267,7 +253,7 @@ public final class LLVMCastsFactory {
         }
     }
 
-    private LLVMExpressionNode castFrom80BitFloat(LLVM80BitFloatNode fromNode) {
+    private LLVMExpressionNode castFrom80BitFloat(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.X86_FP80) {
             return fromNode;
         }
@@ -287,7 +273,7 @@ public final class LLVMCastsFactory {
         }
     }
 
-    private LLVMExpressionNode castFromI8Vector(@SuppressWarnings("unused") LLVMAddressNode target, LLVMI8VectorNode fromNode) {
+    private LLVMExpressionNode castFromI8Vector(@SuppressWarnings("unused") LLVMExpressionNode target, LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.I8_VECTOR) {
             return fromNode;
         }
@@ -297,7 +283,7 @@ public final class LLVMCastsFactory {
         }
     }
 
-    private LLVMExpressionNode castFromI32Vector(LLVMAddressNode target, LLVMI32VectorNode fromNode) {
+    private LLVMExpressionNode castFromI32Vector(LLVMExpressionNode target, LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.I32_VECTOR) {
             return fromNode;
         }
@@ -309,7 +295,7 @@ public final class LLVMCastsFactory {
         }
     }
 
-    private LLVMExpressionNode castFromFunctionPointer(LLVMFunctionNode fromNode) {
+    private LLVMExpressionNode castFromFunctionPointer(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.FUNCTION_ADDRESS) {
             return fromNode;
         }
@@ -327,7 +313,7 @@ public final class LLVMCastsFactory {
         }
     }
 
-    private LLVMExpressionNode castFromFloat(LLVMFloatNode fromNode) {
+    private LLVMExpressionNode castFromFloat(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.FLOAT) {
             return fromNode;
         }
@@ -360,7 +346,7 @@ public final class LLVMCastsFactory {
         }
     }
 
-    private LLVMExpressionNode castFromI16(LLVMI16Node fromNode) {
+    private LLVMExpressionNode castFromI16(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.I16) {
             return fromNode;
         }
@@ -406,7 +392,7 @@ public final class LLVMCastsFactory {
         return conv == LLVMConversionType.SIGN_EXTENSION || conv == LLVMConversionType.TRUNC;
     }
 
-    private LLVMExpressionNode castFromPointer(LLVMAddressNode fromNode) {
+    private LLVMExpressionNode castFromPointer(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.ADDRESS) {
             return fromNode;
         }
@@ -431,7 +417,7 @@ public final class LLVMCastsFactory {
         throw new AssertionError(targetType + " " + conv);
     }
 
-    private LLVMExpressionNode castFromI64(LLVMI64Node fromNode) {
+    private LLVMExpressionNode castFromI64(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.I64) {
             return fromNode;
         }
@@ -484,7 +470,7 @@ public final class LLVMCastsFactory {
         throw new AssertionError(targetType + " " + conv);
     }
 
-    private LLVMExpressionNode castFromI8(LLVMI8Node fromNode) {
+    private LLVMExpressionNode castFromI8(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.I8) {
             return fromNode;
         }
@@ -528,7 +514,7 @@ public final class LLVMCastsFactory {
         throw new AssertionError(targetType + " " + conv);
     }
 
-    private LLVMExpressionNode castFromDouble(LLVMDoubleNode fromNode) {
+    private LLVMExpressionNode castFromDouble(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.DOUBLE) {
             return fromNode;
         }
@@ -575,7 +561,7 @@ public final class LLVMCastsFactory {
         throw new AssertionError(targetType + " " + conv);
     }
 
-    private LLVMExpressionNode castFromI32(LLVMI32Node fromNode) {
+    private LLVMExpressionNode castFromI32(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.I32) {
             return fromNode;
         }
@@ -626,7 +612,7 @@ public final class LLVMCastsFactory {
         throw new AssertionError(targetType + " " + conv);
     }
 
-    private LLVMExpressionNode castFromI1(LLVMI1Node fromNode) {
+    private LLVMExpressionNode castFromI1(LLVMExpressionNode fromNode) {
         if (targetType == LLVMBaseType.I1) {
             return fromNode;
         }

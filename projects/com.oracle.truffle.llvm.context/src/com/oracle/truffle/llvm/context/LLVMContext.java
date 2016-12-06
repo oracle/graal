@@ -43,8 +43,8 @@ import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.context.nativeint.NativeLookup;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMThread;
+import com.oracle.truffle.llvm.parser.api.LLVMType;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
@@ -74,7 +74,7 @@ public class LLVMContext extends ExecutionContext {
     private boolean haveLoadedDynamicBitcodeLibraries;
 
     public LLVMContext(NodeFactoryFacade facade) {
-        nativeLookup = new NativeLookup(facade);
+        nativeLookup = new NativeLookup();
         this.functionRegistry = new LLVMFunctionRegistry(facade);
     }
 
@@ -87,9 +87,9 @@ public class LLVMContext extends ExecutionContext {
         return functionRegistry;
     }
 
-    public NativeFunctionHandle getNativeHandle(LLVMFunctionDescriptor function, LLVMExpressionNode[] args) {
+    public NativeFunctionHandle getNativeHandle(LLVMFunctionDescriptor function, LLVMType[] argTypes) {
         LLVMFunction sameFunction = getFunctionDescriptor(function);
-        return getNativeLookup().getNativeHandle(sameFunction, args);
+        return getNativeLookup().getNativeHandle(sameFunction, argTypes);
     }
 
     /**

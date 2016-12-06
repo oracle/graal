@@ -39,11 +39,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
@@ -51,7 +46,7 @@ import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
 
-public abstract class LLVMToI64Node extends LLVMI64Node {
+public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMAnyToI64Node extends LLVMToI64Node {
@@ -149,7 +144,7 @@ public abstract class LLVMToI64Node extends LLVMI64Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMDoubleNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMDoubleToI64BitCastNode extends LLVMToI64Node {
 
         @Specialization
@@ -168,17 +163,17 @@ public abstract class LLVMToI64Node extends LLVMI64Node {
 
         @Specialization
         public long executeI64(byte from) {
-            return from & LLVMI8Node.MASK;
+            return from & LLVMExpressionNode.I8_MASK;
         }
 
         @Specialization
         public long executeI64(short from) {
-            return from & LLVMI16Node.MASK;
+            return from & LLVMExpressionNode.I16_MASK;
         }
 
         @Specialization
         public long executeI64(int from) {
-            return from & LLVMI32Node.MASK;
+            return from & LLVMExpressionNode.I32_MASK;
         }
 
         @Specialization

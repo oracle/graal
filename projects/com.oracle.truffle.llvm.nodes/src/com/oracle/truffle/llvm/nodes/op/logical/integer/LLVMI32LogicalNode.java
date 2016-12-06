@@ -32,10 +32,10 @@ package com.oracle.truffle.llvm.nodes.op.logical.integer;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
-public abstract class LLVMI32LogicalNode extends LLVMI32Node {
+public abstract class LLVMI32LogicalNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI32AndNode extends LLVMI32LogicalNode {
         @Specialization

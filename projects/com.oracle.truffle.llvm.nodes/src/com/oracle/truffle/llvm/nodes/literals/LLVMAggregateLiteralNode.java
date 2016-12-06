@@ -29,28 +29,40 @@
  */
 package com.oracle.truffle.llvm.nodes.literals;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 public class LLVMAggregateLiteralNode {
 
-    public static class LLVMEmptyStructLiteralNode extends LLVMAddressNode {
+    public static class LLVMEmptyStructLiteralNode extends LLVMExpressionNode {
 
-        @Child private LLVMAddressNode addressNode;
+        @Child private LLVMExpressionNode addressNode;
         private final int length;
 
-        public LLVMEmptyStructLiteralNode(LLVMAddressNode address, int length) {
+        public LLVMEmptyStructLiteralNode(LLVMExpressionNode address, int length) {
             this.addressNode = address;
             this.length = length;
         }
 
         @Override
-        public LLVMAddress executePointee(VirtualFrame frame) {
-            LLVMAddress address = addressNode.executePointee(frame);
+        public LLVMAddress executeLLVMAddress(VirtualFrame frame) throws UnexpectedResultException {
+            LLVMAddress address = addressNode.executeLLVMAddress(frame);
             LLVMHeap.memSet(address, (byte) 0, length);
             return address;
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            try {
+                return executeLLVMAddress(frame);
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
     }
 

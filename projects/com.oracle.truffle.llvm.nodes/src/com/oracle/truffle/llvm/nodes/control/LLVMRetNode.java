@@ -35,20 +35,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
@@ -67,7 +56,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     public abstract FrameSlot getRetSlot();
 
-    @NodeChild(value = "retResult", type = LLVMI1Node.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI1RetNode extends LLVMRetNode {
 
         @Specialization
@@ -78,7 +67,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMI8Node.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI8RetNode extends LLVMRetNode {
 
         @Specialization
@@ -89,7 +78,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMI16Node.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI16RetNode extends LLVMRetNode {
 
         @Specialization
@@ -100,7 +89,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMI32Node.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI32RetNode extends LLVMRetNode {
 
         @Specialization
@@ -111,7 +100,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMI64Node.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI64RetNode extends LLVMRetNode {
 
         @Specialization
@@ -122,7 +111,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMIVarBitNode.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMIVarBitRetNode extends LLVMRetNode {
 
         @Specialization
@@ -133,7 +122,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMFloatNode.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMFloatRetNode extends LLVMRetNode {
 
         @Specialization
@@ -144,7 +133,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMDoubleNode.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMDoubleRetNode extends LLVMRetNode {
 
         @Specialization
@@ -155,7 +144,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVM80BitFloatNode.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVM80BitFloatRetNode extends LLVMRetNode {
 
         @Specialization
@@ -166,7 +155,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMAddressNode.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMAddressRetNode extends LLVMRetNode {
 
         @Specialization
@@ -177,7 +166,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMFunctionNode.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMFunctionRetNode extends LLVMRetNode {
 
         @Specialization
@@ -188,7 +177,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMVectorNode.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMVectorRetNode extends LLVMRetNode {
 
         @Specialization
@@ -199,7 +188,7 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
 
     }
 
-    @NodeChild(value = "retResult", type = LLVMAddressNode.class)
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     @NodeField(name = "structSize", type = int.class)
     public abstract static class LLVMStructRetNode extends LLVMRetNode {
 
