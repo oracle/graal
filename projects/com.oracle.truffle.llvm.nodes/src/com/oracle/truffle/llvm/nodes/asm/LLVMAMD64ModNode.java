@@ -32,14 +32,14 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 @NodeChildren({@NodeChild("left"), @NodeChild("rightAX"), @NodeChild("rightDX")})
-public abstract class LLVMAMD64ModNode extends LLVMI32Node {
+public abstract class LLVMAMD64ModNode extends LLVMExpressionNode {
 
     @Specialization
     public int executeI32(int left, int rightAX, int rightDX) {
-        long dividend = (long) rightDX << LLVMI32Node.BYTE_SIZE * Byte.SIZE;
+        long dividend = (long) rightDX << LLVMExpressionNode.I32_SIZE_IN_BYTES * Byte.SIZE;
         dividend = dividend | rightAX;
         return (int) (dividend % left);
     }

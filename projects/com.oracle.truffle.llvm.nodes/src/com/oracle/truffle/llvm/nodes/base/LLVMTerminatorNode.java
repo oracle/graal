@@ -30,8 +30,7 @@
 package com.oracle.truffle.llvm.nodes.base;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 
 /**
  * This node represents a terminator instruction in LLVM IR. This node decides which basic block is
@@ -40,19 +39,12 @@ import com.oracle.truffle.llvm.nodes.api.LLVMNode;
  * @see <a href="http://llvm.org/docs/LangRef.html#terminator-instructions">terminator
  *      instructions</a>
  */
-public abstract class LLVMTerminatorNode extends LLVMNode {
+public abstract class LLVMTerminatorNode extends LLVMControlFlowNode {
 
     @CompilationFinal(dimensions = 1) private final int[] successors;
 
     public LLVMTerminatorNode(int... successors) {
         this.successors = successors;
-    }
-
-    public abstract int executeGetSuccessorIndex(VirtualFrame frame);
-
-    @Override
-    public void executeVoid(VirtualFrame frame) {
-        executeGetSuccessorIndex(frame);
     }
 
     public int nrSuccessors() {

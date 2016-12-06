@@ -36,7 +36,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 
 /**
  * This class is the entry point for every intrinsified (substituted) function.
@@ -47,7 +46,7 @@ public abstract class LLVMIntrinsicRootNode extends RootNode {
         super(LLVMLanguage.class, null, new FrameDescriptor());
     }
 
-    public abstract LLVMNode getNode();
+    public abstract LLVMExpressionNode getNode();
 
     @Override
     public String toString() {
@@ -56,20 +55,20 @@ public abstract class LLVMIntrinsicRootNode extends RootNode {
 
     public static class LLVMIntrinsicVoidNode extends LLVMIntrinsicRootNode {
 
-        @Child private LLVMNode node;
+        @Child private LLVMExpressionNode node;
 
-        public LLVMIntrinsicVoidNode(LLVMNode node) {
+        public LLVMIntrinsicVoidNode(LLVMExpressionNode node) {
             this.node = node;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            node.executeVoid(frame);
+            node.executeGeneric(frame);
             return null;
         }
 
         @Override
-        public LLVMNode getNode() {
+        public LLVMExpressionNode getNode() {
             return node;
         }
     }

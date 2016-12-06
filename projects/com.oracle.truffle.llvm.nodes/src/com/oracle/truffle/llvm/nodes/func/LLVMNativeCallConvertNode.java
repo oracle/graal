@@ -34,6 +34,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode.LLVMResolvedDirectNativeCallNode;
+import com.oracle.truffle.llvm.parser.api.LLVMType;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
@@ -47,12 +48,12 @@ public abstract class LLVMNativeCallConvertNode {
     // FIXME: do not use inheritance
     public static class LLVMResolvedNativeAddressCallNode extends LLVMResolvedDirectNativeCallNode {
 
-        public LLVMResolvedNativeAddressCallNode(LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
-            super(function, nativeFunctionHandle, args, context);
+        public LLVMResolvedNativeAddressCallNode(LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMType[] argsTypes, LLVMContext context) {
+            super(function, nativeFunctionHandle, args, argsTypes, context);
             assert (function.getReturnType() == LLVMRuntimeType.ADDRESS || function.getReturnType() == LLVMRuntimeType.I1_POINTER || function.getReturnType() == LLVMRuntimeType.I8_POINTER ||
                             function.getReturnType() == LLVMRuntimeType.I16_POINTER || function.getReturnType() == LLVMRuntimeType.I32_POINTER ||
                             function.getReturnType() == LLVMRuntimeType.I64_POINTER || function.getReturnType() == LLVMRuntimeType.HALF_POINTER ||
-                            function.getReturnType() == LLVMRuntimeType.FLOAT_POINTER || function.getReturnType() == LLVMRuntimeType.DOUBLE_POINTER);
+                            function.getReturnType() == LLVMRuntimeType.FLOAT_POINTER || function.getReturnType() == LLVMRuntimeType.DOUBLE_POINTER) : function.getReturnType();
         }
 
         @Override
@@ -64,8 +65,8 @@ public abstract class LLVMNativeCallConvertNode {
 
     public static class LLVMResolvedNative80BitFloatCallNode extends LLVMResolvedDirectNativeCallNode {
 
-        public LLVMResolvedNative80BitFloatCallNode(LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMContext context) {
-            super(function, nativeFunctionHandle, args, context);
+        public LLVMResolvedNative80BitFloatCallNode(LLVMFunctionDescriptor function, NativeFunctionHandle nativeFunctionHandle, LLVMExpressionNode[] args, LLVMType[] argsTypes, LLVMContext context) {
+            super(function, nativeFunctionHandle, args, argsTypes, context);
             assert function.getReturnType() == LLVMRuntimeType.X86_FP80;
         }
 

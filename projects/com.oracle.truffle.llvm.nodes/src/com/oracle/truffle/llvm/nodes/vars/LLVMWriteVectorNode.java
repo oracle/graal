@@ -34,19 +34,19 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.vector.LLVMVector;
 
-@NodeChild(value = "valueNode", type = LLVMVectorNode.class)
+@NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
 @NodeField(name = "slot", type = FrameSlot.class)
-public abstract class LLVMWriteVectorNode extends LLVMNode {
+public abstract class LLVMWriteVectorNode extends LLVMExpressionNode {
 
     protected abstract FrameSlot getSlot();
 
     @Specialization
-    protected void writeVector(VirtualFrame frame, LLVMVector<?> value) {
+    protected Object writeVector(VirtualFrame frame, LLVMVector<?> value) {
         frame.setObject(getSlot(), value);
+        return null;
     }
 
 }

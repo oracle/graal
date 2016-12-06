@@ -36,15 +36,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
 @NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"), @NodeField(type = LLVMContext.class, name = "context"),
                 @NodeField(type = FrameSlot.class, name = "stackPointerSlot")})
-public abstract class LLVMAllocInstruction extends LLVMAddressNode {
+public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
 
     abstract int getSize();
 
@@ -62,7 +60,7 @@ public abstract class LLVMAllocInstruction extends LLVMAddressNode {
 
     }
 
-    @NodeChild(type = LLVMI32Node.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMI32AllocaInstruction extends LLVMAllocInstruction {
         @Specialization
         public LLVMAddress execute(VirtualFrame frame, int nr) {
@@ -70,7 +68,7 @@ public abstract class LLVMAllocInstruction extends LLVMAddressNode {
         }
     }
 
-    @NodeChild(type = LLVMI64Node.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMI64AllocaInstruction extends LLVMAllocInstruction {
         @Specialization
         public LLVMAddress execute(VirtualFrame frame, long nr) {

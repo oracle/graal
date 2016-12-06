@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbortFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAtExitFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsFactory;
@@ -119,17 +119,17 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.
  */
 public class LLVMRuntimeIntrinsicFactory {
 
-    public static Map<String, NodeFactory<? extends LLVMNode>> getFunctionSubstitutionFactories() {
+    public static Map<String, NodeFactory<? extends LLVMExpressionNode>> getFunctionSubstitutionFactories() {
         return new LLVMRuntimeIntrinsicFactory().getFactories();
     }
 
-    protected final Map<String, NodeFactory<? extends LLVMNode>> intrinsics;
+    protected final Map<String, NodeFactory<? extends LLVMExpressionNode>> intrinsics;
 
     protected LLVMRuntimeIntrinsicFactory() {
         intrinsics = new HashMap<>();
     }
 
-    protected Map<String, NodeFactory<? extends LLVMNode>> getFactories() {
+    protected Map<String, NodeFactory<? extends LLVMExpressionNode>> getFactories() {
         intrinsifyAbortIntrinsics();
         intrinsifyMathFunctions();
         intrinsifyTruffleOnlyIntrinsics();

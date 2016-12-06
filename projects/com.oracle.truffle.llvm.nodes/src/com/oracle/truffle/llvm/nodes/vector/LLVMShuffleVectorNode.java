@@ -34,10 +34,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMFloatVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI8VectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
@@ -51,8 +48,8 @@ public class LLVMShuffleVectorNode {
         return result;
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask", type = LLVMI32VectorNode.class)})
-    public abstract static class LLVMShuffleI8VectorNode extends LLVMI8VectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMShuffleI8VectorNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI8Vector executeI8Vector(LLVMAddress addr, LLVMI8Vector leftVector, LLVMI8Vector rightVector, LLVMI32Vector maskVector) {
@@ -67,8 +64,8 @@ public class LLVMShuffleVectorNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
-    public abstract static class LLVMShuffleI32VectorNode extends LLVMI32VectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
+    public abstract static class LLVMShuffleI32VectorNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI32Vector executeI32Vector(LLVMAddress addr, LLVMI32Vector leftVector, LLVMI32Vector rightVector, LLVMI32Vector maskVector) {
@@ -83,8 +80,8 @@ public class LLVMShuffleVectorNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
-    public abstract static class LLVMShuffleFloatVectorNode extends LLVMFloatVectorNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
+    public abstract static class LLVMShuffleFloatVectorNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMFloatVector execute(LLVMAddress addr, LLVMFloatVector leftVector, LLVMFloatVector rightVector, LLVMI32Vector maskVector) {

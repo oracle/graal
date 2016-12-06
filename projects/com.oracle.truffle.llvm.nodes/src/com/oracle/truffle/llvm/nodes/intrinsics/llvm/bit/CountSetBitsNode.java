@@ -32,14 +32,13 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 public abstract class CountSetBitsNode {
 
     @GenerateNodeFactory
-    @NodeChild(type = LLVMI32Node.class)
-    public abstract static class CountSetBitsI32Node extends LLVMI32Node {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class CountSetBitsI32Node extends LLVMExpressionNode {
 
         @Specialization
         public int executeI32(int val) {
@@ -49,8 +48,8 @@ public abstract class CountSetBitsNode {
     }
 
     @GenerateNodeFactory
-    @NodeChild(type = LLVMI64Node.class)
-    public abstract static class CountSetBitsI64Node extends LLVMI64Node {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class CountSetBitsI64Node extends LLVMExpressionNode {
 
         @Specialization
         public long execute(long val) {

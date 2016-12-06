@@ -32,16 +32,12 @@ package com.oracle.truffle.llvm.nodes.cast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 
-public abstract class LLVMToVarINode extends LLVMIVarBitNode {
+public abstract class LLVMToVarINode extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMI8Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
     public abstract static class LLVMI8ToIVarNode extends LLVMToVarINode {
 
@@ -53,7 +49,7 @@ public abstract class LLVMToVarINode extends LLVMIVarBitNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI16Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
     public abstract static class LLVMI16ToIVarNode extends LLVMToVarINode {
 
@@ -65,7 +61,7 @@ public abstract class LLVMToVarINode extends LLVMIVarBitNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI32Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
     public abstract static class LLVMI32ToIVarNode extends LLVMToVarINode {
 
@@ -77,7 +73,7 @@ public abstract class LLVMToVarINode extends LLVMIVarBitNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI32Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
     public abstract static class LLVMI32ToIVarZeroExtNode extends LLVMToVarINode {
 
@@ -89,7 +85,7 @@ public abstract class LLVMToVarINode extends LLVMIVarBitNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
     public abstract static class LLVMI64ToIVarNode extends LLVMToVarINode {
 
@@ -101,7 +97,7 @@ public abstract class LLVMToVarINode extends LLVMIVarBitNode {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
     public abstract static class LLVMI64ToIVarZeroExtNode extends LLVMToVarINode {
 
@@ -114,7 +110,7 @@ public abstract class LLVMToVarINode extends LLVMIVarBitNode {
 
     }
 
-    @NodeChild(value = "fromNode", type = LLVMIVarBitNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     @NodeField(type = int.class, name = "bits")
     public abstract static class LLVMIVarToIVarNode extends LLVMToVarINode {
 

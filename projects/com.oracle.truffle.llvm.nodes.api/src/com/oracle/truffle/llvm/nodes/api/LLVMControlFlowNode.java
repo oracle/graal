@@ -27,19 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.base.vector;
+package com.oracle.truffle.llvm.nodes.api;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.types.vector.LLVMVector;
 
-public abstract class LLVMVectorNode extends LLVMExpressionNode {
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return executeVector(frame);
-    }
-
-    public abstract LLVMVector<?> executeVector(VirtualFrame frame);
-
+public abstract class LLVMControlFlowNode extends LLVMNode {
+    public abstract int executeGetSuccessorIndex(VirtualFrame frame);
 }

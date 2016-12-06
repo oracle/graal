@@ -30,17 +30,7 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertDoubleValueNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertFloatValueNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode;
@@ -75,7 +65,7 @@ public final class LLVMAggregateFactory {
     private LLVMAggregateFactory() {
     }
 
-    public static LLVMExpressionNode createExtractValue(LLVMBaseType type, LLVMAddressNode targetAddress) {
+    public static LLVMExpressionNode createExtractValue(LLVMBaseType type, LLVMExpressionNode targetAddress) {
         switch (type) {
             case I1:
                 return LLVMExtractI1ValueNodeGen.create(targetAddress);
@@ -101,13 +91,13 @@ public final class LLVMAggregateFactory {
         }
     }
 
-    public static LLVMExpressionNode createInsertValue(LLVMAddressNode resultAggregate, LLVMAddressNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
+    public static LLVMExpressionNode createInsertValue(LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
                     LLVMBaseType llvmType) {
         switch (llvmType) {
             case FLOAT:
-                return new LLVMInsertFloatValueNode(sourceAggregate, resultAggregate, size, offset, (LLVMFloatNode) valueToInsert);
+                return new LLVMInsertFloatValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
             case DOUBLE:
-                return new LLVMInsertDoubleValueNode(sourceAggregate, resultAggregate, size, offset, (LLVMDoubleNode) valueToInsert);
+                return new LLVMInsertDoubleValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
             default:
                 throw new AssertionError(llvmType);
         }
@@ -130,7 +120,7 @@ public final class LLVMAggregateFactory {
             nodes[i] = createStructWriteNode(runtime, constants[i], resolvedType);
             currentOffset += byteSize;
         }
-        return new StructLiteralNode(offsets, nodes, (LLVMAddressNode) alloc);
+        return new StructLiteralNode(offsets, nodes, alloc);
     }
 
     private static LLVMStructWriteNode createStructWriteNode(LLVMParserRuntime runtime, LLVMExpressionNode parsedConstant, Type resolvedType) {
@@ -138,32 +128,32 @@ public final class LLVMAggregateFactory {
         LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(resolvedType).getType();
         switch (llvmType) {
             case I1:
-                return new LLVMI1StructWriteNode((LLVMI1Node) parsedConstant);
+                return new LLVMI1StructWriteNode(parsedConstant);
             case I8:
-                return new LLVMI8StructWriteNode((LLVMI8Node) parsedConstant);
+                return new LLVMI8StructWriteNode(parsedConstant);
             case I16:
-                return new LLVMI16StructWriteNode((LLVMI16Node) parsedConstant);
+                return new LLVMI16StructWriteNode(parsedConstant);
             case I32:
-                return new LLVMI32StructWriteNode((LLVMI32Node) parsedConstant);
+                return new LLVMI32StructWriteNode(parsedConstant);
             case I64:
-                return new LLVMI64StructWriteNode((LLVMI64Node) parsedConstant);
+                return new LLVMI64StructWriteNode(parsedConstant);
             case FLOAT:
-                return new LLVMFloatStructWriteNode((LLVMFloatNode) parsedConstant);
+                return new LLVMFloatStructWriteNode(parsedConstant);
             case DOUBLE:
-                return new LLVMDoubleStructWriteNode((LLVMDoubleNode) parsedConstant);
+                return new LLVMDoubleStructWriteNode(parsedConstant);
             case X86_FP80:
-                return new LLVM80BitFloatStructWriteNode((LLVM80BitFloatNode) parsedConstant);
+                return new LLVM80BitFloatStructWriteNode(parsedConstant);
             case ARRAY:
             case STRUCT:
                 if (byteSize == 0) {
                     return new LLVMEmptyStructWriteNode();
                 } else {
-                    return new LLVMCompoundStructWriteNode((LLVMAddressNode) parsedConstant, byteSize);
+                    return new LLVMCompoundStructWriteNode(parsedConstant, byteSize);
                 }
             case ADDRESS:
-                return new LLVMAddressStructWriteNode((LLVMAddressNode) parsedConstant);
+                return new LLVMAddressStructWriteNode(parsedConstant);
             case FUNCTION_ADDRESS:
-                return new LLVMFunctionStructWriteNode((LLVMFunctionNode) parsedConstant);
+                return new LLVMFunctionStructWriteNode(parsedConstant);
             default:
                 throw new AssertionError(llvmType);
         }

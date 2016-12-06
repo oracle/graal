@@ -44,18 +44,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMGlobalVariableDescriptorGuards;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
@@ -66,8 +56,8 @@ import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-@NodeChildren(value = {@NodeChild(type = LLVMAddressNode.class, value = "pointerNode")})
-public abstract class LLVMStoreNode extends LLVMNode {
+@NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")})
+public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
     @Child protected Node foreignWrite = Message.WRITE.createNode();
 
@@ -87,131 +77,147 @@ public abstract class LLVMStoreNode extends LLVMNode {
         }
     }
 
-    @NodeChild(type = LLVMI1Node.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI1StoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, boolean value) {
+        public Object execute(LLVMAddress address, boolean value) {
             LLVMMemory.putI1(address, value);
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVMI8Node.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI8StoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, byte value) {
+        public Object execute(LLVMAddress address, byte value) {
             LLVMMemory.putI8(address, value);
+            return null;
         }
 
         @Specialization
-        public void execute(VirtualFrame frame, LLVMTruffleObject address, byte value) {
+        public Object execute(VirtualFrame frame, LLVMTruffleObject address, byte value) {
             doForeignAccess(frame, address, 1, value);
+            return null;
         }
 
         @Specialization
-        public void execute(VirtualFrame frame, TruffleObject address, byte value) {
+        public Object execute(VirtualFrame frame, TruffleObject address, byte value) {
             execute(frame, new LLVMTruffleObject(address), value);
+            return null;
         }
     }
 
-    @NodeChild(type = LLVMI16Node.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI16StoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, short value) {
+        public Object execute(LLVMAddress address, short value) {
             LLVMMemory.putI16(address, value);
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVMI32Node.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI32StoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, int value) {
+        public Object execute(LLVMAddress address, int value) {
             LLVMMemory.putI32(address, value);
+            return null;
         }
 
         @Specialization
-        public void execute(VirtualFrame frame, LLVMTruffleObject address, int value) {
-            doForeignAccess(frame, address, LLVMI32Node.BYTE_SIZE, value);
+        public Object execute(VirtualFrame frame, LLVMTruffleObject address, int value) {
+            doForeignAccess(frame, address, LLVMExpressionNode.I32_SIZE_IN_BYTES, value);
+            return null;
         }
 
         @Specialization
-        public void execute(VirtualFrame frame, TruffleObject address, int value) {
+        public Object execute(VirtualFrame frame, TruffleObject address, int value) {
             execute(frame, new LLVMTruffleObject(address), value);
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVMI64Node.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMI64StoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, long value) {
+        public Object execute(LLVMAddress address, long value) {
             LLVMMemory.putI64(address, value);
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVMIVarBitNode.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, LLVMIVarBit value) {
+        public Object execute(LLVMAddress address, LLVMIVarBit value) {
             LLVMMemory.putIVarBit(address, value);
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVMFloatNode.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMFloatStoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, float value) {
+        public Object execute(LLVMAddress address, float value) {
             LLVMMemory.putFloat(address, value);
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVMDoubleNode.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMDoubleStoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, double value) {
+        public Object execute(LLVMAddress address, double value) {
             LLVMMemory.putDouble(address, value);
+            return null;
         }
 
         @Specialization
-        public void execute(VirtualFrame frame, LLVMTruffleObject address, double value) {
-            doForeignAccess(frame, address, LLVMDoubleNode.BYTE_SIZE, value);
+        public Object execute(VirtualFrame frame, LLVMTruffleObject address, double value) {
+            doForeignAccess(frame, address, LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES, value);
+            return null;
         }
 
         @Specialization
-        public void execute(VirtualFrame frame, TruffleObject address, double value) {
+        public Object execute(VirtualFrame frame, TruffleObject address, double value) {
             doForeignAccess(frame, address, value);
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVM80BitFloatNode.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, LLVM80BitFloat value) {
+        public Object execute(LLVMAddress address, LLVM80BitFloat value) {
             LLVMMemory.put80BitFloat(address, value);
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVMAddressNode.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMAddressStoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, LLVMAddress value) {
+        public Object execute(LLVMAddress address, LLVMAddress value) {
             LLVMMemory.putAddress(address, value);
+            return null;
         }
 
         @SuppressWarnings("unused")
@@ -222,20 +228,22 @@ public abstract class LLVMStoreNode extends LLVMNode {
         }
 
         @Specialization
-        public void execute(VirtualFrame frame, LLVMTruffleObject address, Object value) {
-            doForeignAccess(frame, address, LLVMAddressNode.BYTE_SIZE, value);
+        public Object execute(VirtualFrame frame, LLVMTruffleObject address, Object value) {
+            doForeignAccess(frame, address, LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, value);
+            return null;
         }
 
         @Specialization
-        public void execute(VirtualFrame frame, TruffleObject address, Object value) {
+        public Object execute(VirtualFrame frame, TruffleObject address, Object value) {
             doForeignAccess(frame, address, value);
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVMAddressNode.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     @ImportStatic(LLVMGlobalVariableDescriptorGuards.class)
-    public abstract static class LLVMGlobalVariableStoreNode extends LLVMNode {
+    public abstract static class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
 
         protected final LLVMGlobalVariableDescriptor descriptor;
 
@@ -244,77 +252,83 @@ public abstract class LLVMStoreNode extends LLVMNode {
         }
 
         @Specialization(guards = "needsTransition(frame, descriptor)")
-        public void executeTransitionNative(VirtualFrame frame, LLVMAddress value) {
+        public Object executeTransitionNative(VirtualFrame frame, LLVMAddress value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             descriptor.transition(true, false);
             executeNative(frame, value);
+            return null;
         }
 
         @Specialization(guards = {"needsTransition(frame, descriptor)", "!isLLVMAddress(value)"})
-        public void executeTransitionManaged(VirtualFrame frame, Object value) {
+        public Object executeTransitionManaged(VirtualFrame frame, Object value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             descriptor.transition(true, true);
             executeManaged(frame, value);
+            return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "isNative(frame, descriptor)")
-        public void executeNative(VirtualFrame frame, LLVMAddress value) {
+        public Object executeNative(VirtualFrame frame, LLVMAddress value) {
             LLVMMemory.putAddress(descriptor.getNativeStorage(), value);
+            return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isNative(frame, descriptor)", "!isLLVMAddress(value)"})
-        public void executeManagedUnsupported(VirtualFrame frame, Object value) {
+        public Object executeManagedUnsupported(VirtualFrame frame, Object value) {
             CompilerDirectives.bailout("unsupported operation");
             throw new UnsupportedOperationException("Sulong can't store a Truffle object in a global variable " + descriptor.getName() + " that previously stored a native address");
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isManaged(frame, descriptor)", "!isLLVMAddress(value)"})
-        public void executeManaged(VirtualFrame frame, Object value) {
+        public Object executeManaged(VirtualFrame frame, Object value) {
             descriptor.setManagedStorage(value);
+            return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "isManaged(frame, descriptor)")
-        public void executeManagedUnsupported(VirtualFrame frame, LLVMAddress value) {
+        public Object executeManagedUnsupported(VirtualFrame frame, LLVMAddress value) {
             CompilerDirectives.bailout("unsupported operation");
             throw new UnsupportedOperationException("Sulong can't store a native address in a global variable " + descriptor.getName() + " that previously stored a Truffle object");
         }
 
     }
 
-    @NodeChild(type = LLVMFunctionNode.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     public abstract static class LLVMFunctionStoreNode extends LLVMStoreNode {
 
         @Specialization
-        public void execute(LLVMAddress address, LLVMFunctionDescriptor function) {
+        public Object execute(LLVMAddress address, LLVMFunctionDescriptor function) {
             LLVMHeap.putFunctionIndex(address, function.getFunctionIndex());
+            return null;
         }
 
     }
 
-    @NodeChild(type = LLVMAddressNode.class, value = "valueNode")
+    @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
     @NodeField(type = int.class, name = "structSize")
     public abstract static class LLVMStructStoreNode extends LLVMStoreNode {
 
         public abstract int getStructSize();
 
         @Specialization
-        public void execute(LLVMAddress address, LLVMAddress value) {
+        public Object execute(LLVMAddress address, LLVMAddress value) {
             LLVMMemory.putStruct(address, value, getStructSize());
+            return null;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMI1ArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMI1ArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI1Node[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMI1ArrayLiteralNode(LLVMI1Node[] values, int stride) {
+        public LLVMI1ArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -324,22 +338,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeI8(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                boolean currentValue = values[i].executeI1(frame);
-                LLVMMemory.putI1(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    boolean currentValue = values[i].executeI1(frame);
+                    LLVMMemory.putI1(currentAddress, currentValue);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMI8ArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMI8ArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI8Node[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMI8ArrayLiteralNode(LLVMI8Node[] values, int stride) {
+        public LLVMI8ArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -349,22 +368,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeI8(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                byte currentValue = values[i].executeI8(frame);
-                LLVMMemory.putI8(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    byte currentValue = values[i].executeI8(frame);
+                    LLVMMemory.putI8(currentAddress, currentValue);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMI16ArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMI16ArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI16Node[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMI16ArrayLiteralNode(LLVMI16Node[] values, int stride) {
+        public LLVMI16ArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -374,22 +398,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeI8(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                short currentValue = values[i].executeI16(frame);
-                LLVMMemory.putI16(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    short currentValue = values[i].executeI16(frame);
+                    LLVMMemory.putI16(currentAddress, currentValue);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMI32ArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMI32ArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI32Node[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMI32ArrayLiteralNode(LLVMI32Node[] values, int stride) {
+        public LLVMI32ArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -399,22 +428,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeI32(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                int currentValue = values[i].executeI32(frame);
-                LLVMMemory.putI32(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    int currentValue = values[i].executeI32(frame);
+                    LLVMMemory.putI32(currentAddress, currentValue);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMI64ArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMI64ArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMI64Node[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMI64ArrayLiteralNode(LLVMI64Node[] values, int stride) {
+        public LLVMI64ArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -424,22 +458,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeI64(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                long currentValue = values[i].executeI64(frame);
-                LLVMMemory.putI64(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    long currentValue = values[i].executeI64(frame);
+                    LLVMMemory.putI64(currentAddress, currentValue);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMFloatArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMFloatNode[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMFloatArrayLiteralNode(LLVMFloatNode[] values, int stride) {
+        public LLVMFloatArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -449,22 +488,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeI64(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                float currentValue = values[i].executeFloat(frame);
-                LLVMMemory.putFloat(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    float currentValue = values[i].executeFloat(frame);
+                    LLVMMemory.putFloat(currentAddress, currentValue);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMDoubleArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMDoubleArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMDoubleNode[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMDoubleArrayLiteralNode(LLVMDoubleNode[] values, int stride) {
+        public LLVMDoubleArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -474,22 +518,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                double currentValue = values[i].executeDouble(frame);
-                LLVMMemory.putDouble(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    double currentValue = values[i].executeDouble(frame);
+                    LLVMMemory.putDouble(currentAddress, currentValue);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVM80BitFloatArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVM80BitFloatNode[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVM80BitFloatArrayLiteralNode(LLVM80BitFloatNode[] values, int stride) {
+        public LLVM80BitFloatArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -499,22 +548,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress write80BitFloat(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                LLVM80BitFloat currentValue = values[i].execute80BitFloat(frame);
-                LLVMMemory.put80BitFloat(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    LLVM80BitFloat currentValue = values[i].executeLLVM80BitFloat(frame);
+                    LLVMMemory.put80BitFloat(currentAddress, currentValue);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMAddressArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMAddressNode[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMAddressArrayLiteralNode(LLVMAddressNode[] values, int stride) {
+        public LLVMAddressArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -524,22 +578,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                LLVMAddress currentValue = values[i].executePointee(frame);
-                LLVMMemory.putAddress(currentAddress, currentValue);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    LLVMAddress currentValue = values[i].executeLLVMAddress(frame);
+                    LLVMMemory.putAddress(currentAddress, currentValue);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMFunctionArrayLiteralNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
 
-        @Children private final LLVMFunctionNode[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMFunctionArrayLiteralNode(LLVMFunctionNode[] values, int stride) {
+        public LLVMFunctionArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -549,22 +608,27 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeFunction(frame);
-                LLVMHeap.putFunctionIndex(currentAddress, currentValue.getFunctionIndex());
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeTruffleObject(frame);
+                    LLVMHeap.putFunctionIndex(currentAddress, currentValue.getFunctionIndex());
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }
 
     }
 
-    @NodeChild(value = "address", type = LLVMAddressNode.class)
-    public abstract static class LLVMAddressArrayCopyNode extends LLVMAddressNode {
+    @NodeChild(value = "address", type = LLVMExpressionNode.class)
+    public abstract static class LLVMAddressArrayCopyNode extends LLVMExpressionNode {
 
-        @Children private final LLVMAddressNode[] values;
+        @Children private final LLVMExpressionNode[] values;
         private final int stride;
 
-        public LLVMAddressArrayCopyNode(LLVMAddressNode[] values, int stride) {
+        public LLVMAddressArrayCopyNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
         }
@@ -574,9 +638,14 @@ public abstract class LLVMStoreNode extends LLVMNode {
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                LLVMAddress currentValue = values[i].executePointee(frame);
-                LLVMHeap.memCopy(currentAddress, currentValue, stride);
-                currentAddress = currentAddress.increment(stride);
+                try {
+                    LLVMAddress currentValue = values[i].executeLLVMAddress(frame);
+                    LLVMHeap.memCopy(currentAddress, currentValue, stride);
+                    currentAddress = currentAddress.increment(stride);
+                } catch (UnexpectedResultException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException(e);
+                }
             }
             return addr;
         }

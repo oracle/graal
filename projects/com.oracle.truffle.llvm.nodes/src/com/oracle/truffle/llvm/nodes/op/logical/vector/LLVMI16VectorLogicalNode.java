@@ -32,13 +32,12 @@ package com.oracle.truffle.llvm.nodes.op.logical.vector;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI16VectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.vector.LLVMI16Vector;
 
-@NodeChildren({@NodeChild(value = "address", type = LLVMAddressNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
-public abstract class LLVMI16VectorLogicalNode extends LLVMI16VectorNode {
+@NodeChildren({@NodeChild(value = "address", type = LLVMExpressionNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
+public abstract class LLVMI16VectorLogicalNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16VectorAndNode extends LLVMI16VectorLogicalNode {
         @Specialization

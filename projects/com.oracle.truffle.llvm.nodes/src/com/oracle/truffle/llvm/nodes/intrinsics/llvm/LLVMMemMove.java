@@ -33,25 +33,23 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 
 public abstract class LLVMMemMove {
 
     @GenerateNodeFactory
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class, value = "dest"), @NodeChild(type = LLVMAddressNode.class, value = "src"), @NodeChild(type = LLVMI64Node.class, value = "length"),
-                    @NodeChild(type = LLVMI32Node.class, value = "align"), @NodeChild(type = LLVMI1Node.class, value = "isVolatile")})
-    public abstract static class LLVMMemMoveI64 extends LLVMNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "dest"), @NodeChild(type = LLVMExpressionNode.class, value = "src"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "length"),
+                    @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
+    public abstract static class LLVMMemMoveI64 extends LLVMExpressionNode {
 
         @SuppressWarnings("unused")
         @Specialization
-        public void executeVoid(LLVMAddress dest, LLVMAddress source, long length, int align, boolean isVolatile) {
+        public Object executeVoid(LLVMAddress dest, LLVMAddress source, long length, int align, boolean isVolatile) {
             LLVMHeap.memMove(dest, source, length);
+            return null;
         }
 
     }

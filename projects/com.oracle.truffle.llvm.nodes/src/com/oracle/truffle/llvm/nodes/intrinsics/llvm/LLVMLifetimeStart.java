@@ -33,17 +33,16 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
 @GenerateNodeFactory
-@NodeChildren({@NodeChild(type = LLVMI64Node.class, value = "size"), @NodeChild(type = LLVMAddressNode.class, value = "expected")})
-public abstract class LLVMLifetimeStart extends LLVMNode {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "size"), @NodeChild(type = LLVMExpressionNode.class, value = "expected")})
+public abstract class LLVMLifetimeStart extends LLVMExpressionNode {
 
     @Specialization
-    public void executeI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") LLVMAddress ptr) {
+    public Object executeI1(@SuppressWarnings("unused") long size, @SuppressWarnings("unused") LLVMAddress ptr) {
+        return null;
     }
 
 }

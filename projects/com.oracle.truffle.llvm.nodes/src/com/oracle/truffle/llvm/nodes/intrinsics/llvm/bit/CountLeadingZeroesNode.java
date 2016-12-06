@@ -33,15 +33,13 @@ import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 public abstract class CountLeadingZeroesNode {
 
-    @NodeChildren({@NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI1Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     @GenerateNodeFactory
-    public abstract static class CountLeadingZeroesI32Node extends LLVMI32Node {
+    public abstract static class CountLeadingZeroesI32Node extends LLVMExpressionNode {
 
         @Specialization
         public int executeI32(int val, @SuppressWarnings("unused") boolean isZeroUndefined) {
@@ -49,9 +47,9 @@ public abstract class CountLeadingZeroesNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI64Node.class), @NodeChild(type = LLVMI1Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     @GenerateNodeFactory
-    public abstract static class CountLeadingZeroesI64Node extends LLVMI64Node {
+    public abstract static class CountLeadingZeroesI64Node extends LLVMExpressionNode {
 
         @Specialization
         public long executeI64(long val, @SuppressWarnings("unused") boolean isZeroUndefined) {

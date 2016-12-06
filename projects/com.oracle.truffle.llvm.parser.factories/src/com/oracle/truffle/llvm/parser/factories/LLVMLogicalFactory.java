@@ -30,18 +30,6 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI16VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI1VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI64VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI8VectorNode;
 import com.oracle.truffle.llvm.nodes.op.logical.integer.LLVMI16LogicalNodeFactory.LLVMI16AndNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.integer.LLVMI16LogicalNodeFactory.LLVMI16AshrNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.integer.LLVMI16LogicalNodeFactory.LLVMI16LshrNodeGen;
@@ -110,41 +98,41 @@ public final class LLVMLogicalFactory {
     private LLVMLogicalFactory() {
     }
 
-    public static LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType type, LLVMBaseType llvmType, LLVMAddressNode target) {
+    public static LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType type, LLVMBaseType llvmType, LLVMExpressionNode target) {
         return createNode(left, right, llvmType, type, target);
     }
 
-    private static LLVMExpressionNode createNode(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMLogicalInstructionType type, LLVMAddressNode target)
+    private static LLVMExpressionNode createNode(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMLogicalInstructionType type, LLVMExpressionNode target)
                     throws AssertionError {
         switch (llvmType) {
             case I1:
-                return visitLogicalI1Instruction(type, (LLVMI1Node) left, (LLVMI1Node) right);
+                return visitLogicalI1Instruction(type, left, right);
             case I8:
-                return visitLogicalI8Instruction(type, (LLVMI8Node) left, (LLVMI8Node) right);
+                return visitLogicalI8Instruction(type, left, right);
             case I16:
-                return visitLogicalI16Instruction(type, (LLVMI16Node) left, (LLVMI16Node) right);
+                return visitLogicalI16Instruction(type, left, right);
             case I32:
-                return visitLogicalI32Instruction(type, (LLVMI32Node) left, (LLVMI32Node) right);
+                return visitLogicalI32Instruction(type, left, right);
             case I64:
-                return visitLogicalI64Instruction(type, (LLVMI64Node) left, (LLVMI64Node) right);
+                return visitLogicalI64Instruction(type, left, right);
             case I_VAR_BITWIDTH:
-                return visitLogicalIVarInstruction(type, (LLVMIVarBitNode) left, (LLVMIVarBitNode) right);
+                return visitLogicalIVarInstruction(type, left, right);
             case I1_VECTOR:
-                return visitLogicalI1VectorInstruction(type, (LLVMI1VectorNode) left, (LLVMI1VectorNode) right, target);
+                return visitLogicalI1VectorInstruction(type, left, right, target);
             case I8_VECTOR:
-                return visitLogicalI8VectorInstruction(type, (LLVMI8VectorNode) left, (LLVMI8VectorNode) right, target);
+                return visitLogicalI8VectorInstruction(type, left, right, target);
             case I16_VECTOR:
-                return visitLogicalI16VectorInstruction(type, (LLVMI16VectorNode) left, (LLVMI16VectorNode) right, target);
+                return visitLogicalI16VectorInstruction(type, left, right, target);
             case I32_VECTOR:
-                return visitLogicalI32VectorInstruction(type, (LLVMI32VectorNode) left, (LLVMI32VectorNode) right, target);
+                return visitLogicalI32VectorInstruction(type, left, right, target);
             case I64_VECTOR:
-                return visitLogicalI64VectorInstruction(type, (LLVMI64VectorNode) left, (LLVMI64VectorNode) right, target);
+                return visitLogicalI64VectorInstruction(type, left, right, target);
             default:
                 throw new AssertionError(llvmType);
         }
     }
 
-    private static LLVMExpressionNode visitLogicalIVarInstruction(LLVMLogicalInstructionType type, LLVMIVarBitNode left, LLVMIVarBitNode right) {
+    private static LLVMExpressionNode visitLogicalIVarInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case SHIFT_LEFT:
                 return LLVMIVarShlNodeGen.create(left, right);
@@ -163,7 +151,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI1VectorInstruction(LLVMLogicalInstructionType type, LLVMI1VectorNode left, LLVMI1VectorNode right, LLVMAddressNode target) {
+    private static LLVMExpressionNode visitLogicalI1VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
         switch (type) {
             case AND:
                 return LLVMI1VectorAndNodeGen.create(target, left, right);
@@ -176,7 +164,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI16VectorInstruction(LLVMLogicalInstructionType type, LLVMI16VectorNode left, LLVMI16VectorNode right, LLVMAddressNode target) {
+    private static LLVMExpressionNode visitLogicalI16VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
         switch (type) {
             case SHIFT_LEFT:
                 return LLVMI16VectorShlNodeGen.create(target, left, right);
@@ -195,7 +183,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI8VectorInstruction(LLVMLogicalInstructionType type, LLVMI8VectorNode left, LLVMI8VectorNode right, LLVMAddressNode target) {
+    private static LLVMExpressionNode visitLogicalI8VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
         switch (type) {
             case SHIFT_LEFT:
                 return LLVMI8VectorShlNodeGen.create(target, left, right);
@@ -214,7 +202,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI32VectorInstruction(LLVMLogicalInstructionType type, LLVMI32VectorNode left, LLVMI32VectorNode right, LLVMAddressNode target) {
+    private static LLVMExpressionNode visitLogicalI32VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
         switch (type) {
             case SHIFT_LEFT:
                 return LLVMI32VectorShlNodeGen.create(target, left, right);
@@ -233,7 +221,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI64VectorInstruction(LLVMLogicalInstructionType type, LLVMI64VectorNode left, LLVMI64VectorNode right, LLVMAddressNode target) {
+    private static LLVMExpressionNode visitLogicalI64VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
         switch (type) {
             case SHIFT_LEFT:
                 return LLVMI64VectorShlNodeGen.create(target, left, right);
@@ -252,7 +240,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMI1Node visitLogicalI1Instruction(LLVMLogicalInstructionType type, LLVMI1Node left, LLVMI1Node right) {
+    private static LLVMExpressionNode visitLogicalI1Instruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case AND:
                 return LLVMI1AndNodeGen.create(left, right);
@@ -265,7 +253,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMI8Node visitLogicalI8Instruction(LLVMLogicalInstructionType type, LLVMI8Node left, LLVMI8Node right) {
+    private static LLVMExpressionNode visitLogicalI8Instruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case SHIFT_LEFT:
                 return LLVMI8ShlNodeGen.create(left, right);
@@ -284,7 +272,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMI16Node visitLogicalI16Instruction(LLVMLogicalInstructionType type, LLVMI16Node left, LLVMI16Node right) {
+    private static LLVMExpressionNode visitLogicalI16Instruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case SHIFT_LEFT:
                 return LLVMI16ShlNodeGen.create(left, right);
@@ -303,7 +291,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMI32Node visitLogicalI32Instruction(LLVMLogicalInstructionType type, LLVMI32Node left, LLVMI32Node right) {
+    private static LLVMExpressionNode visitLogicalI32Instruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case SHIFT_LEFT:
                 return LLVMI32ShlNodeGen.create(left, right);
@@ -322,7 +310,7 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMI64Node visitLogicalI64Instruction(LLVMLogicalInstructionType type, LLVMI64Node left, LLVMI64Node right) {
+    private static LLVMExpressionNode visitLogicalI64Instruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case SHIFT_LEFT:
                 return LLVMI64ShlNodeGen.create(left, right);

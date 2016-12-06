@@ -34,14 +34,13 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
-@NodeChild(type = LLVMI32Node.class, value = "val")
+@NodeChild(type = LLVMExpressionNode.class, value = "val")
 @NodeField(type = FrameSlot.class, name = "stackSlot")
-public abstract class LLVMFrameAddress extends LLVMAddressNode {
+public abstract class LLVMFrameAddress extends LLVMExpressionNode {
 
     abstract FrameSlot getStackSlot();
 

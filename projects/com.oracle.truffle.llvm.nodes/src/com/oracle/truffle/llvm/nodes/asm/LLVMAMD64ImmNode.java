@@ -30,9 +30,9 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
-public final class LLVMAMD64ImmNode extends LLVMI32Node {
+public final class LLVMAMD64ImmNode extends LLVMExpressionNode {
 
     private final int value;
 
@@ -43,6 +43,11 @@ public final class LLVMAMD64ImmNode extends LLVMI32Node {
     @Override
     public int executeI32(VirtualFrame frame) {
         return value;
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return executeI32(frame);
     }
 
 }

@@ -44,10 +44,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.LLVMFunctionRegistry;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
 import com.oracle.truffle.llvm.nodes.others.LLVMGlobalVariableDescriptorGuards;
 import com.oracle.truffle.llvm.types.LLVMAddress;
@@ -61,9 +57,9 @@ import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
 public abstract class LLVMDirectLoadNode {
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "bitWidth", type = int.class)
-    public abstract static class LLVMIVarBitDirectLoadNode extends LLVMIVarBitNode {
+    public abstract static class LLVMIVarBitDirectLoadNode extends LLVMExpressionNode {
 
         public abstract int getBitWidth();
 
@@ -73,8 +69,8 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVM80BitFloatDirectLoadNode extends LLVM80BitFloatNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVM80BitFloatDirectLoadNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVM80BitFloat executeDouble(LLVMAddress addr) {
@@ -82,9 +78,9 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(type = LLVMFunctionRegistry.class, name = "functionRegistry")
-    public abstract static class LLVMFunctionDirectLoadNode extends LLVMFunctionNode {
+    public abstract static class LLVMFunctionDirectLoadNode extends LLVMExpressionNode {
 
         public abstract LLVMFunctionRegistry getFunctionRegistry();
 
@@ -95,7 +91,7 @@ public abstract class LLVMDirectLoadNode {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMAddressDirectLoadNode extends LLVMAddressNode {
+    public abstract static class LLVMAddressDirectLoadNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMAddress executeAddress(LLVMAddress addr) {
@@ -109,7 +105,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization(guards = "objectIsManagedMalloc(addr)")
         public Object executeIndirectedManagedMalloc(LLVMTruffleObject addr) {
-            return ((ManagedMallocObject) addr.getObject()).get((int) (addr.getOffset() / LLVMAddressNode.BYTE_SIZE));
+            return ((ManagedMallocObject) addr.getObject()).get((int) (addr.getOffset() / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES));
         }
 
         @Specialization(guards = "!objectIsManagedMalloc(addr)")
@@ -144,7 +140,7 @@ public abstract class LLVMDirectLoadNode {
     }
 
     @ImportStatic(LLVMGlobalVariableDescriptorGuards.class)
-    public abstract static class LLVMGlobalVariableDirectLoadNode extends LLVMAddressNode {
+    public abstract static class LLVMGlobalVariableDirectLoadNode extends LLVMExpressionNode {
 
         protected final LLVMGlobalVariableDescriptor descriptor;
 
@@ -173,8 +169,8 @@ public abstract class LLVMDirectLoadNode {
 
     }
 
-    @NodeChild(type = LLVMAddressNode.class)
-    public abstract static class LLVMStructDirectLoadNode extends LLVMAddressNode {
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMStructDirectLoadNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMAddress executeAddress(LLVMAddress addr) {

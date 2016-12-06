@@ -40,7 +40,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIntrinsic;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMBooleanIntrinsic;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMDoubleIntrinsic;
@@ -232,7 +231,7 @@ public final class LLVMTruffleRead {
 
     // INDEXED:
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleReadIdxP extends LLVMAddressIntrinsic {
 
         @Child private Node foreignRead = Message.READ.createNode();
@@ -251,7 +250,7 @@ public final class LLVMTruffleRead {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleReadIdxI extends LLVMI32Intrinsic {
 
         @Child private Node foreignRead = Message.READ.createNode();
@@ -270,7 +269,7 @@ public final class LLVMTruffleRead {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleReadIdxL extends LLVMI64Intrinsic {
 
         @Child private Node foreignRead = Message.READ.createNode();
@@ -289,7 +288,7 @@ public final class LLVMTruffleRead {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleReadIdxC extends LLVMI8Intrinsic {
 
         @Child private Node foreignRead = Message.READ.createNode();
@@ -308,7 +307,7 @@ public final class LLVMTruffleRead {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleReadIdxF extends LLVMFloatIntrinsic {
 
         @Child private Node foreignRead = Message.READ.createNode();
@@ -327,7 +326,7 @@ public final class LLVMTruffleRead {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleReadIdxD extends LLVMDoubleIntrinsic {
 
         @Child private Node foreignRead = Message.READ.createNode();
@@ -346,7 +345,7 @@ public final class LLVMTruffleRead {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMI32Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleReadIdxB extends LLVMBooleanIntrinsic {
 
         @Child private Node foreignRead = Message.READ.createNode();

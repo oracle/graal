@@ -30,19 +30,6 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI1VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI1LiteralNode;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVM80BitFloatCompareNodeFactory.LLVM80BitFloatOeqNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVM80BitFloatCompareNodeFactory.LLVM80BitFloatOgeNodeGen;
@@ -137,6 +124,7 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8U
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8UgtNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8UleNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8UltNodeGen;
+import com.oracle.truffle.llvm.nodes.op.compare.LLVMNeqNodeGen;
 import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMIntegerComparisonType;
@@ -144,7 +132,6 @@ import com.oracle.truffle.llvm.parser.api.model.enums.CompareOperator;
 import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
-import com.oracle.truffle.llvm.nodes.op.compare.LLVMNeqNodeGen;
 
 public final class LLVMComparisonFactory {
 
@@ -238,46 +225,46 @@ public final class LLVMComparisonFactory {
         }
 
         if (LLVMTypeHelper.isVectorType(llvmtype)) {
-            final LLVMAddressNode target = (LLVMAddressNode) runtime.allocateVectorResult(type);
+            final LLVMExpressionNode target = runtime.allocateVectorResult(type);
             return LLVMComparisonFactory.createVectorComparison(target, lhs, rhs, llvmtype, comparison);
         } else {
             return LLVMComparisonFactory.createIntegerComparison(lhs, rhs, llvmtype, comparison);
         }
     }
 
-    public static LLVMI1Node createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
+    public static LLVMExpressionNode createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
         switch (llvmType) {
             case I1:
-                return visitI1Comparison((LLVMI1Node) left, (LLVMI1Node) right, condition);
+                return visitI1Comparison(left, right, condition);
             case I8:
-                return visitI8Comparison((LLVMI8Node) left, (LLVMI8Node) right, condition);
+                return visitI8Comparison(left, right, condition);
             case I16:
-                return visitI16Comparison((LLVMI16Node) left, (LLVMI16Node) right, condition);
+                return visitI16Comparison(left, right, condition);
             case I32:
-                return visitI32Comparison((LLVMI32Node) left, (LLVMI32Node) right, condition);
+                return visitI32Comparison(left, right, condition);
             case I64:
-                return visitI64Comparison((LLVMI64Node) left, (LLVMI64Node) right, condition);
+                return visitI64Comparison(left, right, condition);
             case I_VAR_BITWIDTH:
-                return visitIVarComparison((LLVMIVarBitNode) left, (LLVMIVarBitNode) right, condition);
+                return visitIVarComparison(left, right, condition);
             case ADDRESS:
-                return visitAddressComparison((LLVMAddressNode) left, (LLVMAddressNode) right, condition);
+                return visitAddressComparison(left, right, condition);
             case FUNCTION_ADDRESS:
-                return visitFunctionComparison((LLVMFunctionNode) left, (LLVMFunctionNode) right, condition);
+                return visitFunctionComparison(left, right, condition);
             default:
                 throw new AssertionError(llvmType);
         }
     }
 
-    public static LLVMI1VectorNode createVectorComparison(LLVMAddressNode target, LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
+    public static LLVMExpressionNode createVectorComparison(LLVMExpressionNode target, LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
         switch (llvmType) {
             case I32_VECTOR:
-                return visitI32VectorComparison(target, (LLVMI32VectorNode) left, (LLVMI32VectorNode) right, condition);
+                return visitI32VectorComparison(target, left, right, condition);
             default:
                 throw new AssertionError(llvmType);
         }
     }
 
-    private static LLVMI1Node visitIVarComparison(LLVMIVarBitNode left, LLVMIVarBitNode right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitIVarComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case NOT_EQUALS:
                 return LLVMNeqNodeGen.create(left, right);
@@ -288,7 +275,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1Node visitI1Comparison(LLVMI1Node left, LLVMI1Node right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitI1Comparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
                 return LLVMEqNodeGen.create(left, right);
@@ -299,7 +286,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1Node visitI8Comparison(LLVMI8Node left, LLVMI8Node right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitI8Comparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
                 return LLVMEqNodeGen.create(left, right);
@@ -326,7 +313,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1Node visitI16Comparison(LLVMI16Node left, LLVMI16Node right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitI16Comparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
                 return LLVMEqNodeGen.create(left, right);
@@ -353,7 +340,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1Node visitI32Comparison(LLVMI32Node left, LLVMI32Node right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitI32Comparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
                 return LLVMEqNodeGen.create(left, right);
@@ -380,7 +367,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1Node visitI64Comparison(LLVMI64Node left, LLVMI64Node right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitI64Comparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
                 return LLVMEqNodeGen.create(left, right);
@@ -407,7 +394,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1Node visitAddressComparison(LLVMAddressNode left, LLVMAddressNode right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitAddressComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
                 return LLVMEqNodeGen.create(left, right);
@@ -434,7 +421,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1Node visitFunctionComparison(LLVMFunctionNode left, LLVMFunctionNode right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitFunctionComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
                 return LLVMEqNodeGen.create(left, right);
@@ -445,7 +432,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    public static LLVMI1Node createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMFloatComparisonType condition) {
+    public static LLVMExpressionNode createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMFloatComparisonType condition) {
         if (condition == LLVMFloatComparisonType.FALSE) {
             return new LLVMI1LiteralNode(false);
         } else if (condition == LLVMFloatComparisonType.TRUE) {
@@ -453,17 +440,17 @@ public final class LLVMComparisonFactory {
         }
         switch (llvmType) {
             case FLOAT:
-                return visitFloatComparison((LLVMFloatNode) left, (LLVMFloatNode) right, condition);
+                return visitFloatComparison(left, right, condition);
             case DOUBLE:
-                return visitDoubleComparison((LLVMDoubleNode) left, (LLVMDoubleNode) right, condition);
+                return visitDoubleComparison(left, right, condition);
             case X86_FP80:
-                return visit80BitFloatComparison((LLVM80BitFloatNode) left, (LLVM80BitFloatNode) right, condition);
+                return visit80BitFloatComparison(left, right, condition);
             default:
                 throw new AssertionError(llvmType);
         }
     }
 
-    private static LLVMI1Node visitFloatComparison(LLVMFloatNode left, LLVMFloatNode right, LLVMFloatComparisonType condition) {
+    private static LLVMExpressionNode visitFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMFloatComparisonType condition) {
         switch (condition) {
             case ORDERED_AND_EQUALS:
                 return LLVMFloatOeqNodeGen.create(left, right);
@@ -498,7 +485,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1Node visitDoubleComparison(LLVMDoubleNode left, LLVMDoubleNode right, LLVMFloatComparisonType condition) {
+    private static LLVMExpressionNode visitDoubleComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMFloatComparisonType condition) {
         switch (condition) {
             case ORDERED_AND_EQUALS:
                 return LLVMDoubleOeqNodeGen.create(left, right);
@@ -533,7 +520,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1Node visit80BitFloatComparison(LLVM80BitFloatNode left, LLVM80BitFloatNode right, LLVMFloatComparisonType condition) {
+    private static LLVMExpressionNode visit80BitFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMFloatComparisonType condition) {
         switch (condition) {
             case ORDERED_AND_EQUALS:
                 return LLVM80BitFloatOeqNodeGen.create(left, right);
@@ -568,7 +555,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMI1VectorNode visitI32VectorComparison(LLVMAddressNode target, LLVMI32VectorNode left, LLVMI32VectorNode right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitI32VectorComparison(LLVMExpressionNode target, LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
                 return LLVMI32VectorEqNodeGen.create(target, left, right);

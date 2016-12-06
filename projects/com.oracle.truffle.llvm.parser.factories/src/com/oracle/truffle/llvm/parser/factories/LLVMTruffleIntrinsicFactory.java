@@ -34,13 +34,12 @@ import java.util.Map;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetArgFactory;
 
 public final class LLVMTruffleIntrinsicFactory {
 
-    private static final Map<String, NodeFactory<? extends LLVMNode>> factories = new HashMap<>();
+    private static final Map<String, NodeFactory<? extends LLVMExpressionNode>> factories = new HashMap<>();
 
     static {
         factories.put("@truffle_get_arg", LLVMTruffleGetArgFactory.getInstance());
@@ -49,8 +48,8 @@ public final class LLVMTruffleIntrinsicFactory {
     private LLVMTruffleIntrinsicFactory() {
     }
 
-    public static LLVMNode create(String functionName, LLVMExpressionNode[] argNodes) {
-        NodeFactory<? extends LLVMNode> factory = factories.get(functionName);
+    public static LLVMExpressionNode create(String functionName, LLVMExpressionNode[] argNodes) {
+        NodeFactory<? extends LLVMExpressionNode> factory = factories.get(functionName);
         if (factory == null) {
             return null;
         }

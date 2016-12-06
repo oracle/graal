@@ -35,22 +35,22 @@ import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.context.LLVMContext;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
-@NodeChild(type = LLVMAddressNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
 @NodeFields({@NodeField(type = LLVMContext.class, name = "context"), @NodeField(type = FrameSlot.class, name = "stackPointerSlot")})
-public abstract class LLVMStackDeallocNode extends LLVMNode {
+public abstract class LLVMStackDeallocNode extends LLVMExpressionNode {
 
     abstract LLVMContext getContext();
 
     abstract FrameSlot getStackPointerSlot();
 
     @Specialization
-    public void executeVoid(VirtualFrame frame, LLVMAddress addr) {
+    public Object executeVoid(VirtualFrame frame, LLVMAddress addr) {
         frame.setObject(getStackPointerSlot(), addr);
+        return null;
     }
 
 }

@@ -31,22 +31,23 @@ package com.oracle.truffle.llvm.nodes.asm.base;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
-public class LLVMInlineAssemblyBlockNode extends LLVMNode {
+public class LLVMInlineAssemblyBlockNode extends LLVMExpressionNode {
 
-    @Children private final LLVMNode[] statements;
+    @Children private final LLVMExpressionNode[] statements;
 
-    public LLVMInlineAssemblyBlockNode(LLVMNode[] statements) {
+    public LLVMInlineAssemblyBlockNode(LLVMExpressionNode[] statements) {
         this.statements = statements;
     }
 
     @Override
     @ExplodeLoop
-    public void executeVoid(VirtualFrame frame) {
-        for (LLVMNode n : statements) {
-            n.executeVoid(frame);
+    public Object executeGeneric(VirtualFrame frame) {
+        for (LLVMExpressionNode n : statements) {
+            n.executeGeneric(frame);
         }
+        return null;
     }
 
 }

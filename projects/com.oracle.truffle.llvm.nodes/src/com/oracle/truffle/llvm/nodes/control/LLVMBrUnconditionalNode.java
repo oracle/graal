@@ -32,17 +32,16 @@ package com.oracle.truffle.llvm.nodes.control;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
 
-@NodeChild(type = LLVMI1Node.class)
+@NodeChild(type = LLVMExpressionNode.class)
 public class LLVMBrUnconditionalNode extends LLVMTerminatorNode {
 
-    @Children private final LLVMNode[] phiWrites;
+    @Children private final LLVMExpressionNode[] phiWrites;
 
-    public LLVMBrUnconditionalNode(int trueSuccessor, LLVMNode[] phiWrites) {
+    public LLVMBrUnconditionalNode(int trueSuccessor, LLVMExpressionNode[] phiWrites) {
         super(trueSuccessor);
         this.phiWrites = phiWrites;
     }
@@ -50,8 +49,8 @@ public class LLVMBrUnconditionalNode extends LLVMTerminatorNode {
     @ExplodeLoop
     @Override
     public int executeGetSuccessorIndex(VirtualFrame frame) {
-        for (LLVMNode node : phiWrites) {
-            node.executeVoid(frame);
+        for (LLVMExpressionNode node : phiWrites) {
+            node.executeGeneric(frame);
         }
         return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
     }

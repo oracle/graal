@@ -30,11 +30,6 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMDoubleProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMFloatProfiledValueNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI32ProfiledValueNodeGen;
@@ -47,15 +42,15 @@ public class LLVMValueProfileFactory {
     public static LLVMExpressionNode createValueProfiledNode(LLVMExpressionNode argNode, LLVMBaseType paramType) {
         switch (paramType) {
             case I8:
-                return LLVMI8ProfiledValueNodeGen.create((LLVMI8Node) argNode);
+                return LLVMI8ProfiledValueNodeGen.create(argNode);
             case I32:
-                return LLVMI32ProfiledValueNodeGen.create((LLVMI32Node) argNode);
+                return LLVMI32ProfiledValueNodeGen.create(argNode);
             case I64:
-                return LLVMI64ProfiledValueNodeGen.create((LLVMI64Node) argNode);
+                return LLVMI64ProfiledValueNodeGen.create(argNode);
             case FLOAT:
-                return LLVMFloatProfiledValueNodeGen.create((LLVMFloatNode) argNode);
+                return LLVMFloatProfiledValueNodeGen.create(argNode);
             case DOUBLE:
-                return LLVMDoubleProfiledValueNodeGen.create((LLVMDoubleNode) argNode);
+                return LLVMDoubleProfiledValueNodeGen.create(argNode);
             default:
                 return argNode;
         }

@@ -31,10 +31,10 @@ package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 @NodeChild("valueNode")
-public abstract class LLVMAMD64InclNode extends LLVMI32Node {
+public abstract class LLVMAMD64InclNode extends LLVMExpressionNode {
 
     @Specialization
     protected int executeI32(int value) {

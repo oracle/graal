@@ -31,17 +31,18 @@ package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMVectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 import com.oracle.truffle.llvm.types.vector.LLVMVector;
 
-@NodeChild(type = LLVMVectorNode.class, value = "valueNode")
+@NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
-    public void execute(LLVMAddress address, LLVMVector<?> value) {
+    public Object execute(LLVMAddress address, LLVMVector<?> value) {
         LLVMMemory.putVector(address, value);
+        return null;
     }
 
 }

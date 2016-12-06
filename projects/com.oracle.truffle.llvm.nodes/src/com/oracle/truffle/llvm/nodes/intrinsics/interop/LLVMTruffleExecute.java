@@ -100,7 +100,7 @@ public final class LLVMTruffleExecute {
         private static final Class<?> expectedType = TruffleObject.class;
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
+        public Object doIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
             if (foreignExecute == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignExecute = insert(Message.createExecute(getFunctionArgumentLength(frame)).createNode());
@@ -109,7 +109,7 @@ public final class LLVMTruffleExecute {
         }
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+        public Object doIntrinsic(VirtualFrame frame, TruffleObject value) {
             if (foreignExecute == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignExecute = insert(Message.createExecute(getFunctionArgumentLength(frame)).createNode());

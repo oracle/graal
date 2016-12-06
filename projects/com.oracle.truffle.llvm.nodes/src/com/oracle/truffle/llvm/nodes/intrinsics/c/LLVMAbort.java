@@ -38,7 +38,7 @@ public abstract class LLVMAbort extends LLVMVoidIntrinsic {
     public static final int UNIX_SIGABORT = 134;
 
     @Specialization
-    public void execute() {
+    public Object execute() {
         throw new LLVMExitException(UNIX_SIGABORT);
     }
 

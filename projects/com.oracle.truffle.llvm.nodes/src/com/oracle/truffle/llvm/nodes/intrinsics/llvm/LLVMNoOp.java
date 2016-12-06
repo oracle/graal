@@ -31,14 +31,14 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 @GenerateNodeFactory
-public abstract class LLVMNoOp extends LLVMNode {
+public abstract class LLVMNoOp extends LLVMExpressionNode {
 
     @Specialization
-    public void executeVoid() {
-
+    public Object executeVoid() {
+        return null;
     }
 
 }

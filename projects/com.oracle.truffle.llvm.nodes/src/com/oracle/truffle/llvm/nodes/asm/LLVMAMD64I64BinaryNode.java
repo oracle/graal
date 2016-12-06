@@ -33,10 +33,9 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "leftNode"), @NodeChild(type = LLVMExpressionNode.class, value = "rightNode")})
-public abstract class LLVMAMD64I64BinaryNode extends LLVMI64Node {
+public abstract class LLVMAMD64I64BinaryNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAMD64I64ShrlNode extends LLVMAMD64I64BinaryNode {
 

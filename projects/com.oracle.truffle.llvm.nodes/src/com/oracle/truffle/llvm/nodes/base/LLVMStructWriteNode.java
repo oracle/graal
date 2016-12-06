@@ -35,6 +35,6 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 
 public abstract class LLVMStructWriteNode extends Node {
 
-    public abstract void executeWrite(VirtualFrame frame, LLVMAddress address);
+    public abstract Object executeWrite(VirtualFrame frame, LLVMAddress address);
 
 }

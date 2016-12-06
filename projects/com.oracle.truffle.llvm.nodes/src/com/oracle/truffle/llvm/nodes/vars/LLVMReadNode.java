@@ -36,25 +36,14 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public abstract class LLVMReadNode extends LLVMExpressionNode {
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI1ReadNode extends LLVMI1Node {
+    public abstract static class LLVMI1ReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -65,7 +54,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI8ReadNode extends LLVMI8Node {
+    public abstract static class LLVMI8ReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -76,7 +65,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI16ReadNode extends LLVMI16Node {
+    public abstract static class LLVMI16ReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -87,7 +76,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI32ReadNode extends LLVMI32Node {
+    public abstract static class LLVMI32ReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -98,7 +87,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI64ReadNode extends LLVMI64Node {
+    public abstract static class LLVMI64ReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -109,7 +98,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMIReadVarBitNode extends LLVMIVarBitNode {
+    public abstract static class LLVMIReadVarBitNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -120,7 +109,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMFloatReadNode extends LLVMFloatNode {
+    public abstract static class LLVMFloatReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -131,7 +120,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMDoubleReadNode extends LLVMDoubleNode {
+    public abstract static class LLVMDoubleReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -142,7 +131,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVM80BitFloatReadNode extends LLVM80BitFloatNode {
+    public abstract static class LLVM80BitFloatReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -153,7 +142,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMAddressReadNode extends LLVMAddressNode {
+    public abstract static class LLVMAddressReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -164,7 +153,7 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMFunctionReadNode extends LLVMFunctionNode {
+    public abstract static class LLVMFunctionReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 

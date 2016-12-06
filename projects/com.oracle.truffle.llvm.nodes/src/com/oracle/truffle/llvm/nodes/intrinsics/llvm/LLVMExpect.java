@@ -32,14 +32,12 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMExpect {
 
-    @NodeChild(type = LLVMI1Node.class, value = "val")
-    public abstract static class LLVMExpectI1 extends LLVMI1Node {
+    @NodeChild(type = LLVMExpressionNode.class, value = "val")
+    public abstract static class LLVMExpectI1 extends LLVMExpressionNode {
 
         private final ConditionProfile expectProfile = getExpectConditionProfile();
 
@@ -60,8 +58,8 @@ public abstract class LLVMExpect {
 
     }
 
-    @NodeChild(type = LLVMI32Node.class, value = "val")
-    public abstract static class LLVMExpectI32 extends LLVMI32Node {
+    @NodeChild(type = LLVMExpressionNode.class, value = "val")
+    public abstract static class LLVMExpectI32 extends LLVMExpressionNode {
 
         private final ConditionProfile expectProfile = getExpectConditionProfile();
 
@@ -82,8 +80,8 @@ public abstract class LLVMExpect {
 
     }
 
-    @NodeChild(type = LLVMI64Node.class, value = "val")
-    public abstract static class LLVMExpectI64 extends LLVMI64Node {
+    @NodeChild(type = LLVMExpressionNode.class, value = "val")
+    public abstract static class LLVMExpectI64 extends LLVMExpressionNode {
 
         private final ConditionProfile expectProfile = getExpectConditionProfile();
 

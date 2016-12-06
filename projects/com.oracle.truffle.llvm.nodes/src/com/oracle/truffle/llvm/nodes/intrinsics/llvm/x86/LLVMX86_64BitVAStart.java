@@ -29,9 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
@@ -39,13 +40,13 @@ import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public class LLVMX86_64BitVAStart extends LLVMNode {
+public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
 
     private static final int LONG_DOUBLE_SIZE = 16;
     private final int numberOfExplicitArguments;
-    @Child private LLVMAddressNode target;
+    @Child private LLVMExpressionNode target;
 
-    public LLVMX86_64BitVAStart(int numberOfExplicitArguments, LLVMAddressNode target) {
+    public LLVMX86_64BitVAStart(int numberOfExplicitArguments, LLVMExpressionNode target) {
         if (numberOfExplicitArguments < 0) {
             throw new AssertionError();
         }
@@ -88,8 +89,14 @@ public class LLVMX86_64BitVAStart extends LLVMNode {
 
     // FIXME: specialization (pass long values in function calls like TruffleC?)
     @Override
-    public void executeVoid(VirtualFrame frame) {
-        LLVMAddress address = target.executePointee(frame);
+    public Object executeGeneric(VirtualFrame frame) {
+        LLVMAddress address;
+        try {
+            address = target.executeLLVMAddress(frame);
+        } catch (UnexpectedResultException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(e);
+        }
         initOffsets(address);
         int varArgsStartIndex = numberOfExplicitArguments;
         Object[] realArguments = getRealArguments(frame);
@@ -140,6 +147,7 @@ public class LLVMX86_64BitVAStart extends LLVMNode {
                 storeArgument(types[i], currentAddress, object);
             }
         }
+        return null;
     }
 
     private static Object[] getRealArguments(VirtualFrame frame) {

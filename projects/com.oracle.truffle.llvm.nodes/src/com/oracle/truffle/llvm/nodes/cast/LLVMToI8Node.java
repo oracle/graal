@@ -31,23 +31,14 @@ package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
-public abstract class LLVMToI8Node extends LLVMI8Node {
+public abstract class LLVMToI8Node extends LLVMExpressionNode {
 
-    @NodeChild(value = "fromNode", type = LLVMI1Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI1ToI8Node extends LLVMToI8Node {
 
         @Specialization
@@ -56,7 +47,7 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI1Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI1ToI8ZeroExtNode extends LLVMToI8Node {
 
         @Specialization
@@ -65,7 +56,7 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI16Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI16ToI8Node extends LLVMToI8Node {
 
         @Specialization
@@ -74,7 +65,7 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI32Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI32ToI8Node extends LLVMToI8Node {
 
         @Specialization
@@ -83,7 +74,7 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMI64Node.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMI64ToI8Node extends LLVMToI8Node {
 
         @Specialization
@@ -92,7 +83,7 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMIVarBitNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMIVarToI8Node extends LLVMToI8Node {
 
         @Specialization
@@ -101,7 +92,7 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMFloatNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMFloatToI8Node extends LLVMToI8Node {
 
         @Specialization
@@ -110,7 +101,7 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMDoubleNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMDoubleToI8Node extends LLVMToI8Node {
 
         @Specialization
@@ -119,7 +110,7 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVM80BitFloatNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVM80BitFloatToI8Node extends LLVMToI8Node {
 
         @Specialization
@@ -128,7 +119,7 @@ public abstract class LLVMToI8Node extends LLVMI8Node {
         }
     }
 
-    @NodeChild(value = "fromNode", type = LLVMAddressNode.class)
+    @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMAddressToI8Node extends LLVMToI8Node {
 
         @Specialization

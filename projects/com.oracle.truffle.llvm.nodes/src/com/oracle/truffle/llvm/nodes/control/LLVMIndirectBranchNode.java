@@ -29,19 +29,20 @@
  */
 package com.oracle.truffle.llvm.nodes.control;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
 
 public class LLVMIndirectBranchNode extends LLVMTerminatorNode {
 
-    @Child private LLVMAddressNode address;
+    @Child private LLVMExpressionNode address;
 
-    @Children private final LLVMNode[] writeNodes;
+    @Children private final LLVMExpressionNode[] writeNodes;
 
-    public LLVMIndirectBranchNode(LLVMAddressNode address, int[] indices, LLVMNode[] writeNodes) {
+    public LLVMIndirectBranchNode(LLVMExpressionNode address, int[] indices, LLVMExpressionNode[] writeNodes) {
         super(indices);
         this.address = address;
         this.writeNodes = writeNodes;
@@ -50,7 +51,13 @@ public class LLVMIndirectBranchNode extends LLVMTerminatorNode {
     @Override
     public int executeGetSuccessorIndex(VirtualFrame frame) {
         // TODO specialize
-        int val = (int) address.executePointee(frame).getVal();
+        int val;
+        try {
+            val = (int) address.executeLLVMAddress(frame).getVal();
+        } catch (UnexpectedResultException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(e);
+        }
         for (int i = 0; i < nrSuccessors(); i++) {
             if (val == getSuccessors()[i]) {
                 executePhiWrites(frame);
@@ -63,7 +70,7 @@ public class LLVMIndirectBranchNode extends LLVMTerminatorNode {
     @ExplodeLoop
     private void executePhiWrites(VirtualFrame frame) {
         for (int j = 0; j < writeNodes.length; j++) {
-            writeNodes[j].executeVoid(frame);
+            writeNodes[j].executeGeneric(frame);
         }
     }
 

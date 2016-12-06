@@ -32,24 +32,15 @@ package com.oracle.truffle.llvm.nodes.others;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 public abstract class LLVMSelectNode {
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMI1Node.class)})
-    public abstract static class LLVMI1SelectNode extends LLVMI1Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI1SelectNode extends LLVMExpressionNode {
 
         @Specialization
         public boolean execute(boolean cond, boolean trueBranch, boolean elseBranch) {
@@ -58,8 +49,8 @@ public abstract class LLVMSelectNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMI8Node.class), @NodeChild(type = LLVMI8Node.class)})
-    public abstract static class LLVMI8SelectNode extends LLVMI8Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI8SelectNode extends LLVMExpressionNode {
 
         @Specialization
         public byte execute(boolean cond, byte trueBranch, byte elseBranch) {
@@ -68,8 +59,8 @@ public abstract class LLVMSelectNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMI16Node.class), @NodeChild(type = LLVMI16Node.class)})
-    public abstract static class LLVMI16SelectNode extends LLVMI16Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI16SelectNode extends LLVMExpressionNode {
 
         @Specialization
         public short execute(boolean cond, short trueBranch, short elseBranch) {
@@ -78,8 +69,8 @@ public abstract class LLVMSelectNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMI32Node.class), @NodeChild(type = LLVMI32Node.class)})
-    public abstract static class LLVMI32SelectNode extends LLVMI32Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI32SelectNode extends LLVMExpressionNode {
 
         @Specialization
         public int execute(boolean cond, int trueBranch, int elseBranch) {
@@ -88,8 +79,8 @@ public abstract class LLVMSelectNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMI64Node.class), @NodeChild(type = LLVMI64Node.class)})
-    public abstract static class LLVMI64SelectNode extends LLVMI64Node {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI64SelectNode extends LLVMExpressionNode {
 
         @Specialization
         public long execute(boolean cond, long trueBranch, long elseBranch) {
@@ -97,8 +88,8 @@ public abstract class LLVMSelectNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMFloatNode.class), @NodeChild(type = LLVMFloatNode.class)})
-    public abstract static class LLVMFloatSelectNode extends LLVMFloatNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMFloatSelectNode extends LLVMExpressionNode {
 
         @Specialization
         public float execute(boolean cond, float trueBranch, float elseBranch) {
@@ -107,8 +98,8 @@ public abstract class LLVMSelectNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMDoubleNode.class), @NodeChild(type = LLVMDoubleNode.class)})
-    public abstract static class LLVMDoubleSelectNode extends LLVMDoubleNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMDoubleSelectNode extends LLVMExpressionNode {
 
         @Specialization
         public double execute(boolean cond, double trueBranch, double elseBranch) {
@@ -117,8 +108,8 @@ public abstract class LLVMSelectNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVM80BitFloatNode.class), @NodeChild(type = LLVM80BitFloatNode.class)})
-    public abstract static class LLVM80BitFloatSelectNode extends LLVM80BitFloatNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVM80BitFloatSelectNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVM80BitFloat execute(boolean cond, LLVM80BitFloat trueBranch, LLVM80BitFloat elseBranch) {
@@ -126,8 +117,8 @@ public abstract class LLVMSelectNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMAddressNode.class)})
-    public abstract static class LLVMAddressSelectNode extends LLVMAddressNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMAddressSelectNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMAddress execute(boolean cond, LLVMAddress trueBranch, LLVMAddress elseBranch) {
@@ -136,8 +127,8 @@ public abstract class LLVMSelectNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMI1Node.class), @NodeChild(type = LLVMFunctionNode.class), @NodeChild(type = LLVMFunctionNode.class)})
-    public abstract static class LLVMFunctionSelectNode extends LLVMFunctionNode {
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMFunctionSelectNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMFunctionDescriptor execute(boolean cond, LLVMFunctionDescriptor trueBranch, LLVMFunctionDescriptor elseBranch) {

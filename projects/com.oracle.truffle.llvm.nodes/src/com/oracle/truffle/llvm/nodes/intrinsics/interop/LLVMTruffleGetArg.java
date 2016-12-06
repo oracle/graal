@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMAddressIn
 public abstract class LLVMTruffleGetArg extends LLVMAddressIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(VirtualFrame frame, int index) {
+    public Object doIntrinsic(VirtualFrame frame, int index) {
         assert index >= 0;
         Object[] arguments = frame.getArguments();
         return arguments[LLVMCallNode.ARG_START_INDEX + index];

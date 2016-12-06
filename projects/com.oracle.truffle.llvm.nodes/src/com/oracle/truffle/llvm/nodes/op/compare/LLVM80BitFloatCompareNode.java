@@ -32,12 +32,11 @@ package com.oracle.truffle.llvm.nodes.op.compare;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
-@NodeChildren({@NodeChild(type = LLVM80BitFloatNode.class), @NodeChild(type = LLVM80BitFloatNode.class)})
-public abstract class LLVM80BitFloatCompareNode extends LLVMI1Node {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVM80BitFloatCompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVM80BitFloatOltNode extends LLVM80BitFloatCompareNode {
         @Specialization

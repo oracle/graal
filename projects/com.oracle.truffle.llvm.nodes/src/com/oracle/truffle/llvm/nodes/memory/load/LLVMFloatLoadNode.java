@@ -39,21 +39,20 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-@NodeChild(type = LLVMAddressNode.class)
-public abstract class LLVMFloatLoadNode extends LLVMFloatNode {
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMFloatLoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
 
     protected float doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
         try {
-            int index = (int) (addr.getOffset() / LLVMFloatNode.BYTE_SIZE);
+            int index = (int) (addr.getOffset() / LLVMExpressionNode.FLOAT_SIZE_IN_BYTES);
             Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
             return toLLVM.convert(frame, value, float.class);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {

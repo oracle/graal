@@ -31,9 +31,9 @@ package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64RdtscNode extends LLVMI64Node {
+public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
 
     @TruffleBoundary
     @Specialization

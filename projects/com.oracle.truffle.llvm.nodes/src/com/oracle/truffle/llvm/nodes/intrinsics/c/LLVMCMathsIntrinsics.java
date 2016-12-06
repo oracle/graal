@@ -32,9 +32,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMDoubleIntrinsic;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI32Intrinsic;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI64Intrinsic;
@@ -44,7 +42,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic.LLVMI64Intrin
  */
 public abstract class LLVMCMathsIntrinsics {
 
-    @NodeChild(type = LLVMDoubleNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMSqrt extends LLVMDoubleIntrinsic {
 
         @Specialization
@@ -54,7 +52,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChild(type = LLVMDoubleNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMLog extends LLVMDoubleIntrinsic {
 
         @Specialization
@@ -64,7 +62,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChild(type = LLVMDoubleNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMLog10 extends LLVMDoubleIntrinsic {
 
         @Specialization
@@ -74,7 +72,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChild(type = LLVMDoubleNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMRint extends LLVMDoubleIntrinsic {
 
         @Specialization
@@ -84,7 +82,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChild(type = LLVMDoubleNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMCeil extends LLVMDoubleIntrinsic {
 
         @Specialization
@@ -94,7 +92,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChild(type = LLVMDoubleNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMFloor extends LLVMDoubleIntrinsic {
 
         @Specialization
@@ -104,7 +102,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChild(type = LLVMI32Node.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAbs extends LLVMI32Intrinsic {
 
         @Specialization
@@ -114,7 +112,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChild(type = LLVMDoubleNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMFAbs extends LLVMDoubleIntrinsic {
 
         @Specialization
@@ -124,7 +122,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChild(type = LLVMDoubleNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMExp extends LLVMDoubleIntrinsic {
 
         @Specialization
@@ -134,7 +132,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMDoubleNode.class), @NodeChild(type = LLVMDoubleNode.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMPow extends LLVMDoubleIntrinsic {
 
         @Specialization
@@ -144,7 +142,7 @@ public abstract class LLVMCMathsIntrinsics {
 
     }
 
-    @NodeChild(type = LLVMI64Node.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMLAbs extends LLVMI64Intrinsic {
 
         @Specialization

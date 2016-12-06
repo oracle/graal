@@ -31,14 +31,12 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMDisabledExpect {
 
-    @NodeChild(type = LLVMI1Node.class, value = "val")
-    public abstract static class LLVMDisabledExpectI1 extends LLVMI1Node {
+    @NodeChild(type = LLVMExpressionNode.class, value = "val")
+    public abstract static class LLVMDisabledExpectI1 extends LLVMExpressionNode {
 
         @Specialization
         public boolean executeI1(boolean val) {
@@ -46,8 +44,8 @@ public abstract class LLVMDisabledExpect {
         }
     }
 
-    @NodeChild(type = LLVMI32Node.class, value = "val")
-    public abstract static class LLVMDisabledExpectI32 extends LLVMI32Node {
+    @NodeChild(type = LLVMExpressionNode.class, value = "val")
+    public abstract static class LLVMDisabledExpectI32 extends LLVMExpressionNode {
 
         @Specialization
         public int executeI32(int val) {
@@ -56,8 +54,8 @@ public abstract class LLVMDisabledExpect {
 
     }
 
-    @NodeChild(type = LLVMI64Node.class, value = "val")
-    public abstract static class LLVMDisabledExpectI64 extends LLVMI64Node {
+    @NodeChild(type = LLVMExpressionNode.class, value = "val")
+    public abstract static class LLVMDisabledExpectI64 extends LLVMExpressionNode {
 
         @Specialization
         public long executeI64(long val) {

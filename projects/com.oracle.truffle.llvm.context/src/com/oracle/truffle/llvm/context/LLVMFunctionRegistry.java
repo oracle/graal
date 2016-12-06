@@ -39,7 +39,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
@@ -55,7 +55,7 @@ public class LLVMFunctionRegistry {
     // pointer would be == NULL
     private static final int REAL_FUNCTION_START_INDEX = 1;
 
-    private final Map<String, NodeFactory<? extends LLVMNode>> intrinsics;
+    private final Map<String, NodeFactory<? extends LLVMExpressionNode>> intrinsics;
     private final NodeFactoryFacade facade;
 
     /**
@@ -123,7 +123,7 @@ public class LLVMFunctionRegistry {
     private void registerIntrinsics() {
         for (String intrinsicFunction : intrinsics.keySet()) {
             LLVMFunction function = createFunctionDescriptor(intrinsicFunction, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
-            NodeFactory<? extends LLVMNode> nodeFactory = intrinsics.get(intrinsicFunction);
+            NodeFactory<? extends LLVMExpressionNode> nodeFactory = intrinsics.get(intrinsicFunction);
             RootNode functionRoot;
             List<Class<? extends Node>> executionSignature = nodeFactory.getExecutionSignature();
 
@@ -133,7 +133,7 @@ public class LLVMFunctionRegistry {
             for (int i = 0; i < nrArguments; i++) {
                 args[i] = facade.createFunctionArgNode(i - functionDescriptor, executionSignature.get(i));
             }
-            LLVMNode intrinsicNode;
+            LLVMExpressionNode intrinsicNode;
             List<Class<?>> firstNodeFactory = nodeFactory.getNodeSignatures().get(0);
             if (firstNodeFactory.contains(LLVMFunction.class)) {
                 // node constructor expects a LLVMFunction

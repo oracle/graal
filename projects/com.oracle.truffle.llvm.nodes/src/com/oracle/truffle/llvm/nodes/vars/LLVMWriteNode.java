@@ -39,25 +39,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMFunctionNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVM80BitFloatNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMDoubleNode;
-import com.oracle.truffle.llvm.nodes.base.floating.LLVMFloatNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI16Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI1Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI8Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMIVarBitNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 
 @NodeField(name = "slot", type = FrameSlot.class)
-public abstract class LLVMWriteNode extends LLVMNode {
+public abstract class LLVMWriteNode extends LLVMExpressionNode {
 
     @CompilationFinal private SourceSection sourceSection;
 
@@ -76,92 +65,101 @@ public abstract class LLVMWriteNode extends LLVMNode {
         }
     }
 
-    @NodeChild(value = "valueNode", type = LLVMI1Node.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteI1Node extends LLVMWriteNode {
 
         @Specialization
-        protected void writeI1(VirtualFrame frame, boolean value) {
+        protected Object writeI1(VirtualFrame frame, boolean value) {
             frame.setBoolean(getSlot(), value);
+            return null;
         }
 
     }
 
-    @NodeChild(value = "valueNode", type = LLVMI8Node.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteI8Node extends LLVMWriteNode {
 
         @Specialization
-        protected void writeI8(VirtualFrame frame, byte value) {
+        protected Object writeI8(VirtualFrame frame, byte value) {
             frame.setByte(getSlot(), value);
+            return null;
         }
 
     }
 
-    @NodeChild(value = "valueNode", type = LLVMI16Node.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteI16Node extends LLVMWriteNode {
 
         @Specialization
-        protected void writeI16(VirtualFrame frame, short value) {
+        protected Object writeI16(VirtualFrame frame, short value) {
             frame.setInt(getSlot(), value);
+            return null;
         }
 
     }
 
-    @NodeChild(value = "valueNode", type = LLVMI32Node.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteI32Node extends LLVMWriteNode {
 
         @Specialization
-        protected void writeI32(VirtualFrame frame, int value) {
+        protected Object writeI32(VirtualFrame frame, int value) {
             frame.setInt(getSlot(), value);
+            return null;
         }
 
     }
 
-    @NodeChild(value = "valueNode", type = LLVMI64Node.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteI64Node extends LLVMWriteNode {
 
         @Specialization
-        protected void writeI64(VirtualFrame frame, long value) {
+        protected Object writeI64(VirtualFrame frame, long value) {
             frame.setLong(getSlot(), value);
+            return null;
         }
 
     }
 
-    @NodeChild(value = "valueNode", type = LLVMIVarBitNode.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteIVarBitNode extends LLVMWriteNode {
 
         @Specialization
-        protected void writeIVarBit(VirtualFrame frame, LLVMIVarBit value) {
+        protected Object writeIVarBit(VirtualFrame frame, LLVMIVarBit value) {
             frame.setObject(getSlot(), value);
+            return null;
         }
 
     }
 
-    @NodeChild(value = "valueNode", type = LLVMFloatNode.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteFloatNode extends LLVMWriteNode {
 
         @Specialization
-        protected void writeDouble(VirtualFrame frame, float value) {
+        protected Object writeDouble(VirtualFrame frame, float value) {
             frame.setFloat(getSlot(), value);
+            return null;
         }
 
     }
 
-    @NodeChild(value = "valueNode", type = LLVMDoubleNode.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteDoubleNode extends LLVMWriteNode {
 
         @Specialization
-        protected void writeDouble(VirtualFrame frame, double value) {
+        protected Object writeDouble(VirtualFrame frame, double value) {
             frame.setDouble(getSlot(), value);
+            return null;
         }
 
     }
 
-    @NodeChild(value = "valueNode", type = LLVM80BitFloatNode.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWrite80BitFloatingNode extends LLVMWriteNode {
 
         @Specialization
-        protected void write80BitFloat(VirtualFrame frame, LLVM80BitFloat value) {
+        protected Object write80BitFloat(VirtualFrame frame, LLVM80BitFloat value) {
             frame.setObject(getSlot(), value);
+            return null;
         }
     }
 
@@ -169,22 +167,25 @@ public abstract class LLVMWriteNode extends LLVMNode {
     public abstract static class LLVMWriteAddressNode extends LLVMWriteNode {
 
         @Specialization
-        protected void writeObject(VirtualFrame frame, Object value) {
+        protected Object writeObject(VirtualFrame frame, Object value) {
             frame.setObject(getSlot(), value);
+            return null;
         }
     }
 
-    @NodeChild(value = "valueNode", type = LLVMFunctionNode.class)
+    @NodeChild(value = "valueNode", type = LLVMExpressionNode.class)
     public abstract static class LLVMWriteFunctionNode extends LLVMWriteNode {
 
         @Specialization
-        protected void writeAddress(VirtualFrame frame, LLVMFunctionDescriptor value) {
+        protected Object writeAddress(VirtualFrame frame, LLVMFunctionDescriptor value) {
             frame.setObject(getSlot(), value);
+            return null;
         }
 
         @Specialization
-        protected void writeTruffleObject(VirtualFrame frame, TruffleObject value) {
+        protected Object writeTruffleObject(VirtualFrame frame, TruffleObject value) {
             frame.setObject(getSlot(), value);
+            return null;
         }
 
     }

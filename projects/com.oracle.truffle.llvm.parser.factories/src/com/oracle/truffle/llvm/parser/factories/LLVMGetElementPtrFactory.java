@@ -30,21 +30,18 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeFactory.LLVMAddressI32GetElementPtrNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeFactory.LLVMAddressI64GetElementPtrNodeGen;
 import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 
 public class LLVMGetElementPtrFactory {
 
-    public static LLVMAddressNode create(LLVMBaseType llvmBaseType, LLVMAddressNode currentAddress, LLVMExpressionNode valueRef, int indexedTypeLength) {
+    public static LLVMExpressionNode create(LLVMBaseType llvmBaseType, LLVMExpressionNode currentAddress, LLVMExpressionNode valueRef, int indexedTypeLength) {
         switch (llvmBaseType) {
             case I32:
-                return LLVMAddressI32GetElementPtrNodeGen.create(currentAddress, (LLVMI32Node) valueRef, indexedTypeLength);
+                return LLVMAddressI32GetElementPtrNodeGen.create(currentAddress, valueRef, indexedTypeLength);
             case I64:
-                return LLVMAddressI64GetElementPtrNodeGen.create(currentAddress, (LLVMI64Node) valueRef, indexedTypeLength);
+                return LLVMAddressI64GetElementPtrNodeGen.create(currentAddress, valueRef, indexedTypeLength);
             default:
                 throw new AssertionError();
         }

@@ -34,13 +34,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMDoubleVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMFloatVectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI16VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI1VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI32VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI64VectorNode;
-import com.oracle.truffle.llvm.nodes.base.vector.LLVMI8VectorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.types.vector.LLVMI16Vector;
@@ -52,7 +46,7 @@ import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 public class LLVMReadVectorNode {
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI1VectorReadNode extends LLVMI1VectorNode {
+    public abstract static class LLVMI1VectorReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -63,7 +57,7 @@ public class LLVMReadVectorNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI8VectorReadNode extends LLVMI8VectorNode {
+    public abstract static class LLVMI8VectorReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -74,7 +68,7 @@ public class LLVMReadVectorNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI16VectorReadNode extends LLVMI16VectorNode {
+    public abstract static class LLVMI16VectorReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -85,7 +79,7 @@ public class LLVMReadVectorNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI32VectorReadNode extends LLVMI32VectorNode {
+    public abstract static class LLVMI32VectorReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -96,7 +90,7 @@ public class LLVMReadVectorNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMI64VectorReadNode extends LLVMI64VectorNode {
+    public abstract static class LLVMI64VectorReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -107,7 +101,7 @@ public class LLVMReadVectorNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMFloatVectorReadNode extends LLVMFloatVectorNode {
+    public abstract static class LLVMFloatVectorReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 
@@ -118,7 +112,7 @@ public class LLVMReadVectorNode {
     }
 
     @NodeField(name = "slot", type = FrameSlot.class)
-    public abstract static class LLVMDoubleVectorReadNode extends LLVMDoubleVectorNode {
+    public abstract static class LLVMDoubleVectorReadNode extends LLVMExpressionNode {
 
         protected abstract FrameSlot getSlot();
 

@@ -34,15 +34,13 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.nodes.base.LLVMAddressNode;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI32Node;
-import com.oracle.truffle.llvm.nodes.base.integers.LLVMI64Node;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMTruffleObject;
 
-public abstract class LLVMAddressGetElementPtrNode extends LLVMAddressNode {
+public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI32Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     @NodeField(type = int.class, name = "typeWidth")
     public abstract static class LLVMAddressI32GetElementPtrNode extends LLVMAddressGetElementPtrNode {
 
@@ -68,7 +66,7 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMAddressNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMAddressNode.class), @NodeChild(type = LLVMI64Node.class)})
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     @NodeField(type = int.class, name = "typeWidth")
     public abstract static class LLVMAddressI64GetElementPtrNode extends LLVMAddressGetElementPtrNode {
 
