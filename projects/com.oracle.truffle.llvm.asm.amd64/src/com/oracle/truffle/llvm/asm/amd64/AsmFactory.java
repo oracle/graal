@@ -775,9 +775,7 @@ public class AsmFactory {
             // output register
             if (token.charAt(0) == '=') {
                 if (AsmRegisterOperand.isRegister(registerName)) {
-                    String reg = AsmRegisterOperand.getBaseRegister(registerName);
-                    addFrameSlot(reg, LLVMBaseType.I64);
-                    FrameSlot slot = frameDescriptor.findFrameSlot(reg);
+                    FrameSlot slot = getRegisterSlot(registerName);
                     LLVMExpressionNode register = LLVMI64ReadNodeGen.create(slot);
                     if (retType == LLVMBaseType.STRUCT) {
                         switch (alloca.getType(outIndex)) {
@@ -809,8 +807,7 @@ public class AsmFactory {
                 if (registers.contains(reg)) {
                     LLVMExpressionNode arg = LLVMArgNodeGen.create(index);
                     LLVMExpressionNode node = LLVMAnyToI64NodeGen.create(arg);
-                    addFrameSlot(reg, LLVMBaseType.I64);
-                    FrameSlot slot = frameDescriptor.findFrameSlot(reg);
+                    FrameSlot slot = getRegisterSlot(reg);
                     arguments.add(LLVMWriteI64NodeGen.create(node, slot));
                     index++;
                     todoRegisters.remove(reg);
@@ -832,7 +829,7 @@ public class AsmFactory {
         // initialize registers
         for (String register : todoRegisters) {
             LLVMExpressionNode node = LLVMAMD64I64NodeGen.create(0);
-            FrameSlot slot = frameDescriptor.findFrameSlot(register);
+            FrameSlot slot = getRegisterSlot(register);
             arguments.add(LLVMWriteI64NodeGen.create(node, slot));
         }
     }
@@ -855,9 +852,7 @@ public class AsmFactory {
     private LLVMExpressionNode getOperandLoad(LLVMBaseType type, AsmOperand operand) {
         if (operand instanceof AsmRegisterOperand) {
             AsmRegisterOperand op = (AsmRegisterOperand) operand;
-            String baseRegister = op.getBaseRegister();
-            addFrameSlot(baseRegister, LLVMBaseType.I64);
-            FrameSlot frame = frameDescriptor.findFrameSlot(baseRegister);
+            FrameSlot frame = getRegisterSlot(op.getBaseRegister());
             LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
             assert type == op.getWidth();
             switch (op.getWidth()) {
@@ -897,9 +892,7 @@ public class AsmFactory {
     private LLVMWriteNode getOperandStore(LLVMBaseType type, AsmOperand operand, LLVMExpressionNode from) {
         if (operand instanceof AsmRegisterOperand) {
             AsmRegisterOperand op = (AsmRegisterOperand) operand;
-            String baseRegister = op.getBaseRegister();
-            addFrameSlot(baseRegister, LLVMBaseType.I64);
-            FrameSlot frame = frameDescriptor.findFrameSlot(baseRegister);
+            FrameSlot frame = getRegisterSlot(op.getBaseRegister());
             LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
             int shift = op.getShift();
             LLVMExpressionNode out = null;
@@ -928,9 +921,7 @@ public class AsmFactory {
     @SuppressWarnings("unchecked")
     private <T extends LLVMAMD64WriteRegisterNode> T getRegisterStore(String name) {
         AsmRegisterOperand op = new AsmRegisterOperand(name);
-        String baseRegister = op.getBaseRegister();
-        addFrameSlot(baseRegister, LLVMBaseType.I64);
-        FrameSlot frame = frameDescriptor.findFrameSlot(baseRegister);
+        FrameSlot frame = getRegisterSlot(name);
         LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
         LLVMAMD64WriteRegisterNode node = null;
         switch (op.getWidth()) {
@@ -947,5 +938,13 @@ public class AsmFactory {
                 throw new AsmParseException("unsupported operand type");
         }
         return (T) node;
+    }
+
+    private FrameSlot getRegisterSlot(String name) {
+        AsmRegisterOperand op = new AsmRegisterOperand(name);
+        String baseRegister = op.getBaseRegister();
+        addFrameSlot(baseRegister, LLVMBaseType.I64);
+        FrameSlot frame = frameDescriptor.findFrameSlot(baseRegister);
+        return frame;
     }
 }
