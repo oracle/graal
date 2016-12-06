@@ -72,7 +72,7 @@ suite = {
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/lifetime-analysis-ref-2.tar.gz",
       ],
-      "sha1" : "2205ed25c2ba390f54b32f7d86927cbd69414be4",
+      "sha1" : "7dc0cda1b644a9c27464cf5ad3780ffd92097aa3",
     },
     "COCO" : {
       "urls" : [
