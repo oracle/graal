@@ -66,6 +66,10 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncbNo
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64InclNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncwNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulbNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MullNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulqNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulwNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NegbNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NeglNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64NegNodeFactory.LLVMAMD64NegqNodeGen;
@@ -367,14 +371,14 @@ public class AsmFactory {
             }
             case "mulb":
                 src = getOperandLoad(LLVMBaseType.I16, operand);
-                out = LLVMAMD64ImulbNodeGen.create(getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                out = LLVMAMD64MulbNodeGen.create(getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
                 dstType = LLVMBaseType.I16;
                 break;
             case "mulw": {
                 LLVMAMD64WriteI16RegisterNode high = getRegisterStore("dx");
                 src = getOperandLoad(LLVMBaseType.I16, operand);
-                out = LLVMAMD64ImulwNodeGen.create(high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
+                out = LLVMAMD64MulwNodeGen.create(high, getOperandLoad(LLVMBaseType.I16, new AsmRegisterOperand("ax")), src);
                 dst = new AsmRegisterOperand("ax");
                 dstType = LLVMBaseType.I16;
                 break;
@@ -382,7 +386,7 @@ public class AsmFactory {
             case "mull": {
                 LLVMAMD64WriteI32RegisterNode high = getRegisterStore("edx");
                 src = getOperandLoad(LLVMBaseType.I32, operand);
-                out = LLVMAMD64ImullNodeGen.create(high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
+                out = LLVMAMD64MullNodeGen.create(high, getOperandLoad(LLVMBaseType.I32, new AsmRegisterOperand("eax")), src);
                 dst = new AsmRegisterOperand("eax");
                 dstType = LLVMBaseType.I32;
                 break;
@@ -390,7 +394,7 @@ public class AsmFactory {
             case "mulq": {
                 LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
                 src = getOperandLoad(LLVMBaseType.I64, operand);
-                out = LLVMAMD64ImulqNodeGen.create(high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
+                out = LLVMAMD64MulqNodeGen.create(high, getOperandLoad(LLVMBaseType.I64, new AsmRegisterOperand("rax")), src);
                 dst = new AsmRegisterOperand("rax");
                 dstType = LLVMBaseType.I64;
                 break;
