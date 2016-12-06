@@ -510,50 +510,64 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * dst = src1 + src2.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param dst general purpose register. May not be null.
+     * @param src1 general purpose register. May not be null.
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void add(int size, Register dst, Register src1, Register src2) {
-        super.add(size, dst, src1, src2, ShiftType.LSL, 0);
+        if (dst.equals(sp) || src1.equals(sp)) {
+            super.add(size, dst, src1, src2, ExtendType.UXTX, 0);
+        } else {
+            super.add(size, dst, src1, src2, ShiftType.LSL, 0);
+        }
     }
 
     /**
      * dst = src1 + src2 and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param dst general purpose register. May not be null.
+     * @param src1 general purpose register. May not be null.
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void adds(int size, Register dst, Register src1, Register src2) {
-        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp));
-        super.adds(size, dst, src1, src2, ShiftType.LSL, 0);
+        if (dst.equals(sp) || src1.equals(sp)) {
+            super.adds(size, dst, src1, src2, ExtendType.UXTX, 0);
+        } else {
+            super.adds(size, dst, src1, src2, ShiftType.LSL, 0);
+        }
     }
 
     /**
      * dst = src1 - src2 and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param dst general purpose register. May not be null.
+     * @param src1 general purpose register. May not be null.
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void subs(int size, Register dst, Register src1, Register src2) {
-        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp));
-        super.subs(size, dst, src1, src2, ShiftType.LSL, 0);
+        if (dst.equals(sp) || src1.equals(sp)) {
+            super.subs(size, dst, src1, src2, ExtendType.UXTX, 0);
+        } else {
+            super.subs(size, dst, src1, src2, ShiftType.LSL, 0);
+        }
     }
 
     /**
      * dst = src1 - src2.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
+     * @param dst general purpose register. May not be null.
+     * @param src1 general purpose register. May not be null.
      * @param src2 general purpose register. May not be null or stackpointer.
      */
     public void sub(int size, Register dst, Register src1, Register src2) {
-        super.sub(size, dst, src1, src2, ShiftType.LSL, 0);
+        if (dst.equals(sp) || src1.equals(sp)) {
+            super.sub(size, dst, src1, src2, ExtendType.UXTX, 0);
+        } else {
+            super.sub(size, dst, src1, src2, ShiftType.LSL, 0);
+        }
     }
 
     /**
