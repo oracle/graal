@@ -77,6 +77,7 @@ public class LargeConstantSectionTest extends JTTTest {
         @Override
         protected Class<?> findClass(String name) throws ClassNotFoundException {
             if (name.equals(NAME)) {
+                String graalDirectivesClassName = GraalDirectives.class.getName().replace('.', '/');
                 int numberIfBlocks = 1100; // Each if block contains three constants
                 ClassWriter cw = new ClassWriter(0);
                 MethodVisitor mv;
@@ -107,9 +108,9 @@ public class LargeConstantSectionTest extends JTTTest {
                     nextIf = new Label();
                     mv.visitJumpInsn(IFNE, nextIf);
                     mv.visitLdcInsn(new Long(LARGE_CONSTANT + i + numberIfBlocks));
-                    mv.visitMethodInsn(INVOKESTATIC, "com/oracle/graal/api/directives/GraalDirectives", "opaque", "(J)J", false);
+                    mv.visitMethodInsn(INVOKESTATIC, graalDirectivesClassName, "opaque", "(J)J", false);
                     mv.visitLdcInsn(new Long(LARGE_CONSTANT + i + numberIfBlocks * 2));
-                    mv.visitMethodInsn(INVOKESTATIC, "com/oracle/graal/api/directives/GraalDirectives", "opaque", "(J)J", false);
+                    mv.visitMethodInsn(INVOKESTATIC, graalDirectivesClassName, "opaque", "(J)J", false);
                     mv.visitInsn(LADD);
                     mv.visitInsn(LRETURN);
                 }

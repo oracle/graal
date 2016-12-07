@@ -248,7 +248,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     public String[] getTrivialPrefixes() {
         if (Options.UseTrivialPrefixes.getValue()) {
             if (Options.CompileGraalWithC1Only.getValue()) {
-                return new String[]{"jdk/vm/ci", "com/oracle/graal"};
+                return new String[]{"jdk/vm/ci", "org/graalvm/compiler", "com/oracle/graal"};
             }
         }
         return null;
