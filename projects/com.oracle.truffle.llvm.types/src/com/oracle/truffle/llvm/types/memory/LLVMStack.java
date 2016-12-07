@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.types.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
@@ -89,6 +90,7 @@ public final class LLVMStack extends LLVMMemory {
 
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
+    @ValueType
     public static class AllocationResult {
         private final LLVMAddress stackPointer;
         private final LLVMAddress allocatedMemory;
