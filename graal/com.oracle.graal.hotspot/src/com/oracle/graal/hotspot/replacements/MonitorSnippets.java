@@ -663,8 +663,6 @@ public class MonitorSnippets implements Snippets {
 
         public Templates(HotSpotProviders providers, TargetDescription target, boolean useFastLocking) {
             super(providers, providers.getSnippetReflection(), target);
-            GraalHotSpotVMConfig config = providers.getSnippetReflection().getInjectedNodeIntrinsicParameter(GraalHotSpotVMConfig.class);
-            System.out.println("Inflated fast-locking: " + inlineFastLockSupported(config) + ", inflated fast-unlocking: " + inlineFastUnlockSupported(config));
             this.useFastLocking = useFastLocking;
         }
 
