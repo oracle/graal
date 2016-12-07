@@ -39,7 +39,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
-public abstract class LLVM80BitFloat {
+public final class LLVM80BitFloat {
 
     private static final int BIT_TO_HEX_FACTOR = 4;
     public static final int BIT_WIDTH = 80;
@@ -49,44 +49,6 @@ public abstract class LLVM80BitFloat {
     private static final int EXPONENT_BIT_WIDTH = 15;
     private static final int FRACTION_BIT_WIDTH = 64;
     private static final int HEX_DIGITS_FRACTION = FRACTION_BIT_WIDTH / BIT_TO_HEX_FACTOR;
-
-    public abstract short getExponent();
-
-    public abstract float getFloatValue();
-
-    public abstract boolean isPositiveInfinity();
-
-    public abstract boolean isNegativeInfinity();
-
-    public abstract boolean isInfinity();
-
-    public abstract long getFraction();
-
-    public abstract boolean getSign();
-
-    public abstract double getDoubleValue();
-
-    public abstract byte getByteValue();
-
-    public abstract short getShortValue();
-
-    public abstract int getIntValue();
-
-    public abstract long getLongValue();
-
-    public abstract boolean isOrdered();
-
-    abstract int compareOrdered(LLVM80BitFloat val);
-
-    public abstract LLVM80BitFloat add(LLVM80BitFloat right);
-
-    public abstract LLVM80BitFloat sub(LLVM80BitFloat right);
-
-    public abstract LLVM80BitFloat mul(LLVM80BitFloat right);
-
-    public abstract LLVM80BitFloat div(LLVM80BitFloat right);
-
-    public abstract LLVM80BitFloat rem(LLVM80BitFloat right);
 
     @Override
     public String toString() {
@@ -105,507 +67,463 @@ public abstract class LLVM80BitFloat {
         return String.format("%" + bitWidth + "x", number).replace(" ", "0");
     }
 
-    public static final class RealLLVM80BitFloat extends LLVM80BitFloat {
+    /**
+     * Casting a NaN or infinity float to int is not specified. We mimic the "standard" undefined
+     * behavior and return this constant.
+     *
+     * @see <a href=
+     *      "http://stackoverflow.com/questions/10366485/problems-casting-nan-floats-to-int">
+     *      Stackoverflow Problems casting NAN floats to int</a>
+     */
+    private static final byte UNDEFINED_FLOAT_TO_BYTE_VALUE = 0;
+    private static final short UNDEFINED_FLOAT_TO_SHORT_VALUE = 0;
+    private static final int UNDEFINED_FLOAT_TO_INT_VALUE = 0x80000000;
+    private static final long UNDEFINED_FLOAT_TO_LONG_VALUE = 0x8000000000000000L;
 
-        /**
-         * Casting a NaN or infinity float to int is not specified. We mimic the "standard"
-         * undefined behavior and return this constant.
-         *
-         * @see <a href=
-         *      "http://stackoverflow.com/questions/10366485/problems-casting-nan-floats-to-int">
-         *      Stackoverflow Problems casting NAN floats to int</a>
-         */
-        private static final byte UNDEFINED_FLOAT_TO_BYTE_VALUE = 0;
-        private static final short UNDEFINED_FLOAT_TO_SHORT_VALUE = 0;
-        private static final int UNDEFINED_FLOAT_TO_INT_VALUE = 0x80000000;
-        private static final long UNDEFINED_FLOAT_TO_LONG_VALUE = 0x8000000000000000L;
+    private static final long UNDEFINED_DOUBLE_VALUE = 0x80000000_00000000L;
 
-        private static final long UNDEFINED_DOUBLE_VALUE = 0x80000000_00000000L;
+    private static final int ALL_ONE_EXPONENT = 0b111111111111111;
+    private static final LLVM80BitFloat DOUBLE_MINUS_INFINITY_CONVERSION_NUMBER = LLVM80BitFloat.fromRawValues(true, ALL_ONE_EXPONENT, UNDEFINED_DOUBLE_VALUE);
+    private static final LLVM80BitFloat DOUBLE_INFINITY_CONVERSION_NUMBER = LLVM80BitFloat.fromRawValues(false, ALL_ONE_EXPONENT, UNDEFINED_DOUBLE_VALUE);
+    private static final LLVM80BitFloat DOUBLE_NAN_CONVERSION_NUMBER = LLVM80BitFloat.fromRawValues(false, ALL_ONE_EXPONENT, 0xc000000000000000L);
 
-        private static final int ALL_ONE_EXPONENT = 0b111111111111111;
-        private static final LLVM80BitFloat DOUBLE_MINUS_INFINITY_CONVERSION_NUMBER = LLVM80BitFloat.fromRawValues(true, ALL_ONE_EXPONENT, UNDEFINED_DOUBLE_VALUE);
-        private static final LLVM80BitFloat DOUBLE_INFINITY_CONVERSION_NUMBER = LLVM80BitFloat.fromRawValues(false, ALL_ONE_EXPONENT, UNDEFINED_DOUBLE_VALUE);
-        private static final LLVM80BitFloat DOUBLE_NAN_CONVERSION_NUMBER = RealLLVM80BitFloat.fromRawValues(false, ALL_ONE_EXPONENT, 0xc000000000000000L);
+    public static final LLVM80BitFloat POSITIVE_ZERO = new LLVM80BitFloat(false, 0, 0);
+    public static final LLVM80BitFloat NEGATIVE_ZERO = new LLVM80BitFloat(true, 0, 0);
 
-        public static final RealLLVM80BitFloat POSITIVE_ZERO = new RealLLVM80BitFloat(false, 0, 0);
-        public static final RealLLVM80BitFloat NEGATIVE_ZERO = new RealLLVM80BitFloat(true, 0, 0);
+    public static final LLVM80BitFloat POSITIVE_INFINITY = new LLVM80BitFloat(false, ALL_ONE_EXPONENT, bit(63L));
+    public static final LLVM80BitFloat NEGATIVE_INFINITY = new LLVM80BitFloat(true, ALL_ONE_EXPONENT, bit(63L));
 
-        public static final RealLLVM80BitFloat POSITIVE_INFINITY = new RealLLVM80BitFloat(false, ALL_ONE_EXPONENT, bit(63L));
-        public static final RealLLVM80BitFloat NEGATIVE_INFINITY = new RealLLVM80BitFloat(true, ALL_ONE_EXPONENT, bit(63L));
+    private static final int EXPLICIT_LEADING_ONE_BITS = 1;
 
-        private static final int EXPLICIT_LEADING_ONE_BITS = 1;
+    private static final int EXPONENT_BIAS = 16383;
 
-        private static final int EXPONENT_BIAS = 16383;
+    private static final int FLOAT_EXPONENT_BIAS = 127;
 
-        private static final int FLOAT_EXPONENT_BIAS = 127;
+    private boolean sign;
+    private int biasedExponent; // 15 bit
+    private long fraction; // 64 bit
 
-        private boolean sign;
-        private int biasedExponent; // 15 bit
-        private long fraction; // 64 bit
+    public LLVM80BitFloat(boolean sign, int exponent, long fraction) {
+        this.sign = sign;
+        this.biasedExponent = exponent;
+        this.fraction = fraction;
+    }
 
-        public RealLLVM80BitFloat(boolean sign, int exponent, long fraction) {
-            this.sign = sign;
-            this.biasedExponent = exponent;
-            this.fraction = fraction;
+    private int getUnbiasedExponent() {
+        return biasedExponent - EXPONENT_BIAS;
+    }
+
+    private static long bit(int i) {
+        return 1 << i;
+    }
+
+    private static long bit(long i) {
+        return 1L << i;
+    }
+
+    public static LLVM80BitFloat fromLong(long val) {
+        if (val == 0) {
+            return POSITIVE_ZERO;
         }
+        boolean sign = val < 0;
+        return fromLong(Math.abs(val), sign);
+    }
 
-        private int getUnbiasedExponent() {
-            return biasedExponent - EXPONENT_BIAS;
+    private static LLVM80BitFloat fromLong(long val, boolean sign) {
+        if (CompilerDirectives.inInterpreter()) {
+            LLVMLogger.performanceWarning("constructing a 80 bit float!");
         }
-
-        private static long bit(int i) {
-            return 1 << i;
+        int leadingOnePosition = Long.SIZE - Long.numberOfLeadingZeros(val);
+        int exponent = EXPONENT_BIAS + (leadingOnePosition - 1);
+        long fractionMask;
+        if (leadingOnePosition == Long.SIZE || leadingOnePosition == Long.SIZE - 1) {
+            fractionMask = 0xffffffff;
+        } else {
+            fractionMask = (1L << leadingOnePosition + 1) - 1;
         }
+        long maskedFractionValue = val & fractionMask;
+        long fraction = maskedFractionValue << (Long.SIZE - leadingOnePosition);
+        return new LLVM80BitFloat(sign, exponent, fraction);
+    }
 
-        private static long bit(long i) {
-            return 1L << i;
+    public static LLVM80BitFloat fromUnsignedLong(long val) {
+        if (val == 0) {
+            return POSITIVE_ZERO;
         }
+        return fromLong(val, false);
+    }
 
-        public static RealLLVM80BitFloat fromLong(long val) {
-            if (val == 0) {
-                return POSITIVE_ZERO;
-            }
-            boolean sign = val < 0;
-            return fromLong(Math.abs(val), sign);
+    public static LLVM80BitFloat fromUnsignedInt(int val) {
+        if (val == 0) {
+            return POSITIVE_ZERO;
         }
+        return fromLong(val & BinaryHelper.INT_MASK, false);
+    }
 
-        private static RealLLVM80BitFloat fromLong(long val, boolean sign) {
-            if (CompilerDirectives.inInterpreter()) {
-                LLVMLogger.performanceWarning("constructing a 80 bit float!");
-            }
-            int leadingOnePosition = Long.SIZE - Long.numberOfLeadingZeros(val);
-            int exponent = EXPONENT_BIAS + (leadingOnePosition - 1);
-            long fractionMask;
-            if (leadingOnePosition == Long.SIZE || leadingOnePosition == Long.SIZE - 1) {
-                fractionMask = 0xffffffff;
-            } else {
-                fractionMask = (1L << leadingOnePosition + 1) - 1;
-            }
-            long maskedFractionValue = val & fractionMask;
-            long fraction = maskedFractionValue << (Long.SIZE - leadingOnePosition);
-            return new RealLLVM80BitFloat(sign, exponent, fraction);
+    public static LLVM80BitFloat fromInt(int val) {
+        if (val == 0) {
+            return POSITIVE_ZERO;
         }
+        boolean sign = val < 0;
+        return fromInt(val, sign);
+    }
 
-        public static LLVM80BitFloat fromUnsignedLong(long val) {
-            if (val == 0) {
-                return POSITIVE_ZERO;
-            }
-            return fromLong(val, false);
+    private static LLVM80BitFloat fromInt(int val, boolean sign) {
+        int posVal = Math.abs(val);
+        int leadingOnePosition = Integer.SIZE - Integer.numberOfLeadingZeros(posVal);
+        int exponent = EXPONENT_BIAS + (leadingOnePosition - 1);
+        long fractionMask = (1L << leadingOnePosition + 1) - 1;
+        long maskedFractionValue = posVal & fractionMask;
+        long fraction = maskedFractionValue << (Long.SIZE - leadingOnePosition);
+        return new LLVM80BitFloat(sign, exponent, fraction);
+    }
+
+    private static boolean getBit(int position, long posVal) {
+        long l = posVal >>> position;
+        return (l & 1) != 0;
+    }
+
+    public boolean isZero() {
+        return isPositiveZero() || isNegativeZero();
+    }
+
+    private boolean isPositiveZero() {
+        return equals(POSITIVE_ZERO);
+    }
+
+    private boolean isNegativeZero() {
+        return equals(NEGATIVE_ZERO);
+    }
+
+    public static LLVM80BitFloat fromDouble(double val) {
+        boolean sign = val < 0;
+        if (DoubleHelper.isPositiveZero(val)) {
+            return POSITIVE_ZERO;
+        } else if (DoubleHelper.isNegativeZero(val)) {
+            return NEGATIVE_ZERO;
+        } else if (DoubleHelper.isPositiveInfinty(val)) {
+            return DOUBLE_INFINITY_CONVERSION_NUMBER;
+        } else if (DoubleHelper.isNegativeInfinity(val)) {
+            return DOUBLE_MINUS_INFINITY_CONVERSION_NUMBER;
+        } else if (DoubleHelper.isNaN(val)) {
+            return DOUBLE_NAN_CONVERSION_NUMBER;
+        } else {
+            long rawValue = Double.doubleToRawLongBits(val);
+            int doubleExponent = DoubleHelper.getUnbiasedExponent(val);
+            int biasedExponent = doubleExponent + EXPONENT_BIAS;
+            long leadingOne = (long) EXPLICIT_LEADING_ONE_BITS << (FRACTION_BIT_WIDTH - 1);
+            long doubleFraction = rawValue & DoubleHelper.FRACTION_MASK;
+            long shiftedDoubleFraction = doubleFraction << (FRACTION_BIT_WIDTH - DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH - EXPLICIT_LEADING_ONE_BITS);
+            long fraction = shiftedDoubleFraction | leadingOne;
+            return LLVM80BitFloat.fromRawValues(sign, biasedExponent, fraction);
         }
+    }
 
-        public static RealLLVM80BitFloat fromUnsignedInt(int val) {
-            if (val == 0) {
-                return POSITIVE_ZERO;
-            }
-            return fromLong(val & BinaryHelper.INT_MASK, false);
+    private long getFractionAsLong() {
+        return fraction >>> (FRACTION_BIT_WIDTH - getUnbiasedExponent() - EXPLICIT_LEADING_ONE_BITS);
+    }
+
+    private long compareNoSign(LLVM80BitFloat val) {
+        if (getExponent() != val.getExponent()) {
+            return getExponent() - val.getExponent();
+        } else {
+            return (getFraction() - val.getFraction());
         }
+    }
 
-        public static RealLLVM80BitFloat fromInt(int val) {
-            if (val == 0) {
-                return POSITIVE_ZERO;
-            }
-            boolean sign = val < 0;
-            return fromInt(val, sign);
+    public LLVM80BitFloat add(LLVM80BitFloat right) {
+        double doubleValue = getDoubleValue();
+        double doubleValue2 = right.getDoubleValue();
+        return fromDouble(doubleValue + doubleValue2);
+    }
+
+    @SuppressWarnings("unused")
+    private LLVM80BitFloat add2(LLVM80BitFloat right) {
+        int leftExponent = getExponent();
+        int rightExponent = right.getExponent();
+        long leftFraction = getFraction();
+        long rightFraction = right.getFraction();
+
+        int shiftAmount = Math.abs(leftExponent - rightExponent);
+        if (leftExponent < rightExponent) {
+            leftFraction >>>= shiftAmount;
+            leftExponent = rightExponent;
+        } else {
+            rightFraction >>>= shiftAmount;
+            rightExponent = leftExponent;
         }
-
-        private static RealLLVM80BitFloat fromInt(int val, boolean sign) {
-            int posVal = Math.abs(val);
-            int leadingOnePosition = Integer.SIZE - Integer.numberOfLeadingZeros(posVal);
-            int exponent = EXPONENT_BIAS + (leadingOnePosition - 1);
-            long fractionMask = (1L << leadingOnePosition + 1) - 1;
-            long maskedFractionValue = posVal & fractionMask;
-            long fraction = maskedFractionValue << (Long.SIZE - leadingOnePosition);
-            return new RealLLVM80BitFloat(sign, exponent, fraction);
+        boolean newSign;
+        if (getSign() == right.getSign()) {
+            newSign = getSign();
+        } else {
+            newSign = compareNoSign(right) < 0 ? right.getSign() : getSign();
         }
-
-        private static boolean getBit(int position, long posVal) {
-            long l = posVal >>> position;
-            return (l & 1) != 0;
+        boolean addition = getSign() == right.getSign();
+        long resultLo;
+        long resultHi;
+        long leftFractionLowerPart = leftFraction & BinaryHelper.getBitMask(Integer.SIZE);
+        long rightFractionLowerPart = rightFraction & BinaryHelper.getBitMask(Integer.SIZE);
+        long leftFractionHigherPart = leftFraction >>> Integer.SIZE;
+        long rightFractionHigherPart = rightFraction >>> Integer.SIZE;
+        if (addition) {
+            resultLo = -leftFractionLowerPart + rightFractionLowerPart;
+            long overFlowLowerPart = resultLo >>> Integer.SIZE;
+            resultHi = leftFractionHigherPart + rightFractionHigherPart + overFlowLowerPart;
+        } else if (getSign()) { // left is negative
+            resultLo = -leftFractionLowerPart + rightFractionLowerPart;
+            long overFlowLowerPart = resultLo >>> Integer.SIZE;
+            resultHi = -leftFractionHigherPart - rightFractionHigherPart - overFlowLowerPart;
+        } else {
+            resultLo = leftFractionLowerPart - rightFractionLowerPart;
+            long overFlowLowerPart = resultLo >>> Integer.SIZE;
+            resultHi = leftFractionHigherPart - rightFractionHigherPart - overFlowLowerPart;
         }
-
-        public boolean isZero() {
-            return isPositiveZero() || isNegativeZero();
+        int overFlow = (int) (resultHi >>> Integer.SIZE);
+        if (overFlow > 0) {
+            resultHi = resultHi >>> overFlow;
+            long lostBits = resultHi & overFlow;
+            long shiftedLostBits = lostBits << Integer.SIZE - overFlow;
+            resultLo = resultLo >>> overFlow | shiftedLostBits;
         }
+        int newExponent = leftExponent + overFlow;
+        long newFraction = resultLo + resultHi << Integer.SIZE;
+        return LLVM80BitFloat.fromRawValues(newSign, newExponent, newFraction);
+    }
 
-        private boolean isPositiveZero() {
-            return equals(POSITIVE_ZERO);
-        }
+    public LLVM80BitFloat sub(LLVM80BitFloat right) {
+        return add(right.negate());
+    }
 
-        private boolean isNegativeZero() {
-            return equals(NEGATIVE_ZERO);
-        }
+    public LLVM80BitFloat mul(LLVM80BitFloat right) {
+        return fromDouble(getDoubleValue() * right.getDoubleValue());
+    }
 
-        public static LLVM80BitFloat fromDouble(double val) {
-            boolean sign = val < 0;
-            if (DoubleHelper.isPositiveZero(val)) {
-                return POSITIVE_ZERO;
-            } else if (DoubleHelper.isNegativeZero(val)) {
-                return NEGATIVE_ZERO;
-            } else if (DoubleHelper.isPositiveInfinty(val)) {
-                return DOUBLE_INFINITY_CONVERSION_NUMBER;
-            } else if (DoubleHelper.isNegativeInfinity(val)) {
-                return DOUBLE_MINUS_INFINITY_CONVERSION_NUMBER;
-            } else if (DoubleHelper.isNaN(val)) {
-                return DOUBLE_NAN_CONVERSION_NUMBER;
-            } else {
-                long rawValue = Double.doubleToRawLongBits(val);
-                int doubleExponent = DoubleHelper.getUnbiasedExponent(val);
-                int biasedExponent = doubleExponent + EXPONENT_BIAS;
-                long leadingOne = (long) EXPLICIT_LEADING_ONE_BITS << (FRACTION_BIT_WIDTH - 1);
-                long doubleFraction = rawValue & DoubleHelper.FRACTION_MASK;
-                long shiftedDoubleFraction = doubleFraction << (FRACTION_BIT_WIDTH - DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH - EXPLICIT_LEADING_ONE_BITS);
-                long fraction = shiftedDoubleFraction | leadingOne;
-                return RealLLVM80BitFloat.fromRawValues(sign, biasedExponent, fraction);
-            }
-        }
+    public LLVM80BitFloat div(LLVM80BitFloat right) {
+        return fromDouble(getDoubleValue() / right.getDoubleValue());
+    }
 
-        private long getFractionAsLong() {
-            return fraction >>> (FRACTION_BIT_WIDTH - getUnbiasedExponent() - EXPLICIT_LEADING_ONE_BITS);
-        }
+    public LLVM80BitFloat rem(LLVM80BitFloat right) {
+        return fromDouble(getDoubleValue() % right.getDoubleValue());
+    }
 
-        private long compareNoSign(LLVM80BitFloat val) {
-            if (getExponent() != val.getExponent()) {
-                return getExponent() - val.getExponent();
-            } else {
-                return (getFraction() - val.getFraction());
-            }
-        }
+    public boolean isPositiveInfinity() {
+        return this.equals(POSITIVE_INFINITY);
+    }
 
-        @Override
-        public LLVM80BitFloat add(LLVM80BitFloat right) {
-            double doubleValue = getDoubleValue();
-            double doubleValue2 = right.getDoubleValue();
-            return fromDouble(doubleValue + doubleValue2);
-        }
+    public boolean isNegativeInfinity() {
+        return equals(NEGATIVE_INFINITY);
+    }
 
-        @SuppressWarnings("unused")
-        private LLVM80BitFloat add2(LLVM80BitFloat right) {
-            int leftExponent = getExponent();
-            int rightExponent = right.getExponent();
-            long leftFraction = getFraction();
-            long rightFraction = right.getFraction();
+    public boolean isInfinity() {
+        return isPositiveInfinity() || isNegativeInfinity();
+    }
 
-            int shiftAmount = Math.abs(leftExponent - rightExponent);
-            if (leftExponent < rightExponent) {
-                leftFraction >>>= shiftAmount;
-                leftExponent = rightExponent;
-            } else {
-                rightFraction >>>= shiftAmount;
-                rightExponent = leftExponent;
-            }
-            boolean newSign;
-            if (getSign() == right.getSign()) {
-                newSign = getSign();
-            } else {
-                newSign = compareNoSign(right) < 0 ? right.getSign() : getSign();
-            }
-            boolean addition = getSign() == right.getSign();
-            long resultLo;
-            long resultHi;
-            long leftFractionLowerPart = leftFraction & BinaryHelper.getBitMask(Integer.SIZE);
-            long rightFractionLowerPart = rightFraction & BinaryHelper.getBitMask(Integer.SIZE);
-            long leftFractionHigherPart = leftFraction >>> Integer.SIZE;
-            long rightFractionHigherPart = rightFraction >>> Integer.SIZE;
-            if (addition) {
-                resultLo = -leftFractionLowerPart + rightFractionLowerPart;
-                long overFlowLowerPart = resultLo >>> Integer.SIZE;
-                resultHi = leftFractionHigherPart + rightFractionHigherPart + overFlowLowerPart;
-            } else if (getSign()) { // left is negative
-                resultLo = -leftFractionLowerPart + rightFractionLowerPart;
-                long overFlowLowerPart = resultLo >>> Integer.SIZE;
-                resultHi = -leftFractionHigherPart - rightFractionHigherPart - overFlowLowerPart;
-            } else {
-                resultLo = leftFractionLowerPart - rightFractionLowerPart;
-                long overFlowLowerPart = resultLo >>> Integer.SIZE;
-                resultHi = leftFractionHigherPart - rightFractionHigherPart - overFlowLowerPart;
-            }
-            int overFlow = (int) (resultHi >>> Integer.SIZE);
-            if (overFlow > 0) {
-                resultHi = resultHi >>> overFlow;
-                long lostBits = resultHi & overFlow;
-                long shiftedLostBits = lostBits << Integer.SIZE - overFlow;
-                resultLo = resultLo >>> overFlow | shiftedLostBits;
-            }
-            int newExponent = leftExponent + overFlow;
-            long newFraction = resultLo + resultHi << Integer.SIZE;
-            return LLVM80BitFloat.fromRawValues(newSign, newExponent, newFraction);
-        }
-
-        @Override
-        public LLVM80BitFloat sub(LLVM80BitFloat right) {
-            return add(right.negate());
-        }
-
-        @Override
-        public LLVM80BitFloat mul(LLVM80BitFloat right) {
-            return fromDouble(getDoubleValue() * right.getDoubleValue());
-        }
-
-        @Override
-        public LLVM80BitFloat div(LLVM80BitFloat right) {
-            return fromDouble(getDoubleValue() / right.getDoubleValue());
-        }
-
-        @Override
-        public LLVM80BitFloat rem(LLVM80BitFloat right) {
-            return fromDouble(getDoubleValue() % right.getDoubleValue());
-        }
-
-        @Override
-        public boolean isPositiveInfinity() {
-            return this.equals(POSITIVE_INFINITY);
-        }
-
-        @Override
-        public boolean isNegativeInfinity() {
-            return equals(NEGATIVE_INFINITY);
-        }
-
-        @Override
-        public boolean isInfinity() {
-            return isPositiveInfinity() || isNegativeInfinity();
-        }
-
-        public boolean isQNaN() {
-            // Checkstyle: stop magic number name check
-            if (getExponent() == ALL_ONE_EXPONENT) {
-                if (!getBit(63, getFraction())) {
-                    if (getBit(62, getFraction())) {
-                        return true;
-                    }
+    public boolean isQNaN() {
+        // Checkstyle: stop magic number name check
+        if (getExponent() == ALL_ONE_EXPONENT) {
+            if (!getBit(63, getFraction())) {
+                if (getBit(62, getFraction())) {
+                    return true;
                 }
             }
-            // Checkstyle: resume magic number name check
+        }
+        // Checkstyle: resume magic number name check
+        return false;
+    }
+
+    public boolean isOrdered() {
+        return !isQNaN();
+    }
+
+    int compareOrdered(LLVM80BitFloat val) {
+        if (isNegativeInfinity()) {
+            if (val.isNegativeInfinity()) {
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+        if (val.isNegativeInfinity()) {
+            if (isNegativeInfinity()) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+        if (getSign() == val.getSign()) {
+            int expDifference = getExponent() - val.getExponent();
+            if (expDifference == 0) {
+                long fractionDifference = getFraction() - val.getFraction();
+                if (fractionDifference == 0) {
+                    return 0;
+                } else if (fractionDifference < 0) {
+                    return -1;
+                } else {
+                    return 1;
+                }
+            } else {
+                return expDifference;
+            }
+        } else {
+            if (getSign()) {
+                return -1;
+            } else {
+                return 1;
+            }
+        }
+    }
+
+    public short getExponent() {
+        return (short) biasedExponent;
+    }
+
+    public long getFraction() {
+        return fraction;
+    }
+
+    public long getFractionWithoutImplicitZero() {
+        return fraction << 1;
+    }
+
+    public boolean getSign() {
+        return sign;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof LLVM80BitFloat)) {
             return false;
         }
+        LLVM80BitFloat other = ((LLVM80BitFloat) obj);
+        return getSign() == other.getSign() && getExponent() == other.getExponent() && getFraction() == other.getFraction();
+    }
 
-        @Override
-        public boolean isOrdered() {
-            return !isQNaN();
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(getBytes());
+    }
+
+    public byte[] getBytes() {
+        ByteBuffer bb = ByteBuffer.allocate(BYTE_WIDTH);
+        short signWithExponent = getExponent();
+        short signBit = sign ? (short) bit(Short.SIZE - 1) : 0;
+        signWithExponent |= signBit;
+        bb.putShort(signWithExponent);
+        bb.putLong(getFraction());
+        return bb.array();
+    }
+
+    public static LLVM80BitFloat fromBytes(byte[] bytes) {
+        assert bytes.length == BYTE_WIDTH;
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        short readShort = bb.getShort();
+        int exponent = readShort & BinaryHelper.getBitMask(EXPONENT_BIT_WIDTH);
+        long fraction = bb.getLong();
+        boolean signSet = getBit(Short.SIZE, readShort);
+        return LLVM80BitFloat.fromRawValues(signSet, exponent, fraction);
+    }
+
+    // get value
+
+    public byte getByteValue() {
+        if (isQNaN() || isInfinity()) {
+            return UNDEFINED_FLOAT_TO_BYTE_VALUE;
+        } else {
+            long value = getFractionAsLong();
+            return (byte) (sign ? -value : value);
         }
+    }
 
-        @Override
-        int compareOrdered(LLVM80BitFloat val) {
-            if (isNegativeInfinity()) {
-                if (val.isNegativeInfinity()) {
-                    return 0;
-                } else {
-                    return -1;
-                }
-            }
-            if (val.isNegativeInfinity()) {
-                if (isNegativeInfinity()) {
-                    return 0;
-                } else {
-                    return 1;
-                }
-            }
-            if (getSign() == val.getSign()) {
-                int expDifference = getExponent() - val.getExponent();
-                if (expDifference == 0) {
-                    long fractionDifference = getFraction() - val.getFraction();
-                    if (fractionDifference == 0) {
-                        return 0;
-                    } else if (fractionDifference < 0) {
-                        return -1;
-                    } else {
-                        return 1;
-                    }
-                } else {
-                    return expDifference;
-                }
-            } else {
-                if (getSign()) {
-                    return -1;
-                } else {
-                    return 1;
-                }
-            }
+    public short getShortValue() {
+        if (isQNaN() || isInfinity()) {
+            return UNDEFINED_FLOAT_TO_SHORT_VALUE;
+        } else {
+            long value = getFractionAsLong();
+            return (short) (sign ? -value : value);
         }
+    }
 
-        @Override
-        public short getExponent() {
-            return (short) biasedExponent;
+    public int getIntValue() {
+        if (isQNaN() || isInfinity()) {
+            return UNDEFINED_FLOAT_TO_INT_VALUE;
         }
+        int value = (int) getFractionAsLong();
+        return sign ? -value : value;
+    }
 
-        @Override
-        public long getFraction() {
-            return fraction;
-        }
-
-        public long getFractionWithoutImplicitZero() {
-            return fraction << 1;
-        }
-
-        @Override
-        public boolean getSign() {
-            return sign;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof LLVM80BitFloat)) {
-                return false;
-            }
-            LLVM80BitFloat other = ((LLVM80BitFloat) obj);
-            return getSign() == other.getSign() && getExponent() == other.getExponent() && getFraction() == other.getFraction();
-        }
-
-        @Override
-        public int hashCode() {
-            return Arrays.hashCode(getBytes());
-        }
-
-        @Override
-        public byte[] getBytes() {
-            ByteBuffer bb = ByteBuffer.allocate(BYTE_WIDTH);
-            short signWithExponent = getExponent();
-            short signBit = sign ? (short) bit(Short.SIZE - 1) : 0;
-            signWithExponent |= signBit;
-            bb.putShort(signWithExponent);
-            bb.putLong(getFraction());
-            return bb.array();
-        }
-
-        public static LLVM80BitFloat fromBytes(byte[] bytes) {
-            assert bytes.length == BYTE_WIDTH;
-            ByteBuffer bb = ByteBuffer.wrap(bytes);
-            short readShort = bb.getShort();
-            int exponent = readShort & BinaryHelper.getBitMask(EXPONENT_BIT_WIDTH);
-            long fraction = bb.getLong();
-            boolean signSet = getBit(Short.SIZE, readShort);
-            return LLVM80BitFloat.fromRawValues(signSet, exponent, fraction);
-        }
-
-        // get value
-
-        @Override
-        public byte getByteValue() {
-            if (isQNaN() || isInfinity()) {
-                return UNDEFINED_FLOAT_TO_BYTE_VALUE;
-            } else {
-                long value = getFractionAsLong();
-                return (byte) (sign ? -value : value);
-            }
-        }
-
-        @Override
-        public short getShortValue() {
-            if (isQNaN() || isInfinity()) {
-                return UNDEFINED_FLOAT_TO_SHORT_VALUE;
-            } else {
-                long value = getFractionAsLong();
-                return (short) (sign ? -value : value);
-            }
-        }
-
-        @Override
-        public int getIntValue() {
-            if (isQNaN() || isInfinity()) {
-                return UNDEFINED_FLOAT_TO_INT_VALUE;
-            }
-            int value = (int) getFractionAsLong();
+    public long getLongValue() {
+        if (isQNaN() || isInfinity()) {
+            return UNDEFINED_FLOAT_TO_LONG_VALUE;
+        } else {
+            long value = getFractionAsLong();
             return sign ? -value : value;
         }
+    }
 
-        @Override
-        public long getLongValue() {
-            if (isQNaN() || isInfinity()) {
-                return UNDEFINED_FLOAT_TO_LONG_VALUE;
-            } else {
-                long value = getFractionAsLong();
-                return sign ? -value : value;
-            }
+    public float getFloatValue() {
+        if (isPositiveZero()) {
+            return FloatHelper.POSITIVE_ZERO;
+        } else if (isNegativeZero()) {
+            return FloatHelper.NEGATIVE_ZERO;
+        } else if (isPositiveInfinity()) {
+            return FloatHelper.POSITIVE_INFINITY;
+        } else if (isNegativeInfinity()) {
+            return FloatHelper.NEGATIVE_INFINITY;
+        } else if (isQNaN()) {
+            return FloatHelper.NaN;
+        } else {
+            int floatExponent = getUnbiasedExponent() + FLOAT_EXPONENT_BIAS;
+            long longFraction = (getFractionWithoutImplicitZero()) >>> (FRACTION_BIT_WIDTH - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
+            int floatFraction = (int) longFraction;
+            int shiftedSignBit = (getSign() ? 1 : 0) << FloatHelper.FLOAT_SIGN_POS;
+            int shiftedExponent = floatExponent << FloatHelper.FLOAT_FRACTION_BIT_WIDTH;
+            int rawVal = floatFraction | shiftedExponent | shiftedSignBit;
+            return Float.intBitsToFloat(rawVal);
         }
+    }
 
-        @Override
-        public float getFloatValue() {
-            if (isPositiveZero()) {
-                return FloatHelper.POSITIVE_ZERO;
-            } else if (isNegativeZero()) {
-                return FloatHelper.NEGATIVE_ZERO;
-            } else if (isPositiveInfinity()) {
-                return FloatHelper.POSITIVE_INFINITY;
-            } else if (isNegativeInfinity()) {
-                return FloatHelper.NEGATIVE_INFINITY;
-            } else if (isQNaN()) {
-                return FloatHelper.NaN;
-            } else {
-                int floatExponent = getUnbiasedExponent() + FLOAT_EXPONENT_BIAS;
-                long longFraction = (getFractionWithoutImplicitZero()) >>> (FRACTION_BIT_WIDTH - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
-                int floatFraction = (int) longFraction;
-                int shiftedSignBit = (getSign() ? 1 : 0) << FloatHelper.FLOAT_SIGN_POS;
-                int shiftedExponent = floatExponent << FloatHelper.FLOAT_FRACTION_BIT_WIDTH;
-                int rawVal = floatFraction | shiftedExponent | shiftedSignBit;
-                return Float.intBitsToFloat(rawVal);
-            }
+    public double getDoubleValue() {
+        if (isPositiveZero()) {
+            return DoubleHelper.POSITIVE_ZERO;
+        } else if (isNegativeZero()) {
+            return DoubleHelper.NEGATIVE_ZERO;
+        } else if (isPositiveInfinity()) {
+            return DoubleHelper.POSITIVE_INFINITY;
+        } else if (isNegativeInfinity()) {
+            return DoubleHelper.NEGATIVE_INFINITY;
+        } else if (isQNaN()) {
+            return DoubleHelper.NaN;
+        } else {
+            int doubleExponent = getUnbiasedExponent() + DoubleHelper.DOUBLE_EXPONENT_BIAS;
+            long doubleFraction = (getFractionWithoutImplicitZero()) >>> (FRACTION_BIT_WIDTH - DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH);
+            long shiftedSignBit = (getSign() ? 1L : 0L) << DoubleHelper.DOUBLE_SIGN_POS;
+            long shiftedExponent = (long) doubleExponent << DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH;
+            long rawVal = doubleFraction | shiftedExponent | shiftedSignBit;
+            return Double.longBitsToDouble(rawVal);
         }
-
-        @Override
-        public double getDoubleValue() {
-            if (isPositiveZero()) {
-                return DoubleHelper.POSITIVE_ZERO;
-            } else if (isNegativeZero()) {
-                return DoubleHelper.NEGATIVE_ZERO;
-            } else if (isPositiveInfinity()) {
-                return DoubleHelper.POSITIVE_INFINITY;
-            } else if (isNegativeInfinity()) {
-                return DoubleHelper.NEGATIVE_INFINITY;
-            } else if (isQNaN()) {
-                return DoubleHelper.NaN;
-            } else {
-                int doubleExponent = getUnbiasedExponent() + DoubleHelper.DOUBLE_EXPONENT_BIAS;
-                long doubleFraction = (getFractionWithoutImplicitZero()) >>> (FRACTION_BIT_WIDTH - DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH);
-                long shiftedSignBit = (getSign() ? 1L : 0L) << DoubleHelper.DOUBLE_SIGN_POS;
-                long shiftedExponent = (long) doubleExponent << DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH;
-                long rawVal = doubleFraction | shiftedExponent | shiftedSignBit;
-                return Double.longBitsToDouble(rawVal);
-            }
-        }
-
     }
 
     public static void iDependOnTheDoubleHack() {
     }
 
     public LLVM80BitFloat negate() {
-        return new RealLLVM80BitFloat(!getSign(), getExponent(), getFraction());
-    }
-
-    public static LLVM80BitFloat fromDouble(double val) {
-        return RealLLVM80BitFloat.fromDouble(val);
+        return new LLVM80BitFloat(!getSign(), getExponent(), getFraction());
     }
 
     public static LLVM80BitFloat fromByte(byte from) {
-        return RealLLVM80BitFloat.fromInt(from);
+        return fromInt(from);
     }
 
     public static LLVM80BitFloat fromUnsignedByte(byte from) {
-        return RealLLVM80BitFloat.fromInt(from & Byte.MIN_VALUE);
+        return fromInt(from & Byte.MIN_VALUE);
     }
 
     public static LLVM80BitFloat fromShort(short from) {
-        return RealLLVM80BitFloat.fromInt(from);
-    }
-
-    public static LLVM80BitFloat fromInt(int from) {
-        return RealLLVM80BitFloat.fromInt(from);
-    }
-
-    public static LLVM80BitFloat fromUnsignedInt(int from) {
-        return RealLLVM80BitFloat.fromUnsignedInt(from);
-    }
-
-    public static LLVM80BitFloat fromLong(long from) {
-        return RealLLVM80BitFloat.fromLong(from);
-    }
-
-    public static LLVM80BitFloat fromUnsignedLong(long from) {
-        return RealLLVM80BitFloat.fromUnsignedLong(from);
+        return fromInt(from);
     }
 
     public static LLVM80BitFloat fromRawValues(boolean sign, int exp, long fraction) {
-        return new RealLLVM80BitFloat(sign, exp, fraction);
+        return new LLVM80BitFloat(sign, exp, fraction);
     }
 
     @ExplodeLoop
@@ -627,13 +545,7 @@ public abstract class LLVM80BitFloat {
         if (stringValue.length() != HEX_WIDTH) {
             throw new IllegalArgumentException("unexpected length of input string!");
         }
-        return RealLLVM80BitFloat.fromBytes(DatatypeConverter.parseHexBinary(stringValue));
-    }
-
-    public abstract byte[] getBytes();
-
-    public static LLVM80BitFloat fromBytes(byte[] bytes) {
-        return RealLLVM80BitFloat.fromBytes(bytes);
+        return fromBytes(DatatypeConverter.parseHexBinary(stringValue));
     }
 
 }
