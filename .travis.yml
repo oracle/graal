@@ -15,7 +15,7 @@ dist: trusty
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.23"
+    - JVMCI_VERSION="jvmci-0.24"
     - JVMCI_BASE_JDK8="jdk1.8.0_111"
     - JDK9_EA_BUILD="146"
   matrix:

@@ -64,6 +64,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PR
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
 import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
@@ -241,7 +242,7 @@ public class MonitorSnippets implements Snippets {
             }
             // not biased, fall-through
         }
-        if (inlineFastLockSupported() && probability(NOT_FREQUENT_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
+        if (inlineFastLockSupported() && probability(SLOW_PATH_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
             // Inflated case
             if (tryEnterInflated(object, lock, mark, threadRegister, trace)) {
                 return;
@@ -439,10 +440,10 @@ public class MonitorSnippets implements Snippets {
         Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
         int ownerOffset = objecyMonitorOwnerOffset(INJECTED_VMCONFIG);
         Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
-        if (owner.equal(0)) {
+        if (probability(FREQUENT_PROBABILITY, owner.equal(0))) {
             // it appears unlocked (owner == 0)
             Word currentOwner = compareAndSwap(OffsetAddressNode.address(monitor, ownerOffset), owner, registerAsWord(threadRegister), OBJECT_MONITOR_OWNER_LOCATION);
-            if (currentOwner.equal(owner)) {
+            if (probability(FREQUENT_PROBABILITY, currentOwner.equal(owner))) {
                 // success
                 traceObject(trace, "+lock{inflated:cas}", object, true);
                 inflatedCas.inc();
@@ -542,7 +543,7 @@ public class MonitorSnippets implements Snippets {
         if (!inlineFastUnlockSupported()) {
             return false;
         }
-        if (probability(NOT_FREQUENT_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
+        if (probability(SLOW_PATH_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
             // Inflated case
             // mark is a pointer to the ObjectMonitor + monitorMask
             Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
@@ -551,13 +552,13 @@ public class MonitorSnippets implements Snippets {
             int recursionsOffset = objecyMonitorRescursionsOffset(INJECTED_VMCONFIG);
             Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
             Word thread = registerAsWord(threadRegister);
-            if (owner.xor(thread).or(recursions).equal(0)) {
+            if (probability(FAST_PATH_PROBABILITY, owner.xor(thread).or(recursions).equal(0))) {
                 // owner == thread && recursions == 0
                 int cxqOffset = objecyMonitorCXQOffset(INJECTED_VMCONFIG);
                 Word cxq = monitor.readWord(cxqOffset, OBJECT_MONITOR_CXQ_LOCATION);
                 int entryListOffset = objecyMonitorEntryListOffset(INJECTED_VMCONFIG);
                 Word entryList = monitor.readWord(entryListOffset, OBJECT_MONITOR_ENTRY_LIST_LOCATION);
-                if (cxq.or(entryList).equal(0)) {
+                if (probability(FREQUENT_PROBABILITY, cxq.or(entryList).equal(0))) {
                     // cxq == 0 && entryList == 0
                     // Nobody is waiting, success
                     // release_store
