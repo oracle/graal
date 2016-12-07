@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.code.DisassemblerProvider;
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.DisassemblerProvider;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;

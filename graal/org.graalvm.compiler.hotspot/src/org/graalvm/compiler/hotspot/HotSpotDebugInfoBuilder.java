@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 
-import com.oracle.graal.compiler.gen.DebugInfoBuilder;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import org.graalvm.compiler.core.gen.DebugInfoBuilder;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.StackLockValue;

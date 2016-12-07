@@ -35,7 +35,7 @@ In addition to IDE debugging, Graal includes support for *printf* style debuggin
 The simplest is to place temporary usages of `System.out` where ever you need them.
 
 For more permanent logging statements, use the `Debug.log()` method that is part of debug scope mechanism.
-A (nested) debug scope is entered via [`Debug.scope(...)`](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/Debug.java#L265). For example:
+A (nested) debug scope is entered via [`Debug.scope(...)`](../graal/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/Debug.java#L265). For example:
 
 ```java
 InstalledCode code = null;
@@ -47,7 +47,7 @@ try (Scope s = Debug.scope("CodeInstall", method)) {
 }
 ```
 
-The `Debug.log` statement will send output to the console if `CodeInstall` is matched by the `graal.Log` system property. The matching logic for this option is described in [DebugFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/DebugFilter.java#L31-L82). As mentioned in the javadoc, the same matching logic also applies to the `graal.Dump`, `graal.Time` and `-Dgraal.Count` system properties.
+The `Debug.log` statement will send output to the console if `CodeInstall` is matched by the `graal.Log` system property. The matching logic for this option is described in [DebugFilter](../graal/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugFilter.java#L31-L82). As mentioned in the javadoc, the same matching logic also applies to the `graal.Dump`, `graal.Time` and `-Dgraal.Count` system properties.
 
 ## JVMCI and Graal specific options
 
@@ -243,13 +243,13 @@ However when using the interception there are several non-trivial things to reme
 
 ## Method filtering
 
-Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, `-Dgraal.Count`, or `-Dgraal.Time`) can generate a lot of output. Typically, you are only interesting in compiler output related to one or a couple of methods. Use the `-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is described in [MethodFilter](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.debug/src/com/oracle/graal/debug/MethodFilter.java#L33-L92).
+Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, `-Dgraal.Count`, or `-Dgraal.Time`) can generate a lot of output. Typically, you are only interesting in compiler output related to one or a couple of methods. Use the `-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is described in [MethodFilter](../graal/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/MethodFilter.java#L33-L92).
 
 ## Dumping
 
 In addition to logging, Graal provides support for generating (or dumping) more detailed visualizations of certain compiler data structures. Currently, there is support for dumping:
 
-* HIR graphs (i.e., instances of [Graph](https://github.com/graalvm/graal-core/blob/6daee4240193a87f43f6b8586f2749e4bae9816e/graal/com.oracle.graal.graph/src/com/oracle/graal/graph/Graph.java)) to the [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) (IGV), and
+* HIR graphs (i.e., instances of [Graph](../graal/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) (IGV), and
 * LIR  register allocation and generated code to the [C1Visualizer](https://java.net/projects/c1visualizer/)
 
 Dumping is enabled via the `-Dgraal.Dump` option. The dump handler for generating C1Visualizer output will also generate output for HIR graphs if the `-Dgraal.PrintCFG=true` option is specified (in addition to the `-Dgraal.Dump` option).

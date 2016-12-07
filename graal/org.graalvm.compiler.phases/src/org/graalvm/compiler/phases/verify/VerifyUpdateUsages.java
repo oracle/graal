@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.verify;
+package org.graalvm.compiler.phases.verify;
 
 import java.util.List;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.Node.Input;
-import com.oracle.graal.graph.Node.OptionalInput;
-import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.java.LoadFieldNode;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.nodes.java.StoreFieldNode;
-import com.oracle.graal.phases.VerifyPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.Input;
+import org.graalvm.compiler.graph.Node.OptionalInput;
+import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.phases.VerifyPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.test;
+package org.graalvm.compiler.replacements.test;
 
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.nodes.ReturnNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.inlining.InliningPhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.replacements.nodes.BitScanReverseNode;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;

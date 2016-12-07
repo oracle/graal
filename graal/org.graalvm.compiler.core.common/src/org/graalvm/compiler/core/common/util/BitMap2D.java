@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.util;
+package org.graalvm.compiler.core.common.util;
 
 import java.util.BitSet;
 

@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package org.graalvm.compiler.lir.alloc.trace;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.common.alloc.Trace;
-import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.DebugMemUseTracker;
-import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
-import com.oracle.graal.lir.phases.LIRPhase;
-import com.oracle.graal.lir.phases.LIRPhase.LIRPhaseStatistics;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.alloc.Trace;
+import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.DebugMemUseTracker;
+import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
+import org.graalvm.compiler.lir.phases.LIRPhase;
+import org.graalvm.compiler.lir.phases.LIRPhase.LIRPhaseStatistics;
 
 import jdk.vm.ci.code.TargetDescription;
 

@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.verify;
+package org.graalvm.compiler.phases.verify;
 
-import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
+import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
 
 import java.lang.annotation.Annotation;
 
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.phases.VerifyPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.phases.VerifyPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;

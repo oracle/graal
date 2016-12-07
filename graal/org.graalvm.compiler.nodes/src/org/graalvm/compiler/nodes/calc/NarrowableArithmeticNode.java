@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
+package org.graalvm.compiler.nodes.calc;
 
 /**
  * Marker interface for nodes where it is valid to apply a {@link NarrowNode} to its inputs and do a

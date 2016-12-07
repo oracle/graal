@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -34,7 +34,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 
 import org.junit.Assert;
 import org.junit.Test;

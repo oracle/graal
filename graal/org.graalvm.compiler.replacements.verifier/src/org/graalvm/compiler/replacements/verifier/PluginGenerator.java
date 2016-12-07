@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.verifier;
+package org.graalvm.compiler.replacements.verifier;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -181,14 +181,14 @@ public class PluginGenerator {
 
     protected static void createImports(PrintWriter out, List<GeneratedPlugin> plugins) {
         out.printf("import jdk.vm.ci.meta.ResolvedJavaMethod;\n");
-        out.printf("import com.oracle.graal.serviceprovider.ServiceProvider;\n");
+        out.printf("import org.graalvm.compiler.serviceprovider.ServiceProvider;\n");
         out.printf("\n");
-        out.printf("import com.oracle.graal.nodes.ValueNode;\n");
-        out.printf("import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;\n");
-        out.printf("import com.oracle.graal.nodes.graphbuilderconf.GeneratedInvocationPlugin;\n");
-        out.printf("import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;\n");
-        out.printf("import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;\n");
-        out.printf("import com.oracle.graal.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;\n");
+        out.printf("import org.graalvm.compiler.nodes.ValueNode;\n");
+        out.printf("import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;\n");
+        out.printf("import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;\n");
+        out.printf("import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;\n");
+        out.printf("import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;\n");
+        out.printf("import org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;\n");
 
         HashSet<String> extra = new HashSet<>();
         for (GeneratedPlugin plugin : plugins) {

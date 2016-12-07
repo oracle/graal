@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
-import static com.oracle.graal.graph.Edges.Type.Inputs;
-import static com.oracle.graal.graph.Edges.Type.Successors;
-import static com.oracle.graal.graph.Graph.isModificationCountsEnabled;
-import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.graph.Edges.Type.Inputs;
+import static org.graalvm.compiler.graph.Edges.Type.Successors;
+import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
@@ -42,20 +42,20 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import com.oracle.graal.compiler.common.CollectionsFactory;
-import com.oracle.graal.compiler.common.Fields;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.Fingerprint;
-import com.oracle.graal.graph.Graph.NodeEvent;
-import com.oracle.graal.graph.Graph.NodeEventListener;
-import com.oracle.graal.graph.Graph.Options;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.graph.iterators.NodePredicate;
-import com.oracle.graal.graph.spi.Simplifiable;
-import com.oracle.graal.graph.spi.SimplifierTool;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.Verbosity;
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.Fingerprint;
+import org.graalvm.compiler.graph.Graph.NodeEvent;
+import org.graalvm.compiler.graph.Graph.NodeEventListener;
+import org.graalvm.compiler.graph.Graph.Options;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.graph.iterators.NodePredicate;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.Verbosity;
 
 import sun.misc.Unsafe;
 

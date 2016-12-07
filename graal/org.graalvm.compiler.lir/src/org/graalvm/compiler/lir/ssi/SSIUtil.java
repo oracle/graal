@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.ssi;
+package org.graalvm.compiler.lir.ssi;
 
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.ValueConsumer;
-import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
+import org.graalvm.compiler.lir.StandardOp.LabelOp;
+import org.graalvm.compiler.lir.ValueConsumer;
+import org.graalvm.compiler.lir.ssa.SSAUtil.PhiValueVisitor;
 
 import jdk.vm.ci.meta.Value;
 

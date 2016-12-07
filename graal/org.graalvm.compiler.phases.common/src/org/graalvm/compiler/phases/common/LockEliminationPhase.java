@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.java.AccessMonitorNode;
-import com.oracle.graal.nodes.java.MonitorEnterNode;
-import com.oracle.graal.nodes.java.MonitorExitNode;
-import com.oracle.graal.nodes.java.RawMonitorEnterNode;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.AccessMonitorNode;
+import org.graalvm.compiler.nodes.java.MonitorEnterNode;
+import org.graalvm.compiler.nodes.java.MonitorExitNode;
+import org.graalvm.compiler.nodes.java.RawMonitorEnterNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.phases.Phase;
 
 public class LockEliminationPhase extends Phase {
 

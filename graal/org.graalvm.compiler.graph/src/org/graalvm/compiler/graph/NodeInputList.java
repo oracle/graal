@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
-import static com.oracle.graal.graph.Edges.Type.Inputs;
+import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 
 import java.util.Collection;
 import java.util.List;
 
-import com.oracle.graal.graph.Edges.Type;
+import org.graalvm.compiler.graph.Edges.Type;
 
 public final class NodeInputList<T extends Node> extends NodeList<T> {
 

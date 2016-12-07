@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal.util;
+package org.graalvm.compiler.microbenchmarks.graal.util;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 
-import com.oracle.graal.api.test.Graal;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.runtime.RuntimeProvider;
+import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.runtime.RuntimeProvider;
 
 /**
  * Read-only, benchmark-wide state providing Graal runtime context.

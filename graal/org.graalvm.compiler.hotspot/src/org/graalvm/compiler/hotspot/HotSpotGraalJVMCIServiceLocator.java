@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.compiler.common.util.ModuleAPI.addExports;
-import static com.oracle.graal.compiler.common.util.ModuleAPI.getModule;
-import static com.oracle.graal.compiler.common.util.Util.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.core.common.util.ModuleAPI.addExports;
+import static org.graalvm.compiler.core.common.util.ModuleAPI.getModule;
+import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
 
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
@@ -39,7 +39,7 @@ public final class HotSpotGraalJVMCIServiceLocator extends JVMCIServiceLocator {
 
     /**
      * Dynamically exports various internal JDK packages to the Graal module. This requires only
-     * {@code --add-exports=java.base/jdk.internal.module=com.oracle.graal.graal_core} on the VM
+     * {@code --add-exports=java.base/jdk.internal.module=org.graalvm.compiler.graal_core} on the VM
      * command line instead of a {@code --add-exports} instance for each JDK internal package used
      * by Graal.
      */

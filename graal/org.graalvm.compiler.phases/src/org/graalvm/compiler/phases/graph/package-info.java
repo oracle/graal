@@ -24,4 +24,4 @@
 /**
  *
  */
-package com.oracle.graal.phases.graph;
+package org.graalvm.compiler.phases.graph;

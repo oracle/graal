@@ -20,43 +20,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.util;
+package org.graalvm.compiler.phases.util;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.compiler.common.cfg.Loop;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.GraalGraphError;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeBitMap;
-import com.oracle.graal.nodes.AbstractEndNode;
-import com.oracle.graal.nodes.AbstractMergeNode;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.EndNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.FullInfopointNode;
-import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.LoopExitNode;
-import com.oracle.graal.nodes.PhiNode;
-import com.oracle.graal.nodes.ProxyNode;
-import com.oracle.graal.nodes.StateSplit;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
-import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.VirtualState;
-import com.oracle.graal.nodes.VirtualState.NodeClosure;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.virtual.VirtualObjectNode;
-import com.oracle.graal.phases.graph.ReentrantBlockIterator;
-import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
-import com.oracle.graal.phases.graph.StatelessPostOrderNodeIterator;
-import com.oracle.graal.phases.schedule.SchedulePhase;
-import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
+import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.GraalGraphError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.FullInfopointNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
+import org.graalvm.compiler.nodes.StateSplit;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
+import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.VirtualState;
+import org.graalvm.compiler.nodes.VirtualState.NodeClosure;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
+import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
+import org.graalvm.compiler.phases.graph.StatelessPostOrderNodeIterator;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 public final class GraphOrder {
 

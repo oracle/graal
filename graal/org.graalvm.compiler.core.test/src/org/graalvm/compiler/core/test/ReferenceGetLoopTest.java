@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
@@ -28,13 +28,13 @@ import java.lang.ref.WeakReference;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.loop.LoopEx;
-import com.oracle.graal.loop.LoopsData;
-import com.oracle.graal.nodes.FieldLocationIdentity;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.memory.Access;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.loop.LoopEx;
+import org.graalvm.compiler.loop.LoopsData;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.memory.Access;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 

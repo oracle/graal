@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package org.graalvm.compiler.lir.alloc.lsra;
 
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
-import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBindingLists;
-import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
-import com.oracle.graal.lir.alloc.lsra.Interval.State;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBinding;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBindingLists;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterPriority;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.State;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;

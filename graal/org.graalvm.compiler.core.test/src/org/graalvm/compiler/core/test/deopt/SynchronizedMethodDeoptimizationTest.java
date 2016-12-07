@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.deopt;
+package org.graalvm.compiler.core.test.deopt;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.compiler.test.ea.EATestBase.TestClassObject;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.core.test.ea.EATestBase.TestClassObject;
 
 /**
  * In the following tests, we try to deoptimize out of synchronized methods.

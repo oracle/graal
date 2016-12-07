@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test.nodes;
+package org.graalvm.compiler.truffle.test.nodes;
 
-import com.oracle.graal.truffle.test.MockLanguage;
+import org.graalvm.compiler.truffle.test.MockLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;

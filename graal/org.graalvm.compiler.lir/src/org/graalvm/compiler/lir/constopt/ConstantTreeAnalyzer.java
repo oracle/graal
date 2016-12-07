@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.constopt;
+package org.graalvm.compiler.lir.constopt;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -29,12 +29,12 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.constopt.ConstantTree.Flags;
-import com.oracle.graal.lir.constopt.ConstantTree.NodeCost;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.constopt.ConstantTree.Flags;
+import org.graalvm.compiler.lir.constopt.ConstantTree.NodeCost;
 
 /**
  * Analyzes a {@link ConstantTree} and marks potential materialization positions.

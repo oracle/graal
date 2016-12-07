@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.debug.instrumentation;
+package org.graalvm.compiler.nodes.debug.instrumentation;
 
 /**
  * Nodes implementing {@code InstrumentationInliningCallback} will be notify of the

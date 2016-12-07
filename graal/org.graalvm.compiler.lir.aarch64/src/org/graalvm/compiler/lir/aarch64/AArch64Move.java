@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.aarch64;
+package org.graalvm.compiler.lir.aarch64;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.COMPOSITE;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
-import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
@@ -37,23 +37,23 @@ import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.aarch64.AArch64Address;
-import com.oracle.graal.asm.aarch64.AArch64Assembler;
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.type.DataPointerConstant;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.Opcode;
-import com.oracle.graal.lir.StandardOp;
-import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.StandardOp.NullCheck;
-import com.oracle.graal.lir.StandardOp.ValueMoveOp;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.type.DataPointerConstant;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.StandardOp;
+import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
+import org.graalvm.compiler.lir.StandardOp.NullCheck;
+import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;

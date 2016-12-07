@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.gen;
+package org.graalvm.compiler.core.gen;
 
-import static com.oracle.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.BCI;
-import static com.oracle.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.END;
-import static com.oracle.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.INSTRUCTION;
-import static com.oracle.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.USE;
-import static com.oracle.graal.compiler.gen.InstructionPrinter.InstructionLineColumn.VALUE;
+import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.BCI;
+import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.END;
+import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.INSTRUCTION;
+import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.USE;
+import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.VALUE;
 
-import com.oracle.graal.debug.LogStream;
-import com.oracle.graal.nodes.StateSplit;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.ValueNodeUtil;
+import org.graalvm.compiler.debug.LogStream;
+import org.graalvm.compiler.nodes.StateSplit;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValueNodeUtil;
 
 /**
  * A utility for {@linkplain #printInstruction(ValueNode) printing} a node as an expression or

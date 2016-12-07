@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package org.graalvm.compiler.nodes;
 
 import java.util.List;
 
-import com.oracle.graal.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeClass;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

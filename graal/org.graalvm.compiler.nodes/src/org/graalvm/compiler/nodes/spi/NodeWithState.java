@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package org.graalvm.compiler.nodes.spi;
 
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.nodes.FixedNodeInterface;
-import com.oracle.graal.nodes.FrameState;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.FixedNodeInterface;
+import org.graalvm.compiler.nodes.FrameState;
 
 /**
  * Interface for nodes which have {@link FrameState} nodes as input.

@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.lir.test;
+package org.graalvm.compiler.hotspot.lir.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.lir.jtt.LIRTest;
-import com.oracle.graal.lir.jtt.LIRTestSpecification;
-import com.oracle.graal.nodes.SafepointNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.jtt.LIRTest;
+import org.graalvm.compiler.lir.jtt.LIRTestSpecification;
+import org.graalvm.compiler.nodes.SafepointNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.AllocatableValue;

@@ -20,30 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
-import com.oracle.graal.hotspot.nodes.EnterUnpackFramesStackFrameNode;
-import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
-import com.oracle.graal.hotspot.nodes.LeaveCurrentStackFrameNode;
-import com.oracle.graal.hotspot.nodes.LeaveDeoptimizedStackFrameNode;
-import com.oracle.graal.hotspot.nodes.LeaveUnpackFramesStackFrameNode;
-import com.oracle.graal.hotspot.nodes.PushInterpreterFrameNode;
-import com.oracle.graal.hotspot.nodes.SaveAllRegistersNode;
-import com.oracle.graal.hotspot.nodes.UncommonTrapCallNode;
-import com.oracle.graal.hotspot.nodes.aot.LoadConstantIndirectlyNode;
-import com.oracle.graal.hotspot.nodes.aot.ResolveConstantNode;
-import com.oracle.graal.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
-import com.oracle.graal.hotspot.nodes.profiling.RandomSeedNode;
-import com.oracle.graal.hotspot.replacements.EncodedSymbolConstant;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.gen.LIRGenerator;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
+import org.graalvm.compiler.hotspot.nodes.EnterUnpackFramesStackFrameNode;
+import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
+import org.graalvm.compiler.hotspot.nodes.LeaveCurrentStackFrameNode;
+import org.graalvm.compiler.hotspot.nodes.LeaveDeoptimizedStackFrameNode;
+import org.graalvm.compiler.hotspot.nodes.LeaveUnpackFramesStackFrameNode;
+import org.graalvm.compiler.hotspot.nodes.PushInterpreterFrameNode;
+import org.graalvm.compiler.hotspot.nodes.SaveAllRegistersNode;
+import org.graalvm.compiler.hotspot.nodes.UncommonTrapCallNode;
+import org.graalvm.compiler.hotspot.nodes.aot.LoadConstantIndirectlyNode;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
+import org.graalvm.compiler.hotspot.nodes.profiling.RandomSeedNode;
+import org.graalvm.compiler.hotspot.replacements.EncodedSymbolConstant;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.gen.LIRGenerator;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;

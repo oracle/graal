@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.amd64.test;
+package org.graalvm.compiler.asm.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
@@ -39,13 +39,13 @@ import jdk.vm.ci.meta.JavaKind;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.asm.amd64.AMD64Assembler;
-import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
-import com.oracle.graal.asm.test.AssemblerTest;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.code.DataSection.Data;
-import com.oracle.graal.code.DataSection.RawData;
-import com.oracle.graal.code.DataSection.SerializableData;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.test.AssemblerTest;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.DataSection.Data;
+import org.graalvm.compiler.code.DataSection.RawData;
+import org.graalvm.compiler.code.DataSection.SerializableData;
 
 public class SimpleAssemblerTest extends AssemblerTest {
 

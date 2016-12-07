@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.word;
+package org.graalvm.compiler.hotspot.word;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

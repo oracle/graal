@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common;
+package org.graalvm.compiler.core.common;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.core.common.UnsafeAccess.UNSAFE;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;

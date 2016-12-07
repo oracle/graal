@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
-import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.Phase;
 
 /**
  * Modifies the stamp of all object {@linkplain ParameterNode parameters} in a graph to denote they

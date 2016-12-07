@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.match;
+package org.graalvm.compiler.core.match;
 
-import static com.oracle.graal.debug.GraalDebugConfig.Options.LogVerbose;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.LogVerbose;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,22 +30,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.oracle.graal.compiler.gen.NodeMatchRules;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Edges;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.Position;
-import com.oracle.graal.serviceprovider.GraalServices;
+import org.graalvm.compiler.core.gen.NodeMatchRules;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Edges;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 public class MatchRuleRegistry {
 
     /**
-     * Convert a list of field names into {@link com.oracle.graal.graph.Position} objects that can
-     * be used to read them during a match. The names should already have been confirmed to exist in
-     * the type.
+     * Convert a list of field names into {@link org.graalvm.compiler.graph.Position} objects that
+     * can be used to read them during a match. The names should already have been confirmed to
+     * exist in the type.
      *
      * @param nodeClass
      * @param names

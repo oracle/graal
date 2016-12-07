@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.jvmAccWrittenFlags;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.jvmAccWrittenFlags;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
 
 import java.lang.reflect.Modifier;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.hotspot.word.KlassPointer;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.replacements.ClassSubstitution;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.hotspot.word.KlassPointer;
 
 /**
  * Substitutions for {@link sun.reflect.Reflection} methods.

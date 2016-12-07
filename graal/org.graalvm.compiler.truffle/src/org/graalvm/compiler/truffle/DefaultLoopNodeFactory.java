@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 

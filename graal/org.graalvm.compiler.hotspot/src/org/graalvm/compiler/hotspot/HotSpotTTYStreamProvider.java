@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import java.io.PrintStream;
 
-import com.oracle.graal.debug.TTYStreamProvider;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.debug.TTYStreamProvider;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 @ServiceProvider(TTYStreamProvider.class)
 public class HotSpotTTYStreamProvider implements TTYStreamProvider {

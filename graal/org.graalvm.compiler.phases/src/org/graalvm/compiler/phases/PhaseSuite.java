@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases;
+package org.graalvm.compiler.phases;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
  * A compiler phase that can apply an ordered collection of phases to a graph.

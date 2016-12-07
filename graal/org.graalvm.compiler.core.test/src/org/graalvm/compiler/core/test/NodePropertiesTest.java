@@ -20,28 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.graph.spi.Canonicalizable;
-import com.oracle.graal.graph.spi.SimplifierTool;
-import com.oracle.graal.java.ComputeLoopFrequenciesClosure;
-import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.NodeCostProvider;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
-import com.oracle.graal.phases.contract.NodeCostUtil;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.graph.spi.Canonicalizable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.NodeCostProvider;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase.CustomCanonicalizer;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public class NodePropertiesTest extends GraalCompilerTest {
 

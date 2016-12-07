@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
-import static com.oracle.graal.options.OptionValue.PROFILE_OPTIONVALUE_PROPERTY_NAME;
+import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
+import static org.graalvm.compiler.options.OptionValue.PROFILE_OPTIONVALUE_PROPERTY_NAME;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.io.File;
@@ -36,14 +36,14 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.MethodFilter;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionsParser;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.MethodFilter;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -296,7 +296,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         }
         if (level.ordinal() > CompilationLevel.Simple.ordinal()) {
             String declaringClassName = declaringClass.getName();
-            if (declaringClassName.startsWith("jdk.vm.ci") || declaringClassName.startsWith("com.oracle.graal")) {
+            if (declaringClassName.startsWith("jdk.vm.ci") || declaringClassName.startsWith("org.graalvm.compiler") || declaringClassName.startsWith("com.oracle.graal")) {
                 return CompilationLevel.Simple;
             }
         }

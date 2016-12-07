@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.classfile;
+package org.graalvm.compiler.replacements.classfile;
 
-import static com.oracle.graal.compiler.common.util.ModuleAPI.getModule;
-import static com.oracle.graal.compiler.common.util.ModuleAPI.getResourceAsStream;
-import static com.oracle.graal.compiler.common.util.Util.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.core.common.util.ModuleAPI.getModule;
+import static org.graalvm.compiler.core.common.util.ModuleAPI.getResourceAsStream;
+import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -33,9 +33,9 @@ import java.lang.instrument.Instrumentation;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.bytecode.Bytecode;
-import com.oracle.graal.bytecode.BytecodeProvider;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.bytecode.Bytecode;
+import org.graalvm.compiler.bytecode.BytecodeProvider;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;

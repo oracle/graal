@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.writer;
+package org.graalvm.compiler.salver.writer;
 
 import java.io.Closeable;
 import java.io.Flushable;

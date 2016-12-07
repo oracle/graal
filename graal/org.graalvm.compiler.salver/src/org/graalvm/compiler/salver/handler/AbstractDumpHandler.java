@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.handler;
+package org.graalvm.compiler.salver.handler;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
@@ -34,9 +34,9 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 
-import com.oracle.graal.salver.dumper.Dumper;
-import com.oracle.graal.salver.writer.ChannelDumpWriter;
-import com.oracle.graal.salver.writer.DumpWriter;
+import org.graalvm.compiler.salver.dumper.Dumper;
+import org.graalvm.compiler.salver.writer.ChannelDumpWriter;
+import org.graalvm.compiler.salver.writer.DumpWriter;
 
 public abstract class AbstractDumpHandler<D extends Dumper> implements DumpHandler {
 

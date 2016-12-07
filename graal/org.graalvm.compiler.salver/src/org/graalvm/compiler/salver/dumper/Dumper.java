@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.dumper;
+package org.graalvm.compiler.salver.dumper;
 
 import java.io.Closeable;
 

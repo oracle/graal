@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
-import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.INTERCEPT;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
 import java.lang.reflect.Method;
 
@@ -33,23 +33,23 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.api.test.Graal;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugConfigScope;
-import com.oracle.graal.debug.DelegatingDebugConfig;
-import com.oracle.graal.java.GraphBuilderPhase;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.VerifyPhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.runtime.RuntimeProvider;
-import com.oracle.graal.test.GraalTest;
+import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfigScope;
+import org.graalvm.compiler.debug.DelegatingDebugConfig;
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.VerifyPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.test.GraalTest;
 
 /**
  * Test that interfaces are correctly initialized by a static field resolution during eager graph

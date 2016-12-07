@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.ea;
+package org.graalvm.compiler.core.test.ea;
 
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.code.SourceStackTraceBailoutException;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.code.SourceStackTraceBailoutException;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 
 public class PEAAssertionsTest extends GraalCompilerTest {
 

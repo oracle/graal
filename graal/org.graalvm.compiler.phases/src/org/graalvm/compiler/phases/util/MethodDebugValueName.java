@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.util;
+package org.graalvm.compiler.phases.util;
 
-import com.oracle.graal.phases.LazyName;
+import org.graalvm.compiler.phases.LazyName;
 
 import jdk.vm.ci.meta.JavaMethod;
 

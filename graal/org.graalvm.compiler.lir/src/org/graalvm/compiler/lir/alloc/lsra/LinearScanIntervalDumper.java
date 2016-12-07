@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package org.graalvm.compiler.lir.alloc.lsra;
 
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import com.oracle.graal.lir.alloc.lsra.Interval.UsePosList;
-import com.oracle.graal.lir.debug.IntervalDumper;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.UsePosList;
+import org.graalvm.compiler.lir.debug.IntervalDumper;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;

@@ -20,27 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.dfa;
+package org.graalvm.compiler.lir.dfa;
 
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.cfg.BlockMap;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.InstructionStateProcedure;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.ValueConsumer;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.util.ValueSet;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.InstructionStateProcedure;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.ValueConsumer;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.lir.util.ValueSet;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.PlatformKind;

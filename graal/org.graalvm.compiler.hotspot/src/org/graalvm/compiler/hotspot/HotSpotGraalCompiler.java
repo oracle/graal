@@ -20,47 +20,47 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.compiler.common.GraalOptions.OptAssumptions;
-import static com.oracle.graal.nodes.StructuredGraph.NO_PROFILING_INFO;
-import static com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
+import static org.graalvm.compiler.core.common.GraalOptions.OptAssumptions;
+import static org.graalvm.compiler.nodes.StructuredGraph.NO_PROFILING_INFO;
+import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Formattable;
 import java.util.Formatter;
 
-import com.oracle.graal.api.runtime.GraalJVMCICompiler;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.GraalCompiler;
-import com.oracle.graal.compiler.common.CompilationIdentifier;
-import com.oracle.graal.compiler.common.util.CompilationAlarm;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugConfigScope;
-import com.oracle.graal.debug.DebugEnvironment;
-import com.oracle.graal.debug.GraalDebugConfig;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.TopLevelDebugConfig;
-import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.debug.internal.method.MethodMetricsRootScopeInfo;
-import com.oracle.graal.hotspot.CompilationCounters.Options;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.phases.OnStackReplacementPhase;
-import com.oracle.graal.java.GraphBuilderPhase;
-import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.OptimisticOptimizations.Optimization;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.tiers.Suites;
+import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.GraalCompiler;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfigScope;
+import org.graalvm.compiler.debug.DebugEnvironment;
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.TopLevelDebugConfig;
+import org.graalvm.compiler.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsRootScopeInfo;
+import org.graalvm.compiler.hotspot.CompilationCounters.Options;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.phases.OnStackReplacementPhase;
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;

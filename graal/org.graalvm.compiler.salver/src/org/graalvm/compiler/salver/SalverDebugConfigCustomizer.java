@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver;
+package org.graalvm.compiler.salver;
 
-import static com.oracle.graal.salver.SalverOptions.Salver;
+import static org.graalvm.compiler.salver.SalverOptions.Salver;
 
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugConfigCustomizer;
-import com.oracle.graal.salver.handler.GraphDumpHandler;
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.debug.DebugConfig;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.salver.handler.GraphDumpHandler;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class SalverDebugConfigCustomizer implements DebugConfigCustomizer {

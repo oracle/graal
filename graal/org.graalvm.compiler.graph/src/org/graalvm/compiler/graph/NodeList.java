@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
 import java.util.AbstractList;
 import java.util.Arrays;
@@ -29,7 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.RandomAccess;
 
-import com.oracle.graal.graph.iterators.NodeIterable;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
 
 public abstract class NodeList<T extends Node> extends AbstractList<T> implements NodeIterable<T>, RandomAccess {
 

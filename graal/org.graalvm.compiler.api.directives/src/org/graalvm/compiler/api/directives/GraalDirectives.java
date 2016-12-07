@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.directives;
+package org.graalvm.compiler.api.directives;
 
 import java.nio.charset.Charset;
 
@@ -388,9 +388,9 @@ public final class GraalDirectives {
      *
      * <pre>
      *  0  new java.lang.Object
-     *  3  invokestatic com.oracle.graal.api.directives.GraalDirectives.instrumentationBeginForPredecessor() : void
+     *  3  invokestatic org.graalvm.compiler.api.directives.GraalDirectives.instrumentationBeginForPredecessor() : void
      *  6  invokestatic AllocationProfiler.countActualAllocation() : void
-     *  9  invokestatic com.oracle.graal.api.directives.GraalDirectives.instrumentationEnd() : void
+     *  9  invokestatic org.graalvm.compiler.api.directives.GraalDirectives.instrumentationEnd() : void
      * 12  invokespecial java.lang.Object()
      * </pre>
      *

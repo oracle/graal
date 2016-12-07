@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.hotspot.HotSpotGraalCompiler.fmt;
-import static com.oracle.graal.hotspot.HotSpotGraalCompilerFactory.GRAAL_OPTION_PROPERTY_PREFIX;
+import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.fmt;
+import static org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory.GRAAL_OPTION_PROPERTY_PREFIX;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 import jdk.vm.ci.code.CompilationRequest;
 

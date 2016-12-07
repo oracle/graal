@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.iterators;
+package org.graalvm.compiler.graph.iterators;
 
 import java.util.Iterator;
 
-import com.oracle.graal.graph.Node;
+import org.graalvm.compiler.graph.Node;
 
 public class PredicatedProxyNodeIterator<T extends Node> extends NodeIterator<T> {
 

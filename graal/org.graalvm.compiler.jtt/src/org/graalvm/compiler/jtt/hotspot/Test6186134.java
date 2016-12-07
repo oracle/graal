@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.hotspot;
+package org.graalvm.compiler.jtt.hotspot;
 
 import java.util.ArrayList;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.util.ArraySet;
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.core.common.util.ArraySet;
+import org.graalvm.compiler.jtt.JTTTest;
 
 // @formatter:off
 public class Test6186134 extends JTTTest {

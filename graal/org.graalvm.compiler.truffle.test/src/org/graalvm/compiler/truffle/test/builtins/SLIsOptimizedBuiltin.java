@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test.builtins;
+package org.graalvm.compiler.truffle.test.builtins;
 
-import com.oracle.graal.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;

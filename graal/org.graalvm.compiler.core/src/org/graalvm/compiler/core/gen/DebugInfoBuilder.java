@@ -20,30 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.gen;
+package org.graalvm.compiler.core.gen;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Queue;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.lir.ConstantValue;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.NodeValueMap;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.nodes.virtual.EscapeObjectState;
-import com.oracle.graal.nodes.virtual.VirtualObjectNode;
-import com.oracle.graal.virtual.nodes.MaterializedObjectState;
-import com.oracle.graal.virtual.nodes.VirtualObjectState;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.lir.ConstantValue;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.NodeValueMap;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
+import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.VirtualObject;

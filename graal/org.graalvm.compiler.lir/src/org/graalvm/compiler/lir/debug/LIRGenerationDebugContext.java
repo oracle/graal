@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.debug;
+package org.graalvm.compiler.lir.debug;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.lir.LIR;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.lir.LIR;
 
 import jdk.vm.ci.meta.Value;
 

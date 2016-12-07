@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.amd64;
+package org.graalvm.compiler.asm.amd64;
 
-import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseIncDec;
-import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmLoadAndClearUpper;
-import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
+import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIncDec;
+import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseXmmLoadAndClearUpper;
+import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
 
-import com.oracle.graal.asm.NumUtil;
+import org.graalvm.compiler.asm.NumUtil;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;

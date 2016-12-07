@@ -20,25 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.ARRAY_KLASS_COMPONENT_MIRROR;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayKlassComponentMirrorOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassIsArray;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassModifierFlagsOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.klassSuperKlassOffset;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.ARRAY_KLASS_COMPONENT_MIRROR;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.arrayKlassComponentMirrorOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassIsArray;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassModifierFlagsOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassSuperKlassOffset;
 
 import java.lang.reflect.Modifier;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.hotspot.word.KlassPointer;
-import com.oracle.graal.nodes.PiNode;
+import org.graalvm.compiler.api.replacements.ClassSubstitution;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.nodes.PiNode;
 
 // JaCoCo Exclude
 

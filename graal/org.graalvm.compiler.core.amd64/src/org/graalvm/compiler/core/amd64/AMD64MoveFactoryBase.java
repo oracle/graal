@@ -21,20 +21,20 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.amd64;
+package org.graalvm.compiler.core.amd64;
 
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.WORD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.WORD;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
-import com.oracle.graal.lir.amd64.AMD64Move.AMD64PushPopStackMove;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
+import org.graalvm.compiler.lir.amd64.AMD64Move.AMD64PushPopStackMove;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Architecture;

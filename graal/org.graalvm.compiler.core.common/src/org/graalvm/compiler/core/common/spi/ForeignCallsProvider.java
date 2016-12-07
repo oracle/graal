@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.spi;
+package org.graalvm.compiler.core.common.spi;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.LocationIdentity;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.LocationIdentity;
 
 import jdk.vm.ci.code.ValueKindFactory;
 

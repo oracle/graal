@@ -20,24 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package org.graalvm.compiler.hotspot.sparc;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.g5;
 import static jdk.vm.ci.sparc.SPARC.i0;
 import static jdk.vm.ci.sparc.SPARC.o0;
 import static jdk.vm.ci.sparc.SPARC.o7;
 
-import com.oracle.graal.asm.sparc.SPARCAssembler;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
-import com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.Opcode;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.sparc.SPARCCall;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.sparc.SPARCCall;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;

@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.info;
+package org.graalvm.compiler.phases.common.inlining.info;
 
 import java.util.Collection;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.util.Providers;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -30,11 +30,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeMap;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.phases.util.Providers;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;

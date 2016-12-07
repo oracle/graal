@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.tutorial;
+package org.graalvm.compiler.core.test.tutorial;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -35,13 +35,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.api.test.Graal;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.compiler.test.tutorial.StaticAnalysis.MethodState;
-import com.oracle.graal.compiler.test.tutorial.StaticAnalysis.TypeFlow;
-import com.oracle.graal.nodes.spi.StampProvider;
-import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.runtime.RuntimeProvider;
+import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.core.test.tutorial.StaticAnalysis.MethodState;
+import org.graalvm.compiler.core.test.tutorial.StaticAnalysis.TypeFlow;
+import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.runtime.RuntimeProvider;
 
 public class StaticAnalysisTests {
 

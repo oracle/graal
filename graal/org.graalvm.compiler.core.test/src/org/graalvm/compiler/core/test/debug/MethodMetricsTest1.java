@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.debug;
+package org.graalvm.compiler.core.test.debug;
 
 import org.junit.Test;
 
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.debug.DebugConfig;
+import org.graalvm.compiler.phases.Phase;
 
 public class MethodMetricsTest1 extends MethodMetricsTest {
     @Override

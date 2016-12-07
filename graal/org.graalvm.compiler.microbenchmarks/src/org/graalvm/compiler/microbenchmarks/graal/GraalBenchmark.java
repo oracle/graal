@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal;
+package org.graalvm.compiler.microbenchmarks.graal;
 
-import static com.oracle.graal.microbenchmarks.graal.GraalBenchmark.Defaults.FORKS;
-import static com.oracle.graal.microbenchmarks.graal.GraalBenchmark.Defaults.MEASUREMENT_ITERATIONS;
-import static com.oracle.graal.microbenchmarks.graal.GraalBenchmark.Defaults.WARMUP_ITERATIONS;
+import static org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark.Defaults.FORKS;
+import static org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark.Defaults.MEASUREMENT_ITERATIONS;
+import static org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark.Defaults.WARMUP_ITERATIONS;
 
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;

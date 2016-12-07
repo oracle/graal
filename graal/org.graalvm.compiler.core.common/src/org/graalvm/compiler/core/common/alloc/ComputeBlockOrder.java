@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.common.alloc;
+package org.graalvm.compiler.core.common.alloc;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -29,8 +29,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.cfg.Loop;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.Loop;
 
 /**
  * Computes an ordering of the block that can be used by the linear scan register allocator and the

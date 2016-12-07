@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.verifier;
+package org.graalvm.compiler.replacements.verifier;
 
 import java.io.PrintWriter;
 import java.util.Set;
@@ -36,8 +36,8 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
-import com.oracle.graal.replacements.verifier.InjectedDependencies.Dependency;
-import com.oracle.graal.replacements.verifier.InjectedDependencies.WellKnownDependency;
+import org.graalvm.compiler.replacements.verifier.InjectedDependencies.Dependency;
+import org.graalvm.compiler.replacements.verifier.InjectedDependencies.WellKnownDependency;
 
 public abstract class GeneratedPlugin {
 

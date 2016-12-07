@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package org.graalvm.compiler.nodes.java;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_50;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_100;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_50;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_100;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.graph.IterableNodeType;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.extended.MonitorExit;
-import com.oracle.graal.nodes.memory.MemoryCheckpoint;
-import com.oracle.graal.nodes.spi.Lowerable;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.nodes.spi.Virtualizable;
-import com.oracle.graal.nodes.spi.VirtualizerTool;
-import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.graph.IterableNodeType;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.MonitorExit;
+import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.Virtualizable;
+import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 /**
  * The {@code MonitorExitNode} represents a monitor release. If it is the release of the monitor of

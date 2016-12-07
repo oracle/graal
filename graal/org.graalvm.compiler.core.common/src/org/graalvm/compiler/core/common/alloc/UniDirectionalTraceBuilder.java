@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.alloc;
+package org.graalvm.compiler.core.common.alloc;
 
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.PriorityQueue;
 
-import com.oracle.graal.compiler.common.alloc.TraceBuilderResult.TrivialTracePredicate;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Indent;
+import org.graalvm.compiler.core.common.alloc.TraceBuilderResult.TrivialTracePredicate;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Indent;
 
 /**
  * Computes traces by starting at a trace head and keep adding predecessors as long as possible.

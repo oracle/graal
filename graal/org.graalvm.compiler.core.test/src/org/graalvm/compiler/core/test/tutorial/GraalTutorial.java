@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.tutorial;
+package org.graalvm.compiler.core.test.tutorial;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.bytecode.Bytecode;
-import com.oracle.graal.bytecode.BytecodeDisassembler;
-import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
+import org.graalvm.compiler.bytecode.Bytecode;
+import org.graalvm.compiler.bytecode.BytecodeDisassembler;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;

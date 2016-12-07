@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.test;
+package org.graalvm.compiler.nodes.test;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,11 +33,11 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.graal.compiler.common.type.FloatStamp;
-import com.oracle.graal.compiler.common.type.IntegerStamp;
-import com.oracle.graal.compiler.common.type.StampPair;
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.calc.ReinterpretNode;
+import org.graalvm.compiler.core.common.type.FloatStamp;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 
 import jdk.vm.ci.meta.JavaKind;
 

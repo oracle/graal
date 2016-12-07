@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -28,8 +28,8 @@ import java.lang.invoke.MethodType;
 
 import org.junit.Test;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.test.ExportingClassLoader;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.test.ExportingClassLoader;
 
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.Label;

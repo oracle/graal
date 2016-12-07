@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.constopt;
+package org.graalvm.compiler.lir.constopt;
 
-import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -33,29 +33,29 @@ import java.util.Deque;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.cfg.BlockMap;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.InstructionValueConsumer;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRInsertionBuffer;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.ValueConsumer;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.constopt.ConstantTree.Flags;
-import com.oracle.graal.lir.constopt.ConstantTree.NodeCost;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase;
-import com.oracle.graal.options.NestedBooleanOptionValue;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.InstructionValueConsumer;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInsertionBuffer;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
+import org.graalvm.compiler.lir.ValueConsumer;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.constopt.ConstantTree.Flags;
+import org.graalvm.compiler.lir.constopt.ConstantTree.NodeCost;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase;
+import org.graalvm.compiler.options.NestedBooleanOptionValue;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;

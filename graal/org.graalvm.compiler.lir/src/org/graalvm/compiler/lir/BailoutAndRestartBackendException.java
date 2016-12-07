@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package org.graalvm.compiler.lir;
 
-import com.oracle.graal.common.PermanentBailoutException;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.options.StableOptionValue;
+import org.graalvm.compiler.common.PermanentBailoutException;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.StableOptionValue;
 
 /**
  * Restarts the {@link LIR low-level} compilation with a modified configuration.

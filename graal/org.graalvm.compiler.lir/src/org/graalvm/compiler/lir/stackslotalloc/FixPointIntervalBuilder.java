@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.stackslotalloc;
+package org.graalvm.compiler.lir.stackslotalloc;
 
-import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
-import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;
@@ -33,18 +33,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.cfg.BlockMap;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.InstructionValueConsumer;
-import com.oracle.graal.lir.InstructionValueProcedure;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.VirtualStackSlot;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.InstructionValueConsumer;
+import org.graalvm.compiler.lir.InstructionValueProcedure;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.VirtualStackSlot;
 
 import jdk.vm.ci.meta.Value;
 

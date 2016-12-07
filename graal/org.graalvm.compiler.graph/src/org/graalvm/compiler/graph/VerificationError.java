@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
 /**
  * This error represents a failed verification of a node . It must only be used for conditions that

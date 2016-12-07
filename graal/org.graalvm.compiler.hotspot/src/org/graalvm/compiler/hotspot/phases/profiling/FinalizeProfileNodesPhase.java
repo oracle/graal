@@ -20,35 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases.profiling;
+package org.graalvm.compiler.hotspot.phases.profiling;
 
-import static com.oracle.graal.hotspot.nodes.profiling.ProfileInvokeNode.getProfileInvokeNodes;
-import static com.oracle.graal.hotspot.nodes.profiling.ProfileNode.getProfileNodes;
+import static org.graalvm.compiler.hotspot.nodes.profiling.ProfileInvokeNode.getProfileInvokeNodes;
+import static org.graalvm.compiler.hotspot.nodes.profiling.ProfileNode.getProfileNodes;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.graal.compiler.common.cfg.Loop;
-import com.oracle.graal.hotspot.nodes.profiling.ProfileInvokeNode;
-import com.oracle.graal.hotspot.nodes.profiling.ProfileNode;
-import com.oracle.graal.hotspot.nodes.profiling.RandomSeedNode;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.InvokeNode;
-import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.PhiNode;
-import com.oracle.graal.nodes.ValuePhiNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.AddNode;
-import com.oracle.graal.nodes.calc.MulNode;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.hotspot.nodes.profiling.ProfileInvokeNode;
+import org.graalvm.compiler.hotspot.nodes.profiling.ProfileNode;
+import org.graalvm.compiler.hotspot.nodes.profiling.RandomSeedNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.MulNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

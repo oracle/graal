@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.code;
+package org.graalvm.compiler.code;
 
 import static jdk.vm.ci.meta.MetaUtil.identityHashCodeString;
 
@@ -30,7 +30,7 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
-import com.oracle.graal.code.DataSection.Data;
+import org.graalvm.compiler.code.DataSection.Data;
 
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.SerializableConstant;

@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
 import java.lang.reflect.Method;
 import java.util.EnumMap;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopyCallNode;
-import com.oracle.graal.nodes.java.DynamicNewArrayNode;
-import com.oracle.graal.nodes.java.NewArrayNode;
-import com.oracle.graal.replacements.Snippets;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopyCallNode;
+import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.replacements.Snippets;
 
 import jdk.vm.ci.meta.JavaKind;
 

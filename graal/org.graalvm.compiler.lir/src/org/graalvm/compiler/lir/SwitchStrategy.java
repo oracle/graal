@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package org.graalvm.compiler.lir;
 
 import java.util.Arrays;
 import java.util.Comparator;
 
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;

@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import java.util.List;
 
 import org.junit.Assert;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeMap;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
 public class GraphScheduleTest extends GraalCompilerTest {
 

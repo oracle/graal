@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.aarch64;
+package org.graalvm.compiler.hotspot.aarch64;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.hotspot.nodes.HotSpotNodeCostProvider;
-import com.oracle.graal.nodeinfo.NodeCycles;
-import com.oracle.graal.nodeinfo.NodeSize;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.nodes.HotSpotNodeCostProvider;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 
 public class AArchHotSpotNodeCostProvider extends HotSpotNodeCostProvider {
 

@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
-import com.oracle.graal.debug.GraalError;
+import org.graalvm.compiler.debug.GraalError;
 
 /**
  * This error is the graph/node aware extension of {@link GraalError}.

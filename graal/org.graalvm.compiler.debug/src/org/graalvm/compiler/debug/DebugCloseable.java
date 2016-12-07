@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
 /**
  * An {@link AutoCloseable} whose {@link #close()} does not throw a checked exception.

@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.graal.api.collections.CollectionsProvider;
+import org.graalvm.compiler.api.collections.CollectionsProvider;
 
 /**
  * Extends {@link CollectionsProvider} with support for creating {@link Node} based collections.

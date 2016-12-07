@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
 import java.util.Arrays;
 import java.util.regex.Pattern;
@@ -64,10 +64,10 @@ import jdk.vm.ci.meta.Signature;
  * <li>
  *
  * <pre>
- * com.oracle.graal.compiler.graph.PostOrderNodeIterator.*
+ * org.graalvm.compiler.core.graph.PostOrderNodeIterator.*
  * </pre>
  *
- * Matches all methods in the class "com.oracle.graal.compiler.graph.PostOrderNodeIterator".</li>
+ * Matches all methods in the class "org.graalvm.compiler.core.graph.PostOrderNodeIterator".</li>
  * <li>
  *
  * <pre>
@@ -78,10 +78,10 @@ import jdk.vm.ci.meta.Signature;
  * <li>
  *
  * <pre>
- * com.oracle.graal.compiler.graph.*.visit
+ * org.graalvm.compiler.core.graph.*.visit
  * </pre>
  *
- * Matches all methods named "visit" in classes in the package "com.oracle.graal.compiler.graph".
+ * Matches all methods named "visit" in classes in the package "org.graalvm.compiler.core.graph".
  * <li>
  *
  * <pre>

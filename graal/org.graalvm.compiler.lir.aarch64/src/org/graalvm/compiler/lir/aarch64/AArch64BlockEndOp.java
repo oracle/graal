@@ -21,12 +21,12 @@
  * questions.
  */
 
-package com.oracle.graal.lir.aarch64;
+package org.graalvm.compiler.lir.aarch64;
 
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.StandardOp.AbstractBlockEndOp;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StandardOp.AbstractBlockEndOp;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 public abstract class AArch64BlockEndOp extends AbstractBlockEndOp {
 

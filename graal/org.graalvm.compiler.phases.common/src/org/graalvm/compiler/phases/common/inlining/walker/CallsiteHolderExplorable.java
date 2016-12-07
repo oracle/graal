@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.walker;
+package org.graalvm.compiler.phases.common.inlining.walker;
 
 import java.util.BitSet;
 import java.util.Collections;
@@ -28,14 +28,14 @@ import java.util.LinkedList;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.phases.common.inlining.policy.AbstractInliningPolicy;
-import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.phases.common.inlining.policy.AbstractInliningPolicy;
+import org.graalvm.compiler.phases.graph.FixedNodeProbabilityCache;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -47,7 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  *
  * <p>
  * An instance of this class is derived from an
- * {@link com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph InlineableGraph} and
+ * {@link org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph InlineableGraph} and
  * contains a subset of the information there: just the {@link Invoke} nodes from it. Such nodes are
  * candidates for depth-first search of further inlining opportunities (thus the adjective
  * "explorable" given to this class)
@@ -119,7 +119,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
      *
      * <p>
      * Constant arguments don't contribute to fixed-params: those params have been removed already,
-     * see {@link com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph}.
+     * see {@link org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph}.
      * </p>
      *
      * <p>

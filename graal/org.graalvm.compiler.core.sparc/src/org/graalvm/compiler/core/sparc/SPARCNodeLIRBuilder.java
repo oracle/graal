@@ -21,15 +21,15 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.sparc;
+package org.graalvm.compiler.core.sparc;
 
-import com.oracle.graal.compiler.gen.NodeLIRBuilder;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.lir.sparc.SPARCJumpOp;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
+import org.graalvm.compiler.core.gen.NodeLIRBuilder;
+import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.StandardOp.JumpOp;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.sparc.SPARCJumpOp;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.

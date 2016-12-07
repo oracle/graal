@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace.lsra;
+package org.graalvm.compiler.lir.alloc.trace.lsra;
 
 import jdk.vm.ci.meta.AllocatableValue;
 

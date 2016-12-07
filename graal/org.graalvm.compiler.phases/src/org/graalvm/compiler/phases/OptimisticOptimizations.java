@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases;
+package org.graalvm.compiler.phases;
 
 import java.util.EnumSet;
 import java.util.Set;
 
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ProfilingInfo;

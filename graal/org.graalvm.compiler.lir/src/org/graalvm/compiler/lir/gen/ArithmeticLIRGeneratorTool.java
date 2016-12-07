@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.gen;
+package org.graalvm.compiler.lir.gen;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.calc.FloatConvert;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.Variable;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.Variable;
 
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;

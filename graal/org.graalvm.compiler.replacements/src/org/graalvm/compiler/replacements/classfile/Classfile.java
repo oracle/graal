@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.classfile;
+package org.graalvm.compiler.replacements.classfile;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -28,7 +28,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.graal.replacements.classfile.ClassfileConstant.Utf8;
+import org.graalvm.compiler.replacements.classfile.ClassfileConstant.Utf8;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;

@@ -20,40 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation;
+package org.graalvm.compiler.phases.common.instrumentation;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 
 import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.graal.compiler.common.type.StampPair;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeBitMap;
-import com.oracle.graal.graph.NodeFlood;
-import com.oracle.graal.graph.Position;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodes.AbstractEndNode;
-import com.oracle.graal.nodes.AbstractLocalNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.LoopEndNode;
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.ReturnNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.debug.instrumentation.InstrumentationBeginNode;
-import com.oracle.graal.nodes.debug.instrumentation.InstrumentationEndNode;
-import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.nodes.virtual.EscapeObjectState;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.NodeFlood;
+import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.AbstractLocalNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.LoopEndNode;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationBeginNode;
+import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationEndNode;
+import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 /**
  * The {@code ExtractInstrumentationPhase} extracts the instrumentation (whose boundary are

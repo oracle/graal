@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package org.graalvm.compiler.nodes;
 
-import static com.oracle.graal.nodeinfo.InputType.Condition;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+import static org.graalvm.compiler.nodeinfo.InputType.Condition;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.graph.Node.IndirectCanonicalization;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.calc.FloatingNode;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 
 @NodeInfo(allowedUsageTypes = {Condition}, size = SIZE_1)
 public abstract class LogicNode extends FloatingNode implements IndirectCanonicalization {

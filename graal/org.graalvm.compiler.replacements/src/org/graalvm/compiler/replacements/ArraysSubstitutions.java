@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package org.graalvm.compiler.replacements;
 
 import java.util.Arrays;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.api.replacements.ClassSubstitution;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 
 // JaCoCo Exclude
 

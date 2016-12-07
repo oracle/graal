@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal.method;
+package org.graalvm.compiler.debug.internal.method;
 
-import com.oracle.graal.debug.GraalDebugConfig;
-import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.debug.internal.DebugScope.ExtraInfo;
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.internal.DebugScope.ExtraInfo;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

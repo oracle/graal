@@ -20,39 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
-import static com.oracle.graal.graph.test.matchers.NodeIterableCount.hasCount;
-import static com.oracle.graal.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
-import static com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static org.graalvm.compiler.graph.test.matchers.NodeIterableCount.hasCount;
+import static org.graalvm.compiler.graph.test.matchers.NodeIterableIsEmpty.isEmpty;
+import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.nodes.BeginNode;
-import com.oracle.graal.nodes.ConditionAnchorNode;
-import com.oracle.graal.nodes.IfNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.extended.UnsafeLoadNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import com.oracle.graal.nodes.memory.FloatingReadNode;
-import com.oracle.graal.nodes.memory.ReadNode;
-import com.oracle.graal.nodes.spi.LoweringTool.StandardLoweringStage;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
-import com.oracle.graal.phases.common.FloatingReadPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
-import com.oracle.graal.truffle.nodes.ObjectLocationIdentity;
-import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.ConditionAnchorNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.memory.FloatingReadNode;
+import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.FloatingReadPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.graalvm.compiler.truffle.nodes.ObjectLocationIdentity;
+import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

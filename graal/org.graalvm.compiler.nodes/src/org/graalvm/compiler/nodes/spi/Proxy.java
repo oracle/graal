@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package org.graalvm.compiler.nodes.spi;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeInterface;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeInterface;
 
 /**
  * This interface marks nodes whose result is the same as one of their inputs. Such nodes are used

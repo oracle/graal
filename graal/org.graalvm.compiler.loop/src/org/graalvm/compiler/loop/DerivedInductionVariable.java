@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package org.graalvm.compiler.loop;
 
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
  * Base class of the derived induction variables.

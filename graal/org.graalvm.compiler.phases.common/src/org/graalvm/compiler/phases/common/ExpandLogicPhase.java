@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.AbstractMergeNode;
-import com.oracle.graal.nodes.BeginNode;
-import com.oracle.graal.nodes.EndNode;
-import com.oracle.graal.nodes.IfNode;
-import com.oracle.graal.nodes.LogicNode;
-import com.oracle.graal.nodes.MergeNode;
-import com.oracle.graal.nodes.ShortCircuitOrNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.ConditionalNode;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.ShortCircuitOrNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.phases.Phase;
 
 public class ExpandLogicPhase extends Phase {
 

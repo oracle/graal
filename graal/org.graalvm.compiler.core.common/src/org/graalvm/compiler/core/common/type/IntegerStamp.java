@@ -20,24 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.type;
+package org.graalvm.compiler.core.common.type;
 
-import static com.oracle.graal.compiler.common.calc.FloatConvert.I2D;
-import static com.oracle.graal.compiler.common.calc.FloatConvert.I2F;
-import static com.oracle.graal.compiler.common.calc.FloatConvert.L2D;
-import static com.oracle.graal.compiler.common.calc.FloatConvert.L2F;
+import static org.graalvm.compiler.core.common.calc.FloatConvert.I2D;
+import static org.graalvm.compiler.core.common.calc.FloatConvert.I2F;
+import static org.graalvm.compiler.core.common.calc.FloatConvert.L2D;
+import static org.graalvm.compiler.core.common.calc.FloatConvert.L2F;
 
 import java.nio.ByteBuffer;
 import java.util.Formatter;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.FloatConvertOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp;
-import com.oracle.graal.debug.GraalError;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;

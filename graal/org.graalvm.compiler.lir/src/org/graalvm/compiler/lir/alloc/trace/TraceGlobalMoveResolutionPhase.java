@@ -20,30 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package org.graalvm.compiler.lir.alloc.trace;
 
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
-import static com.oracle.graal.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
-import static com.oracle.graal.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
+import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.List;
 
-import com.oracle.graal.compiler.common.alloc.Trace;
-import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
-import com.oracle.graal.lir.phases.LIRPhase;
-import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
-import com.oracle.graal.lir.ssi.SSIUtil;
+import org.graalvm.compiler.core.common.alloc.Trace;
+import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.TraceAllocationContext;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
+import org.graalvm.compiler.lir.phases.LIRPhase;
+import org.graalvm.compiler.lir.ssa.SSAUtil.PhiValueVisitor;
+import org.graalvm.compiler.lir.ssi.SSIUtil;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.RegisterValue;

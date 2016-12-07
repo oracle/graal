@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
-import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
-import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantFieldProvider.FieldReadEnabledInImmutableCode;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider.FieldReadEnabledInImmutableCode;
 
-import com.oracle.graal.compiler.common.type.StampPair;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderTool;
-import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
-import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
-import com.oracle.graal.nodes.graphbuilderconf.TypePlugin;
-import com.oracle.graal.nodes.util.ConstantFoldUtil;
-import com.oracle.graal.replacements.WordOperationPlugin;
-import com.oracle.graal.word.Word;
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.TypePlugin;
+import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
+import org.graalvm.compiler.replacements.WordOperationPlugin;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

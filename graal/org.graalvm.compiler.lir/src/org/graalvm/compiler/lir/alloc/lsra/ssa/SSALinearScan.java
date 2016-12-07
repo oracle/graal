@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra.ssa;
+package org.graalvm.compiler.lir.alloc.lsra.ssa;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.lir.alloc.lsra.LinearScan;
-import com.oracle.graal.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
-import com.oracle.graal.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
-import com.oracle.graal.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
-import com.oracle.graal.lir.alloc.lsra.MoveResolver;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
-import com.oracle.graal.lir.ssa.SSAUtil;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScan;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
+import org.graalvm.compiler.lir.alloc.lsra.MoveResolver;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
+import org.graalvm.compiler.lir.ssa.SSAUtil;
 
 import jdk.vm.ci.code.TargetDescription;
 

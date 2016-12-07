@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package org.graalvm.compiler.nodes.spi;
 
-import com.oracle.graal.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValueNode;
 
 /**
  * This interface is like the derived {@link ValueProxy}. The difference is that only the graph

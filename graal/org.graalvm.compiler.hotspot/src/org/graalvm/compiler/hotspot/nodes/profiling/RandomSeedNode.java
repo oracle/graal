@@ -21,20 +21,20 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.nodes.profiling;
+package org.graalvm.compiler.hotspot.nodes.profiling;
 
 import jdk.vm.ci.meta.Value;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.hotspot.HotSpotLIRGenerator;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public class RandomSeedNode extends FloatingNode implements LIRLowerable {

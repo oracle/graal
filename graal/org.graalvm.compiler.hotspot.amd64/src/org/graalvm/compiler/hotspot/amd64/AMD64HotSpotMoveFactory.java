@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package org.graalvm.compiler.hotspot.amd64;
 
-import com.oracle.graal.compiler.amd64.AMD64MoveFactory;
-import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
+import org.graalvm.compiler.core.amd64.AMD64MoveFactory;
+import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;

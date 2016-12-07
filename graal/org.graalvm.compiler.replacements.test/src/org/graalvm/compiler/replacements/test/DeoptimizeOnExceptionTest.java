@@ -20,17 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.test;
+package org.graalvm.compiler.replacements.test;
 
 import java.util.Random;
 
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.phases.common.AbstractInliningPhase;
+import org.graalvm.compiler.test.ExportingClassLoader;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.phases.common.AbstractInliningPhase;
-import com.oracle.graal.test.ExportingClassLoader;
-
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.Label;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -123,57 +126,50 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
     }
 
     private static String name = "t/TestJSR";
-    //@formatter:off
-    /*
+
+    private static final byte[] clazz = makeClazz();
+
+    private static byte[] makeClazz() {
         // Code generated the class below using asm.
-        String clazzName = "com.oracle.graal.replacements.test.DeoptimizeOnExceptionTest".replace('.', '/');
+        String clazzName = DeoptimizeOnExceptionTest.class.getName().replace('.', '/');
         final ClassWriter w = new ClassWriter(0);
-        w.visit(V1_5, ACC_PUBLIC,
-                "t/TestJSR", null, "java/lang/Object",
-                new String[] { "java/lang/Runnable" });
-        MethodVisitor mv = w.visitMethod(ACC_PUBLIC, "<init>", "()V", null, new String[] { });
+        w.visit(Opcodes.V1_5, Opcodes.ACC_PUBLIC,
+                        "t/TestJSR", null, "java/lang/Object",
+                        new String[]{"java/lang/Runnable"});
+        MethodVisitor mv = w.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, new String[]{});
         mv.visitCode();
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-        mv.visitInsn(RETURN);
+        mv.visitVarInsn(Opcodes.ALOAD, 0);
+        mv.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+        mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(10, 10);
         mv.visitEnd();
 
-        mv = w.visitMethod(ACC_PUBLIC, "run", "()V", null, null);
+        mv = w.visitMethod(Opcodes.ACC_PUBLIC, "run", "()V", null, null);
         mv.visitCode();
-        mv.visitMethodInsn(INVOKESTATIC, clazzName, "getM", "()Ljava/lang/Object;", false);
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazzName, "getM", "()Ljava/lang/Object;", false);
         Label l1 = new Label();
-        mv.visitJumpInsn(JSR, l1);
-        mv.visitInsn(RETURN);
+        mv.visitJumpInsn(Opcodes.JSR, l1);
+        mv.visitInsn(Opcodes.RETURN);
 
         mv.visitLabel(l1);
-        mv.visitVarInsn(ASTORE, 1);
+        mv.visitVarInsn(Opcodes.ASTORE, 1);
 
         Label lElse = new Label();
         Label lEnd = new Label();
-        mv.visitMethodInsn(INVOKESTATIC, "java/lang/System", "currentTimeMillis", "()J", false);
-        mv.visitInsn(POP2);
-        mv.visitMethodInsn(INVOKESTATIC, clazzName, "getM", "()Ljava/lang/Object;", false);
-        mv.visitInsn(DUP);
-        mv.visitJumpInsn(IFNULL, lElse);
-        mv.visitMethodInsn(INVOKESTATIC, clazzName, "methodA", "()V", false);
-        mv.visitJumpInsn(GOTO, lEnd);
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/System", "currentTimeMillis", "()J", false);
+        mv.visitInsn(Opcodes.POP2);
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazzName, "getM", "()Ljava/lang/Object;", false);
+        mv.visitInsn(Opcodes.DUP);
+        mv.visitJumpInsn(Opcodes.IFNULL, lElse);
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazzName, "methodA", "()V", false);
+        mv.visitJumpInsn(Opcodes.GOTO, lEnd);
         mv.visitLabel(lElse);
-        mv.visitMethodInsn(INVOKESTATIC, clazzName, "methodB", "()V", false);
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, clazzName, "methodB", "()V", false);
         mv.visitLabel(lEnd);
 
-        mv.visitVarInsn(RET, 1);
+        mv.visitVarInsn(Opcodes.RET, 1);
         mv.visitMaxs(10, 10);
         mv.visitEnd();
-     */
-    //@formatter:on
-    private static byte[] clazz = new byte[]{-54, -2, -70, -66, 0, 0, 0, 49, 0, 25, 1, 0, 9, 116, 47, 84, 101, 115, 116, 74, 83, 82, 7, 0, 1, 1, 0, 16, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47,
-                    79, 98, 106, 101, 99, 116, 7, 0, 3, 1, 0, 18, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47, 82, 117, 110, 110, 97, 98, 108, 101, 7, 0, 5, 1, 0, 6, 60, 105, 110, 105, 116, 62, 1, 0,
-                    3, 40, 41, 86, 12, 0, 7, 0, 8, 10, 0, 4, 0, 9, 1, 0, 3, 114, 117, 110, 1, 0, 60, 99, 111, 109, 47, 111, 114, 97, 99, 108, 101, 47, 103, 114, 97, 97, 108, 47, 114, 101, 112, 108,
-                    97, 99, 101, 109, 101, 110, 116, 115, 47, 116, 101, 115, 116, 47, 68, 101, 111, 112, 116, 105, 109, 105, 122, 101, 79, 110, 69, 120, 99, 101, 112, 116, 105, 111, 110, 84, 101,
-                    115, 116, 7, 0, 12, 1, 0, 4, 103, 101, 116, 77, 1, 0, 20, 40, 41, 76, 106, 97, 118, 97, 47, 108, 97, 110, 103, 47, 79, 98, 106, 101, 99, 116, 59, 12, 0, 14, 0, 15, 10, 0, 13, 0,
-                    16, 1, 0, 7, 109, 101, 116, 104, 111, 100, 65, 12, 0, 18, 0, 8, 10, 0, 13, 0, 19, 1, 0, 7, 109, 101, 116, 104, 111, 100, 66, 12, 0, 21, 0, 8, 10, 0, 13, 0, 22, 1, 0, 4, 67, 111,
-                    100, 101, 0, 1, 0, 2, 0, 4, 0, 1, 0, 6, 0, 0, 0, 2, 0, 1, 0, 7, 0, 8, 0, 1, 0, 24, 0, 0, 0, 17, 0, 10, 0, 10, 0, 0, 0, 5, 42, -73, 0, 10, -79, 0, 0, 0, 0, 0, 1, 0, 11, 0, 8, 0, 1,
-                    0, 24, 0, 0, 0, 38, 0, 10, 0, 10, 0, 0, 0, 26, -72, 0, 17, -88, 0, 4, -79, 76, -72, 0, 17, 89, -58, 0, 9, -72, 0, 20, -89, 0, 6, -72, 0, 23, -87, 1, 0, 0, 0, 0, 0, 0};
-
+        return w.toByteArray();
+    }
 }

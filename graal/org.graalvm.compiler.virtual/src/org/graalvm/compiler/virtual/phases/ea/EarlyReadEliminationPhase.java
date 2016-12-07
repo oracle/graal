@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.virtual.phases.ea;
+package org.graalvm.compiler.virtual.phases.ea;
 
-import static com.oracle.graal.compiler.common.GraalOptions.EscapeAnalyzeOnly;
+import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public class EarlyReadEliminationPhase extends EffectsPhase<PhaseContext> {
 

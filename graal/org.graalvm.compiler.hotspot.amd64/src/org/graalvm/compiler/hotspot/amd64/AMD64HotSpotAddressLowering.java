@@ -21,31 +21,31 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.amd64;
+package org.graalvm.compiler.hotspot.amd64;
 
-import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.asm.amd64.AMD64Address.Scale;
-import com.oracle.graal.compiler.amd64.AMD64AddressLowering;
-import com.oracle.graal.compiler.amd64.AMD64AddressNode;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.hotspot.CompressEncoding;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.nodes.CompressionNode;
-import com.oracle.graal.hotspot.nodes.CompressionNode.CompressionOp;
-import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
-import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.amd64.AMD64AddressLowering;
+import org.graalvm.compiler.core.amd64.AMD64AddressNode;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.CompressEncoding;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.nodes.CompressionNode;
+import org.graalvm.compiler.hotspot.nodes.CompressionNode.CompressionOp;
+import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
+import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;

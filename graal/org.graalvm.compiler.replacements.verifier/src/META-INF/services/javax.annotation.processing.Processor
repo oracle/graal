@@ -1,1 +1,1 @@
-com.oracle.graal.replacements.verifier.VerifierAnnotationProcessor
+org.graalvm.compiler.replacements.verifier.VerifierAnnotationProcessor

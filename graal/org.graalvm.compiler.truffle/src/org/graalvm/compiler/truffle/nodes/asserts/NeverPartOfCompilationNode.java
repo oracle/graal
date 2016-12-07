@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.asserts;
+package org.graalvm.compiler.truffle.nodes.asserts;
 
-import static com.oracle.graal.nodeinfo.InputType.State;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+import static org.graalvm.compiler.nodeinfo.InputType.State;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.graph.IterableNodeType;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.VerificationError;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ControlSinkNode;
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.StateSplit;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.util.GraphUtil;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.IterableNodeType;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.VerificationError;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ControlSinkNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.StateSplit;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class NeverPartOfCompilationNode extends ControlSinkNode implements StateSplit, IterableNodeType {

@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
-import static com.oracle.graal.graph.Graph.isModificationCountsEnabled;
-import static com.oracle.graal.graph.Node.NOT_ITERABLE;
-import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Node.NOT_ITERABLE;
+import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import com.oracle.graal.compiler.common.Fields;
-import com.oracle.graal.compiler.common.FieldsScanner;
-import com.oracle.graal.graph.NodeClass.EdgeInfo;
+import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.FieldsScanner;
+import org.graalvm.compiler.graph.NodeClass.EdgeInfo;
 
 /**
  * Describes {@link Node} fields representing the set of inputs for the node or the set of the

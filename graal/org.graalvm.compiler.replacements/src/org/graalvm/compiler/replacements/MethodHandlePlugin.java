@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package org.graalvm.compiler.replacements;
 
-import com.oracle.graal.compiler.common.type.StampPair;
-import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodes.CallTargetNode;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.InvokeNode;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.NodePlugin;
-import com.oracle.graal.replacements.nodes.MethodHandleNode;
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.replacements.nodes.MethodHandleNode;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;

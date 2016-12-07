@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
 import java.util.function.Supplier;
 

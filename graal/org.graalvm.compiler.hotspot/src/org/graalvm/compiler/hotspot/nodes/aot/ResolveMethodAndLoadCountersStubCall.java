@@ -20,30 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes.aot;
+package org.graalvm.compiler.hotspot.nodes.aot;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.Value;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_20;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.spi.Canonicalizable;
-import com.oracle.graal.graph.spi.CanonicalizerTool;
-import com.oracle.graal.hotspot.HotSpotLIRGenerator;
-import com.oracle.graal.hotspot.nodes.DeoptimizingStubCall;
-import com.oracle.graal.hotspot.nodes.type.MethodCountersPointerStamp;
-import com.oracle.graal.hotspot.word.KlassPointer;
-import com.oracle.graal.hotspot.word.MethodCountersPointer;
-import com.oracle.graal.hotspot.word.MethodPointer;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
-import com.oracle.graal.nodes.util.GraphUtil;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.spi.Canonicalizable;
+import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
+import org.graalvm.compiler.hotspot.nodes.DeoptimizingStubCall;
+import org.graalvm.compiler.hotspot.nodes.type.MethodCountersPointerStamp;
+import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.hotspot.word.MethodCountersPointer;
+import org.graalvm.compiler.hotspot.word.MethodPointer;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 /**
  * A call to the VM via a regular stub.

@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package org.graalvm.compiler.hotspot.amd64;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_15;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_50;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_6;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_80;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_30;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_4;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_15;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_50;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_6;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_80;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_30;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.hotspot.nodes.HotSpotNodeCostProvider;
-import com.oracle.graal.nodeinfo.NodeCycles;
-import com.oracle.graal.nodeinfo.NodeSize;
-import com.oracle.graal.nodes.ReturnNode;
-import com.oracle.graal.replacements.nodes.ArrayEqualsNode;
-import com.oracle.graal.replacements.nodes.UnaryMathIntrinsicNode;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.nodes.HotSpotNodeCostProvider;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;

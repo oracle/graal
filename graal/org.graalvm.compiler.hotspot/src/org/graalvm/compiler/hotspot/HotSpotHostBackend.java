@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static jdk.vm.ci.common.InitTimer.timer;
 
-import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
-import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
-import com.oracle.graal.hotspot.meta.HotSpotLoweringProvider;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.stubs.DeoptimizationStub;
-import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.hotspot.stubs.UncommonTrapStub;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.stubs.DeoptimizationStub;
+import org.graalvm.compiler.hotspot.stubs.Stub;
+import org.graalvm.compiler.hotspot.stubs.UncommonTrapStub;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.common.InitTimer;

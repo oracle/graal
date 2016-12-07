@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
 import java.util.Arrays;
 import java.util.Iterator;
 
-import com.oracle.graal.graph.iterators.NodeIterable;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
 
 public final class NodeBitMap implements NodeIterable<Node> {
     private static final int SHIFT = 6;

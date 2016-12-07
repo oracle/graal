@@ -20,24 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.virtual.phases.ea;
+package org.graalvm.compiler.virtual.phases.ea;
 
 import java.util.ArrayList;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.ControlSinkNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.IfNode;
-import com.oracle.graal.nodes.PhiNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.debug.DynamicCounterNode;
-import com.oracle.graal.nodes.debug.WeakCounterNode;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.nodes.virtual.EscapeObjectState;
-import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ControlSinkNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
+import org.graalvm.compiler.nodes.debug.WeakCounterNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
+import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 
 public class GraphEffectList extends EffectList {
 

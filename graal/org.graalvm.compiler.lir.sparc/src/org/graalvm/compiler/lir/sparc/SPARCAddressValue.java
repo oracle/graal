@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.sparc;
+package org.graalvm.compiler.lir.sparc;
 
-import com.oracle.graal.asm.sparc.SPARCAddress;
-import com.oracle.graal.lir.CompositeValue;
+import org.graalvm.compiler.asm.sparc.SPARCAddress;
+import org.graalvm.compiler.lir.CompositeValue;
 
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;

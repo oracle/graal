@@ -20,11 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot.test;
+package org.graalvm.compiler.truffle.hotspot.test;
 
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.nfi.NativeFunctionInterfaceRuntime;
@@ -38,6 +39,7 @@ public class NativeFunctionInterfaceUnsatisfiedLinkTest {
         Assume.assumeFalse(System.getProperty("os.arch").toUpperCase().contains("SPARC"));
     }
 
+    @Ignore
     @Test
     public void testNotFound() {
         NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();

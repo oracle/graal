@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 /**
  * Common superclass for phases that perform inlining.

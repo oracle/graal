@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.asm;
+package org.graalvm.compiler.lir.asm;
 
-import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
@@ -34,27 +34,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import com.oracle.graal.asm.AbstractAddress;
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.code.CompilationResult.CodeAnnotation;
-import com.oracle.graal.code.DataSection.Data;
-import com.oracle.graal.code.DataSection.RawData;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.compiler.common.type.DataPointerConstant;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.NodeSourcePosition;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.asm.AbstractAddress;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
+import org.graalvm.compiler.code.DataSection.Data;
+import org.graalvm.compiler.code.DataSection.RawData;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.type.DataPointerConstant;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;

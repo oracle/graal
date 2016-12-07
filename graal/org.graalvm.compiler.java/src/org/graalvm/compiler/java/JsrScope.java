@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package org.graalvm.compiler.java;
 
 public class JsrScope {
 

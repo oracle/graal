@@ -23,14 +23,14 @@
 
 /**
  * @test
- * @run junit com.oracle.graal.options.test.TestOptionValue
+ * @run junit org.graalvm.compiler.options.test.TestOptionValue
  */
 
-package com.oracle.graal.options.test;
+package org.graalvm.compiler.options.test;
 
-import static com.oracle.graal.options.test.TestOptionValue.Options.Mutable;
-import static com.oracle.graal.options.test.TestOptionValue.Options.SecondMutable;
-import static com.oracle.graal.options.test.TestOptionValue.Options.Stable;
+import static org.graalvm.compiler.options.test.TestOptionValue.Options.Mutable;
+import static org.graalvm.compiler.options.test.TestOptionValue.Options.SecondMutable;
+import static org.graalvm.compiler.options.test.TestOptionValue.Options.Stable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -39,10 +39,10 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
-import com.oracle.graal.options.OptionDescriptor;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.StableOptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
 
 @SuppressWarnings("try")
 public class TestOptionValue {

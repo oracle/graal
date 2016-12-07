@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64.test;
+package org.graalvm.compiler.hotspot.amd64.test;
 
 import static jdk.vm.ci.amd64.AMD64.rax;
 
@@ -30,8 +30,8 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.asm.amd64.AMD64Assembler;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;

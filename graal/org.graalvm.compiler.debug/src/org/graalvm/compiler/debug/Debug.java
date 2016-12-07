@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
-import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.INTERCEPT;
-import static com.oracle.graal.debug.DelegatingDebugConfig.Feature.LOG_METHOD;
+import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
+import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.LOG_METHOD;
 import static java.util.FormattableFlags.LEFT_JUSTIFY;
 import static java.util.FormattableFlags.UPPERCASE;
 
@@ -40,14 +40,14 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.graal.debug.DelegatingDebugConfig.Level;
-import com.oracle.graal.debug.internal.CounterImpl;
-import com.oracle.graal.debug.internal.DebugHistogramImpl;
-import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.debug.internal.MemUseTrackerImpl;
-import com.oracle.graal.debug.internal.TimerImpl;
-import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
-import com.oracle.graal.serviceprovider.GraalServices;
+import org.graalvm.compiler.debug.DelegatingDebugConfig.Level;
+import org.graalvm.compiler.debug.internal.CounterImpl;
+import org.graalvm.compiler.debug.internal.DebugHistogramImpl;
+import org.graalvm.compiler.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.internal.MemUseTrackerImpl;
+import org.graalvm.compiler.debug.internal.TimerImpl;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

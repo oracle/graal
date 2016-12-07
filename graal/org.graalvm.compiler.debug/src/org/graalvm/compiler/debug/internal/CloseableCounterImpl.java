@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
+package org.graalvm.compiler.debug.internal;
 
-import com.oracle.graal.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugCloseable;
 
 /**
  * A helper class for DebugValues that can nest and need to split out accumulated and flat values

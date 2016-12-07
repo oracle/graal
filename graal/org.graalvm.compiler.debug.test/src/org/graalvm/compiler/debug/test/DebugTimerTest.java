@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.test;
+package org.graalvm.compiler.debug.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -32,12 +32,12 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugConfigScope;
-import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.Management;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugConfig;
+import org.graalvm.compiler.debug.DebugConfigScope;
+import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.debug.Management;
 
 @SuppressWarnings("try")
 public class DebugTimerTest {

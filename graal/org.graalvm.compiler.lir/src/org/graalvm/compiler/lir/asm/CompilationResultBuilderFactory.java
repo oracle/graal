@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.asm;
+package org.graalvm.compiler.lir.asm;
 
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.lir.framemap.FrameMap;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.lir.framemap.FrameMap;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 

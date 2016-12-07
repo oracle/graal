@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.asm.aarch64.test;
+package org.graalvm.compiler.asm.aarch64.test;
 
 import static org.junit.Assert.assertArrayEquals;
 
@@ -31,12 +31,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.asm.aarch64.AArch64Address;
-import com.oracle.graal.asm.aarch64.AArch64Assembler;
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan;
-import com.oracle.graal.test.GraalTest;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan;
+import org.graalvm.compiler.test.GraalTest;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;

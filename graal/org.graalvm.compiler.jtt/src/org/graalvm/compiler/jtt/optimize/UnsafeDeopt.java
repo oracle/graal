@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.optimize;
+package org.graalvm.compiler.jtt.optimize;
 
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -28,8 +28,8 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.jtt.JTTTest;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;

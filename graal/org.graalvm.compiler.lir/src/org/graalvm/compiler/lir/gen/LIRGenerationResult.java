@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.gen;
+package org.graalvm.compiler.lir.gen;
 
-import com.oracle.graal.compiler.common.CompilationIdentifier;
-import com.oracle.graal.compiler.common.CompilationIdentifier.Verbosity;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 
 import jdk.vm.ci.code.CallingConvention;
 

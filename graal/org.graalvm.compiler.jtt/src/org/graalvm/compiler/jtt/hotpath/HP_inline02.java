@@ -21,11 +21,11 @@
  * questions.
  */
 // Checkstyle: stop
-package com.oracle.graal.jtt.hotpath;
+package org.graalvm.compiler.jtt.hotpath;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 /*
  */

@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

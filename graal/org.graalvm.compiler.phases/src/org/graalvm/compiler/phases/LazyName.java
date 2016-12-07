@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases;
+package org.graalvm.compiler.phases;
 
-import com.oracle.graal.debug.Debug;
+import org.graalvm.compiler.debug.Debug;
 
 /**
  * A name whose {@link String} value is computed only when it is needed. This is useful in

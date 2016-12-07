@@ -20,32 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnBailout;
-import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnException;
-import static com.oracle.graal.compiler.GraalCompilerOptions.PrintAfterCompilation;
-import static com.oracle.graal.compiler.GraalCompilerOptions.PrintBailout;
-import static com.oracle.graal.compiler.GraalCompilerOptions.PrintCompilation;
-import static com.oracle.graal.compiler.GraalCompilerOptions.PrintFilter;
-import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
-import static com.oracle.graal.compiler.phases.HighTier.Options.Inline;
+import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnBailout;
+import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
+import static org.graalvm.compiler.core.GraalCompilerOptions.PrintAfterCompilation;
+import static org.graalvm.compiler.core.GraalCompilerOptions.PrintBailout;
+import static org.graalvm.compiler.core.GraalCompilerOptions.PrintCompilation;
+import static org.graalvm.compiler.core.GraalCompilerOptions.PrintFilter;
+import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnException;
+import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 
 import java.util.List;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.Management;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.TimeSource;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.Management;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.TimeSource;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;

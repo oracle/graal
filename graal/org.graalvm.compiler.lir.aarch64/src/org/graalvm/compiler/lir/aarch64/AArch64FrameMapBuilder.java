@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.aarch64;
+package org.graalvm.compiler.lir.aarch64;
 
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.framemap.FrameMapBuilderImpl;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilderImpl;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;

@@ -20,24 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.nodes.GuardNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
-import com.oracle.graal.phases.common.FloatingReadPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.FloatingReadPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 /**
  * Collection of tests for
- * {@link com.oracle.graal.phases.common.DominatorConditionalEliminationPhase} including those that
- * triggered bugs in this phase.
+ * {@link org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase} including those
+ * that triggered bugs in this phase.
  */
 public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase {
 

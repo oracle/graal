@@ -20,27 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package org.graalvm.compiler.hotspot.nodes;
 
-import static com.oracle.graal.nodeinfo.InputType.Association;
-import static com.oracle.graal.nodeinfo.InputType.Memory;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_30;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_8;
+import static org.graalvm.compiler.nodeinfo.InputType.Association;
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_30;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.hotspot.HotSpotNodeLIRBuilder;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.StateSplit;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.java.CompareAndSwapNode;
-import com.oracle.graal.nodes.memory.MemoryCheckpoint;
-import com.oracle.graal.nodes.memory.address.AddressNode;
-import com.oracle.graal.nodes.memory.address.AddressNode.Address;
-import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
-import com.oracle.graal.word.Word;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.HotSpotNodeLIRBuilder;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.StateSplit;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.CompareAndSwapNode;
+import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.word.Word;
 
 /**
  * A special purpose store node that differs from {@link CompareAndSwapNode} in that it is not a

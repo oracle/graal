@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
 import static com.oracle.truffle.api.CompilerAsserts.partialEvaluationConstant;
 
 import org.junit.Test;
 
-import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
-import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
+import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;

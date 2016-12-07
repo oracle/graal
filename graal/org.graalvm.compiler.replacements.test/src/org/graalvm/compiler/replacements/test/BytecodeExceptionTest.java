@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.test;
+package org.graalvm.compiler.replacements.test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.nodes.UnwindNode;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.extended.BytecodeExceptionNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.nodes.UnwindNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 
 public abstract class BytecodeExceptionTest extends GraalCompilerTest {
 

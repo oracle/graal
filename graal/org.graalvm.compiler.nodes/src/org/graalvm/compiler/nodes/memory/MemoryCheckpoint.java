@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.memory;
+package org.graalvm.compiler.nodes.memory;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedNodeInterface;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedNodeInterface;
 
 /**
  * This interface marks subclasses of {@link FixedNode} that kill a set of memory locations

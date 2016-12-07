@@ -20,28 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkageImpl;
-import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.stubs.ForeignCallStub;
-import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.word.Word;
-import com.oracle.graal.word.WordTypes;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.stubs.ForeignCallStub;
+import org.graalvm.compiler.hotspot.stubs.Stub;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;

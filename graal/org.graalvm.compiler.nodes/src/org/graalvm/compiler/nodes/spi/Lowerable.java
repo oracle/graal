@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package org.graalvm.compiler.nodes.spi;
 
-import com.oracle.graal.nodes.ValueNodeInterface;
+import org.graalvm.compiler.nodes.ValueNodeInterface;
 
 /**
  * Interface implemented by nodes that can replace themselves with lower level nodes during a phase

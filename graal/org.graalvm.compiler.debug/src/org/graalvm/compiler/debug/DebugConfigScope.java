@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
-import com.oracle.graal.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.internal.DebugScope;
 
 /**
  * A utility for scoping a change to the current debug {@linkplain DebugScope#setConfig(DebugConfig)

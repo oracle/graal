@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.hotspot.HotSpotGraalCompiler.fmt;
-import static com.oracle.graal.hotspot.HotSpotGraalCompiler.str;
+import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.fmt;
+import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.str;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -32,11 +32,11 @@ import java.util.Map.Entry;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.StableOptionValue;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

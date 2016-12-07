@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.constopt;
+package org.graalvm.compiler.lir.constopt;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.ValueProcedure;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.ValueProcedure;
 
 import jdk.vm.ci.meta.Value;
 

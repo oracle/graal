@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package org.graalvm.compiler.hotspot.stubs;
 
-import static com.oracle.graal.hotspot.stubs.StubUtil.verifyObject;
+import static org.graalvm.compiler.hotspot.stubs.StubUtil.verifyObject;
 
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
+import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 
 /**
  * Stub called via {@link HotSpotHostForeignCallsProvider#VERIFY_OOP}.

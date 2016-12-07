@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package org.graalvm.compiler.lir.alloc.trace;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.EnumSet;
 
-import com.oracle.graal.lir.CompositeValue;
-import com.oracle.graal.lir.InstructionValueConsumer;
-import com.oracle.graal.lir.InstructionValueProcedure;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.CompositeValue;
+import org.graalvm.compiler.lir.InstructionValueConsumer;
+import org.graalvm.compiler.lir.InstructionValueProcedure;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.AllocatableValue;

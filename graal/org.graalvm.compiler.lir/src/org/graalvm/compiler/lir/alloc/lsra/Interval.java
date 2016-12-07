@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package org.graalvm.compiler.lir.alloc.lsra;
 
-import static com.oracle.graal.compiler.common.GraalOptions.DetailedAsserts;
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
-import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -36,12 +36,12 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.util.IntList;
-import com.oracle.graal.compiler.common.util.Util;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.Variable;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.util.IntList;
+import org.graalvm.compiler.core.common.util.Util;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.Variable;
 
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;

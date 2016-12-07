@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.schedule;
+package org.graalvm.compiler.phases.schedule;
 
-import com.oracle.graal.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.Block;
 
 /**
  * The {@code BlockClosure} interface represents a closure for iterating over blocks.

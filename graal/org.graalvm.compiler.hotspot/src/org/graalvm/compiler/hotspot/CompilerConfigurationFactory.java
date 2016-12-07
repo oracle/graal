@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
 
@@ -30,12 +30,12 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
-import com.oracle.graal.serviceprovider.GraalServices;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;

@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.test;
+package org.graalvm.compiler.replacements.test;
 
 import java.util.HashMap;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 
 /**
  * Tests the implementation of {@code NEW}.

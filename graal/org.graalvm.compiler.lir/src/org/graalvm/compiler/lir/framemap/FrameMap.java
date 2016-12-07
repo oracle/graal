@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.framemap;
+package org.graalvm.compiler.lir.framemap;
 
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.common.PermanentBailoutException;
-import com.oracle.graal.compiler.common.LIRKind;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.LIRKind;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CallingConvention;

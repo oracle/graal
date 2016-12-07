@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.test;
+package org.graalvm.compiler.nodes.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.java.LargeLocalLiveness;
-import com.oracle.graal.java.SmallLocalLiveness;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.java.LargeLocalLiveness;
+import org.graalvm.compiler.java.SmallLocalLiveness;
 
 public class LoopLivenessTest extends GraalCompilerTest {
 

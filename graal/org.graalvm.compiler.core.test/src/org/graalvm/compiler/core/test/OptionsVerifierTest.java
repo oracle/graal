@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import static java.lang.String.format;
 
@@ -46,10 +46,10 @@ import java.util.Set;
 
 import org.junit.Test;
 
-import com.oracle.graal.options.OptionDescriptor;
-import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.test.GraalTest;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.test.GraalTest;
 
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.ClassVisitor;

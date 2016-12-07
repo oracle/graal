@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package org.graalvm.compiler.hotspot.sparc;
 
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.sparc.SPARCBlockEndOp;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.sparc.SPARCBlockEndOp;
 
 /**
  * Superclass for operations that leave a method's frame.

@@ -20,28 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace;
+package org.graalvm.compiler.lir.alloc.trace;
 
-import static com.oracle.graal.lir.LIRValueUtil.asVariable;
-import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
-import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static com.oracle.graal.lir.alloc.trace.TraceUtil.isTrivialTrace;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
 import java.util.List;
 
-import com.oracle.graal.compiler.common.alloc.Trace;
-import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.ValueProcedure;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.ssi.SSIUtil;
-import com.oracle.graal.lir.util.VariableVirtualStackValueMap;
+import org.graalvm.compiler.core.common.alloc.Trace;
+import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.StandardOp.JumpOp;
+import org.graalvm.compiler.lir.StandardOp.LabelOp;
+import org.graalvm.compiler.lir.ValueProcedure;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.ssi.SSIUtil;
+import org.graalvm.compiler.lir.util.VariableVirtualStackValueMap;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;

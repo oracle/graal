@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.sparc;
+package org.graalvm.compiler.lir.sparc;
 
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.StandardOp.AbstractBlockEndOp;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StandardOp.AbstractBlockEndOp;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 public abstract class SPARCBlockEndOp extends AbstractBlockEndOp implements SPARCLIRInstructionMixin {
     public static final LIRInstructionClass<SPARCBlockEndOp> TYPE = LIRInstructionClass.create(SPARCBlockEndOp.class);

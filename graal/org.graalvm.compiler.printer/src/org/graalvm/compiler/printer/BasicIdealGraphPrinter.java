@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package org.graalvm.compiler.printer;
 
 import java.io.BufferedOutputStream;
 import java.io.OutputStream;

@@ -20,28 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.UnwindNode;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.truffle.DefaultInliningPolicy;
-import com.oracle.graal.truffle.DefaultTruffleCompiler;
-import com.oracle.graal.truffle.GraalTruffleRuntime;
-import com.oracle.graal.truffle.OptimizedCallTarget;
-import com.oracle.graal.truffle.TruffleCompiler;
-import com.oracle.graal.truffle.TruffleCompilerOptions;
-import com.oracle.graal.truffle.TruffleDebugJavaMethod;
-import com.oracle.graal.truffle.TruffleInlining;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.UnwindNode;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.truffle.DefaultInliningPolicy;
+import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
+import org.graalvm.compiler.truffle.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.TruffleCompiler;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
+import org.graalvm.compiler.truffle.TruffleInlining;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;

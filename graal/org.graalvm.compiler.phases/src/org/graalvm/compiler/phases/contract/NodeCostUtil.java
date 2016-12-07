@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.contract;
+package org.graalvm.compiler.phases.contract;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import com.oracle.graal.compiler.common.cfg.BlockMap;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.VerificationError;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.nodes.spi.NodeCostProvider;
-import com.oracle.graal.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.VerificationError;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.spi.NodeCostProvider;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package org.graalvm.compiler.loop;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 
 /**
  * This class describes a value node that is an induction variable in a counted loop.

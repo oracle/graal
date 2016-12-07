@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.ea;
+package org.graalvm.compiler.core.test.ea;
 
 import jdk.vm.ci.meta.JavaConstant;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.loop.DefaultLoopPolicies;
-import com.oracle.graal.loop.phases.LoopFullUnrollPhase;
-import com.oracle.graal.loop.phases.LoopPeelingPhase;
-import com.oracle.graal.nodes.extended.ValueAnchorNode;
-import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
-import com.oracle.graal.nodes.virtual.CommitAllocationNode;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.schedule.SchedulePhase;
-import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.loop.DefaultLoopPolicies;
+import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
+import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 /**
  * The PartialEscapeAnalysisPhase is expected to remove all allocations and return the correct

@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.graphbuilderconf;
+package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.ValueNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 

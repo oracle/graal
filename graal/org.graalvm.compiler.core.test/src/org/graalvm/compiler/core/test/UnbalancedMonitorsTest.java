@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -29,17 +29,17 @@ import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 
 import org.junit.Test;
 
-import com.oracle.graal.java.GraphBuilderPhase;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.phases.OptimisticOptimizations;
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 
 /**
  * Exercise handling of unbalanced monitor operations by the parser. Algorithmically Graal assumes
@@ -50,7 +50,11 @@ import com.oracle.graal.phases.OptimisticOptimizations;
  * flow that checks this property.
  */
 public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes {
-    private static final String NAME = "com.oracle.graal.compiler.test.UnbalancedMonitorsTest$UnbalancedMonitors";
+    private static final String CLASS_NAME = UnbalancedMonitorsTest.class.getName();
+    private static final String INNER_CLASS_NAME = CLASS_NAME + "$UnbalancedMonitors";
+    private static final String CLASS_NAME_INTERNAL = CLASS_NAME.replace('.', '/');
+    private static final String INNER_CLASS_NAME_INTERNAL = INNER_CLASS_NAME.replace('.', '/');
+
     private static AsmLoader LOADER = new AsmLoader(UnbalancedMonitorsTest.class.getClassLoader());
 
     @Test
@@ -79,7 +83,7 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes
     }
 
     private void checkForBailout(String name) throws ClassNotFoundException {
-        ResolvedJavaMethod method = getResolvedJavaMethod(LOADER.findClass(NAME), name);
+        ResolvedJavaMethod method = getResolvedJavaMethod(LOADER.findClass(INNER_CLASS_NAME), name);
         try {
             StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO, INVALID_COMPILATION_ID);
             Plugins plugins = new Plugins(new InvocationPlugins(getMetaAccess()));
@@ -134,11 +138,11 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes
 
         ClassWriter cw = new ClassWriter(0);
 
-        cw.visit(52, ACC_SUPER | ACC_PUBLIC, "com/oracle/graal/compiler/test/UnbalancedMonitorsTest$UnbalancedMonitors", null, "java/lang/Object", null);
+        cw.visit(52, ACC_SUPER | ACC_PUBLIC, INNER_CLASS_NAME_INTERNAL, null, "java/lang/Object", null);
 
         cw.visitSource("UnbalancedMonitorsTest.java", null);
 
-        cw.visitInnerClass("com/oracle/graal/compiler/test/UnbalancedMonitorsTest$UnbalancedMonitors", "com/oracle/graal/compiler/test/UnbalancedMonitorsTest", "UnbalancedMonitors", ACC_STATIC);
+        cw.visitInnerClass(INNER_CLASS_NAME_INTERNAL, CLASS_NAME_INTERNAL, "UnbalancedMonitors", ACC_STATIC);
 
         visitConstructor(cw);
         visitWrongOrder(cw);
@@ -196,14 +200,14 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes
         mv.visitLabel(l5);
         mv.visitInsn(IRETURN);
         mv.visitLabel(l2);
-        mv.visitFrame(Opcodes.F_FULL, 5, new Object[]{"com/oracle/graal/compiler/test/UnbalancedMonitorsTest$UnbalancedMonitors", "java/lang/Object", "java/lang/Object", "java/lang/Object",
+        mv.visitFrame(Opcodes.F_FULL, 5, new Object[]{INNER_CLASS_NAME_INTERNAL, "java/lang/Object", "java/lang/Object", "java/lang/Object",
                         "java/lang/Object"}, 1, new Object[]{"java/lang/Throwable"});
         mv.visitVarInsn(ALOAD, 4);
         mv.visitInsn(MONITOREXIT);
         mv.visitLabel(l3);
         mv.visitInsn(ATHROW);
         mv.visitLabel(l6);
-        mv.visitFrame(Opcodes.F_FULL, 4, new Object[]{"com/oracle/graal/compiler/test/UnbalancedMonitorsTest$UnbalancedMonitors", "java/lang/Object", "java/lang/Object", "java/lang/Object"}, 1,
+        mv.visitFrame(Opcodes.F_FULL, 4, new Object[]{INNER_CLASS_NAME_INTERNAL, "java/lang/Object", "java/lang/Object", "java/lang/Object"}, 1,
                         new Object[]{"java/lang/Throwable"});
         for (int i = 0; i < exceptionalExitCount; i++) {
             mv.visitVarInsn(ALOAD, 3);
@@ -255,14 +259,14 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes
         mv.visitLabel(l5);
         mv.visitInsn(ARETURN);
         mv.visitLabel(l2);
-        mv.visitFrame(Opcodes.F_FULL, 5, new Object[]{"com/oracle/graal/compiler/test/UnbalancedMonitorsTest$UnbalancedMonitors", "java/lang/Object", "java/lang/Object", "java/lang/Object",
+        mv.visitFrame(Opcodes.F_FULL, 5, new Object[]{INNER_CLASS_NAME_INTERNAL, "java/lang/Object", "java/lang/Object", "java/lang/Object",
                         "java/lang/Object"}, 1, new Object[]{"java/lang/Throwable"});
         mv.visitVarInsn(ALOAD, 4);
         mv.visitInsn(MONITOREXIT);
         mv.visitLabel(l3);
         mv.visitInsn(ATHROW);
         mv.visitLabel(l6);
-        mv.visitFrame(Opcodes.F_FULL, 4, new Object[]{"com/oracle/graal/compiler/test/UnbalancedMonitorsTest$UnbalancedMonitors", "java/lang/Object", "java/lang/Object", "java/lang/Object"}, 1,
+        mv.visitFrame(Opcodes.F_FULL, 4, new Object[]{INNER_CLASS_NAME_INTERNAL, "java/lang/Object", "java/lang/Object", "java/lang/Object"}, 1,
                         new Object[]{"java/lang/Throwable"});
         mv.visitVarInsn(ALOAD, 3);
         mv.visitInsn(MONITOREXIT);
@@ -300,7 +304,7 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest implements Opcodes
 
         @Override
         protected Class<?> findClass(String name) throws ClassNotFoundException {
-            if (name.equals(NAME)) {
+            if (name.equals(INNER_CLASS_NAME)) {
                 if (loaded != null) {
                     return loaded;
                 }

@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package org.graalvm.compiler.hotspot.sparc;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.hotspot.nodes.HotSpotNodeCostProvider;
-import com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerNode;
-import com.oracle.graal.nodeinfo.NodeCycles;
-import com.oracle.graal.nodeinfo.NodeSize;
-import com.oracle.graal.nodes.ReturnNode;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.nodes.HotSpotNodeCostProvider;
+import org.graalvm.compiler.hotspot.nodes.JumpToExceptionHandlerNode;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.ReturnNode;
 
 public class SPARCHotSpotNodeCostProvider extends HotSpotNodeCostProvider {
 

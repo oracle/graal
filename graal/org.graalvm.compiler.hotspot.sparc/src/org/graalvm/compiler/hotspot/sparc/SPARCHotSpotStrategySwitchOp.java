@@ -20,29 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package org.graalvm.compiler.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BPCC;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CBCOND;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.INSTRUCTION_SIZE;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.ANNUL;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
-import static com.oracle.graal.lir.sparc.SPARCMove.loadFromConstantTable;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPCC;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CBCOND;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.INSTRUCTION_SIZE;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.ANNUL;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
+import static org.graalvm.compiler.lir.sparc.SPARCMove.loadFromConstantTable;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.g0;
 
-import com.oracle.graal.asm.Assembler.LabelHint;
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
-import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.SwitchStrategy;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.sparc.SPARCControlFlow;
-import com.oracle.graal.lir.sparc.SPARCDelayedControlTransfer;
+import org.graalvm.compiler.asm.Assembler.LabelHint;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler.CC;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.SwitchStrategy;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.sparc.SPARCControlFlow;
+import org.graalvm.compiler.lir.sparc.SPARCDelayedControlTransfer;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;

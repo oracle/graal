@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
 import java.lang.ref.WeakReference;
 import java.util.function.IntSupplier;
@@ -29,9 +29,9 @@ import java.util.stream.IntStream;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.truffle.OptimizedCallTarget;
-import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
-import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
+import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;

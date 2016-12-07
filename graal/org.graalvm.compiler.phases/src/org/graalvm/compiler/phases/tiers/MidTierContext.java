@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package org.graalvm.compiler.phases.tiers;
 
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.util.Providers;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ProfilingInfo;

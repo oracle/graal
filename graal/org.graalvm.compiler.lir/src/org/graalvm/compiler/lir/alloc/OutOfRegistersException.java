@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc;
+package org.graalvm.compiler.lir.alloc;
 
-import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
-import static com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig.ALL_REGISTERS;
+import static org.graalvm.compiler.core.common.GraalOptions.RegisterPressure;
+import static org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig.ALL_REGISTERS;
 
-import com.oracle.graal.lir.BailoutAndRestartBackendException;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.lir.BailoutAndRestartBackendException;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
 
 /**
  * Thrown if the register allocator runs out of registers. This should never happen in normal mode.

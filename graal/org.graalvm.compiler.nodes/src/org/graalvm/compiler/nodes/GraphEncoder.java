@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package org.graalvm.compiler.nodes;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -30,21 +30,21 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 
-import com.oracle.graal.compiler.common.Fields;
-import com.oracle.graal.compiler.common.util.FrequencyEncoder;
-import com.oracle.graal.compiler.common.util.TypeConversion;
-import com.oracle.graal.compiler.common.util.TypeReader;
-import com.oracle.graal.compiler.common.util.TypeWriter;
-import com.oracle.graal.compiler.common.util.UnsafeArrayTypeWriter;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.graph.Edges;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.NodeList;
-import com.oracle.graal.graph.NodeMap;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.util.FrequencyEncoder;
+import org.graalvm.compiler.core.common.util.TypeConversion;
+import org.graalvm.compiler.core.common.util.TypeReader;
+import org.graalvm.compiler.core.common.util.TypeWriter;
+import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.graph.Edges;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeList;
+import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 
 import jdk.vm.ci.code.Architecture;
 

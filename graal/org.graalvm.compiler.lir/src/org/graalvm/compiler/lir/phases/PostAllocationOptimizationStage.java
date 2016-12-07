@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.phases;
+package org.graalvm.compiler.lir.phases;
 
-import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
+import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
-import com.oracle.graal.lir.ControlFlowOptimizer;
-import com.oracle.graal.lir.EdgeMoveOptimizer;
-import com.oracle.graal.lir.NullCheckOptimizer;
-import com.oracle.graal.lir.RedundantMoveElimination;
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
-import com.oracle.graal.lir.profiling.MethodProfilingPhase;
-import com.oracle.graal.lir.profiling.MoveProfilingPhase;
-import com.oracle.graal.options.NestedBooleanOptionValue;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.lir.ControlFlowOptimizer;
+import org.graalvm.compiler.lir.EdgeMoveOptimizer;
+import org.graalvm.compiler.lir.NullCheckOptimizer;
+import org.graalvm.compiler.lir.RedundantMoveElimination;
+import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
+import org.graalvm.compiler.lir.profiling.MethodProfilingPhase;
+import org.graalvm.compiler.lir.profiling.MoveProfilingPhase;
+import org.graalvm.compiler.options.NestedBooleanOptionValue;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocationOptimizationContext> {
     public static class Options {

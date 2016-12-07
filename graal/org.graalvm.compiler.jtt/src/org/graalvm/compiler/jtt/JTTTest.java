@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt;
+package org.graalvm.compiler.jtt;
 
 import static java.lang.reflect.Modifier.isStatic;
 
@@ -35,12 +35,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assert;
 
-import com.oracle.graal.compiler.common.CompilationIdentifier;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 /**
  * Base class for the JTT tests.

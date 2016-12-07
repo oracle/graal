@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.except;
+package org.graalvm.compiler.jtt.except;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
-import com.oracle.graal.test.ExportingClassLoader;
+import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.test.ExportingClassLoader;
 
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
@@ -218,7 +218,7 @@ public class UntrustedInterfaces extends JTTTest {
     }
 
     private static class PoisonLoader extends ExportingClassLoader {
-        public static final String POISON_IMPL_NAME = "com.oracle.graal.jtt.except.PoisonPill";
+        public static final String POISON_IMPL_NAME = "org.graalvm.compiler.jtt.except.PoisonPill";
 
         @Override
         protected Class<?> findClass(String name) throws ClassNotFoundException {

@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.verify;
+package org.graalvm.compiler.phases.verify;
 
-import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.nodes.spi.Virtualizable;
-import com.oracle.graal.phases.VerifyPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.Virtualizable;
+import org.graalvm.compiler.phases.VerifyPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -41,8 +41,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  *
  * Verifies that node types implementing the {@link Virtualizable} interface use it correctly.
- * Implementors of {@link Virtualizable#virtualize(com.oracle.graal.nodes.spi.VirtualizerTool)} must
- * not apply effects on their {@link Graph graph} that cannot be easily undone.
+ * Implementors of {@link Virtualizable#virtualize(org.graalvm.compiler.nodes.spi.VirtualizerTool)}
+ * must not apply effects on their {@link Graph graph} that cannot be easily undone.
  */
 public class VerifyVirtualizableUsage extends VerifyPhase<PhaseContext> {
     @Override

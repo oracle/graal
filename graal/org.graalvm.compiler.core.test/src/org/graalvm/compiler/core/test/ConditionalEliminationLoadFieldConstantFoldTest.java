@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import java.lang.reflect.Field;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.nodes.IfNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
-import com.oracle.graal.virtual.phases.ea.EarlyReadEliminationPhase;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 
 import sun.misc.Unsafe;
 

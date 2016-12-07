@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop.phases;
+package org.graalvm.compiler.loop.phases;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.loop.LoopEx;
-import com.oracle.graal.loop.LoopsData;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.loop.LoopEx;
+import org.graalvm.compiler.loop.LoopsData;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.Phase;
 
 public class ReassociateInvariantPhase extends Phase {
 

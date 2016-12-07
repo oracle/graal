@@ -21,17 +21,17 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.sparc;
+package org.graalvm.compiler.core.sparc;
 
-import com.oracle.graal.asm.sparc.SPARCAssembler;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.lir.sparc.SPARCImmediateAddressValue;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.memory.address.AddressNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.sparc.SPARCImmediateAddressValue;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.AllocatableValue;
 

@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.jtt;
+package org.graalvm.compiler.lir.jtt;
 
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.common.PermanentBailoutException;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.common.PermanentBailoutException;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

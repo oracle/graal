@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word;
+package org.graalvm.compiler.word;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.word.Word.Opcode;
-import com.oracle.graal.word.Word.Operation;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.word.Word.Opcode;
+import org.graalvm.compiler.word.Word.Operation;
 
 /**
  * Medium-level memory access for Objects. Similarly to the readXxx and writeXxx methods defined for

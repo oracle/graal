@@ -20,33 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package org.graalvm.compiler.loop;
 
-import static com.oracle.graal.compiler.common.GraalOptions.LoopMaxUnswitch;
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
-import static com.oracle.graal.compiler.common.GraalOptions.MinimumPeelProbability;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopMaxUnswitch;
+import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
+import static org.graalvm.compiler.core.common.GraalOptions.MinimumPeelProbability;
 
 import java.util.List;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeBitMap;
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.ControlSplitNode;
-import com.oracle.graal.nodes.DeoptimizeNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.MergeNode;
-import com.oracle.graal.nodes.VirtualState;
-import com.oracle.graal.nodes.VirtualState.VirtualClosure;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.nodes.java.TypeSwitchNode;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.VirtualState;
+import org.graalvm.compiler.nodes.VirtualState.VirtualClosure;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.java.TypeSwitchNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 

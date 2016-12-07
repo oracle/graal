@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.util;
+package org.graalvm.compiler.lir.util;
 
-import static com.oracle.graal.lir.LIRValueUtil.asVariable;
-import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
-import static com.oracle.graal.lir.LIRValueUtil.isVariable;
-import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
-import com.oracle.graal.debug.GraalError;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.Value;
 

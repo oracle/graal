@@ -21,18 +21,18 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.ReturnNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 public class ClassSubstitutionsTests extends GraalCompilerTest {
 

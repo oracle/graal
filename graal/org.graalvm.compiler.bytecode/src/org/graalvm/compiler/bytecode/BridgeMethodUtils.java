@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.bytecode;
+package org.graalvm.compiler.bytecode;
 
-import static com.oracle.graal.bytecode.Bytecodes.ATHROW;
-import static com.oracle.graal.bytecode.Bytecodes.INVOKEINTERFACE;
-import static com.oracle.graal.bytecode.Bytecodes.INVOKESPECIAL;
-import static com.oracle.graal.bytecode.Bytecodes.INVOKESTATIC;
-import static com.oracle.graal.bytecode.Bytecodes.INVOKEVIRTUAL;
+import static org.graalvm.compiler.bytecode.Bytecodes.ATHROW;
+import static org.graalvm.compiler.bytecode.Bytecodes.INVOKEINTERFACE;
+import static org.graalvm.compiler.bytecode.Bytecodes.INVOKESPECIAL;
+import static org.graalvm.compiler.bytecode.Bytecodes.INVOKESTATIC;
+import static org.graalvm.compiler.bytecode.Bytecodes.INVOKEVIRTUAL;
 
 import java.lang.annotation.Annotation;
 

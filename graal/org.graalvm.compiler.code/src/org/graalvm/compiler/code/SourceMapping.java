@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.code;
+package org.graalvm.compiler.code;
 
 import static jdk.vm.ci.meta.MetaUtil.identityHashCodeString;
 
-import com.oracle.graal.graph.NodeSourcePosition;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 
 /**
  * This provides a mapping between a half-open range of PCs in the generated code and a

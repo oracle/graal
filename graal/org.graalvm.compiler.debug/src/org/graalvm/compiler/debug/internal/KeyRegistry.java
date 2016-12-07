@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
+package org.graalvm.compiler.debug.internal;
 
 import java.util.ArrayList;
 import java.util.Collections;

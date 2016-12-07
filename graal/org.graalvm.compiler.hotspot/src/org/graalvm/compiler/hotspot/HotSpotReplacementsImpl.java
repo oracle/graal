@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.bytecode.BytecodeProvider;
-import com.oracle.graal.hotspot.word.HotSpotOperation;
-import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.ReplacementsImpl;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.hotspot.word.HotSpotOperation;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.ReplacementsImpl;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

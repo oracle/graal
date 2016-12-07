@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package org.graalvm.compiler.java;
 
 import java.util.BitSet;
 
-import com.oracle.graal.java.BciBlockMapping.BciBlock;
+import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
 
 public final class LargeLocalLiveness extends LocalLiveness {
     private BitSet[] localsLiveIn;

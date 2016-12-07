@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.java;
+package org.graalvm.compiler.nodes.java;
 
-import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 
 /**
  * The foreign call descriptors used by nodes in this package.

@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal;
+package org.graalvm.compiler.microbenchmarks.graal;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.microbenchmarks.graal.util.GraalState;
-import com.oracle.graal.microbenchmarks.graal.util.GraphState;
-import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
-import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.microbenchmarks.graal.util.GraalState;
+import org.graalvm.compiler.microbenchmarks.graal.util.GraphState;
+import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
+import org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public class ConditionalEliminationBenchmark extends GraalBenchmark {
 

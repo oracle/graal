@@ -21,22 +21,22 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.amd64;
+package org.graalvm.compiler.core.amd64;
 
-import com.oracle.graal.compiler.gen.NodeLIRBuilder;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.amd64.AMD64Call;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodes.DeoptimizingNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.IfNode;
-import com.oracle.graal.nodes.IndirectCallTargetNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.IntegerDivRemNode;
-import com.oracle.graal.nodes.calc.IntegerDivRemNode.Op;
+import org.graalvm.compiler.core.gen.NodeLIRBuilder;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.amd64.AMD64Call;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.IndirectCallTargetNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
+import org.graalvm.compiler.nodes.calc.IntegerDivRemNode.Op;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.AllocatableValue;

@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.jtt;
+package org.graalvm.compiler.lir.jtt;
 
 import java.util.HashMap;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.meta.Value;
 

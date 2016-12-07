@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package org.graalvm.compiler.core.phases;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.Graph.NodeEvent;
-import com.oracle.graal.graph.Graph.NodeEventScope;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.LogicConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.common.util.HashSetNodeEventListener;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.graph.Graph.NodeEvent;
+import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.LogicConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 /**
  * A utility phase for detecting when a phase would change the graph and reporting extra information

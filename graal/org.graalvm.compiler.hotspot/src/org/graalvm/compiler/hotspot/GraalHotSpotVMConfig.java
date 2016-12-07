@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.api.replacements.Fold.InjectedParameter;
-import com.oracle.graal.hotspot.nodes.GraalHotSpotVMConfigNode;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
+import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;

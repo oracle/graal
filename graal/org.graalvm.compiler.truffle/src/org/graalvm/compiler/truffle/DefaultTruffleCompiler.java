@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.java.GraphBuilderPhase;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.tiers.Suites;
-import com.oracle.graal.runtime.RuntimeProvider;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.runtime.RuntimeProvider;
 
 public final class DefaultTruffleCompiler extends TruffleCompiler {
 

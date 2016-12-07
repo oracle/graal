@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
 import jdk.vm.ci.code.Register;
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodeinfo.processor;
+package org.graalvm.compiler.nodeinfo.processor;
 
 import static java.util.Collections.reverse;
 
@@ -45,10 +45,10 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.graal.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
-@SupportedAnnotationTypes({"com.oracle.graal.nodeinfo.NodeInfo"})
+@SupportedAnnotationTypes({"org.graalvm.compiler.nodeinfo.NodeInfo"})
 public class GraphNodeProcessor extends AbstractProcessor {
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -119,7 +119,7 @@ public class GraphNodeProcessor extends AbstractProcessor {
         Types types = processingEnv.getTypeUtils();
 
         while (type != null) {
-            if (type.toString().equals("com.oracle.graal.graph.Node")) {
+            if (type.toString().equals("org.graalvm.compiler.graph.Node")) {
                 return true;
             }
             type = (TypeElement) types.asElement(type.getSuperclass());

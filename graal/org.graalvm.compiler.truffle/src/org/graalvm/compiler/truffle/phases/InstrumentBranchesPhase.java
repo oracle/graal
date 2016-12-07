@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.phases;
+package org.graalvm.compiler.truffle.phases;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesCount;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,23 +33,23 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.compiler.common.type.TypeReference;
-import com.oracle.graal.debug.MethodFilter;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeSourcePosition;
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.IfNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.AddNode;
-import com.oracle.graal.nodes.java.LoadIndexedNode;
-import com.oracle.graal.nodes.java.StoreIndexedNode;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.MethodFilter;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
@@ -87,11 +87,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
 
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
-                    "com.oracle.graal.truffle.OptimizedCallTarget.callProxy",
-                    "com.oracle.graal.truffle.OptimizedCallTarget.callRoot",
-                    "com.oracle.graal.truffle.OptimizedCallTarget.callInlined",
-                    "com.oracle.graal.truffle.OptimizedDirectCallNode.callProxy",
-                    "com.oracle.graal.truffle.OptimizedDirectCallNode.call"
+                    "org.graalvm.compiler.truffle.OptimizedCallTarget.callProxy",
+                    "org.graalvm.compiler.truffle.OptimizedCallTarget.callRoot",
+                    "org.graalvm.compiler.truffle.OptimizedCallTarget.callInlined",
+                    "org.graalvm.compiler.truffle.OptimizedDirectCallNode.callProxy",
+                    "org.graalvm.compiler.truffle.OptimizedDirectCallNode.call"
     };
     private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
     static final int ACCESS_TABLE_SIZE = TruffleInstrumentBranchesCount.getValue();

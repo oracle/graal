@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal;
+package org.graalvm.compiler.microbenchmarks.graal;
 
 import java.util.HashMap;
 
@@ -28,15 +28,15 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeBitMap;
-import com.oracle.graal.microbenchmarks.graal.util.GraalState;
-import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
-import com.oracle.graal.microbenchmarks.graal.util.NodesState;
-import com.oracle.graal.microbenchmarks.graal.util.NodesState.NodePair;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.calc.AddNode;
-import com.oracle.graal.nodes.util.GraphUtil;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.microbenchmarks.graal.util.GraalState;
+import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
+import org.graalvm.compiler.microbenchmarks.graal.util.NodesState;
+import org.graalvm.compiler.microbenchmarks.graal.util.NodesState.NodePair;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 public class NodeBenchmark extends GraalBenchmark {
 

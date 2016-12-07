@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.graph;
+package org.graalvm.compiler.phases.graph;
 
 import java.util.ListIterator;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
-import com.oracle.graal.nodes.cfg.Block;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.cfg.Block;
 
 /**
  * Iterates over a list of nodes, which usually comes from

@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.common.RetryableBailoutException;
-import com.oracle.graal.compiler.common.util.CompilationAlarm;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.common.RetryableBailoutException;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.phases.Phase;
 
 public class CooperativePhaseTest extends GraalCompilerTest {
 

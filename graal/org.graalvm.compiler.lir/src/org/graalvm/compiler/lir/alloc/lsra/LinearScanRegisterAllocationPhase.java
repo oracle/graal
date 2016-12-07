@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package org.graalvm.compiler.lir.alloc.lsra;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.phases.AllocationPhase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.phases.AllocationPhase;
 
 import jdk.vm.ci.code.TargetDescription;
 

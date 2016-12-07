@@ -22,11 +22,11 @@
  */
 /*
  */
-package com.oracle.graal.jtt.lang;
+package org.graalvm.compiler.jtt.lang;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public final class Long_less02 extends JTTTest {
 

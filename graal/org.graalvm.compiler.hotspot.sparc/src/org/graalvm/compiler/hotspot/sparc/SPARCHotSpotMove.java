@@ -20,31 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package org.graalvm.compiler.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BPR;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.ANNUL;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.RCondition.Rc_z;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static com.oracle.graal.lir.sparc.SPARCMove.loadFromConstantTable;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPR;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.ANNUL;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.RCondition.Rc_z;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static org.graalvm.compiler.lir.sparc.SPARCMove.loadFromConstantTable;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.sparc.SPARCAddress;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
-import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.hotspot.CompressEncoding;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.StandardOp.LoadConstantOp;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.sparc.SPARCDelayedControlTransfer;
-import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
-import com.oracle.graal.lir.sparc.SPARCTailDelayedLIRInstruction;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.sparc.SPARCAddress;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler.CC;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import org.graalvm.compiler.hotspot.CompressEncoding;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.sparc.SPARCDelayedControlTransfer;
+import org.graalvm.compiler.lir.sparc.SPARCLIRInstruction;
+import org.graalvm.compiler.lir.sparc.SPARCTailDelayedLIRInstruction;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.ValueUtil;

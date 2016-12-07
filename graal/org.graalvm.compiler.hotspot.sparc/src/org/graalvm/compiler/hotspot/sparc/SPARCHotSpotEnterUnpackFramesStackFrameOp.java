@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package org.graalvm.compiler.hotspot.sparc;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.STACK_BIAS;
 import static jdk.vm.ci.sparc.SPARC.g0;
@@ -41,14 +41,14 @@ import static jdk.vm.ci.sparc.SPARC.o5;
 import static jdk.vm.ci.sparc.SPARC.o7;
 import static jdk.vm.ci.sparc.SPARC.sp;
 
-import com.oracle.graal.asm.sparc.SPARCAddress;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.Opcode;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.sparc.SPARCLIRInstruction;
+import org.graalvm.compiler.asm.sparc.SPARCAddress;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.sparc.SPARCLIRInstruction;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;

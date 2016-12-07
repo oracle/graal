@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.sparc;
+package org.graalvm.compiler.core.sparc;
 
-import com.oracle.graal.compiler.common.type.IntegerStamp;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.CompareNode;
-import com.oracle.graal.nodes.calc.SignExtendNode;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.phases.Phase;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
@@ -43,8 +43,8 @@ import jdk.vm.ci.meta.JavaConstant;
  * is not 32 or 64 bit into either a 32 or 64 bit compare by sign extending the input values.
  *
  * Why we do this in the HIR instead in the LIR? This enables the pattern matcher
- * {@link SPARCNodeMatchRules#signExtend(SignExtendNode, com.oracle.graal.nodes.memory.Access)} to
- * do it's job and replace loads with sign extending ones.
+ * {@link SPARCNodeMatchRules#signExtend(SignExtendNode, org.graalvm.compiler.nodes.memory.Access)}
+ * to do it's job and replace loads with sign extending ones.
  */
 public class SPARCIntegerCompareCanonicalizationPhase extends Phase {
     @Override

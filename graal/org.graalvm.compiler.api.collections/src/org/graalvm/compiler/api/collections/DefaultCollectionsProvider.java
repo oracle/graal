@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.collections;
+package org.graalvm.compiler.api.collections;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;

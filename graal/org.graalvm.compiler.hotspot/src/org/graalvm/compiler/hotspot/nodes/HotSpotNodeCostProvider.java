@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package org.graalvm.compiler.hotspot.nodes;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_20;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_30;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_20;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_30;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_20;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_30;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_20;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_30;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.hotspot.replacements.ObjectCloneNode;
-import com.oracle.graal.nodeinfo.NodeCycles;
-import com.oracle.graal.nodeinfo.NodeSize;
-import com.oracle.graal.nodes.spi.DefaultNodeCostProvider;
-import com.oracle.graal.nodes.type.StampTool;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.replacements.ObjectCloneNode;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.spi.DefaultNodeCostProvider;
+import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 

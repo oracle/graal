@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.alloc;
+package org.graalvm.compiler.core.common.alloc;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 
 /**
  * Represents a list of sequentially executed {@code AbstractBlockBase blocks}.

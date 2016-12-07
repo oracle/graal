@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package org.graalvm.compiler.replacements;
 
 /**
  * Used to indicate that an otherwise strange looking code pattern is required to work around a bug

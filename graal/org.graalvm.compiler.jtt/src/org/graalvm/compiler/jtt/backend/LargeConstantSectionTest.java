@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.backend;
+package org.graalvm.compiler.jtt.backend;
 
 import static jdk.internal.org.objectweb.asm.Opcodes.ACC_PUBLIC;
 import static jdk.internal.org.objectweb.asm.Opcodes.ACC_SUPER;
@@ -38,12 +38,12 @@ import static jdk.internal.org.objectweb.asm.Opcodes.RETURN;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.jtt.JTTTest;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.test.ExportingClassLoader;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.test.ExportingClassLoader;
 
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.Label;

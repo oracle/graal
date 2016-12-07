@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package org.graalvm.compiler.nodes;
 
 import static java.lang.Character.toLowerCase;
 
 import java.util.ArrayList;
 import java.util.Collection;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodeinfo.Verbosity;
-import com.oracle.graal.nodes.memory.MemoryNode;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.memory.MemoryNode;
 
 import jdk.vm.ci.meta.JavaKind;
 

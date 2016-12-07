@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package org.graalvm.compiler.hotspot.stubs;
 
-import static com.oracle.graal.compiler.GraalCompiler.emitBackEnd;
-import static com.oracle.graal.compiler.GraalCompiler.emitFrontEnd;
-import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
-import static com.oracle.graal.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
+import static org.graalvm.compiler.core.GraalCompiler.emitBackEnd;
+import static org.graalvm.compiler.core.GraalCompiler.emitFrontEnd;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,25 +34,25 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.common.CompilationIdentifier;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.hotspot.HotSpotCompiledCodeBuilder;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.StubStartNode;
-import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
-import com.oracle.graal.lir.phases.LIRPhase;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
-import com.oracle.graal.lir.profiling.MoveProfilingPhase;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.tiers.Suites;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.internal.DebugScope;
+import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.nodes.StubStartNode;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.phases.LIRPhase;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
+import org.graalvm.compiler.lir.profiling.MoveProfilingPhase;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.tiers.Suites;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;

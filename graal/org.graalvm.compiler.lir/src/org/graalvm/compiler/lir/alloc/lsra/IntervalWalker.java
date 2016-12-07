@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package org.graalvm.compiler.lir.alloc.lsra;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBinding;
-import com.oracle.graal.lir.alloc.lsra.Interval.RegisterBindingLists;
-import com.oracle.graal.lir.alloc.lsra.Interval.State;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBinding;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBindingLists;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.State;
 
 /**
  */

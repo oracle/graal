@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.ea.EATestBase.TestClassInt;
+import org.graalvm.compiler.core.test.ea.EATestBase.TestClassInt;
 
 public class ShortCircuitNodeTest extends GraalCompilerTest {
 

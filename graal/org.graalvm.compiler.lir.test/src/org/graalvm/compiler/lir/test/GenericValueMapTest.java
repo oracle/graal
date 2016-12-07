@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.test;
+package org.graalvm.compiler.lir.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.util.GenericValueMap;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.util.GenericValueMap;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;

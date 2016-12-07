@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.optimize;
+package org.graalvm.compiler.jtt.optimize;
 
 import java.util.ListIterator;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.virtual.CommitAllocationNode;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.tiers.Suites;
-import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class NestedLoop_EA extends JTTTest {
 

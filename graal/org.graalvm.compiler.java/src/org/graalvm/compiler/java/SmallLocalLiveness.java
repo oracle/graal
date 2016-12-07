@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package org.graalvm.compiler.java;
 
-import com.oracle.graal.java.BciBlockMapping.BciBlock;
+import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
 
 public final class SmallLocalLiveness extends LocalLiveness {
     /*

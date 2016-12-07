@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.dumper;
+package org.graalvm.compiler.salver.dumper;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -29,36 +29,36 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.compiler.common.Fields;
-import com.oracle.graal.compiler.common.cfg.BlockMap;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.GraalDebugConfig.Options;
-import com.oracle.graal.graph.Edges;
-import com.oracle.graal.graph.Edges.Type;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.InputEdges;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.NodeList;
-import com.oracle.graal.graph.NodeMap;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.AbstractEndNode;
-import com.oracle.graal.nodes.AbstractMergeNode;
-import com.oracle.graal.nodes.ControlSinkNode;
-import com.oracle.graal.nodes.ControlSplitNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.PhiNode;
-import com.oracle.graal.nodes.ProxyNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
-import com.oracle.graal.nodes.VirtualState;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.phases.schedule.SchedulePhase;
-import com.oracle.graal.salver.data.DataDict;
-import com.oracle.graal.salver.data.DataList;
+import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.graph.Edges;
+import org.graalvm.compiler.graph.Edges.Type;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.InputEdges;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeList;
+import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.ControlSinkNode;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.VirtualState;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.salver.data.DataDict;
+import org.graalvm.compiler.salver.data.DataList;
 
 public class GraphDumper extends AbstractMethodScopeDumper {
 

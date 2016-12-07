@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package org.graalvm.compiler.printer;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -32,28 +32,28 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.graal.bytecode.BytecodeDisassembler;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.code.DisassemblerProvider;
-import com.oracle.graal.compiler.common.alloc.Trace;
-import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.compiler.gen.NodeLIRBuilder;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugDumpHandler;
-import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.debug.GraalDebugConfig.Options;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.java.BciBlockMapping;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.debug.IntervalDumper;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.options.UniquePathUtilities;
-import com.oracle.graal.serviceprovider.GraalServices;
+import org.graalvm.compiler.bytecode.BytecodeDisassembler;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.DisassemblerProvider;
+import org.graalvm.compiler.core.common.alloc.Trace;
+import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.gen.NodeLIRBuilder;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.java.BciBlockMapping;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.debug.IntervalDumper;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.options.UniquePathUtilities;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;

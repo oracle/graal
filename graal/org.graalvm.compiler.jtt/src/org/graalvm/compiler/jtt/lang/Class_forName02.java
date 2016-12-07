@@ -22,11 +22,11 @@
  */
 /*
  */
-package com.oracle.graal.jtt.lang;
+package org.graalvm.compiler.jtt.lang;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public final class Class_forName02 extends JTTTest {
 
@@ -40,7 +40,7 @@ public final class Class_forName02 extends JTTTest {
             clname = "java.lang.String";
             cl = String.class;
         } else if (i == 2) {
-            clname = "com.oracle.graal.jtt.lang.Class_forName02";
+            clname = "org.graalvm.compiler.jtt.lang.Class_forName02";
             cl = Class_forName02.class;
         } else if (i == 3) {
             clname = "xyzz.zyxy.XYXY";

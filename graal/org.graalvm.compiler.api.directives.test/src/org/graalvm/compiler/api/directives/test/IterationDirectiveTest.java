@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.directives.test;
+package org.graalvm.compiler.api.directives.test;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 public class IterationDirectiveTest extends GraalCompilerTest {
 

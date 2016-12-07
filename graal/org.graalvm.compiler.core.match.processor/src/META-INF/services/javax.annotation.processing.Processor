@@ -1,1 +1,1 @@
-com.oracle.graal.compiler.match.processor.MatchProcessor
+org.graalvm.compiler.core.match.processor.MatchProcessor

@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.match;
+package org.graalvm.compiler.core.match;
 
-import static com.oracle.graal.debug.GraalDebugConfig.Options.LogVerbose;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.LogVerbose;
 
 import java.util.List;
 
 import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.gen.NodeLIRBuilder;
-import com.oracle.graal.compiler.match.MatchPattern.MatchResultCode;
-import com.oracle.graal.compiler.match.MatchPattern.Result;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.graph.GraalGraphError;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodeinfo.Verbosity;
+import org.graalvm.compiler.core.gen.NodeLIRBuilder;
+import org.graalvm.compiler.core.match.MatchPattern.MatchResultCode;
+import org.graalvm.compiler.core.match.MatchPattern.Result;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.graph.GraalGraphError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodeinfo.Verbosity;
 
 /**
  * A named {@link MatchPattern} along with a {@link MatchGenerator} that can be evaluated to replace

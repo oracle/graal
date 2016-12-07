@@ -22,11 +22,11 @@
  */
 /*
  */
-package com.oracle.graal.jtt.lang;
+package org.graalvm.compiler.jtt.lang;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.bytecode.BC_float_base;
+import org.graalvm.compiler.jtt.bytecode.BC_float_base;
 
 public final class Float_conditional extends BC_float_base {
 

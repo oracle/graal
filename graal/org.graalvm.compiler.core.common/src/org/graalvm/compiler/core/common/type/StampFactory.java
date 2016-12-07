@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.type;
+package org.graalvm.compiler.core.common.type;
 
-import com.oracle.graal.debug.GraalError;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Assumptions;

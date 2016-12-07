@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
 import java.io.PrintStream;
 import java.lang.reflect.Field;
@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import com.oracle.graal.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
  * A collection of static methods for printing debug and informational output to a global

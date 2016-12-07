@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.stackslotalloc;
+package org.graalvm.compiler.lir.stackslotalloc;
 
-import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
-import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
-import static com.oracle.graal.lir.phases.LIRPhase.Options.LIROptimization;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
+import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -35,26 +35,26 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.ValueProcedure;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
-import com.oracle.graal.lir.framemap.SimpleVirtualStackSlot;
-import com.oracle.graal.lir.framemap.VirtualStackSlotRange;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.phases.AllocationPhase;
-import com.oracle.graal.options.NestedBooleanOptionValue;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.ValueProcedure;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.VirtualStackSlotRange;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.phases.AllocationPhase;
+import org.graalvm.compiler.options.NestedBooleanOptionValue;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -67,8 +67,8 @@ import jdk.vm.ci.meta.ValueKind;
  * <b>Remark:</b> The analysis works under the assumption that a stack slot is no longer live after
  * its last usage. If an {@link LIRInstruction instruction} transfers the raw address of the stack
  * slot to another location, e.g. a registers, and this location is referenced later on, the
- * {@link com.oracle.graal.lir.LIRInstruction.Use usage} of the stack slot must be marked with the
- * {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
+ * {@link org.graalvm.compiler.lir.LIRInstruction.Use usage} of the stack slot must be marked with
+ * the {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
  * destroyed.
  */
 public final class LSStackSlotAllocator extends AllocationPhase {

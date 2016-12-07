@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package org.graalvm.compiler.core.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 public class EconomyHighTier extends PhaseSuite<HighTierContext> {
 

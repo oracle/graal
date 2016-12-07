@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package org.graalvm.compiler.printer;
 
 import java.io.Closeable;
 import java.io.File;
@@ -31,9 +31,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.debug.LogStream;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.lir.util.IndexedValueMap;
+import org.graalvm.compiler.debug.LogStream;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.lir.util.IndexedValueMap;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;

@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package org.graalvm.compiler.loop;
 
-import com.oracle.graal.graph.NodeBitMap;
-import com.oracle.graal.nodes.FixedNode;
+import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.nodes.FixedNode;
 
 public class LoopFragmentInsideFrom extends LoopFragmentInside {
 

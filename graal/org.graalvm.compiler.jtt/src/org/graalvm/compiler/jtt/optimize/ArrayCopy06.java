@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.optimize;
+package org.graalvm.compiler.jtt.optimize;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 /*
  * Tests calls to the array copy method.

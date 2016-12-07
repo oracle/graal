@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
-import com.oracle.graal.hotspot.word.HotSpotWordTypes;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.nodes.spi.LoweringProvider;
-import com.oracle.graal.nodes.spi.NodeCostProvider;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.tiers.SuitesProvider;
-import com.oracle.graal.phases.util.Providers;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.NodeCostProvider;
+import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.phases.tiers.SuitesProvider;
+import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;

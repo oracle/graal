@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.substitutions;
+package org.graalvm.compiler.truffle.substitutions;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 

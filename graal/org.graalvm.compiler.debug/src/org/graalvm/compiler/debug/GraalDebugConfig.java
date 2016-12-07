@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -31,9 +31,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaMethod;
@@ -209,7 +209,7 @@ public class GraalDebugConfig implements DebugConfig {
         if (methodFilter == null || methodFilter.isEmpty()) {
             this.methodFilter = null;
         } else {
-            this.methodFilter = com.oracle.graal.debug.MethodFilter.parse(methodFilter);
+            this.methodFilter = org.graalvm.compiler.debug.MethodFilter.parse(methodFilter);
         }
 
         // Report the filters that have been configured so the user can verify it's what they expect
@@ -324,7 +324,7 @@ public class GraalDebugConfig implements DebugConfig {
                     JavaMethod method = asJavaMethod(o);
                     if (method != null) {
                         if (!Options.MethodFilterRootOnly.getValue()) {
-                            if (com.oracle.graal.debug.MethodFilter.matches(methodFilter, method)) {
+                            if (org.graalvm.compiler.debug.MethodFilter.matches(methodFilter, method)) {
                                 return true;
                             }
                         } else {
@@ -338,7 +338,7 @@ public class GraalDebugConfig implements DebugConfig {
                     }
                 }
             }
-            if (lastMethod != null && com.oracle.graal.debug.MethodFilter.matches(methodFilter, lastMethod)) {
+            if (lastMethod != null && org.graalvm.compiler.debug.MethodFilter.matches(methodFilter, lastMethod)) {
                 return true;
             }
             return false;

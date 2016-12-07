@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package org.graalvm.compiler.lir;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.COMPOSITE;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.OUTGOING;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
-import static com.oracle.graal.lir.LIRInstruction.OperandMode.ALIVE;
-import static com.oracle.graal.lir.LIRInstruction.OperandMode.DEF;
-import static com.oracle.graal.lir.LIRInstruction.OperandMode.TEMP;
-import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.OUTGOING;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandMode.ALIVE;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandMode.DEF;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandMode.TEMP;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.lang.annotation.ElementType;
@@ -44,10 +44,10 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.EnumSet;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.graph.NodeSourcePosition;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;

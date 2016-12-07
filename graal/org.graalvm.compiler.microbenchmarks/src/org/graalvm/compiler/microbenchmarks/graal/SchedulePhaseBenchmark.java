@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal;
+package org.graalvm.compiler.microbenchmarks.graal;
 
 import java.util.Arrays;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
-import com.oracle.graal.microbenchmarks.graal.util.ScheduleState;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
+import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
+import org.graalvm.compiler.microbenchmarks.graal.util.ScheduleState;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 @Warmup(iterations = 15)
 public class SchedulePhaseBenchmark extends GraalBenchmark {

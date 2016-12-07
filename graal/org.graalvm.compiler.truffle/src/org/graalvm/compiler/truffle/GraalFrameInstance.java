@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
 import java.lang.reflect.Method;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.truffle.OptimizedOSRLoopNode.OSRRootNode;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.truffle.OptimizedOSRLoopNode.OSRRootNode;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;

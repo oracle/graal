@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
+package org.graalvm.compiler.debug.internal;
 
 import java.io.PrintStream;
 import java.util.List;
 
-import com.oracle.graal.debug.DebugHistogram;
-import com.oracle.graal.debug.DebugHistogram.CountedValue;
-import com.oracle.graal.debug.DebugHistogram.Printer;
+import org.graalvm.compiler.debug.DebugHistogram;
+import org.graalvm.compiler.debug.DebugHistogram.CountedValue;
+import org.graalvm.compiler.debug.DebugHistogram.Printer;
 
 /**
  * Renders a histogram as an R script to a given print stream. The R script emitted for a histogram

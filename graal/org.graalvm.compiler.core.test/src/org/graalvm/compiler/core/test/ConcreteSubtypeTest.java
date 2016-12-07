@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.Assumptions.ConcreteSubtype;
 
 import org.junit.Test;
 
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
  * Ensure that abstract classes with a single implementor are properly optimized and that loading a

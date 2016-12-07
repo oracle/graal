@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.spi;
+package org.graalvm.compiler.core.common.spi;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionValue;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;

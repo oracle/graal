@@ -20,35 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word;
+package org.graalvm.compiler.word;
 
-import static com.oracle.graal.word.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.word.UnsafeAccess.UNSAFE;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.compiler.common.calc.UnsignedMath;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.AddNode;
-import com.oracle.graal.nodes.calc.AndNode;
-import com.oracle.graal.nodes.calc.LeftShiftNode;
-import com.oracle.graal.nodes.calc.MulNode;
-import com.oracle.graal.nodes.calc.OrNode;
-import com.oracle.graal.nodes.calc.RightShiftNode;
-import com.oracle.graal.nodes.calc.SignedDivNode;
-import com.oracle.graal.nodes.calc.SignedRemNode;
-import com.oracle.graal.nodes.calc.SubNode;
-import com.oracle.graal.nodes.calc.UnsignedDivNode;
-import com.oracle.graal.nodes.calc.UnsignedRemNode;
-import com.oracle.graal.nodes.calc.UnsignedRightShiftNode;
-import com.oracle.graal.nodes.calc.XorNode;
-import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.memory.address.AddressNode.Address;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.AndNode;
+import org.graalvm.compiler.nodes.calc.LeftShiftNode;
+import org.graalvm.compiler.nodes.calc.MulNode;
+import org.graalvm.compiler.nodes.calc.OrNode;
+import org.graalvm.compiler.nodes.calc.RightShiftNode;
+import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedRemNode;
+import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
+import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
+import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
+import org.graalvm.compiler.nodes.calc.XorNode;
+import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
 
 public abstract class Word implements Signed, Unsigned, Pointer {
 

@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.sparc;
+package org.graalvm.compiler.core.sparc;
 
 import java.util.ListIterator;
 
-import com.oracle.graal.java.DefaultSuitesProvider;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.common.ExpandLogicPhase;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
-import com.oracle.graal.phases.tiers.LowTierContext;
-import com.oracle.graal.phases.tiers.Suites;
+import org.graalvm.compiler.java.DefaultSuitesProvider;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.ExpandLogicPhase;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
 
 public class SPARCSuitesProvider extends DefaultSuitesProvider {
     public SPARCSuitesProvider(CompilerConfiguration compilerConfiguration, Plugins plugins) {

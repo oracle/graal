@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.alloc;
+package org.graalvm.compiler.core.common.alloc;
 
 import java.util.ArrayList;
 
-import com.oracle.graal.compiler.common.alloc.TraceBuilderResult.TrivialTracePredicate;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.alloc.TraceBuilderResult.TrivialTracePredicate;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 
 /**
  * Builds traces consisting of a single basic block.

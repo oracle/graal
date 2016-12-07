@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.directives.test;
+package org.graalvm.compiler.api.directives.test;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -30,13 +30,13 @@ import java.lang.annotation.Target;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.ReturnNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.calc.AddNode;
-import com.oracle.graal.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
 
 /**
  * Tests for {@link GraalDirectives#opaque}.

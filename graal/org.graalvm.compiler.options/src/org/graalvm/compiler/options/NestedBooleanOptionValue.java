@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.options;
+package org.graalvm.compiler.options;
 
 /**
  * A nested Boolean {@link OptionValue} that can be overridden by a {@link #masterOption master

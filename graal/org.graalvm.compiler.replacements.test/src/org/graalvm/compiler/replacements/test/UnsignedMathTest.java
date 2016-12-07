@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.test;
+package org.graalvm.compiler.replacements.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.calc.UnsignedMath;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
+import org.graalvm.compiler.core.common.calc.UnsignedMath;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 
 /**
  * Tests the substitutions for the {@link UnsignedMath} class.

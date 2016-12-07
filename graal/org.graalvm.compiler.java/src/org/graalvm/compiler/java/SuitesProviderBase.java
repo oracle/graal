@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package org.graalvm.compiler.java;
 
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.options.DerivedOptionValue;
-import com.oracle.graal.options.DerivedOptionValue.OptionSupplier;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.tiers.Suites;
-import com.oracle.graal.phases.tiers.SuitesCreator;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.options.DerivedOptionValue;
+import org.graalvm.compiler.options.DerivedOptionValue.OptionSupplier;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.phases.tiers.SuitesCreator;
 
 public abstract class SuitesProviderBase implements SuitesCreator {
 

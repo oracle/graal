@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.dumper;
+package org.graalvm.compiler.salver.dumper;
 
 import java.io.IOException;
 import java.lang.reflect.Modifier;
@@ -29,10 +29,10 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 
-import com.oracle.graal.bytecode.BytecodeDisassembler;
-import com.oracle.graal.salver.data.DataDict;
-import com.oracle.graal.salver.data.DataList;
-import com.oracle.graal.salver.util.MethodContext;
+import org.graalvm.compiler.bytecode.BytecodeDisassembler;
+import org.graalvm.compiler.salver.data.DataDict;
+import org.graalvm.compiler.salver.data.DataList;
+import org.graalvm.compiler.salver.util.MethodContext;
 
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

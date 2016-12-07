@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package org.graalvm.compiler.hotspot.amd64;
 
-import com.oracle.graal.compiler.amd64.AMD64LIRKindTool;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.hotspot.nodes.type.HotSpotLIRKindTool;
+import org.graalvm.compiler.core.amd64.AMD64LIRKindTool;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.hotspot.nodes.type.HotSpotLIRKindTool;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 

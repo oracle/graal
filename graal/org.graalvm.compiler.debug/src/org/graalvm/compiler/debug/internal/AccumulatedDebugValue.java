@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
+package org.graalvm.compiler.debug.internal;
 
 public abstract class AccumulatedDebugValue extends DebugValue {
     protected final DebugValue flat;

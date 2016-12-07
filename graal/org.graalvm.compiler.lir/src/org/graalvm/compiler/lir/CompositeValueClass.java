@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package org.graalvm.compiler.lir;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.EnumSet;
 
-import com.oracle.graal.compiler.common.FieldIntrospection;
-import com.oracle.graal.compiler.common.Fields;
-import com.oracle.graal.compiler.common.FieldsScanner;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.CompositeValue.Component;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRIntrospection.LIRFieldsScanner;
-import com.oracle.graal.lir.LIRIntrospection.OperandModeAnnotation;
-import com.oracle.graal.lir.LIRIntrospection.Values;
+import org.graalvm.compiler.core.common.FieldIntrospection;
+import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.FieldsScanner;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.CompositeValue.Component;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRIntrospection.LIRFieldsScanner;
+import org.graalvm.compiler.lir.LIRIntrospection.OperandModeAnnotation;
+import org.graalvm.compiler.lir.LIRIntrospection.Values;
 
 /**
  * Lazily associated metadata for every {@link CompositeValue} type. The metadata includes:

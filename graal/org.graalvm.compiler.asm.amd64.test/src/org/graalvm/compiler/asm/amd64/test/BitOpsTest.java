@@ -21,12 +21,12 @@
  * questions.
  */
 
-package com.oracle.graal.asm.amd64.test;
+package org.graalvm.compiler.asm.amd64.test;
 
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.LZCNT;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.LZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.DWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.QWORD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.junit.Assume.assumeTrue;
 
@@ -44,10 +44,10 @@ import jdk.vm.ci.meta.JavaKind;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.asm.amd64.AMD64Address;
-import com.oracle.graal.asm.amd64.AMD64Assembler;
-import com.oracle.graal.asm.test.AssemblerTest;
-import com.oracle.graal.code.CompilationResult;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.test.AssemblerTest;
+import org.graalvm.compiler.code.CompilationResult;
 
 public class BitOpsTest extends AssemblerTest {
     private static boolean lzcntSupported;

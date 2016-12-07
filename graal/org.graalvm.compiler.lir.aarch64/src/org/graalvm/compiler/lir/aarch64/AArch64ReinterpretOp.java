@@ -21,13 +21,13 @@
  * questions.
  */
 
-package com.oracle.graal.lir.aarch64;
+package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;

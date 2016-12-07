@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.test;
+package org.graalvm.compiler.replacements.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.phases.common.AbstractInliningPhase;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.phases.common.AbstractInliningPhase;
 
 /**
  * Tests the implementation of the snippets for lowering the INVOKE* instructions.

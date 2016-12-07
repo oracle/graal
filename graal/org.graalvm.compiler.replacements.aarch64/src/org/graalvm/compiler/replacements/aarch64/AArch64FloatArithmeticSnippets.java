@@ -21,24 +21,24 @@
  * questions.
  */
 
-package com.oracle.graal.replacements.aarch64;
+package org.graalvm.compiler.replacements.aarch64;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_IGNORED;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.RemNode;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.SnippetTemplate;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.Snippets;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.RemNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
+import org.graalvm.compiler.replacements.Snippets;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;

@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.aarch64;
+package org.graalvm.compiler.hotspot.aarch64;
 
-import static com.oracle.graal.compiler.common.GraalOptions.ZapStackOnMethodEntry;
+import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static java.lang.reflect.Modifier.isStatic;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r10;
@@ -33,39 +33,39 @@ import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 
 import java.util.Set;
 
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.aarch64.AArch64Address;
-import com.oracle.graal.asm.aarch64.AArch64Assembler;
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.aarch64.AArch64NodeMatchRules;
-import com.oracle.graal.compiler.common.CompilationIdentifier;
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
-import com.oracle.graal.hotspot.HotSpotDataBuilder;
-import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.HotSpotHostBackend;
-import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.aarch64.AArch64Call;
-import com.oracle.graal.lir.aarch64.AArch64FrameMap;
-import com.oracle.graal.lir.aarch64.AArch64FrameMapBuilder;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
-import com.oracle.graal.lir.asm.DataBuilder;
-import com.oracle.graal.lir.asm.FrameContext;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.HotSpotHostBackend;
+import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.stubs.Stub;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.aarch64.AArch64Call;
+import org.graalvm.compiler.lir.aarch64.AArch64FrameMap;
+import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.asm.DataBuilder;
+import org.graalvm.compiler.lir.asm.FrameContext;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.memory;
+package org.graalvm.compiler.nodes.memory;
 
 /**
  * Encapsulates properties of a node describing how it accesses the heap.

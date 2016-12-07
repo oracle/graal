@@ -1,1 +1,1 @@
-com.oracle.graal.nodeinfo.processor.GraphNodeProcessor
+org.graalvm.compiler.nodeinfo.processor.GraphNodeProcessor

@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.iterators;
+package org.graalvm.compiler.graph.iterators;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.iterators.NodePredicates.AndPredicate;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.iterators.NodePredicates.AndPredicate;
 
 public interface NodePredicate {
 

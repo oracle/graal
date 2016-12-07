@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package org.graalvm.compiler.nodes.spi;
 
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.api.replacements.SnippetTemplateCache;
-import com.oracle.graal.bytecode.BytecodeProvider;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
+import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word;
+package org.graalvm.compiler.word;
 
 /**
  * Marker interface for all {@link WordBase word types} that have the semantic of a pointer (but not

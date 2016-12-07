@@ -20,29 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.virtual.phases.ea;
+package org.graalvm.compiler.virtual.phases.ea;
 
-import static com.oracle.graal.debug.Debug.isEnabled;
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
+import static org.graalvm.compiler.debug.Debug.isEnabled;
+import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import java.util.Set;
 
-import com.oracle.graal.compiler.common.util.CompilationAlarm;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.Graph.NodeEventScope;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.spi.Simplifiable;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.ScheduleResult;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
-import com.oracle.graal.phases.common.util.HashSetNodeEventListener;
-import com.oracle.graal.phases.graph.ReentrantBlockIterator;
-import com.oracle.graal.phases.schedule.SchedulePhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
+import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends BasePhase<PhaseContextT> {
 

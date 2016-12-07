@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.nodes.arithmetic;
+package org.graalvm.compiler.replacements.nodes.arithmetic;
 
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 
 interface IntegerExactArithmeticNode extends Lowerable {
 

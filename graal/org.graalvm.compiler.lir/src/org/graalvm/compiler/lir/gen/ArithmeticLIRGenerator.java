@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.gen;
+package org.graalvm.compiler.lir.gen;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.lir.Variable;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.lir.Variable;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.PlatformKind;

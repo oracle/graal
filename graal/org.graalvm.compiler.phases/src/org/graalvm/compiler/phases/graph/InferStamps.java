@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.graph;
+package org.graalvm.compiler.phases.graph;
 
-import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.ValuePhiNode;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 
 public class InferStamps {
 

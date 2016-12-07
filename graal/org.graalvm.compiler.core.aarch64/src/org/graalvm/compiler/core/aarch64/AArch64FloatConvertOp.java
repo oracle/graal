@@ -21,16 +21,16 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.aarch64;
+package org.graalvm.compiler.core.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.compiler.common.calc.FloatConvert;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.aarch64.AArch64LIRInstruction;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;

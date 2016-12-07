@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.aarch64;
+package org.graalvm.compiler.hotspot.aarch64;
 
 import static jdk.vm.ci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
 import static jdk.vm.ci.meta.JavaConstant.INT_0;
 import static jdk.vm.ci.meta.JavaConstant.LONG_0;
 
-import com.oracle.graal.compiler.aarch64.AArch64MoveFactory;
-import com.oracle.graal.lir.LIRInstruction;
+import org.graalvm.compiler.core.aarch64.AArch64MoveFactory;
+import org.graalvm.compiler.lir.LIRInstruction;
 
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;

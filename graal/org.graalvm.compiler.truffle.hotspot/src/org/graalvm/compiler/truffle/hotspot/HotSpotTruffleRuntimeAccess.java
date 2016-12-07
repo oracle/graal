@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot;
+package org.graalvm.compiler.truffle.hotspot;
 
 import java.util.function.Supplier;
 
-import com.oracle.graal.api.runtime.GraalJVMCICompiler;
-import com.oracle.graal.api.runtime.GraalRuntime;
-import com.oracle.graal.hotspot.CompilerConfigurationFactory;
-import com.oracle.graal.hotspot.HotSpotGraalCompilerFactory;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
+import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
 

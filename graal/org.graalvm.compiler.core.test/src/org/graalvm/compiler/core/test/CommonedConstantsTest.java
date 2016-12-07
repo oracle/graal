@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import java.lang.reflect.Array;
 
@@ -28,7 +28,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 
-import com.oracle.graal.phases.common.AbstractInliningPhase;
+import org.graalvm.compiler.phases.common.AbstractInliningPhase;
 
 /**
  * Tests any optimization that commons loads of non-inlineable constants.

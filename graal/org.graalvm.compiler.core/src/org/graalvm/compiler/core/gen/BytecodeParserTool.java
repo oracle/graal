@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.gen;
+package org.graalvm.compiler.core.gen;
 
 import jdk.vm.ci.meta.Value;
 

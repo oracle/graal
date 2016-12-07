@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.graphbuilderconf;
+package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Method;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.type.StampTool;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package org.graalvm.compiler.hotspot.nodes;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.StartNode;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.stubs.Stub;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.StartNode;
 
 /**
  * Start node for a {@link Stub}'s graph.

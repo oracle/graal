@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.util;
+package org.graalvm.compiler.phases.common.util;
 
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.graal.graph.Graph.NodeEvent;
-import com.oracle.graal.graph.Graph.NodeEventListener;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.Node.IndirectCanonicalization;
+import org.graalvm.compiler.graph.Graph.NodeEvent;
+import org.graalvm.compiler.graph.Graph.NodeEventListener;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 
 /**
  * A simple {@link NodeEventListener} implementation that accumulates event nodes in a

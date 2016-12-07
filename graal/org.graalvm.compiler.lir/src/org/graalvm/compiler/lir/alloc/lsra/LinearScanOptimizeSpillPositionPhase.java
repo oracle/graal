@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra;
+package org.graalvm.compiler.lir.alloc.lsra;
 
-import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.commonDominator;
-import static com.oracle.graal.compiler.common.cfg.AbstractControlFlowGraph.dominates;
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.commonDominator;
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.dominates;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.Iterator;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.LIRInsertionBuffer;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.alloc.lsra.Interval.SpillState;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.phases.AllocationPhase;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.LIRInsertionBuffer;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.SpillState;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.phases.AllocationPhase;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;

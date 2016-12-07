@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.memory;
+package org.graalvm.compiler.nodes.memory;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.nodes.extended.GuardedNode;
-import com.oracle.graal.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
 public interface Access extends GuardedNode, HeapAccess {
 

@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package org.graalvm.compiler.nodes;
 
-import com.oracle.graal.nodes.spi.NodeWithState;
+import org.graalvm.compiler.nodes.spi.NodeWithState;
 
 /**
  * Interface implemented by nodes which may need {@linkplain FrameState deoptimization information}.

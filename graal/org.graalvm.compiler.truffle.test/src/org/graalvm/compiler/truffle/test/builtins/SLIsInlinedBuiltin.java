@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test.builtins;
+package org.graalvm.compiler.truffle.test.builtins;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.truffle.GraalTruffleCompilationListener;
-import com.oracle.graal.truffle.GraalTruffleRuntime;
-import com.oracle.graal.truffle.OptimizedCallTarget;
-import com.oracle.graal.truffle.OptimizedDirectCallNode;
-import com.oracle.graal.truffle.TruffleInlining;
-import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
-import com.oracle.graal.truffle.TruffleInliningDecision;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.GraalTruffleCompilationListener;
+import org.graalvm.compiler.truffle.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.TruffleInlining;
+import org.graalvm.compiler.truffle.TruffleInlining.CallTreeNodeVisitor;
+import org.graalvm.compiler.truffle.TruffleInliningDecision;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;

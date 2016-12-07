@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.verifier;
+package org.graalvm.compiler.replacements.verifier;
 
 import java.io.PrintWriter;
 import java.util.List;
@@ -34,10 +34,10 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.InjectedNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.replacements.verifier.InjectedDependencies.WellKnownDependency;
+import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
+import org.graalvm.compiler.graph.Node.InjectedNodeParameter;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.replacements.verifier.InjectedDependencies.WellKnownDependency;
 
 /**
  * Create graph builder plugins for {@link NodeIntrinsic} methods.
@@ -52,7 +52,7 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
     }
 
     private static TypeMirror valueNodeType(ProcessingEnvironment env) {
-        return env.getElementUtils().getTypeElement("com.oracle.graal.nodes.ValueNode").asType();
+        return env.getElementUtils().getTypeElement("org.graalvm.compiler.nodes.ValueNode").asType();
     }
 
     protected abstract List<? extends VariableElement> getParameters();

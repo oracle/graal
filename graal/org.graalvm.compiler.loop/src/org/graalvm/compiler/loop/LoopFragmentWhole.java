@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package org.graalvm.compiler.loop;
 
 import java.util.Collections;
 
-import com.oracle.graal.compiler.common.cfg.Loop;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Graph.DuplicationReplacement;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeBitMap;
-import com.oracle.graal.nodes.EndNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.cfg.Block;
+import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.cfg.Block;
 
 public class LoopFragmentWhole extends LoopFragment {
 

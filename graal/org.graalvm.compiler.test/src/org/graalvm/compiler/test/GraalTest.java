@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.test;
+package org.graalvm.compiler.test;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -367,5 +367,4 @@ public class GraalTest {
     public static void assertFalse(boolean condition, String message, Object... objects) {
         assertTrue(!condition, message, objects);
     }
-
 }

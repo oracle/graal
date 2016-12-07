@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal.util;
+package org.graalvm.compiler.microbenchmarks.graal.util;
 
-import com.oracle.graal.phases.schedule.SchedulePhase;
-import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 
 public class ScheduleState extends GraphState {
 

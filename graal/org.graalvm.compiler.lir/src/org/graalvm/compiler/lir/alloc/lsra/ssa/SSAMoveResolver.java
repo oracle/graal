@@ -20,24 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra.ssa;
+package org.graalvm.compiler.lir.alloc.lsra.ssa;
 
-import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
-import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.alloc.lsra.Interval;
-import com.oracle.graal.lir.alloc.lsra.LinearScan;
-import com.oracle.graal.lir.alloc.lsra.MoveResolver;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.alloc.lsra.Interval;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScan;
+import org.graalvm.compiler.lir.alloc.lsra.MoveResolver;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
 
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;

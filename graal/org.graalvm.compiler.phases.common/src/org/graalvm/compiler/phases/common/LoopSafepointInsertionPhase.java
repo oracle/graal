@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
-import static com.oracle.graal.compiler.common.GraalOptions.GenLoopSafepoints;
+import static org.graalvm.compiler.core.common.GraalOptions.GenLoopSafepoints;
 
-import com.oracle.graal.nodes.LoopEndNode;
-import com.oracle.graal.nodes.SafepointNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.nodes.LoopEndNode;
+import org.graalvm.compiler.nodes.SafepointNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.Phase;
 
 /**
  * Adds safepoints to loops.

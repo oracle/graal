@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.test;
+package org.graalvm.compiler.nodes.test;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import jdk.vm.ci.meta.JavaConstant;
@@ -31,14 +31,14 @@ import jdk.vm.ci.meta.JavaKind;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp;
-import com.oracle.graal.compiler.common.type.IntegerStamp;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 /**
  * This class tests that integer stamps are created correctly for constants.

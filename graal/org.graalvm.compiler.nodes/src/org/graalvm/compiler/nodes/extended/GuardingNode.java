@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package org.graalvm.compiler.nodes.extended;
 
-import com.oracle.graal.nodes.ValueNodeInterface;
+import org.graalvm.compiler.nodes.ValueNodeInterface;
 
 public interface GuardingNode extends ValueNodeInterface {
 }

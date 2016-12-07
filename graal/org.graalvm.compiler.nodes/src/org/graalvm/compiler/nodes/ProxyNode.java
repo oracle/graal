@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package org.graalvm.compiler.nodes;
 
-import static com.oracle.graal.nodeinfo.InputType.Association;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_0;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_0;
+import static org.graalvm.compiler.nodeinfo.InputType.Association;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.IterableNodeType;
-import com.oracle.graal.graph.Node.ValueNumberable;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.extended.GuardingNode;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.graph.IterableNodeType;
+import org.graalvm.compiler.graph.Node.ValueNumberable;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 /**
  * A proxy is inserted at loop exits for any value that is created inside the loop (i.e. was not

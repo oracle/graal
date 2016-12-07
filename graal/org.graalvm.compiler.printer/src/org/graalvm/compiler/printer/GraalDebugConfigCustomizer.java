@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package org.graalvm.compiler.printer;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -33,18 +33,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugConfigCustomizer;
-import com.oracle.graal.debug.DebugDumpHandler;
-import com.oracle.graal.debug.GraalDebugConfig.Options;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodeinfo.Verbosity;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.options.UniquePathUtilities;
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfig;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.UniquePathUtilities;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {

@@ -20,27 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.nodes.GuardNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 /**
  * This test checks the combined action of
- * {@link com.oracle.graal.phases.common.DominatorConditionalEliminationPhase} and
- * {@link com.oracle.graal.phases.common.LoweringPhase}. The lowering phase needs to introduce the
- * null checks at the correct places for the dominator conditional elimination phase to pick them
- * up.
+ * {@link org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase} and
+ * {@link org.graalvm.compiler.phases.common.LoweringPhase}. The lowering phase needs to introduce
+ * the null checks at the correct places for the dominator conditional elimination phase to pick
+ * them up.
  */
 public class ConditionalEliminationTest10 extends ConditionalEliminationTestBase {
 

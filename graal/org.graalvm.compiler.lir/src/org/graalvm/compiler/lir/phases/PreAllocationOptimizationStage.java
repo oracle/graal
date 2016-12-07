@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.phases;
+package org.graalvm.compiler.lir.phases;
 
-import com.oracle.graal.lir.alloc.SaveCalleeSaveRegisters;
-import com.oracle.graal.lir.constopt.ConstantLoadOptimization;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import org.graalvm.compiler.lir.alloc.SaveCalleeSaveRegisters;
+import org.graalvm.compiler.lir.constopt.ConstantLoadOptimization;
+import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 
 public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
     public PreAllocationOptimizationStage() {

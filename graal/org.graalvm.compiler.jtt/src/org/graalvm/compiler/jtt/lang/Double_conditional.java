@@ -22,11 +22,11 @@
  */
 /*
  */
-package com.oracle.graal.jtt.lang;
+package org.graalvm.compiler.jtt.lang;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.bytecode.BC_double_base;
+import org.graalvm.compiler.jtt.bytecode.BC_double_base;
 
 public final class Double_conditional extends BC_double_base {
 

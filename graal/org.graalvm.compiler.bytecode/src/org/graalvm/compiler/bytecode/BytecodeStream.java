@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.bytecode;
+package org.graalvm.compiler.bytecode;
 
 /**
  * A utility class that makes iterating over bytecodes and reading operands simpler and less error

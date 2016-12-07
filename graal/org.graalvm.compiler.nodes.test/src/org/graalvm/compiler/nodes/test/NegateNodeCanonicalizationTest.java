@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.test;
+package org.graalvm.compiler.nodes.test;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.junit.Assert.assertEquals;
 import jdk.vm.ci.meta.JavaConstant;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 /**
  * This class tests that the canonicalization for constant negate nodes cover all cases.

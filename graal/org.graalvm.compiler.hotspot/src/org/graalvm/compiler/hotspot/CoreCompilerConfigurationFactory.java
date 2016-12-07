@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import com.oracle.graal.compiler.phases.CoreCompilerConfiguration;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.core.phases.CoreCompilerConfiguration;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 @ServiceProvider(CompilerConfigurationFactory.class)
 public class CoreCompilerConfigurationFactory extends CompilerConfigurationFactory {

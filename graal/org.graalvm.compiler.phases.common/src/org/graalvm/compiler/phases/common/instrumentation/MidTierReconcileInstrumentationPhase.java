@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.instrumentation;
+package org.graalvm.compiler.phases.common.instrumentation;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.debug.instrumentation.InstrumentationNode;
-import com.oracle.graal.nodes.debug.instrumentation.MonitorProxyNode;
-import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
-import com.oracle.graal.nodes.java.RawMonitorEnterNode;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationNode;
+import org.graalvm.compiler.nodes.debug.instrumentation.MonitorProxyNode;
+import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
+import org.graalvm.compiler.nodes.java.RawMonitorEnterNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.phases.Phase;
 
 /**
  * The {@code MidTierReconcileInstrumentationPhase} reconciles the InstrumentationNodes right after

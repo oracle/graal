@@ -20,26 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.test;
+package org.graalvm.compiler.asm.test;
 
-import static com.oracle.graal.compiler.common.CompilationRequestIdentifier.asCompilationRequest;
+import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 
 import java.lang.reflect.Method;
 
 import org.junit.Assert;
 
-import com.oracle.graal.api.test.Graal;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.code.DisassemblerProvider;
-import com.oracle.graal.compiler.common.CompilationIdentifier;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.runtime.RuntimeProvider;
-import com.oracle.graal.serviceprovider.GraalServices;
-import com.oracle.graal.test.GraalTest;
+import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.DisassemblerProvider;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.test.GraalTest;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.data;
+package org.graalvm.compiler.salver.data;
 
 import java.util.LinkedHashMap;
 

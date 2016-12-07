@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -29,13 +29,13 @@ import java.util.HashMap;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.hotspot.replacements.arraycopy.ArrayCopySnippets;
-import com.oracle.graal.nodes.DirectCallTargetNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.LoweredCallTargetNode;
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopySnippets;
+import org.graalvm.compiler.nodes.DirectCallTargetNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.LoweredCallTargetNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;

@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.java;
+package org.graalvm.compiler.java;
 
-import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.IntrinsicContext;
-import com.oracle.graal.nodes.spi.StampProvider;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.tiers.HighTierContext;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -62,7 +62,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
     }
 
     // Fully qualified name is a workaround for JDK-8056066
-    public static class Instance extends com.oracle.graal.phases.Phase {
+    public static class Instance extends org.graalvm.compiler.phases.Phase {
 
         protected final MetaAccessProvider metaAccess;
         protected final StampProvider stampProvider;

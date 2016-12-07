@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.type;
+package org.graalvm.compiler.core.common.type;
 
 import static jdk.vm.ci.meta.MetaUtil.getSimpleName;
 
@@ -33,25 +33,25 @@ import java.util.stream.Stream;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 
-import com.oracle.graal.compiler.common.calc.FloatConvert;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Add;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.And;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Div;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Mul;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Or;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Rem;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Sub;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.BinaryOp.Xor;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.IntegerConvertOp.ZeroExtend;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.Shl;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.Shr;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.ShiftOp.UShr;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Abs;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Neg;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Not;
-import com.oracle.graal.compiler.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
+import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Add;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Div;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Mul;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Rem;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Sub;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Xor;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.SignExtend;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.ZeroExtend;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shl;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shr;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp.UShr;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Abs;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Neg;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Not;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
 
 /**
  * Information about arithmetic operations.

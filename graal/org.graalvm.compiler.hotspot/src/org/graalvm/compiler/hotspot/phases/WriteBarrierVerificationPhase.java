@@ -21,34 +21,34 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.phases;
+package org.graalvm.compiler.hotspot.phases;
 
 import java.util.Iterator;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeFlood;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.nodes.ArrayRangeWriteBarrier;
-import com.oracle.graal.hotspot.nodes.G1PostWriteBarrier;
-import com.oracle.graal.hotspot.nodes.ObjectWriteBarrier;
-import com.oracle.graal.hotspot.nodes.SerialWriteBarrier;
-import com.oracle.graal.nodes.DeoptimizingNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.extended.ArrayRangeWriteNode;
-import com.oracle.graal.nodes.java.LoweredAtomicReadAndWriteNode;
-import com.oracle.graal.nodes.java.LoweredCompareAndSwapNode;
-import com.oracle.graal.nodes.memory.FixedAccessNode;
-import com.oracle.graal.nodes.memory.HeapAccess;
-import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.memory.ReadNode;
-import com.oracle.graal.nodes.memory.WriteNode;
-import com.oracle.graal.nodes.memory.address.OffsetAddressNode;
-import com.oracle.graal.nodes.type.StampTool;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeFlood;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.nodes.ArrayRangeWriteBarrier;
+import org.graalvm.compiler.hotspot.nodes.G1PostWriteBarrier;
+import org.graalvm.compiler.hotspot.nodes.ObjectWriteBarrier;
+import org.graalvm.compiler.hotspot.nodes.SerialWriteBarrier;
+import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ArrayRangeWriteNode;
+import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
+import org.graalvm.compiler.nodes.java.LoweredCompareAndSwapNode;
+import org.graalvm.compiler.nodes.memory.FixedAccessNode;
+import org.graalvm.compiler.nodes.memory.HeapAccess;
+import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.phases.Phase;
 
 /**
  * Verification phase that checks if, for every write, at least one write barrier is present at all

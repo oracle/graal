@@ -20,48 +20,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
-import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
-import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static com.oracle.graal.compiler.common.GraalOptions.VerifyPhases;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.core.common.GraalOptions.VerifyPhases;
 
 import java.util.ListIterator;
 
-import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.HotSpotInstructionProfiling;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.phases.AheadOfTimeVerificationPhase;
-import com.oracle.graal.hotspot.phases.LoadJavaMirrorWithKlassPhase;
-import com.oracle.graal.hotspot.phases.WriteBarrierAdditionPhase;
-import com.oracle.graal.hotspot.phases.WriteBarrierVerificationPhase;
-import com.oracle.graal.hotspot.phases.aot.AOTInliningPolicy;
-import com.oracle.graal.hotspot.phases.aot.EliminateRedundantInitializationPhase;
-import com.oracle.graal.hotspot.phases.aot.ReplaceConstantNodesPhase;
-import com.oracle.graal.hotspot.phases.profiling.FinalizeProfileNodesPhase;
-import com.oracle.graal.java.GraphBuilderPhase;
-import com.oracle.graal.java.SuitesProviderBase;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.nodes.EncodedGraph;
-import com.oracle.graal.nodes.GraphEncoder;
-import com.oracle.graal.nodes.SimplifyingGraphDecoder;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.common.AddressLoweringPhase;
-import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.ExpandLogicPhase;
-import com.oracle.graal.phases.common.LoopSafepointInsertionPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.common.inlining.InliningPhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.tiers.Suites;
-import com.oracle.graal.phases.tiers.SuitesCreator;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.HotSpotInstructionProfiling;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.phases.AheadOfTimeVerificationPhase;
+import org.graalvm.compiler.hotspot.phases.LoadJavaMirrorWithKlassPhase;
+import org.graalvm.compiler.hotspot.phases.WriteBarrierAdditionPhase;
+import org.graalvm.compiler.hotspot.phases.WriteBarrierVerificationPhase;
+import org.graalvm.compiler.hotspot.phases.aot.AOTInliningPolicy;
+import org.graalvm.compiler.hotspot.phases.aot.EliminateRedundantInitializationPhase;
+import org.graalvm.compiler.hotspot.phases.aot.ReplaceConstantNodesPhase;
+import org.graalvm.compiler.hotspot.phases.profiling.FinalizeProfileNodesPhase;
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.java.SuitesProviderBase;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.EncodedGraph;
+import org.graalvm.compiler.nodes.GraphEncoder;
+import org.graalvm.compiler.nodes.SimplifyingGraphDecoder;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.ExpandLogicPhase;
+import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.phases.tiers.SuitesCreator;
 
 /**
  * HotSpot implementation of {@link SuitesCreator}.

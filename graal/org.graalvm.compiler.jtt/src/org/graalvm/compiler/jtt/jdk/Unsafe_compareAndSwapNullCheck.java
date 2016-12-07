@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.jdk;
+package org.graalvm.compiler.jtt.jdk;
 
 import org.junit.Test;
 
 import sun.misc.Unsafe;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public class Unsafe_compareAndSwapNullCheck extends JTTTest {
 

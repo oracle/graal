@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
-import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.referentOffset;
+import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.nodes.extended.FixedValueAnchorNode;
-import com.oracle.graal.nodes.extended.UnsafeLoadNode;
-import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.replacements.Snippets;
-import com.oracle.graal.word.Word;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
+import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
+import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
+import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
+import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.TargetDescription;
 

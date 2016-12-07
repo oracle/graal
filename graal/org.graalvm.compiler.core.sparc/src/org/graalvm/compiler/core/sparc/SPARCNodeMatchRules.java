@@ -21,24 +21,24 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.sparc;
+package org.graalvm.compiler.core.sparc;
 
 import static jdk.vm.ci.sparc.SPARCKind.BYTE;
 import static jdk.vm.ci.sparc.SPARCKind.HWORD;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.gen.NodeMatchRules;
-import com.oracle.graal.compiler.match.ComplexMatchResult;
-import com.oracle.graal.compiler.match.MatchRule;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodes.DeoptimizingNode;
-import com.oracle.graal.nodes.calc.SignExtendNode;
-import com.oracle.graal.nodes.calc.ZeroExtendNode;
-import com.oracle.graal.nodes.memory.Access;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.gen.NodeMatchRules;
+import org.graalvm.compiler.core.match.ComplexMatchResult;
+import org.graalvm.compiler.core.match.MatchRule;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.memory.Access;
 
 import jdk.vm.ci.sparc.SPARCKind;
 

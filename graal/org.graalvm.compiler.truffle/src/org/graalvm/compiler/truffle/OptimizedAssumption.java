@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleAssumptions;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleAssumptions;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.debug.TTY;
+import org.graalvm.compiler.debug.TTY;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.AbstractAssumption;

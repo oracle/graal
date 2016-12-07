@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal.method;
+package org.graalvm.compiler.debug.internal.method;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -32,12 +32,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.debug.CSVUtil;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.DebugMethodMetrics;
-import com.oracle.graal.debug.GraalDebugConfig;
-import com.oracle.graal.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.CSVUtil;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.DebugMethodMetrics;
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.internal.DebugScope;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

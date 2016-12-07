@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.contract;
+package org.graalvm.compiler.phases.contract;
 
-import com.oracle.graal.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 
 public interface PhaseSizeContract {
 

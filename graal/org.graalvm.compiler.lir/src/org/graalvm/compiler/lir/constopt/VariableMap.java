@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.constopt;
+package org.graalvm.compiler.lir.constopt;
 
 import java.util.ArrayList;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import com.oracle.graal.lir.Variable;
+import org.graalvm.compiler.lir.Variable;
 
 /**
  * Maps variables to a generic type.

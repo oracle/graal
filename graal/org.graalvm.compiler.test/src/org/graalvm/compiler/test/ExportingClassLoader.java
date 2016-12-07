@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.test;
+package org.graalvm.compiler.test;
 
 /**
  * A class loader that exports all packages in the module defining the class loader to all classes

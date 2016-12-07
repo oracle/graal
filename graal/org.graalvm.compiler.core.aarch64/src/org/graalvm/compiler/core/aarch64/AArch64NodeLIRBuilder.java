@@ -21,12 +21,12 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.aarch64;
+package org.graalvm.compiler.core.aarch64;
 
-import com.oracle.graal.compiler.gen.NodeLIRBuilder;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
+import org.graalvm.compiler.core.gen.NodeLIRBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 
 /**
  * This class implements the AArch64 specific portion of the LIR generator.

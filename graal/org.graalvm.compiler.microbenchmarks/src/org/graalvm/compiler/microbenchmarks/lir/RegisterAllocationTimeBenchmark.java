@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.lir;
+package org.graalvm.compiler.microbenchmarks.lir;
 
 import java.util.HashMap;
 
 import org.openjdk.jmh.annotations.Benchmark;
 
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
-import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
+import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
 
 public class RegisterAllocationTimeBenchmark extends GraalBenchmark {
 

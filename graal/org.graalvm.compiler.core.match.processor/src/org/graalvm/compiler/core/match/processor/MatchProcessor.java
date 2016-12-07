@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.match.processor;
+package org.graalvm.compiler.core.match.processor;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -62,18 +62,18 @@ import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
-import com.oracle.graal.compiler.gen.NodeMatchRules;
-import com.oracle.graal.compiler.match.ComplexMatchResult;
-import com.oracle.graal.compiler.match.MatchRule;
-import com.oracle.graal.compiler.match.MatchRules;
-import com.oracle.graal.compiler.match.MatchStatement;
-import com.oracle.graal.compiler.match.MatchStatementSet;
-import com.oracle.graal.compiler.match.MatchableNode;
-import com.oracle.graal.compiler.match.MatchableNodes;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Position;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.core.gen.NodeMatchRules;
+import org.graalvm.compiler.core.match.ComplexMatchResult;
+import org.graalvm.compiler.core.match.MatchRule;
+import org.graalvm.compiler.core.match.MatchRules;
+import org.graalvm.compiler.core.match.MatchStatement;
+import org.graalvm.compiler.core.match.MatchStatementSet;
+import org.graalvm.compiler.core.match.MatchableNode;
+import org.graalvm.compiler.core.match.MatchableNodes;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 /**
  * Processes classes annotated with {@link MatchRule}. A {@link MatchStatementSet} service is
@@ -87,8 +87,8 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
  *     }
  * </pre>
  */
-@SupportedAnnotationTypes({"com.oracle.graal.compiler.match.MatchRule", "com.oracle.graal.compiler.match.MatchRules", "com.oracle.graal.compiler.match.MatchableNode",
-                "com.oracle.graal.compiler.match.MatchableNodes"})
+@SupportedAnnotationTypes({"org.graalvm.compiler.core.match.MatchRule", "org.graalvm.compiler.core.match.MatchRules", "org.graalvm.compiler.core.match.MatchableNode",
+                "org.graalvm.compiler.core.match.MatchableNodes"})
 public class MatchProcessor extends AbstractProcessor {
 
     public MatchProcessor() {

@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.memory;
+package org.graalvm.compiler.nodes.memory;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
+import org.graalvm.compiler.core.common.LocationIdentity;
 
 /**
  * This interface marks nodes that access some memory location, and that have an edge to the last

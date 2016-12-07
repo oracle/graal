@@ -21,19 +21,19 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.amd64;
+package org.graalvm.compiler.core.amd64;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.asm.amd64.AMD64Address.Scale;
-import com.oracle.graal.compiler.common.type.IntegerStamp;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.AddNode;
-import com.oracle.graal.nodes.calc.LeftShiftNode;
-import com.oracle.graal.nodes.calc.ZeroExtendNode;
-import com.oracle.graal.nodes.memory.address.AddressNode;
-import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.LeftShiftNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
 
 public class AMD64AddressLowering extends AddressLowering {
 

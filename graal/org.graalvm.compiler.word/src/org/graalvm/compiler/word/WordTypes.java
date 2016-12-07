@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word;
+package org.graalvm.compiler.word;
 
-import com.oracle.graal.bytecode.BridgeMethodUtils;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.type.StampTool;
-import com.oracle.graal.word.Word.Operation;
+import org.graalvm.compiler.bytecode.BridgeMethodUtils;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.word.Word.Operation;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;

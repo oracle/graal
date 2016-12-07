@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package org.graalvm.compiler.hotspot.sparc;
 
 import static jdk.vm.ci.sparc.SPARC.g1;
 import static jdk.vm.ci.sparc.SPARC.g3;
@@ -32,9 +32,9 @@ import static jdk.vm.ci.sparc.SPARC.o2;
 import static jdk.vm.ci.sparc.SPARC.o3;
 import static jdk.vm.ci.sparc.SPARC.o4;
 
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.stubs.DeoptimizationStub;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.stubs.DeoptimizationStub;
 
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;

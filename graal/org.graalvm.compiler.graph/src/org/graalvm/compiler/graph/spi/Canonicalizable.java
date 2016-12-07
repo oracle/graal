@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.spi;
+package org.graalvm.compiler.graph.spi;
 
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Node;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 

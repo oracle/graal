@@ -22,7 +22,7 @@
  */
 /*
  */
-package com.oracle.graal.compiler.test.deopt;
+package org.graalvm.compiler.core.test.deopt;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -30,8 +30,8 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 
 import jdk.vm.ci.code.InstalledCode;
 

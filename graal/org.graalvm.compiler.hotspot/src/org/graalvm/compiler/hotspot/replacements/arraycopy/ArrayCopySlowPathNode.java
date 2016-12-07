@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements.arraycopy;
+package org.graalvm.compiler.hotspot.replacements.arraycopy;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 
-import static com.oracle.graal.compiler.common.LocationIdentity.any;
+import static org.graalvm.compiler.core.common.LocationIdentity.any;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.hotspot.word.KlassPointer;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.NamedLocationIdentity;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.type.StampTool;
-import com.oracle.graal.replacements.SnippetTemplate;
-import com.oracle.graal.replacements.nodes.BasicArrayCopyNode;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 
 @NodeInfo(allowedUsageTypes = InputType.Memory)
 public final class ArrayCopySlowPathNode extends BasicArrayCopyNode {

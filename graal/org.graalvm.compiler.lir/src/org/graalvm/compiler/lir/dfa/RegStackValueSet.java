@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.dfa;
+package org.graalvm.compiler.lir.dfa;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
@@ -32,14 +32,14 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.ValueConsumer;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
-import com.oracle.graal.lir.util.IndexedValueMap;
-import com.oracle.graal.lir.util.ValueSet;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.ValueConsumer;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
+import org.graalvm.compiler.lir.util.IndexedValueMap;
+import org.graalvm.compiler.lir.util.ValueSet;
 
 import jdk.vm.ci.meta.Value;
 

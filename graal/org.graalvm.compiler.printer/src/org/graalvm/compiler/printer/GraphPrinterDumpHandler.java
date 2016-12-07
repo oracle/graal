@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package org.graalvm.compiler.printer;
 
-import static com.oracle.graal.debug.GraalDebugConfig.asJavaMethod;
+import static org.graalvm.compiler.debug.GraalDebugConfig.asJavaMethod;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -35,14 +35,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugDumpHandler;
-import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.debug.GraalDebugConfig.Options;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

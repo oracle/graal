@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
-import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
+import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 

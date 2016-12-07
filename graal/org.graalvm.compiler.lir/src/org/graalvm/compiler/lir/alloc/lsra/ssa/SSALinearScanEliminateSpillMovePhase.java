@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra.ssa;
+package org.graalvm.compiler.lir.alloc.lsra.ssa;
 
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.StandardOp.MoveOp;
-import com.oracle.graal.lir.alloc.lsra.Interval;
-import com.oracle.graal.lir.alloc.lsra.LinearScan;
-import com.oracle.graal.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.StandardOp.LabelOp;
+import org.graalvm.compiler.lir.StandardOp.MoveOp;
+import org.graalvm.compiler.lir.alloc.lsra.Interval;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScan;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
 
 public class SSALinearScanEliminateSpillMovePhase extends LinearScanEliminateSpillMovePhase {
 

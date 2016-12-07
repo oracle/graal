@@ -21,7 +21,7 @@
  * questions.
  */
 /**
- * This package contains micro benchmarks outside the com.oracle.graal namespace so that they will
- * be subject to Graal compilation even if {@code -Dgraal.CompileGraalWithC1Only=true}.
+ * This package contains micro benchmarks outside the org.graalvm.compiler namespace so that they
+ * will be subject to Graal compilation even if {@code -Dgraal.CompileGraalWithC1Only=true}.
  */
 package micro.benchmarks;

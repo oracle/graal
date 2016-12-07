@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases;
+package org.graalvm.compiler.phases;
 
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 /***
  * This phase serves as a verification, in order to check the graph for certain properties. The

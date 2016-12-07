@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package org.graalvm.compiler.lir;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.EnumSet;
 
-import com.oracle.graal.compiler.common.Fields;
-import com.oracle.graal.compiler.common.FieldsScanner;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.FieldsScanner;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Value;

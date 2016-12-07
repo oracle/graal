@@ -20,26 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.sparc;
+package org.graalvm.compiler.lir.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BPCC;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CCR_V_SHIFT;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CCR_XCC_SHIFT;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.FBPCC;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm13;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.ANNUL;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Fcc0;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.F_Ordered;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmpd;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Opfs.Fcmps;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPCC;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CCR_V_SHIFT;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CCR_XCC_SHIFT;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.FBPCC;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.isSimm13;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.ANNUL;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Fcc0;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Xcc;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.F_Ordered;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Opfs.Fcmpd;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Opfs.Fcmps;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.sparc.SPARC.g0;
@@ -48,17 +48,17 @@ import static jdk.vm.ci.sparc.SPARCKind.SINGLE;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.sparc.SPARCAssembler;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.Opcode;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;

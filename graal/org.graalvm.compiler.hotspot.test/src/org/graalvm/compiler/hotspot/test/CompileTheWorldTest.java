@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
-import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnException;
+import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.hotspot.CompileTheWorld;
-import com.oracle.graal.hotspot.CompileTheWorld.Config;
-import com.oracle.graal.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.hotspot.CompileTheWorld;
+import org.graalvm.compiler.hotspot.CompileTheWorld.Config;
+import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;

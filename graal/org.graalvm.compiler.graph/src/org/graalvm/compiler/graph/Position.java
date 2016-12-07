@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
-import com.oracle.graal.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.InputType;
 
 /**
  * Describes an edge slot for a {@link NodeClass}.

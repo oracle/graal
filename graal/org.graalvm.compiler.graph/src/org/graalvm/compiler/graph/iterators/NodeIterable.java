@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.iterators;
+package org.graalvm.compiler.graph.iterators;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import com.oracle.graal.graph.Node;
+import org.graalvm.compiler.graph.Node;
 
 public interface NodeIterable<T extends Node> extends Iterable<T> {
 

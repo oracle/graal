@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package org.graalvm.compiler.replacements;
 
-import com.oracle.graal.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet;
 
 /**
  * Marker interface for a class that defines one or more {@link Snippet}s.

@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.policy;
+package org.graalvm.compiler.phases.common.inlining.policy;
 
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
+import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
 
-import com.oracle.graal.common.PermanentBailoutException;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+import org.graalvm.compiler.common.PermanentBailoutException;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.common.inlining.walker.MethodInvocation;
 
 public class InlineEverythingPolicy implements InliningPolicy {
 

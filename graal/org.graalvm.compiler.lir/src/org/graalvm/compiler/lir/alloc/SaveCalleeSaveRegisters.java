@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc;
+package org.graalvm.compiler.lir.alloc;
 
 import java.util.List;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRInsertionBuffer;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.StandardOp;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase;
-import com.oracle.graal.lir.util.RegisterMap;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInsertionBuffer;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.StandardOp;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase;
+import org.graalvm.compiler.lir.util.RegisterMap;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;

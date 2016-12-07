@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
 import java.io.PrintStream;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
 
-import com.oracle.graal.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.internal.DebugScope;
 
 public class DelegatingDebugConfig implements DebugConfig {
 

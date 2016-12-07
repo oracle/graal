@@ -20,40 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
-import static com.oracle.graal.compiler.common.LocationIdentity.any;
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
-import static com.oracle.graal.nodes.ConstantNode.forBoolean;
+import static org.graalvm.compiler.core.common.LocationIdentity.any;
+import static org.graalvm.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
+import static org.graalvm.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
+import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.bytecode.BridgeMethodUtils;
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.nodes.LoadIndexedPointerNode;
-import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
-import com.oracle.graal.hotspot.nodes.type.MetaspacePointerStamp;
-import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
-import com.oracle.graal.hotspot.word.HotSpotOperation;
-import com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode;
-import com.oracle.graal.hotspot.word.PointerCastNode;
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.LogicNode;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.ConditionalNode;
-import com.oracle.graal.nodes.calc.IsNullNode;
-import com.oracle.graal.nodes.calc.PointerEqualsNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.java.LoadIndexedNode;
-import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
-import com.oracle.graal.nodes.memory.ReadNode;
-import com.oracle.graal.nodes.memory.address.AddressNode;
-import com.oracle.graal.nodes.type.StampTool;
-import com.oracle.graal.replacements.WordOperationPlugin;
-import com.oracle.graal.word.WordTypes;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.bytecode.BridgeMethodUtils;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.nodes.LoadIndexedPointerNode;
+import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
+import org.graalvm.compiler.hotspot.nodes.type.MetaspacePointerStamp;
+import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
+import org.graalvm.compiler.hotspot.word.HotSpotOperation;
+import org.graalvm.compiler.hotspot.word.HotSpotOperation.HotspotOpcode;
+import org.graalvm.compiler.hotspot.word.PointerCastNode;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.calc.PointerEqualsNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.replacements.WordOperationPlugin;
+import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalDebugConfig;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.GraalDebugConfig;
 
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;

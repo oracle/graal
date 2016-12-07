@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.verifier;
+package org.graalvm.compiler.replacements.verifier;
 
 import java.util.ArrayList;
 import java.util.List;

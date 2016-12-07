@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.debug;
+package org.graalvm.compiler.nodes.debug;
 
 /**
  * Marker interface for nodes that prevents control flow optimizations. The node should never be

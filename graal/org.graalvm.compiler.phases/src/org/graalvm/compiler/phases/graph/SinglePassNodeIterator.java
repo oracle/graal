@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.graph;
+package org.graalvm.compiler.phases.graph;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -28,21 +28,21 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeBitMap;
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.AbstractMergeNode;
-import com.oracle.graal.nodes.ControlSinkNode;
-import com.oracle.graal.nodes.ControlSplitNode;
-import com.oracle.graal.nodes.EndNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.InvokeWithExceptionNode;
-import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.LoopEndNode;
-import com.oracle.graal.nodes.StartNode;
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.ControlSinkNode;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.LoopEndNode;
+import org.graalvm.compiler.nodes.StartNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
  * A SinglePassNodeIterator iterates the fixed nodes of the graph in post order starting from its
@@ -58,9 +58,10 @@ import com.oracle.graal.nodes.StructuredGraph;
  *
  * <p>
  * For this iterator the CFG is defined by the classical CFG nodes (
- * {@link com.oracle.graal.nodes.ControlSplitNode}, {@link com.oracle.graal.nodes.AbstractMergeNode}
- * ...) and the {@link com.oracle.graal.nodes.FixedWithNextNode#next() next} pointers of
- * {@link com.oracle.graal.nodes.FixedWithNextNode}.
+ * {@link org.graalvm.compiler.nodes.ControlSplitNode},
+ * {@link org.graalvm.compiler.nodes.AbstractMergeNode} ...) and the
+ * {@link org.graalvm.compiler.nodes.FixedWithNextNode#next() next} pointers of
+ * {@link org.graalvm.compiler.nodes.FixedWithNextNode}.
  * </p>
  *
  * <p>

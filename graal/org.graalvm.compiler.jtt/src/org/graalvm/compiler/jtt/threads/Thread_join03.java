@@ -25,11 +25,11 @@
  * This test sleeps the joining thread, which should enure that the joinee is
  * terminated by the time the join occurs.
  */
-package com.oracle.graal.jtt.threads;
+package org.graalvm.compiler.jtt.threads;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public class Thread_join03 extends JTTTest {
 

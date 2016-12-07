@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.memory;
+package org.graalvm.compiler.nodes.memory;
 
 import java.util.Collection;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
+import org.graalvm.compiler.core.common.LocationIdentity;
 
 /**
  * Maps a {@linkplain LocationIdentity location} to the last node that (potentially) wrote to the

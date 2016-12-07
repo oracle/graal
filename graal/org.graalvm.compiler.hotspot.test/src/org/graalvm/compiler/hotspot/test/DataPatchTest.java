@@ -21,20 +21,20 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.hotspot.CompressEncoding;
-import com.oracle.graal.hotspot.nodes.CompressionNode;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.debug.OpaqueNode;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugin;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins;
-import com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.hotspot.CompressEncoding;
+import org.graalvm.compiler.hotspot.nodes.CompressionNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.debug.OpaqueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.ea;
+package org.graalvm.compiler.core.test.ea;
 
 import org.junit.Test;
 
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.PhiNode;
-import com.oracle.graal.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 
 public class EAMergingTest extends EATestBase {
 

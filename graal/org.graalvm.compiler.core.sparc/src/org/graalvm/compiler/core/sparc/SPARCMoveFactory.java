@@ -21,22 +21,22 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.sparc;
+package org.graalvm.compiler.core.sparc;
 
-import static com.oracle.graal.lir.LIRValueUtil.asConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 
-import com.oracle.graal.asm.sparc.SPARCAssembler;
-import com.oracle.graal.compiler.common.type.DataPointerConstant;
-import com.oracle.graal.compiler.sparc.SPARCLIRGenerator.ConstantTableBaseProvider;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
-import com.oracle.graal.lir.sparc.SPARCAddressValue;
-import com.oracle.graal.lir.sparc.SPARCMove;
-import com.oracle.graal.lir.sparc.SPARCMove.LoadAddressOp;
-import com.oracle.graal.lir.sparc.SPARCMove.Move;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler;
+import org.graalvm.compiler.core.common.type.DataPointerConstant;
+import org.graalvm.compiler.core.sparc.SPARCLIRGenerator.ConstantTableBaseProvider;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
+import org.graalvm.compiler.lir.sparc.SPARCAddressValue;
+import org.graalvm.compiler.lir.sparc.SPARCMove;
+import org.graalvm.compiler.lir.sparc.SPARCMove.LoadAddressOp;
+import org.graalvm.compiler.lir.sparc.SPARCMove.Move;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;

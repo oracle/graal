@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.options;
+package org.graalvm.compiler.options;
 
 /**
  * Describes the attributes of a static field {@linkplain Option option} and provides access to its

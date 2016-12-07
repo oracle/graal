@@ -21,26 +21,26 @@
  * questions.
  */
 
-package com.oracle.graal.asm.aarch64;
+package org.graalvm.compiler.asm.aarch64;
 
-import static com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode.BASE_REGISTER_ONLY;
-import static com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET;
-import static com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SCALED;
-import static com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSCALED;
-import static com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode.REGISTER_OFFSET;
-import static com.oracle.graal.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_BASE;
-import static com.oracle.graal.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_INDEX;
-import static com.oracle.graal.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.NO_WORK;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.BASE_REGISTER_ONLY;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SCALED;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSCALED;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.REGISTER_OFFSET;
+import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_BASE;
+import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_INDEX;
+import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.NO_WORK;
 import static jdk.vm.ci.aarch64.AArch64.CPU;
 import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.aarch64.AArch64.r9;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 
-import com.oracle.graal.asm.AbstractAddress;
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.debug.GraalError;
+import org.graalvm.compiler.asm.AbstractAddress;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
@@ -268,9 +268,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * @param dst general purpose register. May not be null, zero-register or stackpointer.
      * @param address address whose value is loaded into dst. May not be null,
-     *            {@link com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_POST_INDEXED
+     *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_POST_INDEXED
      *            POST_INDEXED} or
-     *            {@link com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PRE_INDEXED
+     *            {@link org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode#IMMEDIATE_PRE_INDEXED
      *            IMMEDIATE_PRE_INDEXED}
      * @param transferSize the memory transfer size in bytes. The log2 of this specifies how much
      *            the index register is scaled. Can be 1, 2, 4 or 8.

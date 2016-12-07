@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
-import com.oracle.graal.compiler.common.spi.JavaConstantFieldProvider;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.core.common.spi.JavaConstantFieldProvider;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.meta.MetaAccessProvider;

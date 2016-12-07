@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.util;
+package org.graalvm.compiler.salver.util;
 
 import java.security.SecureRandom;
 import java.util.Random;

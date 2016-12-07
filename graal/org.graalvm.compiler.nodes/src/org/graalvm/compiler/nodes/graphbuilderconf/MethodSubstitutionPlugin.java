@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.graphbuilderconf;
+package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import static com.oracle.graal.nodes.graphbuilderconf.InvocationPlugins.resolveType;
+import static org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.resolveType;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -30,9 +30,9 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.bytecode.BytecodeProvider;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.nodes.ValueNode;
+import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

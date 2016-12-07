@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
+package org.graalvm.compiler.debug.internal;
 
-import static com.oracle.graal.debug.DebugCloseable.VOID_CLOSEABLE;
+import static org.graalvm.compiler.debug.DebugCloseable.VOID_CLOSEABLE;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugMemUseTracker;
-import com.oracle.graal.debug.Management;
-import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugMemUseTracker;
+import org.graalvm.compiler.debug.Management;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
 
 public class MemUseTrackerImpl extends AccumulatedDebugValue implements DebugMemUseTracker {
     private final boolean intercepting;

@@ -20,25 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.policy;
+package org.graalvm.compiler.phases.common.inlining.policy;
 
-import static com.oracle.graal.compiler.common.GraalOptions.InlineEverything;
-import static com.oracle.graal.compiler.common.GraalOptions.LimitInlinedInvokes;
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumInliningSize;
-import static com.oracle.graal.compiler.common.GraalOptions.SmallCompiledLowLevelGraphSize;
-import static com.oracle.graal.compiler.common.GraalOptions.TrivialInliningSize;
+import static org.graalvm.compiler.core.common.GraalOptions.InlineEverything;
+import static org.graalvm.compiler.core.common.GraalOptions.LimitInlinedInvokes;
+import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
+import static org.graalvm.compiler.core.common.GraalOptions.MaximumInliningSize;
+import static org.graalvm.compiler.core.common.GraalOptions.SmallCompiledLowLevelGraphSize;
+import static org.graalvm.compiler.core.common.GraalOptions.TrivialInliningSize;
 
 import java.util.Map;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.info.InlineInfo;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
+import org.graalvm.compiler.phases.common.inlining.walker.MethodInvocation;
 
 public class GreedyInliningPolicy extends AbstractInliningPolicy {
 

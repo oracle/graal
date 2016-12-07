@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.runtime;
+package org.graalvm.compiler.runtime;
 
 import jdk.vm.ci.code.Architecture;
 
-import com.oracle.graal.compiler.target.Backend;
+import org.graalvm.compiler.core.target.Backend;
 
 /**
  * A runtime supporting a host backend as well, zero or more additional backends.

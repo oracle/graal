@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.bytecode;
+package org.graalvm.compiler.jtt.bytecode;
 
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.jtt.JTTTest;
 
 /*
  */

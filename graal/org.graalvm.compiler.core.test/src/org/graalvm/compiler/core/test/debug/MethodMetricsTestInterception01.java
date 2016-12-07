@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.debug;
+package org.graalvm.compiler.core.test.debug;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,24 +29,24 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.DebugDumpHandler;
-import com.oracle.graal.debug.DebugMemUseTracker;
-import com.oracle.graal.debug.DebugMethodMetrics;
-import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.DebugValueFactory;
-import com.oracle.graal.debug.DebugVerifyHandler;
-import com.oracle.graal.debug.GraalDebugConfig;
-import com.oracle.graal.debug.internal.CounterImpl;
-import com.oracle.graal.debug.internal.MemUseTrackerImpl;
-import com.oracle.graal.debug.internal.TimerImpl;
-import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
-import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfig;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.DebugMemUseTracker;
+import org.graalvm.compiler.debug.DebugMethodMetrics;
+import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.debug.DebugValueFactory;
+import org.graalvm.compiler.debug.DebugVerifyHandler;
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.internal.CounterImpl;
+import org.graalvm.compiler.debug.internal.MemUseTrackerImpl;
+import org.graalvm.compiler.debug.internal.TimerImpl;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsPrinter;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.phases.Phase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

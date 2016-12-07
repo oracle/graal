@@ -20,33 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.amd64;
+package org.graalvm.compiler.asm.amd64;
 
-import static com.oracle.graal.asm.NumUtil.isByte;
-import static com.oracle.graal.asm.NumUtil.isInt;
-import static com.oracle.graal.asm.NumUtil.isShiftCount;
-import static com.oracle.graal.asm.NumUtil.isUByte;
-import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseAddressNop;
-import static com.oracle.graal.asm.amd64.AMD64AsmOptions.UseNormalNop;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SBB;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SUB;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.DEC;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.INC;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.BYTE;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.DWORD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.PD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.PS;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.QWORD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SD;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.SS;
-import static com.oracle.graal.asm.amd64.AMD64Assembler.OperandSize.WORD;
+import static org.graalvm.compiler.asm.NumUtil.isByte;
+import static org.graalvm.compiler.asm.NumUtil.isInt;
+import static org.graalvm.compiler.asm.NumUtil.isShiftCount;
+import static org.graalvm.compiler.asm.NumUtil.isUByte;
+import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAddressNop;
+import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseNormalNop;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SBB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SUB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.DEC;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.INC;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.BYTE;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.DWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.PD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.PS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.SD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.SS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.WORD;
 import static jdk.vm.ci.amd64.AMD64.CPU;
 import static jdk.vm.ci.amd64.AMD64.XMM;
 import static jdk.vm.ci.amd64.AMD64.r12;
@@ -56,10 +56,10 @@ import static jdk.vm.ci.amd64.AMD64.rip;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;

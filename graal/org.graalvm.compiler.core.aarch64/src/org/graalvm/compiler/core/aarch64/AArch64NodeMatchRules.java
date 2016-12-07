@@ -21,13 +21,13 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.aarch64;
+package org.graalvm.compiler.core.aarch64;
 
-import com.oracle.graal.compiler.gen.NodeMatchRules;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodes.DeoptimizingNode;
-import com.oracle.graal.nodes.memory.Access;
+import org.graalvm.compiler.core.gen.NodeMatchRules;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.memory.Access;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 

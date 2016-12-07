@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common;
+package org.graalvm.compiler.core.common;
 
-import static com.oracle.graal.compiler.common.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.core.common.UnsafeAccess.UNSAFE;
 
 import java.util.ArrayList;
 import java.util.Collections;
 
-import com.oracle.graal.debug.GraalError;
+import org.graalvm.compiler.debug.GraalError;
 
 import sun.misc.Unsafe;
 

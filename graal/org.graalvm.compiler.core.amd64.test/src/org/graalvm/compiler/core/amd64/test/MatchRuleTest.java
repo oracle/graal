@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.amd64.test;
+package org.graalvm.compiler.core.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.amd64.AMD64BinaryConsumer.MemoryConstOp;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.jtt.LIRTest;
-import com.oracle.graal.lir.phases.LIRPhase;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer.MemoryConstOp;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.jtt.LIRTest;
+import org.graalvm.compiler.lir.phases.LIRPhase;
+import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;

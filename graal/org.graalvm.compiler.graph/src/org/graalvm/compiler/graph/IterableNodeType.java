@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
 /**
  * A marker for a node type supporting {@linkplain Graph#getNodes(NodeClass) fast iteration} of its

@@ -22,13 +22,13 @@
  */
 /*
  */
-package com.oracle.graal.jtt.reflect;
+package org.graalvm.compiler.jtt.reflect;
 
 import java.lang.reflect.Array;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public class Array_newInstance06 extends JTTTest {
 

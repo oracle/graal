@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.util;
+package org.graalvm.compiler.phases.util;
 
-import com.oracle.graal.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 
 /**
  * This class implements a worklist for dealing with blocks. The worklist can operate either as a

@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.aarch64;
+package org.graalvm.compiler.lir.aarch64;
 
 import java.util.EnumSet;
 
-import com.oracle.graal.asm.aarch64.AArch64Address;
-import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
-import com.oracle.graal.asm.aarch64.AArch64Assembler;
-import com.oracle.graal.asm.aarch64.AArch64Assembler.ExtendType;
-import com.oracle.graal.lir.CompositeValue;
-import com.oracle.graal.lir.InstructionValueConsumer;
-import com.oracle.graal.lir.InstructionValueProcedure;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
+import org.graalvm.compiler.lir.CompositeValue;
+import org.graalvm.compiler.lir.InstructionValueConsumer;
+import org.graalvm.compiler.lir.InstructionValueProcedure;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;

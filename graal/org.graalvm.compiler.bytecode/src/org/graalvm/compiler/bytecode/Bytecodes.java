@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.bytecode;
+package org.graalvm.compiler.bytecode;
 
-import static com.oracle.graal.bytecode.Bytecodes.Flags.ASSOCIATIVE;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.BRANCH;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.COMMUTATIVE;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.FALL_THROUGH;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.FIELD_READ;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.FIELD_WRITE;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.INVOKE;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.LOAD;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.STOP;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.STORE;
-import static com.oracle.graal.bytecode.Bytecodes.Flags.TRAP;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.ASSOCIATIVE;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.BRANCH;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.COMMUTATIVE;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.FALL_THROUGH;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.FIELD_READ;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.FIELD_WRITE;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.INVOKE;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.LOAD;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.STOP;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.STORE;
+import static org.graalvm.compiler.bytecode.Bytecodes.Flags.TRAP;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;

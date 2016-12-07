@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.util;
+package org.graalvm.compiler.salver.util;
 
-import static com.oracle.graal.debug.GraalDebugConfig.asJavaMethod;
+import static org.graalvm.compiler.debug.GraalDebugConfig.asJavaMethod;
 
 import java.util.ArrayList;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugDumpScope;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.salver.util.MethodContext.Item;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.salver.util.MethodContext.Item;
 
 import jdk.vm.ci.meta.JavaMethod;
 

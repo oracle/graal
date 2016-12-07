@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.match;
+package org.graalvm.compiler.core.match;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
@@ -28,7 +28,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.graal.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ConstantNode;
 
 /**
  * This annotation declares a textual pattern for matching an HIR tree. The format is a LISP style

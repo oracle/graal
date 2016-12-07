@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.amd64;
+package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.lir.framemap.FrameMap;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.lir.framemap.FrameMap;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeCacheProvider;

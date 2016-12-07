@@ -22,11 +22,11 @@
  */
 /*
  */
-package com.oracle.graal.jtt.micro;
+package org.graalvm.compiler.jtt.micro;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public class InvokeVirtual_01 extends JTTTest {
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -29,13 +29,13 @@ import java.security.NoSuchProviderException;
 import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
-import com.oracle.graal.api.test.Graal;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.replacements.SHA2Substitutions;
-import com.oracle.graal.hotspot.replacements.SHA5Substitutions;
-import com.oracle.graal.hotspot.replacements.SHASubstitutions;
-import com.oracle.graal.runtime.RuntimeProvider;
+import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.replacements.SHA2Substitutions;
+import org.graalvm.compiler.hotspot.replacements.SHA5Substitutions;
+import org.graalvm.compiler.hotspot.replacements.SHASubstitutions;
+import org.graalvm.compiler.runtime.RuntimeProvider;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

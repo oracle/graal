@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler;
+package org.graalvm.compiler.core;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Params;
-import com.oracle.graal.debug.DebugInitializationParticipant;
-import com.oracle.graal.debug.GraalDebugConfig;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Params;
+import org.graalvm.compiler.debug.DebugInitializationParticipant;
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsPrinter;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 /**
  * A service provider that may modify the initialization of {@link Debug} based on the values

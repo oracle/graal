@@ -21,28 +21,28 @@
  * questions.
  */
 
-package com.oracle.graal.replacements.aarch64;
+package org.graalvm.compiler.replacements.aarch64;
 
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.DeoptimizeNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.FixedBinaryNode;
-import com.oracle.graal.nodes.calc.SignedDivNode;
-import com.oracle.graal.nodes.calc.SignedRemNode;
-import com.oracle.graal.nodes.calc.UnsignedDivNode;
-import com.oracle.graal.nodes.calc.UnsignedRemNode;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.SnippetTemplate;
-import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.Snippets;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.FixedBinaryNode;
+import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedRemNode;
+import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
+import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
+import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
+import org.graalvm.compiler.replacements.Snippets;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;

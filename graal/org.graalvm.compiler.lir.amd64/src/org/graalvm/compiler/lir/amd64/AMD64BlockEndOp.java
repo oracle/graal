@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.amd64;
+package org.graalvm.compiler.lir.amd64;
 
-import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.StandardOp.AbstractBlockEndOp;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StandardOp.AbstractBlockEndOp;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 public abstract class AMD64BlockEndOp extends AbstractBlockEndOp {
 

@@ -32,7 +32,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
+import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 
 @State(Scope.Thread)
 public class ArrayDuplicationBenchmark extends GraalBenchmark {

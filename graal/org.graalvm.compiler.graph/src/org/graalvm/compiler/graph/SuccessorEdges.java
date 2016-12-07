@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
-import static com.oracle.graal.graph.Edges.Type.Successors;
+import static org.graalvm.compiler.graph.Edges.Type.Successors;
 
 import java.util.ArrayList;
 
-import com.oracle.graal.graph.NodeClass.EdgeInfo;
+import org.graalvm.compiler.graph.NodeClass.EdgeInfo;
 
 public final class SuccessorEdges extends Edges {
 

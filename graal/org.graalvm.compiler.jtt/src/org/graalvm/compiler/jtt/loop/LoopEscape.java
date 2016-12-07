@@ -21,11 +21,11 @@
  * questions.
  */
 // Checkstyle: stop
-package com.oracle.graal.jtt.loop;
+package org.graalvm.compiler.jtt.loop;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 /*
  * Test around an object that escapes directly from inside a loop (no virtual phi on the loop)

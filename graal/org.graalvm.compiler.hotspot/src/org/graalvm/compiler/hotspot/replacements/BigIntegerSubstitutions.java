@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.arrayStart;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.arrayStart;
 
-import com.oracle.graal.api.directives.GraalDirectives;
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.hotspot.HotSpotBackend;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.replacements.ClassSubstitution;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
 
 @ClassSubstitution(className = "java.math.BigInteger", optional = true)
 public class BigIntegerSubstitutions {

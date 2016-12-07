@@ -22,11 +22,11 @@
  */
 /*
  */
-package com.oracle.graal.jtt.threads;
+package org.graalvm.compiler.jtt.threads;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public final class Thread_getState02 extends JTTTest {
 

@@ -20,27 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.UnsafeAccess.UNSAFE;
-import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static org.graalvm.compiler.hotspot.replacements.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
-import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.nodes.NamedLocationIdentity;
-import com.oracle.graal.nodes.debug.StringToBytesNode;
-import com.oracle.graal.nodes.java.NewArrayNode;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.replacements.SnippetTemplate;
-import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.replacements.Snippets;
-import com.oracle.graal.replacements.nodes.CStringConstant;
-import com.oracle.graal.word.Word;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.debug.StringToBytesNode;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
+import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
+import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
+import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.replacements.nodes.CStringConstant;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;

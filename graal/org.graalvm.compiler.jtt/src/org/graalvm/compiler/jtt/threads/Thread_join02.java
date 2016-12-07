@@ -25,11 +25,11 @@
  * This test sleeps the thread that is joined to, which should ensure that the joining thread
  * actually does wait for completeion.
  */
-package com.oracle.graal.jtt.threads;
+package org.graalvm.compiler.jtt.threads;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public class Thread_join02 extends JTTTest {
 

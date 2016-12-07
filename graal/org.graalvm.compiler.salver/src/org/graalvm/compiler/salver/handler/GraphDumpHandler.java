@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.handler;
+package org.graalvm.compiler.salver.handler;
 
 import java.io.IOException;
 
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.salver.dumper.GraphDumper;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.salver.dumper.GraphDumper;
 
 public class GraphDumpHandler extends AbstractGraalDumpHandler<GraphDumper> {
 

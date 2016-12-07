@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 
-import com.oracle.graal.common.PermanentBailoutException;
-import com.oracle.graal.compiler.common.type.DataPointerConstant;
+import org.graalvm.compiler.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.type.DataPointerConstant;
 
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;

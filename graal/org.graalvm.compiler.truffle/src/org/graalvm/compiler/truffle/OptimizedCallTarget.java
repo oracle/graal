@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleBackgroundCompilation;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleBackgroundCompilation;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -42,10 +42,10 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.graal.compiler.common.SuppressFBWarnings;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.truffle.debug.AbstractDebugCompilationListener;
-import com.oracle.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.truffle.debug.AbstractDebugCompilationListener;
+import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;

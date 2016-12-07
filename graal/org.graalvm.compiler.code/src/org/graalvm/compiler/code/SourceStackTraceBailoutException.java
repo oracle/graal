@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.code;
+package org.graalvm.compiler.code;
 
-import com.oracle.graal.common.PermanentBailoutException;
+import org.graalvm.compiler.common.PermanentBailoutException;
 
 /**
  * Represents a bailout exception with a stack trace in terms of the Java source being compiled

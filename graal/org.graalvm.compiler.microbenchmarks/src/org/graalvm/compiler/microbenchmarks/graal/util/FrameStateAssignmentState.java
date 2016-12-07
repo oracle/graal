@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal.util;
+package org.graalvm.compiler.microbenchmarks.graal.util;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.common.FrameStateAssignmentPhase;
-import com.oracle.graal.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
+import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 
 public class FrameStateAssignmentState extends GraphState {
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.lang;
+package org.graalvm.compiler.jtt.lang;
 
 import java.util.EnumSet;
 import java.util.function.IntBinaryOperator;
@@ -31,11 +31,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
 
 public class LambdaEagerTest extends GraalCompilerTest {
 

@@ -22,11 +22,11 @@
  */
 /*
  */
-package com.oracle.graal.jtt.except;
+package org.graalvm.compiler.jtt.except;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public class Except_Synchronized02 extends JTTTest {
 

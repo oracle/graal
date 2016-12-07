@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,18 +29,18 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import com.oracle.graal.compiler.common.CollectionsFactory;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.Fingerprint;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node.ValueNumberable;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.debug.Fingerprint;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node.ValueNumberable;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
@@ -763,7 +763,7 @@ public class Graph {
     }
 
     // Fully qualified annotation name is required to satisfy javac
-    @com.oracle.graal.nodeinfo.NodeInfo
+    @org.graalvm.compiler.nodeinfo.NodeInfo
     static final class PlaceHolderNode extends Node {
 
         public static final NodeClass<PlaceHolderNode> TYPE = NodeClass.create(PlaceHolderNode.class);

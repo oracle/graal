@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.backend;
+package org.graalvm.compiler.jtt.backend;
 
-import static com.oracle.graal.api.directives.GraalDirectives.LIKELY_PROBABILITY;
-import static com.oracle.graal.api.directives.GraalDirectives.injectBranchProbability;
+import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
+import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
 
 import java.lang.reflect.Method;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.jtt.JTTTest;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
 
 public class ConstantPhiTest extends JTTTest {
 

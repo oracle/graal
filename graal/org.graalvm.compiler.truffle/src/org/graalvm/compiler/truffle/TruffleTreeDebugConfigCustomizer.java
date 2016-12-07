@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugConfigCustomizer;
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.debug.DebugConfig;
+import org.graalvm.compiler.debug.DebugConfigCustomizer;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 @ServiceProvider(DebugConfigCustomizer.class)
 public class TruffleTreeDebugConfigCustomizer implements DebugConfigCustomizer {

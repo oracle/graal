@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test.builtins;
+package org.graalvm.compiler.truffle.test.builtins;
 
-import com.oracle.graal.options.OptionDescriptor;
-import com.oracle.graal.truffle.TruffleCompilerOptions;
-import com.oracle.graal.truffle.TruffleCompilerOptions_OptionDescriptors;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions_OptionDescriptors;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;

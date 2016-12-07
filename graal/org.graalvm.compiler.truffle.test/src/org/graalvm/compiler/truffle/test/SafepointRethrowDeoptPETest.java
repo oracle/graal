@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -28,8 +28,8 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;

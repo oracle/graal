@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package org.graalvm.compiler.replacements;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.replacements.nodes.BitScanForwardNode;
-import com.oracle.graal.replacements.nodes.BitScanReverseNode;
+import org.graalvm.compiler.api.replacements.ClassSubstitution;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
+import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
 
 // JaCoCo Exclude
 

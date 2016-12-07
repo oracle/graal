@@ -26,23 +26,23 @@
  * @run junit jdk.vm.ci.options.test.NestedBooleanOptionValueTest
  */
 
-package com.oracle.graal.options.test;
+package org.graalvm.compiler.options.test;
 
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.Master0;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.Master1;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.Master2;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.NestedOption0;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.NestedOption1;
-import static com.oracle.graal.options.test.NestedBooleanOptionValueTest.Options.NestedOption2;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionValueTest.Options.Master0;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionValueTest.Options.Master1;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionValueTest.Options.Master2;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionValueTest.Options.NestedOption0;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionValueTest.Options.NestedOption1;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionValueTest.Options.NestedOption2;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.graal.options.NestedBooleanOptionValue;
-import com.oracle.graal.options.OptionDescriptor;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.NestedBooleanOptionValue;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
 
 public class NestedBooleanOptionValueTest {
 

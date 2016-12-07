@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.AbstractMergeNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.StartNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.extended.ValueAnchorNode;
-import com.oracle.graal.phases.Phase;
-import com.oracle.graal.phases.graph.MergeableState;
-import com.oracle.graal.phases.graph.SinglePassNodeIterator;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.StartNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.graph.MergeableState;
+import org.graalvm.compiler.phases.graph.SinglePassNodeIterator;
 
 /**
  * This phase performs a bit of hygiene on {@link ValueAnchorNode} by removing inputs that have

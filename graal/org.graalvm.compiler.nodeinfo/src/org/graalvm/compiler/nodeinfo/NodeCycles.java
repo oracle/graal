@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodeinfo;
+package org.graalvm.compiler.nodeinfo;
 
 /**
  * Constants representing an estimation of the number of CPU cycles needed to execute a certain

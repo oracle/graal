@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.code;
+package org.graalvm.compiler.code;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
@@ -32,9 +32,9 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.graal.code.CompilationResult.CodeAnnotation;
-import com.oracle.graal.code.CompilationResult.CodeComment;
-import com.oracle.graal.code.CompilationResult.JumpTable;
+import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
+import org.graalvm.compiler.code.CompilationResult.CodeComment;
+import org.graalvm.compiler.code.CompilationResult.JumpTable;
 
 import jdk.vm.ci.code.CodeUtil;
 

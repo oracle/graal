@@ -20,27 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Assert;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.nodes.ProxyNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
-import com.oracle.graal.phases.common.DominatorConditionalEliminationPhase;
-import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.schedule.SchedulePhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.nodes.ProxyNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 /**
  * Collection of tests for
- * {@link com.oracle.graal.phases.common.DominatorConditionalEliminationPhase} including those that
- * triggered bugs in this phase.
+ * {@link org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase} including those
+ * that triggered bugs in this phase.
  */
 public class ConditionalEliminationTestBase extends GraalCompilerTest {
 

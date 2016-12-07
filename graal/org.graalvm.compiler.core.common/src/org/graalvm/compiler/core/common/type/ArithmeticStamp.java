@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.type;
+package org.graalvm.compiler.core.common.type;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;

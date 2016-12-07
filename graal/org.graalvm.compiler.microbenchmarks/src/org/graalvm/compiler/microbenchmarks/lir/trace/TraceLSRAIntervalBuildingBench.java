@@ -20,30 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.lir.trace;
+package org.graalvm.compiler.microbenchmarks.lir.trace;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Setup;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
-import com.oracle.graal.compiler.common.alloc.Trace;
-import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase.Analyser;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGeneratorTool.MoveFactory;
-import com.oracle.graal.lir.phases.AllocationPhase;
-import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.phases.LIRPhaseSuite;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.lir.ssi.SSIConstructionPhase;
-import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
-import com.oracle.graal.microbenchmarks.lir.GraalCompilerState;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.alloc.Trace;
+import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
+import org.graalvm.compiler.lir.alloc.trace.TraceBuilderPhase;
+import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase;
+import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanLifetimeAnalysisPhase.Analyser;
+import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase;
+import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
+import org.graalvm.compiler.lir.phases.AllocationPhase;
+import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+import org.graalvm.compiler.lir.phases.LIRPhaseSuite;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.lir.ssi.SSIConstructionPhase;
+import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
+import org.graalvm.compiler.microbenchmarks.lir.GraalCompilerState;
 
 import jdk.vm.ci.code.TargetDescription;
 

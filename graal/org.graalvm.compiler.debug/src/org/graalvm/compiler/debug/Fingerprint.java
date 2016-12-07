@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,8 +28,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionValue;
 
 /**
  * Facility for fingerprinting execution.

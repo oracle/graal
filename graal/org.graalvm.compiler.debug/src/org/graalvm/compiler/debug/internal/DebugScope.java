@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
+package org.graalvm.compiler.debug.internal;
 
 import java.io.PrintStream;
 import java.util.Iterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugDumpHandler;
-import com.oracle.graal.debug.DebugVerifyHandler;
-import com.oracle.graal.debug.DelegatingDebugConfig;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.debug.JavaMethodContext;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.TopLevelDebugConfig;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugConfig;
+import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.DebugVerifyHandler;
+import org.graalvm.compiler.debug.DelegatingDebugConfig;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.JavaMethodContext;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.TopLevelDebugConfig;
 
 import jdk.vm.ci.meta.JavaMethod;
 

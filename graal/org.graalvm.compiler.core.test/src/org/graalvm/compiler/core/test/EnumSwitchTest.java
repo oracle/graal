@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.extended.IntegerSwitchNode;
-import com.oracle.graal.nodes.java.LoadIndexedNode;
-import com.oracle.graal.phases.Phase;
-import com.oracle.graal.phases.common.RemoveValueProxyPhase;
-import com.oracle.graal.phases.tiers.Suites;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
+import org.graalvm.compiler.phases.tiers.Suites;
 
 public class EnumSwitchTest extends GraalCompilerTest {
 

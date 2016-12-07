@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.test;
+package org.graalvm.compiler.api.test;
 
 import static org.junit.Assert.assertNotNull;
 

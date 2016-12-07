@@ -20,30 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop.phases;
+package org.graalvm.compiler.loop.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumDesiredSize;
+import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import com.oracle.graal.graph.Graph.Mark;
-import com.oracle.graal.common.RetryableBailoutException;
-import com.oracle.graal.graph.Position;
-import com.oracle.graal.loop.LoopEx;
-import com.oracle.graal.loop.LoopFragmentWhole;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.BeginNode;
-import com.oracle.graal.nodes.ControlSplitNode;
-import com.oracle.graal.nodes.IfNode;
-import com.oracle.graal.nodes.LoopBeginNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.extended.SwitchNode;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.graph.Graph.Mark;
+import org.graalvm.compiler.common.RetryableBailoutException;
+import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.loop.LoopEx;
+import org.graalvm.compiler.loop.LoopFragmentWhole;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.SwitchNode;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public abstract class LoopTransformations {
 

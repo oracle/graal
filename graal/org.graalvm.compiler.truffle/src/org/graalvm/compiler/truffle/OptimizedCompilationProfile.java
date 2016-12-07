@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleArgumentTypeSpeculation;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationThreshold;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleMinInvokeThreshold;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleReplaceReprofileCount;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleReturnTypeSpeculation;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleTimeThreshold;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleArgumentTypeSpeculation;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationThreshold;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleMinInvokeThreshold;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleReplaceReprofileCount;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleReturnTypeSpeculation;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleTimeThreshold;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

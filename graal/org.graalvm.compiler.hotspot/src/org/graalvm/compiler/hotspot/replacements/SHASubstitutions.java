@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
-import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
+import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
-import com.oracle.graal.api.replacements.MethodSubstitution;
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.hotspot.nodes.ComputeObjectAddressNode;
-import com.oracle.graal.nodes.PiNode;
-import com.oracle.graal.nodes.extended.UnsafeLoadNode;
-import com.oracle.graal.word.Word;
+import org.graalvm.compiler.api.replacements.ClassSubstitution;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.hotspot.nodes.ComputeObjectAddressNode;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.meta.JavaKind;
 

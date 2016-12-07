@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.test;
+package org.graalvm.compiler.debug.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -28,10 +28,10 @@ import java.io.PrintStream;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugHistogram;
-import com.oracle.graal.debug.internal.DebugHistogramAsciiPrinter;
-import com.oracle.graal.debug.internal.DebugHistogramRPrinter;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugHistogram;
+import org.graalvm.compiler.debug.internal.DebugHistogramAsciiPrinter;
+import org.graalvm.compiler.debug.internal.DebugHistogramRPrinter;
 
 public class DebugHistogramTest {
 

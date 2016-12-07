@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import jdk.vm.ci.meta.InvokeTarget;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.hotspot.stubs.Stub;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.hotspot.stubs.Stub;
 
 /**
  * The details required to link a HotSpot runtime or stub call.

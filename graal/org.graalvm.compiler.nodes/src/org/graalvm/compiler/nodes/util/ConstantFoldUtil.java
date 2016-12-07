@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.util;
+package org.graalvm.compiler.nodes.util;
 
-import com.oracle.graal.compiler.common.spi.ConstantFieldProvider;
-import com.oracle.graal.compiler.common.spi.ConstantFieldProvider.ConstantFieldTool;
-import com.oracle.graal.nodes.ConstantNode;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider.ConstantFieldTool;
+import org.graalvm.compiler.nodes.ConstantNode;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;

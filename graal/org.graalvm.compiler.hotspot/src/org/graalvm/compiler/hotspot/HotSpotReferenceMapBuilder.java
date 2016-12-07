@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 
-import com.oracle.graal.common.PermanentBailoutException;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.framemap.ReferenceMapBuilder;
+import org.graalvm.compiler.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 
 import jdk.vm.ci.code.Location;
 import jdk.vm.ci.code.ReferenceMap;

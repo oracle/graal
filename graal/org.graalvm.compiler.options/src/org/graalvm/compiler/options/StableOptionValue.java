@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.options;
+package org.graalvm.compiler.options;
 
 /**
  * An option that always returns the same {@linkplain #getValue() value}.

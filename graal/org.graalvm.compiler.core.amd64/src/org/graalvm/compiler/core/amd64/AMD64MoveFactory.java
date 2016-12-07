@@ -21,24 +21,24 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.amd64;
+package org.graalvm.compiler.core.amd64;
 
-import static com.oracle.graal.lir.LIRValueUtil.asConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.compiler.common.type.DataPointerConstant;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.amd64.AMD64AddressValue;
-import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
-import com.oracle.graal.lir.amd64.AMD64Move.AMD64StackMove;
-import com.oracle.graal.lir.amd64.AMD64Move.LeaDataOp;
-import com.oracle.graal.lir.amd64.AMD64Move.LeaOp;
-import com.oracle.graal.lir.amd64.AMD64Move.MoveFromConstOp;
-import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
-import com.oracle.graal.lir.amd64.AMD64Move.MoveToRegOp;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.core.common.type.DataPointerConstant;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
+import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
+import org.graalvm.compiler.lir.amd64.AMD64Move.AMD64StackMove;
+import org.graalvm.compiler.lir.amd64.AMD64Move.LeaDataOp;
+import org.graalvm.compiler.lir.amd64.AMD64Move.LeaOp;
+import org.graalvm.compiler.lir.amd64.AMD64Move.MoveFromConstOp;
+import org.graalvm.compiler.lir.amd64.AMD64Move.MoveFromRegOp;
+import org.graalvm.compiler.lir.amd64.AMD64Move.MoveToRegOp;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;

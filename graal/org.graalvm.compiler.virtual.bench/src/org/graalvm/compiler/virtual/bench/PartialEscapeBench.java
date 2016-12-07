@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.virtual.bench;
+package org.graalvm.compiler.virtual.bench;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
+import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 
 public class PartialEscapeBench extends GraalBenchmark {
 

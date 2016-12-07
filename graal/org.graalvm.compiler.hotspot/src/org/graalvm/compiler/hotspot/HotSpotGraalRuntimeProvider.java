@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import com.oracle.graal.api.runtime.GraalRuntime;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.runtime.RuntimeProvider;
+import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.runtime.RuntimeProvider;
 
 import jdk.vm.ci.code.TargetDescription;
 

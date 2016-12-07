@@ -20,41 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package org.graalvm.compiler.core.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.ConditionalElimination;
-import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static com.oracle.graal.compiler.common.GraalOptions.OptDeoptimizationGrouping;
-import static com.oracle.graal.compiler.common.GraalOptions.OptEliminatePartiallyRedundantGuards;
-import static com.oracle.graal.compiler.common.GraalOptions.OptFloatingReads;
-import static com.oracle.graal.compiler.common.GraalOptions.OptPushThroughPi;
-import static com.oracle.graal.compiler.common.GraalOptions.OptReadElimination;
-import static com.oracle.graal.compiler.common.GraalOptions.ReassociateInvariants;
-import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
-import static com.oracle.graal.compiler.common.GraalOptions.VerifyHeapAtReturn;
+import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
+import static org.graalvm.compiler.core.common.GraalOptions.OptEliminatePartiallyRedundantGuards;
+import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
+import static org.graalvm.compiler.core.common.GraalOptions.OptPushThroughPi;
+import static org.graalvm.compiler.core.common.GraalOptions.OptReadElimination;
+import static org.graalvm.compiler.core.common.GraalOptions.ReassociateInvariants;
+import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
+import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
 
-import com.oracle.graal.loop.phases.LoopSafepointEliminationPhase;
-import com.oracle.graal.loop.phases.ReassociateInvariantPhase;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.DeoptimizationGroupingPhase;
-import com.oracle.graal.phases.common.FloatingReadPhase;
-import com.oracle.graal.phases.common.FrameStateAssignmentPhase;
-import com.oracle.graal.phases.common.GuardLoweringPhase;
-import com.oracle.graal.phases.common.IncrementalCanonicalizerPhase;
-import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
-import com.oracle.graal.phases.common.LockEliminationPhase;
-import com.oracle.graal.phases.common.LoopSafepointInsertionPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.common.OptimizeGuardAnchorsPhase;
-import com.oracle.graal.phases.common.PushThroughPiPhase;
-import com.oracle.graal.phases.common.RemoveValueProxyPhase;
-import com.oracle.graal.phases.common.ValueAnchorCleanupPhase;
-import com.oracle.graal.phases.common.VerifyHeapAtReturnPhase;
-import com.oracle.graal.phases.common.instrumentation.MidTierReconcileInstrumentationPhase;
-import com.oracle.graal.phases.tiers.MidTierContext;
-import com.oracle.graal.virtual.phases.ea.EarlyReadEliminationPhase;
+import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
+import org.graalvm.compiler.loop.phases.ReassociateInvariantPhase;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
+import org.graalvm.compiler.phases.common.FloatingReadPhase;
+import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
+import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
+import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.LockEliminationPhase;
+import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.OptimizeGuardAnchorsPhase;
+import org.graalvm.compiler.phases.common.PushThroughPiPhase;
+import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
+import org.graalvm.compiler.phases.common.ValueAnchorCleanupPhase;
+import org.graalvm.compiler.phases.common.VerifyHeapAtReturnPhase;
+import org.graalvm.compiler.phases.common.instrumentation.MidTierReconcileInstrumentationPhase;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
+import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 
 public class MidTier extends PhaseSuite<MidTierContext> {
 

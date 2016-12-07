@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver;
+package org.graalvm.compiler.salver;
 
-import static com.oracle.graal.salver.SalverOptions.SalverAddress;
-import static com.oracle.graal.salver.SalverOptions.SalverPort;
+import static org.graalvm.compiler.salver.SalverOptions.SalverAddress;
+import static org.graalvm.compiler.salver.SalverOptions.SalverPort;
 
 import java.net.InetSocketAddress;
 
-import com.oracle.graal.salver.util.ECIDUtil;
+import org.graalvm.compiler.salver.util.ECIDUtil;
 
 public final class Salver {
 

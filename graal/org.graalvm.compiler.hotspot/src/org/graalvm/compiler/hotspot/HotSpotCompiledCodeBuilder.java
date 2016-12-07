@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -33,14 +33,14 @@ import java.util.Map;
 import java.util.stream.Stream;
 import java.util.stream.Stream.Builder;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.code.CompilationResult.CodeAnnotation;
-import com.oracle.graal.code.CompilationResult.CodeComment;
-import com.oracle.graal.code.CompilationResult.JumpTable;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.code.DataSection;
-import com.oracle.graal.code.SourceMapping;
-import com.oracle.graal.graph.NodeSourcePosition;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
+import org.graalvm.compiler.code.CompilationResult.CodeComment;
+import org.graalvm.compiler.code.CompilationResult.JumpTable;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.code.DataSection;
+import org.graalvm.compiler.code.SourceMapping;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;

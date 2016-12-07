@@ -21,14 +21,14 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import java.util.Arrays;
 
 import org.junit.Test;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
 
 public class CopyOfVirtualizationTest extends GraalCompilerTest {
 

@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package org.graalvm.compiler.loop;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.IntegerConvertNode;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 
 public class DerivedConvertedInductionVariable extends DerivedInductionVariable {
 

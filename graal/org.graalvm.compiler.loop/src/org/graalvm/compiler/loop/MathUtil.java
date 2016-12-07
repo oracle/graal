@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package org.graalvm.compiler.loop;
 
-import com.oracle.graal.compiler.common.type.IntegerStamp;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.BinaryArithmeticNode;
-import com.oracle.graal.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
+import org.graalvm.compiler.nodes.calc.SignedDivNode;
 
 /**
  * Utility methods to perform integer math with some obvious constant folding first.

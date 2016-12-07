@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
-import com.oracle.graal.debug.Debug.Params;
+import org.graalvm.compiler.debug.Debug.Params;
 
 /**
  * Defines a service that can modify the {@linkplain Params parameters} for {@link Debug}.

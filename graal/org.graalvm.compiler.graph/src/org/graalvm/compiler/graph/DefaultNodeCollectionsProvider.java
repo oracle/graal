@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.graal.api.collections.DefaultCollectionsProvider;
+import org.graalvm.compiler.api.collections.DefaultCollectionsProvider;
 
 /**
  * A default implementation of {@link NodeCollectionsProvider} that creates standard JDK collection

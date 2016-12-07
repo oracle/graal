@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop.phases;
+package org.graalvm.compiler.loop.phases;
 
-import com.oracle.graal.loop.LoopPolicies;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.loop.LoopPolicies;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public abstract class LoopPhase<P extends LoopPolicies> extends BasePhase<PhaseContext> {
     private P policies;

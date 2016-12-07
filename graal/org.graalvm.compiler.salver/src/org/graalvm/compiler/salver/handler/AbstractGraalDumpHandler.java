@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.handler;
+package org.graalvm.compiler.salver.handler;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,13 +29,13 @@ import java.nio.channels.ClosedByInterruptException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import com.oracle.graal.debug.DebugDumpHandler;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.salver.Salver;
-import com.oracle.graal.salver.SalverOptions;
-import com.oracle.graal.salver.dumper.AbstractGraalDumper;
-import com.oracle.graal.salver.serialize.JSONSerializer;
-import com.oracle.graal.salver.serialize.Serializer;
+import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.salver.Salver;
+import org.graalvm.compiler.salver.SalverOptions;
+import org.graalvm.compiler.salver.dumper.AbstractGraalDumper;
+import org.graalvm.compiler.salver.serialize.JSONSerializer;
+import org.graalvm.compiler.salver.serialize.Serializer;
 
 public abstract class AbstractGraalDumpHandler<D extends AbstractGraalDumper> extends AbstractDumpHandler<D> implements DebugDumpHandler {
 

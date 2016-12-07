@@ -20,39 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements.aot;
+package org.graalvm.compiler.hotspot.replacements.aot;
 
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
-import static com.oracle.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.aot.EncodedSymbolNode;
-import com.oracle.graal.hotspot.nodes.aot.InitializeKlassNode;
-import com.oracle.graal.hotspot.nodes.aot.InitializeKlassStubCall;
-import com.oracle.graal.hotspot.nodes.aot.LoadConstantIndirectlyNode;
-import com.oracle.graal.hotspot.nodes.aot.LoadMethodCountersIndirectlyNode;
-import com.oracle.graal.hotspot.nodes.aot.ResolveConstantNode;
-import com.oracle.graal.hotspot.nodes.aot.ResolveConstantStubCall;
-import com.oracle.graal.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
-import com.oracle.graal.hotspot.nodes.aot.ResolveMethodAndLoadCountersStubCall;
-import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
-import com.oracle.graal.hotspot.word.KlassPointer;
-import com.oracle.graal.hotspot.word.MethodCountersPointer;
-import com.oracle.graal.hotspot.word.MethodPointer;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.replacements.SnippetTemplate;
-import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.replacements.Snippets;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.nodes.aot.EncodedSymbolNode;
+import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
+import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassStubCall;
+import org.graalvm.compiler.hotspot.nodes.aot.LoadConstantIndirectlyNode;
+import org.graalvm.compiler.hotspot.nodes.aot.LoadMethodCountersIndirectlyNode;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantStubCall;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveMethodAndLoadCountersStubCall;
+import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
+import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.hotspot.word.MethodCountersPointer;
+import org.graalvm.compiler.hotspot.word.MethodPointer;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
+import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
+import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
+import org.graalvm.compiler.replacements.Snippets;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;

@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot.test;
+package org.graalvm.compiler.truffle.hotspot.test;
 
 import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.truffle.test.PartialEvaluationTest;
-import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
-import com.oracle.graal.truffle.test.nodes.ConstantTestNode;
-import com.oracle.graal.truffle.test.nodes.RootTestNode;
+import org.graalvm.compiler.truffle.test.PartialEvaluationTest;
+import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
+import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
+import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import com.oracle.nfi.NativeFunctionInterfaceRuntime;
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.nfi.api.NativeFunctionInterface;

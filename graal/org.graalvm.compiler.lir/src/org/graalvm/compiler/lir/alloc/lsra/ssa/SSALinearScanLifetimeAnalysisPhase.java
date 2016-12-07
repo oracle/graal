@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra.ssa;
+package org.graalvm.compiler.lir.alloc.lsra.ssa;
 
 import java.util.EnumSet;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstruction.OperandFlag;
-import com.oracle.graal.lir.LIRInstruction.OperandMode;
-import com.oracle.graal.lir.StandardOp.LabelOp;
-import com.oracle.graal.lir.ValueConsumer;
-import com.oracle.graal.lir.alloc.lsra.Interval;
-import com.oracle.graal.lir.alloc.lsra.Interval.RegisterPriority;
-import com.oracle.graal.lir.alloc.lsra.LinearScan;
-import com.oracle.graal.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
-import com.oracle.graal.lir.ssa.SSAUtil;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
+import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.StandardOp.LabelOp;
+import org.graalvm.compiler.lir.ValueConsumer;
+import org.graalvm.compiler.lir.alloc.lsra.Interval;
+import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterPriority;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScan;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
+import org.graalvm.compiler.lir.ssa.SSAUtil;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;

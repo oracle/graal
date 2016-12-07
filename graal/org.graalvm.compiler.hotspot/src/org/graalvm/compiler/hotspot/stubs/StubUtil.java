@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package org.graalvm.compiler.hotspot.stubs;
 
-import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.getAndClearObjectResult;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.verifyOops;
-import static com.oracle.graal.replacements.nodes.CStringConstant.cstring;
-import static com.oracle.graal.word.Word.unsigned;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.getAndClearObjectResult;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.verifyOops;
+import static org.graalvm.compiler.replacements.nodes.CStringConstant.cstring;
+import static org.graalvm.compiler.word.Word.unsigned;
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 
 import java.lang.reflect.Method;
@@ -36,22 +36,22 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.api.replacements.Fold.InjectedParameter;
-import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.nodes.DeoptimizeCallerNode;
-import com.oracle.graal.hotspot.nodes.SnippetAnchorNode;
-import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
-import com.oracle.graal.hotspot.nodes.VMErrorNode;
-import com.oracle.graal.hotspot.word.KlassPointer;
-import com.oracle.graal.nodes.PiNode;
-import com.oracle.graal.nodes.extended.GuardingNode;
-import com.oracle.graal.replacements.Log;
-import com.oracle.graal.word.Pointer;
-import com.oracle.graal.word.Word;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.nodes.DeoptimizeCallerNode;
+import org.graalvm.compiler.hotspot.nodes.SnippetAnchorNode;
+import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
+import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
+import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.replacements.Log;
+import org.graalvm.compiler.word.Pointer;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 

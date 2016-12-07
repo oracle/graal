@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes.profiling;
+package org.graalvm.compiler.hotspot.nodes.profiling;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_10;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_50;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_10;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_50;
 
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodeinfo.NodeInfo;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 
 @NodeInfo(cycles = CYCLES_10, size = SIZE_50)
 public class ProfileWithNotificationNode extends ProfileNode {

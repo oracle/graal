@@ -21,11 +21,11 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.aarch64;
+package org.graalvm.compiler.core.aarch64;
 
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.memory.address.AddressNode;
-import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
 
 public class AArch64AddressLowering extends AddressLowering {
 

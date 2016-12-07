@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.graphbuilderconf;
+package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import com.oracle.graal.compiler.common.type.StampPair;
-import com.oracle.graal.nodes.calc.FloatingNode;
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 
 public interface ParameterPlugin extends GraphBuilderPlugin {
 

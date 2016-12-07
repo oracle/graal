@@ -29,7 +29,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
+import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 
 /**
  * Benchmarks cost of Math intrinsics.

@@ -22,13 +22,13 @@
  */
 // Checkstyle: stop
 
-package com.oracle.graal.jtt.hotpath;
+package org.graalvm.compiler.jtt.hotpath;
 
 import java.util.Random;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public class HP_idea extends JTTTest {
 

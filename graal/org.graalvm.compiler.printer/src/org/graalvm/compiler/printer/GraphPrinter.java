@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package org.graalvm.compiler.printer;
 
-import static com.oracle.graal.compiler.common.util.Util.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -32,10 +32,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.compiler.common.util.ModuleAPI;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.nodes.ConstantNode;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.util.ModuleAPI;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.nodes.ConstantNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

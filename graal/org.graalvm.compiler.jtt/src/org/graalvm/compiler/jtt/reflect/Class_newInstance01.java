@@ -22,11 +22,11 @@
  */
 /*
  */
-package com.oracle.graal.jtt.reflect;
+package org.graalvm.compiler.jtt.reflect;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public final class Class_newInstance01 extends JTTTest {
 

@@ -24,12 +24,12 @@
 /*
  */
 
-package com.oracle.graal.jtt.threads;
+package org.graalvm.compiler.jtt.threads;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 //Test all, mainly monitors
 public class Thread_isInterrupted02 extends JTTTest {

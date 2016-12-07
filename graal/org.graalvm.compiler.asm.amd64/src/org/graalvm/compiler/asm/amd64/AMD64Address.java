@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.amd64;
+package org.graalvm.compiler.asm.amd64;
 
 import jdk.vm.ci.code.Register;
 
-import com.oracle.graal.asm.AbstractAddress;
+import org.graalvm.compiler.asm.AbstractAddress;
 
 /**
  * Represents an address in target machine memory, specified via some combination of a base

@@ -23,11 +23,11 @@
 /*
  * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
  */
-package com.oracle.graal.jtt.except;
+package org.graalvm.compiler.jtt.except;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 /*
  */

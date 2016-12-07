@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.runtime;
+package org.graalvm.compiler.api.runtime;
 
 import jdk.vm.ci.runtime.JVMCICompiler;
 

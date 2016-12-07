@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
-import static com.oracle.graal.debug.internal.MemUseTrackerImpl.getCurrentThreadAllocatedBytes;
+import static org.graalvm.compiler.debug.internal.MemUseTrackerImpl.getCurrentThreadAllocatedBytes;
 
-import com.oracle.graal.api.test.Graal;
-import com.oracle.graal.compiler.test.AllocSpy;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugEnvironment;
-import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.hotspot.CompilationTask;
-import com.oracle.graal.hotspot.CompileTheWorld;
-import com.oracle.graal.hotspot.CompileTheWorldOptions;
-import com.oracle.graal.hotspot.HotSpotGraalCompiler;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.core.test.AllocSpy;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugEnvironment;
+import org.graalvm.compiler.debug.internal.DebugScope;
+import org.graalvm.compiler.hotspot.CompilationTask;
+import org.graalvm.compiler.hotspot.CompileTheWorld;
+import org.graalvm.compiler.hotspot.CompileTheWorldOptions;
+import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -47,13 +47,13 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  * To benchmark:
  *
  * <pre>
- *     mx vm -XX:-UseJVMCIClassLoader -cp @com.oracle.graal.hotspot.test com.oracle.graal.hotspot.test.MemoryUsageBenchmark
+ *     mx vm -XX:-UseJVMCIClassLoader -cp @org.graalvm.compiler.hotspot.test org.graalvm.compiler.hotspot.test.MemoryUsageBenchmark
  * </pre>
  *
  * Memory analysis for a {@link CompileTheWorld} execution can also be performed. For example:
  *
  * <pre>
- *     mx --vm server vm -XX:-UseJVMCIClassLoader -Dgraal.CompileTheWorldClasspath=$HOME/SPECjvm2008/SPECjvm2008.jar -cp @com.oracle.graal.hotspot.test com.oracle.graal.hotspot.test.MemoryUsageBenchmark
+ *     mx --vm server vm -XX:-UseJVMCIClassLoader -Dgraal.CompileTheWorldClasspath=$HOME/SPECjvm2008/SPECjvm2008.jar -cp @org.graalvm.compiler.hotspot.test org.graalvm.compiler.hotspot.test.MemoryUsageBenchmark
  * </pre>
  */
 public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {

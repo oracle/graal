@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package org.graalvm.compiler.lir;
 
 import java.util.List;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
-import com.oracle.graal.lir.StandardOp.NullCheck;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.lir.StandardOp.ImplicitNullCheck;
+import org.graalvm.compiler.lir.StandardOp.NullCheck;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
 
 import jdk.vm.ci.code.TargetDescription;
 

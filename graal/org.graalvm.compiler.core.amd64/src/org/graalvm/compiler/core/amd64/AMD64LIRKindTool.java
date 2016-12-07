@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.amd64;
+package org.graalvm.compiler.core.amd64;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.debug.GraalError;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 

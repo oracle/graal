@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.jtt.bytecode;
+package org.graalvm.compiler.jtt.bytecode;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,7 +32,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 @RunWith(Parameterized.class)
 public abstract class BC_double_base extends JTTTest {

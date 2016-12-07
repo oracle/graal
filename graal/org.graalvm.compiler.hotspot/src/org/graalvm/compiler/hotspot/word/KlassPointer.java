@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.word;
+package org.graalvm.compiler.hotspot.word;
 
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.READ_KLASS_POINTER;
-import static com.oracle.graal.hotspot.word.HotSpotOperation.HotspotOpcode.TO_KLASS_POINTER;
+import static org.graalvm.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_EQ;
+import static org.graalvm.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.POINTER_NE;
+import static org.graalvm.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.READ_KLASS_POINTER;
+import static org.graalvm.compiler.hotspot.word.HotSpotOperation.HotspotOpcode.TO_KLASS_POINTER;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.word.Pointer;
-import com.oracle.graal.word.Word.Opcode;
-import com.oracle.graal.word.Word.Operation;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.word.Pointer;
+import org.graalvm.compiler.word.Word.Opcode;
+import org.graalvm.compiler.word.Word.Operation;
 
 /**
  * Marker type for a metaspace pointer to a type.

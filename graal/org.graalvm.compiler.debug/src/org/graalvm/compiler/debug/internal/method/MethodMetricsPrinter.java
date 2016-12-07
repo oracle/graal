@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal.method;
+package org.graalvm.compiler.debug.internal.method;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -31,11 +31,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import com.oracle.graal.debug.DebugMethodMetrics;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.debug.DebugMethodMetrics;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 /**
  * Interface for printing a collection of method metrics (e.g. during shutdown).

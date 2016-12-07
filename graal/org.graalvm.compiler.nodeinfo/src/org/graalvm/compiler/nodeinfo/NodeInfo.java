@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodeinfo;
+package org.graalvm.compiler.nodeinfo;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_UNSET;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_UNSET;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNSET;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNSET;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

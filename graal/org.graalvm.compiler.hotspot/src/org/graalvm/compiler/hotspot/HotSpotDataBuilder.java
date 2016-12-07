@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.graal.code.DataSection.Data;
-import com.oracle.graal.code.DataSection.Patches;
-import com.oracle.graal.code.DataSection.SerializableData;
-import com.oracle.graal.code.DataSection.ZeroData;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.asm.DataBuilder;
+import org.graalvm.compiler.code.DataSection.Data;
+import org.graalvm.compiler.code.DataSection.Patches;
+import org.graalvm.compiler.code.DataSection.SerializableData;
+import org.graalvm.compiler.code.DataSection.ZeroData;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.asm.DataBuilder;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstant;

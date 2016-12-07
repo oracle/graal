@@ -21,12 +21,12 @@
  * questions.
  */
 
-package com.oracle.graal.asm.aarch64.test;
+package org.graalvm.compiler.asm.aarch64.test;
 
-import com.oracle.graal.asm.AbstractAddress;
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.aarch64.AArch64Address;
-import com.oracle.graal.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.AbstractAddress;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;

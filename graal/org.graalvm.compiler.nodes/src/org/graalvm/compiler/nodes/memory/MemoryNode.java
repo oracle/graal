@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.memory;
+package org.graalvm.compiler.nodes.memory;
 
-import com.oracle.graal.nodes.ValueNodeInterface;
+import org.graalvm.compiler.nodes.ValueNodeInterface;
 
 /**
  * This interface marks nodes that are part of the memory graph.

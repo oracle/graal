@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package org.graalvm.compiler.hotspot.sparc;
 
 import static jdk.vm.ci.sparc.SPARC.d32;
 import static jdk.vm.ci.sparc.SPARC.d34;
@@ -89,7 +89,7 @@ import static jdk.vm.ci.sparc.SPARC.o5;
 import java.util.ArrayList;
 import java.util.BitSet;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;

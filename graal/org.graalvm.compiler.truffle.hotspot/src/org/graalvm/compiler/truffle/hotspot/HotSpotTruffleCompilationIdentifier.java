@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot;
+package org.graalvm.compiler.truffle.hotspot;
 
-import com.oracle.graal.hotspot.HotSpotCompilationIdentifier;
-import com.oracle.graal.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 

@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.phases;
+package org.graalvm.compiler.lir.phases;
 
-import com.oracle.graal.lir.alloc.lsra.LinearScanPhase;
-import com.oracle.graal.lir.dfa.LocationMarkerPhase;
-import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.stackslotalloc.SimpleStackSlotAllocator;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScanPhase;
+import org.graalvm.compiler.lir.dfa.LocationMarkerPhase;
+import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+import org.graalvm.compiler.lir.stackslotalloc.SimpleStackSlotAllocator;
 
 public class EconomyAllocationStage extends LIRPhaseSuite<AllocationContext> {
     public EconomyAllocationStage() {

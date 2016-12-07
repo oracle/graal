@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.sparc.test;
+package org.graalvm.compiler.core.sparc.test;
 
-import static com.oracle.graal.compiler.common.GraalOptions.TraceRA;
-import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
+import static org.graalvm.compiler.core.common.GraalOptions.TraceRA;
+import static org.graalvm.compiler.core.common.GraalOptions.RegisterPressure;
 import static org.junit.Assume.assumeTrue;
 import jdk.vm.ci.sparc.SPARC;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.backend.AllocatorTest;
+import org.graalvm.compiler.core.test.backend.AllocatorTest;
 
 public class SPARCAllocatorTest extends AllocatorTest {
 

@@ -21,11 +21,11 @@
  * questions.
  */
 
-package com.oracle.graal.jtt.bytecode;
+package org.graalvm.compiler.jtt.bytecode;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 /*
  */

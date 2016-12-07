@@ -20,39 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package org.graalvm.compiler.nodes.spi;
 
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_1;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_100;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_15;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_2;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_20;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_30;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_4;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_40;
-import static com.oracle.graal.nodeinfo.NodeCycles.CYCLES_80;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_1;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_10;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_100;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_15;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_2;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_200;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_30;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_4;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_50;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_6;
-import static com.oracle.graal.nodeinfo.NodeSize.SIZE_80;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_100;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_15;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_20;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_30;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_40;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_80;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_10;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_100;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_15;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_200;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_30;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_50;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_6;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_80;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodeinfo.NodeCycles;
-import com.oracle.graal.nodeinfo.NodeSize;
-import com.oracle.graal.nodes.CallTargetNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.LoopEndNode;
-import com.oracle.graal.nodes.extended.IntegerSwitchNode;
-import com.oracle.graal.nodes.extended.SwitchNode;
-import com.oracle.graal.nodes.java.AccessFieldNode;
-import com.oracle.graal.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.LoopEndNode;
+import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.graalvm.compiler.nodes.extended.SwitchNode;
+import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 
 /*
  * Certain node costs can not, based on the meta information encoded in the node properties,

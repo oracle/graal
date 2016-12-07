@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.verifier;
+package org.graalvm.compiler.replacements.verifier;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -42,23 +42,23 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.InjectedNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.StructuralInput.MarkerType;
+import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
+import org.graalvm.compiler.graph.Node.InjectedNodeParameter;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.StructuralInput.MarkerType;
 
 public final class NodeIntrinsicVerifier extends AbstractVerifier {
 
     private static final String NODE_CLASS_NAME = "value";
 
     private TypeMirror nodeType() {
-        return env.getElementUtils().getTypeElement("com.oracle.graal.graph.Node").asType();
+        return env.getElementUtils().getTypeElement("org.graalvm.compiler.graph.Node").asType();
     }
 
     private TypeMirror valueNodeType() {
-        return env.getElementUtils().getTypeElement("com.oracle.graal.nodes.ValueNode").asType();
+        return env.getElementUtils().getTypeElement("org.graalvm.compiler.nodes.ValueNode").asType();
     }
 
     private TypeMirror classType() {
@@ -74,11 +74,11 @@ public final class NodeIntrinsicVerifier extends AbstractVerifier {
     }
 
     private TypeMirror structuralInputType() {
-        return env.getElementUtils().getTypeElement("com.oracle.graal.nodeinfo.StructuralInput").asType();
+        return env.getElementUtils().getTypeElement("org.graalvm.compiler.nodeinfo.StructuralInput").asType();
     }
 
     private TypeMirror graphBuilderContextType() {
-        return env.getElementUtils().getTypeElement("com.oracle.graal.nodes.graphbuilderconf.GraphBuilderContext").asType();
+        return env.getElementUtils().getTypeElement("org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext").asType();
     }
 
     public NodeIntrinsicVerifier(ProcessingEnvironment env) {

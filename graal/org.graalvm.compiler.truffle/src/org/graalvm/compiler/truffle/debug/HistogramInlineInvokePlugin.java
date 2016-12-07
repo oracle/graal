@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.debug;
+package org.graalvm.compiler.truffle.debug;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,15 +28,15 @@ import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.BeginNode;
-import com.oracle.graal.nodes.DeoptimizeNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.VirtualState;
-import com.oracle.graal.nodes.graphbuilderconf.InlineInvokePlugin;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.nodes.virtual.VirtualObjectNode;
-import com.oracle.graal.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.VirtualState;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

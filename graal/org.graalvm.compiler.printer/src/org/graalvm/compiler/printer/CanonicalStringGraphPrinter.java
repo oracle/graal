@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package org.graalvm.compiler.printer;
 
-import static com.oracle.graal.debug.GraalDebugConfig.Options.CanonicalGraphStringsCheckConstants;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.CanonicalGraphStringsExcludeVirtuals;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.CanonicalGraphStringsRemoveIdentities;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.PrintCanonicalGraphStringFlavor;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.CanonicalGraphStringsCheckConstants;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.CanonicalGraphStringsExcludeVirtuals;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.CanonicalGraphStringsRemoveIdentities;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintCanonicalGraphStringFlavor;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -40,27 +40,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.compiler.common.Fields;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeMap;
-import com.oracle.graal.graph.Position;
-import com.oracle.graal.nodeinfo.Verbosity;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.FullInfopointNode;
-import com.oracle.graal.nodes.PhiNode;
-import com.oracle.graal.nodes.ProxyNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.nodes.virtual.VirtualObjectNode;
-import com.oracle.graal.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.FullInfopointNode;
+import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.verifier;
+package org.graalvm.compiler.replacements.verifier;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,8 +30,8 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.replacements.verifier.InjectedDependencies.Dependency;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.replacements.verifier.InjectedDependencies.Dependency;
 
 public class InjectedDependencies implements Iterable<Dependency> {
 
@@ -63,7 +63,7 @@ public class InjectedDependencies implements Iterable<Dependency> {
     private static final class StampDependency extends Dependency {
 
         private StampDependency() {
-            super("returnStamp", "com.oracle.graal.compiler.common.type.Stamp");
+            super("returnStamp", "org.graalvm.compiler.core.common.type.Stamp");
         }
 
         @Override
@@ -77,9 +77,9 @@ public class InjectedDependencies implements Iterable<Dependency> {
         CONSTANT_REFLECTION("b.getConstantReflection()", "jdk.vm.ci.meta.ConstantReflectionProvider"),
         META_ACCESS("b.getMetaAccess()", "jdk.vm.ci.meta.MetaAccessProvider"),
         RETURN_STAMP(new StampDependency()),
-        SNIPPET_REFLECTION(new InjectedDependency("snippetReflection", "com.oracle.graal.api.replacements.SnippetReflectionProvider")),
-        STAMP_PROVIDER("b.getStampProvider()", "com.oracle.graal.nodes.spi.StampProvider"),
-        STRUCTURED_GRAPH("b.getGraph()", "com.oracle.graal.nodes.StructuredGraph");
+        SNIPPET_REFLECTION(new InjectedDependency("snippetReflection", "org.graalvm.compiler.api.replacements.SnippetReflectionProvider")),
+        STAMP_PROVIDER("b.getStampProvider()", "org.graalvm.compiler.nodes.spi.StampProvider"),
+        STRUCTURED_GRAPH("b.getGraph()", "org.graalvm.compiler.nodes.StructuredGraph");
 
         private final String expr;
         private final String type;

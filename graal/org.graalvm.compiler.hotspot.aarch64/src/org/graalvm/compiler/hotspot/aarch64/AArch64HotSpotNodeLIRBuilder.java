@@ -20,43 +20,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.aarch64;
+package org.graalvm.compiler.hotspot.aarch64;
 
-import static com.oracle.graal.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.inlineCacheRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.metaspaceMethodRegister;
 
-import com.oracle.graal.compiler.aarch64.AArch64NodeLIRBuilder;
-import com.oracle.graal.compiler.aarch64.AArch64NodeMatchRules;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
-import com.oracle.graal.compiler.gen.DebugInfoBuilder;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
-import com.oracle.graal.hotspot.HotSpotLIRGenerator;
-import com.oracle.graal.hotspot.HotSpotLockStack;
-import com.oracle.graal.hotspot.HotSpotNodeLIRBuilder;
-import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
-import com.oracle.graal.hotspot.nodes.HotSpotDirectCallTargetNode;
-import com.oracle.graal.hotspot.nodes.HotSpotIndirectCallTargetNode;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.aarch64.AArch64BreakpointOp;
-import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwapOp;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodes.BreakpointNode;
-import com.oracle.graal.nodes.CallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.DirectCallTargetNode;
-import com.oracle.graal.nodes.FullInfopointNode;
-import com.oracle.graal.nodes.IndirectCallTargetNode;
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.SafepointNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import org.graalvm.compiler.core.aarch64.AArch64NodeLIRBuilder;
+import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.gen.DebugInfoBuilder;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.hotspot.HotSpotDebugInfoBuilder;
+import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
+import org.graalvm.compiler.hotspot.HotSpotLockStack;
+import org.graalvm.compiler.hotspot.HotSpotNodeLIRBuilder;
+import org.graalvm.compiler.hotspot.nodes.DirectCompareAndSwapNode;
+import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
+import org.graalvm.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.aarch64.AArch64BreakpointOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.CompareAndSwapOp;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.nodes.BreakpointNode;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.DirectCallTargetNode;
+import org.graalvm.compiler.nodes.FullInfopointNode;
+import org.graalvm.compiler.nodes.IndirectCallTargetNode;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.SafepointNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.BytecodeFrame;

@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.directives.GraalDirectives;
 
 /**
  * Test on-stack-replacement with locks.

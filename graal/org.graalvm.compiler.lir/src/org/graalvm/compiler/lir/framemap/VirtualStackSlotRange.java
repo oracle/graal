@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.framemap;
+package org.graalvm.compiler.lir.framemap;
 
 import java.util.BitSet;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.lir.VirtualStackSlot;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.lir.VirtualStackSlot;
 
 import jdk.vm.ci.code.TargetDescription;
 

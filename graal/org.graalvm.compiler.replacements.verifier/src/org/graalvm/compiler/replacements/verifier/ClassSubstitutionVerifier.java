@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.verifier;
+package org.graalvm.compiler.replacements.verifier;
 
 import java.lang.annotation.Annotation;
 
@@ -34,7 +34,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.graal.api.replacements.ClassSubstitution;
+import org.graalvm.compiler.api.replacements.ClassSubstitution;
 
 public final class ClassSubstitutionVerifier extends AbstractVerifier {
 

@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;

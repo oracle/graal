@@ -21,33 +21,33 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.aarch64;
+package org.graalvm.compiler.core.aarch64;
 
-import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64Kind.DWORD;
 import static jdk.vm.ci.aarch64.AArch64Kind.QWORD;
 
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.calc.FloatConvert;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.ConstantValue;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.aarch64.AArch64AddressValue;
-import com.oracle.graal.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
-import com.oracle.graal.lir.aarch64.AArch64ArithmeticOp;
-import com.oracle.graal.lir.aarch64.AArch64BitManipulationOp;
-import com.oracle.graal.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode;
-import com.oracle.graal.lir.aarch64.AArch64Move.LoadOp;
-import com.oracle.graal.lir.aarch64.AArch64Move.StoreConstantOp;
-import com.oracle.graal.lir.aarch64.AArch64Move.StoreOp;
-import com.oracle.graal.lir.aarch64.AArch64ReinterpretOp;
-import com.oracle.graal.lir.aarch64.AArch64SignExtendOp;
-import com.oracle.graal.lir.gen.ArithmeticLIRGenerator;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.ConstantValue;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
+import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
+import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
+import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp;
+import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.LoadOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreConstantOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ReinterpretOp;
+import org.graalvm.compiler.lir.aarch64.AArch64SignExtendOp;
+import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.RegisterValue;

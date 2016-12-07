@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.util;
+package org.graalvm.compiler.core.common.util;
 
-import static com.oracle.graal.compiler.common.util.Util.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
-import static com.oracle.graal.graph.Graph.NodeEvent.NODE_ADDED;
-import static com.oracle.graal.graph.Graph.NodeEvent.ZERO_USAGES;
+import static org.graalvm.compiler.graph.Graph.NodeEvent.NODE_ADDED;
+import static org.graalvm.compiler.graph.Graph.NodeEvent.ZERO_USAGES;
 
-import com.oracle.graal.common.RetryableBailoutException;
-import com.oracle.graal.graph.Graph.NodeEventScope;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.spi.Simplifiable;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.common.util.HashSetNodeEventListener;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.common.RetryableBailoutException;
+import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext> {
 

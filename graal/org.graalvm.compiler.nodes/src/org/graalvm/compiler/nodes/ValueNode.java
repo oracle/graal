@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package org.graalvm.compiler.nodes;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.graph.iterators.NodePredicate;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.spi.NodeValueMap;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.iterators.NodePredicate;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -39,7 +39,7 @@ import jdk.vm.ci.meta.JavaKind;
  * instructions.
  */
 @NodeInfo
-public abstract class ValueNode extends com.oracle.graal.graph.Node implements ValueNodeInterface {
+public abstract class ValueNode extends org.graalvm.compiler.graph.Node implements ValueNodeInterface {
 
     public static final NodeClass<ValueNode> TYPE = NodeClass.create(ValueNode.class);
     /**

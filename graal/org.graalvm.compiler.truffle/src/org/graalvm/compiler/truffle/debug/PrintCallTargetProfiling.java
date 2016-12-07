@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.debug;
+package org.graalvm.compiler.truffle.debug;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
 
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.truffle.GraalTruffleRuntime;
-import com.oracle.graal.truffle.OptimizedCallTarget;
-import com.oracle.graal.truffle.TraceCompilationProfile;
+import org.graalvm.compiler.truffle.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.TraceCompilationProfile;
 import com.oracle.truffle.api.Truffle;
 
 public final class PrintCallTargetProfiling extends AbstractDebugCompilationListener {

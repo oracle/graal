@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.trace.lsra;
+package org.graalvm.compiler.lir.alloc.trace.lsra;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.lir.alloc.trace.lsra.FixedInterval.FixedList;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.AnyList;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.RegisterBinding;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceInterval.State;
-import com.oracle.graal.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.lir.alloc.trace.lsra.FixedInterval.FixedList;
+import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.AnyList;
+import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.RegisterBinding;
+import org.graalvm.compiler.lir.alloc.trace.lsra.TraceInterval.State;
+import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
 
 /**
  */

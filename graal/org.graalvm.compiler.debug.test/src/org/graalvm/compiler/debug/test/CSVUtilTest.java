@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.test;
+package org.graalvm.compiler.debug.test;
 
 import static org.junit.Assert.assertEquals;
 
@@ -37,7 +37,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.graal.debug.CSVUtil;
+import org.graalvm.compiler.debug.CSVUtil;
 
 @RunWith(Enclosed.class)
 public class CSVUtilTest {

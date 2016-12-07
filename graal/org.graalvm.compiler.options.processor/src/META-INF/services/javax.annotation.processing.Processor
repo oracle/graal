@@ -1,1 +1,1 @@
-com.oracle.graal.options.processor.OptionProcessor
+org.graalvm.compiler.options.processor.OptionProcessor

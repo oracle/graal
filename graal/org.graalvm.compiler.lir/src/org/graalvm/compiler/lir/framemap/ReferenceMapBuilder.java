@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.framemap;
+package org.graalvm.compiler.lir.framemap;
 
-import com.oracle.graal.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRFrameState;
 
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.meta.Value;

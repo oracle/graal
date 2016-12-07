@@ -20,34 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases;
+package org.graalvm.compiler.hotspot.phases;
 
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Required;
+import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
-import com.oracle.graal.common.PermanentBailoutException;
-import com.oracle.graal.compiler.common.cfg.Loop;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.loop.LoopsData;
-import com.oracle.graal.loop.phases.LoopTransformations;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.Verbosity;
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.EntryMarkerNode;
-import com.oracle.graal.nodes.EntryProxyNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.FrameState;
-import com.oracle.graal.nodes.StartNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.extended.OSRLocalNode;
-import com.oracle.graal.nodes.extended.OSRStartNode;
-import com.oracle.graal.nodes.util.GraphUtil;
-import com.oracle.graal.phases.Phase;
-import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.loop.LoopsData;
+import org.graalvm.compiler.loop.phases.LoopTransformations;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.EntryMarkerNode;
+import org.graalvm.compiler.nodes.EntryProxyNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.StartNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.extended.OSRLocalNode;
+import org.graalvm.compiler.nodes.extended.OSRStartNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 
 import jdk.vm.ci.runtime.JVMCICompiler;
 

@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.debug.GraalDebugConfig.areScopedGlobalMetricsEnabled;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodFilter;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.Verify;
+import static org.graalvm.compiler.debug.GraalDebugConfig.areScopedGlobalMetricsEnabled;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugValueSummary;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Log;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.MethodFilter;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Verify;
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
@@ -36,26 +36,26 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.graal.api.collections.CollectionsProvider;
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.api.runtime.GraalRuntime;
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugEnvironment;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.internal.DebugValuesPrinter;
-import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
-import com.oracle.graal.graph.DefaultNodeCollectionsProvider;
-import com.oracle.graal.graph.NodeCollectionsProvider;
-import com.oracle.graal.hotspot.CompilerConfigurationFactory.BackendMap;
-import com.oracle.graal.hotspot.debug.BenchmarkCounters;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.nodes.spi.StampProvider;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
-import com.oracle.graal.replacements.SnippetCounter;
-import com.oracle.graal.runtime.RuntimeProvider;
+import org.graalvm.compiler.api.collections.CollectionsProvider;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugEnvironment;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.internal.DebugValuesPrinter;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsPrinter;
+import org.graalvm.compiler.graph.DefaultNodeCollectionsProvider;
+import org.graalvm.compiler.graph.NodeCollectionsProvider;
+import org.graalvm.compiler.hotspot.CompilerConfigurationFactory.BackendMap;
+import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.replacements.SnippetCounter;
+import org.graalvm.compiler.runtime.RuntimeProvider;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;

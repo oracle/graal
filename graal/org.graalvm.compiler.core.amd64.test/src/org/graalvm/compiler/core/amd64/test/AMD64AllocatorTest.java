@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.amd64.test;
+package org.graalvm.compiler.core.amd64.test;
 
-import static com.oracle.graal.compiler.common.GraalOptions.TraceRA;
-import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
+import static org.graalvm.compiler.core.common.GraalOptions.TraceRA;
+import static org.graalvm.compiler.core.common.GraalOptions.RegisterPressure;
 import static org.junit.Assume.assumeTrue;
 import jdk.vm.ci.amd64.AMD64;
 
@@ -31,7 +31,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.backend.AllocatorTest;
+import org.graalvm.compiler.core.test.backend.AllocatorTest;
 
 public class AMD64AllocatorTest extends AllocatorTest {
 

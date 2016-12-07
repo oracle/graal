@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.graphbuilderconf;
+package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import com.oracle.graal.compiler.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 
 public interface NodeIntrinsicPluginFactory {
 

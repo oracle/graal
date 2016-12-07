@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.util;
+package org.graalvm.compiler.core.common.util;
 
-import static com.oracle.graal.compiler.common.GraalOptions.HotSpotPrintInlining;
+import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 
 import java.util.Collection;
 import java.util.List;
 
-import com.oracle.graal.debug.TTY;
+import org.graalvm.compiler.debug.TTY;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

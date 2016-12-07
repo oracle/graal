@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.match;
+package org.graalvm.compiler.core.match;
 
 import jdk.vm.ci.meta.Value;
 
-import com.oracle.graal.compiler.gen.NodeLIRBuilder;
+import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 
 /**
  * A closure that can be evaluated to produce the LIR for some complex match. Using a closure allows

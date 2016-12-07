@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.debug;
+package org.graalvm.compiler.truffle.debug;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TraceTruffleInlining;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleInlining;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.truffle.GraalTruffleRuntime;
-import com.oracle.graal.truffle.OptimizedCallTarget;
-import com.oracle.graal.truffle.TruffleInlining;
-import com.oracle.graal.truffle.TruffleInliningDecision;
-import com.oracle.graal.truffle.TruffleInliningProfile;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.TruffleInlining;
+import org.graalvm.compiler.truffle.TruffleInliningDecision;
+import org.graalvm.compiler.truffle.TruffleInliningProfile;
 
 public final class TraceInliningListener extends AbstractDebugCompilationListener {
 

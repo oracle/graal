@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package org.graalvm.compiler.truffle.nodes;
 
-import com.oracle.graal.truffle.OptimizedAssumption;
+import org.graalvm.compiler.truffle.OptimizedAssumption;
 
 import jdk.vm.ci.meta.Assumptions;
 

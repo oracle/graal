@@ -22,17 +22,17 @@
  */
 /*
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.phases.HighTier;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.phases.tiers.Suites;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.phases.HighTier;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.phases.tiers.Suites;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

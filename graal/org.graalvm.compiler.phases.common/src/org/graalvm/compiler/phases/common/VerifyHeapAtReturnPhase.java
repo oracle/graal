@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
-import com.oracle.graal.nodes.ReturnNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.debug.VerifyHeapNode;
-import com.oracle.graal.phases.Phase;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
+import org.graalvm.compiler.phases.Phase;
 
 public class VerifyHeapAtReturnPhase extends Phase {
 

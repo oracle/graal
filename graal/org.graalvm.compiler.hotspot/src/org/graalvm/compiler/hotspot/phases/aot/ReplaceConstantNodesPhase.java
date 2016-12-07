@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases.aot;
+package org.graalvm.compiler.hotspot.phases.aot;
 
-import static com.oracle.graal.hotspot.nodes.aot.LoadMethodCountersNode.getLoadMethodCountersNodes;
-import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
+import static org.graalvm.compiler.hotspot.nodes.aot.LoadMethodCountersNode.getLoadMethodCountersNodes;
+import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 
 import java.util.HashSet;
 
@@ -35,24 +35,24 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.StampFactory;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.hotspot.FingerprintUtil;
-import com.oracle.graal.hotspot.meta.HotSpotConstantLoadAction;
-import com.oracle.graal.hotspot.nodes.aot.InitializeKlassNode;
-import com.oracle.graal.hotspot.nodes.aot.LoadConstantIndirectlyFixedNode;
-import com.oracle.graal.hotspot.nodes.aot.LoadConstantIndirectlyNode;
-import com.oracle.graal.hotspot.nodes.aot.LoadMethodCountersNode;
-import com.oracle.graal.hotspot.nodes.aot.ResolveConstantNode;
-import com.oracle.graal.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.FingerprintUtil;
+import org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction;
+import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
+import org.graalvm.compiler.hotspot.nodes.aot.LoadConstantIndirectlyFixedNode;
+import org.graalvm.compiler.hotspot.nodes.aot.LoadConstantIndirectlyNode;
+import org.graalvm.compiler.hotspot.nodes.aot.LoadMethodCountersNode;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public class ReplaceConstantNodesPhase extends BasePhase<PhaseContext> {
 

@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.sparc;
+package org.graalvm.compiler.lir.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BPCC;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Always;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPCC;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_TAKEN;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Xcc;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.Always;
 
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.StandardOp.JumpOp;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.StandardOp.JumpOp;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 public final class SPARCJumpOp extends JumpOp implements SPARCDelayedControlTransfer, SPARCLIRInstructionMixin {
     public static final LIRInstructionClass<SPARCJumpOp> TYPE = LIRInstructionClass.create(SPARCJumpOp.class);

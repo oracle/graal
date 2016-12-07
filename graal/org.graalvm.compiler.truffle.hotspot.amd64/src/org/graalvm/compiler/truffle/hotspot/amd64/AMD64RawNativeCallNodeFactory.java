@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot.amd64;
+package org.graalvm.compiler.truffle.hotspot.amd64;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-import com.oracle.graal.hotspot.amd64.AMD64RawNativeCallNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.serviceprovider.ServiceProvider;
-import com.oracle.graal.truffle.hotspot.nfi.RawNativeCallNodeFactory;
+import org.graalvm.compiler.hotspot.amd64.AMD64RawNativeCallNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.truffle.hotspot.nfi.RawNativeCallNodeFactory;
 
 @ServiceProvider(RawNativeCallNodeFactory.class)
 public class AMD64RawNativeCallNodeFactory implements RawNativeCallNodeFactory {

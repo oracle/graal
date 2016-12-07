@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop;
+package org.graalvm.compiler.loop;
 
 import java.util.List;
 
-import com.oracle.graal.nodes.ControlSplitNode;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 public interface LoopPolicies {

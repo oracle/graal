@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot;
+package org.graalvm.compiler.truffle.hotspot;
 
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.nfi.api.NativeFunctionInterfaceAccess;
 import com.oracle.truffle.api.Truffle;

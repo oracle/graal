@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import com.oracle.graal.compiler.match.MatchableNode;
-import com.oracle.graal.hotspot.nodes.CompressionNode;
-import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
-import com.oracle.graal.lir.gen.LIRGenerator;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.core.match.MatchableNode;
+import org.graalvm.compiler.hotspot.nodes.CompressionNode;
+import org.graalvm.compiler.hotspot.nodes.DirectCompareAndSwapNode;
+import org.graalvm.compiler.lir.gen.LIRGenerator;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
  * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition

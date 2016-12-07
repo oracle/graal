@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.verifier;
+package org.graalvm.compiler.replacements.verifier;
 
 import java.io.PrintWriter;
 import java.util.List;
@@ -35,9 +35,9 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.api.replacements.Fold.InjectedParameter;
-import com.oracle.graal.replacements.verifier.InjectedDependencies.WellKnownDependency;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
+import org.graalvm.compiler.replacements.verifier.InjectedDependencies.WellKnownDependency;
 
 /**
  * Create graph builder plugins for {@link Fold} methods.
@@ -56,7 +56,7 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
     public void extraImports(Set<String> imports) {
         imports.add("jdk.vm.ci.meta.JavaConstant");
         imports.add("jdk.vm.ci.meta.JavaKind");
-        imports.add("com.oracle.graal.nodes.ConstantNode");
+        imports.add("org.graalvm.compiler.nodes.ConstantNode");
     }
 
     @Override

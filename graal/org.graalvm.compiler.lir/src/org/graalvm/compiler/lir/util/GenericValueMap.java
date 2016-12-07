@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.util;
+package org.graalvm.compiler.lir.util;
 
 import java.util.Map;
 
-import com.oracle.graal.compiler.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CollectionsFactory;
 
 import jdk.vm.ci.meta.Value;
 

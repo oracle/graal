@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
-import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 
 import jdk.vm.ci.meta.Value;
 

@@ -20,27 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases;
+package org.graalvm.compiler.phases;
 
 import java.util.regex.Pattern;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.DebugMemUseTracker;
-import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.Fingerprint;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Graph.Mark;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
-import com.oracle.graal.phases.contract.NodeCostUtil;
-import com.oracle.graal.phases.contract.PhaseSizeContract;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.DebugMemUseTracker;
+import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.debug.Fingerprint;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Graph.Mark;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.StableOptionValue;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
+import org.graalvm.compiler.phases.contract.PhaseSizeContract;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 /**
  * Base class for all compiler phases. Subclasses should be stateless. There will be one global

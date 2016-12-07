@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.walker;
+package org.graalvm.compiler.phases.common.inlining.walker;
 
-import static com.oracle.graal.compiler.common.GraalOptions.Intrinsify;
-import static com.oracle.graal.compiler.common.GraalOptions.MaximumRecursiveInlining;
-import static com.oracle.graal.compiler.common.GraalOptions.MegamorphicInliningMinMethodProbability;
+import static org.graalvm.compiler.core.common.GraalOptions.Intrinsify;
+import static org.graalvm.compiler.core.common.GraalOptions.MaximumRecursiveInlining;
+import static org.graalvm.compiler.core.common.GraalOptions.MegamorphicInliningMinMethodProbability;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,35 +34,35 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.graal.compiler.common.type.ObjectStamp;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.internal.method.MethodMetricsInlineeScopeInfo;
-import com.oracle.graal.graph.Graph;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.CallTargetNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.java.AbstractNewObjectNode;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.nodes.virtual.AllocatedObjectNode;
-import com.oracle.graal.nodes.virtual.VirtualObjectNode;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.info.AssumptionInlineInfo;
-import com.oracle.graal.phases.common.inlining.info.ExactInlineInfo;
-import com.oracle.graal.phases.common.inlining.info.InlineInfo;
-import com.oracle.graal.phases.common.inlining.info.MultiTypeGuardInlineInfo;
-import com.oracle.graal.phases.common.inlining.info.TypeGuardInlineInfo;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
-import com.oracle.graal.phases.common.inlining.policy.InliningPolicy;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.util.Providers;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.common.inlining.info.AssumptionInlineInfo;
+import org.graalvm.compiler.phases.common.inlining.info.ExactInlineInfo;
+import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
+import org.graalvm.compiler.phases.common.inlining.info.MultiTypeGuardInlineInfo;
+import org.graalvm.compiler.phases.common.inlining.info.TypeGuardInlineInfo;
+import org.graalvm.compiler.phases.common.inlining.info.elem.Inlineable;
+import org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph;
+import org.graalvm.compiler.phases.common.inlining.policy.InliningPolicy;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -86,8 +86,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * The bottom element in the stack consists of:
  * <ul>
  * <li>a single {@link MethodInvocation} (the
- * {@link com.oracle.graal.phases.common.inlining.walker.MethodInvocation#isRoot root} one, ie the
- * unknown caller of the root graph)</li>
+ * {@link org.graalvm.compiler.phases.common.inlining.walker.MethodInvocation#isRoot root} one, ie
+ * the unknown caller of the root graph)</li>
  * <li>a single {@link CallsiteHolder} (the root one, for the method on which inlining was called)
  * </li>
  * </ul>
@@ -496,7 +496,7 @@ public class InliningData {
      * <p>
      * A freshly instantiated argument is either:
      * <uL>
-     * <li>an {@link InliningData#isFreshInstantiation(com.oracle.graal.nodes.ValueNode)}</li>
+     * <li>an {@link InliningData#isFreshInstantiation(org.graalvm.compiler.nodes.ValueNode)}</li>
      * <li>a fixed-param, ie a {@link ParameterNode} receiving a freshly instantiated argument</li>
      * </uL>
      * </p>

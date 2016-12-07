@@ -20,27 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.stackslotalloc;
+package org.graalvm.compiler.lir.stackslotalloc;
 
-import static com.oracle.graal.lir.LIRValueUtil.asVirtualStackSlot;
-import static com.oracle.graal.lir.LIRValueUtil.isVirtualStackSlot;
-import static com.oracle.graal.lir.stackslotalloc.StackSlotAllocatorUtil.allocatedFramesize;
-import static com.oracle.graal.lir.stackslotalloc.StackSlotAllocatorUtil.allocatedSlots;
-import static com.oracle.graal.lir.stackslotalloc.StackSlotAllocatorUtil.virtualFramesize;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
+import static org.graalvm.compiler.lir.stackslotalloc.StackSlotAllocatorUtil.allocatedFramesize;
+import static org.graalvm.compiler.lir.stackslotalloc.StackSlotAllocatorUtil.allocatedSlots;
+import static org.graalvm.compiler.lir.stackslotalloc.StackSlotAllocatorUtil.virtualFramesize;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.Indent;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.ValueProcedure;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.framemap.FrameMapBuilderTool;
-import com.oracle.graal.lir.framemap.SimpleVirtualStackSlot;
-import com.oracle.graal.lir.framemap.VirtualStackSlotRange;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.phases.AllocationPhase;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.ValueProcedure;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.VirtualStackSlotRange;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.phases.AllocationPhase;
 
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;

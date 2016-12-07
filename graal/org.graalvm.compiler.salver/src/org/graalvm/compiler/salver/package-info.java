@@ -39,7 +39,7 @@
  * </p>
  *
  * <p>
- * See {@link com.oracle.graal.salver.SalverOptions SalverOptions} for all available options.
+ * See {@link org.graalvm.compiler.salver.SalverOptions SalverOptions} for all available options.
  * <p>
  *
  * <p>
@@ -58,12 +58,12 @@
  * </p>
  *
  * <p>
- * Currently available {@link com.oracle.graal.debug.DebugDumpHandler DebugDumpHandlers}:
+ * Currently available {@link org.graalvm.compiler.debug.DebugDumpHandler DebugDumpHandlers}:
  * <ul>
- * <li>{@link com.oracle.graal.salver.handler.GraphDumpHandler GraphDumpHandler}:<br>
- * Dumps {@link com.oracle.graal.graph.Graph Graphs} (extracts almost the same information as IGV's
- * dump handler).</li>
+ * <li>{@link org.graalvm.compiler.salver.handler.GraphDumpHandler GraphDumpHandler}:<br>
+ * Dumps {@link org.graalvm.compiler.graph.Graph Graphs} (extracts almost the same information as
+ * IGV's dump handler).</li>
  * </ul>
  * </p>
  */
-package com.oracle.graal.salver;
+package org.graalvm.compiler.salver;

@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases.aot;
+package org.graalvm.compiler.hotspot.phases.aot;
 
-import static com.oracle.graal.compiler.common.GraalOptions.InlineEverything;
-import static com.oracle.graal.compiler.common.GraalOptions.TrivialInliningSize;
+import static org.graalvm.compiler.core.common.GraalOptions.InlineEverything;
+import static org.graalvm.compiler.core.common.GraalOptions.TrivialInliningSize;
 
 import java.util.Map;
 
-import com.oracle.graal.hotspot.FingerprintUtil;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.inlining.info.InlineInfo;
-import com.oracle.graal.phases.common.inlining.policy.GreedyInliningPolicy;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+import org.graalvm.compiler.hotspot.FingerprintUtil;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
+import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
+import org.graalvm.compiler.phases.common.inlining.walker.MethodInvocation;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 

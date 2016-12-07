@@ -20,31 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.info.elem;
+package org.graalvm.compiler.phases.common.inlining.info.elem;
 
-import static com.oracle.graal.compiler.common.CompilationIdentifier.INVALID_COMPILATION_ID;
-import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
+import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
+import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.ParameterNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
-import com.oracle.graal.phases.common.inlining.InliningUtil;
-import com.oracle.graal.phases.common.instrumentation.ExtractInstrumentationPhase;
-import com.oracle.graal.phases.graph.FixedNodeProbabilityCache;
-import com.oracle.graal.phases.tiers.HighTierContext;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.common.instrumentation.ExtractInstrumentationPhase;
+import org.graalvm.compiler.phases.graph.FixedNodeProbabilityCache;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -57,11 +57,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  *
  * <p>
  * Instances of this class don't make sense in isolation but as part of an
- * {@link com.oracle.graal.phases.common.inlining.info.InlineInfo InlineInfo}.
+ * {@link org.graalvm.compiler.phases.common.inlining.info.InlineInfo InlineInfo}.
  * </p>
  *
- * @see com.oracle.graal.phases.common.inlining.walker.InliningData#moveForward()
- * @see com.oracle.graal.phases.common.inlining.walker.CallsiteHolderExplorable
+ * @see org.graalvm.compiler.phases.common.inlining.walker.InliningData#moveForward()
+ * @see org.graalvm.compiler.phases.common.inlining.walker.CallsiteHolderExplorable
  */
 public class InlineableGraph implements Inlineable {
 

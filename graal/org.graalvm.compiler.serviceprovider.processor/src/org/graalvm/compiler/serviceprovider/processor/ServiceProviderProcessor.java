@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.serviceprovider.processor;
+package org.graalvm.compiler.serviceprovider.processor;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -41,7 +41,7 @@ import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 /**
  * Processes classes annotated with {@link ServiceProvider}. For a service defined by {@code S} and
@@ -49,7 +49,7 @@ import com.oracle.graal.serviceprovider.ServiceProvider;
  * {@code META-INF/providers/P} whose contents are a single line containing the fully qualified name
  * of {@code S}.
  */
-@SupportedAnnotationTypes("com.oracle.graal.serviceprovider.ServiceProvider")
+@SupportedAnnotationTypes("org.graalvm.compiler.serviceprovider.ServiceProvider")
 public class ServiceProviderProcessor extends AbstractProcessor {
 
     private final Set<TypeElement> processed = new HashSet<>();

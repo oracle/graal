@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.asm;
+package org.graalvm.compiler.lir.asm;
 
 /**
  * Code for managing a method's native frame.

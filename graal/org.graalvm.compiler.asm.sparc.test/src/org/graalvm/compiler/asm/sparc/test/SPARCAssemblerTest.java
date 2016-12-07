@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.sparc.test;
+package org.graalvm.compiler.asm.sparc.test;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BPCC;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BPR;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BR;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CBCOND;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.ANNUL;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.CarryClear;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.RCondition.Rc_z;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPCC;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPR;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BR;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CBCOND;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.ANNUL;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Xcc;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.CarryClear;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.RCondition.Rc_z;
 import static jdk.vm.ci.sparc.SPARC.g0;
 
 import java.util.EnumSet;
@@ -46,12 +46,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.sparc.SPARCAssembler;
-import com.oracle.graal.asm.sparc.SPARCAssembler.ControlTransferOp;
-import com.oracle.graal.asm.sparc.SPARCAssembler.SPARCOp;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.test.GraalTest;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler.ControlTransferOp;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler.SPARCOp;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.test.GraalTest;
 
 public class SPARCAssemblerTest extends GraalTest {
     private SPARCMacroAssembler masm;

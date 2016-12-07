@@ -22,7 +22,7 @@
  */
 /*
  */
-package com.oracle.graal.jtt.lang;
+package org.graalvm.compiler.jtt.lang;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,7 +30,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 public final class ProcessEnvironment_init extends JTTTest {
 

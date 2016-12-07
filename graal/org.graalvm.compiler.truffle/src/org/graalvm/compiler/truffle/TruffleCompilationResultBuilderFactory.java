@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.asm.CompilationResultBuilderFactory;
-import com.oracle.graal.lir.asm.DataBuilder;
-import com.oracle.graal.lir.asm.FrameContext;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.truffle.nodes.AssumptionValidAssumption;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.asm.DataBuilder;
+import org.graalvm.compiler.lir.asm.FrameContext;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.nodes.AssumptionValidAssumption;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.meta.Assumptions.Assumption;

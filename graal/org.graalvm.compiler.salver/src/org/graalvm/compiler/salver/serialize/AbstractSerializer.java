@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.serialize;
+package org.graalvm.compiler.salver.serialize;
 
 import java.io.IOException;
 
-import com.oracle.graal.salver.writer.DumpWriter;
+import org.graalvm.compiler.salver.writer.DumpWriter;
 
 public abstract class AbstractSerializer implements Serializer {
 

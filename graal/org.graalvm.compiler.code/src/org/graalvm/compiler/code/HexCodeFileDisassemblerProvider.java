@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.code;
+package org.graalvm.compiler.code;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -40,7 +40,7 @@ import jdk.vm.ci.code.site.ExceptionHandler;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.Mark;
 
-import com.oracle.graal.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 /**
  * {@link HexCodeFile} based implementation of {@link DisassemblerProvider}.

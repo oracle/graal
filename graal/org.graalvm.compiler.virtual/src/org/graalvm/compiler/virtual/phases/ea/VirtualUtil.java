@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.virtual.phases.ea;
+package org.graalvm.compiler.virtual.phases.ea;
 
-import static com.oracle.graal.compiler.common.GraalOptions.TraceEscapeAnalysis;
+import static org.graalvm.compiler.core.common.GraalOptions.TraceEscapeAnalysis;
 
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeFlood;
-import com.oracle.graal.nodes.AbstractEndNode;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeFlood;
+import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

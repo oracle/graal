@@ -20,28 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package org.graalvm.compiler.hotspot.stubs;
 
-import static com.oracle.graal.compiler.common.LocationIdentity.any;
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
-import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl.REEXECUTABLE;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
+import static org.graalvm.compiler.core.common.LocationIdentity.any;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.REEXECUTABLE;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 
-import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProviderImpl;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
-import com.oracle.graal.hotspot.word.KlassPointer;
-import com.oracle.graal.replacements.nodes.CStringConstant;
-import com.oracle.graal.word.Word;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
+import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.replacements.nodes.CStringConstant;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.Register;
 

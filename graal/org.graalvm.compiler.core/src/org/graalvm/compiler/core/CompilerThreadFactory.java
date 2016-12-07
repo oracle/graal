@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler;
+package org.graalvm.compiler.core;
 
 import java.util.concurrent.ThreadFactory;
 
-import com.oracle.graal.debug.DebugConfig;
+import org.graalvm.compiler.debug.DebugConfig;
 
 /**
  * Facility for creating {@linkplain CompilerThread compiler threads}.

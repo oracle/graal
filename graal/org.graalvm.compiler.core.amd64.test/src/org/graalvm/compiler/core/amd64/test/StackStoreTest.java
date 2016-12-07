@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.amd64.test;
+package org.graalvm.compiler.core.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.framemap.FrameMapBuilder;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.lir.jtt.LIRTest;
-import com.oracle.graal.lir.jtt.LIRTestSpecification;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.jtt.LIRTest;
+import org.graalvm.compiler.lir.jtt.LIRTestSpecification;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;

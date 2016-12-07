@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.test;
+package org.graalvm.compiler.replacements.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.compiler.common.CompilationIdentifier;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
-import com.oracle.graal.replacements.ReplacementsImpl;
-import com.oracle.graal.replacements.Snippets;
-import com.oracle.graal.word.Pointer;
-import com.oracle.graal.word.Unsigned;
-import com.oracle.graal.word.Word;
-import com.oracle.graal.word.WordBase;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.replacements.ReplacementsImpl;
+import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.word.Pointer;
+import org.graalvm.compiler.word.Unsigned;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.compiler.word.WordBase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

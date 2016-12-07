@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
-import static com.oracle.graal.compiler.common.util.Util.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.core.common.util.Util.JAVA_SPECIFICATION_VERSION;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -41,14 +41,14 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.CompilerThreadFactory;
-import com.oracle.graal.compiler.common.util.ModuleAPI;
-import com.oracle.graal.compiler.common.util.Util;
-import com.oracle.graal.options.OptionDescriptor;
-import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionsParser;
-import com.oracle.graal.test.SubprocessUtil;
+import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.common.util.ModuleAPI;
+import org.graalvm.compiler.core.common.util.Util;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.test.SubprocessUtil;
 
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.services.JVMCIServiceLocator;
@@ -67,8 +67,8 @@ public class LazyInitializationTest {
 
     public LazyInitializationTest() {
         hotSpotVMEventListener = forNameOrNull("jdk.vm.ci.hotspot.services.HotSpotVMEventListener");
-        hotSpotGraalCompilerFactoryOptions = forNameOrNull("com.oracle.graal.hotspot.HotSpotGraalCompilerFactory$Options");
-        jvmciVersionCheck = forNameOrNull("com.oracle.graal.hotspot.JVMCIVersionCheck");
+        hotSpotGraalCompilerFactoryOptions = forNameOrNull("org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory$Options");
+        jvmciVersionCheck = forNameOrNull("org.graalvm.compiler.hotspot.JVMCIVersionCheck");
     }
 
     private static Class<?> forNameOrNull(String name) {
@@ -175,13 +175,13 @@ public class LazyInitializationTest {
     }
 
     private static boolean isGraalClass(String className) {
-        if (className.startsWith("com.oracle.graal.truffle.") || className.startsWith("com.oracle.graal.serviceprovider.")) {
-            // Ignore classes in the com.oracle.graal.truffle package, they are all allowed.
+        if (className.startsWith("org.graalvm.compiler.truffle.") || className.startsWith("org.graalvm.compiler.serviceprovider.")) {
+            // Ignore classes in the org.graalvm.compiler.truffle package, they are all allowed.
             // Also ignore classes in the graal serviceprovider package, as they might not be lazily
             // loaded.
             return false;
         } else {
-            return className.startsWith("com.oracle.graal.");
+            return className.startsWith("org.graalvm.compiler.");
         }
     }
 
@@ -288,7 +288,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        // No other class from the com.oracle.graal package should be loaded.
+        // No other class from the org.graalvm.compiler package should be loaded.
         return false;
     }
 }

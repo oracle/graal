@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.test.alloc.trace;
+package org.graalvm.compiler.lir.test.alloc.trace;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -31,9 +31,9 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.lir.alloc.trace.ShadowedRegisterValue;
-import com.oracle.graal.lir.alloc.trace.TraceGlobalMoveResolutionPhase;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.lir.alloc.trace.ShadowedRegisterValue;
+import org.graalvm.compiler.lir.alloc.trace.TraceGlobalMoveResolutionPhase;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;

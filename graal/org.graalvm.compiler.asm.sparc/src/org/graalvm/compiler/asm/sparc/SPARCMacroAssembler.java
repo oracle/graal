@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.sparc;
+package org.graalvm.compiler.asm.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Icc;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Always;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.RCondition.Rc_z;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Icc;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Xcc;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.Always;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.RCondition.Rc_z;
 import static jdk.vm.ci.sparc.SPARC.g0;
 import static jdk.vm.ci.sparc.SPARC.g3;
 import static jdk.vm.ci.sparc.SPARC.i7;
 import static jdk.vm.ci.sparc.SPARC.o7;
 
-import com.oracle.graal.asm.AbstractAddress;
-import com.oracle.graal.asm.Label;
+import org.graalvm.compiler.asm.AbstractAddress;
+import org.graalvm.compiler.asm.Label;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;

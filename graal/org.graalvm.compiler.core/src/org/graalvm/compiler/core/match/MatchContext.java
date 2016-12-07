@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.match;
+package org.graalvm.compiler.core.match;
 
-import static com.oracle.graal.debug.GraalDebugConfig.Options.LogVerbose;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.LogVerbose;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,13 +30,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.graal.compiler.gen.NodeLIRBuilder;
-import com.oracle.graal.compiler.match.MatchPattern.Result;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.calc.FloatingNode;
-import com.oracle.graal.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.core.gen.NodeLIRBuilder;
+import org.graalvm.compiler.core.match.MatchPattern.Result;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 /**
  * Container for state captured during a match.

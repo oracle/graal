@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.debug;
+package org.graalvm.compiler.truffle.debug;
 
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.counting;
@@ -36,16 +36,16 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.truffle.GraalTruffleRuntime;
-import com.oracle.graal.truffle.OptimizedCallTarget;
-import com.oracle.graal.truffle.OptimizedDirectCallNode;
-import com.oracle.graal.truffle.OptimizedCompilationProfile;
-import com.oracle.graal.truffle.TruffleCompilerOptions;
-import com.oracle.graal.truffle.TruffleInlining;
-import com.oracle.graal.truffle.TruffleInlining.CallTreeNodeVisitor;
-import com.oracle.graal.truffle.TruffleInliningDecision;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.OptimizedCompilationProfile;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleInlining;
+import org.graalvm.compiler.truffle.TruffleInlining.CallTreeNodeVisitor;
+import org.graalvm.compiler.truffle.TruffleInliningDecision;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;

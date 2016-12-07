@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.JavaMethodContext;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.JavaMethodContext;
 import com.oracle.truffle.api.RootCallTarget;
 
 import jdk.vm.ci.meta.JavaKind;

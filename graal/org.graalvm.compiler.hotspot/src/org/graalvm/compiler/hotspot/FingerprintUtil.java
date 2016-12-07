@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import java.lang.reflect.Method;
 

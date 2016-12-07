@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.word;
+package org.graalvm.compiler.word;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 
 /**
  * Lowest-level memory access of native C memory. These methods access the raw memory without any

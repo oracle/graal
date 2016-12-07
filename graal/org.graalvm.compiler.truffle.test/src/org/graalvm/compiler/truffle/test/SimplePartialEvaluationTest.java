@@ -20,35 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
 import jdk.vm.ci.code.BailoutException;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.code.SourceStackTraceBailoutException;
-import com.oracle.graal.replacements.PEGraphDecoder;
-import com.oracle.graal.truffle.OptimizedCallTarget;
-import com.oracle.graal.truffle.test.nodes.AbstractTestNode;
-import com.oracle.graal.truffle.test.nodes.AddTestNode;
-import com.oracle.graal.truffle.test.nodes.BlockTestNode;
-import com.oracle.graal.truffle.test.nodes.ConstantTestNode;
-import com.oracle.graal.truffle.test.nodes.ExplodeLoopUntilReturnNode;
-import com.oracle.graal.truffle.test.nodes.ExplodeLoopUntilReturnWithThrowNode;
-import com.oracle.graal.truffle.test.nodes.LambdaTestNode;
-import com.oracle.graal.truffle.test.nodes.LoadLocalTestNode;
-import com.oracle.graal.truffle.test.nodes.LoopTestNode;
-import com.oracle.graal.truffle.test.nodes.NestedExplodedLoopTestNode;
-import com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode;
-import com.oracle.graal.truffle.test.nodes.ObjectEqualsNode;
-import com.oracle.graal.truffle.test.nodes.ObjectHashCodeNode;
-import com.oracle.graal.truffle.test.nodes.RecursionTestNode;
-import com.oracle.graal.truffle.test.nodes.RootTestNode;
-import com.oracle.graal.truffle.test.nodes.StoreLocalTestNode;
-import com.oracle.graal.truffle.test.nodes.StringEqualsNode;
-import com.oracle.graal.truffle.test.nodes.SynchronizedExceptionMergeNode;
-import com.oracle.graal.truffle.test.nodes.TwoMergesExplodedLoopTestNode;
+import org.graalvm.compiler.code.SourceStackTraceBailoutException;
+import org.graalvm.compiler.replacements.PEGraphDecoder;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
+import org.graalvm.compiler.truffle.test.nodes.AddTestNode;
+import org.graalvm.compiler.truffle.test.nodes.BlockTestNode;
+import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
+import org.graalvm.compiler.truffle.test.nodes.ExplodeLoopUntilReturnNode;
+import org.graalvm.compiler.truffle.test.nodes.ExplodeLoopUntilReturnWithThrowNode;
+import org.graalvm.compiler.truffle.test.nodes.LambdaTestNode;
+import org.graalvm.compiler.truffle.test.nodes.LoadLocalTestNode;
+import org.graalvm.compiler.truffle.test.nodes.LoopTestNode;
+import org.graalvm.compiler.truffle.test.nodes.NestedExplodedLoopTestNode;
+import org.graalvm.compiler.truffle.test.nodes.NeverPartOfCompilationTestNode;
+import org.graalvm.compiler.truffle.test.nodes.ObjectEqualsNode;
+import org.graalvm.compiler.truffle.test.nodes.ObjectHashCodeNode;
+import org.graalvm.compiler.truffle.test.nodes.RecursionTestNode;
+import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.graalvm.compiler.truffle.test.nodes.StoreLocalTestNode;
+import org.graalvm.compiler.truffle.test.nodes.StringEqualsNode;
+import org.graalvm.compiler.truffle.test.nodes.SynchronizedExceptionMergeNode;
+import org.graalvm.compiler.truffle.test.nodes.TwoMergesExplodedLoopTestNode;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -85,8 +85,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         } catch (SourceStackTraceBailoutException t) {
             // Expected verification error occurred.
             StackTraceElement[] trace = t.getStackTrace();
-            assertStack(trace[0], "com.oracle.graal.truffle.test.nodes.NeverPartOfCompilationTestNode", "execute", "NeverPartOfCompilationTestNode.java");
-            assertStack(trace[1], "com.oracle.graal.truffle.test.nodes.RootTestNode", "execute", "RootTestNode.java");
+            assertStack(trace[0], "org.graalvm.compiler.truffle.test.nodes.NeverPartOfCompilationTestNode", "execute", "NeverPartOfCompilationTestNode.java");
+            assertStack(trace[1], "org.graalvm.compiler.truffle.test.nodes.RootTestNode", "execute", "RootTestNode.java");
         }
     }
 

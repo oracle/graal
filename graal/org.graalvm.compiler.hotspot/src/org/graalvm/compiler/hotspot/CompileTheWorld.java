@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.compiler.GraalCompilerOptions.ExitVMOnException;
-import static com.oracle.graal.compiler.GraalCompilerOptions.PrintBailout;
-import static com.oracle.graal.compiler.GraalCompilerOptions.PrintStackTraceOnException;
-import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
-import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldClasspath;
-import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldConfig;
-import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldExcludeMethodFilter;
-import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldMethodFilter;
-import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldStartAt;
-import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldStopAt;
-import static com.oracle.graal.hotspot.CompileTheWorldOptions.CompileTheWorldVerbose;
+import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
+import static org.graalvm.compiler.core.GraalCompilerOptions.PrintBailout;
+import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnException;
+import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
+import static org.graalvm.compiler.hotspot.CompileTheWorldOptions.CompileTheWorldClasspath;
+import static org.graalvm.compiler.hotspot.CompileTheWorldOptions.CompileTheWorldConfig;
+import static org.graalvm.compiler.hotspot.CompileTheWorldOptions.CompileTheWorldExcludeMethodFilter;
+import static org.graalvm.compiler.hotspot.CompileTheWorldOptions.CompileTheWorldMethodFilter;
+import static org.graalvm.compiler.hotspot.CompileTheWorldOptions.CompileTheWorldStartAt;
+import static org.graalvm.compiler.hotspot.CompileTheWorldOptions.CompileTheWorldStopAt;
+import static org.graalvm.compiler.hotspot.CompileTheWorldOptions.CompileTheWorldVerbose;
 
 import java.io.Closeable;
 import java.io.File;
@@ -73,24 +73,24 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.bytecode.Bytecodes;
-import com.oracle.graal.compiler.CompilerThreadFactory;
-import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
-import com.oracle.graal.compiler.common.util.Util;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugEnvironment;
-import com.oracle.graal.debug.GraalDebugConfig;
-import com.oracle.graal.debug.MethodFilter;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.debug.internal.MemUseTrackerImpl;
-import com.oracle.graal.options.OptionDescriptor;
-import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.options.OptionsParser;
-import com.oracle.graal.options.OptionsParser.OptionConsumer;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.bytecode.Bytecodes;
+import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.CompilerThreadFactory.DebugConfigAccess;
+import org.graalvm.compiler.core.common.util.Util;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugEnvironment;
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.MethodFilter;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.internal.MemUseTrackerImpl;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.options.OptionsParser.OptionConsumer;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;

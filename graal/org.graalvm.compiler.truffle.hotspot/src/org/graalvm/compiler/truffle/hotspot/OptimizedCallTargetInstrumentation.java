@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot;
+package org.graalvm.compiler.truffle.hotspot;
 
-import static com.oracle.graal.truffle.hotspot.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.truffle.hotspot.UnsafeAccess.UNSAFE;
 
 import java.lang.reflect.Field;
 
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.asm.DataBuilder;
-import com.oracle.graal.lir.asm.FrameContext;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.asm.DataBuilder;
+import org.graalvm.compiler.lir.asm.FrameContext;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.site.Mark;

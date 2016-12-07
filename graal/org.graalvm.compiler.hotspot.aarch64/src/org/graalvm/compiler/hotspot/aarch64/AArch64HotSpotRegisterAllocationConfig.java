@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.aarch64;
+package org.graalvm.compiler.hotspot.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
@@ -87,7 +87,7 @@ import static jdk.vm.ci.aarch64.AArch64.v9;
 import java.util.ArrayList;
 import java.util.BitSet;
 
-import com.oracle.graal.compiler.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;

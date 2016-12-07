@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.graphbuilderconf;
+package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import com.oracle.graal.bytecode.BytecodeProvider;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.ValueNode;
+import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

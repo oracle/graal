@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleCompileOnly;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -45,27 +45,27 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
-import com.oracle.graal.api.runtime.GraalRuntime;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.CompilerThreadFactory;
-import com.oracle.graal.compiler.common.CompilationIdentifier;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.serviceprovider.GraalServices;
-import com.oracle.graal.truffle.debug.CompilationStatisticsListener;
-import com.oracle.graal.truffle.debug.PrintCallTargetProfiling;
-import com.oracle.graal.truffle.debug.TraceCompilationASTListener;
-import com.oracle.graal.truffle.debug.TraceCompilationCallTreeListener;
-import com.oracle.graal.truffle.debug.TraceCompilationFailureListener;
-import com.oracle.graal.truffle.debug.TraceCompilationListener;
-import com.oracle.graal.truffle.debug.TraceCompilationPolymorphismListener;
-import com.oracle.graal.truffle.debug.TraceInliningListener;
-import com.oracle.graal.truffle.debug.TraceSplittingListener;
-import com.oracle.graal.truffle.phases.InstrumentBranchesPhase;
+import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.truffle.debug.CompilationStatisticsListener;
+import org.graalvm.compiler.truffle.debug.PrintCallTargetProfiling;
+import org.graalvm.compiler.truffle.debug.TraceCompilationASTListener;
+import org.graalvm.compiler.truffle.debug.TraceCompilationCallTreeListener;
+import org.graalvm.compiler.truffle.debug.TraceCompilationFailureListener;
+import org.graalvm.compiler.truffle.debug.TraceCompilationListener;
+import org.graalvm.compiler.truffle.debug.TraceCompilationPolymorphismListener;
+import org.graalvm.compiler.truffle.debug.TraceInliningListener;
+import org.graalvm.compiler.truffle.debug.TraceSplittingListener;
+import org.graalvm.compiler.truffle.phases.InstrumentBranchesPhase;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;

@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal.method;
+package org.graalvm.compiler.debug.internal.method;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.internal.DebugScope;
-import com.oracle.graal.debug.internal.DebugScope.ExtraInfo;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.internal.DebugScope.ExtraInfo;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -44,13 +44,14 @@ public class MethodMetricsRootScopeInfo implements ExtraInfo {
     }
 
     /**
-     * Creates and returns a {@link com.oracle.graal.debug.Debug.Scope scope} iff there is no
-     * existing {@linkplain com.oracle.graal.debug.internal.DebugScope.ExtraInfo extraInfo} object
-     * of type {@link MethodMetricsRootScopeInfo} present in the current {@link DebugScope scope}.
+     * Creates and returns a {@link org.graalvm.compiler.debug.Debug.Scope scope} iff there is no
+     * existing {@linkplain org.graalvm.compiler.debug.internal.DebugScope.ExtraInfo extraInfo}
+     * object of type {@link MethodMetricsRootScopeInfo} present in the current {@link DebugScope
+     * scope}.
      *
      * @param method
-     * @return a new {@link com.oracle.graal.debug.Debug.Scope scope} or {@code null} iff there is
-     *         already an existing one on the scope
+     * @return a new {@link org.graalvm.compiler.debug.Debug.Scope scope} or {@code null} iff there
+     *         is already an existing one on the scope
      */
     public static Debug.Scope createRootScopeIfAbsent(ResolvedJavaMethod method) {
         /*

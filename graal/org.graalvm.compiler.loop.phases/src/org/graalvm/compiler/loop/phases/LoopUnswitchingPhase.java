@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop.phases;
+package org.graalvm.compiler.loop.phases;
 
 import java.util.Iterator;
 import java.util.List;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.loop.LoopEx;
-import com.oracle.graal.loop.LoopPolicies;
-import com.oracle.graal.loop.LoopsData;
-import com.oracle.graal.nodes.AbstractBeginNode;
-import com.oracle.graal.nodes.ControlSplitNode;
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.loop.LoopEx;
+import org.graalvm.compiler.loop.LoopPolicies;
+import org.graalvm.compiler.loop.LoopsData;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 public class LoopUnswitchingPhase extends ContextlessLoopPhase<LoopPolicies> {
     private static final DebugCounter UNSWITCHED = Debug.counter("Unswitched");

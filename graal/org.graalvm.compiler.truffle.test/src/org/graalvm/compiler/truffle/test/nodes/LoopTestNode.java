@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test.nodes;
+package org.graalvm.compiler.truffle.test.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 

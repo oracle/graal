@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package org.graalvm.compiler.replacements;
 
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.replacements.nodes.AssertionNode;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.replacements.nodes.AssertionNode;
 
 // JaCoCo Exclude
 public final class ReplacementsUtil {

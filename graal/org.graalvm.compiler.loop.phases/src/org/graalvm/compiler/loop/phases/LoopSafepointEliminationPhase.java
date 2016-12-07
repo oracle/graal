@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.loop.phases;
+package org.graalvm.compiler.loop.phases;
 
-import com.oracle.graal.loop.LoopEx;
-import com.oracle.graal.loop.LoopsData;
-import com.oracle.graal.nodes.FixedNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.LoopEndNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.extended.ForeignCallNode;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.tiers.MidTierContext;
+import org.graalvm.compiler.loop.LoopEx;
+import org.graalvm.compiler.loop.LoopsData;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.LoopEndNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 

@@ -21,30 +21,35 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
+
+import static org.graalvm.compiler.core.common.util.ModuleAPI.addExports;
+import static org.graalvm.compiler.core.common.util.ModuleAPI.getModule;
 
 import java.lang.reflect.Method;
 
-import org.junit.Assume;
+import org.graalvm.compiler.core.common.util.Util;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.junit.BeforeClass;
 import org.junit.Test;
-
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
 
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements Opcodes {
 
     @SuppressWarnings("try")
     protected StructuredGraph test(final String snippet) {
-        try (Scope s = Debug.scope("ConstantPoolSubstitutionsTests", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
+        ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(snippet));
+        try (Scope s = Debug.scope("ConstantPoolSubstitutionsTests", method)) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             compile(graph.method(), graph);
             assertNotInGraph(graph, Invoke.class);
@@ -84,10 +89,28 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
         Class<?> cl;
         try {
             cl = LOADER.findClass(AsmLoader.NAME);
+            addExports(cl);
         } catch (ClassNotFoundException e) {
             throw new AssertionError(e);
         }
         return getMethod(cl, methodName);
+    }
+
+    @BeforeClass
+    public static void beforeClass() {
+        addExports(AsmLoader.class);
+    }
+
+    /**
+     * This test uses some API hidden by the JDK9 module system.
+     */
+    private static void addExports(Class<?> c) {
+        if (!Util.Java8OrEarlier) {
+            Object javaBaseModule = getModule.invoke(String.class);
+            Object cModule = getModule.invoke(c);
+            addExports.invokeStatic(javaBaseModule, "jdk.internal.reflect", cModule);
+            addExports.invokeStatic(javaBaseModule, "jdk.internal.misc", cModule);
+        }
     }
 
     /**
@@ -96,14 +119,14 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
      * {@link AsmLoader}. Without such an export, the test fails as follows:
      *
      * <pre>
-     * Caused by: java.lang.IllegalAccessError: class com.oracle.graal.hotspot.test.ConstantPoolTest
+     * Caused by: java.lang.IllegalAccessError: class org.graalvm.compiler.hotspot.test.ConstantPoolTest
      * (in unnamed module @0x57599b23) cannot access class jdk.internal.reflect.ConstantPool (in
      * module java.base) because module java.base does not export jdk.internal.reflect to unnamed
      * module @0x57599b23
      * </pre>
      */
     private static void assumeJDK8() {
-        Assume.assumeTrue(Java8OrEarlier);
+        // Assume.assumeTrue(Java8OrEarlier);
     }
 
     @Test
@@ -143,12 +166,15 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
         test("getUTF8At");
     }
 
+    private static final String PACKAGE_NAME = ConstantPoolSubstitutionsTests.class.getPackage().getName();
+    private static final String PACKAGE_NAME_INTERNAL = PACKAGE_NAME.replace('.', '/');
+
     private static AsmLoader LOADER = new AsmLoader(ConstantPoolSubstitutionsTests.class.getClassLoader());
 
     public static class AsmLoader extends ClassLoader {
         Class<?> loaded;
 
-        static final String NAME = "com.oracle.graal.hotspot.test.ConstantPoolTest";
+        static final String NAME = PACKAGE_NAME + ".ConstantPoolTest";
 
         public AsmLoader(ClassLoader parent) {
             super(parent);
@@ -208,8 +234,8 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
         ClassWriter cw = new ClassWriter(0);
         MethodVisitor mv;
 
-        cw.visit(52, ACC_SUPER, "com/oracle/graal/hotspot/test/ConstantPoolTest", null, "java/lang/Object", null);
-        cw.visitInnerClass("com/oracle/graal/hotspot/test/ConstantPoolTest", "com/oracle/graal/hotspot/test/ConstantPoolSubstitutionsTests", "ConstantPoolTest",
+        cw.visit(52, ACC_SUPER, PACKAGE_NAME_INTERNAL + "/ConstantPoolTest", null, "java/lang/Object", null);
+        cw.visitInnerClass(PACKAGE_NAME_INTERNAL + "/ConstantPoolTest", PACKAGE_NAME_INTERNAL + "/ConstantPoolSubstitutionsTests", "ConstantPoolTest",
                         ACC_STATIC);
         String constantPool = Java8OrEarlier ? "sun/reflect/ConstantPool" : "jdk/internal/reflect/ConstantPool";
 
@@ -295,5 +321,4 @@ public class ConstantPoolSubstitutionsTests extends GraalCompilerTest implements
 
         return cw.toByteArray();
     }
-
 }

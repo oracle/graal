@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
-import static com.oracle.graal.compiler.common.Fields.translateInto;
-import static com.oracle.graal.debug.GraalError.shouldNotReachHere;
-import static com.oracle.graal.graph.Edges.translateInto;
-import static com.oracle.graal.graph.Graph.isModificationCountsEnabled;
-import static com.oracle.graal.graph.InputEdges.translateInto;
-import static com.oracle.graal.graph.Node.WithAllEdges;
-import static com.oracle.graal.graph.Node.newIdentityMap;
-import static com.oracle.graal.graph.UnsafeAccess.UNSAFE;
+import static org.graalvm.compiler.core.common.Fields.translateInto;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.graph.Edges.translateInto;
+import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.InputEdges.translateInto;
+import static org.graalvm.compiler.graph.Node.WithAllEdges;
+import static org.graalvm.compiler.graph.Node.newIdentityMap;
+import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -44,33 +44,33 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.graal.compiler.common.FieldIntrospection;
-import com.oracle.graal.compiler.common.Fields;
-import com.oracle.graal.compiler.common.FieldsScanner;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCloseable;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.debug.DebugTimer;
-import com.oracle.graal.debug.Fingerprint;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.Edges.Type;
-import com.oracle.graal.graph.Graph.DuplicationReplacement;
-import com.oracle.graal.graph.Node.EdgeVisitor;
-import com.oracle.graal.graph.Node.Input;
-import com.oracle.graal.graph.Node.OptionalInput;
-import com.oracle.graal.graph.Node.Successor;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.graph.spi.Canonicalizable;
-import com.oracle.graal.graph.spi.Canonicalizable.BinaryCommutative;
-import com.oracle.graal.graph.spi.Simplifiable;
-import com.oracle.graal.nodeinfo.InputType;
-import com.oracle.graal.nodeinfo.NodeCycles;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodeinfo.NodeSize;
-import com.oracle.graal.nodeinfo.Verbosity;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
+import org.graalvm.compiler.core.common.FieldIntrospection;
+import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.FieldsScanner;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.debug.DebugTimer;
+import org.graalvm.compiler.debug.Fingerprint;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Edges.Type;
+import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
+import org.graalvm.compiler.graph.Node.EdgeVisitor;
+import org.graalvm.compiler.graph.Node.Input;
+import org.graalvm.compiler.graph.Node.OptionalInput;
+import org.graalvm.compiler.graph.Node.Successor;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.graph.spi.Canonicalizable;
+import org.graalvm.compiler.graph.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.StableOptionValue;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:

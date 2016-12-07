@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.word;
+package org.graalvm.compiler.hotspot.word;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
-import com.oracle.graal.hotspot.nodes.type.MethodCountersPointerStamp;
-import com.oracle.graal.hotspot.nodes.type.MethodPointerStamp;
-import com.oracle.graal.word.WordTypes;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
+import org.graalvm.compiler.hotspot.nodes.type.MethodCountersPointerStamp;
+import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
+import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;

@@ -20,19 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.phases.HighTier;
-import com.oracle.graal.compiler.phases.MidTier;
-import com.oracle.graal.nodes.InvokeNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.extended.LoadHubNode;
-import com.oracle.graal.nodes.extended.LoadMethodNode;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.tiers.MidTierContext;
+import org.graalvm.compiler.core.phases.HighTier;
+import org.graalvm.compiler.core.phases.MidTier;
+import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.LoadMethodNode;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 
 public class HashCodeTest extends GraalCompilerTest {
 

@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir;
+package org.graalvm.compiler.lir;
 
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.lir.StandardOp.BranchOp;
-import com.oracle.graal.lir.StandardOp.JumpOp;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.lir.StandardOp.BranchOp;
+import org.graalvm.compiler.lir.StandardOp.JumpOp;
 
 /**
  * LIR instructions such as {@link JumpOp} and {@link BranchOp} need to reference their target

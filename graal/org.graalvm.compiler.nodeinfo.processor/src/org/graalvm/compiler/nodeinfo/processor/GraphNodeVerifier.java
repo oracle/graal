@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodeinfo.processor;
+package org.graalvm.compiler.nodeinfo.processor;
 
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
@@ -73,12 +73,12 @@ public class GraphNodeVerifier {
         this.types = processor.getProcessingEnv().getTypeUtils();
         this.elements = processor.getProcessingEnv().getElementUtils();
 
-        this.Input = getTypeElement("com.oracle.graal.graph.Node.Input");
-        this.OptionalInput = getTypeElement("com.oracle.graal.graph.Node.OptionalInput");
-        this.Successor = getTypeElement("com.oracle.graal.graph.Node.Successor");
-        this.Node = getTypeElement("com.oracle.graal.graph.Node");
-        this.NodeInputList = getTypeElement("com.oracle.graal.graph.NodeInputList");
-        this.NodeSuccessorList = getTypeElement("com.oracle.graal.graph.NodeSuccessorList");
+        this.Input = getTypeElement("org.graalvm.compiler.graph.Node.Input");
+        this.OptionalInput = getTypeElement("org.graalvm.compiler.graph.Node.OptionalInput");
+        this.Successor = getTypeElement("org.graalvm.compiler.graph.Node.Successor");
+        this.Node = getTypeElement("org.graalvm.compiler.graph.Node");
+        this.NodeInputList = getTypeElement("org.graalvm.compiler.graph.NodeInputList");
+        this.NodeSuccessorList = getTypeElement("org.graalvm.compiler.graph.NodeSuccessorList");
         this.object = getTypeElement("java.lang.Object");
     }
 

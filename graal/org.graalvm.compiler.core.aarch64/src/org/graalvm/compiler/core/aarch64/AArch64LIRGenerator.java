@@ -20,40 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.aarch64;
+package org.graalvm.compiler.core.aarch64;
 
-import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.function.Function;
 
-import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
-import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
-import com.oracle.graal.asm.aarch64.AArch64MacroAssembler;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRValueUtil;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.StandardOp;
-import com.oracle.graal.lir.SwitchStrategy;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.aarch64.AArch64AddressValue;
-import com.oracle.graal.lir.aarch64.AArch64ArithmeticOp;
-import com.oracle.graal.lir.aarch64.AArch64Compare;
-import com.oracle.graal.lir.aarch64.AArch64ControlFlow;
-import com.oracle.graal.lir.aarch64.AArch64ControlFlow.BranchOp;
-import com.oracle.graal.lir.aarch64.AArch64ControlFlow.CondMoveOp;
-import com.oracle.graal.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
-import com.oracle.graal.lir.aarch64.AArch64Move;
-import com.oracle.graal.lir.aarch64.AArch64Move.CompareAndSwapOp;
-import com.oracle.graal.lir.aarch64.AArch64Move.MembarOp;
-import com.oracle.graal.lir.aarch64.AArch64PauseOp;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.lir.gen.LIRGenerator;
-import com.oracle.graal.phases.util.Providers;
+import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRValueUtil;
+import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.StandardOp;
+import org.graalvm.compiler.lir.SwitchStrategy;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
+import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Compare;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Move;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.CompareAndSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
+import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.LIRGenerator;
+import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.RegisterValue;

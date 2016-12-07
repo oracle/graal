@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.amd64;
+package org.graalvm.compiler.asm.amd64;
 
 public class AMD64AsmOptions {
     public static final boolean UseNormalNop = false;

@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package org.graalvm.compiler.truffle.nodes;
 
 import java.util.Objects;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
+import org.graalvm.compiler.core.common.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

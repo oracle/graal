@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal;
+package org.graalvm.compiler.microbenchmarks.graal;
 
 import java.util.StringTokenizer;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.microbenchmarks.graal.util.FrameStateAssignmentState;
-import com.oracle.graal.microbenchmarks.graal.util.MethodSpec;
+import org.graalvm.compiler.microbenchmarks.graal.util.FrameStateAssignmentState;
+import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
 
 @Warmup(iterations = 15)
 public class FrameStateAssigmentPhaseBenchmark extends GraalBenchmark {

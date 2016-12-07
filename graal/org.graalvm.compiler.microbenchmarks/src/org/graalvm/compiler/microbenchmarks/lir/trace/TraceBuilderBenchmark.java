@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.lir.trace;
+package org.graalvm.compiler.microbenchmarks.lir.trace;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Warmup;
 
-import com.oracle.graal.compiler.common.alloc.BiDirectionalTraceBuilder;
-import com.oracle.graal.compiler.common.alloc.TraceBuilderResult;
-import com.oracle.graal.compiler.common.alloc.UniDirectionalTraceBuilder;
-import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
-import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
+import org.graalvm.compiler.core.common.alloc.BiDirectionalTraceBuilder;
+import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
+import org.graalvm.compiler.core.common.alloc.UniDirectionalTraceBuilder;
+import org.graalvm.compiler.lir.alloc.trace.TraceBuilderPhase;
+import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 
 @Warmup(iterations = 15)
 public class TraceBuilderBenchmark extends GraalBenchmark {

@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.asm;
+package org.graalvm.compiler.lir.asm;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
-import com.oracle.graal.compiler.common.type.DataPointerConstant;
+import org.graalvm.compiler.core.common.type.DataPointerConstant;
 
 /**
  * Class for chunks of data that go into the data section.

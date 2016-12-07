@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.test;
+package org.graalvm.compiler.nodes.test;
 
-import com.oracle.graal.nodes.calc.ReinterpretNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 
 /**
  * Unit tests for the {@link ReinterpretNode#inferStamp} method.

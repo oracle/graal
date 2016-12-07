@@ -21,11 +21,11 @@
  * questions.
  */
 // Checkstyle: stop
-package com.oracle.graal.jtt.loop;
+package org.graalvm.compiler.jtt.loop;
 
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 /*
  * Tests exiting 2 loops at the same time with escape-analysed values flowing out of loops

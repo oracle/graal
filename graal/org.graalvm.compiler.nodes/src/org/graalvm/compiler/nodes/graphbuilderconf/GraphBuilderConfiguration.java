@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.graphbuilderconf;
+package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import java.util.Arrays;
 
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.compiler.common.type.StampPair;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.type.StampPair;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;

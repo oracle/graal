@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.walker;
+package org.graalvm.compiler.phases.common.inlining.walker;
 
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

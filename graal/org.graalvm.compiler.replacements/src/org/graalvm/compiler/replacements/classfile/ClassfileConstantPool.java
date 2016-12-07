@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.classfile;
+package org.graalvm.compiler.replacements.classfile;
 
-import static com.oracle.graal.replacements.classfile.Classfile.skipFully;
-import static com.oracle.graal.replacements.classfile.ClassfileConstant.CONSTANT_Class;
+import static org.graalvm.compiler.replacements.classfile.Classfile.skipFully;
+import static org.graalvm.compiler.replacements.classfile.ClassfileConstant.CONSTANT_Class;
 
 import java.io.DataInputStream;
 import java.io.IOException;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.replacements.classfile.ClassfileConstant.ClassRef;
-import com.oracle.graal.replacements.classfile.ClassfileConstant.ExecutableRef;
-import com.oracle.graal.replacements.classfile.ClassfileConstant.FieldRef;
-import com.oracle.graal.replacements.classfile.ClassfileConstant.Primitive;
-import com.oracle.graal.replacements.classfile.ClassfileConstant.Utf8;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.replacements.classfile.ClassfileConstant.ClassRef;
+import org.graalvm.compiler.replacements.classfile.ClassfileConstant.ExecutableRef;
+import org.graalvm.compiler.replacements.classfile.ClassfileConstant.FieldRef;
+import org.graalvm.compiler.replacements.classfile.ClassfileConstant.Primitive;
+import org.graalvm.compiler.replacements.classfile.ClassfileConstant.Utf8;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;

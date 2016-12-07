@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.info.elem;
+package org.graalvm.compiler.phases.common.inlining.info.elem;
 
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

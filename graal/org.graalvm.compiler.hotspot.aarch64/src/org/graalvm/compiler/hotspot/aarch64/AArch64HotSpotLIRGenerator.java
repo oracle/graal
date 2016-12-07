@@ -21,49 +21,49 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.aarch64;
+package org.graalvm.compiler.hotspot.aarch64;
 
-import static com.oracle.graal.lir.LIRValueUtil.asConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 
 import java.util.function.Function;
 
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.asm.aarch64.AArch64Address.AddressingMode;
-import com.oracle.graal.asm.aarch64.AArch64Assembler.ConditionFlag;
-import com.oracle.graal.compiler.aarch64.AArch64ArithmeticLIRGenerator;
-import com.oracle.graal.compiler.aarch64.AArch64LIRGenerator;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.compiler.common.calc.Condition;
-import com.oracle.graal.compiler.common.spi.ForeignCallLinkage;
-import com.oracle.graal.compiler.common.spi.LIRKindTool;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.CompressEncoding;
-import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.hotspot.HotSpotDebugInfoBuilder;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.HotSpotLIRGenerationResult;
-import com.oracle.graal.hotspot.HotSpotLIRGenerator;
-import com.oracle.graal.hotspot.HotSpotLockStack;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
-import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
-import com.oracle.graal.lir.SwitchStrategy;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.aarch64.AArch64AddressValue;
-import com.oracle.graal.lir.aarch64.AArch64Call;
-import com.oracle.graal.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
-import com.oracle.graal.lir.aarch64.AArch64FrameMapBuilder;
-import com.oracle.graal.lir.aarch64.AArch64Move.StoreOp;
-import com.oracle.graal.lir.aarch64.AArch64PrefetchOp;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
+import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
+import org.graalvm.compiler.core.aarch64.AArch64LIRGenerator;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.CompressEncoding;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.hotspot.HotSpotDebugInfoBuilder;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
+import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
+import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
+import org.graalvm.compiler.hotspot.HotSpotLockStack;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
+import org.graalvm.compiler.hotspot.stubs.Stub;
+import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
+import org.graalvm.compiler.lir.SwitchStrategy;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
+import org.graalvm.compiler.lir.aarch64.AArch64Call;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
+import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;

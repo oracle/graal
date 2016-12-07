@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.debug;
+package org.graalvm.compiler.hotspot.debug;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -37,19 +37,19 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.graal.compiler.common.SuppressFBWarnings;
-import com.oracle.graal.debug.CSVUtil;
-import com.oracle.graal.debug.GraalDebugConfig;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.replacements.HotspotSnippetsOptions;
-import com.oracle.graal.nodes.debug.DynamicCounterNode;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.StableOptionValue;
-import com.oracle.graal.options.UniquePathUtilities;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.debug.CSVUtil;
+import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions;
+import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.StableOptionValue;
+import org.graalvm.compiler.options.UniquePathUtilities;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 

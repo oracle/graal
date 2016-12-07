@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.verify;
+package org.graalvm.compiler.phases.verify;
 
-import com.oracle.graal.common.PermanentBailoutException;
-import com.oracle.graal.common.RetryableBailoutException;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.phases.VerifyPhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.common.PermanentBailoutException;
+import org.graalvm.compiler.common.RetryableBailoutException;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.phases.VerifyPhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

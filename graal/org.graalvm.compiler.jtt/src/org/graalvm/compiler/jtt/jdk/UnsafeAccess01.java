@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.jdk;
+package org.graalvm.compiler.jtt.jdk;
 
 import java.lang.reflect.Field;
 
@@ -28,7 +28,7 @@ import org.junit.Test;
 
 import sun.misc.Unsafe;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 /*
  */

@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
-import com.oracle.graal.hotspot.replacements.NewObjectSnippets.ProfileContext;
-import com.oracle.graal.options.EnumOptionValue;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.ProfileContext;
+import org.graalvm.compiler.options.EnumOptionValue;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 /**
  * Options related to HotSpot snippets in this package.

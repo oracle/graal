@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.test;
+package org.graalvm.compiler.nodes.test;
 
 import org.junit.Assert;
 
-import com.oracle.graal.compiler.common.type.Stamp;
-import com.oracle.graal.compiler.common.type.TypeReference;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 
 public abstract class AbstractObjectStampTest extends GraalCompilerTest {
 

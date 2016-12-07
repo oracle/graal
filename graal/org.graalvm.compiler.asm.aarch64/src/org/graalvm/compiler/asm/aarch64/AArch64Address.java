@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.aarch64;
+package org.graalvm.compiler.asm.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.zr;
 
-import com.oracle.graal.asm.AbstractAddress;
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.debug.GraalError;
+import org.graalvm.compiler.asm.AbstractAddress;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import static java.lang.Thread.currentThread;
 
@@ -41,10 +41,10 @@ import java.util.Deque;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-import com.oracle.graal.debug.CSVUtil;
-import com.oracle.graal.debug.Management;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.debug.CSVUtil;
+import org.graalvm.compiler.debug.Management;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionValue;
 import com.sun.management.ThreadMXBean;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.common;
+package org.graalvm.compiler.common;
 
 import jdk.vm.ci.code.BailoutException;
 

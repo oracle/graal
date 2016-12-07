@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.test;
+package org.graalvm.compiler.api.test;
 
 import java.util.Formatter;
 
@@ -28,8 +28,8 @@ import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import jdk.vm.ci.services.Services;
 
-import com.oracle.graal.api.runtime.GraalJVMCICompiler;
-import com.oracle.graal.api.runtime.GraalRuntime;
+import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
+import org.graalvm.compiler.api.runtime.GraalRuntime;
 
 /**
  * Access point for {@linkplain #getRuntime() retrieving} the {@link GraalRuntime} instance of the

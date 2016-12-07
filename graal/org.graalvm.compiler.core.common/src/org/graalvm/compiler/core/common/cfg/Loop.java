@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.common.cfg;
+package org.graalvm.compiler.core.common.cfg;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.amd64.test;
+package org.graalvm.compiler.asm.amd64.test;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.junit.Assume.assumeTrue;
@@ -37,10 +37,10 @@ import jdk.vm.ci.meta.JavaKind;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.graal.asm.amd64.AMD64Address;
-import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
-import com.oracle.graal.asm.test.AssemblerTest;
-import com.oracle.graal.code.CompilationResult;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.test.AssemblerTest;
+import org.graalvm.compiler.code.CompilationResult;
 
 public class IncrementDecrementMacroTest extends AssemblerTest {
 

@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
-import static com.oracle.graal.lir.LIRValueUtil.asJavaConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.Arrays;
 import java.util.HashMap;
 
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.debug.BenchmarkCounters;
-import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LIRInstructionClass;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
+import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstructionClass;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;

@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.cfg;
+package org.graalvm.compiler.nodes.cfg;
 
-import com.oracle.graal.compiler.common.LocationIdentity;
-import com.oracle.graal.compiler.common.cfg.Loop;
-import com.oracle.graal.nodes.LoopBeginNode;
+import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.nodes.LoopBeginNode;
 
 public final class HIRLoop extends Loop<Block> {
 

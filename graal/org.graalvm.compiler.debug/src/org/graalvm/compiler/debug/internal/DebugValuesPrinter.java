@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug.internal;
+package org.graalvm.compiler.debug.internal;
 
-import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueFile;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueHumanReadable;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueSummary;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.DebugValueThreadFilter;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.SuppressZeroDebugValues;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugValueFile;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugValueHumanReadable;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugValueSummary;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DebugValueThreadFilter;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.SuppressZeroDebugValues;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -37,12 +37,12 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.debug.CSVUtil;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.debug.LogStream;
-import com.oracle.graal.debug.TTY;
-import com.oracle.graal.debug.internal.method.MethodMetricsImpl;
-import com.oracle.graal.debug.internal.method.MethodMetricsPrinter;
+import org.graalvm.compiler.debug.CSVUtil;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.LogStream;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
+import org.graalvm.compiler.debug.internal.method.MethodMetricsPrinter;
 
 /**
  * Facility for printing the {@linkplain KeyRegistry#getDebugValues() values} collected across all

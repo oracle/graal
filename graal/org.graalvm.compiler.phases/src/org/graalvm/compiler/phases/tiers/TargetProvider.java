@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package org.graalvm.compiler.phases.tiers;
 
 import jdk.vm.ci.code.TargetDescription;
 

@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph;
+package org.graalvm.compiler.graph;
 
-import static com.oracle.graal.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
 
-import com.oracle.graal.graph.iterators.NodeIterable;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
 
 class NodeUsageIterable implements NodeIterable<Node> {
 

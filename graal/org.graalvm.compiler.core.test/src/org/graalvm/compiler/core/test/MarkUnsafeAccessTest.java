@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -44,11 +44,11 @@ import org.junit.Test;
 
 import sun.misc.Unsafe;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.inlining.InliningPhase;
-import com.oracle.graal.phases.common.inlining.policy.InlineEverythingPolicy;
-import com.oracle.graal.phases.tiers.HighTierContext;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningPhase;
+import org.graalvm.compiler.phases.common.inlining.policy.InlineEverythingPolicy;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 public class MarkUnsafeAccessTest extends GraalCompilerTest {
 

@@ -20,26 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package org.graalvm.compiler.truffle.test;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.graal.truffle.test.builtins.SLAssertFalseBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLAssertTrueBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLCallFunctionsWithBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLCallUntilOptimizedBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLDeoptimizeWhenCompiledBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLDisableSplittingBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLGenerateDummyNodesBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLGetOptionBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLIsCompilationConstantBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLIsInlinedBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLIsOptimizedBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLSetOptionBuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLTestTruffleBoundary01BuiltinFactory;
-import com.oracle.graal.truffle.test.builtins.SLWaitForOptimizationBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLAssertFalseBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLAssertTrueBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLCallFunctionsWithBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLCallUntilOptimizedBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLDeoptimizeWhenCompiledBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLDisableSplittingBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLGenerateDummyNodesBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLGetOptionBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLIsCompilationConstantBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLIsInlinedBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLIsOptimizedBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLSetOptionBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLTestTruffleBoundary01BuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLWaitForOptimizationBuiltinFactory;
 import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
 

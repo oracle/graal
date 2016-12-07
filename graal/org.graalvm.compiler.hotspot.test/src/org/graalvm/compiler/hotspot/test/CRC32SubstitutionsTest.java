@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
@@ -29,7 +29,7 @@ import java.util.zip.CRC32;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.test.GraalCompilerTest;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 
 /**
  * Tests compiled call to {@link CRC32#update(int, int)}.

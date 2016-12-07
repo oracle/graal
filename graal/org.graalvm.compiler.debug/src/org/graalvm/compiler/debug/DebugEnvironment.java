@@ -20,22 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
-import static com.oracle.graal.debug.GraalDebugConfig.Options.Dump;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.Log;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.Count;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodFilter;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.Time;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.TrackMemUse;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.Verify;
-import static com.oracle.graal.debug.GraalDebugConfig.Options.MethodMeter;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Log;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Count;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.MethodFilter;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Time;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.TrackMemUse;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Verify;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.MethodMeter;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.graal.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.runtime.JVMCI;
 

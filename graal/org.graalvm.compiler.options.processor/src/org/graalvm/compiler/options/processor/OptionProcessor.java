@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.options.processor;
+package org.graalvm.compiler.options.processor;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -52,10 +52,10 @@ import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
 
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionDescriptor;
-import com.oracle.graal.options.OptionDescriptors;
-import com.oracle.graal.options.OptionValue;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionValue;
 
 /**
  * Processes static fields annotated with {@link Option}. An {@link OptionDescriptors}
@@ -63,7 +63,7 @@ import com.oracle.graal.options.OptionValue;
  * of the generated class for top level class {@code com.foo.Bar} is
  * {@code com.foo.Bar_OptionDescriptors}.
  */
-@SupportedAnnotationTypes({"com.oracle.graal.options.Option"})
+@SupportedAnnotationTypes({"org.graalvm.compiler.options.Option"})
 public class OptionProcessor extends AbstractProcessor {
 
     @Override

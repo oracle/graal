@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.virtual.phases.ea;
+package org.graalvm.compiler.virtual.phases.ea;
 
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.java.MonitorIdNode;
-import com.oracle.graal.nodes.virtual.EscapeObjectState;
-import com.oracle.graal.nodes.virtual.LockState;
-import com.oracle.graal.nodes.virtual.VirtualObjectNode;
-import com.oracle.graal.virtual.nodes.MaterializedObjectState;
-import com.oracle.graal.virtual.nodes.VirtualObjectState;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
+import org.graalvm.compiler.nodes.virtual.LockState;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
+import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
 /**
  * This class describes the state of a virtual object while iterating over the graph. It describes

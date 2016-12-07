@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -32,7 +32,7 @@ import jdk.vm.ci.meta.JavaConstant;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.calc.Condition;
+import org.graalvm.compiler.core.common.calc.Condition;
 
 public class ConditionTest {
 

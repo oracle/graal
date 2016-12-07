@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.bytecode;
+package org.graalvm.compiler.jtt.bytecode;
 
 import org.junit.Test;
 
-import com.oracle.graal.compiler.phases.HighTier;
-import com.oracle.graal.jtt.JTTTest;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.phases.tiers.Suites;
+import org.graalvm.compiler.core.phases.HighTier;
+import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.phases.tiers.Suites;
 
 /**
  * Tests the instanceof works, when casting an array of interface.

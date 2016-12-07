@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.stackslotalloc;
+package org.graalvm.compiler.lir.stackslotalloc;
 
-import com.oracle.graal.lir.VirtualStackSlot;
-import com.oracle.graal.lir.debug.IntervalDumper;
+import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.debug.IntervalDumper;
 
 import jdk.vm.ci.meta.Value;
 

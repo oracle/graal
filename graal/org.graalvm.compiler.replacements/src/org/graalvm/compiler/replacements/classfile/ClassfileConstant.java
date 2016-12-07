@@ -20,18 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.classfile;
+package org.graalvm.compiler.replacements.classfile;
 
-import static com.oracle.graal.bytecode.Bytecodes.GETFIELD;
-import static com.oracle.graal.bytecode.Bytecodes.GETSTATIC;
-import static com.oracle.graal.bytecode.Bytecodes.PUTFIELD;
-import static com.oracle.graal.bytecode.Bytecodes.PUTSTATIC;
+import static org.graalvm.compiler.bytecode.Bytecodes.GETFIELD;
+import static org.graalvm.compiler.bytecode.Bytecodes.GETSTATIC;
+import static org.graalvm.compiler.bytecode.Bytecodes.PUTFIELD;
+import static org.graalvm.compiler.bytecode.Bytecodes.PUTSTATIC;
 
 import java.io.DataInputStream;
 import java.io.IOException;
 
-import com.oracle.graal.bytecode.Bytecodes;
-import com.oracle.graal.debug.GraalError;
+import org.graalvm.compiler.bytecode.Bytecodes;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;

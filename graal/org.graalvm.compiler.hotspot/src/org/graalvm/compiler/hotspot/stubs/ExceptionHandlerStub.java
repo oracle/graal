@@ -20,35 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package org.graalvm.compiler.hotspot.stubs;
 
-import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerNode.jumpToExceptionHandler;
-import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.patchReturnAddress;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readExceptionOop;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.readExceptionPc;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionOop;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionPc;
-import static com.oracle.graal.hotspot.stubs.StubUtil.cAssertionsEnabled;
-import static com.oracle.graal.hotspot.stubs.StubUtil.decipher;
-import static com.oracle.graal.hotspot.stubs.StubUtil.fatal;
-import static com.oracle.graal.hotspot.stubs.StubUtil.newDescriptor;
-import static com.oracle.graal.hotspot.stubs.StubUtil.printf;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.nodes.JumpToExceptionHandlerNode.jumpToExceptionHandler;
+import static org.graalvm.compiler.hotspot.nodes.PatchReturnAddressNode.patchReturnAddress;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readExceptionOop;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readExceptionPc;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionOop;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.writeExceptionPc;
+import static org.graalvm.compiler.hotspot.stubs.StubUtil.cAssertionsEnabled;
+import static org.graalvm.compiler.hotspot.stubs.StubUtil.decipher;
+import static org.graalvm.compiler.hotspot.stubs.StubUtil.fatal;
+import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
+import static org.graalvm.compiler.hotspot.stubs.StubUtil.printf;
 
-import com.oracle.graal.api.replacements.Fold;
-import com.oracle.graal.api.replacements.Fold.InjectedParameter;
-import com.oracle.graal.api.replacements.Snippet;
-import com.oracle.graal.api.replacements.Snippet.ConstantParameter;
-import com.oracle.graal.compiler.common.spi.ForeignCallDescriptor;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.nodes.StubForeignCallNode;
-import com.oracle.graal.word.Word;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.Register;
 

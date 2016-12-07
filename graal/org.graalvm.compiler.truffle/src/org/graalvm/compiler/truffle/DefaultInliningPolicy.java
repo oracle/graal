@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle;
+package org.graalvm.compiler.truffle;
 
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleInliningMaxCallerSize;
-import static com.oracle.graal.truffle.TruffleCompilerOptions.TruffleMaximumRecursiveInlining;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInliningMaxCallerSize;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleMaximumRecursiveInlining;
 
 import com.oracle.truffle.api.CompilerOptions;
 

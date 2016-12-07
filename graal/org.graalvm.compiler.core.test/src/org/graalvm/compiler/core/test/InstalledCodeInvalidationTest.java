@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.directives.GraalDirectives;
 
 public class InstalledCodeInvalidationTest extends GraalCompilerTest {
 

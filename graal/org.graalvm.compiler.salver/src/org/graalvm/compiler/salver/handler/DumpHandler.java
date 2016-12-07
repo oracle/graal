@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.handler;
+package org.graalvm.compiler.salver.handler;
 
 import java.io.Closeable;
 import java.io.IOException;

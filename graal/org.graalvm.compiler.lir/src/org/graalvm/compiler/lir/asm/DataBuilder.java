@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.asm;
+package org.graalvm.compiler.lir.asm;
 
-import com.oracle.graal.code.DataSection.Data;
+import org.graalvm.compiler.code.DataSection.Data;
 
 import jdk.vm.ci.meta.Constant;
 

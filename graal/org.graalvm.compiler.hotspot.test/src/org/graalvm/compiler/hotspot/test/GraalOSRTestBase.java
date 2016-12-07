@@ -21,21 +21,21 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import org.junit.Assert;
 
-import com.oracle.graal.bytecode.Bytecode;
-import com.oracle.graal.bytecode.BytecodeStream;
-import com.oracle.graal.bytecode.ResolvedJavaMethodBytecode;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.hotspot.CompilationTask;
-import com.oracle.graal.hotspot.HotSpotGraalCompiler;
-import com.oracle.graal.java.BciBlockMapping;
-import com.oracle.graal.java.BciBlockMapping.BciBlock;
-import com.oracle.graal.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.bytecode.Bytecode;
+import org.graalvm.compiler.bytecode.BytecodeStream;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.CompilationTask;
+import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.java.BciBlockMapping;
+import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;

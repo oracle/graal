@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.verifier;
+package org.graalvm.compiler.replacements.verifier;
 
 import java.lang.annotation.Annotation;
 
@@ -32,7 +32,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.graal.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.Fold;
 
 public final class FoldVerifier extends AbstractVerifier {
 

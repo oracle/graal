@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package org.graalvm.compiler.hotspot.amd64;
 
-import com.oracle.graal.compiler.amd64.AMD64SuitesProvider;
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.hotspot.lir.HotSpotZapRegistersPhase;
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.core.amd64.AMD64SuitesProvider;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.hotspot.lir.HotSpotZapRegistersPhase;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
 public class AMD64HotSpotSuitesProvider extends AMD64SuitesProvider {
 

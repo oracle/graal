@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler;
+package org.graalvm.compiler.core;
 
-import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
-import com.oracle.graal.debug.DebugConfig;
-import com.oracle.graal.debug.DebugDumpHandler;
-import com.oracle.graal.debug.GraalDebugConfig;
+import org.graalvm.compiler.core.CompilerThreadFactory.DebugConfigAccess;
+import org.graalvm.compiler.debug.DebugConfig;
+import org.graalvm.compiler.debug.DebugDumpHandler;
+import org.graalvm.compiler.debug.GraalDebugConfig;
 
 /**
  * A compiler thread is a daemon thread that runs at {@link Thread#MAX_PRIORITY} and executes in the

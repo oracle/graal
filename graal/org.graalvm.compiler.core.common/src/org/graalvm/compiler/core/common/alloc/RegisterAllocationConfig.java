@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.alloc;
+package org.graalvm.compiler.core.common.alloc;
 
-import static com.oracle.graal.compiler.common.GraalOptions.RegisterPressure;
+import static org.graalvm.compiler.core.common.GraalOptions.RegisterPressure;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -32,7 +32,7 @@ import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.PlatformKind;
 
-import com.oracle.graal.compiler.common.GraalOptions;
+import org.graalvm.compiler.core.common.GraalOptions;
 
 /**
  * Configuration for register allocation. This is different to {@link RegisterConfig} as it only

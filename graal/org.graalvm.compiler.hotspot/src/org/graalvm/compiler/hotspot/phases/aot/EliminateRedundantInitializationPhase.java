@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases.aot;
+package org.graalvm.compiler.hotspot.phases.aot;
 
-import static com.oracle.graal.nodes.ConstantNode.getConstantNodes;
+import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,17 +31,17 @@ import java.util.Map.Entry;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.JavaConstant;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.iterators.NodeIterable;
-import com.oracle.graal.hotspot.nodes.aot.InitializeKlassNode;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.FixedWithNextNode;
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.cfg.Block;
-import com.oracle.graal.nodes.cfg.ControlFlowGraph;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public class EliminateRedundantInitializationPhase extends BasePhase<PhaseContext> {
     /**

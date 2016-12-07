@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.graph.test.matchers;
+package org.graalvm.compiler.graph.test.matchers;
 
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeDiagnosingMatcher;
 import org.hamcrest.core.IsNot;
 
-import com.oracle.graal.graph.iterators.NodeIterable;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
 
 public class NodeIterableIsEmpty extends TypeSafeDiagnosingMatcher<NodeIterable<?>> {
 

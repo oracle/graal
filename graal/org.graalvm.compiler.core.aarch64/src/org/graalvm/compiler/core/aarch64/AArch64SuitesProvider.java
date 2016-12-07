@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.aarch64;
+package org.graalvm.compiler.core.aarch64;
 
-import com.oracle.graal.java.DefaultSuitesProvider;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.java.DefaultSuitesProvider;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
 public class AArch64SuitesProvider extends DefaultSuitesProvider {
 

@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.compiler.common.util.TypeConversion;
-import com.oracle.graal.compiler.common.util.TypeReader;
-import com.oracle.graal.compiler.common.util.TypeWriter;
-import com.oracle.graal.compiler.common.util.UnsafeArrayTypeReader;
-import com.oracle.graal.compiler.common.util.UnsafeArrayTypeWriter;
+import org.graalvm.compiler.core.common.util.TypeConversion;
+import org.graalvm.compiler.core.common.util.TypeReader;
+import org.graalvm.compiler.core.common.util.TypeWriter;
+import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
+import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 
 public class TypeWriterTest extends GraalCompilerTest {
 

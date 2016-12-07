@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.sparc;
+package org.graalvm.compiler.asm.sparc;
 
 import static jdk.vm.ci.sparc.SPARC.STACK_BIAS;
 import static jdk.vm.ci.sparc.SPARC.fp;
@@ -28,7 +28,7 @@ import static jdk.vm.ci.sparc.SPARC.sp;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.sparc.SPARC;
 
-import com.oracle.graal.asm.AbstractAddress;
+import org.graalvm.compiler.asm.AbstractAddress;
 
 public class SPARCAddress extends AbstractAddress {
 

@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.sparc.test;
+package org.graalvm.compiler.asm.sparc.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -28,9 +28,9 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.graal.asm.sparc.SPARCAssembler.BitSpec;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CompositeBitSpec;
-import com.oracle.graal.asm.sparc.SPARCAssembler.ContinousBitSpec;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler.BitSpec;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler.CompositeBitSpec;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler.ContinousBitSpec;
 
 public class BitSpecTest {
 

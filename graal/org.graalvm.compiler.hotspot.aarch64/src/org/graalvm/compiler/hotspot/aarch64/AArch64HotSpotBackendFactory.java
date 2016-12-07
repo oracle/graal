@@ -20,42 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.aarch64;
+package org.graalvm.compiler.hotspot.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.common.InitTimer.timer;
 
-import com.oracle.graal.api.replacements.SnippetReflectionProvider;
-import com.oracle.graal.bytecode.BytecodeProvider;
-import com.oracle.graal.compiler.aarch64.AArch64AddressLowering;
-import com.oracle.graal.compiler.aarch64.AArch64SuitesProvider;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.hotspot.HotSpotBackend;
-import com.oracle.graal.hotspot.HotSpotBackendFactory;
-import com.oracle.graal.hotspot.HotSpotGraalRuntimeProvider;
-import com.oracle.graal.hotspot.HotSpotReplacementsImpl;
-import com.oracle.graal.hotspot.meta.HotSpotConstantFieldProvider;
-import com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider;
-import com.oracle.graal.hotspot.meta.HotSpotGraalConstantFieldProvider;
-import com.oracle.graal.hotspot.meta.HotSpotGraphBuilderPlugins;
-import com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider;
-import com.oracle.graal.hotspot.meta.HotSpotLoweringProvider;
-import com.oracle.graal.hotspot.meta.HotSpotProviders;
-import com.oracle.graal.hotspot.meta.HotSpotRegisters;
-import com.oracle.graal.hotspot.meta.HotSpotRegistersProvider;
-import com.oracle.graal.hotspot.meta.HotSpotSnippetReflectionProvider;
-import com.oracle.graal.hotspot.meta.HotSpotStampProvider;
-import com.oracle.graal.hotspot.meta.HotSpotSuitesProvider;
-import com.oracle.graal.hotspot.nodes.HotSpotNodeCostProvider;
-import com.oracle.graal.hotspot.word.HotSpotWordTypes;
-import com.oracle.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import com.oracle.graal.nodes.spi.NodeCostProvider;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
-import com.oracle.graal.phases.util.Providers;
-import com.oracle.graal.replacements.aarch64.AArch64GraphBuilderPlugins;
-import com.oracle.graal.replacements.classfile.ClassfileBytecodeProvider;
-import com.oracle.graal.serviceprovider.ServiceProvider;
-import com.oracle.graal.word.WordTypes;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.aarch64.AArch64AddressLowering;
+import org.graalvm.compiler.core.aarch64.AArch64SuitesProvider;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
+import org.graalvm.compiler.hotspot.meta.HotSpotConstantFieldProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
+import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.meta.HotSpotRegisters;
+import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotSnippetReflectionProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotStampProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
+import org.graalvm.compiler.hotspot.nodes.HotSpotNodeCostProvider;
+import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.spi.NodeCostProvider;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
+import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;

@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.debug;
+package org.graalvm.compiler.debug;
 
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
-import com.oracle.graal.debug.GraalDebugConfig.Options;
-import com.oracle.graal.debug.internal.DebugScope;
+import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.debug.internal.DebugScope;
 
 /**
  * Implements the filter specified by the {@link Options#Dump}, {@link Options#Log},

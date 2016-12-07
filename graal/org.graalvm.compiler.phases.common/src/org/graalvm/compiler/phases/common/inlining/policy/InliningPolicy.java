@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.policy;
+package org.graalvm.compiler.phases.common.inlining.policy;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.common.inlining.walker.MethodInvocation;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.phases.common.inlining.walker.MethodInvocation;
 
 public interface InliningPolicy {
 

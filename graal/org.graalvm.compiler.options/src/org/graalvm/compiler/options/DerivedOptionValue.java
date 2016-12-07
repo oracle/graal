@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.options;
+package org.graalvm.compiler.options;
 
 import java.io.Serializable;
 import java.util.function.Supplier;
 
-import com.oracle.graal.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.OptionValue.OverrideScope;
 
 /**
  * A cached value that needs to be recomputed when an option changes.

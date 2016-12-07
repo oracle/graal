@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.test;
+package org.graalvm.compiler.hotspot.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -36,8 +36,8 @@ import javax.crypto.SecretKey;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.hotspot.meta.HotSpotGraphBuilderPlugins;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

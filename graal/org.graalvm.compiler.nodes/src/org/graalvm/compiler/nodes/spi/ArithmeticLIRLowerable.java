@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package org.graalvm.compiler.nodes.spi;
 
-import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
 public interface ArithmeticLIRLowerable extends LIRLowerable {
 

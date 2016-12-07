@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package org.graalvm.compiler.hotspot.amd64;
 
-import static com.oracle.graal.compiler.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import jdk.vm.ci.meta.AllocatableValue;
 
-import com.oracle.graal.asm.amd64.AMD64MacroAssembler;
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.lir.LIRInstructionClass;
-import com.oracle.graal.lir.amd64.AMD64LIRInstruction;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 public final class AMD64HotSpotLoadConfigValueOp extends AMD64LIRInstruction {
 

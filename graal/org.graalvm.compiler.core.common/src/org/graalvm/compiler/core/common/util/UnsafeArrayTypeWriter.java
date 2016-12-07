@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.common.util;
+package org.graalvm.compiler.core.common.util;
 
-import static com.oracle.graal.compiler.common.util.TypeConversion.asS1;
-import static com.oracle.graal.compiler.common.util.TypeConversion.asS2;
-import static com.oracle.graal.compiler.common.util.TypeConversion.asS4;
-import static com.oracle.graal.compiler.common.util.TypeConversion.asU1;
-import static com.oracle.graal.compiler.common.util.TypeConversion.asU2;
-import static com.oracle.graal.compiler.common.util.TypeConversion.asU4;
+import static org.graalvm.compiler.core.common.util.TypeConversion.asS1;
+import static org.graalvm.compiler.core.common.util.TypeConversion.asS2;
+import static org.graalvm.compiler.core.common.util.TypeConversion.asS4;
+import static org.graalvm.compiler.core.common.util.TypeConversion.asU1;
+import static org.graalvm.compiler.core.common.util.TypeConversion.asU2;
+import static org.graalvm.compiler.core.common.util.TypeConversion.asU4;
 import sun.misc.Unsafe;
 
 /**

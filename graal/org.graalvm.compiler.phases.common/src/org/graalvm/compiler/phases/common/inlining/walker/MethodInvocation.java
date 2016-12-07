@@ -20,15 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common.inlining.walker;
+package org.graalvm.compiler.phases.common.inlining.walker;
 
 import java.util.BitSet;
 
-import com.oracle.graal.nodes.CallTargetNode;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.phases.common.inlining.info.InlineInfo;
-import com.oracle.graal.phases.common.inlining.info.elem.Inlineable;
-import com.oracle.graal.phases.common.inlining.info.elem.InlineableGraph;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
+import org.graalvm.compiler.phases.common.inlining.info.elem.Inlineable;
+import org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -60,7 +60,7 @@ public class MethodInvocation {
      * <p>
      * A freshly instantiated argument is either:
      * <uL>
-     * <li>an {@link InliningData#isFreshInstantiation(com.oracle.graal.nodes.ValueNode)}</li>
+     * <li>an {@link InliningData#isFreshInstantiation(org.graalvm.compiler.nodes.ValueNode)}</li>
      * <li>a fixed-param of the graph containing the callsite (ie, of <code>callee.graph()</code>
      * that contains <code>callee.invoke</code>)</li>
      * </uL>
@@ -68,9 +68,9 @@ public class MethodInvocation {
      *
      * <p>
      * Given those positions, the
-     * {@link com.oracle.graal.phases.common.inlining.walker.CallsiteHolderExplorable} instantiated
-     * in {@link #buildCallsiteHolderForElement(int)} can determine which of <i>its</i> parameters
-     * are fixed.
+     * {@link org.graalvm.compiler.phases.common.inlining.walker.CallsiteHolderExplorable}
+     * instantiated in {@link #buildCallsiteHolderForElement(int)} can determine which of <i>its</i>
+     * parameters are fixed.
      * </p>
      */
     private final BitSet freshlyInstantiatedArguments;

@@ -20,12 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.salver.dumper;
+package org.graalvm.compiler.salver.dumper;
 
 import java.io.IOException;
 
-import com.oracle.graal.salver.Salver;
-import com.oracle.graal.salver.data.DataDict;
+import org.graalvm.compiler.salver.Salver;
+import org.graalvm.compiler.salver.data.DataDict;
 
 public class AbstractGraalDumper extends AbstractSerializerDumper {
 

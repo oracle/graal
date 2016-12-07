@@ -20,20 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package org.graalvm.compiler.core.phases;
 
-import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.phases.EconomyAllocationStage;
-import com.oracle.graal.lir.phases.EconomyPostAllocationOptimizationStage;
-import com.oracle.graal.lir.phases.EconomyPreAllocationOptimizationStage;
-import com.oracle.graal.lir.phases.LIRPhaseSuite;
-import com.oracle.graal.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
-import com.oracle.graal.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.tiers.CompilerConfiguration;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.phases.tiers.LowTierContext;
-import com.oracle.graal.phases.tiers.MidTierContext;
+import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+import org.graalvm.compiler.lir.phases.EconomyAllocationStage;
+import org.graalvm.compiler.lir.phases.EconomyPostAllocationOptimizationStage;
+import org.graalvm.compiler.lir.phases.EconomyPreAllocationOptimizationStage;
+import org.graalvm.compiler.lir.phases.LIRPhaseSuite;
+import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
+import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 
 public class EconomyCompilerConfiguration implements CompilerConfiguration {
 

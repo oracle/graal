@@ -20,21 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.phases;
+package org.graalvm.compiler.lir.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.TraceRA;
+import static org.graalvm.compiler.core.common.GraalOptions.TraceRA;
 
-import com.oracle.graal.compiler.common.GraalOptions;
-import com.oracle.graal.lir.alloc.AllocationStageVerifier;
-import com.oracle.graal.lir.alloc.lsra.LinearScanPhase;
-import com.oracle.graal.lir.alloc.trace.TraceBuilderPhase;
-import com.oracle.graal.lir.alloc.trace.TraceRegisterAllocationPhase;
-import com.oracle.graal.lir.dfa.LocationMarkerPhase;
-import com.oracle.graal.lir.dfa.MarkBasePointersPhase;
-import com.oracle.graal.lir.phases.AllocationPhase.AllocationContext;
-import com.oracle.graal.lir.ssi.SSIConstructionPhase;
-import com.oracle.graal.lir.stackslotalloc.LSStackSlotAllocator;
-import com.oracle.graal.lir.stackslotalloc.SimpleStackSlotAllocator;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.lir.alloc.AllocationStageVerifier;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScanPhase;
+import org.graalvm.compiler.lir.alloc.trace.TraceBuilderPhase;
+import org.graalvm.compiler.lir.alloc.trace.TraceRegisterAllocationPhase;
+import org.graalvm.compiler.lir.dfa.LocationMarkerPhase;
+import org.graalvm.compiler.lir.dfa.MarkBasePointersPhase;
+import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+import org.graalvm.compiler.lir.ssi.SSIConstructionPhase;
+import org.graalvm.compiler.lir.stackslotalloc.LSStackSlotAllocator;
+import org.graalvm.compiler.lir.stackslotalloc.SimpleStackSlotAllocator;
 
 public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
 

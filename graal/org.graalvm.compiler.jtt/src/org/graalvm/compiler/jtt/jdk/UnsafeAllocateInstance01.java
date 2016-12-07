@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.jdk;
+package org.graalvm.compiler.jtt.jdk;
 
 import java.util.AbstractList;
 import java.util.List;
@@ -28,7 +28,7 @@ import java.util.List;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.graal.jtt.JTTTest;
+import org.graalvm.compiler.jtt.JTTTest;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

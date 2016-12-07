@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.graal.util;
+package org.graalvm.compiler.microbenchmarks.graal.util;
 
-import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getGraphFromMethodSpec;
-import static com.oracle.graal.microbenchmarks.graal.util.GraalUtil.getNodes;
+import static org.graalvm.compiler.microbenchmarks.graal.util.GraalUtil.getGraphFromMethodSpec;
+import static org.graalvm.compiler.microbenchmarks.graal.util.GraalUtil.getNodes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,9 +33,9 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
  * State providing the nodes in a graph. Subclasses of this class are annotated with

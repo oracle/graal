@@ -20,23 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package org.graalvm.compiler.hotspot.meta;
 
-import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static com.oracle.graal.hotspot.meta.HotSpotGraalConstantFieldProvider.ImmutableCodeLazy.isCalledForSnippets;
-import static com.oracle.graal.hotspot.stubs.SnippetStub.SnippetGraphUnderConstruction;
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider.ImmutableCodeLazy.isCalledForSnippets;
+import static org.graalvm.compiler.hotspot.stubs.SnippetStub.SnippetGraphUnderConstruction;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.graal.debug.GraalError;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.hotspot.GraalHotSpotVMConfig;
-import com.oracle.graal.options.StableOptionValue;
-import com.oracle.graal.replacements.ReplacementsImpl;
-import com.oracle.graal.replacements.SnippetCounter;
-import com.oracle.graal.replacements.SnippetTemplate;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.options.StableOptionValue;
+import org.graalvm.compiler.replacements.ReplacementsImpl;
+import org.graalvm.compiler.replacements.SnippetCounter;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;

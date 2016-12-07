@@ -20,31 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot.sparc;
+package org.graalvm.compiler.truffle.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.Xcc;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Xcc;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.Equal;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.meta.JavaKind.Object;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 
-import com.oracle.graal.asm.Assembler;
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.sparc.SPARCAddress;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler;
-import com.oracle.graal.asm.sparc.SPARCMacroAssembler.ScratchRegister;
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.compiler.common.spi.ForeignCallsProvider;
-import com.oracle.graal.lir.asm.CompilationResultBuilder;
-import com.oracle.graal.lir.asm.DataBuilder;
-import com.oracle.graal.lir.asm.FrameContext;
-import com.oracle.graal.lir.framemap.FrameMap;
-import com.oracle.graal.serviceprovider.ServiceProvider;
-import com.oracle.graal.truffle.hotspot.OptimizedCallTargetInstrumentation;
-import com.oracle.graal.truffle.hotspot.OptimizedCallTargetInstrumentationFactory;
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.sparc.SPARCAddress;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
+import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.asm.DataBuilder;
+import org.graalvm.compiler.lir.asm.FrameContext;
+import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.truffle.hotspot.OptimizedCallTargetInstrumentation;
+import org.graalvm.compiler.truffle.hotspot.OptimizedCallTargetInstrumentationFactory;
 
 @ServiceProvider(OptimizedCallTargetInstrumentationFactory.class)
 public class SPARCOptimizedCallTargetInstumentationFactory extends OptimizedCallTargetInstrumentationFactory {

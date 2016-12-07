@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.test;
+package org.graalvm.compiler.replacements.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.replacements.StringSubstitutions;
-import com.oracle.graal.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.replacements.StringSubstitutions;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

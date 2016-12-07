@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm;
+package org.graalvm.compiler.asm;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

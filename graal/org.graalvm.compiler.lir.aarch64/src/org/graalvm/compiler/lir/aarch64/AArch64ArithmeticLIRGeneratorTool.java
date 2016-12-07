@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.aarch64;
+package org.graalvm.compiler.lir.aarch64;
 
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.Value;

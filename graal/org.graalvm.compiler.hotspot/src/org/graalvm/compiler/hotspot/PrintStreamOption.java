@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package org.graalvm.compiler.hotspot;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -30,8 +30,8 @@ import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.options.UniquePathUtilities;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.UniquePathUtilities;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;

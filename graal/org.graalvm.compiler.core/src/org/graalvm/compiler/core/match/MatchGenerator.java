@@ -20,9 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.match;
+package org.graalvm.compiler.core.match;
 
-import com.oracle.graal.compiler.gen.NodeMatchRules;
+import org.graalvm.compiler.core.gen.NodeMatchRules;
 
 /**
  * Code generator for complex match patterns.

@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package org.graalvm.compiler.phases.common;
 
-import com.oracle.graal.graph.Graph.NodeEventScope;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.BasePhase;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.common.util.HashSetNodeEventListener;
-import com.oracle.graal.phases.tiers.PhaseContext;
+import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
+import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 /**
  * A phase suite that applies {@linkplain CanonicalizerPhase canonicalization} to a graph after all

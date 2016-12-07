@@ -20,16 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package org.graalvm.compiler.core.test;
 
 import org.junit.Test;
 
-import com.oracle.graal.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.directives.GraalDirectives;
 
 /**
  * Collection of tests for
- * {@link com.oracle.graal.phases.common.DominatorConditionalEliminationPhase} including those that
- * triggered bugs in this phase.
+ * {@link org.graalvm.compiler.phases.common.DominatorConditionalEliminationPhase} including those
+ * that triggered bugs in this phase.
  */
 public class ConditionalEliminationTest1 extends ConditionalEliminationTestBase {
 

@@ -21,13 +21,13 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.sparc;
+package org.graalvm.compiler.core.sparc;
 
-import com.oracle.graal.asm.sparc.SPARCAssembler;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.calc.AddNode;
-import com.oracle.graal.nodes.memory.address.AddressNode;
-import com.oracle.graal.phases.common.AddressLoweringPhase.AddressLowering;
+import org.graalvm.compiler.asm.sparc.SPARCAssembler;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
 
 import jdk.vm.ci.meta.JavaConstant;
 

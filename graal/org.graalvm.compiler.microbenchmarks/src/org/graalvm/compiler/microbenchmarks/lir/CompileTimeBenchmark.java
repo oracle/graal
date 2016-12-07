@@ -20,14 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.microbenchmarks.lir;
+package org.graalvm.compiler.microbenchmarks.lir;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Param;
 
-import com.oracle.graal.code.CompilationResult;
-import com.oracle.graal.microbenchmarks.graal.GraalBenchmark;
-import com.oracle.graal.nodes.StructuredGraph;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 public class CompileTimeBenchmark extends GraalBenchmark {
 

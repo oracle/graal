@@ -21,18 +21,18 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.amd64;
+package org.graalvm.compiler.core.amd64;
 
-import com.oracle.graal.asm.amd64.AMD64Address.Scale;
-import com.oracle.graal.compiler.common.LIRKind;
-import com.oracle.graal.graph.NodeClass;
-import com.oracle.graal.lir.amd64.AMD64AddressValue;
-import com.oracle.graal.lir.gen.LIRGeneratorTool;
-import com.oracle.graal.nodeinfo.NodeInfo;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.memory.address.AddressNode;
-import com.oracle.graal.nodes.spi.LIRLowerable;
-import com.oracle.graal.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;

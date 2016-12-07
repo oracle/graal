@@ -20,34 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package org.graalvm.compiler.hotspot.replacements;
 
-import static com.oracle.graal.compiler.common.GraalOptions.SnippetCounters;
-import static com.oracle.graal.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.METASPACE_ARRAY_LENGTH_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPERS_ELEMENT_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPERS_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.metaspaceArrayBaseOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.metaspaceArrayLengthOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.secondarySuperCacheOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.secondarySupersOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.superCheckOffsetOffset;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
-import static com.oracle.graal.nodes.extended.BranchProbabilityNode.probability;
+import static org.graalvm.compiler.core.common.GraalOptions.SnippetCounters;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.METASPACE_ARRAY_LENGTH_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPERS_ELEMENT_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPERS_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.metaspaceArrayBaseOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.metaspaceArrayLengthOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.secondarySuperCacheOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.secondarySupersOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.superCheckOffsetOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Arrays;
 
-import com.oracle.graal.hotspot.nodes.type.KlassPointerStamp;
-import com.oracle.graal.hotspot.word.KlassPointer;
-import com.oracle.graal.nodes.ConstantNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.TypeCheckHints;
-import com.oracle.graal.replacements.SnippetCounter;
-import com.oracle.graal.word.Word;
+import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
+import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.TypeCheckHints;
+import org.graalvm.compiler.replacements.SnippetCounter;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.MetaAccessProvider;

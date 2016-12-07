@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test.backend;
+package org.graalvm.compiler.core.test.backend;
 
 import jdk.vm.ci.code.Architecture;
 
-import com.oracle.graal.compiler.GraalCompiler;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.Debug.Scope;
-import com.oracle.graal.lir.gen.LIRGenerationResult;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.OptimisticOptimizations;
+import org.graalvm.compiler.core.GraalCompiler;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 
 public abstract class BackendTest extends GraalCompilerTest {
 

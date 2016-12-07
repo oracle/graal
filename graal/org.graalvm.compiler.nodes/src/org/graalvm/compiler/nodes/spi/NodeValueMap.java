@@ -21,10 +21,10 @@
  * questions.
  */
 
-package com.oracle.graal.nodes.spi;
+package org.graalvm.compiler.nodes.spi;
 
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.ValueNode;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.Value;
 

@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package org.graalvm.compiler.phases.tiers;
 
-import com.oracle.graal.lir.phases.LIRSuites;
-import com.oracle.graal.phases.PhaseSuite;
+import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.phases.PhaseSuite;
 
 public final class Suites {
 

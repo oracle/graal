@@ -20,40 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package org.graalvm.compiler.core.phases;
 
-import static com.oracle.graal.compiler.common.GraalOptions.ConditionalElimination;
-import static com.oracle.graal.compiler.common.GraalOptions.FullUnroll;
-import static com.oracle.graal.compiler.common.GraalOptions.ImmutableCode;
-import static com.oracle.graal.compiler.common.GraalOptions.LoopPeeling;
-import static com.oracle.graal.compiler.common.GraalOptions.LoopUnswitch;
-import static com.oracle.graal.compiler.common.GraalOptions.OptConvertDeoptsToGuards;
-import static com.oracle.graal.compiler.common.GraalOptions.OptLoopTransform;
-import static com.oracle.graal.compiler.common.GraalOptions.PartialEscapeAnalysis;
-import static com.oracle.graal.compiler.common.GraalOptions.UseGraalInstrumentation;
-import static com.oracle.graal.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
+import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
+import static org.graalvm.compiler.core.common.GraalOptions.FullUnroll;
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopPeeling;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopUnswitch;
+import static org.graalvm.compiler.core.common.GraalOptions.OptConvertDeoptsToGuards;
+import static org.graalvm.compiler.core.common.GraalOptions.OptLoopTransform;
+import static org.graalvm.compiler.core.common.GraalOptions.PartialEscapeAnalysis;
+import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
+import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
-import com.oracle.graal.loop.DefaultLoopPolicies;
-import com.oracle.graal.loop.LoopPolicies;
-import com.oracle.graal.loop.phases.LoopFullUnrollPhase;
-import com.oracle.graal.loop.phases.LoopPeelingPhase;
-import com.oracle.graal.loop.phases.LoopUnswitchingPhase;
-import com.oracle.graal.nodes.spi.LoweringTool;
-import com.oracle.graal.options.Option;
-import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValue;
-import com.oracle.graal.phases.PhaseSuite;
-import com.oracle.graal.phases.common.CanonicalizerPhase;
-import com.oracle.graal.phases.common.ConvertDeoptimizeToGuardPhase;
-import com.oracle.graal.phases.common.DeadCodeEliminationPhase;
-import com.oracle.graal.phases.common.IncrementalCanonicalizerPhase;
-import com.oracle.graal.phases.common.IterativeConditionalEliminationPhase;
-import com.oracle.graal.phases.common.LoweringPhase;
-import com.oracle.graal.phases.common.RemoveValueProxyPhase;
-import com.oracle.graal.phases.common.inlining.InliningPhase;
-import com.oracle.graal.phases.common.instrumentation.HighTierReconcileInstrumentationPhase;
-import com.oracle.graal.phases.tiers.HighTierContext;
-import com.oracle.graal.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.compiler.loop.DefaultLoopPolicies;
+import org.graalvm.compiler.loop.LoopPolicies;
+import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
+import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
+import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
+import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningPhase;
+import org.graalvm.compiler.phases.common.instrumentation.HighTierReconcileInstrumentationPhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class HighTier extends PhaseSuite<HighTierContext> {
 
