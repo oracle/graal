@@ -30,6 +30,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig.AllocatableRegisters;
@@ -72,7 +73,7 @@ class LinearScanWalker extends IntervalWalker {
      * bootstrap run of Graal). Therefore, we initialize {@link #spillIntervals} with this marker
      * value, and allocate a "real" list only on demand in {@link #setUsePos}.
      */
-    private static final List<Interval> EMPTY_LIST = new ArrayList<>(0);
+    private static final List<Interval> EMPTY_LIST = Collections.emptyList();
 
     // accessors mapped to same functions in class LinearScan
     int blockCount() {
