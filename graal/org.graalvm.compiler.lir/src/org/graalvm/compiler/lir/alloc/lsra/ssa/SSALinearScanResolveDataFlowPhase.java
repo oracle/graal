@@ -20,25 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.alloc.lsra.ssa;
+package org.graalvm.compiler.lir.alloc.lsra.ssa;
 
-import static com.oracle.graal.lir.LIRValueUtil.asConstant;
-import static com.oracle.graal.lir.LIRValueUtil.isConstantValue;
-import static com.oracle.graal.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.List;
 
-import com.oracle.graal.compiler.common.cfg.AbstractBlockBase;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.debug.DebugCounter;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.alloc.lsra.Interval;
-import com.oracle.graal.lir.alloc.lsra.LinearScan;
-import com.oracle.graal.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
-import com.oracle.graal.lir.alloc.lsra.MoveResolver;
-import com.oracle.graal.lir.ssa.SSAUtil;
-import com.oracle.graal.lir.ssa.SSAUtil.PhiValueVisitor;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.alloc.lsra.Interval;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScan;
+import org.graalvm.compiler.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
+import org.graalvm.compiler.lir.alloc.lsra.MoveResolver;
+import org.graalvm.compiler.lir.ssa.SSAUtil;
+import org.graalvm.compiler.lir.ssa.SSAUtil.PhiValueVisitor;
 
 import jdk.vm.ci.meta.Value;
 
