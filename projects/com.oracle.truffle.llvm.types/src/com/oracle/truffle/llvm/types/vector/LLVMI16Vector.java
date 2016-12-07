@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.types.vector;
 
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
+@ValueType
 public final class LLVMI16Vector {
 
     private static final int I16_SIZE = 2;
