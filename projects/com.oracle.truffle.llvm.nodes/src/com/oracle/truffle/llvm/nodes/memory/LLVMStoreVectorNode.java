@@ -34,15 +34,56 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
-import com.oracle.truffle.llvm.types.vector.LLVMVector;
+import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.types.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI1Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
-    public Object execute(LLVMAddress address, LLVMVector<?> value) {
+    protected Object writeVector(LLVMAddress address, LLVMDoubleVector value) {
         LLVMMemory.putVector(address, value);
         return null;
     }
 
+    @Specialization
+    protected Object writeVector(LLVMAddress address, LLVMFloatVector value) {
+        LLVMMemory.putVector(address, value);
+        return null;
+    }
+
+    @Specialization
+    protected Object writeVector(LLVMAddress address, LLVMI16Vector value) {
+        LLVMMemory.putVector(address, value);
+        return null;
+    }
+
+    @Specialization
+    protected Object writeVector(LLVMAddress address, LLVMI1Vector value) {
+        LLVMMemory.putVector(address, value);
+        return null;
+    }
+
+    @Specialization
+    protected Object writeVector(LLVMAddress address, LLVMI32Vector value) {
+        LLVMMemory.putVector(address, value);
+        return null;
+    }
+
+    @Specialization
+    protected Object writeVector(LLVMAddress address, LLVMI64Vector value) {
+        LLVMMemory.putVector(address, value);
+        return null;
+    }
+
+    @Specialization
+    protected Object writeVector(LLVMAddress address, LLVMI8Vector value) {
+        LLVMMemory.putVector(address, value);
+        return null;
+    }
 }

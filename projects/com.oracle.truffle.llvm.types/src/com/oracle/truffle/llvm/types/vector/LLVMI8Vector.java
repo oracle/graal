@@ -30,91 +30,174 @@
 package com.oracle.truffle.llvm.types.vector;
 
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public final class LLVMI8Vector extends LLVMVector<Byte> {
+public final class LLVMI8Vector {
 
-    private static final int I1_SIZE = 1;
+    private static final int I8_SIZE = 1;
+    private final LLVMAddress address;
+    private final int nrElements;
 
     protected LLVMI8Vector(LLVMAddress addr, int nrElements) {
-        super(addr, nrElements);
-    }
-
-    @Override
-    public int getElementByteSize() {
-        return I1_SIZE;
-    }
-
-    @Override
-    protected LLVMVector<Byte> create(LLVMAddress addr, int length) {
-        return new LLVMI8Vector(addr, length);
-    }
-
-    @Override
-    public Byte getValue(LLVMAddress addr) {
-        return LLVMMemory.getI8(addr);
-    }
-
-    @Override
-    public void setValue(LLVMAddress addr, Byte value) {
-        LLVMMemory.putI8(addr, value);
-    }
-
-    public static LLVMI8Vector createI8Vector(LLVMAddress addr, int size) {
-        return new LLVMI8Vector(addr, size);
+        this.address = addr;
+        this.nrElements = nrElements;
     }
 
     public static LLVMI8Vector fromI8Array(LLVMAddress target, byte[] vals) {
         LLVMAddress currentTarget = target;
         for (int i = 0; i < vals.length; i++) {
             LLVMMemory.putI8(currentTarget, vals[i]);
-            currentTarget = currentTarget.increment(I1_SIZE);
+            currentTarget = currentTarget.increment(I8_SIZE);
         }
         return new LLVMI8Vector(target, vals.length);
     }
 
+    public static LLVMI8Vector create(LLVMAddress addr, int length) {
+        return new LLVMI8Vector(addr, length);
+    }
+
+    public byte[] getValues() {
+        byte[] values = new byte[nrElements];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = getValue(i);
+        }
+        return values;
+    }
+
+    public byte getValue(int index) {
+        int offset = index * I8_SIZE;
+        LLVMAddress increment = address.increment(offset);
+        return LLVMMemory.getI8(increment);
+    }
+
+    public LLVMI8Vector insert(LLVMAddress target, byte element, int index) {
+        LLVMHeap.memCopy(target, address, nrElements * I8_SIZE);
+        LLVMAddress elementAddress = target.increment(index * I8_SIZE);
+        LLVMMemory.putI8(elementAddress, element);
+        return create(target, nrElements);
+    }
+
+    public int getLength() {
+        return nrElements;
+    }
+
     public LLVMI8Vector add(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a + b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) + right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector mul(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a * b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) * right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector sub(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a - b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) - right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector div(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a / b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) / right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector rem(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a % b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) % right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector and(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a & b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) & right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector or(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a | b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) | right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector leftShift(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a << b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) << right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector logicalRightShift(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a >>> b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) >>> right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector arithmeticRightShift(LLVMAddress addr, LLVMI8Vector right) {
-        return performOperation(addr, right, (a, b) -> (byte) (a >> b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) >> right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI8Vector xor(LLVMAddress addr, LLVMI8Vector right) {
-        return (LLVMI8Vector) performOperation(addr, right, (a, b) -> (byte) (a ^ b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            byte elementResult = (byte) (getValue(i) ^ right.getValue(i));
+            LLVMMemory.putI8(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I8_SIZE);
+        }
+        return create(addr, nrElements);
+    }
+
+    public LLVMAddress getAddress() {
+        return address;
+    }
+
+    public int getVectorByteSize() {
+        return I8_SIZE * nrElements;
     }
 
 }

@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.vector;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -42,24 +40,29 @@ import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 
 public class LLVMShuffleVectorNode {
 
-    public static <T> T[] concat(Object[] first, Object[] second, Class<T[]> clazz) {
-        T[] result = Arrays.copyOf(first, first.length + second.length, clazz);
-        System.arraycopy(second, 0, result, first.length, second.length);
-        return result;
-    }
-
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask", type = LLVMExpressionNode.class)})
     public abstract static class LLVMShuffleI8VectorNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI8Vector executeI8Vector(LLVMAddress addr, LLVMI8Vector leftVector, LLVMI8Vector rightVector, LLVMI32Vector maskVector) {
-            Byte[] joinedValues = concat(leftVector.getValues(), rightVector.getValues(), Byte[].class);
+            byte[] joinedValues = concat(leftVector.getValues(), rightVector.getValues());
             byte[] newValues = new byte[maskVector.getLength()];
             for (int i = 0; i < maskVector.getLength(); i++) {
                 int index = maskVector.getValue(i);
                 newValues[i] = joinedValues[index];
             }
             return LLVMI8Vector.fromI8Array(addr, newValues);
+        }
+
+        private static byte[] concat(byte[] first, byte[] second) {
+            byte[] result = new byte[first.length + second.length];
+            for (int i = 0; i < first.length; i++) {
+                result[i] = first[i];
+            }
+            for (int i = first.length; i < first.length + second.length; i++) {
+                result[i] = second[i - first.length];
+            }
+            return result;
         }
 
     }
@@ -69,13 +72,24 @@ public class LLVMShuffleVectorNode {
 
         @Specialization
         public LLVMI32Vector executeI32Vector(LLVMAddress addr, LLVMI32Vector leftVector, LLVMI32Vector rightVector, LLVMI32Vector maskVector) {
-            Integer[] joinedValues = concat(leftVector.getValues(), rightVector.getValues(), Integer[].class);
+            int[] joinedValues = concat(leftVector.getValues(), rightVector.getValues());
             int[] newValues = new int[maskVector.getLength()];
             for (int i = 0; i < maskVector.getLength(); i++) {
                 int element = maskVector.getValue(i);
                 newValues[i] = joinedValues[element];
             }
             return LLVMI32Vector.fromI32Array(addr, newValues);
+        }
+
+        private static int[] concat(int[] first, int[] second) {
+            int[] result = new int[first.length + second.length];
+            for (int i = 0; i < first.length; i++) {
+                result[i] = first[i];
+            }
+            for (int i = first.length; i < first.length + second.length; i++) {
+                result[i] = second[i - first.length];
+            }
+            return result;
         }
 
     }
@@ -85,7 +99,7 @@ public class LLVMShuffleVectorNode {
 
         @Specialization
         public LLVMFloatVector execute(LLVMAddress addr, LLVMFloatVector leftVector, LLVMFloatVector rightVector, LLVMI32Vector maskVector) {
-            Float[] joinedValues = concat(leftVector.getValues(), rightVector.getValues(), Float[].class);
+            float[] joinedValues = concat(leftVector.getValues(), rightVector.getValues());
             float[] newValues = new float[maskVector.getLength()];
             for (int i = 0; i < maskVector.getLength(); i++) {
                 int element = maskVector.getValue(i);
@@ -94,6 +108,16 @@ public class LLVMShuffleVectorNode {
             return LLVMFloatVector.fromFloatArray(addr, newValues);
         }
 
+        private static float[] concat(float[] first, float[] second) {
+            float[] result = new float[first.length + second.length];
+            for (int i = 0; i < first.length; i++) {
+                result[i] = first[i];
+            }
+            for (int i = first.length; i < first.length + second.length; i++) {
+                result[i] = second[i - first.length];
+            }
+            return result;
+        }
     }
 
 }

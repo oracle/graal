@@ -37,7 +37,13 @@ import com.oracle.truffle.llvm.types.LLVMAddress;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.types.vector.LLVMVector;
+import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.types.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI1Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 
 /**
  * This node unboxes the return result of a function call.
@@ -147,7 +153,37 @@ public abstract class LLVMCallUnboxNode {
     public abstract static class LLVMVectorCallUnboxNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMVector<?> executeVector(LLVMVector<?> value) {
+        protected Object doVector(LLVMDoubleVector value) {
+            return value;
+        }
+
+        @Specialization
+        protected Object doVector(LLVMFloatVector value) {
+            return value;
+        }
+
+        @Specialization
+        protected Object doVector(LLVMI16Vector value) {
+            return value;
+        }
+
+        @Specialization
+        protected Object doVector(LLVMI1Vector value) {
+            return value;
+        }
+
+        @Specialization
+        protected Object doVector(LLVMI32Vector value) {
+            return value;
+        }
+
+        @Specialization
+        protected Object doVector(LLVMI64Vector value) {
+            return value;
+        }
+
+        @Specialization
+        protected Object doVector(LLVMI8Vector value) {
             return value;
         }
     }

@@ -30,14 +30,18 @@
 package com.oracle.truffle.llvm.types.vector;
 
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public final class LLVMI1Vector extends LLVMVector<Boolean> {
+public final class LLVMI1Vector {
 
     private static final int I1_SIZE = 1;
+    private final LLVMAddress address;
+    private final int nrElements;
 
-    protected LLVMI1Vector(LLVMAddress addr, int nrElements) {
-        super(addr, nrElements);
+    private LLVMI1Vector(LLVMAddress addr, int nrElements) {
+        this.address = addr;
+        this.nrElements = nrElements;
     }
 
     public static LLVMI1Vector fromI1Array(LLVMAddress target, boolean[] vals) {
@@ -49,40 +53,70 @@ public final class LLVMI1Vector extends LLVMVector<Boolean> {
         return new LLVMI1Vector(target, vals.length);
     }
 
-    @Override
-    public int getElementByteSize() {
-        return I1_SIZE;
+    public LLVMI1Vector and(LLVMAddress addr, LLVMI1Vector right) {
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            boolean elementResult = (getValue(i) & right.getValue(i));
+            LLVMMemory.putI1(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I1_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
-    @Override
-    protected LLVMVector<Boolean> create(LLVMAddress addr, int length) {
+    public LLVMI1Vector or(LLVMAddress addr, LLVMI1Vector right) {
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            boolean elementResult = (getValue(i) | right.getValue(i));
+            LLVMMemory.putI1(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I1_SIZE);
+        }
+        return create(addr, nrElements);
+    }
+
+    public LLVMI1Vector xor(LLVMAddress addr, LLVMI1Vector right) {
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            boolean elementResult = (getValue(i) ^ right.getValue(i));
+            LLVMMemory.putI1(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I1_SIZE);
+        }
+        return create(addr, nrElements);
+    }
+
+    public static LLVMI1Vector create(LLVMAddress addr, int length) {
         return new LLVMI1Vector(addr, length);
     }
 
-    @Override
-    public Boolean getValue(LLVMAddress addr) {
-        return LLVMMemory.getI1(addr);
+    public boolean[] getValues() {
+        boolean[] values = new boolean[nrElements];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = getValue(i);
+        }
+        return values;
     }
 
-    @Override
-    public void setValue(LLVMAddress addr, Boolean value) {
-        LLVMMemory.putI1(addr, value);
+    public boolean getValue(int index) {
+        int offset = index * I1_SIZE;
+        LLVMAddress increment = address.increment(offset);
+        return LLVMMemory.getI1(increment);
     }
 
-    public static LLVMI1Vector createI1Vector(LLVMAddress addr, int size) {
-        return new LLVMI1Vector(addr, size);
+    public LLVMI1Vector insert(LLVMAddress target, boolean element, int index) {
+        LLVMHeap.memCopy(target, address, nrElements * I1_SIZE);
+        LLVMAddress elementAddress = target.increment(index * I1_SIZE);
+        LLVMMemory.putI1(elementAddress, element);
+        return create(target, nrElements);
     }
 
-    public LLVMI1Vector and(LLVMAddress target, LLVMI1Vector right) {
-        return performOperation(target, right, (a, b) -> a & b);
+    public int getLength() {
+        return nrElements;
     }
 
-    public LLVMI1Vector or(LLVMAddress target, LLVMI1Vector right) {
-        return performOperation(target, right, (a, b) -> a | b);
+    public LLVMAddress getAddress() {
+        return address;
     }
 
-    public LLVMI1Vector xor(LLVMAddress target, LLVMI1Vector right) {
-        return performOperation(target, right, (a, b) -> a ^ b);
+    public int getVectorByteSize() {
+        return I1_SIZE * nrElements;
     }
-
 }
