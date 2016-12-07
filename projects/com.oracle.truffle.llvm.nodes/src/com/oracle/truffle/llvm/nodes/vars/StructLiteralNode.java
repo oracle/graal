@@ -250,7 +250,7 @@ public class StructLiteralNode extends LLVMExpressionNode {
     }
 
     @Child private LLVMExpressionNode address;
-    @CompilationFinal private final int[] offsets;
+    @CompilationFinal(dimensions = 1) private final int[] offsets;
     @Children private final LLVMStructWriteNode[] elementWriteNodes;
 
     public StructLiteralNode(int[] offsets, LLVMStructWriteNode[] elementWriteNodes, LLVMExpressionNode address) {
