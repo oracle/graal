@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -48,8 +49,8 @@ public final class ReentrantNodeIterator {
         public final Map<LoopExitNode, StateT> exitStates;
 
         public LoopInfo(int endCount, int exitCount) {
-            endStates = Node.newIdentityMap(endCount);
-            exitStates = Node.newIdentityMap(exitCount);
+            endStates = NodeCollectionsFactory.newIdentityMap(endCount);
+            exitStates = NodeCollectionsFactory.newIdentityMap(exitCount);
         }
     }
 
@@ -101,7 +102,7 @@ public final class ReentrantNodeIterator {
     private static <StateT> Map<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, LoopBeginNode boundary) {
         assert start != null;
         Deque<AbstractBeginNode> nodeQueue = new ArrayDeque<>();
-        Map<FixedNode, StateT> blockEndStates = Node.newIdentityMap();
+        Map<FixedNode, StateT> blockEndStates = NodeCollectionsFactory.newIdentityMap();
 
         StateT state = initialState;
         FixedNode current = start;

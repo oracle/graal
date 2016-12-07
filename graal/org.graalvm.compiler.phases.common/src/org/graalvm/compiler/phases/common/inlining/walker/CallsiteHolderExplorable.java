@@ -28,7 +28,7 @@ import java.util.LinkedList;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
 
-import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -101,7 +101,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
         if (freshlyInstantiatedArguments == null || freshlyInstantiatedArguments.isEmpty()) {
             return Collections.EMPTY_SET;
         }
-        Set<ParameterNode> result = Node.newSet();
+        Set<ParameterNode> result = NodeCollectionsFactory.newSet();
         for (ParameterNode p : graph.getNodes(ParameterNode.TYPE)) {
             if (freshlyInstantiatedArguments.get(p.index())) {
                 result.add(p);

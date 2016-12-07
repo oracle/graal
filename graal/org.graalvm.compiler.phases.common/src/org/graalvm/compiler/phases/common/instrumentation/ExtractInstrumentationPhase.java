@@ -32,6 +32,7 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -159,8 +160,9 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
          * InstrumentationNode is alive.
          */
         StructuredGraph genInstrumentationGraph(StructuredGraph oldGraph, InstrumentationNode instrumentationNode) {
+
             StructuredGraph instrumentationGraph = new StructuredGraph(AllowAssumptions.YES, INVALID_COMPILATION_ID);
-            Map<Node, Node> replacements = Node.newMap();
+            Map<Node, Node> replacements = NodeCollectionsFactory.newMap();
             int index = 0; // for ParameterNode index
             for (Node current : nodes) {
                 // mark any input that is not included in the instrumentation a weak dependency

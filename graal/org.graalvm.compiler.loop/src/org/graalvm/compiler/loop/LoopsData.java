@@ -34,7 +34,7 @@ import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
-import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -44,7 +44,7 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 public class LoopsData {
 
     private Map<Loop<Block>, LoopEx> loopToEx = CollectionsFactory.newIdentityMap();
-    private Map<LoopBeginNode, LoopEx> loopBeginToEx = Node.newIdentityMap();
+    private Map<LoopBeginNode, LoopEx> loopBeginToEx = NodeCollectionsFactory.newIdentityMap();
     private ControlFlowGraph cfg;
 
     @SuppressWarnings("try")

@@ -43,6 +43,7 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -582,7 +583,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private PhiNode[] getValuePhisCached(ValueNode key, int entryCount) {
             if (valuePhis == null) {
-                valuePhis = Node.newIdentityMap();
+                valuePhis = NodeCollectionsFactory.newIdentityMap();
             }
             ValuePhiNode[] result = valuePhis.get(key);
             if (result == null) {
@@ -603,7 +604,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private VirtualObjectNode getValueObjectVirtualCached(ValuePhiNode phi, VirtualObjectNode virtual) {
             if (valueObjectVirtuals == null) {
-                valueObjectVirtuals = Node.newIdentityMap();
+                valueObjectVirtuals = NodeCollectionsFactory.newIdentityMap();
             }
             VirtualObjectNode result = valueObjectVirtuals.get(phi);
             if (result == null) {

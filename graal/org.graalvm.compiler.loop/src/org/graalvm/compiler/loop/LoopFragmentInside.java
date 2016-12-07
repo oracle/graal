@@ -30,6 +30,7 @@ import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -164,7 +165,7 @@ public class LoopFragmentInside extends LoopFragment {
         final StructuredGraph graph = graph();
         return new DuplicationReplacement() {
 
-            private Map<Node, Node> seenNode = Node.newMap();
+            private Map<Node, Node> seenNode = NodeCollectionsFactory.newMap();
 
             @Override
             public Node replacement(Node original) {
@@ -350,7 +351,7 @@ public class LoopFragmentInside extends LoopFragment {
                 reverseEnds.put(duplicate, le);
             }
         }
-        mergedInitializers = Node.newIdentityMap();
+        mergedInitializers = NodeCollectionsFactory.newIdentityMap();
         AbstractBeginNode newExit;
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {

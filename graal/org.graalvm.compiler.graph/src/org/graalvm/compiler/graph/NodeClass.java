@@ -28,7 +28,6 @@ import static org.graalvm.compiler.graph.Edges.translateInto;
 import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
 import static org.graalvm.compiler.graph.InputEdges.translateInto;
 import static org.graalvm.compiler.graph.Node.WithAllEdges;
-import static org.graalvm.compiler.graph.Node.newIdentityMap;
 import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
 
 import java.lang.annotation.Annotation;
@@ -818,7 +817,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             newNodes = new NodeNodeMap(oldGraph);
         } else {
             // Use sparse map
-            newNodes = newIdentityMap();
+            newNodes = NodeCollectionsFactory.newIdentityMap();
         }
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 
