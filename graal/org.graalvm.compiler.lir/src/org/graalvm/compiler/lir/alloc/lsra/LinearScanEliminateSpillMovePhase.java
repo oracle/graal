@@ -145,10 +145,10 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
                              * Insert move from register to stack just after the beginning of the
                              * interval.
                              */
-                            assert interval == Interval.EndMarker || interval.spillDefinitionPos() >= opId : "invalid order";
-                            assert interval == Interval.EndMarker || (interval.isSplitParent() && interval.spillState() == SpillState.StoreAtDefinition) : "invalid interval";
+                            assert interval.isEndMarker() || interval.spillDefinitionPos() >= opId : "invalid order";
+                            assert interval.isEndMarker() || (interval.isSplitParent() && interval.spillState() == SpillState.StoreAtDefinition) : "invalid interval";
 
-                            while (interval != Interval.EndMarker && interval.spillDefinitionPos() == opId) {
+                            while (!interval.isEndMarker() && interval.spillDefinitionPos() == opId) {
                                 if (!interval.canMaterialize()) {
                                     if (!insertionBuffer.initialized()) {
                                         /*
@@ -185,7 +185,7 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
                 }
             } // end of block iteration
 
-            assert interval == Interval.EndMarker : "missed an interval";
+            assert interval.isEndMarker() : "missed an interval";
         }
     }
 
@@ -208,7 +208,7 @@ public class LinearScanEliminateSpillMovePhase extends AllocationPhase {
     private static void checkIntervals(Interval interval) {
         Interval prev = null;
         Interval temp = interval;
-        while (temp != Interval.EndMarker) {
+        while (!temp.isEndMarker()) {
             assert temp.spillDefinitionPos() > 0 : "invalid spill definition pos";
             if (prev != null) {
                 assert temp.from() >= prev.from() : "intervals not sorted";
