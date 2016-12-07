@@ -77,6 +77,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
@@ -442,6 +443,18 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             return emitReinterpretMemory(kind, access);
         };
 
+    }
+
+    @MatchRule("(Write object Reinterpret=reinterpret)")
+    public ComplexMatchResult writeReinterpret(WriteNode root, ReinterpretNode reinterpret) {
+        return builder -> {
+            LIRKind kind = getLIRGeneratorTool().getLIRKind(reinterpret.getValue().stamp());
+            AllocatableValue value = getLIRGeneratorTool().asAllocatable(operand(reinterpret.getValue()));
+
+            AMD64AddressValue address = (AMD64AddressValue) operand(root.getAddress());
+            getArithmeticLIRGenerator().emitStore((AMD64Kind) kind.getPlatformKind(), address, value, getState(root));
+            return null;
+        };
     }
 
     @Override
