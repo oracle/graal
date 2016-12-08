@@ -212,7 +212,7 @@ class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin):
 class MoveProfilingBenchmarkMixin(object):
     """Benchmark-mixin for measuring the number of dynamically executed move instructions.
 
-    See com.oracle.graal.lir.profiling.MoveProfilingPhase for more details.
+    See org.graalvm.compiler.lir.profiling.MoveProfilingPhase for more details.
     """
     benchmark_counters_file = 'benchmark-counters'
 
@@ -229,7 +229,7 @@ class MoveProfilingBenchmarkMixin(object):
     def get_dynamic_counters_argument(self):
         """ The argument to select the desired dynamic counters mode. Possible values are
         `-Dgraal.GenericDynamicCounters=...`, `-Dgraal.TimedDynamicCounters=...` or
-        `-Dgraal.BenchmarkDynamicCounters=...`. See com.oracle.graal.hotspot.debug.BenchmarkCounters
+        `-Dgraal.BenchmarkDynamicCounters=...`. See org.graalvm.compiler.hotspot.debug.BenchmarkCounters
         for more information.
         """
         raise NotImplementedError()
