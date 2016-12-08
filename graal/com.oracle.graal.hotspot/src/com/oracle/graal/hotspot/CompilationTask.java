@@ -334,7 +334,7 @@ public class CompilationTask {
          * respect ExitVMOnException if it's been explicitly set.
          */
         boolean exitVMOnException = ExitVMOnException.getValue(options);
-        if (!ExitVMOnException.hasBeenSet()) {
+        if (!ExitVMOnException.hasBeenSet(options)) {
             assert (exitVMOnException = true) == true;
             if (!exitVMOnException) {
                 HotSpotGraalRuntimeProvider runtime = compiler.getGraalRuntime();

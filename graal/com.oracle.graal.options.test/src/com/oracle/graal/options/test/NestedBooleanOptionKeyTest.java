@@ -28,6 +28,7 @@
 
 package com.oracle.graal.options.test;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
 import static com.oracle.graal.options.test.NestedBooleanOptionKeyTest.Options.Master0;
 import static com.oracle.graal.options.test.NestedBooleanOptionKeyTest.Options.Master1;
 import static com.oracle.graal.options.test.NestedBooleanOptionKeyTest.Options.Master2;
@@ -65,7 +66,7 @@ public class NestedBooleanOptionKeyTest {
     @SuppressWarnings("try")
     @Test
     public void runOverrides() {
-        OptionValues options = new OptionValues();
+        OptionValues options = new OptionValues(GLOBAL);
         assertTrue(Master0.getValue(options));
         assertTrue(NestedOption0.getValue(options));
         assertTrue(Master0.getValue(options));

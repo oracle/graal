@@ -22,28 +22,18 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.compiler.common.util.Util.Java8OrEarlier;
 import static com.oracle.graal.options.OptionValues.GLOBAL;
+import static com.oracle.graal.options.OptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 import static jdk.vm.ci.common.InitTimer.timer;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
 import java.util.ServiceLoader;
 
-import com.oracle.graal.debug.GraalError;
 import com.oracle.graal.debug.MethodFilter;
 import com.oracle.graal.options.Option;
 import com.oracle.graal.options.OptionDescriptors;
 import com.oracle.graal.options.OptionKey;
 import com.oracle.graal.options.OptionType;
-import com.oracle.graal.options.OptionValues;
-import com.oracle.graal.options.OptionsParser;
 import com.oracle.graal.phases.tiers.CompilerConfiguration;
 
 import jdk.vm.ci.common.InitTimer;
@@ -55,31 +45,7 @@ import jdk.vm.ci.services.Services;
 
 public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFactory {
 
-    /**
-     * The name of the system property specifying a file containing extra Graal option settings.
-     */
-    private static final String GRAAL_OPTIONS_FILE_PROPERTY_NAME = "graal.options.file";
-
-    /**
-     * The name of the system property specifying the Graal version.
-     */
-    private static final String GRAAL_VERSION_PROPERTY_NAME = "graal.version";
-
-    /**
-     * The prefix for system properties that correspond to {@link Option} annotated fields. A field
-     * named {@code MyOption} will have its value set from a system property with the name
-     * {@code GRAAL_OPTION_PROPERTY_PREFIX + "MyOption"}.
-     */
-    public static final String GRAAL_OPTION_PROPERTY_PREFIX = "graal.";
-
     private static MethodFilter[] graalCompileOnlyFilter;
-
-    /**
-     * Gets the system property assignment that would set the current value for a given option.
-     */
-    public static String asSystemPropertySetting(OptionValues options, OptionKey<?> value) {
-        return GRAAL_OPTION_PROPERTY_PREFIX + value.getName() + "=" + value.getValue(options);
-    }
 
     private final HotSpotGraalJVMCIServiceLocator locator;
 
@@ -102,7 +68,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     public void printProperties(PrintStream out) {
         ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
         out.println("[Graal properties]");
-        OptionsParser.printFlags(loader, out, allOptionsSettings.keySet(), GRAAL_OPTION_PROPERTY_PREFIX);
+        GLOBAL.printHelp(loader, out, GRAAL_OPTION_PROPERTY_PREFIX);
     }
 
     static class Options {
@@ -120,103 +86,21 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
 
     }
 
-    private static Map<String, String> allOptionsSettings;
-
-    /**
-     * Initializes options if they haven't already been initialized.
-     *
-     * Initialization means first parsing the options in the file denoted by the
-     * {@code VM.getSavedProperty(String) saved} system property named
-     * {@value HotSpotGraalCompilerFactory#GRAAL_OPTIONS_FILE_PROPERTY_NAME} if the file exists
-     * followed by parsing the options encoded in saved system properties whose names start with
-     * {@value #GRAAL_OPTION_PROPERTY_PREFIX}. Key/value pairs are parsed from the aforementioned
-     * file with {@link Properties#load(java.io.Reader)}.
-     */
     @SuppressWarnings("try")
     private static synchronized void initializeOptions() {
-        if (allOptionsSettings == null) {
-            try (InitTimer t = timer("InitializeOptions")) {
-                ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
-                Properties savedProps = getSavedProperties(Java8OrEarlier);
-                String optionsFile = savedProps.getProperty(GRAAL_OPTIONS_FILE_PROPERTY_NAME);
-
-                if (optionsFile != null) {
-                    File graalOptions = new File(optionsFile);
-                    if (graalOptions.exists()) {
-                        try (FileReader fr = new FileReader(graalOptions)) {
-                            Properties props = new Properties();
-                            props.load(fr);
-                            Map<String, String> optionSettings = new HashMap<>();
-                            for (Map.Entry<Object, Object> e : props.entrySet()) {
-                                optionSettings.put((String) e.getKey(), (String) e.getValue());
-                            }
-                            try {
-                                OptionsParser.parseOptions(optionSettings, GLOBAL, loader);
-                                if (allOptionsSettings == null) {
-                                    allOptionsSettings = new HashMap<>(optionSettings);
-                                } else {
-                                    allOptionsSettings.putAll(optionSettings);
-                                }
-                            } catch (Throwable e) {
-                                throw new InternalError("Error parsing an option from " + graalOptions, e);
-                            }
-                        } catch (IOException e) {
-                            throw new InternalError("Error reading " + graalOptions, e);
-                        }
-                    }
-                }
-
-                Map<String, String> optionSettings = new HashMap<>();
-                for (Map.Entry<Object, Object> e : savedProps.entrySet()) {
-                    String name = (String) e.getKey();
-                    if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
-                        if (name.equals("graal.PrintFlags") || name.equals("graal.ShowFlags")) {
-                            System.err.println("The " + name + " option has been removed and will be ignored. Use -XX:+JVMCIPrintProperties instead.");
-                        } else if (name.equals(GRAAL_OPTIONS_FILE_PROPERTY_NAME) || name.equals(GRAAL_VERSION_PROPERTY_NAME)) {
-                            // Ignore well known properties that do not denote an option
-                        } else {
-                            String value = (String) e.getValue();
-                            optionSettings.put(name.substring(GRAAL_OPTION_PROPERTY_PREFIX.length()), value);
-                        }
-                    }
-                }
-
-                OptionsParser.parseOptions(optionSettings, GLOBAL, loader);
-
-                if (allOptionsSettings == null) {
-                    allOptionsSettings = optionSettings;
-                } else {
-                    allOptionsSettings.putAll(optionSettings);
-                }
-
-                if (Options.GraalCompileOnly.getValue(GLOBAL) != null) {
-                    graalCompileOnlyFilter = MethodFilter.parse(Options.GraalCompileOnly.getValue(GLOBAL));
-                    if (graalCompileOnlyFilter.length == 0) {
-                        graalCompileOnlyFilter = null;
-                    }
-                }
-                if (graalCompileOnlyFilter != null || !Options.UseTrivialPrefixes.getValue(GLOBAL)) {
-                    /*
-                     * Exercise this code path early to encourage loading now. This doesn't solve
-                     * problem of deadlock during class loading but seems to eliminate it in
-                     * practice.
-                     */
-                    adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.FullOptimization);
-                    adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.Simple);
-                }
+        if (Options.GraalCompileOnly.getValue(GLOBAL) != null) {
+            graalCompileOnlyFilter = MethodFilter.parse(Options.GraalCompileOnly.getValue(GLOBAL));
+            if (graalCompileOnlyFilter.length == 0) {
+                graalCompileOnlyFilter = null;
             }
         }
-    }
-
-    private static Properties getSavedProperties(boolean jdk8OrEarlier) {
-        try {
-            String vmClassName = jdk8OrEarlier ? "sun.misc.VM" : "jdk.internal.misc.VM";
-            Class<?> vmClass = Class.forName(vmClassName);
-            Field savedPropsField = vmClass.getDeclaredField("savedProps");
-            savedPropsField.setAccessible(true);
-            return (Properties) savedPropsField.get(null);
-        } catch (Exception e) {
-            throw new GraalError(e);
+        if (graalCompileOnlyFilter != null || !Options.UseTrivialPrefixes.getValue(GLOBAL)) {
+            /*
+             * Exercise this code path early to encourage loading now. This doesn't solve problem of
+             * deadlock during class loading but seems to eliminate it in practice.
+             */
+            adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.FullOptimization);
+            adjustCompilationLevelInternal(Object.class, "hashCode", "()I", CompilationLevel.Simple);
         }
     }
 

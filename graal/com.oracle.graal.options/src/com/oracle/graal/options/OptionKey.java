@@ -24,6 +24,7 @@ package com.oracle.graal.options;
 
 import static com.oracle.graal.options.OptionValues.GLOBAL;
 
+import java.util.Map;
 import java.util.ServiceLoader;
 
 /**
@@ -141,22 +142,7 @@ public class OptionKey<T> {
     }
 
     /**
-     * Returns true if the option has been set in any way. Note that this doesn't mean that the
-     * current value is different than the default.
-     */
-    public final boolean hasBeenSet() {
-        return hasBeenSet(GLOBAL);
-    }
-
-    /**
-     * Gets the value of this option.
-     */
-    // public final T getValue() {
-    // return getValueXXX(GLOBAL);
-    // }
-
-    /**
-     * Gets the value of this option.
+     * Gets the value of this option in {@code values}.
      */
     public T getValue(OptionValues values) {
         assert !(this instanceof StableOptionKey);
@@ -171,6 +157,19 @@ public class OptionKey<T> {
     }
 
     /**
+     * Sets the value of this option in a given map. The {@link #onValueUpdate(Map, Object, Object)}
+     * method is called once the value is set.
+     *
+     * @param values map of option values
+     * @param v the value to set for this key in {@code map}
+     */
+    @SuppressWarnings("unchecked")
+    public void update(Map<OptionKey<?>, Object> values, Object v) {
+        T oldValue = (T) values.put(this, v);
+        onValueUpdate(values, oldValue, (T) v);
+    }
+
+    /**
      * Sets the value of this option.
      */
     public final void setValue(Object v) {
@@ -178,18 +177,13 @@ public class OptionKey<T> {
     }
 
     /**
-     * Notifies this object when a value associated with this key is updated in {@code values}.
+     * Notifies this object when a value associated with this key is set or updated in
+     * {@code values}.
      *
      * @param values
      * @param oldValue
      * @param newValue
      */
-    protected void onValueUpdate(OptionValues values, T oldValue, T newValue) {
+    protected void onValueUpdate(Map<OptionKey<?>, Object> values, T oldValue, T newValue) {
     }
-
-    @SuppressWarnings("unchecked")
-    final void valueUpdated(OptionValues values, Object oldValue, Object newValue) {
-        onValueUpdate(values, (T) oldValue, (T) newValue);
-    }
-
 }

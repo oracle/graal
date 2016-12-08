@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle.hotspot;
 
+import static com.oracle.graal.options.OptionValues.GLOBAL;
+
 import java.util.function.Supplier;
 
 import com.oracle.graal.api.runtime.GraalJVMCICompiler;
@@ -76,7 +78,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         }
 
         static GraalJVMCICompiler getCompiler() {
-            if (!Options.TruffleCompilerConfiguration.hasBeenSet()) {
+            if (!Options.TruffleCompilerConfiguration.hasBeenSet(GLOBAL)) {
                 JVMCICompiler compiler = JVMCI.getRuntime().getCompiler();
                 if (compiler instanceof GraalJVMCICompiler) {
                     return (GraalJVMCICompiler) compiler;

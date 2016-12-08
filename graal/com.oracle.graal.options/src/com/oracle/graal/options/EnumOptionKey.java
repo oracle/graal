@@ -23,6 +23,7 @@
 package com.oracle.graal.options;
 
 import java.util.EnumSet;
+import java.util.Map;
 
 public class EnumOptionKey<T extends Enum<T>> extends OptionKey<T> {
     final Class<T> enumClass;
@@ -52,7 +53,7 @@ public class EnumOptionKey<T extends Enum<T>> extends OptionKey<T> {
     }
 
     @Override
-    protected void onValueUpdate(OptionValues values, T oldValue, T newValue) {
+    protected void onValueUpdate(Map<OptionKey<?>, Object> values, T oldValue, T newValue) {
         assert enumClass.isInstance(newValue) : newValue + " is not a valid value for " + getName();
     }
 }

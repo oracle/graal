@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.options;
 
+import java.util.Map;
+
 /**
  * An option that always returns the same {@linkplain #getValue(OptionValues) value}.
  */
@@ -57,7 +59,7 @@ public class StableOptionKey<T> extends OptionKey<T> {
     }
 
     @Override
-    protected void onValueUpdate(OptionValues values, T oldValue, T newValue) {
-        assert !values.isStabilized(this);
+    protected void onValueUpdate(Map<OptionKey<?>, Object> values, T oldValue, T newValue) {
+        // assert !values.isStabilized(this);
     }
 }

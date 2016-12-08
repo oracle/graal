@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotGraalCompiler.fmt;
-import static com.oracle.graal.hotspot.HotSpotGraalCompilerFactory.GRAAL_OPTION_PROPERTY_PREFIX;
 import static com.oracle.graal.options.OptionValues.GLOBAL;
+import static com.oracle.graal.options.OptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 
 import java.util.Arrays;
 import java.util.HashMap;
