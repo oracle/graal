@@ -148,9 +148,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
                     masm.stp(64, fp, lr, AArch64Address.createScaledImmediateAddress(sp, frameSize / wordSize));
                 } else {
                     masm.stp(64, fp, lr, AArch64Address.createPreIndexedImmediateAddress(sp, -2));
-                    if (frameSize < 1 << 12)
+                    if (frameSize < 1 << 12) {
                         masm.sub(64, sp, sp, totalFrameSize - 2 * wordSize);
-                    else {
+                    } else {
                         masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
                         masm.sub(64, sp, sp, rscratch1);
                     }
@@ -164,7 +164,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
                     AArch64Address address = AArch64Address.createPostIndexedImmediateAddress(scratch, longSize);
                     try (ScratchRegister sc2 = masm.getScratchRegister()) {
                         Register value = sc2.getRegister();
-                        masm.mov(value, 0xBADDECAFFC0FFEEl);
+                        masm.mov(value, 0xBADDECAFFC0FFEEL);
                         for (int i = 0; i < frameSize; i += longSize) {
                             masm.str(64, value, address);
                         }
@@ -191,9 +191,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
                     masm.ldp(64, fp, lr, AArch64Address.createScaledImmediateAddress(sp, frameSize / wordSize));
                     masm.add(64, sp, sp, totalFrameSize);
                 } else {
-                    if (frameSize < 1 << 12)
+                    if (frameSize < 1 << 12) {
                         masm.add(64, sp, sp, totalFrameSize - 2 * wordSize);
-                    else {
+                    } else {
                         masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
                         masm.add(64, sp, sp, rscratch1);
                     }

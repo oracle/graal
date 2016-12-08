@@ -143,15 +143,13 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
 
         // Align the main loop
         masm.align(crb.target.wordSize * 2);
-        {
-            masm.bind(loop);
-            masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(array1, length, false));
-            masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(array2, length, false));
-            masm.eor(64, rscratch1, temp, rscratch1);
-            masm.cbnz(64, rscratch1, breakLabel);
-            masm.add(64, length, length, VECTOR_SIZE);
-            masm.cbnz(64, length, loop);
-        }
+        masm.bind(loop);
+        masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(array1, length, false));
+        masm.ldr(64, rscratch1, AArch64Address.createRegisterOffsetAddress(array2, length, false));
+        masm.eor(64, rscratch1, temp, rscratch1);
+        masm.cbnz(64, rscratch1, breakLabel);
+        masm.add(64, length, length, VECTOR_SIZE);
+        masm.cbnz(64, length, loop);
 
         masm.cbz(64, result, breakLabel);
 
