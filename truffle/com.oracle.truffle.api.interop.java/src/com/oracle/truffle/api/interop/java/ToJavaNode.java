@@ -63,7 +63,7 @@ abstract class ToJavaNode extends Node {
 
     private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass<?> targetType, Class<?> cachedOperandType) {
         Object convertedValue;
-        if (isPrimitiveType(cachedOperandType)) {
+        if (isPrimitiveType(targetType.clazz)) {
             convertedValue = toPrimitive(value, targetType.clazz);
             assert convertedValue != null;
         } else if (value instanceof JavaObject && targetType.clazz.isInstance(((JavaObject) value).obj)) {
