@@ -59,21 +59,24 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
             VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 
-            ValueNode actualTag = tool.getEntry(tagVirtual, getFrameSlotIndex());
-            if (!actualTag.isConstant() || actualTag.asJavaConstant().asInt() != accessTag) {
-                /*
-                 * We cannot constant fold the tag-check immediately, so we need to create a guard
-                 * comparing the actualTag with the accessTag.
-                 */
-                LogicNode comparison = new IntegerEqualsNode(actualTag, getConstant(accessTag));
-                tool.addNode(comparison);
-                tool.addNode(new FixedGuardNode(comparison, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateRecompile));
-            }
+            int frameSlotIndex = getFrameSlotIndex();
+            if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
+                ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
+                if (!actualTag.isConstant() || actualTag.asJavaConstant().asInt() != accessTag) {
+                    /*
+                     * We cannot constant fold the tag-check immediately, so we need to create a
+                     * guard comparing the actualTag with the accessTag.
+                     */
+                    LogicNode comparison = new IntegerEqualsNode(actualTag, getConstant(accessTag));
+                    tool.addNode(comparison);
+                    tool.addNode(new FixedGuardNode(comparison, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.InvalidateRecompile));
+                }
 
-            ValueNode dataEntry = tool.getEntry(dataVirtual, getFrameSlotIndex());
-            if (dataEntry.getStackKind() == getStackKind()) {
-                tool.replaceWith(dataEntry);
-                return;
+                ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
+                if (dataEntry.getStackKind() == getStackKind()) {
+                    tool.replaceWith(dataEntry);
+                    return;
+                }
             }
         }
 
