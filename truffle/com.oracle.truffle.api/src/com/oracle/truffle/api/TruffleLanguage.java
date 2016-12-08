@@ -125,18 +125,23 @@ public abstract class TruffleLanguage<C> {
         String[] mimeType();
 
         /**
-         * Determines if the language needs a special support for interactiveness. When
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is used over
-         * {@link Source#isInteractive() interactive source}, it prints the result to
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard
-         * output} by default. Should a language need a special support, it has to specify
-         * <code>true</code> for the <code>interactiveness</code> attribute and then treat
-         * {@link Source#isInteractive interactive sources} in its own special way.
+         * Indicates whether the language implements an interactive response to evaluation of
+         * {@link Source#isInteractive() interactive sources}. When
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is called over an
+         * {@link Source#isInteractive() interactive source}, interactive languages print the result
+         * to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard
+         * output} or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream)
+         * error output} and can use
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream) standard
+         * input}. Non-interactive languages are not expected to use the polyglot engine streams in
+         * an interactive way and whoever supplies an interactive source is expected to implement an
+         * appropriate response.
          *
-         * @return false if the default support for interactive sources is enough
+         * @return <code>true</code> if the language implements an interactive response to
+         *         evaluation of interactive sources.
          * @since 0.22
          */
-        boolean interactiveness() default false;
+        boolean interactive() default false;
     }
 
     /**

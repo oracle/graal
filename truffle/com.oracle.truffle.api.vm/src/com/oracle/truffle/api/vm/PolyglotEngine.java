@@ -61,8 +61,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 
 /**
@@ -452,11 +450,6 @@ public class PolyglotEngine {
      * Evaluates provided source. Chooses language registered for a particular
      * {@link Source#getMimeType() MIME type} (throws an {@link IllegalStateException} if there is
      * none). The language is then allowed to parse and execute the source.
-     * <p>
-     * Since version 0.22 a special support for {@link Source#isInteractive() interactive source} is
-     * provided: When an interactive source is evaluated, the returned value is printed to
-     * {@link PolyglotEngine.Builder#setOut(OutputStream)} before it is returned from this eval
-     * method.
      *
      * @param source code snippet to execute
      * @return a {@link Value} object that holds result of an execution, never <code>null</code>
@@ -550,19 +543,7 @@ public class PolyglotEngine {
             target = Truffle.getRuntime().createCallTarget(new PolyglotEvalRootNode(this, l, source));
             l.cache.put(source, target);
         }
-        Object value = target.call((Object) langTarget);
-        if (source.isInteractive() && !l.getInteractiveness() && value != null) {
-            // print res to standard out stream:
-            String stringResult = Access.LANGS.toString(langTarget[0], findEnv(langTarget[0].getClass()), value);
-            try {
-                PolyglotEngine.this.out.write(stringResult.getBytes(StandardCharsets.UTF_8));
-                PolyglotEngine.this.out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
-            } catch (IOException ioex) {
-                // out stream has problems.
-                throw new IllegalStateException(ioex);
-            }
-        }
-        return value;
+        return target.call((Object) langTarget);
     }
 
     ContextStore context() {
@@ -1173,14 +1154,24 @@ public class PolyglotEngine {
         }
 
         /**
-         * Language interactiveness.
+         * Test whether the language has a support for interactive evaluation of
+         * {@link Source#isInteractive() interactive sources}. When
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is called over an
+         * {@link Source#isInteractive() interactive source}, interactive languages print the result
+         * to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard
+         * output} or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream)
+         * error output} and can use
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream) standard
+         * input}. Non-interactive languages are not expected to use the polyglot engine streams in
+         * an interactive way and whoever supplies an interactive source is expected to implement an
+         * appropriate response.
          *
-         * @return <code>true</code> if the language needs special support for interactiveness,
-         *         <code>false</code> if the default printing of the evaluated result is sufficient.
+         * @return <code>true</code> if the language implements an interactive response to
+         *         evaluation of interactive sources, <code>false</code> otherwise.
          * @since 0.22
          */
-        public boolean getInteractiveness() {
-            return info.getInteractiveness();
+        public boolean isInteractive() {
+            return info.isInteractive();
         }
 
         /**
