@@ -59,7 +59,7 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  * A graph that contains at least one distinguished node : the {@link #start() start} node. This
  * node is the start of the control flow of the graph.
  */
-public class StructuredGraph extends Graph implements JavaMethodContext {
+public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
      * The different stages of the compilation of a {@link Graph} regarding the status of
@@ -394,7 +394,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         return copy;
     }
 
-    public final StructuredGraph copyWithIdentifier(CompilationIdentifier newCompilationId) {
+    public StructuredGraph copyWithIdentifier(CompilationIdentifier newCompilationId) {
         return copy(name, null, newCompilationId);
     }
 
@@ -461,6 +461,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      *
      * @param node the node to be unlinked and removed
      */
+    @SuppressWarnings("static-method")
     public void removeFixed(FixedWithNextNode node) {
         assert node != null;
         if (node instanceof AbstractBeginNode) {
@@ -492,12 +493,14 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void replaceFixedWithFloating(FixedWithNextNode node, FloatingNode replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         GraphUtil.unlinkFixedNode(node);
         node.replaceAtUsagesAndDelete(replacement);
     }
 
+    @SuppressWarnings("static-method")
     public void removeSplit(ControlSplitNode node, AbstractBeginNode survivingSuccessor) {
         assert node != null;
         assert node.hasNoUsages();
@@ -511,6 +514,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         removeSplitPropagate(node, survivingSuccessor, null);
     }
 
+    @SuppressWarnings("static-method")
     public void removeSplitPropagate(ControlSplitNode node, AbstractBeginNode survivingSuccessor, SimplifierTool tool) {
         assert node != null;
         assert node.hasNoUsages();
@@ -538,6 +542,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void replaceSplitWithFixed(ControlSplitNode node, FixedWithNextNode replacement, AbstractBeginNode survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor != null;
@@ -546,6 +551,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         node.replaceAndDelete(replacement);
     }
 
+    @SuppressWarnings("static-method")
     public void replaceSplitWithFloating(ControlSplitNode node, FloatingNode replacement, AbstractBeginNode survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor != null;
@@ -554,6 +560,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         node.replaceAtUsagesAndDelete(replacement);
     }
 
+    @SuppressWarnings("static-method")
     public void addAfterFixed(FixedWithNextNode node, FixedNode newNode) {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " after " + node;
         FixedNode next = node.next();
@@ -566,6 +573,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void addBeforeFixed(FixedNode node, FixedWithNextNode newNode) {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " before " + node;
         assert node.predecessor() != null && node.predecessor() instanceof FixedWithNextNode : "cannot add " + newNode + " before " + node;
@@ -586,6 +594,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void reduceTrivialMerge(AbstractMergeNode merge) {
         assert merge.forwardEndCount() == 1;
         assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().isEmpty();
@@ -750,7 +759,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         return speculationLog;
     }
 
-    public final void clearAllStateAfter() {
+    public void clearAllStateAfter() {
         for (Node node : getNodes()) {
             if (node instanceof StateSplit) {
                 FrameState stateAfter = ((StateSplit) node).stateAfter();
@@ -765,7 +774,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
-    public final boolean hasVirtualizableAllocation() {
+    public boolean hasVirtualizableAllocation() {
         for (Node n : getNodes()) {
             if (n instanceof VirtualizableAllocation) {
                 return true;
