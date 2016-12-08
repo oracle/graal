@@ -278,6 +278,7 @@ meth protected com.oracle.truffle.object.ShapeImpl generalizeProperty(com.oracle
 meth protected com.oracle.truffle.object.ShapeImpl removeProperty(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Property)
 meth protected com.oracle.truffle.object.ShapeImpl replaceProperty(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Property,com.oracle.truffle.api.object.Property)
 meth protected static com.oracle.truffle.api.object.Property relocateShadow(com.oracle.truffle.api.object.Property,com.oracle.truffle.api.object.Location)
+ anno 0 java.lang.Deprecated()
 meth protected static com.oracle.truffle.object.ShapeImpl getShapeFromProperty(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.api.object.Property)
 meth protected static com.oracle.truffle.object.ShapeImpl getShapeFromProperty(com.oracle.truffle.object.ShapeImpl,java.lang.Object)
 meth protected void objectDefineProperty(com.oracle.truffle.object.DynamicObjectImpl,java.lang.Object,java.lang.Object,int,com.oracle.truffle.api.object.LocationFactory,com.oracle.truffle.object.ShapeImpl)
@@ -387,6 +388,7 @@ meth public com.oracle.truffle.api.object.Property copyWithRelocatable(boolean)
 meth public com.oracle.truffle.api.object.Property relocate(com.oracle.truffle.api.object.Location)
 meth public final boolean isHidden()
 meth public final boolean isShadow()
+ anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.object.Location getLocation()
 meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,boolean)
 meth public final java.lang.Object get(com.oracle.truffle.api.object.DynamicObject,com.oracle.truffle.api.object.Shape)
@@ -513,7 +515,7 @@ meth public java.lang.String toStringLimit(int)
 meth public static com.oracle.truffle.object.ShapeImpl findCommonAncestor(com.oracle.truffle.object.ShapeImpl,com.oracle.truffle.object.ShapeImpl)
 meth public static java.util.List<com.oracle.truffle.api.object.Property> diff(com.oracle.truffle.api.object.Shape,com.oracle.truffle.api.object.Shape)
 supr com.oracle.truffle.api.object.Shape
-hfds ALL,LEAF_ASSUMPTION_UPDATER,TRANSITION_MAP_UPDATER,extraData,id,root,shapeCacheHitCount,shapeCacheMissCount,shapeCloneCount,shapeCount,sharedData,transitionFromParent,transitionMap
+hfds LEAF_ASSUMPTION_UPDATER,TRANSITION_MAP_UPDATER,extraData,id,root,shapeCacheHitCount,shapeCacheMissCount,shapeCloneCount,shapeCount,sharedData,transitionFromParent,transitionMap
 hcls DynamicObjectFactoryImpl
 
 CLSS public abstract static com.oracle.truffle.object.ShapeImpl$BaseAllocator
