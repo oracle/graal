@@ -259,6 +259,26 @@ public class InvocationPlugins {
         }
 
         /**
+         * Registers a plugin for a method with 6 arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void register6(String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, InvocationPlugin plugin) {
+            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6);
+        }
+
+        /**
+         * Registers a plugin for a method with 7 arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void register7(String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, Type arg7, InvocationPlugin plugin) {
+            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+        }
+
+        /**
          * Registers a plugin for an optional method with no arguments.
          *
          * @param name the name of the method
@@ -336,10 +356,16 @@ public class InvocationPlugins {
          */
         @Override
         public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, String substituteName, Type... argumentTypes) {
-            assert methodSubstitutionBytecodeProvider != null : "Registration used for method substitutions requires a non-null methodSubstitutionBytecodeProvider";
-            MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(methodSubstitutionBytecodeProvider, substituteDeclaringClass, substituteName, argumentTypes);
+            MethodSubstitutionPlugin plugin = createMethodSubstitution(substituteDeclaringClass, substituteName, argumentTypes);
             plugins.register(plugin, false, allowOverwrite, declaringType, name, argumentTypes);
         }
+
+        public MethodSubstitutionPlugin createMethodSubstitution(Class<?> substituteDeclaringClass, String substituteName, Type... argumentTypes) {
+            assert methodSubstitutionBytecodeProvider != null : "Registration used for method substitutions requires a non-null methodSubstitutionBytecodeProvider";
+            MethodSubstitutionPlugin plugin = new MethodSubstitutionPlugin(methodSubstitutionBytecodeProvider, substituteDeclaringClass, substituteName, argumentTypes);
+            return plugin;
+        }
+
     }
 
     /**
@@ -805,7 +831,7 @@ public class InvocationPlugins {
     }
 
     private static class Checker {
-        private static final int MAX_ARITY = 5;
+        private static final int MAX_ARITY = 7;
         /**
          * The set of all {@link InvocationPlugin#apply} method signatures.
          */
