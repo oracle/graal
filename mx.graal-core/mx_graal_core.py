@@ -242,6 +242,12 @@ def ctw(args, extraVMarguments=None):
 
 
 def verify_jvmci_ci_versions():
+    """
+    Checks that the jvmci versions used in various ci files agree.
+
+    If the ci.hocon files use a -dev version, it allows the travis ones to use the previous version.
+    For example, if ci.hocon uses jvmci-0.24-dev, travis may use either jvmci-0.24-dev or jvmci-0.23
+    """
     version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<version>\d*\.\d*)(?P<dev>-dev)?')
 
     def _grep_version(files, msg):

@@ -443,7 +443,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     // This field has no type in vmStructs.cpp
     public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, null, -1);
     public final int objectMonitorRecursions = getFieldOffset("ObjectMonitor::_recursions", Integer.class, "intptr_t", -1);
-    public final int objectMonitorcxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*", -1);
+    public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*", -1);
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*", -1);
 
     public final int markWordNoHashInPlace = getConstant("markOopDesc::no_hash_in_place", Integer.class);

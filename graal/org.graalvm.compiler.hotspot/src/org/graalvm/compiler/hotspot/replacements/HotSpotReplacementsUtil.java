@@ -485,22 +485,22 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static int objecyMonitorOwnerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+    public static int objectMonitorOwnerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorOwner;
     }
 
     @Fold
-    public static int objecyMonitorRescursionsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+    public static int objectMonitorRecursionsOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorRecursions;
     }
 
     @Fold
-    public static int objecyMonitorCXQOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.objectMonitorcxq;
+    public static int objectMonitorCxqOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.objectMonitorCxq;
     }
 
     @Fold
-    public static int objecyMonitorEntryListOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+    public static int objectMonitorEntryListOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorEntryList;
     }
 

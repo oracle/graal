@@ -46,10 +46,10 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockDisplacedMarkOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorMask;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorCXQOffset;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorEntryListOffset;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorOwnerOffset;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objecyMonitorRescursionsOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorCxqOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorEntryListOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorOwnerOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorRecursionsOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.pageSize;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.prototypeMarkWordOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
@@ -430,7 +430,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static boolean inlineFastLockSupported(GraalHotSpotVMConfig config) {
-        return useFastInflatedLocking() && monitorMask(config) >= 0 && objecyMonitorOwnerOffset(config) >= 0;
+        return useFastInflatedLocking() && monitorMask(config) >= 0 && objectMonitorOwnerOffset(config) >= 0;
     }
 
     private static boolean tryEnterInflated(Object object, Word lock, Word mark, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
@@ -438,7 +438,7 @@ public class MonitorSnippets implements Snippets {
         lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), lock, DISPLACED_MARK_WORD_LOCATION);
         // mark is a pointer to the ObjectMonitor + monitorMask
         Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
-        int ownerOffset = objecyMonitorOwnerOffset(INJECTED_VMCONFIG);
+        int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
         Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
         if (probability(FREQUENT_PROBABILITY, owner.equal(0))) {
             // it appears unlocked (owner == 0)
@@ -535,8 +535,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static boolean inlineFastUnlockSupported(GraalHotSpotVMConfig config) {
-        return useFastInflatedLocking() && objecyMonitorEntryListOffset(config) >= 0 && objecyMonitorCXQOffset(config) >= 0 && monitorMask(config) >= 0 &&
-                        objecyMonitorOwnerOffset(config) >= 0 && objecyMonitorRescursionsOffset(config) >= 0;
+        return useFastInflatedLocking() && objectMonitorEntryListOffset(config) >= 0 && objectMonitorCxqOffset(config) >= 0 && monitorMask(config) >= 0 &&
+                        objectMonitorOwnerOffset(config) >= 0 && objectMonitorRecursionsOffset(config) >= 0;
     }
 
     private static boolean tryExitInflated(Object object, Word mark, Word lock, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace) {
@@ -547,16 +547,16 @@ public class MonitorSnippets implements Snippets {
             // Inflated case
             // mark is a pointer to the ObjectMonitor + monitorMask
             Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
-            int ownerOffset = objecyMonitorOwnerOffset(INJECTED_VMCONFIG);
+            int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
             Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
-            int recursionsOffset = objecyMonitorRescursionsOffset(INJECTED_VMCONFIG);
+            int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
             Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
             Word thread = registerAsWord(threadRegister);
             if (probability(FAST_PATH_PROBABILITY, owner.xor(thread).or(recursions).equal(0))) {
                 // owner == thread && recursions == 0
-                int cxqOffset = objecyMonitorCXQOffset(INJECTED_VMCONFIG);
+                int cxqOffset = objectMonitorCxqOffset(INJECTED_VMCONFIG);
                 Word cxq = monitor.readWord(cxqOffset, OBJECT_MONITOR_CXQ_LOCATION);
-                int entryListOffset = objecyMonitorEntryListOffset(INJECTED_VMCONFIG);
+                int entryListOffset = objectMonitorEntryListOffset(INJECTED_VMCONFIG);
                 Word entryList = monitor.readWord(entryListOffset, OBJECT_MONITOR_ENTRY_LIST_LOCATION);
                 if (probability(FREQUENT_PROBABILITY, cxq.or(entryList).equal(0))) {
                     // cxq == 0 && entryList == 0
