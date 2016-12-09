@@ -67,10 +67,10 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
      */
     private final DebugCounter allocatedTraces;
 
-    private static final class AllocationStatistics {
+    public static final class AllocationStatistics {
         private final DebugCounter allocatedTraces;
 
-        private AllocationStatistics(Class<?> clazz) {
+        public AllocationStatistics(Class<?> clazz) {
             allocatedTraces = Debug.counter("TraceRA[%s]", clazz);
         }
     }
@@ -82,11 +82,15 @@ public abstract class TraceAllocationPhase<C extends TraceAllocationPhase.TraceA
         }
     };
 
+    private static AllocationStatistics getAllocationStatistics(Class<?> c) {
+        return counterClassValue.get(c);
+    }
+
     public TraceAllocationPhase() {
-        LIRPhaseStatistics statistics = LIRPhase.statisticsClassValue.get(getClass());
+        LIRPhaseStatistics statistics = LIRPhase.getLIRPhaseStatistics(getClass());
         timer = statistics.timer;
         memUseTracker = statistics.memUseTracker;
-        allocatedTraces = counterClassValue.get(getClass()).allocatedTraces;
+        allocatedTraces = getAllocationStatistics(getClass()).allocatedTraces;
     }
 
     public final CharSequence getName() {
