@@ -24,6 +24,7 @@ c/arrays/intArray.c
 c/arrays/multiDim.c
 c/arrays/threeDimConstIndex.c
 c/arrays/threeDimDynIndex.c
+c/attributes/const_dest/ConstructorDestructorAttributes.c
 c/attributes/visibility/hidden-alias.c
 c/attributes/visibility/visibility1.c
 c/attributes/weak/weak-alias.c
