@@ -77,6 +77,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         return "Default Truffle Runtime";
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
         DefaultCallTarget target = new DefaultCallTarget(rootNode);
