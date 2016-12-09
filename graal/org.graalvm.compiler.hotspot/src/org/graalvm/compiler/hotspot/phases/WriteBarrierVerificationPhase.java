@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ArrayRangeWriteNode;
 import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
-import org.graalvm.compiler.nodes.java.LoweredCompareAndSwapNode;
+import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
@@ -161,8 +161,8 @@ public class WriteBarrierVerificationPhase extends Phase {
     private static ValueNode getValueWritten(FixedWithNextNode write) {
         if (write instanceof WriteNode) {
             return ((WriteNode) write).value();
-        } else if (write instanceof LoweredCompareAndSwapNode) {
-            return ((LoweredCompareAndSwapNode) write).getNewValue();
+        } else if (write instanceof LogicCompareAndSwapNode) {
+            return ((LogicCompareAndSwapNode) write).getNewValue();
         } else if (write instanceof LoweredAtomicReadAndWriteNode) {
             return ((LoweredAtomicReadAndWriteNode) write).getNewValue();
         } else {
@@ -171,7 +171,7 @@ public class WriteBarrierVerificationPhase extends Phase {
     }
 
     private static boolean validateBarrier(FixedAccessNode write, ObjectWriteBarrier barrier) {
-        assert write instanceof WriteNode || write instanceof LoweredCompareAndSwapNode || write instanceof LoweredAtomicReadAndWriteNode : "Node must be of type requiring a write barrier " + write;
+        assert write instanceof WriteNode || write instanceof LogicCompareAndSwapNode || write instanceof LoweredAtomicReadAndWriteNode : "Node must be of type requiring a write barrier " + write;
         if (!barrier.usePrecise()) {
             if (barrier.getAddress() instanceof OffsetAddressNode && write.getAddress() instanceof OffsetAddressNode) {
                 return ((OffsetAddressNode) barrier.getAddress()).getBase() == ((OffsetAddressNode) write.getAddress()).getBase();

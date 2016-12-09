@@ -183,7 +183,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+    public Variable emitLogicCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         ValueKind<?> kind = newValue.getValueKind();
         assert kind.equals(expectedValue.getValueKind());
         AMD64Kind memKind = (AMD64Kind) kind.getPlatformKind();
@@ -197,6 +197,19 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(trueValue.getValueKind());
         append(new CondMoveOp(result, Condition.EQ, asAllocatable(trueValue), falseValue));
         return result;
+    }
+
+    @Override
+    public Value emitValueCompareAndSwap(Value address, Value expectedValue, Value newValue) {
+        ValueKind<?> kind = newValue.getValueKind();
+        assert kind.equals(expectedValue.getValueKind());
+        AMD64Kind memKind = (AMD64Kind) kind.getPlatformKind();
+
+        AMD64AddressValue addressValue = asAddressValue(address);
+        RegisterValue raxRes = AMD64.rax.asValue(kind);
+        emitMove(raxRes, expectedValue);
+        append(new CompareAndSwapOp(memKind, raxRes, addressValue, raxRes, asAllocatable(newValue)));
+        return raxRes;
     }
 
     @Override

@@ -27,7 +27,6 @@ import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.core.common.GraalOptions.SnippetCounters;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode.beginLockScope;
-import static org.graalvm.compiler.hotspot.nodes.DirectCompareAndSwapNode.compareAndSwap;
 import static org.graalvm.compiler.hotspot.nodes.EndLockScopeNode.endLockScope;
 import static org.graalvm.compiler.hotspot.nodes.VMErrorNode.vmError;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.DISPLACED_MARK_WORD_LOCATION;
@@ -110,7 +109,6 @@ import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.RawMonitorEnterNode;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
@@ -120,6 +118,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordBase;
 
@@ -230,7 +229,8 @@ public class MonitorSnippets implements Snippets {
 
         final Word lock = beginLockScope(lockDepth);
 
-        trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
+        Pointer objectPointer = Word.objectToTrackedPointer(object);
+        trace(trace, "           object: 0x%016lx\n", objectPointer);
         trace(trace, "             lock: 0x%016lx\n", lock);
         trace(trace, "             mark: 0x%016lx\n", mark);
 
@@ -260,7 +260,7 @@ public class MonitorSnippets implements Snippets {
 
             // Test if the object's mark word is unlocked, and if so, store the
             // (address of) the lock slot into the object's mark word.
-            Word currentMark = compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), unlockedMark, lock, MARK_WORD_LOCATION);
+            Word currentMark = objectPointer.compareAndSwapWord(markOffset(INJECTED_VMCONFIG), unlockedMark, lock, MARK_WORD_LOCATION);
             if (probability(FAST_PATH_PROBABILITY, currentMark.equal(unlockedMark))) {
                 traceObject(trace, "+lock{cas}", object, true);
                 lockCas.inc();
@@ -325,6 +325,7 @@ public class MonitorSnippets implements Snippets {
 
         // Now check to see whether biasing is enabled for this object
         if (probability(NOT_FREQUENT_PROBABILITY, biasableLockBits.equal(Word.unsigned(biasedLockPattern(INJECTED_VMCONFIG))))) {
+            Pointer objectPointer = Word.objectToTrackedPointer(object);
             // At this point we know that the mark word has the bias pattern and
             // that we are not the bias owner in the current epoch. We need to
             // figure out more details about the state of the mark word in order to
@@ -355,8 +356,7 @@ public class MonitorSnippets implements Snippets {
                     Word biasedMark = unbiasedMark.or(thread);
                     trace(trace, "     unbiasedMark: 0x%016lx\n", unbiasedMark);
                     trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                    if (probability(VERY_FAST_PATH_PROBABILITY,
-                                    compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
+                    if (probability(VERY_FAST_PATH_PROBABILITY, objectPointer.logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG), unbiasedMark, biasedMark, MARK_WORD_LOCATION))) {
                         // Object is now biased to current thread -> done
                         traceObject(trace, "+lock{bias:acquired}", object, true);
                         lockBiasAcquired.inc();
@@ -376,8 +376,7 @@ public class MonitorSnippets implements Snippets {
                     // the bias from one thread to another directly in this situation.
                     Word biasedMark = prototypeMarkWord.or(thread);
                     trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                    if (probability(VERY_FAST_PATH_PROBABILITY,
-                                    compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), mark, biasedMark, MARK_WORD_LOCATION).equal(mark))) {
+                    if (probability(VERY_FAST_PATH_PROBABILITY, objectPointer.logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG), mark, biasedMark, MARK_WORD_LOCATION))) {
                         // Object is now biased to current thread -> done
                         traceObject(trace, "+lock{bias:transfer}", object, true);
                         lockBiasTransfer.inc();
@@ -401,7 +400,7 @@ public class MonitorSnippets implements Snippets {
                 // that another thread raced us for the privilege of revoking the
                 // bias of this particular object, so it's okay to continue in the
                 // normal locking code.
-                Word result = compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), mark, prototypeMarkWord, MARK_WORD_LOCATION);
+                Word result = objectPointer.compareAndSwapWord(markOffset(INJECTED_VMCONFIG), mark, prototypeMarkWord, MARK_WORD_LOCATION);
 
                 // Fall through to the normal CAS-based lock, because no matter what
                 // the result of the above CAS, some thread must have succeeded in
@@ -442,8 +441,7 @@ public class MonitorSnippets implements Snippets {
         Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
         if (probability(FREQUENT_PROBABILITY, owner.equal(0))) {
             // it appears unlocked (owner == 0)
-            Word currentOwner = compareAndSwap(OffsetAddressNode.address(monitor, ownerOffset), owner, registerAsWord(threadRegister), OBJECT_MONITOR_OWNER_LOCATION);
-            if (probability(FREQUENT_PROBABILITY, currentOwner.equal(owner))) {
+            if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, owner, registerAsWord(threadRegister), OBJECT_MONITOR_OWNER_LOCATION))) {
                 // success
                 traceObject(trace, "+lock{inflated:cas}", object, true);
                 inflatedCas.inc();
@@ -514,8 +512,8 @@ public class MonitorSnippets implements Snippets {
                 // restore
                 // the displaced mark in the object - if the object's mark word is not pointing to
                 // the displaced mark word, do unlocking via runtime call.
-                Word currentMark = compareAndSwap(OffsetAddressNode.address(object, markOffset(INJECTED_VMCONFIG)), lock, displacedMark, MARK_WORD_LOCATION);
-                if (probability(VERY_FAST_PATH_PROBABILITY, currentMark.equal(lock))) {
+                Pointer objectPointer = Word.objectToTrackedPointer(object);
+                if (probability(VERY_FAST_PATH_PROBABILITY, objectPointer.logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG), lock, displacedMark, MARK_WORD_LOCATION))) {
                     traceObject(trace, "-lock{cas}", object, false);
                     unlockCas.inc();
                 } else {
