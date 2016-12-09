@@ -75,7 +75,7 @@ def _check_jvmci_version(jdk):
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
     """
     simplename = 'JVMCIVersionCheck'
-    name = 'com.oracle.graal.hotspot.' + simplename
+    name = 'org.graalvm.compiler.hotspot.' + simplename
     binDir = mx.ensure_dir_exists(join(_suite.get_output_root(), '.jdk' + str(jdk.version)))
     if isinstance(_suite, mx.BinarySuite):
         javaSource = join(binDir, simplename + '.java')
@@ -88,7 +88,7 @@ def _check_jvmci_version(jdk):
                 with open(javaSource, 'w') as fp:
                     fp.write(zf.read(name.replace('.', '/') + '.java'))
     else:
-        javaSource = join(_suite.dir, 'graal', 'com.oracle.graal.hotspot', 'src', name.replace('.', '/') + '.java')
+        javaSource = join(_suite.dir, 'graal', 'org.graalvm.compiler.hotspot', 'src', name.replace('.', '/') + '.java')
     javaClass = join(binDir, name.replace('.', '/') + '.class')
     if not exists(javaClass) or getmtime(javaClass) < getmtime(javaSource):
         mx.run([jdk.javac, '-d', binDir, javaSource])
@@ -139,7 +139,7 @@ def add_bootclasspath_append(dep):
     assert dep.isJARDistribution(), dep.name + ' is not a distribution'
     _bootclasspath_appends.append(dep)
 
-mx_gate.add_jacoco_includes(['com.oracle.graal.*'])
+mx_gate.add_jacoco_includes(['org.graalvm.compiler.*'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
 class JVMCIMicrobenchExecutor(mx_microbench.MicrobenchExecutor):
@@ -224,7 +224,7 @@ def ctw(args, extraVMarguments=None):
         if not _is_jvmci_enabled(vmargs):
             vmargs.extend(['-XX:+CompileTheWorld', '-Xbootclasspath/p:' + cp])
         else:
-            vmargs.extend(['-Dgraal.CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'com.oracle.graal.hotspot.CompileTheWorld'])
+            vmargs.extend(['-Dgraal.CompileTheWorldClasspath=' + cp, '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.CompileTheWorld'])
     else:
         if _is_jvmci_enabled(vmargs):
             # To be able to load all classes in the JRT with Class.forName,
@@ -235,7 +235,7 @@ def ctw(args, extraVMarguments=None):
                 vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
             if args.limitmods:
                 vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
-            vmargs.extend(['-Dgraal.CompileTheWorldClasspath=' + cp, 'com.oracle.graal.hotspot.CompileTheWorld'])
+            vmargs.extend(['-Dgraal.CompileTheWorldClasspath=' + cp, 'org.graalvm.compiler.hotspot.CompileTheWorld'])
         else:
             vmargs.append('-XX:+CompileTheWorld')
 
@@ -805,7 +805,7 @@ class GraalArchiveParticipant:
                 # jdk.vm.ci.options.Options service created by
                 # jdk.vm.ci.options.processor.OptionProcessor.
                 provider = arcname[:-len('.class'):].replace('/', '.')
-                self.services.setdefault('com.oracle.graal.options.OptionDescriptors', []).append(provider)
+                self.services.setdefault('org.graalvm.compiler.options.OptionDescriptors', []).append(provider)
         return False
 
     def __addsrc__(self, arcname, contents):
