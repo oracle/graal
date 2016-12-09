@@ -40,13 +40,13 @@ import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.CompressEncoding;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotDebugInfoBuilder;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
 import org.graalvm.compiler.hotspot.HotSpotLockStack;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.stubs.Stub;
@@ -61,6 +61,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
+import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -219,6 +220,17 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             }
             append(new AArch64HotSpotMove.UncompressPointer(result, asAllocatable(pointer), base, encoding, nonNull));
             return result;
+        }
+    }
+
+    @Override
+    public void emitNullCheck(Value address, LIRFrameState state) {
+        if (address.getValueKind().getPlatformKind() == AArch64Kind.DWORD) {
+            CompressEncoding encoding = config.getOopEncoding();
+            Value uncompressed = emitUncompress(address, encoding, false);
+            append(new AArch64Move.NullCheckOp(asAddressValue(uncompressed), state));
+        } else {
+            super.emitNullCheck(address, state);
         }
     }
 

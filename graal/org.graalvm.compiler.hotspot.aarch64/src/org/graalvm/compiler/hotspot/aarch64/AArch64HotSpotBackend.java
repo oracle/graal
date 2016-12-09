@@ -140,35 +140,39 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
             }
             crb.blockComment("[method prologue]");
 
-            if (ZapStackOnMethodEntry.getValue()) {
-                try (ScratchRegister sc = masm.getScratchRegister()) {
-                    Register scratch = sc.getRegister();
-                    int intSize = 4;
-                    AArch64Address address = AArch64Address.createPreIndexedImmediateAddress(scratch, -intSize);
-                    try (ScratchRegister sc2 = masm.getScratchRegister()) {
-                        Register value = sc2.getRegister();
-                        masm.mov(value, 0xC1C1C1C1);
-                        for (int i = 0; i < frameSize; i += intSize) {
-                            masm.str(32, value, address);
-                        }
-                    }
-                    masm.mov(64, sp, scratch);
-                }
-            } else {
-                if (AArch64MacroAssembler.isArithmeticImmediate(totalFrameSize)) {
+            try (ScratchRegister sc = masm.getScratchRegister()) {
+                int wordSize = crb.target.arch.getWordSize();
+                Register rscratch1 = sc.getRegister();
+                assert totalFrameSize > 0;
+                if (frameSize < 1 << 9) {
                     masm.sub(64, sp, sp, totalFrameSize);
+                    masm.stp(64, fp, lr, AArch64Address.createScaledImmediateAddress(sp, frameSize / wordSize));
                 } else {
-                    try (ScratchRegister sc2 = masm.getScratchRegister()) {
-                        Register scratch2 = sc2.getRegister();
-                        masm.mov(scratch2, totalFrameSize);
-                        masm.sub(64, sp, sp, scratch2);
+                    masm.stp(64, fp, lr, AArch64Address.createPreIndexedImmediateAddress(sp, -2));
+                    if (frameSize < 1 << 12) {
+                        masm.sub(64, sp, sp, totalFrameSize - 2 * wordSize);
+                    } else {
+                        masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
+                        masm.sub(64, sp, sp, rscratch1);
                     }
                 }
             }
+            if (ZapStackOnMethodEntry.getValue()) {
+                try (ScratchRegister sc = masm.getScratchRegister()) {
+                    Register scratch = sc.getRegister();
+                    int longSize = 8;
+                    masm.mov(64, scratch, sp);
+                    AArch64Address address = AArch64Address.createPostIndexedImmediateAddress(scratch, longSize);
+                    try (ScratchRegister sc2 = masm.getScratchRegister()) {
+                        Register value = sc2.getRegister();
+                        masm.mov(value, 0xBADDECAFFC0FFEEL);
+                        for (int i = 0; i < frameSize; i += longSize) {
+                            masm.str(64, value, address);
+                        }
+                    }
 
-            AArch64Address address2 = AArch64Address.createPairUnscaledImmediateAddress(sp, frameSize / 8); // XXX
-            masm.stp(64, fp, lr, address2);
-
+                }
+            }
             crb.blockComment("[code body]");
         }
 
@@ -176,23 +180,28 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         public void leave(CompilationResultBuilder crb) {
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
             FrameMap frameMap = crb.frameMap;
-            final int frameSize = frameMap.frameSize();
             final int totalFrameSize = frameMap.totalFrameSize();
 
             crb.blockComment("[method epilogue]");
-
-            AArch64Address address2 = AArch64Address.createPairUnscaledImmediateAddress(sp, frameSize / 8); // XXX
-            masm.ldp(64, fp, lr, address2);
-
-            if (AArch64MacroAssembler.isArithmeticImmediate(totalFrameSize)) {
-                masm.add(64, sp, sp, totalFrameSize);
-            } else {
-                try (ScratchRegister sc = masm.getScratchRegister()) {
-                    Register scratch = sc.getRegister();
-                    masm.mov(scratch, totalFrameSize);
-                    masm.add(64, sp, sp, scratch);
+            try (ScratchRegister sc = masm.getScratchRegister()) {
+                int wordSize = crb.target.arch.getWordSize();
+                Register rscratch1 = sc.getRegister();
+                final int frameSize = frameMap.frameSize();
+                assert totalFrameSize > 0;
+                if (frameSize < 1 << 9) {
+                    masm.ldp(64, fp, lr, AArch64Address.createScaledImmediateAddress(sp, frameSize / wordSize));
+                    masm.add(64, sp, sp, totalFrameSize);
+                } else {
+                    if (frameSize < 1 << 12) {
+                        masm.add(64, sp, sp, totalFrameSize - 2 * wordSize);
+                    } else {
+                        masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
+                        masm.add(64, sp, sp, rscratch1);
+                    }
+                    masm.ldp(64, fp, lr, AArch64Address.createPostIndexedImmediateAddress(sp, 2));
                 }
             }
+
         }
 
         @Override

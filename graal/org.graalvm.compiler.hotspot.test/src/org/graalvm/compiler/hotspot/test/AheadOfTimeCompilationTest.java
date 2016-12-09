@@ -27,6 +27,8 @@ import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -51,6 +53,7 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -72,6 +75,12 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
     public static Object getStaticFinalObject() {
         return AheadOfTimeCompilationTest.STATICFINALOBJECT;
+    }
+
+    @Before
+    public void setUp() {
+        // Ignore on SPARC
+        Assume.assumeFalse("skipping on AArch64", getTarget().arch instanceof AArch64);
     }
 
     @Test

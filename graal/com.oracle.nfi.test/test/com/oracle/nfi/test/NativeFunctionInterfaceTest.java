@@ -88,6 +88,8 @@ public class NativeFunctionInterfaceTest {
     public void setUp() {
         // Ignore on SPARC
         Assume.assumeFalse(System.getProperty("os.arch").toUpperCase().contains("SPARC"));
+        // and AArch64
+        Assume.assumeFalse(System.getProperty("os.arch").toUpperCase().contains("AARCH64"));
     }
 
     @After
