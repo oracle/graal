@@ -45,11 +45,9 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -889,7 +887,14 @@ public class SnippetTemplate {
                 this.returnNode = returnNodes.get(0);
             } else {
                 AbstractMergeNode merge = snippet.add(new MergeNode());
-                List<MemoryMapNode> memMaps = returnNodes.stream().map(ReturnNode::getMemoryMap).filter(Objects::nonNull).collect(Collectors.toList());
+                List<MemoryMapNode> memMaps = new ArrayList<>();
+                for (ReturnNode retNode : returnNodes) {
+                    MemoryMapNode memoryMapNode = retNode.getMemoryMap();
+                    if (memoryMapNode != null) {
+                        memMaps.add(memoryMapNode);
+                    }
+                }
+
                 ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
                 this.returnNode = snippet.add(new ReturnNode(returnValue));
                 if (!memMaps.isEmpty()) {
