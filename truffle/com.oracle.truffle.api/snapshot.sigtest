@@ -685,6 +685,7 @@ hfds serialVersionUID
 
 CLSS public abstract com.oracle.truffle.api.source.Source
 innr public final Builder
+meth public boolean isInteractive()
 meth public boolean isInternal()
 meth public com.oracle.truffle.api.source.Source subSource(int,int)
 meth public final com.oracle.truffle.api.source.LineLocation createLineLocation(int)
@@ -760,7 +761,7 @@ meth public static void setFileCaching(boolean)
 meth public void appendCode(java.lang.CharSequence)
  anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds EMPTY,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,content,fileCacheEnabled,internal,mimeType,name,textMap,uri
+hfds EMPTY,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,content,fileCacheEnabled,interactive,internal,mimeType,name,textMap,uri
 
 CLSS public final com.oracle.truffle.api.source.Source$Builder<%0 extends java.lang.Exception, %1 extends java.lang.Exception, %2 extends java.lang.Exception>
  outer com.oracle.truffle.api.source.Source
@@ -768,10 +769,11 @@ meth public com.oracle.truffle.api.source.Source build() throws {com.oracle.truf
 meth public com.oracle.truffle.api.source.Source$Builder<java.lang.RuntimeException,{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> content(java.lang.String)
 meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},java.lang.RuntimeException,{com.oracle.truffle.api.source.Source$Builder%2}> mimeType(java.lang.String)
 meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},java.lang.RuntimeException> name(java.lang.String)
+meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> interactive()
 meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> internal()
 meth public com.oracle.truffle.api.source.Source$Builder<{com.oracle.truffle.api.source.Source$Builder%0},{com.oracle.truffle.api.source.Source$Builder%1},{com.oracle.truffle.api.source.Source$Builder%2}> uri(java.net.URI)
 supr java.lang.Object
-hfds content,internal,mime,name,origin,path,uri
+hfds content,interactive,internal,mime,name,origin,path,uri
 
 CLSS public final com.oracle.truffle.api.source.SourceSection
 meth public boolean equals(java.lang.Object)
