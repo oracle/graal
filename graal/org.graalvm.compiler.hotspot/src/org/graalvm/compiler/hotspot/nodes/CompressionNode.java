@@ -176,7 +176,7 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            if (GeneratePIC.getValue(forValue.getOptions())) {
+            if (GeneratePIC.getValue(tool.getOptions())) {
                 // We always want uncompressed constants
                 return this;
             }

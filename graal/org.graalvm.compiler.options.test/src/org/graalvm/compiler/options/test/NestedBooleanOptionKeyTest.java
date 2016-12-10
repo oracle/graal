@@ -28,7 +28,6 @@
 
 package org.graalvm.compiler.options.test;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Master0;
 import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Master1;
 import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Master2;
@@ -61,15 +60,6 @@ public class NestedBooleanOptionKeyTest {
     static final OptionDescriptor nestedOption1 = OptionDescriptor.create("NestedOption1", Boolean.class, "", Options.class, "NestedOption1", NestedOption1);
     static final OptionDescriptor master2 = OptionDescriptor.create("Master2", Boolean.class, "", Options.class, "Master2", Master2);
     static final OptionDescriptor nestedOption2 = OptionDescriptor.create("NestedOption2", Boolean.class, "", Options.class, "NestedOption2", NestedOption2);
-
-    @SuppressWarnings("try")
-    @Test
-    public void runOverrides() {
-        OptionValues options = new OptionValues(GLOBAL);
-        assertTrue(Master0.getValue(options));
-        assertTrue(NestedOption0.getValue(options));
-        assertTrue(Master0.getValue(options));
-    }
 
     @Test
     public void runDefaultTrue() {

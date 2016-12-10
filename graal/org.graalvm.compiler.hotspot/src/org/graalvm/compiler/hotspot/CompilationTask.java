@@ -30,6 +30,7 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.PrintCompilation;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintFilter;
 import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnException;
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
+import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
 import java.util.List;
 
@@ -116,7 +117,7 @@ public class CompilationTask {
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         if (Inline.getValue(options) && !config.inline && !Inline.hasBeenSet(options)) {
-            this.options = new OptionValues(options, Inline, false);
+            this.options = new OptionValues(options, Inline, false, InlineDuringParsing, false);
         } else {
             this.options = options;
         }

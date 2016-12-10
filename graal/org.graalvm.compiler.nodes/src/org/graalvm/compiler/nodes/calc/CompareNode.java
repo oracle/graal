@@ -214,7 +214,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         if (convert.preservesOrder(condition(), constant, constantReflection)) {
             Constant reverseConverted = convert.reverse(constant, constantReflection);
             if (reverseConverted != null && convert.convert(reverseConverted, constantReflection).equals(constant)) {
-                if (GeneratePIC.getValue(getOptions())) {
+                if (GeneratePIC.getValue(tool.getOptions())) {
                     // We always want uncompressed constants
                     return null;
                 }

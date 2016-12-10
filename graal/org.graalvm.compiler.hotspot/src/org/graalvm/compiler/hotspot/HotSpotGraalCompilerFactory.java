@@ -165,7 +165,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         // Fail-fast detection for package renaming to guard use of package
         // prefixes in adjustCompilationLevelInternal.
         assert Services.class.getName().equals("jdk.vm.ci.services.Services");
-        assert HotSpotGraalCompilerFactory.class.getName().equals("com.oracle.graal.hotspot.HotSpotGraalCompilerFactory");
+        assert HotSpotGraalCompilerFactory.class.getName().equals("org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory");
     }
 
     /*

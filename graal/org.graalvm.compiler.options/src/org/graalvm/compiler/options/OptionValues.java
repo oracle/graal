@@ -186,10 +186,6 @@ public class OptionValues {
         return key.getDescriptor() != null && values.containsKey(key);
     }
 
-    public OptionValues(OptionValues initialValues) {
-        values.putAll(initialValues.values);
-    }
-
     public OptionValues(OptionValues initialValues, Map<OptionKey<?>, Object> extraPairs) {
         if (initialValues != null) {
             values.putAll(initialValues.values);

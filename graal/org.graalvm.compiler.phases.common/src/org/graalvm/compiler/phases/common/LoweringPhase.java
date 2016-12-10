@@ -624,7 +624,6 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         final Block alwaysReachedBlock;
 
         public Frame(Block block, T parent) {
-            super();
             this.block = block;
             this.alwaysReachedBlock = block.getPostdominator();
             this.dominated = block.getDominated().iterator();

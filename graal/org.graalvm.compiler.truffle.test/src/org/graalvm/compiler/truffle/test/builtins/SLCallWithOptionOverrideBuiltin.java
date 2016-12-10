@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,29 +23,48 @@
 package org.graalvm.compiler.truffle.test.builtins;
 
 import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions_OptionDescriptors;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.runtime.SLFunction;
 
 /**
- * Sets an option value in {@link TruffleCompilerOptions}. In the future this builtin might be
- * extend to lookup other options as well.
+ * Overrides the value of an option in {@link TruffleCompilerOptions}, calls a given function and
+ * then undoes the override.
  */
-@NodeInfo(shortName = "setOption")
-public abstract class SLSetOptionBuiltin extends SLGraalRuntimeBuiltin {
+@NodeInfo(shortName = "callWithOptionOverride")
+public abstract class SLCallWithOptionOverrideBuiltin extends SLGraalRuntimeBuiltin {
+
+    private static final Object[] EMPTY_ARGS = new Object[0];
+
+    @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
+    public SLFunction callWithOptionOverride(VirtualFrame frame, SLFunction function, String name, Object value) {
+        TruffleOptionsOverrideScope scope = override(name, value);
+        OptimizedCallTarget target = ((OptimizedCallTarget) function.getCallTarget());
+        indirectCall.call(frame, target, EMPTY_ARGS);
+        close(scope);
+        return function;
+    }
+
     @TruffleBoundary
-    public Object setOption(String name, Object value) {
+    private static TruffleOptionsOverrideScope override(String name, Object value) {
         TruffleCompilerOptions_OptionDescriptors options = new TruffleCompilerOptions_OptionDescriptors();
         for (OptionDescriptor option : options) {
             if (option.getName().equals(name)) {
-                option.getOptionKey().setValue(convertValue(value));
+                return TruffleCompilerOptions.overrideOptions(option.getOptionKey(), convertValue(value));
             }
         }
-        return value;
+        throw new SLAssertionError("No such option named \"" + name + "\" found in " + TruffleCompilerOptions.class.getName());
     }
 
     private static Object convertValue(Object value) {
@@ -59,4 +78,8 @@ public abstract class SLSetOptionBuiltin extends SLGraalRuntimeBuiltin {
         return value;
     }
 
+    @TruffleBoundary
+    private static void close(TruffleOptionsOverrideScope scope) {
+        scope.close();
+    }
 }

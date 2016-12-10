@@ -146,9 +146,9 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (markId == 0) {
-            return ConstantNode.forBoolean(!GeneratePIC.getValue(getOptions()));
+            return ConstantNode.forBoolean(!GeneratePIC.getValue(tool.getOptions()));
         }
-        if (!GeneratePIC.getValue(getOptions())) {
+        if (!GeneratePIC.getValue(tool.getOptions())) {
             if (markId == cardTableAddressMark(config)) {
                 return ConstantNode.forLong(config.cardtableStartAddress);
             } else if (markId == heapTopAddressMark(config)) {

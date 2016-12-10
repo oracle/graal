@@ -66,6 +66,7 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -208,13 +209,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         HotSpotLIRGenerationResult gen = (HotSpotLIRGenerationResult) lirGenRen;
         LIR lir = gen.getLIR();
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
-        boolean omitFrame = CanOmitFrame.getValue(lir.getOptions()) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
+        OptionValues options = lir.getOptions();
+        boolean omitFrame = CanOmitFrame.getValue(options) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
 
         Stub stub = gen.getStub();
         Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
-        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, compilationResult);
+        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, options, compilationResult);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();

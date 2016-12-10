@@ -90,7 +90,7 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (!GeneratePIC.getValue(getOptions())) {
+        if (!GeneratePIC.getValue(tool.getOptions())) {
             MetaAccessProvider metaAccess = tool.getMetaAccess();
             ValueNode curValue = getValue();
             ValueNode newNode = findSynonym(curValue, stamp(), metaAccess, tool.getConstantReflection());
@@ -113,7 +113,7 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (!GeneratePIC.getValue(getOptions())) {
+        if (!GeneratePIC.getValue(tool.getOptions())) {
             ValueNode alias = tool.getAlias(getValue());
             TypeReference type = StampTool.typeReferenceOrNull(alias);
             if (type != null && type.isExact()) {

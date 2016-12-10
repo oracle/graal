@@ -200,7 +200,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
             FixedNode next = pred.next();
             pred.setNext(guard);
             guard.setNext(next);
-            SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false, graph.getAssumptions(), loweringProvider);
+            SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(null, null, null, false, graph.getAssumptions(), graph.getOptions(), loweringProvider);
             survivingSuccessor.simplify(simplifierTool);
             return;
         }

@@ -144,18 +144,19 @@ public class CompilationResultBuilder {
     private List<ExceptionInfo> exceptionInfoList;
 
     private final Map<Constant, Data> dataCache;
+    private final OptionValues options;
 
     private Consumer<LIRInstruction> beforeOp;
     private Consumer<LIRInstruction> afterOp;
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    CompilationResult compilationResult) {
+                    OptionValues options, CompilationResult compilationResult) {
         // constants are already GVNed in the high level graph, so we can use an IdentityHashMap
-        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, new IdentityHashMap<>());
+        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, compilationResult, new IdentityHashMap<>());
     }
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    CompilationResult compilationResult, Map<Constant, Data> dataCache) {
+                    OptionValues options, CompilationResult compilationResult, Map<Constant, Data> dataCache) {
         this.target = codeCache.getTarget();
         this.codeCache = codeCache;
         this.foreignCalls = foreignCalls;
@@ -164,6 +165,7 @@ public class CompilationResultBuilder {
         this.dataBuilder = dataBuilder;
         this.compilationResult = compilationResult;
         this.frameContext = frameContext;
+        this.options = options;
         assert frameContext != null;
         this.dataCache = dataCache;
 
@@ -515,6 +517,6 @@ public class CompilationResultBuilder {
     }
 
     public OptionValues getOptions() {
-        return lir.getOptions();
+        return options;
     }
 }

@@ -92,6 +92,7 @@ import org.graalvm.compiler.lir.sparc.SPARCLIRInstructionMixin.SizeEstimate;
 import org.graalvm.compiler.lir.sparc.SPARCTailDelayedLIRInstruction;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -235,7 +236,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         // On SPARC we always use stack frames.
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
-        CompilationResultBuilder crb = factory.createBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, dataBuilder, frameContext, compilationResult);
+        OptionValues options = lir.getOptions();
+        CompilationResultBuilder crb = factory.createBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, dataBuilder, frameContext, options, compilationResult);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();

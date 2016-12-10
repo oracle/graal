@@ -153,7 +153,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         super(schedule, schedule.getCFG());
         StructuredGraph graph = schedule.getCFG().graph;
         this.hasVirtualInputs = graph.createNodeBitMap();
-        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, this, graph.getAssumptions(), loweringProvider);
+        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, this, graph.getAssumptions(), graph.getOptions(), loweringProvider);
     }
 
     /**
