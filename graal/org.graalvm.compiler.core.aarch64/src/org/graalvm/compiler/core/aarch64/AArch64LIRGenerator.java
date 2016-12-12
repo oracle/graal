@@ -277,23 +277,25 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         boolean mirrored;
         AArch64Kind kind = (AArch64Kind) cmpKind;
         if (kind.isInteger()) {
+            Value aExt = a;
+            Value bExt = b;
 
             int compareBytes = cmpKind.getSizeInBytes();
-            // AArch64 compares 32 or 64 bits
+            // AArch64 compares 32 or 64 bits: sign extend a and b as required.
             if (compareBytes < a.getPlatformKind().getSizeInBytes()) {
-                a = arithmeticLIRGen.emitSignExtend(a, compareBytes * 8, 64);
+                aExt = arithmeticLIRGen.emitSignExtend(a, compareBytes * 8, 64);
             }
             if (compareBytes < b.getPlatformKind().getSizeInBytes()) {
-                b = arithmeticLIRGen.emitSignExtend(b, compareBytes * 8, 64);
+                bExt = arithmeticLIRGen.emitSignExtend(b, compareBytes * 8, 64);
             }
 
-            if (LIRValueUtil.isVariable(b)) {
-                left = load(b);
-                right = loadNonConst(a);
+            if (LIRValueUtil.isVariable(bExt)) {
+                left = load(bExt);
+                right = loadNonConst(aExt);
                 mirrored = true;
             } else {
-                left = load(a);
-                right = loadNonConst(b);
+                left = load(aExt);
+                right = loadNonConst(bExt);
                 mirrored = false;
             }
             append(new AArch64Compare.CompareOp(left, loadNonCompareConst(right)));
