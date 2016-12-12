@@ -190,19 +190,25 @@ def pullLLVMBinaries(args=None):
     tar(localPath, toolDir, stripLevels=1)
     os.remove(localPath)
 
+def dragonEggPath():
+    if 'DRAGONEGG' in os.environ:
+        return join(os.environ['DRAGONEGG'], 'dragonegg.so')
+    else:
+        return _dragonEggPath
+
 def dragonEgg(args=None):
     """executes GCC with dragonegg"""
-    executeCommand = [getGCC(), "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
+    executeCommand = [getGCC(), "-fplugin=" + dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir']
     return mx.run(executeCommand + args)
 
 def dragonEggGFortran(args=None):
     """executes GCC Fortran with dragonegg"""
-    executeCommand = [getGFortran(), "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
+    executeCommand = [getGFortran(), "-fplugin=" + dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir']
     return mx.run(executeCommand + args)
 
 def dragonEggGPP(args=None):
     """executes G++ with dragonegg"""
-    executeCommand = [getGPP(), "-fplugin=" + _dragonEggPath, '-fplugin-arg-dragonegg-emit-ir']
+    executeCommand = [getGPP(), "-fplugin=" + dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir']
     return mx.run(executeCommand + args)
 
 def which(program):
@@ -694,8 +700,11 @@ def printOptions(args=None):
 
 def ensureDragonEggExists():
     """downloads dragonegg if not downloaded yet"""
-    if not os.path.exists(_dragonEggPath):
-        pullInstallDragonEgg()
+    if not os.path.exists(dragonEggPath()):
+        if 'DRAGONEGG' in os.environ:
+            mx.abort('dragonegg not found at ' + os.environ['DRAGONEGG'])
+        else:
+            pullInstallDragonEgg()
 
 def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""
