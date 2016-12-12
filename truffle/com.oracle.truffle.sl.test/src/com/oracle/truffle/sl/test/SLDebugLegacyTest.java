@@ -68,12 +68,14 @@ import com.oracle.truffle.api.interop.ForeignAccess.Factory;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory18;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.sl.SLLanguage;
+import java.util.concurrent.Callable;
 
 @SuppressWarnings("deprecation")
 public class SLDebugLegacyTest {
@@ -258,6 +260,15 @@ public class SLDebugLegacyTest {
 
     @Test
     public void stepInStepOver() throws Throwable {
+        doStepInStepOver(true);
+    }
+
+    @Test
+    public void stepInStepOverWithJavaInterop() throws Throwable {
+        doStepInStepOver(false);
+    }
+
+    private void doStepInStepOver(boolean direct) throws Throwable {
         final Source factorial = createFactorial();
         engine.eval(factorial);
 
@@ -307,12 +318,20 @@ public class SLDebugLegacyTest {
         assertLocation("test", 3, true, "println(res)", "res", "2");
         stepOut();
 
-        Value value = engine.findGlobalSymbol("test").execute();
+        Value value = engine.findGlobalSymbol("test");
+        Number result;
+        if (direct) {
+            value = value.execute();
+            result = value.as(Number.class);
+        } else {
+            final TruffleObject fn = (TruffleObject) value.get();
+            Callable<?> test = JavaInterop.asJavaFunction(Callable.class, fn);
+            result = (Number) test.call();
+        }
         assertExecutedOK();
 
-        Number n = value.as(Number.class);
-        assertNotNull(n);
-        assertEquals("Factorial computed OK", 2, n.intValue());
+        assertNotNull(result);
+        assertEquals("Factorial computed OK", 2, result.intValue());
     }
 
     @Test
