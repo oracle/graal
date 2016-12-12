@@ -548,7 +548,7 @@ def _unittest_config_participant(config):
             # Graal which means they must also be made root modules (i.e., ``--add-modules``)
             # since ``--add-reads`` can only be applied to root modules.
             junitCp = [e.classpath_repr() for e in mx.classpath_entries(['JUNIT'])]
-            junitModules = [_automatic_module_name(e) for e in junitCp]
+            junitModules = [jdk.get_automatic_module_name(e) for e in junitCp]
             vmArgs.append('--module-path=' + os.pathsep.join(junitCp))
             vmArgs.append('--add-modules=' + ','.join(junitModules + [m.name for m in deployedModules]))
             for deployedModule in deployedModules:
@@ -589,7 +589,7 @@ def _unittest_config_participant(config):
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
-mx_unittest.set_vm_launcher('JDK9 VM launcher', _unittest_vm_launcher, jdk)
+mx_unittest.set_vm_launcher('JDK VM launcher', _unittest_vm_launcher, jdk)
 
 def _uniqify(alist):
     """
@@ -636,7 +636,9 @@ def _automatic_module_name(modulejar):
     if m:
         name = name[0:m.start()]
 
-    # Finally clean up the module name
+    # Finally clean up the module name (see java.lang.module.ModulePath.cleanModuleName())
+    if jdk.buildNumber >= 148:
+        name = re.sub(r'(\.|\d)*$', '', name) # drop trailing version from name
     name = re.sub(r'[^A-Za-z0-9]', '.', name) # replace non-alphanumeric
     name = re.sub(r'(\.)(\1)+', '.', name) # collapse repeating dots
     name = re.sub(r'^\.', '', name) # drop leading dots

@@ -1,5 +1,9 @@
 suite = {
+<<<<<<< 848c88a0945ae71622b49f425ee76bffe3b15c56
   "mxversion" : "5.65.0",
+=======
+  "mxversion" : "5.63.0",
+>>>>>>> support module changes from JDK-8169069
   "name" : "graal-core",
 
   "imports" : {
@@ -1099,6 +1103,7 @@ suite = {
         "org.graalvm.compiler.replacements",
       ],
       "uses" : [
+        "com.oracle.truffle.api.impl.TruffleLocator",
         "com.oracle.truffle.api.object.LayoutFactory",
         "org.graalvm.compiler.truffle.LoopNodeFactory",
         "org.graalvm.compiler.truffle.substitutions.TruffleInvocationPluginProvider",
