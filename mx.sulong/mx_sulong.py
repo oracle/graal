@@ -398,7 +398,7 @@ def findBugs(args=None):
     with Task('Clean', tasks) as t:
         if t: mx.clean([]) # we need a clean build before running findbugs
     with Task('Build', tasks) as t:
-        if t: mx.build([])
+        if t: mx.build(['--force-javac'])
     with Task('Findbugs', tasks) as t:
         if t and mx_findbugs.findbugs([]) != 0:
             t.abort('FindBugs warnings were found')
