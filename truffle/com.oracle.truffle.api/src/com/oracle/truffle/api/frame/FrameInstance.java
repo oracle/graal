@@ -76,7 +76,7 @@ public interface FrameInstance {
      * @return a node representing the callsite of the next new target on the stack. Null in case
      *         there is no upper target or if the target was not invoked using a
      *         {@link TruffleRuntime#createDirectCallNode(CallTarget) direct} or
-     *         {@link TruffleRuntime#createDirectCallNode(CallTarget) indirect} call node.
+     *         {@link TruffleRuntime#createIndirectCallNode() indirect} call node.
      *
      * @since 0.8 or earlier
      **/
