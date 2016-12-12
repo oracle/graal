@@ -36,9 +36,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 
-import com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionInterface;
-import com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeFunctionPointer;
-import com.oracle.graal.truffle.hotspot.nfi.HotSpotNativeLibraryHandle;
 import com.oracle.nfi.NativeFunctionInterfaceRuntime;
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.nfi.api.NativeFunctionInterface;
@@ -52,6 +49,9 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.types.LLVMFunction;
 import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor.LLVMRuntimeType;
+import org.graalvm.compiler.truffle.hotspot.nfi.HotSpotNativeFunctionInterface;
+import org.graalvm.compiler.truffle.hotspot.nfi.HotSpotNativeFunctionPointer;
+import org.graalvm.compiler.truffle.hotspot.nfi.HotSpotNativeLibraryHandle;
 
 public class NativeLookup {
 
