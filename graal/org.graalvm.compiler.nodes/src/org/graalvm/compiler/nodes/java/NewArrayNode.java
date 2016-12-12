@@ -127,7 +127,9 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
                     return;
                 }
             }
-            if (graph().getGuardsStage().areFrameStatesAtSideEffects()) {
+            // Should be areFrameStatesAtSideEffects but currently SVM will complain about
+            // RuntimeConstraint
+            if (graph().getGuardsStage().allowsFloatingGuards()) {
                 LogicNode lengthNegativeCondition = CompareNode.createCompareNode(graph(), Condition.LT, length(), ConstantNode.forInt(0, graph()), tool.getConstantReflection());
                 // we do not have a non-deopting path for that at the moment so action=None.
                 FixedGuardNode guard = graph().add(new FixedGuardNode(lengthNegativeCondition, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.None, true));
