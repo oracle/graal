@@ -58,11 +58,10 @@ abstract class ToJavaNode extends Node {
     protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") TypeAndClass<?> targetType,
                     @Cached("operand.getClass()") Class<?> cachedOperandType,
                     @Cached("targetType") TypeAndClass<?> cachedTargetType) {
-        return convertImpl(frame, cachedOperandType.cast(operand), cachedTargetType, cachedOperandType);
+        return convertImpl(frame, cachedOperandType.cast(operand), cachedTargetType);
     }
 
-    @SuppressWarnings("unused")
-    private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass<?> targetType, Class<?> cachedOperandType) {
+    private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass<?> targetType) {
         Object convertedValue;
         if (isPrimitiveType(targetType.clazz)) {
             convertedValue = toPrimitive(value, targetType.clazz);
@@ -90,7 +89,7 @@ abstract class ToJavaNode extends Node {
         // TODO this specialization should be a TruffleBoundary because it produces too much code.
         // It can't be because a frame is passed in. We need extract all uses of frame out of
         // convertImpl.
-        return convertImpl(frame, operand, type, operand.getClass());
+        return convertImpl(frame, operand, type);
     }
 
     private static boolean isPrimitiveType(Class<?> clazz) {
