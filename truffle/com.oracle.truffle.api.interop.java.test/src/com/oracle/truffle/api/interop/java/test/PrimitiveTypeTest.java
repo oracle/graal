@@ -78,6 +78,32 @@ public class PrimitiveTypeTest {
     }
 
     @Test
+    public void convertToByte() {
+        byte value = JavaInterop.asJavaObject(byte.class, boxedNumber);
+        assertEquals(42, value);
+    }
+
+    @Test
+    public void convertToByteType() {
+        Byte value = JavaInterop.asJavaObject(Byte.class, boxedNumber);
+        assertNotNull("Some value computed", value);
+        assertEquals(42, value.intValue());
+    }
+
+    @Test
+    public void convertToShort() {
+        short value = JavaInterop.asJavaObject(short.class, boxedNumber);
+        assertEquals(42, value);
+    }
+
+    @Test
+    public void convertToShortType() {
+        Short value = JavaInterop.asJavaObject(Short.class, boxedNumber);
+        assertNotNull("Some value computed", value);
+        assertEquals(42, value.intValue());
+    }
+
+    @Test
     public void convertToInt() {
         int value = JavaInterop.asJavaObject(int.class, boxedNumber);
         assertEquals(42, value);
@@ -88,6 +114,45 @@ public class PrimitiveTypeTest {
         Integer value = JavaInterop.asJavaObject(Integer.class, boxedNumber);
         assertNotNull("Some value computed", value);
         assertEquals(42, value.intValue());
+    }
+
+    @Test
+    public void convertToLong() {
+        long value = JavaInterop.asJavaObject(long.class, boxedNumber);
+        assertEquals(42, value);
+    }
+
+    @Test
+    public void convertToLongType() {
+        Long value = JavaInterop.asJavaObject(Long.class, boxedNumber);
+        assertNotNull("Some value computed", value);
+        assertEquals(42, value.intValue());
+    }
+
+    @Test
+    public void convertToDouble() {
+        double value = JavaInterop.asJavaObject(double.class, boxedNumber);
+        assertEquals(42.0, value, 0.1);
+    }
+
+    @Test
+    public void convertToDoubleType() {
+        Double value = JavaInterop.asJavaObject(Double.class, boxedNumber);
+        assertNotNull("Some value computed", value);
+        assertEquals(42.0, value, 0.1);
+    }
+
+    @Test
+    public void convertToFloat() {
+        float value = JavaInterop.asJavaObject(float.class, boxedNumber);
+        assertEquals(42.0f, value, 0.1f);
+    }
+
+    @Test
+    public void convertToFloatType() {
+        Float value = JavaInterop.asJavaObject(Float.class, boxedNumber);
+        assertNotNull("Some value computed", value);
+        assertEquals(42.0f, value, 0.1f);
     }
 
     @Test(expected = IllegalArgumentException.class)
