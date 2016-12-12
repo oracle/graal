@@ -143,7 +143,7 @@ class GCCCompiler(Tool):
 
     def run(self, inputFile, outputFile, flags):
         tool, toolFlags = self.getTool(inputFile, outputFile)
-        ret = self.runTool([tool, '-S', '-fplugin=' + mx_sulong._dragonEggPath, '-fplugin-arg-dragonegg-emit-ir', '-o', '%s.tmp.ll' % outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
+        ret = self.runTool([tool, '-S', '-fplugin=' + mx_sulong.dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir', '-o', '%s.tmp.ll' % outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
         if ret == 0:
             ret = self.runTool([mx_sulong.findLLVMProgram('llvm-as'), '-o', outputFile, '%s.tmp.ll' % outputFile], errorMsg='Cannot assemble %s with llvm-as' % inputFile)
         return ret
@@ -222,6 +222,10 @@ def prepareMatchPattern(patterns):
 def matches(path, pattern):
     return pattern is not None and pattern.match(path) != None
 
+_env_flags = []
+if 'CPPFLAGS' in os.environ:
+    _env_flags = os.environ['CPPFLAGS'].split(' ')
+
 def multicompileFile(path, inputFile, outputDir, tools, flags, optimizations, target, optimizers=None):
     if optimizers is None:
         optimizers = []
@@ -231,7 +235,7 @@ def multicompileFile(path, inputFile, outputDir, tools, flags, optimizations, ta
             for optimization in optimizations:
                 outputFile = getOutputName(path, inputFile, outputDir, tool, optimization, target)
                 if not isFileUpToDate(inputFile, outputFile):
-                    tool.run(inputFile, outputFile, flags + optimization.flags)
+                    tool.run(inputFile, outputFile, _env_flags + flags + optimization.flags)
                     if os.path.exists(outputFile):
                         yield outputFile
                 if os.path.exists(outputFile):
@@ -254,7 +258,7 @@ def multicompileRefFile(path, inputFile, outputDir, tools, flags):
         if tool.supports(lang):
             referenceFile = getReferenceName(path, inputFile, outputDir, ProgrammingLanguage.EXEC)
             if not isFileUpToDate(inputFile, referenceFile):
-                tool.compileReferenceFile(inputFile, referenceFile, flags)
+                tool.compileReferenceFile(inputFile, referenceFile, _env_flags + flags)
                 if os.path.exists(referenceFile):
                     yield referenceFile
 
