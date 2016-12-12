@@ -30,7 +30,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -46,14 +45,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AArch64GraphBuilderPlugins {
 
-    public static void register(Plugins plugins, ForeignCallsProvider foreignCalls, BytecodeProvider bytecodeProvider) {
+    public static void register(Plugins plugins, BytecodeProvider bytecodeProvider) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, AArch64IntegerSubstitutions.class, JavaKind.Int, bytecodeProvider);
                 registerIntegerLongPlugins(invocationPlugins, AArch64LongSubstitutions.class, JavaKind.Long, bytecodeProvider);
-                registerMathPlugins(invocationPlugins, foreignCalls);
+                registerMathPlugins(invocationPlugins);
             }
         });
     }
@@ -89,7 +88,7 @@ public class AArch64GraphBuilderPlugins {
         r.registerMethodSubstitution(substituteDeclaringClass, "bitCount", type);
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
+    private static void registerMathPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Math.class);
         registerUnaryMath(r, "sin", SIN);
         registerUnaryMath(r, "cos", COS);
