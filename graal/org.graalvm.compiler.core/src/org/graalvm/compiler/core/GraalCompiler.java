@@ -93,7 +93,6 @@ public class GraalCompiler {
     private static final DebugTimer BackEnd = Debug.timer("BackEnd");
     private static final DebugTimer EmitLIR = Debug.timer("EmitLIR");
     private static final DebugTimer EmitCode = Debug.timer("EmitCode");
-    private static final LIRGenerationPhase LIR_GENERATION_PHASE = new LIRGenerationPhase();
 
     /**
      * Encapsulates all the inputs to a {@linkplain GraalCompiler#compile(Request) compilation}.
@@ -295,7 +294,7 @@ public class GraalCompiler {
 
             // LIR generation
             LIRGenerationContext context = new LIRGenerationContext(lirGen, nodeLirGen, graph, schedule);
-            LIR_GENERATION_PHASE.apply(backend.getTarget(), lirGenRes, context);
+            new LIRGenerationPhase().apply(backend.getTarget(), lirGenRes, context);
 
             try (Scope s = Debug.scope("LIRStages", nodeLirGen, lir)) {
                 Debug.dump(Debug.BASIC_LOG_LEVEL, lir, "After LIR generation");

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StartNode;
@@ -48,11 +49,11 @@ public class ValueAnchorCleanupPhase extends Phase {
         private final Set<Node> anchoredValues;
 
         State() {
-            anchoredValues = Node.newSet();
+            anchoredValues = NodeCollectionsFactory.newSet();
         }
 
         State(State other) {
-            anchoredValues = Node.newSet(other.anchoredValues);
+            anchoredValues = NodeCollectionsFactory.newSet(other.anchoredValues);
         }
 
         @Override

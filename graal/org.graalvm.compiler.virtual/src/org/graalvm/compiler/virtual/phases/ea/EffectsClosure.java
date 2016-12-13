@@ -38,6 +38,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -74,7 +75,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     private final Map<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionsFactory.newIdentityMap();
     // Intended to be used by read-eliminating phases based on the effects phase.
     protected final Map<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionsFactory.newIdentityMap();
-    private final Map<LoopBeginNode, BlockT> loopEntryStates = Node.newIdentityMap();
+    private final Map<LoopBeginNode, BlockT> loopEntryStates = NodeCollectionsFactory.newIdentityMap();
     private final NodeBitMap hasScalarReplacedInputs;
 
     protected boolean changed;

@@ -39,10 +39,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.Fingerprint;
@@ -76,14 +74,14 @@ import sun.misc.Unsafe;
  * To enable deterministic replay compilation, node sets and node maps should be instantiated with
  * the following methods:
  * <ul>
- * <li>{@link #newSet()}</li>
- * <li>{@link #newSet(Collection)}</li>
- * <li>{@link #newMap()}</li>
- * <li>{@link #newMap(int)}</li>
- * <li>{@link #newMap(Map)}</li>
- * <li>{@link #newIdentityMap()}</li>
- * <li>{@link #newIdentityMap(int)}</li>
- * <li>{@link #newIdentityMap(Map)}</li>
+ * <li>{@link NodeCollectionsFactory#newSet()}</li>
+ * <li>{@link NodeCollectionsFactory#newSet(Collection)}</li>
+ * <li>{@link NodeCollectionsFactory#newMap()}</li>
+ * <li>{@link NodeCollectionsFactory#newMap(int)}</li>
+ * <li>{@link NodeCollectionsFactory#newMap(Map)}</li>
+ * <li>{@link NodeCollectionsFactory#newIdentityMap()}</li>
+ * <li>{@link NodeCollectionsFactory#newIdentityMap(int)}</li>
+ * <li>{@link NodeCollectionsFactory#newIdentityMap(Map)}</li>
  * </ul>
  *
  * <h1>Assertions and Verification</h1>
@@ -255,56 +253,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     @Override
     public Node asNode() {
         return this;
-    }
-
-    /**
-     * @see CollectionsFactory#newSet()
-     */
-    public static <E extends Node> Set<E> newSet() {
-        return CollectionsFactory.newSet();
-    }
-
-    /**
-     * @see #newSet()
-     */
-    public static <E extends Node> Set<E> newSet(Collection<? extends E> c) {
-        return CollectionsFactory.newSet(c);
-    }
-
-    public static <K extends Node, V> Map<K, V> newMap() {
-        // Node.equals() and Node.hashCode() are final and are implemented
-        // purely in terms of identity so HashMap and IdentityHashMap with
-        // Node's as keys will behave the same. We choose to use the latter
-        // due to its lighter memory footprint.
-        return newIdentityMap();
-    }
-
-    public static <K extends Node, V> Map<K, V> newMap(Map<K, V> m) {
-        // Node.equals() and Node.hashCode() are final and are implemented
-        // purely in terms of identity so HashMap and IdentityHashMap with
-        // Node's as keys will behave the same. We choose to use the latter
-        // due to its lighter memory footprint.
-        return newIdentityMap(m);
-    }
-
-    public static <K extends Node, V> Map<K, V> newMap(int expectedMaxSize) {
-        // Node.equals() and Node.hashCode() are final and are implemented
-        // purely in terms of identity so HashMap and IdentityHashMap with
-        // Node's as keys will behave the same. We choose to use the latter
-        // due to its lighter memory footprint.
-        return newIdentityMap(expectedMaxSize);
-    }
-
-    public static <K extends Node, V> Map<K, V> newIdentityMap() {
-        return CollectionsFactory.newIdentityMap();
-    }
-
-    public static <K extends Node, V> Map<K, V> newIdentityMap(Map<K, V> m) {
-        return CollectionsFactory.newIdentityMap(m);
-    }
-
-    public static <K extends Node, V> Map<K, V> newIdentityMap(int expectedMaxSize) {
-        return CollectionsFactory.newIdentityMap(expectedMaxSize);
     }
 
     /**

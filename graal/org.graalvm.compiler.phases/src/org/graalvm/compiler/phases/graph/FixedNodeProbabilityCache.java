@@ -28,6 +28,7 @@ import java.util.function.ToDoubleFunction;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -45,7 +46,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
     private static final DebugCounter computeNodeProbabilityCounter = Debug.counter("ComputeNodeProbability");
 
-    private final Map<FixedNode, Double> cache = Node.newIdentityMap();
+    private final Map<FixedNode, Double> cache = NodeCollectionsFactory.newIdentityMap();
 
     /**
      * <p>

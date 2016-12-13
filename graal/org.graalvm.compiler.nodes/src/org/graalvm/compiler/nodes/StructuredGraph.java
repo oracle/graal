@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -369,7 +370,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
-        Map<Node, Node> replacements = Node.newMap();
+        Map<Node, Node> replacements = NodeCollectionsFactory.newMap();
         replacements.put(start, copy.start);
         Map<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
         if (duplicationMapCallback != null) {
