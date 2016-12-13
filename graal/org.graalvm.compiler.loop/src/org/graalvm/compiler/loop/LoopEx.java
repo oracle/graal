@@ -69,7 +69,7 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -442,7 +442,7 @@ public class LoopEx {
      */
     public boolean canDuplicateLoop() {
         for (Node node : inside().nodes()) {
-            if (node instanceof ControlFlowAnchorNode) {
+            if (node instanceof ControlFlowAnchored) {
                 return false;
             }
             if (node instanceof FrameState) {
