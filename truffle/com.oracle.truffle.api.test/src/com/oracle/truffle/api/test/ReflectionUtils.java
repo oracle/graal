@@ -122,14 +122,25 @@ public class ReflectionUtils {
             Method getModule = Class.class.getMethod("getModule");
             Class<?> moduleClass = getModule.getReturnType();
             Class<?> modulesClass = Class.forName("jdk.internal.module.Modules");
-            Method addOpens = modulesClass.getDeclaredMethod("addOpens", moduleClass, String.class, moduleClass);
-            Object moduleToOpen = getModule.invoke(declaringClass);
-            Object accessorModule = getModule.invoke(accessor);
-            if (moduleToOpen != accessorModule) {
-                addOpens.invoke(null, moduleToOpen, declaringClass.getPackage().getName(), accessorModule);
+            Method addOpens = maybeGetAddOpensMethod(moduleClass, modulesClass);
+            if (addOpens != null) {
+                Object moduleToOpen = getModule.invoke(declaringClass);
+                Object accessorModule = getModule.invoke(accessor);
+                if (moduleToOpen != accessorModule) {
+                    addOpens.invoke(null, moduleToOpen, declaringClass.getPackage().getName(), accessorModule);
+                }
             }
         } catch (Exception e) {
             throw new AssertionError(e);
+        }
+    }
+
+    private static Method maybeGetAddOpensMethod(Class<?> moduleClass, Class<?> modulesClass) {
+        try {
+            return modulesClass.getDeclaredMethod("addOpens", moduleClass, String.class, moduleClass);
+        } catch (NoSuchMethodException e) {
+            // This method was introduced by JDK-8169069
+            return null;
         }
     }
 
