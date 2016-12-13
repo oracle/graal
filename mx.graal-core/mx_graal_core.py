@@ -241,11 +241,18 @@ def ctw(args, extraVMarguments=None):
     run_vm(vmargs + _remove_empty_entries(extraVMarguments))
 
 
-def verify_jvmci_ci_versions(args=None, extraVMarguments=None):
-    version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<version>\d*\.\d*)')
+def verify_jvmci_ci_versions():
+    """
+    Checks that the jvmci versions used in various ci files agree.
+
+    If the ci.hocon files use a -dev version, it allows the travis ones to use the previous version.
+    For example, if ci.hocon uses jvmci-0.24-dev, travis may use either jvmci-0.24-dev or jvmci-0.23
+    """
+    version_pattern = re.compile(r'^(?!\s*#).*jvmci-(?P<version>\d*\.\d*)(?P<dev>-dev)?')
 
     def _grep_version(files, msg):
         version = None
+        dev = None
         last = None
         linenr = 0
         for filename in files:
@@ -253,24 +260,35 @@ def verify_jvmci_ci_versions(args=None, extraVMarguments=None):
                 m = version_pattern.search(line)
                 if m:
                     new_version = m.group('version')
-                    if version and version != new_version:
+                    new_dev = bool(m.group('dev'))
+                    if (version and version != new_version) or (dev is not None and dev != new_dev):
                         mx.abort(
                             os.linesep.join([
                                 "Multiple JVMCI versions found in {0} files:".format(msg),
-                                "  {0} in {1}:{2}:    {3}".format(version, *last),
-                                "  {0} in {1}:{2}:    {3}".format(new_version, filename, linenr, line),
+                                "  {0} in {1}:{2}:    {3}".format(version + ('-dev' if dev else ''), *last),
+                                "  {0} in {1}:{2}:    {3}".format(new_version + ('-dev' if new_dev else ''), filename, linenr, line),
                             ]))
                     last = (filename, linenr, line.rstrip())
                     version = new_version
-                linenr = linenr + 1
+                    dev = new_dev
+                linenr += 1
         if not version:
             mx.abort("No JVMCI version found in {0} files!".format(msg))
-        return version
+        return version, dev
 
-    hocon_version = _grep_version(glob.glob(join(mx.primary_suite().dir, 'ci*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*/*.hocon')), 'ci.hocon')
-    travis_version = _grep_version(glob.glob('.travis.yml'), 'TravisCI')
-    if hocon_version != travis_version:
-        mx.abort("Travis and ci.hocon JVMCI versions do not match: {0} vs. {1}".format(travis_version, hocon_version))
+    hocon_version, hocon_dev = _grep_version(glob.glob(join(mx.primary_suite().dir, 'ci*.hocon')) + glob.glob(join(mx.primary_suite().dir, 'ci*/*.hocon')), 'ci.hocon')
+    travis_version, travis_dev = _grep_version(glob.glob('.travis.yml'), 'TravisCI')
+
+    if hocon_version != travis_version or hocon_dev != travis_dev:
+        versions_ok = False
+        if not travis_dev and hocon_dev:
+            next_travis_version = [int(a) for a in travis_version.split('.')]
+            next_travis_version[-1] += 1
+            next_travis_version_str = '.'.join((str(a) for a in next_travis_version))
+            if next_travis_version_str == hocon_version:
+                versions_ok = True
+        if not versions_ok:
+            mx.abort("Travis and ci.hocon JVMCI versions do not match: {0} vs. {1}".format(travis_version + ('-dev' if travis_dev else ''), hocon_version + ('-dev' if hocon_dev else '')))
     mx.log('JVMCI versions are ok!')
 
 
