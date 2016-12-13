@@ -276,7 +276,10 @@ public abstract class TruffleLanguage<C> {
         /**
          * Specifies the code context for parsing. The context is specified as an instance of a
          * {@link Node} in the AST. There doesn't have to be any specific context and in such case
-         * this method returns <code>null</code>.
+         * this method returns <code>null</code>. If the node is provided, it can be for example
+         * {@link com.oracle.truffle.api.instrumentation.EventContext#getInstrumentedNode()} when
+         * {@link com.oracle.truffle.api.instrumentation.EventContext#parseInContext} is called.
+         *
          *
          * @return a {@link Node} defining AST context for the parsing or <code>null</code>
          * @since 0.22
