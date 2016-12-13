@@ -220,9 +220,9 @@ public abstract class TruffleLanguage<C> {
      * target should create and if necessary initialize the corresponding language entity and return
      * it.
      *
-     * The parsing may be performed in a context (specified by {@link ParsingRequest#getNode()}) or
-     * without context. The {@code argumentNames} may contain symbolic names for actual parameters
-     * of the call to the returned value. The result should be a call target with method
+     * The parsing may be performed in a context (specified by {@link ParsingRequest#getContext()})
+     * or without context. The {@code argumentNames} may contain symbolic names for actual
+     * parameters of the call to the returned value. The result should be a call target with method
      * {@link CallTarget#call(java.lang.Object...)} that accepts as many arguments as were provided
      * via the {@link ParsingRequest#getArgumentNames()} method.
      *
@@ -281,7 +281,7 @@ public abstract class TruffleLanguage<C> {
          * @return a {@link Node} defining AST context for the parsing or <code>null</code>
          * @since 0.22
          */
-        public Node getNode() {
+        public Node getContext() {
             if (disposed) {
                 throw new IllegalStateException();
             }
@@ -310,8 +310,8 @@ public abstract class TruffleLanguage<C> {
          * {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest) parsing} is an
          * instance of {@link CallTarget} that {@link CallTarget#call(java.lang.Object...) can be
          * invoked} without or with some parameters. If the invocation requires some arguments, and
-         * the {@link #getSource()} references them, it is essential to name them. Example
-         * that uses the argument names:
+         * the {@link #getSource()} references them, it is essential to name them. Example that uses
+         * the argument names:
          *
          * {@link TruffleLanguageSnippets#parseWithParams}
          *
