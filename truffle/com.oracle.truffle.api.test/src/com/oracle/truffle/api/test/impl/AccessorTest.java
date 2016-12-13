@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.concurrent.Executors;
 
+import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -40,9 +41,9 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.ExportImportLanguage1;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import org.junit.After;
 
 public class AccessorTest {
     private static Method find;
@@ -58,9 +59,9 @@ public class AccessorTest {
     @BeforeClass
     public static void initAccessors() throws Exception {
         find = Accessor.class.getDeclaredMethod("findLanguageByClass", Object.class, Class.class);
-        find.setAccessible(true);
+        ReflectionUtils.setAccessible(find, true);
         instrumenthandler = Accessor.class.getDeclaredField("INSTRUMENTHANDLER");
-        instrumenthandler.setAccessible(true);
+        ReflectionUtils.setAccessible(instrumenthandler, true);
     }
 
     @After

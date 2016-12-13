@@ -48,6 +48,8 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
+
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -347,7 +349,7 @@ public class JavaInteropTest {
 
     private static boolean isJavaFunctionalInterface(final Class<?> clazz) throws Exception {
         Method isFunctionaInterface = JavaInterop.class.getDeclaredMethod("isJavaFunctionInterface", Class.class);
-        isFunctionaInterface.setAccessible(true);
+        ReflectionUtils.setAccessible(isFunctionaInterface, true);
         return (boolean) isFunctionaInterface.invoke(null, clazz);
     }
 

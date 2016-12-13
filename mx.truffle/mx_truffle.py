@@ -39,6 +39,7 @@ from mx_jackpot import jackpot
 from mx_gate import Task
 from mx_javamodules import as_java_module, get_java_module_info
 import mx_gate
+import mx_unittest
 
 _suite = mx.suite('truffle')
 
@@ -77,6 +78,16 @@ def _path_args(depNames=None):
             # the main class hence the --add-modules argument
             return ['--add-modules=' + ','.join([m.name for m in modules]), '--module-path=' + os.pathsep.join(modulepath), '-cp', os.pathsep.join(classpath)]
     return ['-cp', mx.classpath(depNames)]
+
+def _unittest_config_participant(config):
+    vmArgs, mainClass, mainClassArgs = config
+    if mx.get_jdk(tag='default').javaCompliance > '1.8':
+        # This is required to access jdk.internal.module.Modules which
+        # in turn allows us to dynamically open fields/methods to reflection.
+        vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
+    return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.add_config_participant(_unittest_config_participant)
 
 def sl(args):
     """run an SL program"""

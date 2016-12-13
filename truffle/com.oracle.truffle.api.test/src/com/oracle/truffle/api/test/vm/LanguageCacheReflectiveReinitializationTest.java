@@ -28,6 +28,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.test.ReflectionUtils;
+
 public class LanguageCacheReflectiveReinitializationTest {
 
     @Test
@@ -35,7 +37,7 @@ public class LanguageCacheReflectiveReinitializationTest {
     public void canReinitializeLanguages() throws Exception {
         Class<?> languageCacheClass = Class.forName("com.oracle.truffle.api.vm.LanguageCache");
         Method initMethod = languageCacheClass.getDeclaredMethod("initializeLanguages", ClassLoader.class);
-        initMethod.setAccessible(true);
+        ReflectionUtils.setAccessible(initMethod, true);
         Map<String, Object> languages = (Map<String, Object>) initMethod.invoke(null, Thread.currentThread().getContextClassLoader());
 
         assertTrue("Re-initialized languages must contain application/x-test language after reflective initialization: " + languages, languages.containsKey("application/x-test-hash"));
