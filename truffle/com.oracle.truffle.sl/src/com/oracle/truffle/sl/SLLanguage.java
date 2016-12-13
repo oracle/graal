@@ -92,7 +92,23 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
          * Parse the provided source. At this point, we do not have a SLContext yet. Registration of
          * the functions with the SLContext happens lazily in SLEvalRootNode.
          */
-        functions = Parser.parseSL(source);
+        if (request.getArgumentNames().isEmpty()) {
+            functions = Parser.parseSL(source);
+        } else {
+            StringBuilder sb = new StringBuilder();
+            sb.append("function main(");
+            String sep = "";
+            for (String argumentName : request.getArgumentNames()) {
+                sb.append(sep);
+                sb.append(argumentName);
+                sep = ",";
+            }
+            sb.append(") { return ");
+            sb.append(request.getSource().getCode());
+            sb.append(";}");
+            Source decoratedSource = Source.newBuilder(sb.toString()).mimeType(request.getSource().getMimeType()).name(request.getSource().getName()).build();
+            functions = Parser.parseSL(decoratedSource);
+        }
 
         SLRootNode main = functions.get("main");
         SLRootNode evalMain;

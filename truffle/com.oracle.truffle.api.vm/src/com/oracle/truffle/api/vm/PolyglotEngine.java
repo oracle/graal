@@ -560,7 +560,7 @@ public class PolyglotEngine {
         Object res;
         CompilerAsserts.neverPartOfCompilation();
         if (executor == null) {
-            ContextStore prev = ExecutionImpl.executionStarted(context);
+            ContextStore prev = executionStarted();
             try {
                 Access.DEBUG.executionStarted(PolyglotEngine.this);
                 final Object[] args = ForeignAccess.getArguments(frame).toArray();
@@ -589,7 +589,7 @@ public class PolyglotEngine {
             @SuppressWarnings("try")
             @Override
             protected Object compute() {
-                ContextStore prev = ExecutionImpl.executionStarted(context);
+                ContextStore prev = executionStarted();
                 try {
                     Access.DEBUG.executionStarted(PolyglotEngine.this);
                     final Object[] args = ForeignAccess.getArguments(materialized).toArray();
@@ -602,6 +602,11 @@ public class PolyglotEngine {
             }
         };
         return compute.get();
+    }
+
+    final ContextStore executionStarted() {
+        ContextStore prev = ExecutionImpl.executionStarted(context);
+        return prev;
     }
 
     /**
@@ -1181,7 +1186,7 @@ public class PolyglotEngine {
         @SuppressWarnings("try")
         public Value getGlobalObject() {
             assert checkThread();
-            ContextStore prev = ExecutionImpl.executionStarted(context);
+            ContextStore prev = executionStarted();
             try {
                 Object res = Access.LANGS.languageGlobal(getEnv(true));
                 if (res == null) {
