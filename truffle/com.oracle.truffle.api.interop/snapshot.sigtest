@@ -117,6 +117,7 @@ meth public static com.oracle.truffle.api.interop.Message createNew(int)
 meth public static com.oracle.truffle.api.interop.Message valueOf(java.lang.String)
 meth public static java.lang.String toString(com.oracle.truffle.api.interop.Message)
 supr java.lang.Object
+hfds CLASS_TO_MESSAGE
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.interop.MessageResolution
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)

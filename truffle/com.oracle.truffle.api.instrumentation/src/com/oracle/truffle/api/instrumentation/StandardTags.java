@@ -43,7 +43,12 @@ public final class StandardTags {
      * <ul>
      * <li><b>Debugger:</b> Marks program locations where ordinary stepping should halt. The
      * debugger will halt just <em>before</em> a code location is executed that is marked with this
-     * tag.</li>
+     * tag.
+     * <p>
+     * In most languages, this means statements are distinct from expressions and only one node
+     * representing the statement should be tagged. Subexpressions are typically not tagged so that
+     * for example a step-over operation will stop at the next independent statement to get the
+     * desired behavior.</li>
      * </ul>
      *
      * @since 0.12
