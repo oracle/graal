@@ -36,8 +36,8 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.dsl.test.ReflectionUtils;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class DebuggerSessionTest extends AbstractDebugTest {

@@ -32,12 +32,12 @@ import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.dsl.test.ReflectionUtils;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 @SuppressWarnings("deprecation")
 public class SourceSectionFilterTest {

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.test.TypeBoxingTest.TypeBoxingTypeSystem;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class MergeSpecializationsTest {
 
