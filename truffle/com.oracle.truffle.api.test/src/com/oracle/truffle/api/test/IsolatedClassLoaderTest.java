@@ -22,16 +22,19 @@
  */
 package com.oracle.truffle.api.test;
 
-import com.oracle.truffle.api.impl.TruffleLocator;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.Set;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
+
+import com.oracle.truffle.api.impl.TruffleLocator;
 
 public class IsolatedClassLoaderTest {
     private static final boolean JDK8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
@@ -59,7 +62,7 @@ public class IsolatedClassLoaderTest {
         assertEquals("Right classloader", loader, locator.getClassLoader());
 
         final Method loadersMethod = locator.getDeclaredMethod("loaders");
-        loadersMethod.setAccessible(true);
+        ReflectionUtils.setAccessible(loadersMethod, true);
         Set<?> loaders = (Set<?>) loadersMethod.invoke(null);
         assertTrue("Contains locator's loader: " + loaders, loaders.contains(loader));
         assertTrue("Contains system loader: " + loader, loaders.contains(ClassLoader.getSystemClassLoader()));

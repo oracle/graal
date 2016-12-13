@@ -89,7 +89,7 @@ public class LazyClassLoadingTest {
         Method m;
         try {
             m = ClassLoader.class.getDeclaredMethod("findLoadedClass", String.class);
-            m.setAccessible(true);
+            ReflectionUtils.setAccessible(m, true);
             return m.invoke(classLoader, className) != null;
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);

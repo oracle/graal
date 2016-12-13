@@ -25,8 +25,10 @@
 package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -35,8 +37,6 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.Type;
 
 @MessageResolution(receiverType = JavaFunctionObject.class, language = JavaInteropLanguage.class)
 class JavaFunctionMessageResolution {

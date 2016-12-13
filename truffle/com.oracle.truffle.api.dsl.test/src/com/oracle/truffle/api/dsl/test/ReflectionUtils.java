@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.test;
+package com.oracle.truffle.api.dsl.test;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;

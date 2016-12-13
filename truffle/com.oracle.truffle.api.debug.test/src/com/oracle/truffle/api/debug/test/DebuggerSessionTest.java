@@ -36,6 +36,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.dsl.test.ReflectionUtils;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
@@ -56,7 +57,7 @@ public class DebuggerSessionTest extends AbstractDebugTest {
     private static void invoke(DebuggerSession session, String name, Class<?>[] classes, Object... arguments) throws AssertionError {
         try {
             Method method = session.getClass().getDeclaredMethod(name, classes);
-            method.setAccessible(true);
+            ReflectionUtils.setAccessible(method, true);
             method.invoke(session, arguments);
         } catch (Throwable e) {
             if (e instanceof InvocationTargetException && e.getCause() instanceof RuntimeException) {
