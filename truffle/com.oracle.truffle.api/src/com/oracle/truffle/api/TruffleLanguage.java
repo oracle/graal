@@ -310,7 +310,10 @@ public abstract class TruffleLanguage<C> {
          * {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest) parsing} is an
          * instance of {@link CallTarget} that {@link CallTarget#call(java.lang.Object...) can be
          * invoked} without or with some parameters. If the invocation requires some arguments, and
-         * the {@link #getSource()} references them, it is essential to name them.
+         * the {@link #getSource()} references them, it is essential to name them. Example
+         * that uses the argument names:
+         *
+         * {@link TruffleLanguageSnippets#parseWithParams}
          *
          * @return symbolic names for parameters of {@link CallTarget#call(java.lang.Object...)}
          * @since 0.22
@@ -974,4 +977,18 @@ class TruffleLanguageSnippets {
         }
     }
     // END: TruffleLanguageSnippets.PostInitLanguage#createContext
+
+    // BEGIN: TruffleLanguageSnippets#parseWithParams
+    public void parseWithParams(Env env) {
+        Source multiply = Source.newBuilder("a * b").
+            mimeType("text/javascript").
+            name("mul.js").
+            build();
+        CallTarget method = env.parse(multiply, "a", "b");
+        Number fortyTwo = (Number) method.call(6, 7);
+        assert 42 == fortyTwo.intValue();
+        Number ten = (Number) method.call(2, 5);
+        assert 10 == ten.intValue();
+    }
+    // END: TruffleLanguageSnippets#parseWithParams
 }
