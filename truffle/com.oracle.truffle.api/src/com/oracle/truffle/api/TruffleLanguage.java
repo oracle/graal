@@ -292,7 +292,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Specifies the execution context for parsing. If the parsing request is used for evalution
+         * Specifies the execution context for parsing. If the parsing request is used for evaluation
          * during halted execution, for example as in
          * {@link com.oracle.truffle.api.debug.SuspendedEvent#eval} method, this method provides
          * access to current {@link MaterializedFrame frame} with local variables, etc.
