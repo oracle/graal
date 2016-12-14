@@ -220,7 +220,7 @@ public abstract class TruffleLanguage<C> {
      * target should create and if necessary initialize the corresponding language entity and return
      * it.
      *
-     * The parsing may be performed in a context (specified by {@link ParsingRequest#getContext()})
+     * The parsing may be performed in a context (specified by {@link ParsingRequest#getLocation()})
      * or without context. The {@code argumentNames} may contain symbolic names for actual
      * parameters of the call to the returned value. The result should be a call target with method
      * {@link CallTarget#call(java.lang.Object...)} that accepts as many arguments as were provided
@@ -274,8 +274,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Specifies the code context for parsing. The context is specified as an instance of a
-         * {@link Node} in the AST. There doesn't have to be any specific context and in such case
+         * Specifies the code location for parsing. The location is specified as an instance of a
+         * {@link Node} in the AST. There doesn't have to be any specific location and in such case
          * this method returns <code>null</code>. If the node is provided, it can be for example
          * {@link com.oracle.truffle.api.instrumentation.EventContext#getInstrumentedNode()} when
          * {@link com.oracle.truffle.api.instrumentation.EventContext#parseInContext} is called.
@@ -284,7 +284,7 @@ public abstract class TruffleLanguage<C> {
          * @return a {@link Node} defining AST context for the parsing or <code>null</code>
          * @since 0.22
          */
-        public Node getContext() {
+        public Node getLocation() {
             if (disposed) {
                 throw new IllegalStateException();
             }
