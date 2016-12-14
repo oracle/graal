@@ -9,6 +9,8 @@ import mx
 import mx_findbugs
 import re
 import argparse
+import mx_benchmark
+import mx_sulong_benchmarks
 
 from mx_unittest import add_config_participant
 from mx_gate import Task, add_gate_runner
@@ -660,9 +662,9 @@ def getLLVMProgramPath(args=None):
     else:
         print findLLVMProgram(args[0])
 
-def compileWithClang(args=None):
+def compileWithClang(args=None, out=None, err=None):
     """runs Clang"""
-    return mx.run([findLLVMProgram('clang')] + args)
+    return mx.run([findLLVMProgram('clang')] + args, out=out, err=err)
 
 def compileWithGCC(args=None):
     """runs GCC"""
@@ -670,17 +672,17 @@ def compileWithGCC(args=None):
     gccPath = _toolDir + 'llvm/bin/gcc'
     return mx.run([gccPath] + args)
 
-def opt(args=None):
+def opt(args=None, out=None, err=None):
     """runs opt"""
-    return mx.run([findLLVMProgram('opt')] + args)
+    return mx.run([findLLVMProgram('opt')] + args, out=out, err=err)
 
 def link(args=None):
     """Links LLVM bitcode into an su file."""
     return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.runtime.Linker"] + args)
 
-def compileWithClangPP(args=None):
+def compileWithClangPP(args=None, out=None, err=None):
     """runs Clang++"""
-    return mx.run([findLLVMProgram('clang++')] + args)
+    return mx.run([findLLVMProgram('clang++')] + args, out=out, err=err)
 
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
@@ -735,16 +737,16 @@ def suOptimalOpt(args=None):
     """use opt with the optimal opt flags for Sulong"""
     opt(getStandardLLVMOptFlags() + args)
 
-def compileWithClangOpt(inputFile, outputFile='test.bc'):
+def compileWithClangOpt(inputFile, outputFile='test.bc', out=None, err=None):
     """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
-        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, inputFile])
+        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, inputFile], out=out, err=err)
     elif ext == '.cpp':
-        compileWithClangPP(['-c', '-emit-llvm', '-o', outputFile, inputFile])
+        compileWithClangPP(['-c', '-emit-llvm', '-o', outputFile, inputFile], out=out, err=err)
     else:
         exit(ext + " is not supported!")
-    opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags())
+    opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags(), out=out, err=err)
 
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
@@ -859,6 +861,9 @@ def checkNoHttp(args=None):
                 print "http:" + chr(58) + " in line " + str(line_number) + " of " + f + " could be a security issue! please change to https://"
                 exit(-1)
             line_number += 1
+
+
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
 checkCases = {
     'gitlog' : logCheck,
