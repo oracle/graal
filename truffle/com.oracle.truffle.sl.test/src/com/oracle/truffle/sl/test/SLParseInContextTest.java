@@ -41,69 +41,72 @@
 package com.oracle.truffle.sl.test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
-import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.sl.SLLanguage;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
 public class SLParseInContextTest {
-    private Method parseMethod;
-    private Constructor<ParsingRequest> createRequest;
     private PolyglotEngine vm;
-    private Method executionStarted;
 
     @Before
     public void prepareMethods() throws Exception {
         vm = PolyglotEngine.newBuilder().build();
-        vm.eval(Source.newBuilder("function x() {}").mimeType("application/x-sl").name("empty.sl").build());
-
-        parseMethod = SLLanguage.class.getDeclaredMethod("parse", ParsingRequest.class);
-        createRequest = ParsingRequest.class.getDeclaredConstructor(
-                        Object.class, TruffleLanguage.class, Source.class, Node.class, MaterializedFrame.class, String[].class);
-        executionStarted = vm.getClass().getDeclaredMethod("executionStarted");
-
-        parseMethod.setAccessible(true);
-        createRequest.setAccessible(true);
-        executionStarted.setAccessible(true);
     }
 
     @Test
     public void parseAPlusB() throws Exception {
-
-        Source aPlusB = Source.newBuilder("a + b").mimeType("application/x-sl").name("plus.sl").build();
-
-        ParsingRequest request = createParsingRequest(aPlusB);
-
-        assertNull("No frame", request.getFrame());
-        assertNull("No node", request.getContext());
-        assertEquals("Right source", aPlusB, request.getSource());
-
-        CallTarget executeAPlusB = parse(request);
-
-        Object fourtyTwo = executeAPlusB.call(30L, 12L);
+        PolyglotEngine.Value value = vm.eval(Source.newBuilder("").name("eval.eval").mimeType("application/x-test-eval").build());
+        Object fourtyTwo = value.get();
         assertTrue("Result is a number: " + fourtyTwo, fourtyTwo instanceof Number);
         assertEquals(42, ((Number) fourtyTwo).intValue());
     }
 
-    private CallTarget parse(ParsingRequest request) throws IllegalArgumentException, IllegalAccessException, InvocationTargetException {
-        executionStarted.invoke(vm);
-        CallTarget executeAPlusB = (CallTarget) parseMethod.invoke(SLLanguage.INSTANCE, request);
-        return executeAPlusB;
-    }
+    @TruffleLanguage.Registration(mimeType = "application/x-test-eval", name = "EvalLang", version = "1.0")
+    public static final class EvalLang extends TruffleLanguage<Env> {
+        public static final EvalLang INSTANCE = new EvalLang();
 
-    private ParsingRequest createParsingRequest(Source aPlusB) throws InstantiationException, IllegalArgumentException, InvocationTargetException, IllegalAccessException {
-        ParsingRequest request = createRequest.newInstance(vm, SLLanguage.INSTANCE, aPlusB, null, null, new String[]{"a", "b"});
-        return request;
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected Object findExportedSymbol(Env context, String globalName, boolean onlyExplicit) {
+            return null;
+        }
+
+        @Override
+        protected Object getLanguageGlobal(Env context) {
+            return null;
+        }
+
+        @Override
+        protected boolean isObjectOfLanguage(Object object) {
+            return false;
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return Truffle.getRuntime().createCallTarget(new RootNode(EvalLang.class, null, null) {
+                @Node.Child private Node contextNode = INSTANCE.createFindContextNode();
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Env env = INSTANCE.findContext(contextNode);
+                    Source aPlusB = Source.newBuilder("a + b").mimeType("application/x-sl").name("plus.sl").build();
+                    return env.parse(aPlusB, "a", "b").call(30, 12);
+                }
+            });
+        }
     }
 }

@@ -425,7 +425,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,SimpleLanguage,Test",
-      "annotationProcessors" : ["mx:JMH"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH"],
       "license" : "UPL",
     },
    },
