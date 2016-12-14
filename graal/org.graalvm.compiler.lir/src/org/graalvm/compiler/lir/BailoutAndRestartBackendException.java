@@ -24,8 +24,8 @@ package org.graalvm.compiler.lir;
 
 import org.graalvm.compiler.common.PermanentBailoutException;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.StableOptionKey;
 
 /**
  * Restarts the {@link LIR low-level} compilation with a modified configuration.
@@ -37,7 +37,7 @@ public abstract class BailoutAndRestartBackendException extends PermanentBailout
     public static class Options {
         // @formatter:off
         @Option(help = "Unlock backend restart feature.", type = OptionType.Debug)
-        public static final StableOptionKey<Boolean> LIRUnlockBackendRestart = new StableOptionKey<>(false);
+        public static final OptionKey<Boolean> LIRUnlockBackendRestart = new OptionKey<>(false);
         // @formatter:on
     }
 

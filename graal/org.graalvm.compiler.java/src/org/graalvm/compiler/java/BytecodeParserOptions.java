@@ -25,7 +25,6 @@ package org.graalvm.compiler.java;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.StableOptionKey;
 
 /**
  * Options related to {@link BytecodeParser}.
@@ -39,22 +38,22 @@ public class BytecodeParserOptions {
     public static final OptionKey<Integer> TraceBytecodeParserLevel = new OptionKey<>(0);
 
     @Option(help = "Inlines trivial methods during bytecode parsing.", type = OptionType.Expert)
-    public static final StableOptionKey<Boolean> InlineDuringParsing = new StableOptionKey<>(true);
+    public static final OptionKey<Boolean> InlineDuringParsing = new OptionKey<>(true);
 
     @Option(help = "Inlines intrinsic methods during bytecode parsing.", type = OptionType.Expert)
-    public static final StableOptionKey<Boolean> InlineIntrinsicsDuringParsing = new StableOptionKey<>(true);
+    public static final OptionKey<Boolean> InlineIntrinsicsDuringParsing = new OptionKey<>(true);
 
     @Option(help = "Traces inlining performed during bytecode parsing.", type = OptionType.Debug)
-    public static final StableOptionKey<Boolean> TraceInlineDuringParsing = new StableOptionKey<>(false);
+    public static final OptionKey<Boolean> TraceInlineDuringParsing = new OptionKey<>(false);
 
     @Option(help = "Traces use of plugins during bytecode parsing.", type = OptionType.Debug)
-    public static final StableOptionKey<Boolean> TraceParserPlugins = new StableOptionKey<>(false);
+    public static final OptionKey<Boolean> TraceParserPlugins = new OptionKey<>(false);
 
     @Option(help = "Maximum depth when inlining during bytecode parsing.", type = OptionType.Debug)
-    public static final StableOptionKey<Integer> InlineDuringParsingMaxDepth = new StableOptionKey<>(10);
+    public static final OptionKey<Integer> InlineDuringParsingMaxDepth = new OptionKey<>(10);
 
     @Option(help = "Dump graphs after non-trivial changes during bytecode parsing.", type = OptionType.Debug)
-    public static final StableOptionKey<Boolean> DumpDuringGraphBuilding = new StableOptionKey<>(false);
+    public static final OptionKey<Boolean> DumpDuringGraphBuilding = new OptionKey<>(false);
 
     @Option(help = "When creating info points hide the methods of the substitutions.", type = OptionType.Debug)
     public static final OptionKey<Boolean> HideSubstitutionStates = new OptionKey<>(false);

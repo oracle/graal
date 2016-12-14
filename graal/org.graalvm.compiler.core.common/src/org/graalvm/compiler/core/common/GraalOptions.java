@@ -25,7 +25,6 @@ package org.graalvm.compiler.core.common;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.StableOptionKey;
 
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.
@@ -146,7 +145,7 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> PrintProfilingInformation = new OptionKey<>(false);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final StableOptionKey<Boolean> TraceEscapeAnalysis = new StableOptionKey<>(false);
+    public static final OptionKey<Boolean> TraceEscapeAnalysis = new OptionKey<>(false);
 
     // HotSpot command line options
     @Option(help = "Print inlining optimizations", type = OptionType.Debug)
@@ -264,7 +263,7 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
 
     @Option(help = "Enable expensive assertions", type = OptionType.Debug)
-    public static final OptionKey<Boolean> DetailedAsserts = new StableOptionKey<Boolean>() {
+    public static final OptionKey<Boolean> DetailedAsserts = new OptionKey<Boolean>() {
         @Override
         protected Boolean defaultValue() {
             boolean enabled = false;

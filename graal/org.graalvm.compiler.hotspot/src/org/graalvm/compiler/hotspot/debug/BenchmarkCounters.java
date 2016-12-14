@@ -50,7 +50,6 @@ import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.StableOptionKey;
 import org.graalvm.compiler.options.UniquePathUtilities;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -112,9 +111,9 @@ public class BenchmarkCounters {
         @Option(help = "Benchmark counters log file (default is stdout)", type = OptionType.Debug)
         public static final OptionKey<String> BenchmarkCountersFile = new OptionKey<>(null);
         @Option(help = "Dump dynamic counters", type = OptionType.Debug)
-        public static final StableOptionKey<Boolean> BenchmarkCountersDumpDynamic = new StableOptionKey<>(true);
+        public static final OptionKey<Boolean> BenchmarkCountersDumpDynamic = new OptionKey<>(true);
         @Option(help = "Dump static counters", type = OptionType.Debug)
-        public static final StableOptionKey<Boolean> BenchmarkCountersDumpStatic = new StableOptionKey<>(false);
+        public static final OptionKey<Boolean> BenchmarkCountersDumpStatic = new OptionKey<>(false);
         //@formatter:on
     }
 

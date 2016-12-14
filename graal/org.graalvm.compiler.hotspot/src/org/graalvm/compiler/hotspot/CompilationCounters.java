@@ -38,8 +38,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.StableOptionKey;
-
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -49,7 +47,7 @@ class CompilationCounters {
         // @formatter:off
         @Option(help = "The number of compilations allowed for any method before " +
                        "the VM exits (a value of 0 means there is no limit).", type = OptionType.Debug)
-        public static final OptionKey<Integer> CompilationCountLimit = new StableOptionKey<>(0);
+        public static final OptionKey<Integer> CompilationCountLimit = new OptionKey<>(0);
         // @formatter:on
     }
 

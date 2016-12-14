@@ -37,14 +37,13 @@ import static org.junit.Assert.assertTrue;
 
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.StableOptionKey;
 import org.junit.Test;
 
 @SuppressWarnings("try")
 public class TestOptionKey {
 
     public static class Options {
-        public static final OptionKey<Boolean> Stable = new StableOptionKey<>(true);
+        public static final OptionKey<Boolean> Stable = new OptionKey<>(true);
         public static final OptionKey<String> Mutable = new OptionKey<>("original");
         public static final OptionKey<String> SecondMutable = new OptionKey<>("second");
     }

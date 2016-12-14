@@ -69,7 +69,6 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.StableOptionKey;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -84,7 +83,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public static class Options {
         // @formatter:off
         @Option(help = "Verifies that receivers of NodeInfo#size() and NodeInfo#cycles() do not have UNSET values.")
-        public static final OptionKey<Boolean> VerifyNodeCostOnAccess = new StableOptionKey<>(false);
+        public static final OptionKey<Boolean> VerifyNodeCostOnAccess = new OptionKey<>(false);
         // @formatter:on
     }
 

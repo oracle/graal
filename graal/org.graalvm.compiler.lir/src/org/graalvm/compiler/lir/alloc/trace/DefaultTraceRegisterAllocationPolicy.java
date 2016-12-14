@@ -36,9 +36,9 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.StableOptionKey;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
@@ -58,9 +58,9 @@ public final class DefaultTraceRegisterAllocationPolicy {
     public static class Options {
         // @formatter:off
         @Option(help = "Use special allocator for trivial blocks.", type = OptionType.Debug)
-        public static final StableOptionKey<Boolean> TraceRAtrivialBlockAllocator = new StableOptionKey<>(true);
+        public static final OptionKey<Boolean> TraceRAtrivialBlockAllocator = new OptionKey<>(true);
         @Option(help = "Use LSRA / BottomUp ratio", type = OptionType.Debug)
-        public static final StableOptionKey<Double> TraceRAbottomUpRatio = new StableOptionKey<>(0.0);
+        public static final OptionKey<Double> TraceRAbottomUpRatio = new OptionKey<>(0.0);
         @Option(help = "TraceRA allocation policy to use.", type = OptionType.Debug)
         public static final EnumOptionKey<TraceRAPolicies> TraceRAPolicy = new EnumOptionKey<>(TraceRAPolicies.Default);
         // @formatter:on

@@ -30,7 +30,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.StableOptionKey;
 
 /**
  * Options for the Truffle compiler.
@@ -130,7 +129,7 @@ public class TruffleCompilerOptions {
     public static final OptionKey<Boolean> TruffleCompileImmediately = new OptionKey<>(false);
 
     @Option(help = "Exclude assertion code from Truffle compilations", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleExcludeAssertions = new StableOptionKey<>(true);
+    public static final OptionKey<Boolean> TruffleExcludeAssertions = new OptionKey<>(true);
 
     @Option(help = "Compile call target when call count exceeds this threshold", type = OptionType.User)
     public static final OptionKey<Integer> TruffleCompilationThreshold = new OptionKey<>(1000);
@@ -178,13 +177,13 @@ public class TruffleCompilerOptions {
     public static final OptionKey<Boolean> TruffleInlineAcrossTruffleBoundary = new OptionKey<>(false);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleReturnTypeSpeculation = new StableOptionKey<>(true);
+    public static final OptionKey<Boolean> TruffleReturnTypeSpeculation = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleArgumentTypeSpeculation = new StableOptionKey<>(true);
+    public static final OptionKey<Boolean> TruffleArgumentTypeSpeculation = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleUseFrameWithoutBoxing = new StableOptionKey<>(true);
+    public static final OptionKey<Boolean> TruffleUseFrameWithoutBoxing = new OptionKey<>(true);
 
     // tracing
     @Option(help = "Print potential performance problems", type = OptionType.Debug)
@@ -230,16 +229,16 @@ public class TruffleCompilerOptions {
     public static final OptionKey<Boolean> TraceTruffleSplitting = new OptionKey<>(false);
 
     @Option(help = "Print stack trace on transfer to interpreter", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TraceTruffleTransferToInterpreter = new StableOptionKey<>(false);
+    public static final OptionKey<Boolean> TraceTruffleTransferToInterpreter = new OptionKey<>(false);
 
     @Option(help = "Print stack trace on assumption invalidation", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TraceTruffleAssumptions = new StableOptionKey<>(false);
+    public static final OptionKey<Boolean> TraceTruffleAssumptions = new OptionKey<>(false);
 
     @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions", type = OptionType.Debug)
     public static final OptionKey<Integer> TraceTruffleStackTraceLimit = new OptionKey<>(20);
 
     @Option(help = "Print a summary of execution counts for all executed CallTargets. Introduces counter overhead for each call.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleCallTargetProfiling = new StableOptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleCallTargetProfiling = new OptionKey<>(false);
 
     @Option(help = "Print Truffle compilation statistics at the end of a run.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleCompilationStatistics = new OptionKey<>(false);
