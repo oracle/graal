@@ -202,15 +202,21 @@ public final class CompileTheWorld {
         this.methodFilters = methodFilters == null || methodFilters.isEmpty() ? null : MethodFilter.parse(methodFilters);
         this.excludeMethodFilters = excludeMethodFilters == null || excludeMethodFilters.isEmpty() ? null : MethodFilter.parse(excludeMethodFilters);
         this.verbose = verbose;
-        this.compilationOptions = compilationOptions;
+        Map<OptionKey<?>, Object> compilationOptionsCopy = new HashMap<>(compilationOptions);
         this.currentOptions = initialOptions;
 
         // We don't want the VM to exit when a method fails to compile...
-        ExitVMOnException.update(compilationOptions, false);
+        ExitVMOnException.update(compilationOptionsCopy, false);
 
         // ...but we want to see exceptions.
-        PrintBailout.update(compilationOptions, true);
-        PrintStackTraceOnException.update(compilationOptions, true);
+        PrintBailout.update(compilationOptionsCopy, true);
+        PrintStackTraceOnException.update(compilationOptionsCopy, true);
+
+        // By default only report statistics for the CTW threads themselves
+        if (!GraalDebugConfig.Options.DebugValueThreadFilter.hasBeenSet(initialOptions)) {
+            GraalDebugConfig.Options.DebugValueThreadFilter.update(compilationOptionsCopy, "^CompileTheWorld");
+        }
+        this.compilationOptions = Collections.unmodifiableMap(compilationOptionsCopy);
     }
 
     public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, OptionValues options) {
@@ -229,10 +235,6 @@ public final class CompileTheWorld {
      * equals {@link #SUN_BOOT_CLASS_PATH} the boot class path is used.
      */
     public void compile() throws Throwable {
-        // By default only report statistics for the CTW threads themselves
-        if (!GraalDebugConfig.Options.DebugValueThreadFilter.hasBeenSet(currentOptions)) {
-            GraalDebugConfig.Options.DebugValueThreadFilter.setValue("^CompileTheWorld");
-        }
         if (SUN_BOOT_CLASS_PATH.equals(inputClassPath)) {
             String bcpEntry = null;
             if (Java8OrEarlier) {
