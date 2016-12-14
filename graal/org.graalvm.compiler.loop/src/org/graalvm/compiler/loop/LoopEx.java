@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.loop;
 
-import static org.graalvm.compiler.graph.Node.newIdentityMap;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -36,6 +34,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.loop.InductionVariable.Direction;
@@ -70,7 +69,7 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -335,7 +334,7 @@ public class LoopEx {
      * @return a map from node to induction variable
      */
     private static Map<Node, InductionVariable> findInductionVariables(LoopEx loop) {
-        Map<Node, InductionVariable> ivs = newIdentityMap();
+        Map<Node, InductionVariable> ivs = NodeCollectionsFactory.newIdentityMap();
 
         Queue<InductionVariable> scanQueue = new LinkedList<>();
         LoopBeginNode loopBegin = loop.loopBegin();
@@ -443,7 +442,7 @@ public class LoopEx {
      */
     public boolean canDuplicateLoop() {
         for (Node node : inside().nodes()) {
-            if (node instanceof ControlFlowAnchorNode) {
+            if (node instanceof ControlFlowAnchored) {
                 return false;
             }
             if (node instanceof FrameState) {

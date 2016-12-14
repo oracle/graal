@@ -437,7 +437,14 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final long markOopDescHashMaskInPlace = getConstant("markOopDesc::hash_mask_in_place", Long.class);
 
     public final int unlockedMask = getConstant("markOopDesc::unlocked_value", Integer.class);
+    public final int monitorMask = getConstant("markOopDesc::monitor_value", Integer.class, -1);
     public final int biasedLockPattern = getConstant("markOopDesc::biased_lock_pattern", Integer.class);
+
+    // This field has no type in vmStructs.cpp
+    public final int objectMonitorOwner = getFieldOffset("ObjectMonitor::_owner", Integer.class, null, -1);
+    public final int objectMonitorRecursions = getFieldOffset("ObjectMonitor::_recursions", Integer.class, "intptr_t", -1);
+    public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*", -1);
+    public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*", -1);
 
     public final int markWordNoHashInPlace = getConstant("markOopDesc::no_hash_in_place", Integer.class);
     public final int markWordNoLockInPlace = getConstant("markOopDesc::no_lock_in_place", Integer.class);

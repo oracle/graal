@@ -45,11 +45,9 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -70,6 +68,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopsData;
@@ -683,7 +682,7 @@ public class SnippetTemplate {
                 snippetCopy.disableUnsafeAccessTracking();
             }
 
-            Map<Node, Node> nodeReplacements = Node.newIdentityMap();
+            Map<Node, Node> nodeReplacements = NodeCollectionsFactory.newIdentityMap();
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
             MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -888,7 +887,14 @@ public class SnippetTemplate {
                 this.returnNode = returnNodes.get(0);
             } else {
                 AbstractMergeNode merge = snippet.add(new MergeNode());
-                List<MemoryMapNode> memMaps = returnNodes.stream().map(ReturnNode::getMemoryMap).filter(Objects::nonNull).collect(Collectors.toList());
+                List<MemoryMapNode> memMaps = new ArrayList<>();
+                for (ReturnNode retNode : returnNodes) {
+                    MemoryMapNode memoryMapNode = retNode.getMemoryMap();
+                    if (memoryMapNode != null) {
+                        memMaps.add(memoryMapNode);
+                    }
+                }
+
                 ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
                 this.returnNode = snippet.add(new ReturnNode(returnValue));
                 if (!memMaps.isEmpty()) {
@@ -1033,7 +1039,7 @@ public class SnippetTemplate {
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
     private Map<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
-        Map<Node, Node> replacements = Node.newIdentityMap();
+        Map<Node, Node> replacements = NodeCollectionsFactory.newIdentityMap();
         assert args.info.getParameterCount() == parameters.length : "number of args (" + args.info.getParameterCount() + ") != number of parameters (" + parameters.length + ")";
         for (int i = 0; i < parameters.length; i++) {
             Object parameter = parameters[i];

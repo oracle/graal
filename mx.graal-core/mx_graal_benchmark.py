@@ -1097,7 +1097,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return self.workdir
 
     def classpathAndMainClass(self):
-        mainClass = "org.scala.RenaissanceSuite"
+        mainClass = "org.renaissance.RenaissanceSuite"
         return ["-cp", self.renaissancePath() + "/*", mainClass]
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):

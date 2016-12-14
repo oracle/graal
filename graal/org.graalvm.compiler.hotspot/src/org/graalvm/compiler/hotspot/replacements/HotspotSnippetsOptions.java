@@ -57,6 +57,9 @@ public class HotspotSnippetsOptions {
     @Option(help = "Enable profiling of monitor operations.", type = OptionType.Debug)
     public static final OptionKey<Boolean> ProfileMonitors = new OptionKey<>(false);
 
+    @Option(help = "Handle simple cases for inflated monitors in the fast-path.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> SimpleFastInflatedLocking = new OptionKey<>(true);
+
     @Option(help = "Trace monitor operations on objects whose type contains this substring.", type = OptionType.Debug)
     public static final OptionKey<String> TraceMonitorsTypeFilter = new OptionKey<>(null);
 

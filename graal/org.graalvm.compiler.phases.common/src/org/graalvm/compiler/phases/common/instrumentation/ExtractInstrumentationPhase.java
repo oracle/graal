@@ -30,6 +30,7 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -49,6 +50,7 @@ import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationEndNode;
 import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -157,9 +159,10 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
          * InstrumentationNode is alive.
          */
         StructuredGraph genInstrumentationGraph(StructuredGraph oldGraph, InstrumentationNode instrumentationNode) {
-            StructuredGraph instrumentationGraph = new StructuredGraph.Builder(AllowAssumptions.YES).name("Instrumentation:" + oldGraph.method().format("%H.%n(%p)")).options(
-                            oldGraph.getOptions()).build();
-            Map<Node, Node> replacements = Node.newMap();
+            String name = "Instrumentation:" + oldGraph.method().format("%H.%n(%p)");
+            OptionValues options = oldGraph.getOptions();
+            StructuredGraph instrumentationGraph = new StructuredGraph.Builder(AllowAssumptions.YES).name(name).options(options).build();
+            Map<Node, Node> replacements = NodeCollectionsFactory.newMap();
             int index = 0; // for ParameterNode index
             for (Node current : nodes) {
                 // mark any input that is not included in the instrumentation a weak dependency

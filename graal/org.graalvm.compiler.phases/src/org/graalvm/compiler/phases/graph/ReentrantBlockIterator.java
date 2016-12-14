@@ -32,7 +32,7 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
-import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -99,7 +99,7 @@ public final class ReentrantBlockIterator {
         /*
          * States are stored on EndNodes before merges, and on BeginNodes after ControlSplitNodes.
          */
-        Map<FixedNode, StateT> states = Node.newIdentityMap();
+        Map<FixedNode, StateT> states = NodeCollectionsFactory.newIdentityMap();
 
         StateT state = initialState;
         Block current = start;

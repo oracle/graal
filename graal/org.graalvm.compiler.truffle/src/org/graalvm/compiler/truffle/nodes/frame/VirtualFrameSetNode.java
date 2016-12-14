@@ -55,13 +55,16 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
             VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 
-            tool.setVirtualEntry(tagVirtual, getFrameSlotIndex(), getConstant(accessTag), false);
+            int frameSlotIndex = getFrameSlotIndex();
+            if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
+                tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), false);
 
-            ValueNode dataEntry = tool.getEntry(dataVirtual, getFrameSlotIndex());
-            if (dataEntry.getStackKind() == value.getStackKind()) {
-                tool.setVirtualEntry(dataVirtual, getFrameSlotIndex(), value, true);
-                tool.delete();
-                return;
+                ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
+                if (dataEntry.getStackKind() == value.getStackKind()) {
+                    tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, true);
+                    tool.delete();
+                    return;
+                }
             }
         }
 

@@ -37,6 +37,7 @@ import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -111,7 +112,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
     @Override
     public void print(Graph graph, String title, Map<Object, Object> properties) {
         beginGraph(title);
-        Set<Node> noBlockNodes = Node.newSet();
+        Set<Node> noBlockNodes = NodeCollectionsFactory.newSet();
         ScheduleResult schedule = null;
         if (graph instanceof StructuredGraph) {
             StructuredGraph structuredGraph = (StructuredGraph) graph;
@@ -289,7 +290,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         endSuccessors();
         beginBlockNodes();
 
-        Set<Node> nodes = Node.newSet();
+        Set<Node> nodes = NodeCollectionsFactory.newSet();
 
         if (nodeToBlock != null) {
             for (Node n : graph.getNodes()) {
@@ -310,7 +311,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                 }
             }
 
-            Set<Node> snapshot = Node.newSet(nodes);
+            Set<Node> snapshot = NodeCollectionsFactory.newSet(nodes);
             // add all framestates and phis to their blocks
             for (Node node : snapshot) {
                 if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {

@@ -71,7 +71,7 @@ public abstract class LIRPhase<C> {
          */
         public final DebugMemUseTracker memUseTracker;
 
-        private LIRPhaseStatistics(Class<?> clazz) {
+        public LIRPhaseStatistics(Class<?> clazz) {
             timer = Debug.timer("LIRPhaseTime_%s", clazz);
             memUseTracker = Debug.memUseTracker("LIRPhaseMemUse_%s", clazz);
         }
@@ -84,6 +84,10 @@ public abstract class LIRPhase<C> {
         }
     };
 
+    public static LIRPhaseStatistics getLIRPhaseStatistics(Class<?> c) {
+        return statisticsClassValue.get(c);
+    }
+
     /** Lazy initialization to create pattern only when assertions are enabled. */
     static class NamePatternHolder {
         static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
@@ -95,7 +99,7 @@ public abstract class LIRPhase<C> {
     }
 
     public LIRPhase() {
-        LIRPhaseStatistics statistics = statisticsClassValue.get(getClass());
+        LIRPhaseStatistics statistics = getLIRPhaseStatistics(getClass());
         timer = statistics.timer;
         memUseTracker = statistics.memUseTracker;
     }
