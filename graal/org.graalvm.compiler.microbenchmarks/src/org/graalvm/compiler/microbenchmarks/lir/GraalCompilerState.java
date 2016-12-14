@@ -430,7 +430,7 @@ public abstract class GraalCompilerState {
     }
 
     protected AllocationContext createAllocationContext() {
-        return new AllocationContext(lirGenTool.getSpillMoveFactory(), request.backend.newRegisterAllocationConfig(registerConfig, null), OptionValues.GLOBAL);
+        return new AllocationContext(lirGenTool.getSpillMoveFactory(), request.backend.newRegisterAllocationConfig(registerConfig, null));
     }
 
     /**

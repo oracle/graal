@@ -42,7 +42,7 @@ public final class LinearScanPhase extends AllocationPhase {
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         MoveFactory spillMoveFactory = context.spillMoveFactory;
         RegisterAllocationConfig registerAllocationConfig = context.registerAllocationConfig;
-        final LinearScan allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, lirGenRes.getLIR().linearScanOrder(), neverSpillConstants, context.options);
+        final LinearScan allocator = new SSALinearScan(target, lirGenRes, spillMoveFactory, registerAllocationConfig, lirGenRes.getLIR().linearScanOrder(), neverSpillConstants);
         allocator.allocate(target, lirGenRes, context);
     }
 }

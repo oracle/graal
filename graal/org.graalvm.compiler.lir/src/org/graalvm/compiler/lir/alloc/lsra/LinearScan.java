@@ -177,10 +177,9 @@ public class LinearScan {
      */
     private int numVariables;
     private final boolean neverSpillConstants;
-    private final OptionValues options;
 
     protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
-                    boolean neverSpillConstants, OptionValues options) {
+                    boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.moveFactory = spillMoveFactory;
         this.frameMapBuilder = res.getFrameMapBuilder();
@@ -193,11 +192,10 @@ public class LinearScan {
         this.numVariables = ir.numVariables();
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.neverSpillConstants = neverSpillConstants;
-        this.options = options;
     }
 
     public OptionValues getOptions() {
-        return options;
+        return ir.getOptions();
     }
 
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -668,21 +666,21 @@ public class LinearScan {
 
                 createRegisterAllocationPhase().apply(target, lirGenRes, context);
 
-                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue(options)) {
+                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue(getOptions())) {
                     createOptimizeSpillPositionPhase().apply(target, lirGenRes, context);
                 }
                 createResolveDataFlowPhase().apply(target, lirGenRes, context);
 
                 sortIntervalsAfterAllocation();
 
-                if (DetailedAsserts.getValue(options)) {
+                if (DetailedAsserts.getValue(getOptions())) {
                     verify();
                 }
                 beforeSpillMoveElimination();
                 createSpillMoveEliminationPhase().apply(target, lirGenRes, context);
                 createAssignLocationsPhase().apply(target, lirGenRes, context);
 
-                if (DetailedAsserts.getValue(options)) {
+                if (DetailedAsserts.getValue(getOptions())) {
                     verifyIntervals();
                 }
             } catch (Throwable e) {

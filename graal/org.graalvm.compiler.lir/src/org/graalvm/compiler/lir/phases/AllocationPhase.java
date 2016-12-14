@@ -24,19 +24,16 @@ package org.graalvm.compiler.lir.phases;
 
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
-import org.graalvm.compiler.options.OptionValues;
 
 public abstract class AllocationPhase extends LIRPhase<AllocationPhase.AllocationContext> {
 
     public static final class AllocationContext extends GenericContext {
         public final MoveFactory spillMoveFactory;
         public final RegisterAllocationConfig registerAllocationConfig;
-        public final OptionValues options;
 
-        public AllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig, OptionValues options) {
+        public AllocationContext(MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
             this.spillMoveFactory = spillMoveFactory;
             this.registerAllocationConfig = registerAllocationConfig;
-            this.options = options;
         }
     }
 
