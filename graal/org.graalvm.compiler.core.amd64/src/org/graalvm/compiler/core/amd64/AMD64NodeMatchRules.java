@@ -74,13 +74,14 @@ import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public class AMD64NodeMatchRules extends NodeMatchRules {
 
@@ -181,15 +182,22 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         }
     }
 
-    protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, Access access) {
+    protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, Access access, ValueKind<?> addressKind) {
         return builder -> {
             AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
             LIRFrameState state = getState(access);
+            if (addressKind != null) {
+                address = address.withKind(addressKind);
+            }
             return getArithmeticLIRGenerator().emitConvertMemoryOp(kind, op, size, address, state);
         };
     }
 
-    private ComplexMatchResult emitSignExtendMemory(Access access, int fromBits, int toBits) {
+    protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, Access access) {
+        return emitConvertMemoryOp(kind, op, size, access, null);
+    }
+
+    private ComplexMatchResult emitSignExtendMemory(Access access, int fromBits, int toBits, ValueKind<?> addressKind) {
         assert fromBits <= toBits && toBits <= 64;
         AMD64Kind kind = null;
         AMD64RMOp op;
@@ -231,7 +239,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
             }
         }
         if (kind != null && op != null) {
-            return emitConvertMemoryOp(kind, op, size, access);
+            return emitConvertMemoryOp(kind, op, size, access, addressKind);
         }
         return null;
     }
@@ -396,7 +404,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(SignExtend Read=access)")
     @MatchRule("(SignExtend FloatingRead=access)")
     public ComplexMatchResult signExtend(SignExtendNode root, Access access) {
-        return emitSignExtendMemory(access, root.getInputBits(), root.getResultBits());
+        return emitSignExtendMemory(access, root.getInputBits(), root.getResultBits(), null);
     }
 
     @MatchRule("(ZeroExtend Read=access)")
@@ -404,6 +412,30 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult zeroExtend(ZeroExtendNode root, Access access) {
         AMD64Kind memoryKind = getMemoryKind(access);
         return builder -> getArithmeticLIRGenerator().emitZeroExtendMemory(memoryKind, root.getResultBits(), (AMD64AddressValue) operand(access.getAddress()), getState(access));
+    }
+
+    @MatchRule("(Narrow Read=access)")
+    @MatchRule("(Narrow FloatingRead=access)")
+    public ComplexMatchResult narrowRead(NarrowNode root, Access access) {
+        return new ComplexMatchResult() {
+            @Override
+            public Value evaluate(NodeLIRBuilder builder) {
+                AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
+                LIRKind addressKind = LIRKind.combineDerived(getLIRGeneratorTool().getLIRKind(root.asNode().stamp()),
+                                address.getBase(), address.getIndex());
+                AMD64AddressValue newAddress = address.withKind(addressKind);
+                LIRKind readKind = getLIRGeneratorTool().getLIRKind(root.stamp());
+                return getArithmeticLIRGenerator().emitZeroExtendMemory((AMD64Kind) readKind.getPlatformKind(),
+                                root.getResultBits(), newAddress, getState(access));
+            }
+        };
+    }
+
+    @MatchRule("(SignExtend (Narrow=narrow Read=access))")
+    @MatchRule("(SignExtend (Narrow=narrow FloatingRead=access))")
+    public ComplexMatchResult signExtendNarrowRead(SignExtendNode root, NarrowNode narrow, Access access) {
+        LIRKind kind = getLIRGeneratorTool().getLIRKind(narrow.stamp());
+        return emitSignExtendMemory(access, narrow.getResultBits(), root.getResultBits(), kind);
     }
 
     @MatchRule("(FloatConvert Read=access)")
