@@ -599,6 +599,34 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
         return false;
     }
 
+    @Override
+    protected Object findMetaObject(Map<String, CallTarget> context, Object obj) {
+        if (obj instanceof Integer || obj instanceof Long) {
+            return "Integer";
+        }
+        if (obj instanceof Boolean) {
+            return "Boolean";
+        }
+        if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
+            return "Infinity";
+        }
+        return null;
+    }
+
+    @Override
+    protected SourceSection findSourceLocation(Map<String, CallTarget> context, Object obj) {
+        if (obj instanceof Integer || obj instanceof Long) {
+            return Source.newBuilder("source integer").name("integer").mimeType(MIME_TYPE).build().createSection(1);
+        }
+        if (obj instanceof Boolean) {
+            return Source.newBuilder("source boolean").name("boolean").mimeType(MIME_TYPE).build().createSection(1);
+        }
+        if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
+            return Source.newBuilder("source infinity").name("double").mimeType(MIME_TYPE).build().createSection(1);
+        }
+        return null;
+    }
+
     public static int getRootSourceSectionQueryCount() {
         return rootSourceSectionQueryCount;
     }

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.impl.ReadOnlyArrayList;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -443,6 +444,41 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
+     * Find a meta-object of a value, if any. The meta-object represents a description of the
+     * object, reveals it's kind and it's features. Some information that a meta-object might define
+     * includes the base object's type, interface, class, methods, attributes, etc.
+     * <p>
+     * A programmatic {@link #toString(java.lang.Object, java.lang.Object) textual representation}
+     * should be provided for meta-objects, when possible. The meta-object may have properties
+     * describing their structure.
+     * <p>
+     * When no meta-object is known, return <code>null</code>. The default implementation returns
+     * <code>null</code>.
+     *
+     * @param context the execution context
+     * @param value a value to find the meta-object of
+     * @return the meta-object, or <code>null</code>
+     * @since 0.22
+     */
+    protected Object findMetaObject(C context, Object value) {
+        return null;
+    }
+
+    /**
+     * Find a source location where a value is declared, if any. This is often useful especially for
+     * retrieval of source locations of {@link #findMetaObject meta-objects}. The default
+     * implementation returns <code>null</code>.
+     *
+     * @param context the execution context
+     * @param value a value to get the source location for
+     * @return a source location of the object, or <code>null</code>
+     * @since 0.22
+     */
+    protected SourceSection findSourceLocation(C context, Object value) {
+        return null;
+    }
+
+    /**
      * Allows a language implementor to create a node that can effectively lookup up the context
      * associated with current execution. The context is created by
      * {@link #createContext(com.oracle.truffle.api.TruffleLanguage.Env)} method.
@@ -502,6 +538,16 @@ public abstract class TruffleLanguage<C> {
         String toString(TruffleLanguage<?> language, Object obj) {
             assert lang == language;
             return lang.toString(ctx, obj);
+        }
+
+        private Object findMetaObject(TruffleLanguage<?> language, Object obj) {
+            assert lang == language;
+            return lang.findMetaObject(ctx, obj);
+        }
+
+        private SourceSection findSourceLocation(TruffleLanguage<?> language, Object obj) {
+            assert lang == language;
+            return lang.findSourceLocation(ctx, obj);
         }
 
         void postInit() {
@@ -920,6 +966,16 @@ public abstract class TruffleLanguage<C> {
         @Override
         public String toString(TruffleLanguage<?> language, Env env, Object obj) {
             return env.langCtx.toString(language, obj);
+        }
+
+        @Override
+        public Object findMetaObject(TruffleLanguage<?> language, Env env, Object obj) {
+            return env.langCtx.findMetaObject(language, obj);
+        }
+
+        @Override
+        public SourceSection findSourceLocation(TruffleLanguage<?> language, Env env, Object obj) {
+            return env.langCtx.findSourceLocation(language, obj);
         }
 
         @Override
