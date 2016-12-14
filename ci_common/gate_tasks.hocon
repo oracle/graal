@@ -8,9 +8,7 @@ builds += [
 # ${gateTest8Debug}            ${gateDarwinAMD64}  {name: "gate-test-8-darwin-amd64-fastdebug"}
 # ${gateTestBenchmark8}        ${gateDarwinAMD64}  {name: "gate-benchmarktest-8-darwin-amd64"}
 # ${gateTestBenchmark8Debug}   ${gateDarwinAMD64}  {name: "gate-benchmarktest-8-darwin-amd64-fastdebug"}
-  ${gateBootstrapLite8}        ${gateDarwinAMD64Bootstrap}  {name: "gate-bootstraplite-8-darwin-amd64"}
-  ${gateBootstrapLite9}        ${gateDarwinAMD64Bootstrap}  {name: "gate-bootstraplite-9-darwin-amd64"}
-
+    
   # Linux AMD64
   ${gateTest8}                 ${gateLinuxAMD64}   {name: "gate-test-8-linux-amd64"}
   ${gateTest9}                 ${gateLinuxAMD64}   {name: "gate-test-9-linux-amd64"}
@@ -19,10 +17,6 @@ builds += [
 # ${gateTest8Debug}            ${gateLinuxAMD64}   {name: "gate-test-8-linux-amd64-fastdebug"}
   ${gateTestBenchmark8}        ${gateLinuxAMD64}   {name: "gate-benchmarktest-8-linux-amd64"}
 # ${gateTestBenchmark8Debug}   ${gateLinuxAMD64}   {name: "gate-benchmarktest-8-linux-amd64-fastdebug"}
-  ${gateBootstrap8}            ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrap-8-linux-amd64"}
-  ${gateBootstrap8FullVerify}  ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrapfullverify-8-linux-amd64"}
-  ${gateBootstrap9}            ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrap-9-linux-amd64"}
-  ${gateBootstrap9EA}          ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrap-9EA-linux-amd64"}
   ${gateStyle}                 ${gateLinuxAMD64}   {name: "gate-style-linux-amd64"}
 
   # Solaris SPARC
@@ -32,16 +26,10 @@ builds += [
 # ${gateTest8Debug}            ${gateSolarisSPARC} {name: "gate-test-8-solaris-sparcv9-fastdebug",          timelimit: "1:00:00"}
   ${gateTestBenchmark8}        ${gateSolarisSPARC} {name: "gate-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"}
 # ${gateTestBenchmark8Debug}   ${gateSolarisSPARC} {name: "gate-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}
-  ${gateBootstrap8}            ${gateSolarisSPARCBootstrap} {name: "gate-bootstrap-8-solaris-sparcv9",               timelimit: "1:00:00"}
-  ${gateBootstrap9}            ${gateSolarisSPARCBootstrap} {name: "gate-bootstrap-9-solaris-sparcv9",               timelimit: "1:00:00"}
-  ${gateBootstrap9EA}          ${gateSolarisSPARCBootstrap} {name: "gate-bootstrap-9EA-solaris-sparcv9",             timelimit: "1:00:00"}
+
 
   # TraceRA
   ${gateTest8}                 ${gateLinuxAMD64TraceRA} {name: "gate-test-8-linux-amd64-tracera"}
-  ${gateBootstrap8}            ${gateLinuxAMD64TraceRABootstrap} {name: "gate-bootstrap-8-linux-amd64-tracera"}
-  ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABootstrap} {name: "gate-bootstrapfullverify-8-linux-amd64-tracera"}
   ${gateTest8}                 ${gateLinuxAMD64TraceRABU} {name: "gate-test-8-linux-amd64-tracera-bu"}
-  ${gateBootstrap8}            ${gateLinuxAMD64TraceRABUBootstrap} {name: "gate-bootstrap-8-linux-amd64-tracera-bu"}
-  ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABUBootstrap} {name: "gate-bootstrapfullverify-8-linux-amd64-tracera-bu"}
   ${gateTest8}                 ${gateLinuxAMD64TraceRASingleBlock} {name: "gate-test-8-linux-amd64-tracera-single-block"}
 ]
