@@ -602,8 +602,9 @@ public abstract class TruffleLanguage<C> {
                 throw ex;
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
+            } finally {
+                env.dispose();
             }
-            env.dispose();
             return target;
         }
 
