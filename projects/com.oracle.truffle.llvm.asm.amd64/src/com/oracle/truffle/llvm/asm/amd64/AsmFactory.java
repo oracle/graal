@@ -82,6 +82,7 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrbNode
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrlNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64OrNodeFactory.LLVMAMD64OrwNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdtscNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SalbNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SallNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SalNodeFactory.LLVMAMD64SalqNodeGen;
@@ -180,6 +181,12 @@ public class AsmFactory {
                 return;
             case "nop":
                 break;
+            case "rdtsc": {
+                LLVMAMD64WriteI64RegisterNode high = getRegisterStore("rdx");
+                LLVMAMD64WriteI64RegisterNode low = getRegisterStore("rax");
+                statements.add(LLVMAMD64RdtscNodeGen.create(low, high));
+                break;
+            }
             default:
                 statements.add(new LLVMI32UnsupportedInlineAssemblerNode());
                 return;

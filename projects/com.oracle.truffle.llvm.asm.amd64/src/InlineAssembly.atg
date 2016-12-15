@@ -145,6 +145,7 @@ ZeroOp<> =						(. String op; .)
   | "std"
   | "sti"
   | "nop"
+  | "rdtsc"
   )							(. op = t.val; .)
   							(. factory.createOperation(op); .)
   .
@@ -296,7 +297,6 @@ UnOp<> =						(. String op; AsmOperand arg; .)
   | "dec"
   | "neg"
   | "not"
-  | "rdtsc"
   )							(. op = t.val; .)
   Operand<out arg>
   							(. factory.createUnaryOperation(op, arg); .)
