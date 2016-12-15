@@ -27,7 +27,7 @@ package com.oracle.truffle.api.source;
 import java.lang.ref.WeakReference;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.source.impl.SourceAccessor;
 import java.net.URI;
 
 final class SourceImpl extends Source implements Cloneable {
@@ -82,9 +82,12 @@ final class SourceImpl extends Source implements Cloneable {
         return null;
     }
 
-    @TruffleBoundary
     @Override
     public boolean equals(Object obj) {
+        return EqualCall.INSTANCE.invoke(this, obj);
+    }
+
+    final boolean equalsImpl(Object obj) {
         if (obj instanceof Source) {
             Source other = (Source) obj;
             return content().equals(other.content()) && equalAttributes(other);
@@ -103,6 +106,15 @@ final class SourceImpl extends Source implements Cloneable {
         Ref(SourceImpl source, Ref next) {
             super(source);
             this.next = next;
+        }
+    }
+
+    private static final class EqualCall extends SourceAccessor.TruffleBoundaryCall {
+        static final EqualCall INSTANCE = new EqualCall();
+
+        @Override
+        public boolean call(Object thiz, Object obj) {
+            return ((SourceImpl) thiz).equalsImpl(obj);
         }
     }
 }

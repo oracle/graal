@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.source;
 
+import com.oracle.truffle.api.source.impl.SourceAccessor;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
@@ -36,9 +37,8 @@ import java.nio.file.spi.FileTypeDetector;
 import java.util.Collection;
 import java.util.ServiceLoader;
 
-import com.oracle.truffle.api.TruffleOptions;
-
 final class FileSourceImpl extends Content implements Content.CreateURI {
+    private static boolean AOT = SourceAccessor.isAOT();
     private final File file;
     private final String name; // Name used originally to describe the source
     private final String path; // Normalized path description of an actual file
@@ -106,7 +106,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
     }
 
     static String findMimeType(final Path filePath) throws IOException {
-        if (!TruffleOptions.AOT) {
+        if (!AOT) {
             Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
             for (ClassLoader l : loaders) {
                 for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {

@@ -22,15 +22,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.source;
+package com.oracle.truffle.api.source.impl;
 
-import com.oracle.truffle.api.impl.Accessor;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.ServiceLoader;
 
-final class SourceAccessor extends Accessor {
-    private static final SourceAccessor ACCESSOR = new SourceAccessor();
+public abstract class SourceAccessor {
+    private static final SourceAccessor ACCESSOR;
+    static {
+        final Iterator<SourceAccessor> it = ServiceLoader.load(SourceAccessor.class).iterator();
+        ACCESSOR = it.hasNext() ? it.next() : null;
+    }
 
-    static Collection<ClassLoader> allLoaders() {
+    public static Collection<ClassLoader> allLoaders() {
         return ACCESSOR.loaders();
+    }
+
+    public static boolean isAOT() {
+        return ACCESSOR.checkAOT();
+    }
+
+    public static void neverPartOfCompilation(String msg) {
+        ACCESSOR.assertNeverPartOfCompilation(msg);
+    }
+
+    protected abstract Collection<ClassLoader> loaders();
+
+    protected abstract boolean checkAOT();
+
+    protected abstract void assertNeverPartOfCompilation(String msg);
+
+    protected abstract boolean makeBoundaryCall(TruffleBoundaryCall call, Object param1, Object param2);
+
+    public static abstract class TruffleBoundaryCall {
+        public abstract boolean call(Object param1, Object param2);
+
+        public final boolean invoke(Object param1, Object param2) {
+            return ACCESSOR.makeBoundaryCall(this, param1, param2);
+        }
     }
 }
