@@ -205,7 +205,18 @@ public class BinaryGraphPrinter implements GraphPrinter {
 
     private void flush() throws IOException {
         buffer.flip();
-        channel.write(buffer);
+        /*
+         * Try not to let interrupted threads aborting the write. There's still a race here but an
+         * interrupt that's been pending for a long time shouldn't stop this writing.
+         */
+        boolean interrupted = Thread.interrupted();
+        try {
+            channel.write(buffer);
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
         buffer.compact();
     }
 
