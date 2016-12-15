@@ -43,6 +43,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -397,7 +398,26 @@ public abstract class TruffleLanguage<C> {
          * @since 0.8 or earlier
          */
         public Object importSymbol(String globalName) {
-            return AccessAPI.engineAccess().importSymbol(vm, lang, globalName);
+            Iterator<? extends Object> it = AccessAPI.engineAccess().importSymbols(vm, lang, globalName).iterator();
+            return it.hasNext() ? it.next() : null;
+        }
+
+        /**
+         * Creates an iterable to go through other registered languages and find whether they export
+         * global symbols of specified name. Multiple languages may export an object under the name
+         * - it is up to the caller of this method to decide what to do in such case. The objects
+         * returned from the iterable conform to
+         * {@link com.oracle.truffle.api.interop.java.JavaInterop#asTruffleValue interop semantics}
+         * e.g. the expected returned type is either
+         * {@link com.oracle.truffle.api.interop.TruffleObject}, or one of wrappers of Java
+         * primitive types ({@link Integer}, {@link Double}).
+         *
+         * @param globalName the name of the symbol to search for
+         * @return iterable returning objects representing the symbol
+         * @since 0.22
+         */
+        public Iterable<? extends Object> importSymbols(String globalName) {
+            return AccessAPI.engineAccess().importSymbols(vm, lang, globalName);
         }
 
         /**

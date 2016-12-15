@@ -78,7 +78,7 @@ public abstract class Accessor {
 
         public abstract Object getInstrumentationHandler(Object vm);
 
-        public abstract Object importSymbol(Object vm, TruffleLanguage<?> queryingLang, String globalName);
+        public abstract Iterable<? extends Object> importSymbols(Object vm, TruffleLanguage<?> queryingLang, String globalName);
 
         public abstract void dispatchEvent(Object vm, Object event, int type);
 
