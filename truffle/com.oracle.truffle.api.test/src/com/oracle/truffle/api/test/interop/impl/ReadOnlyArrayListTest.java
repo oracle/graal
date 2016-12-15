@@ -22,12 +22,11 @@
  */
 package com.oracle.truffle.api.test.interop.impl;
 
+import com.oracle.truffle.api.impl.ReadOnlyArrayList;
 import java.util.ArrayList;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
-
-import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 
 public class ReadOnlyArrayListTest {
     @Test

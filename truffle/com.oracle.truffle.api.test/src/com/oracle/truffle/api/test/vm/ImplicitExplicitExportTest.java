@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -191,7 +190,8 @@ public class ImplicitExplicitExportTest {
         }
 
         @Override
-        protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            Source code = request.getSource();
             if (code.getCode().startsWith("parse=")) {
                 throw new IOException(code.getCode().substring(6));
             }
@@ -217,11 +217,6 @@ public class ImplicitExplicitExportTest {
         @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
-        }
-
-        @Override
-        protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
-            return null;
         }
 
         @TruffleBoundary

@@ -9,7 +9,7 @@ $mods$ class $c extends $e1$ implements $i1$, com.oracle.truffle.api.interop.For
     $members$;
 
     @Override
-    public com.oracle.truffle.api.CallTarget accessProperties() {
+    public com.oracle.truffle.api.CallTarget accessKeys() {
         return null;
     }
 }
