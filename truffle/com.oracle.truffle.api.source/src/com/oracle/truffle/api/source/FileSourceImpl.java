@@ -38,7 +38,7 @@ import java.util.Collection;
 import java.util.ServiceLoader;
 
 final class FileSourceImpl extends Content implements Content.CreateURI {
-    private static boolean AOT = SourceAccessor.isAOT();
+    private static final boolean AOT = SourceAccessor.isAOT();
     private final File file;
     private final String name; // Name used originally to describe the source
     private final String path; // Normalized path description of an actual file
