@@ -35,6 +35,12 @@ public abstract class SourceAccessor {
         ACCESSOR = it.hasNext() ? it.next() : null;
     }
 
+    protected SourceAccessor() {
+        if (!"com.oracle.truffle.api.impl.SourceAccessorImpl".equals(getClass().getName())) {
+            throw new IllegalStateException();
+        }
+    }
+
     public static Collection<ClassLoader> allLoaders() {
         return ACCESSOR.loaders();
     }
