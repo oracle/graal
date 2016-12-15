@@ -2126,8 +2126,8 @@ public class FlatNodeGenFactory {
                 }
                 if (singleCondition != null) {
                     int index = cachedTriples.indexOf(singleCondition);
-                    CodeTree stateCheck = state.createContains(frameState, specializations);
-                    cachedTriples.set(index, new IfTriple(singleCondition.prepare, combineTrees(" || ", stateCheck, singleCondition.condition), singleCondition.statements));
+                    CodeTree stateCheck = state.createNotContains(frameState, specializations);
+                    cachedTriples.set(index, new IfTriple(singleCondition.prepare, combineTrees(" && ", stateCheck, singleCondition.condition), singleCondition.statements));
                     fallbackNeedsState = true;
                 }
             }
