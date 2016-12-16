@@ -31,6 +31,7 @@ import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeWorkList;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
@@ -370,6 +371,12 @@ public class GraphUtil {
      * @return the StackTraceElements if an approximate source location is found, null otherwise
      */
     public static StackTraceElement[] approxSourceStackTraceElement(Node node) {
+        NodeSourcePosition position = node.getNodeSourcePosition();
+        if (position != null) {
+            // use GraphBuilderConfiguration and enable trackNodeSourcePosition to get better source
+            // positions.
+            return approxSourceStackTraceElement(position);
+        }
         ArrayList<StackTraceElement> elements = new ArrayList<>();
         Node n = node;
         while (n != null) {

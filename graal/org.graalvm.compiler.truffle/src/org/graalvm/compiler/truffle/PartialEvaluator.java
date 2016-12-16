@@ -26,23 +26,29 @@ import static org.graalvm.compiler.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -61,6 +67,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -87,6 +94,7 @@ import org.graalvm.compiler.truffle.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.compiler.truffle.substitutions.TruffleInvocationPluginProvider;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -406,7 +414,7 @@ public class PartialEvaluator {
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         registerTruffleInvocationPlugins(invocationPlugins, canDelayIntrinsification);
         boolean mustInstrumentBranches = TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
-        return newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || mustInstrumentBranches);
+        return newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || mustInstrumentBranches || TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue());
     }
 
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
@@ -477,8 +485,8 @@ public class PartialEvaluator {
             if (call.targetMethod().isNative()) {
                 continue; // native methods cannot be inlined
             }
-            if (call.targetMethod().getAnnotation(TruffleBoundary.class) == null && call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
-                logPerformanceWarning(target, String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
+            if (call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
+                logPerformanceWarning(target, Arrays.asList(call), String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
                 warnings.add(call);
             }
         }
@@ -493,7 +501,7 @@ public class PartialEvaluator {
             }
         }
         for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
-            logPerformanceInfo(target, String.format("non-leaf type checkcast: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
+            logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type checkcast: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
         }
 
         groupedByType = new HashMap<>();
@@ -505,7 +513,7 @@ public class PartialEvaluator {
             }
         }
         for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
-            logPerformanceInfo(target, String.format("non-leaf type instanceof: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
+            logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type instanceof: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
         }
 
         if (Debug.isEnabled() && !warnings.isEmpty()) {
@@ -550,7 +558,7 @@ public class PartialEvaluator {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("callNode", callNode);
-                logPerformanceWarning(target, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
+                logPerformanceWarning(target, null, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
             }
         }
 
@@ -559,22 +567,43 @@ public class PartialEvaluator {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("originalTarget", decision.getTarget());
                 properties.put("callNode", callNode);
-                logPerformanceWarning(target, "CallTarget changed during compilation. Call node could not be inlined.", properties);
+                logPerformanceWarning(target, null, "CallTarget changed during compilation. Call node could not be inlined.", properties);
             }
             return null;
         }
         return decision;
     }
 
-    private static void logPerformanceWarning(OptimizedCallTarget target, String details, Map<String, Object> properties) {
-        logPerformanceWarning(target, "perf warn", details, properties);
+    private static void logPerformanceWarning(OptimizedCallTarget target, List<Node> locations, String details, Map<String, Object> properties) {
+        logPerformanceWarningImpl(target, "perf warn", details, properties);
+        logPerformanceStackTrace(locations);
     }
 
-    private static void logPerformanceInfo(OptimizedCallTarget target, String details, Map<String, Object> properties) {
-        logPerformanceWarning(target, "perf info", details, properties);
+    private static void logPerformanceInfo(OptimizedCallTarget target, List<? extends Node> locations, String details, Map<String, Object> properties) {
+        logPerformanceWarningImpl(target, "perf info", details, properties);
+        logPerformanceStackTrace(locations);
     }
 
-    private static void logPerformanceWarning(OptimizedCallTarget target, String msg, String details, Map<String, Object> properties) {
+    private static void logPerformanceStackTrace(List<? extends Node> locations) {
+        if (locations == null || locations.isEmpty()) {
+            return;
+        }
+        for (Node location : locations) {
+            StackTraceElement[] stackTrace = GraphUtil.approxSourceStackTraceElement(location);
+            if (stackTrace == null) {
+                GraalTruffleRuntime.getRuntime().log(String.format("No stack trace available for %s.", location));
+            } else {
+                GraalTruffleRuntime.getRuntime().log(String.format("Approximated stack trace for %s:", location));
+                SourceStackTraceBailoutException exception = SourceStackTraceBailoutException.create(null, "", stackTrace);
+                StringWriter sw = new StringWriter();
+                exception.printStackTrace(new PrintWriter(sw));
+                GraalTruffleRuntime.getRuntime().log(sw.toString());
+            }
+        }
+
+    }
+
+    private static void logPerformanceWarningImpl(OptimizedCallTarget target, String msg, String details, Map<String, Object> properties) {
         AbstractDebugCompilationListener.log(0, msg, String.format("%-60s|%s", target, details), properties);
     }
 }
