@@ -624,20 +624,25 @@ public abstract class Source {
     }
 
     /**
-     * Check whether this source has been marked as <em>interactive</em>, meaning that it has been
-     * provided by a user through an interactive shell. When <em>interactive</em> sources are
-     * executed, the appropriate result could be passed directly to the
-     * {@link com.oracle.truffle.api.TruffleLanguage.Env#out() polyglot engine output stream}. If
-     * the output stream is used, no value should be provided as a result of the execution. When
-     * there is a need for a user input during the execution,
-     * {@link com.oracle.truffle.api.TruffleLanguage.Env#in() polyglot engine input stream} can be
-     * used for that purpose.
+     * Check whether this source has been marked as <em>interactive</em>. Interactive sources are
+     * provided by an entity which is able to interactively read output and provide an input during
+     * the source execution; that can be a user I/O through an interactive shell for instance.
+     * <p>
+     * Depending on {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#isInteractive()
+     * language interactive} capability, when <em>interactive</em> sources are executed, the
+     * appropriate result could be passed directly to the polyglot engine
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) output stream}
+     * or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream) error stream}
+     * and polyglot engine
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream) input stream} can
+     * be used to read user input during the execution, to clarify the execution behavior by asking
+     * questions for instance. Non-interactive languages are expected to ignore this property.
      * <p>
      * One can specify whether a source is interactive when {@link Builder#interactive() building
      * it}.
      *
      * @return whether this source is marked as <em>interactive</em>
-     * @since 0.20
+     * @since 0.21
      */
     public boolean isInteractive() {
         return interactive;
@@ -1245,12 +1250,18 @@ public abstract class Source {
         }
 
         /**
-         * Marks the source as interactive. Interactive sources are those that come from an
-         * interactive shell and an interactive response is possible. Calling this method influences
-         * result of {@link Source#isInteractive()}.
+         * Marks the source as interactive. {@link com.oracle.truffle.api.vm.PolyglotEngine#eval
+         * Evaluation} of interactive sources by an
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#isInteractive() interactive
+         * language} can use the {@link com.oracle.truffle.api.vm.PolyglotEngine} streams to print
+         * the result and read an input. However, non-interactive languages are expected to ignore
+         * the interactive property of sources and not use the polyglot engine streams. Any desired
+         * printing of the evaluated result provided by a non-interactive language needs to be
+         * handled by the caller. Calling of this method influences the result of
+         * {@link Source#isInteractive()}.
          *
          * @return the instance of this builder
-         * @since 0.20
+         * @since 0.21
          */
         public Builder<E1, E2, E3> interactive() {
             this.interactive = true;
