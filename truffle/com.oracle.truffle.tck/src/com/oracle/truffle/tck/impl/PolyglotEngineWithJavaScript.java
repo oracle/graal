@@ -204,4 +204,52 @@ public class PolyglotEngineWithJavaScript {
         assertEquals("Seconds", 10, m.seconds);
     }
     // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createNewMoment
+
+    @Test
+    public void testIncrementor() {
+        incrementor();
+    }
+
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor
+
+    interface Incrementor {
+        int inc();
+        int dec();
+        int value();
+    }
+
+    public void incrementor() {
+        Source src = Source.newBuilder("\n"
+            + "(function() {\n"
+            + "  class Incrementor {\n"
+            + "     constructor(init) {\n"
+            + "       this.value = init;\n"
+            + "     }\n"
+            + "     inc() {\n"
+            + "       return ++this.value;\n"
+            + "     }\n"
+            + "     dec() {\n"
+            + "       return --this.value;\n"
+            + "     }\n"
+            + "  }\n"
+            + "  return function(init) {\n"
+            + "    return new Incrementor(init);\n"
+            + "  }\n"
+            + "})\n"
+        ).name("Incrementor.js").mimeType("text/javascript").build();
+
+        final PolyglotEngine.Value factory = engine.eval(src).execute();
+        Incrementor initFive = factory.execute(5).as(Incrementor.class);
+        Incrementor initTen = factory.execute(10).as(Incrementor.class);
+
+        initFive.inc();
+        assertEquals("Now at seven", 7, initFive.inc());
+
+        initTen.dec();
+        assertEquals("Now at eight", 8, initTen.dec());
+        initTen.dec();
+
+        assertEquals("Values are the same", initFive.value(), initTen.value());
+    }
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor
 }

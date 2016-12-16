@@ -484,6 +484,16 @@ public class PolyglotEngine {
      * JavaScript scope - the only reference to the system is from Java via the implementation of
      * <code>Times</code> interface.
      *
+     * <h5>Typings for ECMAScript 6 Classes</h5>
+     *
+     * The ECMAScript 6 specification of JavaScript adds concept of typeless classes. With Java
+     * interop one can give the classes types. Here is an example that defines
+     * <code>class Incrementor</code> with two functions and one field and "types it" with Java
+     * interface:
+     *
+     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor}
+     *
+     *
      * <p>
      * More examples can be found in description of {@link Value#execute(java.lang.Object...)} and
      * {@link Value#as(java.lang.Class)} methods.
@@ -969,6 +979,11 @@ public class PolyglotEngine {
          * as first argument and can be used by the dynamic language as a constructor in
          * <code>new Moment(h, m, s)</code> - that creates new instances of the Java class. Static
          * methods of the passed in <code>Moment</code> object could be invoked as well.
+         *
+         * <p>
+         * Additional examples of Java/dynamic language interop can be found in description of
+         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} and
+         * {@link #as(java.lang.Class)} methods.
          *
          * @param args arguments to pass when invoking the symbol
          *
