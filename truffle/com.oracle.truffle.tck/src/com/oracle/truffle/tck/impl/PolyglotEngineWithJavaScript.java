@@ -29,6 +29,9 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.util.List;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -299,4 +302,80 @@ public class PolyglotEngineWithJavaScript {
     }
     // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements
 
+    @Test
+    public void tetsAccessJSONObjectProperties() {
+        accessJSONObjectProperties();
+    }
+
+
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties
+
+    @FunctionalInterface
+    interface ParseJSON {
+        List<Repository> parse();
+    }
+
+    interface Repository {
+        int id();
+
+        String name();
+
+        Owner owner();
+
+        boolean has_wiki();
+
+        List<String> urls();
+    }
+
+    interface Owner {
+        int id();
+
+        String login();
+
+        boolean site_admin();
+    }
+
+    public void accessJSONObjectProperties() {
+        Source src = Source.newBuilder(
+            "(function () { \n" +
+            "  return function() {\n" +
+            "    return [\n" +
+            "      {\n" +
+            "        \"id\": 6109440,\n" +
+            "        \"name\": \"holssewebsocket\",\n" +
+            "        \"owner\": {\n" +
+            "          \"login\": \"jersey\",\n" +
+            "          \"id\": 399710,\n" +
+            "          \"site_admin\": false\n" +
+            "        },\n" +
+            "        \"urls\": [\n" +
+            "          \"https://api.github.com/repos/jersey/hol\",\n" +
+            "          \"https://api.github.com/repos/jersey/hol/forks\",\n" +
+            "          \"https://api.github.com/repos/jersey/hol/teams\",\n" +
+            "        ],\n" +
+            "        \"has_wiki\": true\n" +
+            "      }\n" +
+            "    ]\n" +
+            "  };\n" +
+            "})\n"
+        ).name("github-api-value.js").mimeType("text/javascript").build();
+        ParseJSON parser = engine.eval(src).execute().as(ParseJSON.class);
+
+        List<Repository> repos = parser.parse();
+        assertEquals("One repo", 1, repos.size());
+        assertEquals("holssewebsocket", repos.get(0).name());
+        assertTrue("wiki", repos.get(0).has_wiki());
+        assertEquals("3 urls", 3, repos.get(0).urls().size());
+        final String url1 = repos.get(0).urls().get(0);
+        assertEquals("1st", "https://api.github.com/repos/jersey/hol", url1);
+
+        Owner owner = repos.get(0).owner();
+        assertNotNull("Owner exists", owner);
+
+        assertEquals("login", "jersey", owner.login());
+        assertEquals("id", 399710, owner.id());
+        assertFalse(owner.site_admin());
+    }
+
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties
 }

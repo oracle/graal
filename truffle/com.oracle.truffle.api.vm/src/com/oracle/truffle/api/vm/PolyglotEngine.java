@@ -897,6 +897,20 @@ public class PolyglotEngine {
          *
          * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements}
          *
+         * <h5>Type-safe Parsing of a JSON</h5>
+         *
+         * Imagine a need to safely access complex JSON-like structure. The next example uses one
+         * modeled after JSON response returned by a GitHub API. It contains a list of repository
+         * objects. Each repository has an id, name, list of URLs and a nested structure describing
+         * owner. Let's start by defining the structure with Java interfaces:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties}
+         * 
+         * The example defines a parser that somehow obtains object representing the JSON data and
+         * converts it into {@link List} of {@code Repository} instances. After calling the method
+         * we can safely use the interfaces ({@link List}, {@code Repository}, {@code Owner}) and
+         * inspect the JSON structure in a type-safe way.
+         * <p>
          * Other examples of Java to dynamic language interop can be found in documentation of
          * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} and
          * {@link #execute(java.lang.Object...)} methods.
