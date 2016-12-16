@@ -449,7 +449,44 @@ public class PolyglotEngine {
     /**
      * Evaluates provided source. Chooses language registered for a particular
      * {@link Source#getMimeType() MIME type} (throws an {@link IllegalStateException} if there is
-     * none). The language is then allowed to parse and execute the source.
+     * none). The language is then allowed to parse and execute the source. The format of the
+     * {@link Source} is of course language specific, but to illustrate the possibilities, here is
+     * few inspiring examples.
+     *
+     * <h5>Define Function. Use it from Java.</h5>
+     *
+     * To use a function written in a dynamic language from Java one needs to give it a type. The
+     * following sample defines {@code Mul} interface with a single method. Then it evaluates the
+     * dynamic code to define the function and {@link Value#as(java.lang.Class) uses the result as}
+     * the {@code Mul} interface:
+     *
+     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineJavaScriptFunctionAndUseItFromJava}
+     *
+     * In case of JavaScript, it is adviced to wrap the function into parenthesis, as then the
+     * function doesn't polute the global scope - the only reference to it is via implementation of
+     * the {@code Mul} interface.
+     *
+     * <h5>Define Functions with State</h5>
+     *
+     * Often it is necessary to expose multiple dynamic language functions that work in
+     * orchestration - for example when they share some common variables. This can be done by typing
+     * these functions via Java interface as well. Just the interface needs to have more than a
+     * single method:
+     *
+     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineMultipleJavaScriptFunctionsAndUseItFromJava}
+     *
+     * The previous example defines an object with two functions: <code>addTime</code> and
+     * <code>timeInSeconds</code>. The Java interface <code>Times</code> wraps this dynamic object
+     * and gives it a type: for example the <code>addTime</code> method is known to take three
+     * integer arguments. Both functions in the dynamic language are defined in a single,
+     * encapsulating function - as such they can share variable <code>seconds</code>. Because of
+     * using parenthesis when defining the encapsulating function, nothing is visible in a global
+     * JavaScript scope - the only reference to the system is from Java via the implementation of
+     * <code>Times</code> interface.
+     *
+     * <p>
+     * More examples can be found in description of {@link Value#execute(java.lang.Object...)} and
+     * {@link Value#as(java.lang.Class)} methods.
      *
      * @param source code snippet to execute
      * @return a {@link Value} object that holds result of an execution, never <code>null</code>
@@ -892,13 +929,48 @@ public class PolyglotEngine {
          * provided arguments. If the symbol represents a field, then first argument (if provided)
          * should set the value to the field; the return value should be the actual value of the
          * field when the <code>invoke</code> method returns.
+         * <p>
+         * All {@link TruffleLanguage Truffle languages} accept wrappers of Java primitive types
+         * (e.g. {@link java.lang.Byte}, {@link java.lang.Short}, {@link java.lang.Integer},
+         * {@link java.lang.Long}, {@link java.lang.Float}, {@link java.lang.Double},
+         * {@link java.lang.Character}, {@link java.lang.Boolean}, and {@link java.lang.String}) or
+         * generic {@link TruffleObject objects created} by one of the languages as parameters of
+         * their functions (or other objects that can be executed). In addition to that the
+         * <code>execute</code> method converts plain Java objects into appropriate wrappers to make
+         * them easily accessible from dynamic languages.
          *
-         * @param args arguments to pass when invoking the symbol; either wrappers of Java primitive
-         *            types (e.g. {@link java.lang.Byte}, {@link java.lang.Short},
-         *            {@link java.lang.Integer}, {@link java.lang.Long}, {@link java.lang.Float},
-         *            {@link java.lang.Double}, {@link java.lang.Character},
-         *            {@link java.lang.Boolean}, and {@link java.lang.String}) or a
-         *            {@link TruffleObject object created} by one of the languages)
+         * <h5>Access Fields and Methods of Java Objects</h5>
+         *
+         * This method allows one to easily expose <b>public</b> members of Java objects to scripts
+         * written in dynamic languages. For example the next code defines class <code>Moment</code>
+         * and allows dynamic language access its fields:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObject}
+         *
+         * Of course, the {@link #as(java.lang.Class) manual conversion} to {@link Number} is
+         * annoying. Should it be performed frequently, it is better to define a
+         * <code>MomentConvertor</code> interface:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConvertor}
+         *
+         * then one gets completely type-safe view of the dynamic function including its parameters
+         * and return type.
+         *
+         * <h5>Accessing Static Methods</h5>
+         *
+         * Dynamic languages can also access <b>public</b> static methods and <b>public</b>
+         * constructors of Java classes, if they can get reference to them. Luckily
+         * {@linkplain #execute(java.lang.Object...) there is a support} for wrapping instances of
+         * {@link Class} to appropriate objects:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createNewMoment}
+         *
+         * In the above example the <code>Moment.class</code> is passed into the JavaScript function
+         * as first argument and can be used by the dynamic language as a constructor in
+         * <code>new Moment(h, m, s)</code> - that creates new instances of the Java class. Static
+         * methods of the passed in <code>Moment</code> object could be invoked as well.
+         *
+         * @param args arguments to pass when invoking the symbol
          *
          * @return symbol wrapper around the value returned by invoking the symbol, never
          *         <code>null</code>
