@@ -118,8 +118,8 @@ gateLinuxAMD64TraceRASingleBlock : ${gateLinuxAMD64} {
   }
 }
 
-gateLinuxAMD64Bootstrap : ${gateLinuxAMD64}
+gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
-gateSolarisSPARCBootstrap : ${gateSolarisSPARC}
-gateLinuxAMD64TraceRABootstrap : ${gateLinuxAMD64TraceRA}
-gateLinuxAMD64TraceRABUBootstrap : ${gateLinuxAMD64TraceRABU}
+gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }
+gateLinuxAMD64TraceRABootstrap : ${gateLinuxAMD64TraceRA} { capabilities : ${gateLinuxAMD64TraceRA.capabilities} [manycores] }
+gateLinuxAMD64TraceRABUBootstrap : ${gateLinuxAMD64TraceRABU} { capabilities : ${gateLinuxAMD64TraceRABU.capabilities} [manycores] }
