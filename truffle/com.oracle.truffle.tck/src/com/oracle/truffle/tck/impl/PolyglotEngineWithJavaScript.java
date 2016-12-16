@@ -308,6 +308,7 @@ public class PolyglotEngineWithJavaScript {
     }
 
 
+    // Checkstyle: stop
     // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties
 
     @FunctionalInterface
@@ -378,4 +379,5 @@ public class PolyglotEngineWithJavaScript {
     }
 
     // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties
+    // Checkstyle: resume
 }
