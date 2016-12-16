@@ -84,10 +84,7 @@ final class SourceImpl extends Source implements Cloneable {
 
     @Override
     public boolean equals(Object obj) {
-        return EqualCall.INSTANCE.invoke(this, obj);
-    }
-
-    final boolean equalsImpl(Object obj) {
+        SourceAccessor.neverPartOfCompilation("do not call Source.equals from compiled code");
         if (obj instanceof Source) {
             Source other = (Source) obj;
             return content().equals(other.content()) && equalAttributes(other);
@@ -109,12 +106,4 @@ final class SourceImpl extends Source implements Cloneable {
         }
     }
 
-    private static final class EqualCall extends SourceAccessor.TruffleBoundaryCall {
-        static final EqualCall INSTANCE = new EqualCall();
-
-        @Override
-        public boolean call(Object thiz, Object obj) {
-            return ((SourceImpl) thiz).equalsImpl(obj);
-        }
-    }
 }

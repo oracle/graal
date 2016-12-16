@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.source.impl.SourceAccessor;
 import java.util.Collection;
@@ -45,12 +44,6 @@ public final class SourceAccessorImpl extends SourceAccessor {
     @Override
     protected void assertNeverPartOfCompilation(String msg) {
         CompilerAsserts.neverPartOfCompilation(msg);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    @Override
-    protected boolean makeBoundaryCall(TruffleBoundaryCall call, Object param1, Object param2) {
-        return call.call(param1, param2);
     }
 
 }
