@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,42 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.aarch64;
+package org.graalvm.compiler.lir.aarch64;
 
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-
-import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.meta.Value;
 
-/**
- * Patch the return address of the current frame.
- */
-@Opcode("PATCH_RETURN")
-final class AArch64HotSpotPatchReturnAddressOp extends AArch64LIRInstruction {
+@Opcode("BSWAP")
+public final class AArch64ByteSwapOp extends AArch64LIRInstruction {
+    public static final LIRInstructionClass<AArch64ByteSwapOp> TYPE = LIRInstructionClass.create(AArch64ByteSwapOp.class);
 
-    public static final LIRInstructionClass<AArch64HotSpotPatchReturnAddressOp> TYPE = LIRInstructionClass.create(AArch64HotSpotPatchReturnAddressOp.class);
+    @Def({OperandFlag.REG, OperandFlag.HINT}) protected Value result;
+    @Use protected Value input;
 
-    @Use(REG) AllocatableValue address;
-
-    AArch64HotSpotPatchReturnAddressOp(AllocatableValue address) {
+    public AArch64ByteSwapOp(Value result, Value input) {
         super(TYPE);
-        this.address = address;
+        this.result = result;
+        this.input = input;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        final int frameSize = crb.frameMap.frameSize();
-        // LR is saved in the {fp, lr} pair above the frame
-        AArch64Address lrAddress = AArch64Address.createUnscaledImmediateAddress(sp,
-                        frameSize + crb.target.wordSize);
-        masm.str(64, asRegister(address), lrAddress);
+        switch ((AArch64Kind) input.getPlatformKind()) {
+            case DWORD:
+                masm.rev(32, ValueUtil.asRegister(result), ValueUtil.asRegister(input));
+                break;
+            case QWORD:
+                masm.rev(64, ValueUtil.asRegister(result), ValueUtil.asRegister(input));
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
     }
 }

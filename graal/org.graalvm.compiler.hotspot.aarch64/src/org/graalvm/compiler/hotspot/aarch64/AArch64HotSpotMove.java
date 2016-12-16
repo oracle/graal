@@ -22,15 +22,16 @@
  */
 package org.graalvm.compiler.hotspot.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.CompressEncoding;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
@@ -61,7 +62,7 @@ public class AArch64HotSpotMove {
             crb.recordInlineDataInCode(constant);
             if (constant.isCompressed()) {
                 // masm.forceMov(asRegister(result), 0);
-                throw GraalError.unimplemented();
+                masm.movNarrowAddress(asRegister(result), 0);
             } else {
                 masm.movNativeAddress(asRegister(result), 0);
             }
@@ -161,14 +162,20 @@ public class AArch64HotSpotMove {
             Register base = asRegister(baseRegister);
             // result = base + (ptr << shift)
             if (nonNull) {
-                assert encoding.shift == encoding.alignment;
-                masm.add(64, resultRegister, base, ptr, AArch64Assembler.ShiftType.ASR, encoding.shift);
+                assert encoding.shift == encoding.alignment || encoding.shift == 0;
+                masm.add(64, resultRegister, base, ptr, AArch64Assembler.ShiftType.LSL, encoding.shift);
+            } else if (encoding.base == 0) {
+                masm.add(64, resultRegister, zr, ptr, AArch64Assembler.ShiftType.LSL, encoding.shift);
             } else {
                 // if ptr is null it has to be null after decompression
-                // masm.cmp(64, );
-                throw GraalError.unimplemented();
+                Label done = new Label();
+                if (!resultRegister.equals(ptr)) {
+                    masm.mov(32, resultRegister, ptr);
+                }
+                masm.cbz(32, resultRegister, done);
+                masm.add(64, resultRegister, base, resultRegister, AArch64Assembler.ShiftType.LSL, encoding.shift);
+                masm.bind(done);
             }
-
         }
     }
 
