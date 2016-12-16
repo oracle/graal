@@ -29,6 +29,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -55,6 +56,12 @@ public class DebugValueTest extends AbstractDebugTest {
                 assertFalse(value42.isArray());
                 assertNull(value42.getArray());
                 assertNull(value42.getProperties());
+                assertEquals("Integer", value42.getMetaObject().as(String.class));
+                assertEquals("Infinity", frame.getValue("inf").getMetaObject().as(String.class));
+                SourceSection integerSS = value42.getSourceLocation();
+                assertEquals("source integer", integerSS.getCode());
+                SourceSection infinitySS = frame.getValue("inf").getSourceLocation();
+                assertEquals("source infinity", infinitySS.getCode());
             });
 
             expectDone();
