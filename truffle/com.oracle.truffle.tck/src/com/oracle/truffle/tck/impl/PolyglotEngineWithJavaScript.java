@@ -26,6 +26,7 @@ package com.oracle.truffle.tck.impl;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import java.util.List;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import org.junit.Before;
@@ -252,4 +253,50 @@ public class PolyglotEngineWithJavaScript {
         assertEquals("Values are the same", initFive.value(), initTen.value());
     }
     // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor
+
+
+    @Test
+    public void testArrayWithTypedElements() {
+        arrayWithTypedElements();
+    }
+
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements
+
+    interface Point {
+        int x();
+        int y();
+    }
+
+    @FunctionalInterface
+    interface PointProvider {
+        List<Point> createPoints();
+    }
+
+    public void arrayWithTypedElements() {
+        Source src = Source.newBuilder("\n"
+            + "(function() {\n"
+            + "  class Point {\n"
+            + "     constructor(x, y) {\n"
+            + "       this.x = x;\n"
+            + "       this.y = y;\n"
+            + "     }\n"
+            + "  }\n"
+            + "  return [ new Point(30, 15), new Point(5, 7) ];\n"
+            + "})\n"
+        ).name("ArrayOfPoints.js").mimeType("text/javascript").build();
+
+        PointProvider provider = engine.eval(src).as(PointProvider.class);
+        List<Point> points = provider.createPoints();
+        assertEquals("Two points", 2, points.size());
+
+        Point first = points.get(0);
+        assertEquals(30, first.x());
+        assertEquals(15, first.y());
+
+        Point second = points.get(1);
+        assertEquals(5, second.x());
+        assertEquals(7, second.y());
+    }
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements
+
 }

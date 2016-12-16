@@ -55,6 +55,7 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -884,6 +885,21 @@ public class PolyglotEngine {
          * them. When a {@link String}.<code>class</code> is requested, the method let's the
          * language that produced the value to do the
          * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) necessary formating}.
+         * When an instance of {@link FunctionalInterface} is requested, the code checks, if the
+         * returned value {@link Message#IS_EXECUTABLE can be executed} and if so, it binds the
+         * functional method of the interface to such execution. Complex types like {@link List} or
+         * {@link Map} are also supported and even in combination with nested generics.
+         *
+         * <h5>Type-safe View of an Array</h5>
+         *
+         * The following example defines a {@link FunctionalInterface} which's method returns a
+         * {@link List} of points:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements}
+         *
+         * Other examples of Java to dynamic language interop can be found in documentation of
+         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} and
+         * {@link #execute(java.lang.Object...)} methods.
          *
          * @param <T> the type of the view one wants to obtain
          * @param representation the class of the view interface (it has to be an interface)
