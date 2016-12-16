@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl;
 
+import java.math.BigInteger;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.parser.Parser;
@@ -157,6 +159,35 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             return Long.toString((Long) value);
         }
         return super.toString(context, value);
+    }
+
+    @Override
+    protected Object findMetaObject(SLContext context, Object value) {
+        if (value instanceof Long || value instanceof BigInteger) {
+            return "Number";
+        }
+        if (value instanceof Boolean) {
+            return "Boolean";
+        }
+        if (value instanceof String) {
+            return "String";
+        }
+        if (value == SLNull.SINGLETON) {
+            return "Null";
+        }
+        if (value instanceof SLFunction) {
+            return "Function";
+        }
+        return "Object";
+    }
+
+    @Override
+    protected SourceSection findSourceLocation(SLContext context, Object value) {
+        if (value instanceof SLFunction) {
+            SLFunction f = (SLFunction) value;
+            return f.getCallTarget().getRootNode().getSourceSection();
+        }
+        return null;
     }
 
     public SLContext findContext() {
