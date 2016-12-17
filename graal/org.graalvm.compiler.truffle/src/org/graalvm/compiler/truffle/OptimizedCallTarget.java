@@ -208,11 +208,14 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     /* TODO needs to remain public? */
     public final Object callRoot(Object[] originalArguments) {
         Object[] args = originalArguments;
-        if (CompilerDirectives.inCompiledCode()) {
-            args = this.compilationProfile.injectArgumentProfile(originalArguments);
+        OptimizedCompilationProfile profile = this.compilationProfile;
+        if (CompilerDirectives.inCompiledCode() && profile != null) {
+            args = profile.injectArgumentProfile(originalArguments);
         }
         Object result = callProxy(createFrame(getRootNode().getFrameDescriptor(), args));
-        this.compilationProfile.profileReturnValue(result);
+        if (profile != null) {
+            profile.profileReturnValue(result);
+        }
         return result;
     }
 

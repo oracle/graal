@@ -485,26 +485,13 @@ public class PartialEvaluator {
             if (call.targetMethod().isNative()) {
                 continue; // native methods cannot be inlined
             }
-            if (call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
+            if (call.targetMethod().getAnnotation(TruffleBoundary.class) == null && call.targetMethod().getAnnotation(TruffleCallBoundary.class) == null) {
                 logPerformanceWarning(target, Arrays.asList(call), String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
                 warnings.add(call);
             }
         }
 
-        HashMap<String, ArrayList<ValueNode>> groupedByType;
-        groupedByType = new HashMap<>();
-        for (InstanceOfNode cast : graph.getNodes().filter(InstanceOfNode.class)) {
-            if (!cast.type().isExact()) {
-                warnings.add(cast);
-                groupedByType.putIfAbsent(cast.type().getType().getName(), new ArrayList<>());
-                groupedByType.get(cast.type().getType().getName()).add(cast);
-            }
-        }
-        for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
-            logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type checkcast: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
-        }
-
-        groupedByType = new HashMap<>();
+        HashMap<String, ArrayList<ValueNode>> groupedByType = new HashMap<>();
         for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
             if (!instanceOf.type().isExact()) {
                 warnings.add(instanceOf);
@@ -513,7 +500,7 @@ public class PartialEvaluator {
             }
         }
         for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
-            logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type instanceof: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
+            logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type check: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
         }
 
         if (Debug.isEnabled() && !warnings.isEmpty()) {
