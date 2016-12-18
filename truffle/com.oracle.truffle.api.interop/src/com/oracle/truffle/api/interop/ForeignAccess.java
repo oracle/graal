@@ -196,6 +196,7 @@ public final class ForeignAccess {
         try {
             return fn.executeForeignImpl(frame, receiver, arguments);
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         }
     }
@@ -223,10 +224,13 @@ public final class ForeignAccess {
         try {
             return fn.executeForeignImpl(frame, receiver, new Object[]{identifier});
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         } catch (UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -257,8 +261,10 @@ public final class ForeignAccess {
         try {
             return fn.executeForeignImpl(frame, receiver, new Object[]{identifier, value});
         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -283,8 +289,10 @@ public final class ForeignAccess {
         try {
             return fn.executeForeignImpl(frame, receiver);
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -339,6 +347,7 @@ public final class ForeignAccess {
         try {
             return (boolean) send(isExecutableNode, frame, receiver);
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -374,8 +383,10 @@ public final class ForeignAccess {
             args[0] = identifier;
             return fn.executeForeignImpl(frame, receiver, args);
         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -405,8 +416,10 @@ public final class ForeignAccess {
         try {
             return fn.executeForeignImpl(frame, receiver, arguments);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -428,6 +441,7 @@ public final class ForeignAccess {
         try {
             return (boolean) send(isNullNode, frame, receiver);
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -449,6 +463,7 @@ public final class ForeignAccess {
         try {
             return (boolean) send(hasSizeNode, frame, receiver);
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -473,8 +488,10 @@ public final class ForeignAccess {
         try {
             return fn.executeForeignImpl(frame, receiver);
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
             throw e;
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -496,6 +513,7 @@ public final class ForeignAccess {
         try {
             return (boolean) send(isBoxedNode, frame, receiver);
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
@@ -519,8 +537,10 @@ public final class ForeignAccess {
         try {
             return (TruffleObject) send(keysNode, frame, receiver);
         } catch (UnsupportedMessageException ex) {
+            CompilerDirectives.transferToInterpreter();
             throw ex;
         } catch (InteropException e) {
+            CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
         }
     }
