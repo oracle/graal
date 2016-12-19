@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
 import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -38,8 +39,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
@@ -151,70 +152,85 @@ public final class LLVMTruffleOnlyIntrinsics {
         @Child private ToLLVMNode toLLVM1 = new ToLLVMNode();
         @Child private ToLLVMNode toLLVM2 = new ToLLVMNode();
 
-        @Specialization
-        public int executeIntrinsic(VirtualFrame frame, TruffleObject str1, TruffleObject str2) {
+        @Specialization(limit = "20", guards = {"getSize1(frame, str1) == size1", "getSize2(frame, str2) == size2"})
+        @ExplodeLoop
+        public int executeIntrinsic(VirtualFrame frame, TruffleObject str1, TruffleObject str2, @Cached("getSize1(frame, str1)") long size1, @Cached("getSize2(frame, str2)") long size2) {
             try {
-                return execute(frame, str1, str2);
+                int i;
+                for (i = 0; i < size1; i++) {
+                    Object s1 = ForeignAccess.sendRead(readStr1, frame, str1, i);
+                    char c1 = toLLVM1.convert(frame, s1, char.class);
+                    if (i >= size2) {
+                        return c1;
+                    }
+                    Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
+                    char c2 = toLLVM2.convert(frame, s2, char.class);
+                    if (c1 != c2) {
+                        return c1 - c2;
+                    }
+                }
+                if (i < size2) {
+                    Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
+                    char c2 = toLLVM2.convert(frame, s2, char.class);
+                    return -c2;
+                } else {
+                    return 0;
+                }
             } catch (Exception e) {
                 throw new AssertionError(e);
             }
         }
 
-        private int execute(VirtualFrame frame, TruffleObject str1, TruffleObject str2) throws UnsupportedMessageException, UnknownIdentifierException {
-            long size1 = toLLVMSize1.convert(frame, ForeignAccess.sendGetSize(getSize1, frame, str1), long.class);
-            long size2 = toLLVMSize2.convert(frame, ForeignAccess.sendGetSize(getSize2, frame, str2), long.class);
-            int i;
-            for (i = 0; i < size1; i++) {
-                Object s1 = ForeignAccess.sendRead(readStr1, frame, str1, i);
-                char c1 = toLLVM1.convert(frame, s1, char.class);
-                if (i >= size2) {
-                    return c1;
-                }
-                Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                char c2 = toLLVM2.convert(frame, s2, char.class);
-                if (c1 != c2) {
-                    return c1 - c2;
-                }
-            }
-            if (i < size2) {
-                Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                char c2 = toLLVM2.convert(frame, s2, char.class);
-                return -c2;
-            } else {
-                return 0;
+        protected long getSize2(VirtualFrame frame, TruffleObject str2) {
+            try {
+                return toLLVMSize2.convert(frame, ForeignAccess.sendGetSize(getSize2, frame, str2), long.class);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
             }
         }
 
-        @Specialization
-        public int executeIntrinsic(VirtualFrame frame, LLVMAddress str1, TruffleObject str2) {
+        protected long getSize1(VirtualFrame frame, TruffleObject str1) {
             try {
-                return execute(frame, str1, str2);
+                return toLLVMSize1.convert(frame, ForeignAccess.sendGetSize(getSize1, frame, str1), long.class);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+
+        @Specialization(guards = {"getSize2(frame, str2) == size2"})
+        @ExplodeLoop
+        public int executeIntrinsic(VirtualFrame frame, LLVMAddress str1, TruffleObject str2, @Cached("getSize2(frame, str2)") long size2) {
+            try {
+                char[] arr = new char[(int) size2];
+                for (int i = 0; i < size2; i++) {
+                    Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
+                    char c2 = toLLVM2.convert(frame, s2, char.class);
+                    arr[i] = c2;
+                }
+                return compare(str1, arr);
             } catch (Exception e) {
                 throw new AssertionError(e);
             }
         }
 
-        private int execute(VirtualFrame frame, LLVMAddress str1, TruffleObject str2) throws UnsupportedMessageException, UnknownIdentifierException {
-            long size2 = toLLVMSize2.convert(frame, ForeignAccess.sendGetSize(getSize2, frame, str2), long.class);
+        private static int compare(LLVMAddress str1, char[] arr) {
             int i;
             for (i = 0; true; i++) {
                 char c1 = (char) LLVMMemory.getI8(str1.increment(i));
                 if (c1 == '\0') {
                     break;
                 }
-                if (i >= size2) {
+                if (i >= arr.length) {
                     return c1;
                 }
-                Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                char c2 = toLLVM2.convert(frame, s2, char.class);
-                if (c1 != c2) {
-                    return c1 - c2;
+                if (c1 != arr[i]) {
+                    return c1 - arr[i];
                 }
             }
-            if (i < size2) {
-                Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                char c2 = toLLVM2.convert(frame, s2, char.class);
-                return -c2;
+            if (i < arr.length) {
+                return -arr[i];
             } else {
                 return 0;
             }

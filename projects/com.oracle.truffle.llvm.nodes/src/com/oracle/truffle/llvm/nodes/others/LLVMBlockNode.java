@@ -47,8 +47,8 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
     public static class LLVMBlockControlFlowNode extends LLVMBlockNode {
 
         @Children private final LLVMBasicBlockNode[] bodyNodes;
-        @CompilationFinal private final LLVMStackFrameNuller[][] beforeSlotNullerNodes;
-        @CompilationFinal private final LLVMStackFrameNuller[][] afterSlotNullerNodes;
+        @CompilationFinal(dimensions = 2) private final LLVMStackFrameNuller[][] beforeSlotNullerNodes;
+        @CompilationFinal(dimensions = 2) private final LLVMStackFrameNuller[][] afterSlotNullerNodes;
         private final FrameSlot returnSlot;
         private static final boolean INJECT_BRANCH_PROBABILITIES = true;
 

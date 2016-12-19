@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.types.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
-import com.oracle.truffle.llvm.types.vector.LLVMVector;
 
 import sun.misc.Unsafe;
 
@@ -183,23 +182,23 @@ public abstract class LLVMMemory {
     }
 
     public static LLVMI32Vector getI32Vector(LLVMAddress addr, int size) {
-        return LLVMI32Vector.createI32Vector(addr, size);
+        return LLVMI32Vector.create(addr, size);
     }
 
     public static LLVMI8Vector getI8Vector(LLVMAddress addr, int size) {
-        return LLVMI8Vector.createI8Vector(addr, size);
+        return LLVMI8Vector.create(addr, size);
     }
 
     public static LLVMI1Vector getI1Vector(LLVMAddress addr, int size) {
-        return LLVMI1Vector.createI1Vector(addr, size);
+        return LLVMI1Vector.create(addr, size);
     }
 
     public static LLVMI16Vector getI16Vector(LLVMAddress addr, int size) {
-        return LLVMI16Vector.createI16Vector(addr, size);
+        return LLVMI16Vector.create(addr, size);
     }
 
     public static LLVMI64Vector getI64Vector(LLVMAddress addr, int size) {
-        return LLVMI64Vector.createI64Vector(addr, size);
+        return LLVMI64Vector.create(addr, size);
     }
 
     public static LLVMFloatVector getFloatVector(LLVMAddress addr, int size) {
@@ -216,7 +215,31 @@ public abstract class LLVMMemory {
 
     // watch out for casts such as I32* to I32Vector* when changing the way how vectors are
     // implemented
-    public static void putVector(LLVMAddress addr, LLVMVector<?> vector) {
+    public static void putVector(LLVMAddress addr, LLVMDoubleVector vector) {
+        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+    }
+
+    public static void putVector(LLVMAddress addr, LLVMFloatVector vector) {
+        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+    }
+
+    public static void putVector(LLVMAddress addr, LLVMI16Vector vector) {
+        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+    }
+
+    public static void putVector(LLVMAddress addr, LLVMI1Vector vector) {
+        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+    }
+
+    public static void putVector(LLVMAddress addr, LLVMI32Vector vector) {
+        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+    }
+
+    public static void putVector(LLVMAddress addr, LLVMI64Vector vector) {
+        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+    }
+
+    public static void putVector(LLVMAddress addr, LLVMI8Vector vector) {
         LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
     }
 
