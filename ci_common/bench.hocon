@@ -134,6 +134,7 @@ bench-micros-graal: ${bench-common-8} {
   run: [
     ${bench-jvmci.mx-micros-graal} ${bench-arguments}
   ]
+  timelimit: "1:00:00"
 }
 
 # Renaissance-related targets
