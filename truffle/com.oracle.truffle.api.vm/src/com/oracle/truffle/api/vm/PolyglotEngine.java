@@ -55,6 +55,7 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -449,7 +450,54 @@ public class PolyglotEngine {
     /**
      * Evaluates provided source. Chooses language registered for a particular
      * {@link Source#getMimeType() MIME type} (throws an {@link IllegalStateException} if there is
-     * none). The language is then allowed to parse and execute the source.
+     * none). The language is then allowed to parse and execute the source. The format of the
+     * {@link Source} is of course language specific, but to illustrate the possibilities, here is
+     * few inspiring examples.
+     *
+     * <h5>Define Function. Use it from Java.</h5>
+     *
+     * To use a function written in a dynamic language from Java one needs to give it a type. The
+     * following sample defines {@code Mul} interface with a single method. Then it evaluates the
+     * dynamic code to define the function and {@link Value#as(java.lang.Class) uses the result as}
+     * the {@code Mul} interface:
+     *
+     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineJavaScriptFunctionAndUseItFromJava}
+     *
+     * In case of JavaScript, it is adviced to wrap the function into parenthesis, as then the
+     * function doesn't polute the global scope - the only reference to it is via implementation of
+     * the {@code Mul} interface.
+     *
+     * <h5>Define Functions with State</h5>
+     *
+     * Often it is necessary to expose multiple dynamic language functions that work in
+     * orchestration - for example when they share some common variables. This can be done by typing
+     * these functions via Java interface as well. Just the interface needs to have more than a
+     * single method:
+     *
+     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineMultipleJavaScriptFunctionsAndUseItFromJava}
+     *
+     * The previous example defines an object with two functions: <code>addTime</code> and
+     * <code>timeInSeconds</code>. The Java interface <code>Times</code> wraps this dynamic object
+     * and gives it a type: for example the <code>addTime</code> method is known to take three
+     * integer arguments. Both functions in the dynamic language are defined in a single,
+     * encapsulating function - as such they can share variable <code>seconds</code>. Because of
+     * using parenthesis when defining the encapsulating function, nothing is visible in a global
+     * JavaScript scope - the only reference to the system is from Java via the implementation of
+     * <code>Times</code> interface.
+     *
+     * <h5>Typings for ECMAScript 6 Classes</h5>
+     *
+     * The ECMAScript 6 specification of JavaScript adds concept of typeless classes. With Java
+     * interop one can give the classes types. Here is an example that defines
+     * <code>class Incrementor</code> with two functions and one field and "types it" with Java
+     * interface:
+     *
+     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor}
+     *
+     *
+     * <p>
+     * More examples can be found in description of {@link Value#execute(java.lang.Object...)} and
+     * {@link Value#as(java.lang.Class)} methods.
      *
      * @param source code snippet to execute
      * @return a {@link Value} object that holds result of an execution, never <code>null</code>
@@ -837,6 +885,35 @@ public class PolyglotEngine {
          * them. When a {@link String}.<code>class</code> is requested, the method let's the
          * language that produced the value to do the
          * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) necessary formating}.
+         * When an instance of {@link FunctionalInterface} is requested, the code checks, if the
+         * returned value {@link Message#IS_EXECUTABLE can be executed} and if so, it binds the
+         * functional method of the interface to such execution. Complex types like {@link List} or
+         * {@link Map} are also supported and even in combination with nested generics.
+         *
+         * <h5>Type-safe View of an Array</h5>
+         *
+         * The following example defines a {@link FunctionalInterface} which's method returns a
+         * {@link List} of points:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements}
+         *
+         * <h5>Type-safe Parsing of a JSON</h5>
+         *
+         * Imagine a need to safely access complex JSON-like structure. The next example uses one
+         * modeled after JSON response returned by a GitHub API. It contains a list of repository
+         * objects. Each repository has an id, name, list of URLs and a nested structure describing
+         * owner. Let's start by defining the structure with Java interfaces:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties}
+         * 
+         * The example defines a parser that somehow obtains object representing the JSON data and
+         * converts it into {@link List} of {@code Repository} instances. After calling the method
+         * we can safely use the interfaces ({@link List}, {@code Repository}, {@code Owner}) and
+         * inspect the JSON structure in a type-safe way.
+         * <p>
+         * Other examples of Java to dynamic language interop can be found in documentation of
+         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} and
+         * {@link #execute(java.lang.Object...)} methods.
          *
          * @param <T> the type of the view one wants to obtain
          * @param representation the class of the view interface (it has to be an interface)
@@ -892,13 +969,53 @@ public class PolyglotEngine {
          * provided arguments. If the symbol represents a field, then first argument (if provided)
          * should set the value to the field; the return value should be the actual value of the
          * field when the <code>invoke</code> method returns.
+         * <p>
+         * All {@link TruffleLanguage Truffle languages} accept wrappers of Java primitive types
+         * (e.g. {@link java.lang.Byte}, {@link java.lang.Short}, {@link java.lang.Integer},
+         * {@link java.lang.Long}, {@link java.lang.Float}, {@link java.lang.Double},
+         * {@link java.lang.Character}, {@link java.lang.Boolean}, and {@link java.lang.String}) or
+         * generic {@link TruffleObject objects created} by one of the languages as parameters of
+         * their functions (or other objects that can be executed). In addition to that the
+         * <code>execute</code> method converts plain Java objects into appropriate wrappers to make
+         * them easily accessible from dynamic languages.
          *
-         * @param args arguments to pass when invoking the symbol; either wrappers of Java primitive
-         *            types (e.g. {@link java.lang.Byte}, {@link java.lang.Short},
-         *            {@link java.lang.Integer}, {@link java.lang.Long}, {@link java.lang.Float},
-         *            {@link java.lang.Double}, {@link java.lang.Character},
-         *            {@link java.lang.Boolean}, and {@link java.lang.String}) or a
-         *            {@link TruffleObject object created} by one of the languages)
+         * <h5>Access Fields and Methods of Java Objects</h5>
+         *
+         * This method allows one to easily expose <b>public</b> members of Java objects to scripts
+         * written in dynamic languages. For example the next code defines class <code>Moment</code>
+         * and allows dynamic language access its fields:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObject}
+         *
+         * Of course, the {@link #as(java.lang.Class) manual conversion} to {@link Number} is
+         * annoying. Should it be performed frequently, it is better to define a
+         * <code>MomentConvertor</code> interface:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConvertor}
+         *
+         * then one gets completely type-safe view of the dynamic function including its parameters
+         * and return type.
+         *
+         * <h5>Accessing Static Methods</h5>
+         *
+         * Dynamic languages can also access <b>public</b> static methods and <b>public</b>
+         * constructors of Java classes, if they can get reference to them. Luckily
+         * {@linkplain #execute(java.lang.Object...) there is a support} for wrapping instances of
+         * {@link Class} to appropriate objects:
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createNewMoment}
+         *
+         * In the above example the <code>Moment.class</code> is passed into the JavaScript function
+         * as first argument and can be used by the dynamic language as a constructor in
+         * <code>new Moment(h, m, s)</code> - that creates new instances of the Java class. Static
+         * methods of the passed in <code>Moment</code> object could be invoked as well.
+         *
+         * <p>
+         * Additional examples of Java/dynamic language interop can be found in description of
+         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} and
+         * {@link #as(java.lang.Class)} methods.
+         *
+         * @param args arguments to pass when invoking the symbol
          *
          * @return symbol wrapper around the value returned by invoking the symbol, never
          *         <code>null</code>
