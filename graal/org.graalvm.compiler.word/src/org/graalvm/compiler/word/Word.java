@@ -1068,7 +1068,7 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Override
     @Operation(opcode = Opcode.CAS_POINTER)
-    public native WordBase compareAndSwapWord(WordBase offset, WordBase expectedValue, WordBase newValue, LocationIdentity locationIdentity);
+    public native Word compareAndSwapWord(WordBase offset, WordBase expectedValue, WordBase newValue, LocationIdentity locationIdentity);
 
     @Override
     @Operation(opcode = Opcode.CAS_POINTER)

@@ -846,7 +846,7 @@ public interface Pointer extends Unsigned, PointerBase {
 
     long compareAndSwapLong(WordBase offset, long expectedValue, long newValue, LocationIdentity locationIdentity);
 
-    WordBase compareAndSwapWord(WordBase offset, WordBase expectedValue, WordBase newValue, LocationIdentity locationIdentity);
+    Word compareAndSwapWord(WordBase offset, WordBase expectedValue, WordBase newValue, LocationIdentity locationIdentity);
 
     Object compareAndSwapObject(WordBase offset, Object expectedValue, Object newValue, LocationIdentity locationIdentity);
 

@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.InputType.Value;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_30;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
@@ -46,7 +44,7 @@ import jdk.vm.ci.meta.Value;
  *
  * This version returns a boolean indicating is the CAS was successful or not.
  */
-@NodeInfo(allowedUsageTypes = {Value, Memory}, cycles = CYCLES_30, size = SIZE_8)
+@NodeInfo(cycles = CYCLES_30, size = SIZE_8)
 public final class LogicCompareAndSwapNode extends AbstractCompareAndSwapNode {
     public static final NodeClass<LogicCompareAndSwapNode> TYPE = NodeClass.create(LogicCompareAndSwapNode.class);
 
@@ -61,6 +59,7 @@ public final class LogicCompareAndSwapNode extends AbstractCompareAndSwapNode {
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         assert getNewValue().stamp().isCompatible(getExpectedValue().stamp());
+        assert !this.canDeoptimize();
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
 
         LIRKind resultKind = tool.getLIRKind(stamp());

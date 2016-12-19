@@ -27,6 +27,7 @@ import static org.graalvm.compiler.nodes.ConstantNode.forInt;
 import static org.graalvm.compiler.nodes.ConstantNode.forIntegerKind;
 
 import java.lang.reflect.Constructor;
+import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BridgeMethodUtils;
@@ -356,11 +357,12 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
             case CAS_POINTER:
                 assert args.length == 5;
                 AddressNode address = makeAddress(b, args[0], args[1]);
-                JavaKind valueKind = wordTypes.asKind(wordMethod.getSignature().getParameterType(2, wordMethod.getDeclaringClass()));
-                assert valueKind.equals(wordTypes.asKind(wordMethod.getSignature().getParameterType(3, wordMethod.getDeclaringClass())));
-                JavaType returnType = wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass());
+                JavaKind valueKind = wordTypes.asKind(wordMethod.getSignature().getParameterType(1, wordMethod.getDeclaringClass()));
+                assert valueKind.equals(wordTypes.asKind(wordMethod.getSignature().getParameterType(2, wordMethod.getDeclaringClass()))) : wordMethod.getSignature();
+                assert args[4].isConstant() : Arrays.toString(args);
                 LocationIdentity location = snippetReflection.asObject(LocationIdentity.class, args[4].asJavaConstant());
-                casOp(b, valueKind, returnType, address, location, args[2], args[3]);
+                JavaType returnType = wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass());
+                b.addPush(returnKind, casOp(valueKind, wordTypes.asKind(returnType), address, location, args[2], args[3]));
                 break;
             default:
                 throw new GraalError("Unknown opcode: %s", operation.opcode());
@@ -437,17 +439,16 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         b.add(new JavaWriteNode(writeKind, address, location, value, barrier, compressible, initialize));
     }
 
-    protected void casOp(GraphBuilderContext b, JavaKind writeKind, JavaType returnType, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue) {
-        JavaKind returnKind = returnType.getJavaKind();
+    protected AbstractCompareAndSwapNode casOp(JavaKind writeKind, JavaKind returnKind, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue) {
         boolean isLogic = returnKind == JavaKind.Boolean;
-        assert isLogic || writeKind == returnKind;
+        assert isLogic || writeKind == returnKind : writeKind + " != " + returnKind;
         AbstractCompareAndSwapNode cas;
         if (isLogic) {
             cas = new LogicCompareAndSwapNode(address, expectedValue, newValue, location);
         } else {
             cas = new ValueCompareAndSwapNode(address, expectedValue, newValue, location);
         }
-        b.push(returnKind, cas);
+        return cas;
     }
 
     public AddressNode makeAddress(GraphBuilderContext b, ValueNode base, ValueNode offset) {
