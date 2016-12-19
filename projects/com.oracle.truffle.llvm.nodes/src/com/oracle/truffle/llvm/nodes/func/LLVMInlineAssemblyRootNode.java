@@ -42,8 +42,8 @@ import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyPrologueNode;
 
 public class LLVMInlineAssemblyRootNode extends RootNode {
 
-    @Child LLVMInlineAssemblyPrologueNode prologue;
-    @Child LLVMInlineAssemblyBlockNode block;
+    @Child private LLVMInlineAssemblyPrologueNode prologue;
+    @Child private LLVMInlineAssemblyBlockNode block;
 
     private final LLVMExpressionNode result;
 

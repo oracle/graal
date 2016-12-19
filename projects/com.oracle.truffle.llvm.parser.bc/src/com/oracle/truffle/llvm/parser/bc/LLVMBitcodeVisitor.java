@@ -62,10 +62,8 @@ import com.oracle.truffle.llvm.parser.api.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
-import com.oracle.truffle.llvm.parser.api.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.aggregate.StructureConstant;
-import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.VoidInstruction;
 import com.oracle.truffle.llvm.parser.api.model.target.TargetDataLayout;
@@ -404,26 +402,19 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
     }
 
     private static LLVMType findType(FunctionDefinition method, String identifier) {
-        for (int i = 0; i < method.getBlockCount(); i++) {
-            final InstructionBlock block = method.getBlock(i);
-            for (int j = 0; j < block.getInstructionCount(); j++) {
-                final Instruction instruction = block.getInstruction(j);
-                if (instruction.hasName() && ((ValueSymbol) instruction).getName().equals(identifier)) {
-                    return LLVMTypeHelper.getLLVMType(instruction.getType());
-                }
-            }
-        }
-        for (final FunctionParameter functionParameter : method.getParameters()) {
-            if (functionParameter.getName().equals(identifier)) {
-                return LLVMTypeHelper.getLLVMType(functionParameter.getType());
-            }
-        }
-        if (LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID.equals(identifier)) {
+        final Type methodType = method.getType(identifier);
+        if (methodType != null) {
+            return LLVMTypeHelper.getLLVMType(methodType);
+
+        } else if (LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID.equals(identifier)) {
             return LLVMTypeHelper.getLLVMType(method.getReturnType());
+
         } else if (LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID.equals(identifier)) {
             return new LLVMType(LLVMBaseType.ADDRESS);
+
+        } else {
+            throw new IllegalStateException("Cannot find Instruction with name: " + identifier);
         }
-        throw new IllegalStateException("Cannot find Instruction with name: " + identifier);
     }
 
     private LLVMBitcodeFunctionVisitor functionVisitor = null;

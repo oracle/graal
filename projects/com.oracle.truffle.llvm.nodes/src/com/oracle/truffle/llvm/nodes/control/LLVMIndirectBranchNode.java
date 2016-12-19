@@ -49,6 +49,7 @@ public class LLVMIndirectBranchNode extends LLVMTerminatorNode {
     }
 
     @Override
+    @ExplodeLoop
     public int executeGetSuccessorIndex(VirtualFrame frame) {
         // TODO specialize
         int val;

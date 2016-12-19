@@ -32,7 +32,10 @@ package com.oracle.truffle.llvm.parser.api.model.functions;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -63,8 +66,6 @@ import com.oracle.truffle.llvm.parser.api.model.types.IntegerType;
 import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.visitors.FunctionVisitor;
 
-import java.util.Objects;
-
 public final class FunctionDefinition extends FunctionType implements Constant, FunctionGenerator {
 
     private final Symbols symbols = new Symbols();
@@ -77,9 +78,12 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
 
     private MetadataBlock metadata;
 
+    private final Map<String, Type> namesToTypes;
+
     public FunctionDefinition(FunctionType type, MetadataBlock metadata) {
         super(type.getReturnType(), type.getArgumentTypes(), type.isVarArg());
         this.metadata = metadata;
+        namesToTypes = new HashMap<>();
     }
 
     public void accept(FunctionVisitor visitor) {
@@ -115,6 +119,7 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
             if (ValueSymbol.UNKNOWN.equals(parameter.getName())) {
                 parameter.setName(String.valueOf(symbolIndex++));
             }
+            namesToTypes.put(parameter.getName(), parameter.getType());
         }
 
         final Set<String> explicitBlockNames = Arrays.stream(blocks).map(InstructionBlock::getName).filter(blockName -> !ValueSymbol.UNKNOWN.equals(blockName)).collect(Collectors.toSet());
@@ -132,6 +137,7 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
                     if (value.getName().equals(ValueSymbol.UNKNOWN)) {
                         value.setName(String.valueOf(symbolIndex++));
                     }
+                    namesToTypes.put(value.getName(), value.getType());
                 }
             }
         }
@@ -140,6 +146,10 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
     @Override
     public InstructionGenerator generateBlock() {
         return blocks[currentBlock++];
+    }
+
+    public Type getType(String instructionName) {
+        return namesToTypes.get(instructionName);
     }
 
     public InstructionBlock getBlock(long idx) {

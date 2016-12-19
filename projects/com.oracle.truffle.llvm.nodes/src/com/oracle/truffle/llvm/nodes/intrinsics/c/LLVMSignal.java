@@ -217,6 +217,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
             }
         }
 
+        @TruffleBoundary
         public boolean isRunning() {
             return isRunning.get();
         }
@@ -232,6 +233,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         private static final long HANDLE_MAX_WAITING_TIME = 250; // ms
 
         @Override
+        @TruffleBoundary
         public void handle(Signal arg0) {
             try {
                 if (!globalSignalHandlerLock.tryLock(HANDLE_MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
@@ -265,6 +267,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
          * Required to call if a new LLVMSignalHandler take over the signal. Otherwise it would
          * unregister the signal when this Object is going to be deallocated or stopped.
          */
+        @TruffleBoundary
         private void setStopped() {
             isRunning.set(false);
 
@@ -276,6 +279,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         }
 
         @Override
+        @TruffleBoundary
         public void stop() {
             if (isRunning.getAndSet(false)) {
                 /*
@@ -294,6 +298,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         }
 
         @Override
+        @TruffleBoundary
         public void awaitFinish() {
             stop();
 
@@ -308,6 +313,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         /**
          * Unregister this SignalHandler from context.
          */
+        @TruffleBoundary
         private void unregisterFromContext() {
             assert !isRunning.get();
 
@@ -333,6 +339,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         /**
          * Only unregister this SignalHandler, if there is currently no lock held.
          */
+        @TruffleBoundary
         private boolean tryUnregisterFromContext() {
             assert !isRunning.get();
 
@@ -348,6 +355,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         }
 
         @Override
+        @TruffleBoundary
         public String toString() {
             return "LLVMSignalHandler [signal=" + signal + ", lock=" + lock + ", isRunning=" + isRunning + "]";
         }
@@ -403,6 +411,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         SIG_WINCH("WINCH"),
         SIG_UNUSED("UNUSED");
 
+        @TruffleBoundary
         public static Signals decode(int code) throws NoSuchElementException {
             for (Signals currentSignal : values()) {
                 if (currentSignal.signal() != null && currentSignal.signal().getNumber() == code) {
