@@ -46,7 +46,7 @@ public class LLVMFunctionStartNode extends RootNode {
     @Children private final LLVMExpressionNode[] beforeFunction;
     @Children private final LLVMExpressionNode[] afterFunction;
     private final String functionName;
-    @CompilationFinal private LLVMStackFrameNuller[] nullers;
+    @CompilationFinal(dimensions = 1) private LLVMStackFrameNuller[] nullers;
 
     public LLVMFunctionStartNode(LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor,
                     String functionName,

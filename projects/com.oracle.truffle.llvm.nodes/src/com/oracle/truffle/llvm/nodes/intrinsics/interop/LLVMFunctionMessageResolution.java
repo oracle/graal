@@ -30,9 +30,11 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
@@ -70,9 +72,21 @@ public class LLVMFunctionMessageResolution {
         @Child private ToLLVMNode toLLVM = new ToLLVMNode();
         @Child private LLVMToNullNode toNull = LLVMToNullNodeGen.create();
 
+        @CompilationFinal int cachedLength = -1;
+
+        @ExplodeLoop
         protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object, Object[] arguments) {
+            if (cachedLength == -1) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                cachedLength = arguments.length;
+            }
+            if (cachedLength != arguments.length) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException();
+            }
+
             if (arguments.length > 0 && arguments.length == object.getParameterTypes().length) {
-                for (int i = 0; i < arguments.length; i++) {
+                for (int i = 0; i < cachedLength; i++) {
                     arguments[i] = toLLVM.convert(frame, arguments[i], object.getParameterTypes()[i]);
                 }
             }

@@ -124,7 +124,7 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
 
     public static class LLVMI8ProfilingSwitchNode extends LLVMI8SwitchBaseNode {
 
-        @CompilationFinal private final ConditionProfile[] profiles;
+        @CompilationFinal(dimensions = 1) private final ConditionProfile[] profiles;
 
         public LLVMI8ProfilingSwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, int defaultLabel, LLVMExpressionNode[] phiWriteNodes) {
             super(cond, cases, successors, defaultLabel, phiWriteNodes);
@@ -187,7 +187,7 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
 
     public static class LLVMI16ProfilingSwitchNode extends LLVMI16SwitchBaseNode {
 
-        @CompilationFinal private final ConditionProfile[] profiles;
+        @CompilationFinal(dimensions = 1) private final ConditionProfile[] profiles;
 
         public LLVMI16ProfilingSwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, int defaultLabel, LLVMExpressionNode[] phiWriteNodes) {
             super(cond, cases, successors, defaultLabel, phiWriteNodes);
@@ -237,7 +237,7 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
 
     public static class LLVMI32ProfilingSwitchNode extends LLVMI32SwitchBaseNode {
 
-        @CompilationFinal private final ConditionProfile[] profiles;
+        @CompilationFinal(dimensions = 1) private final ConditionProfile[] profiles;
 
         public LLVMI32ProfilingSwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, int defaultLabel, LLVMExpressionNode[] phiWriteNodes) {
             super(cond, cases, successors, defaultLabel, phiWriteNodes);
@@ -253,7 +253,7 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
 
     public static class LLVMI32SwitchNode extends LLVMI32SwitchBaseNode {
 
-        @CompilationFinal private ConditionProfile[] profiles;
+        @CompilationFinal(dimensions = 1) private ConditionProfile[] profiles;
 
         public LLVMI32SwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, int defaultLabel, LLVMExpressionNode[] phiWriteNodes) {
             super(cond, cases, successors, defaultLabel, phiWriteNodes);
@@ -303,7 +303,7 @@ public abstract class LLVMSwitchNode extends LLVMTerminatorNode {
 
     public static class LLVMI64ProfilingSwitchNode extends LLVMI64SwitchBaseNode {
 
-        @CompilationFinal private final ConditionProfile[] profiles;
+        @CompilationFinal(dimensions = 1) private final ConditionProfile[] profiles;
 
         public LLVMI64ProfilingSwitchNode(LLVMExpressionNode cond, LLVMExpressionNode[] cases, int[] successors, int defaultLabel, LLVMExpressionNode[] phiWriteNodes) {
             super(cond, cases, successors, defaultLabel, phiWriteNodes);

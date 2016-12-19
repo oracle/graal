@@ -66,12 +66,12 @@ public class LLVMFunctionRegistry {
     /**
      * Maps a function index (see {@link LLVMFunction#getFunctionIndex()} to a call target.
      */
-    @CompilationFinal private RootCallTarget[] functionPtrCallTargetMap;
+    @CompilationFinal(dimensions = 1) private RootCallTarget[] functionPtrCallTargetMap;
 
     /**
      * Maps a function index (see {@link LLVMFunction#getFunctionIndex()} to a function descriptor.
      */
-    @CompilationFinal private LLVMFunction[] functionDescriptors = new LLVMFunction[REAL_FUNCTION_START_INDEX];
+    @CompilationFinal(dimensions = 1) private LLVMFunction[] functionDescriptors = new LLVMFunction[REAL_FUNCTION_START_INDEX];
 
     public LLVMFunctionRegistry(NodeFactoryFacade facade) {
         this.facade = facade;
