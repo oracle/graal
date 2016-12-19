@@ -35,13 +35,18 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.runtime.JVMCI;
 
 public class DebugEnvironment {
-
     public static GraalDebugConfig initialize(PrintStream log, Object... extraArgs) {
+        initializeScope(log, extraArgs);
+        return (GraalDebugConfig) DebugScope.getConfig();
+    }
+
+    public static DebugConfigScope initializeScope(PrintStream log, Object... extraArgs) {
         // Initialize JVMCI before loading class Debug
         JVMCI.initialize();
         if (!Debug.isEnabled()) {
@@ -58,7 +63,6 @@ public class DebugEnvironment {
             customizer.customize(debugConfig, extraArgs);
         }
 
-        Debug.setConfig(debugConfig);
-        return debugConfig;
+        return Debug.setConfig(debugConfig);
     }
 }

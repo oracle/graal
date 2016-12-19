@@ -240,7 +240,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         }
     }
 
-    public static Path getCFGPath() {
+    private static Path getCFGPath() {
         return UniquePathUtilities.getPath(Options.PrintCFGFileName, Options.DumpPath, "cfg");
     }
 
@@ -285,5 +285,12 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             curDecorators = Collections.emptyList();
             curMethod = null;
         }
+    }
+
+    public String getDumpPath() {
+        if (cfgFile != null) {
+            return cfgFile.getAbsolutePath();
+        }
+        return null;
     }
 }
