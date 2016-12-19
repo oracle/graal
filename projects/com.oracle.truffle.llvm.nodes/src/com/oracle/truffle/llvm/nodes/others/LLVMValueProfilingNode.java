@@ -61,7 +61,6 @@ public abstract class LLVMValueProfilingNode {
         public int executeI32(int value) {
             return profile.profile(value);
         }
-
     }
 
     @NodeChild

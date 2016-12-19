@@ -29,12 +29,17 @@
  */
 package com.oracle.truffle.llvm.types.vector;
 
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.types.memory.LLVMHeap;
 import com.oracle.truffle.llvm.types.memory.LLVMMemory;
 
-public final class LLVMI32Vector extends LLVMVector<Integer> {
+@ValueType
+public final class LLVMI32Vector {
 
     private static final int I32_SIZE = 4;
+    private final LLVMAddress address;
+    private final int nrElements;
 
     public static LLVMI32Vector fromI32Array(LLVMAddress target, int[] vals) {
         LLVMAddress currentTarget = target;
@@ -45,84 +50,176 @@ public final class LLVMI32Vector extends LLVMVector<Integer> {
         return new LLVMI32Vector(target, vals.length);
     }
 
-    public LLVMI32Vector(LLVMAddress address, int nrElements) {
-        super(address, nrElements);
+    private LLVMI32Vector(LLVMAddress addr, int nrElements) {
+        this.address = addr;
+        this.nrElements = nrElements;
     }
 
     public LLVMI32Vector add(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a + b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) + right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector mul(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a * b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) * right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector sub(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a - b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) - right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector div(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a / b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) / right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector divUnsigned(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> Integer.divideUnsigned(a, b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = Integer.divideUnsigned(getValue(i), right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector rem(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a % b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) % right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector remUnsigned(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> Integer.remainderUnsigned(a, b));
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = Integer.remainderUnsigned(getValue(i), right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector and(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a & b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) & right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector or(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a | b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) | right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector leftShift(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a << b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) << right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector logicalRightShift(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a >>> b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) >>> right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector arithmeticRightShift(LLVMAddress addr, LLVMI32Vector right) {
-        return performOperation(addr, right, (a, b) -> a >> b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) >> right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
     public LLVMI32Vector xor(LLVMAddress addr, LLVMI32Vector right) {
-        return (LLVMI32Vector) performOperation(addr, right, (a, b) -> a ^ b);
+        LLVMAddress currentAddr = addr;
+        for (int i = 0; i < nrElements; i++) {
+            int elementResult = (getValue(i) ^ right.getValue(i));
+            LLVMMemory.putI32(currentAddr, elementResult);
+            currentAddr = currentAddr.increment(I32_SIZE);
+        }
+        return create(addr, nrElements);
     }
 
-    public static LLVMI32Vector createI32Vector(LLVMAddress addr, int size) {
-        return new LLVMI32Vector(addr, size);
-    }
-
-    @Override
-    public int getElementByteSize() {
-        return I32_SIZE;
-    }
-
-    @Override
-    protected LLVMI32Vector create(LLVMAddress addr, int length) {
+    public static LLVMI32Vector create(LLVMAddress addr, int length) {
         return new LLVMI32Vector(addr, length);
     }
 
-    @Override
-    public Integer getValue(LLVMAddress addr) {
-        return LLVMMemory.getI32(addr);
+    public int[] getValues() {
+        int[] values = new int[nrElements];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = getValue(i);
+        }
+        return values;
     }
 
-    @Override
-    public void setValue(LLVMAddress address, Integer value) {
-        LLVMMemory.putI32(address, value);
+    public int getValue(int index) {
+        int offset = index * I32_SIZE;
+        LLVMAddress increment = address.increment(offset);
+        return LLVMMemory.getI32(increment);
+    }
+
+    public LLVMI32Vector insert(LLVMAddress target, int element, int index) {
+        LLVMHeap.memCopy(target, address, nrElements * I32_SIZE);
+        LLVMAddress elementAddress = target.increment(index * I32_SIZE);
+        LLVMMemory.putI32(elementAddress, element);
+        return create(target, nrElements);
+    }
+
+    public int getLength() {
+        return nrElements;
+    }
+
+    public LLVMAddress getAddress() {
+        return address;
+    }
+
+    public int getVectorByteSize() {
+        return I32_SIZE * nrElements;
     }
 
 }

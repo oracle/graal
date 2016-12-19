@@ -43,7 +43,13 @@ import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.types.LLVMIVarBit;
 import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.types.memory.LLVMHeap;
-import com.oracle.truffle.llvm.types.vector.LLVMVector;
+import com.oracle.truffle.llvm.types.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.types.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.types.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI1Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
 
 @NodeField(name = "retSlot", type = FrameSlot.class)
 public abstract class LLVMRetNode extends LLVMTerminatorNode {
@@ -181,7 +187,43 @@ public abstract class LLVMRetNode extends LLVMTerminatorNode {
     public abstract static class LLVMVectorRetNode extends LLVMRetNode {
 
         @Specialization
-        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMVector<?> retResult) {
+        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMDoubleVector retResult) {
+            frame.setObject(getRetSlot(), retResult);
+            return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
+        }
+
+        @Specialization
+        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMFloatVector retResult) {
+            frame.setObject(getRetSlot(), retResult);
+            return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
+        }
+
+        @Specialization
+        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMI16Vector retResult) {
+            frame.setObject(getRetSlot(), retResult);
+            return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
+        }
+
+        @Specialization
+        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMI1Vector retResult) {
+            frame.setObject(getRetSlot(), retResult);
+            return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
+        }
+
+        @Specialization
+        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMI32Vector retResult) {
+            frame.setObject(getRetSlot(), retResult);
+            return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
+        }
+
+        @Specialization
+        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMI64Vector retResult) {
+            frame.setObject(getRetSlot(), retResult);
+            return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
+        }
+
+        @Specialization
+        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMI8Vector retResult) {
             frame.setObject(getRetSlot(), retResult);
             return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
         }

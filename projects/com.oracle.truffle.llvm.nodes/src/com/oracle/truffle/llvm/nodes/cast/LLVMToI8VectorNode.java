@@ -39,29 +39,28 @@ import com.oracle.truffle.llvm.types.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.types.vector.LLVMI8Vector;
-import com.oracle.truffle.llvm.types.vector.LLVMVector;
 
 public abstract class LLVMToI8VectorNode extends LLVMExpressionNode {
-
-    @ExplodeLoop
-    protected LLVMI8Vector executeI8VectorBody(LLVMAddress target, LLVMVector<? extends Number> from) {
-        int length = from.getLength();
-
-        byte[] values = new byte[length];
-
-        for (int i = 0; i < length; i++) {
-            values[i] = from.getValue(i).byteValue();
-        }
-
-        return LLVMI8Vector.fromI8Array(target, values);
-    }
 
     @NodeChildren({@NodeChild(value = "addressNode", type = LLVMExpressionNode.class), @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)})
     public abstract static class LLVMI16VectorToI8VectorNode extends LLVMToI8VectorNode {
 
         @Specialization
         public LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI16Vector from) {
-            return executeI8VectorBody(target, from);
+            return getI8(target, from);
+        }
+
+        @ExplodeLoop
+        private static LLVMI8Vector getI8(LLVMAddress target, LLVMI16Vector from) {
+            int length = from.getLength();
+
+            byte[] values = new byte[length];
+
+            for (int i = 0; i < length; i++) {
+                values[i] = (byte) from.getValue(i);
+            }
+
+            return LLVMI8Vector.fromI8Array(target, values);
         }
     }
 
@@ -70,7 +69,20 @@ public abstract class LLVMToI8VectorNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI32Vector from) {
-            return executeI8VectorBody(target, from);
+            return getI8(target, from);
+        }
+
+        @ExplodeLoop
+        private static LLVMI8Vector getI8(LLVMAddress target, LLVMI32Vector from) {
+            int length = from.getLength();
+
+            byte[] values = new byte[length];
+
+            for (int i = 0; i < length; i++) {
+                values[i] = (byte) from.getValue(i);
+            }
+
+            return LLVMI8Vector.fromI8Array(target, values);
         }
     }
 
@@ -79,7 +91,20 @@ public abstract class LLVMToI8VectorNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI64Vector from) {
-            return executeI8VectorBody(target, from);
+            return getI8(target, from);
+        }
+
+        @ExplodeLoop
+        private static LLVMI8Vector getI8(LLVMAddress target, LLVMI64Vector from) {
+            int length = from.getLength();
+
+            byte[] values = new byte[length];
+
+            for (int i = 0; i < length; i++) {
+                values[i] = (byte) from.getValue(i);
+            }
+
+            return LLVMI8Vector.fromI8Array(target, values);
         }
     }
 }
