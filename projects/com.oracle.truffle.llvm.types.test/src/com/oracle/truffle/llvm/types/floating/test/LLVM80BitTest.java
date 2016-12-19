@@ -60,11 +60,11 @@ public abstract class LLVM80BitTest {
     }
 
     protected static LLVM80BitFloat negativeInfinity() {
-        return LLVM80BitFloat.RealLLVM80BitFloat.NEGATIVE_INFINITY;
+        return LLVM80BitFloat.NEGATIVE_INFINITY;
     }
 
     protected static LLVM80BitFloat positiveInfinity() {
-        return LLVM80BitFloat.RealLLVM80BitFloat.POSITIVE_INFINITY;
+        return LLVM80BitFloat.POSITIVE_INFINITY;
     }
 
     protected static LLVM80BitFloat nan() {
