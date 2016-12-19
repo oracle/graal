@@ -1562,17 +1562,16 @@ class PolyglotEngineSnippets {
     static Value findAndReportMultipleExportedSymbols(
         PolyglotEngine engine, String name
     ) {
-        Iterator<Value> it = engine.findGlobalSymbols(name).iterator();
-        if (!it.hasNext()) {
-            return null;
+        Value found = null;
+        for (Value value : engine.findGlobalSymbols(name)) {
+            if (found != null) {
+                throw new IllegalStateException(
+                    "Multiple global symbols exported with " + name + " name"
+                );
+            }
+            found = value;
         }
-        Value value = it.next();
-        if (it.hasNext()) {
-            throw new IllegalStateException(
-                "Multiple global symbols exported with " + name + " name"
-            );
-        }
-        return value;
+        return found;
     }
     // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols
     // @formatter:on
