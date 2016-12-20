@@ -481,7 +481,7 @@ def getCommonOptions(lib_args=None):
 
 def getSearchPathOption(lib_args=None):
     if lib_args is None:
-        lib_args = ['-lgmp', '-lgfortran', '-lpcre']
+        lib_args = ['-lgmp', '-lgfortran']
 
     lib_names = []
 
