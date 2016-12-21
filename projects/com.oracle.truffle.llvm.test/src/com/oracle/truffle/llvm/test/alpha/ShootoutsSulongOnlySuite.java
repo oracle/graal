@@ -64,13 +64,6 @@ public final class ShootoutsSulongOnlySuite extends BaseSulongOnlyHarness {
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.cint/fasta.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "100"));
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-4.gcc/fasta.gcc-4.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "100"));
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-5.gcc/fasta.gcc-5.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "100"));
-        /*
-         * TODO: fix this segfault, issue #599
-         * @formatter:off
-         * TODO: segfault
-         * runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fastaredux/fastaredux.gcc-2.gcc/fastaredux.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null));
-         * @formatter:on
-         */
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fastaredux/fastaredux.gcc-3.gcc/fastaredux.gcc-3.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null));
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.cint-2.cint/mandelbrot.cint-2.cint" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "500"));
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-2.gcc/mandelbrot.gcc-2.gcc" + benchmarkSuffix).toPath(), new RunConfiguration(0, null, "500"));

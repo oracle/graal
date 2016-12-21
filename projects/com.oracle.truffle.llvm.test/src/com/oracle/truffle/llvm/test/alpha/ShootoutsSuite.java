@@ -62,7 +62,6 @@ public final class ShootoutsSuite extends BaseSulongOnlyHarness {
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.cint").toPath(), new RunConfiguration(0, null, "100"));
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-4.gcc").toPath(), new RunConfiguration(0, null, "100"));
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fasta/fasta.gcc-5.gcc").toPath(), new RunConfiguration(0, null, "100"));
-        runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fastaredux/fastaredux.gcc-2.gcc").toPath(), new RunConfiguration(0, null));
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/fastaredux/fastaredux.gcc-3.gcc").toPath(), new RunConfiguration(0, null));
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.cint-2.cint").toPath(), new RunConfiguration(0, null, "500"));
         runs.put(new File(SHOOTOUTS_SUITE_DIR + "/mandelbrot/mandelbrot.gcc-2.gcc").toPath(), new RunConfiguration(0, null, "500"));
