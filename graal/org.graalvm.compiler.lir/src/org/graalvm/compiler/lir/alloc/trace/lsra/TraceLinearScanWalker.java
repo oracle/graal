@@ -22,16 +22,15 @@
  */
 package org.graalvm.compiler.lir.alloc.trace.lsra;
 
-import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static jdk.vm.ci.code.CodeUtil.isOdd;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig.AllocatableRegisters;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -61,7 +60,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
     private final int[] blockPos;
     private final BitSet isInMemory;
 
-    private List<TraceInterval>[] spillIntervals;
+    private final ArrayList<TraceInterval>[] spillIntervals;
 
     private TraceLocalMoveResolver moveResolver; // for ordering spill moves
 
@@ -75,7 +74,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
      * bootstrap run of Graal). Therefore, we initialize {@link #spillIntervals} with this marker
      * value, and allocate a "real" list only on demand in {@link #setUsePos}.
      */
-    private static final List<TraceInterval> EMPTY_LIST = new ArrayList<>(0);
+    private static final ArrayList<TraceInterval> EMPTY_LIST = new ArrayList<>(0);
 
     // accessors mapped to same functions in class LinearScan
     private int blockCount() {
@@ -96,7 +95,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
 
         moveResolver = allocator.createMoveResolver();
         int numRegs = allocator.getRegisters().size();
-        spillIntervals = Util.uncheckedCast(new List<?>[numRegs]);
+        spillIntervals = Util.uncheckedCast(new ArrayList<?>[numRegs]);
         for (int i = 0; i < numRegs; i++) {
             spillIntervals[i] = EMPTY_LIST;
         }
@@ -147,7 +146,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
                     this.usePos[i] = usePos;
                 }
                 if (!onlyProcessUsePos) {
-                    List<TraceInterval> list = spillIntervals[i];
+                    ArrayList<TraceInterval> list = spillIntervals[i];
                     if (list == EMPTY_LIST) {
                         list = new ArrayList<>(2);
                         spillIntervals[i] = list;
