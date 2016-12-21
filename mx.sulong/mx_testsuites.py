@@ -64,12 +64,6 @@ def runShootoutSuite(vmArgs):
     compileSuite(['shootout'])
     return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite")
 
-def runShootoutSulongOnlySuite(vmArgs):
-    """runs the Sulong test suite"""
-    mx_sulong.ensureDragonEggExists()
-    compileSuite(['shootout'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSulongOnlySuite")
-
 def runLLVMSuite(vmArgs):
     """runs the LLVM test suite"""
     compileSuite(['llvm'])
@@ -196,7 +190,6 @@ testSuites = {
     'gcc' : (compileGCCSuite, runGCCSuite),
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'sulong' : (compileSulongSuite, runSulongSuite),
-    'shootoutSulongOnly' : (compileShootoutSuite, runShootoutSulongOnlySuite),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'interop' : (compileInteropTests, runInteropTests),
     'tck' : (compileInteropTests, runTCKTests),

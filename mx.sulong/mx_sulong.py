@@ -120,7 +120,7 @@ def travis1(args=None):
     with Task('BuildJavaWithJavac', tasks) as t:
         if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
     with Task('TestBenchmarks', tasks) as t:
-        if t: mx_testsuites.runSuite(['shootoutSulongOnly'])
+        if t: mx_testsuites.runSuite(['shootout'])
     with Task('TestPolglot', tasks) as t:
         if t: mx_testsuites.runSuite(['polyglot'])
     with Task('TestInterop', tasks) as t:
