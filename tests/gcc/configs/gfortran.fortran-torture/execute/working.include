@@ -191,7 +191,6 @@ gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/write_logical.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/strret.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_anyall.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/where_4.f90
-gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/transfer2.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_rrspacing.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_scale.f90
 gcc-5.2.0/gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_spacing.f90
