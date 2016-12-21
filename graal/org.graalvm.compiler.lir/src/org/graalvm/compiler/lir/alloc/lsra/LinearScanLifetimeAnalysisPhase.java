@@ -22,21 +22,21 @@
  */
 package org.graalvm.compiler.lir.alloc.lsra;
 
-import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
-import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
-import static org.graalvm.compiler.lir.debug.LIRGenerationDebugContext.getSourceForOperandFromDebugContext;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.debug.LIRGenerationDebugContext.getSourceForOperandFromDebugContext;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.List;
 
 import org.graalvm.compiler.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -127,7 +127,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
             allocator.initBlockData(block);
 
-            List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
+            ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
 
             int numInst = instructions.size();
             for (int j = 0; j < numInst; j++) {
@@ -165,7 +165,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 final BitSet liveGen = new BitSet(liveSize);
                 final BitSet liveKill = new BitSet(liveSize);
 
-                List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                 int numInst = instructions.size();
 
                 ValueConsumer useConsumer = (operand, mode, flags) -> {
@@ -737,7 +737,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 AbstractBlockBase<?> block = allocator.blockAt(i);
                 try (Indent indent2 = Debug.logAndIndent("handle block %d", block.getId())) {
 
-                    List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
+                    ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                     final int blockFrom = allocator.getFirstLirInstructionId(block);
                     int blockTo = allocator.getLastLirInstructionId(block);
 

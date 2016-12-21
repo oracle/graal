@@ -22,14 +22,14 @@
  */
 package org.graalvm.compiler.lir.ssi;
 
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -95,7 +95,7 @@ public final class SSIVerifier {
     }
 
     private void verifyInstructions(AbstractBlockBase<?> block) {
-        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+        ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         HashMap<Value, LIRInstruction> defined = new HashMap<>();
 
         InstructionValueConsumer useConsumer = new InstructionValueConsumer() {

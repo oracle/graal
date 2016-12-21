@@ -22,19 +22,19 @@
  */
 package org.graalvm.compiler.lir.alloc.lsra;
 
-import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
-import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 import static jdk.vm.ci.code.CodeUtil.isEven;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumSet;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
@@ -200,7 +200,7 @@ public class LinearScan {
     }
 
     public int getLastLirInstructionId(AbstractBlockBase<?> block) {
-        List<LIRInstruction> instructions = ir.getLIRforBlock(block);
+        ArrayList<LIRInstruction> instructions = ir.getLIRforBlock(block);
         int result = instructions.get(instructions.size() - 1).id();
         assert result >= 0;
         return result;
@@ -858,7 +858,7 @@ public class LinearScan {
             IntervalWalker iw = new IntervalWalker(this, fixedIntervals, otherIntervals);
 
             for (AbstractBlockBase<?> block : sortedBlocks) {
-                List<LIRInstruction> instructions = ir.getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = ir.getLIRforBlock(block);
 
                 for (int j = 0; j < instructions.size(); j++) {
                     LIRInstruction op = instructions.get(j);

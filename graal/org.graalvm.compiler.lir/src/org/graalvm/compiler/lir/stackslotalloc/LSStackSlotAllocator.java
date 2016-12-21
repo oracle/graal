@@ -27,11 +27,11 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 
@@ -180,7 +180,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
             int index = 0;
             for (AbstractBlockBase<?> block : sortedBlocks) {
 
-                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
 
                 int numInst = instructions.size();
                 for (int j = 0; j < numInst; j++) {

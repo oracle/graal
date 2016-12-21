@@ -135,7 +135,7 @@ public class PhiResolver {
     public static PhiResolver create(LIRGeneratorTool gen) {
         AbstractBlockBase<?> block = gen.getCurrentBlock();
         assert block != null;
-        List<LIRInstruction> instructions = gen.getResult().getLIR().getLIRforBlock(block);
+        ArrayList<LIRInstruction> instructions = gen.getResult().getLIR().getLIRforBlock(block);
 
         return new PhiResolver(gen, new LIRInsertionBuffer(), instructions, instructions.size());
     }

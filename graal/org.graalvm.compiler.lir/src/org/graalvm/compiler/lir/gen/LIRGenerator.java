@@ -302,7 +302,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             TTY.println();
         }
         assert LIRVerifier.verify(op);
-        List<LIRInstruction> lirForBlock = res.getLIR().getLIRforBlock(getCurrentBlock());
+        ArrayList<LIRInstruction> lirForBlock = res.getLIR().getLIRforBlock(getCurrentBlock());
         op.setPosition(currentPosition);
         lirForBlock.add(op);
         return op;
@@ -310,7 +310,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public boolean hasBlockEnd(AbstractBlockBase<?> block) {
-        List<LIRInstruction> ops = getResult().getLIR().getLIRforBlock(block);
+        ArrayList<LIRInstruction> ops = getResult().getLIR().getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
         }

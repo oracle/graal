@@ -25,9 +25,9 @@ package org.graalvm.compiler.lir.ssi;
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.ListIterator;
 
 import org.graalvm.compiler.common.PermanentBailoutException;
@@ -181,7 +181,7 @@ public final class SSIBuilder extends SSIBuilderBase {
                 };
 
                 // iterate all instructions of the block
-                List<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
                 ListIterator<LIRInstruction> instIt = instructions.listIterator(instructions.size());
                 while (instIt.hasPrevious()) {
                     final LIRInstruction op = instIt.previous();
