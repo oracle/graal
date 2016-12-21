@@ -27,14 +27,13 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.util.ArrayMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
-import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
@@ -48,7 +47,7 @@ import jdk.vm.ci.meta.Value;
 final class RegisterVerifier {
 
     LinearScan allocator;
-    List<AbstractBlockBase<?>> workList; // all blocks that must be processed
+    ArrayList<AbstractBlockBase<?>> workList; // all blocks that must be processed
     ArrayMap<Interval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan

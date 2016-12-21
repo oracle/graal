@@ -22,13 +22,12 @@
  */
 package org.graalvm.compiler.lir.alloc.trace.lsra;
 
-import static org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase.isVariableOrRegister;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase.isVariableOrRegister;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.util.ArrayMap;
@@ -50,7 +49,7 @@ import jdk.vm.ci.meta.Value;
 final class RegisterVerifier {
 
     TraceLinearScan allocator;
-    List<AbstractBlockBase<?>> workList; // all blocks that must be processed
+    ArrayList<AbstractBlockBase<?>> workList; // all blocks that must be processed
     ArrayMap<TraceInterval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
