@@ -1,0 +1,73 @@
+java8: {name: labsjdk, version: "8u111-jvmci-0.23", platformspecific: true}
+eclipse: {name: eclipse, version: "4.5.2", platformspecific: true}
+dragonegg: {name: dragonegg, version: "3.2", platformspecific: true}
+
+gateCommon: {
+    targets: [gate]
+    packages: {
+        git: ""
+    }
+    downloads: {
+        JAVA_HOME: ${java8}
+    }
+
+    timelimit: 1:00:00
+
+    capabilities: [linux, amd64]
+}
+
+gateStyle: ${gateCommon} {
+    packages: {
+        ruby: "==2.1.0" # for mdl
+        llvm: "==3.4"
+        "pip:astroid" : "==1.1.0"
+        "pip:pylint" : "==1.1.0"
+    }
+
+    downloads: {
+        ECLIPSE: ${eclipse}
+    }
+
+    environment: {
+        ECLIPSE_EXE: "$ECLIPSE/eclipse"
+    }
+}
+
+gateTest: ${gateCommon} {
+    downloads: {
+        LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
+        LLVM: {name: "clang+llvm", version: "3.2", platformspecific: true}
+    }
+
+    environment: {
+        CPPFLAGS: "-I$LIBGMP/include"
+        LD_LIBRARY_PATH: "$LIBGMP/lib:$LLVM/lib:$LD_LIBRARY_PATH"
+        PATH: "$LLVM/bin:$PATH"
+    }
+}
+
+requireGCC: {
+    packages: {
+        gcc: "==4.6.4"
+    }
+
+    downloads: {
+        DRAGONEGG: ${dragonegg}
+    }
+}
+
+requireJDT: {
+    downloads: {
+        JDT : {name: ecj, version: "4.5.1", platformspecific: false}
+    }
+}
+
+
+builds = [
+  ${gateStyle} { name: gate-style, run: [[mx, su-checks, --verbose, mdl, checkstyle, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
+  ${gateTest} ${requireJDT} { name: gate-full-build, run: [[mx, su-checks, --verbose, ecj, findbugs]] }
+  ${gateTest} ${requireGCC} { name: gate-suite-gcc, run: [[mx, su-suite, gcc]] }
+  ${gateTest} ${requireGCC} { name: gate-travis1, run: [[mx, su-travis1]] }
+  ${gateTest} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
+  ${gateTest} { name: gate-travis-argon2, run: [[mx, su-travis-argon2]] }
+]
