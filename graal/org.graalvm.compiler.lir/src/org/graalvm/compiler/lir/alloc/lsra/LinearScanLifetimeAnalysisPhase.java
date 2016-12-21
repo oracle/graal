@@ -34,7 +34,6 @@ import static org.graalvm.compiler.lir.debug.LIRGenerationDebugContext.getSource
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashSet;
 
@@ -408,7 +407,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     }
                     try (Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, valueForOperandFromDebugContext)) {
 
-                        Deque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
+                        ArrayDeque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
                         HashSet<AbstractBlockBase<?>> usedIn = new HashSet<>();
                         for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
                             if (allocator.getBlockData(block).liveGen.get(operandNum)) {
