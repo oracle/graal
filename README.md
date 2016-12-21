@@ -60,8 +60,8 @@ You can generate IDE project configurations by running:
 mx ideinit
 ```
 
-This will generate both Eclipse and NetBeans project configurations.
-Further information on how to import these project configurations into Eclipse can be found on the [Eclipse](docs/Eclipse.md) page.
+This will generate Eclipse, IntelliJ, and NetBeans project configurations.
+Further information on how to import these project configurations into individual IDEs can be found on the [IDEs](docs/IDEs.md) page.
 
 The Graal code base includes the [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) which is very useful in terms of visualizing Graal's intermediate representation (IR).
 You can get a quick insight into this tool by running the commands below.
