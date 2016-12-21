@@ -14,7 +14,7 @@ can still occur.
 
 The Computer Language Benchmarks Game "shootouts" are small benchmarks
 to compare the performance of different languages. The
-[fasta-redux C gcc #2 program](https://benchmarksgame.alioth.debian.org/u64q/program.php?test=fastaredux&lang=gcc&id=2)
+_fasta-redux C gcc #2 program_
 benchmark contains a buffer overflow that we detected with Safe Sulong:
 
 ```c
