@@ -55,8 +55,5 @@ matrix:
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-suite shootout' CLANG='suite version (3.2)'
     jdk: oraclejdk8
-  allow_failures:
-  - env: TEST_COMMAND='mx su-suite shootout' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
