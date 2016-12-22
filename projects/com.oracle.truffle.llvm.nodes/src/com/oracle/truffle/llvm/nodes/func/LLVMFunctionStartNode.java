@@ -39,23 +39,23 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
+import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
 
 public class LLVMFunctionStartNode extends RootNode {
 
     @Child private LLVMExpressionNode node;
     @Children private final LLVMExpressionNode[] beforeFunction;
     @Children private final LLVMExpressionNode[] afterFunction;
-    private final String functionName;
-    @CompilationFinal(dimensions = 1) private LLVMStackFrameNuller[] nullers;
+    @CompilationFinal(dimensions = 1) private final LLVMStackFrameNuller[] nullers;
+    private final FunctionDefinition functionHeader;
 
     public LLVMFunctionStartNode(LLVMExpressionNode node, LLVMExpressionNode[] beforeFunction, LLVMExpressionNode[] afterFunction, SourceSection sourceSection, FrameDescriptor frameDescriptor,
-                    String functionName,
-                    LLVMStackFrameNuller[] initNullers) {
+                    FunctionDefinition functionHeader, LLVMStackFrameNuller[] initNullers) {
         super(LLVMLanguage.class, sourceSection, frameDescriptor);
         this.node = node;
         this.beforeFunction = beforeFunction;
         this.afterFunction = afterFunction;
-        this.functionName = functionName;
+        this.functionHeader = functionHeader;
         this.nullers = initNullers;
     }
 
@@ -79,16 +79,20 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public String toString() {
-        return functionName;
+        return getFunctionName();
     }
 
     public String getFunctionName() {
-        return functionName;
+        return functionHeader == null ? "null" : functionHeader.getName();
+    }
+
+    public FunctionDefinition getFunctionHeader() {
+        return functionHeader;
     }
 
     @Override
     public String getName() {
-        return functionName;
+        return getFunctionName();
     }
 
 }
