@@ -390,7 +390,11 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, LLVMType[] argTypes, LLVMBaseType retType) {
-        Parser asmParser = new Parser(asmExpression, asmFlags, args, retType);
+        LLVMBaseType[] argBaseTypes = new LLVMBaseType[argTypes.length];
+        for (int i = 0; i < argTypes.length; i++) {
+            argBaseTypes[i] = argTypes[i].getType();
+        }
+        Parser asmParser = new Parser(asmExpression, asmFlags, args, argBaseTypes, retType);
         LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
         CallTarget target = Truffle.getRuntime().createCallTarget(assemblyRoot);
         switch (retType) {

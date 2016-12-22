@@ -125,11 +125,21 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstr
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMI32UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMDoubleReadNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMFloatReadNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI16ReadNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI32ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI64ReadNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI8ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNode.LLVMWriteAddressNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteAddressNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteDoubleNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI16NodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI32NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI8NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI8StructWriteNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI16StructWriteNode;
@@ -147,10 +157,12 @@ public class AsmFactory {
     private LLVMExpressionNode[] args;
     private LLVMExpressionNode result;
     private String asmFlags;
+    private LLVMBaseType[] argTypes;
     private LLVMBaseType retType;
 
-    public AsmFactory(LLVMExpressionNode[] args, String asmFlags, LLVMBaseType retType) {
+    public AsmFactory(LLVMExpressionNode[] args, LLVMBaseType[] argTypes, String asmFlags, LLVMBaseType retType) {
         this.args = args;
+        this.argTypes = argTypes;
         this.asmFlags = asmFlags;
         this.frameDescriptor = new FrameDescriptor();
         this.statements = new ArrayList<>();
@@ -602,6 +614,9 @@ public class AsmFactory {
             registers.add(reg);
             FrameSlotKind kind;
             switch (type) {
+                case I8:
+                    kind = FrameSlotKind.Byte;
+                    break;
                 case I32:
                     kind = FrameSlotKind.Int;
                     break;
@@ -630,24 +645,55 @@ public class AsmFactory {
         }
 
         int outIndex = 0;
+        int argument = 0;
 
         Set<String> todoRegisters = new HashSet<>(registers);
         for (String token : tokens) {
-            if (token.charAt(0) == '~') {
+            boolean isTilde = false;
+            boolean isInput = true;
+            boolean isOutput = false;
+            String source = null;
+            String registerName = null;
+            int i;
+            for (i = 0; i < token.length() && source == null; i++) {
+                switch (token.charAt(i)) {
+                    case '~':
+                        isTilde = true;
+                        isInput = false;
+                        break;
+                    case '+':
+                        isInput = true;
+                        isOutput = true;
+                        break;
+                    case '=':
+                        isInput = false;
+                        isOutput = true;
+                        break;
+                    case '*':
+                        break;
+                    default:
+                        source = token.substring(i);
+                        break;
+                }
+            }
+
+            if (isTilde) {
                 continue;
             }
-            int start = token.indexOf('{');
-            int end = token.lastIndexOf('}');
 
-            // FIXME: start or end could be -1
-            assert start != -1;
-            assert end != -1;
+            int start = source.indexOf('{');
+            int end = source.lastIndexOf('}');
+            if (start != -1 && end != -1) {
+                registerName = source.substring(start + 1, end);
+            }
 
-            String registerName = token.substring(start + 1, end);
+            assert registerName == null || AsmRegisterOperand.isRegister(registerName);
+
             // output register
-            if (token.charAt(0) == '=') {
-                if (AsmRegisterOperand.isRegister(registerName)) {
-                    FrameSlot slot = getRegisterSlot(registerName);
+            if (isOutput) {
+                FrameSlot slot = null;
+                if (registerName != null && AsmRegisterOperand.isRegister(registerName)) {
+                    slot = getRegisterSlot(registerName);
                     LLVMExpressionNode register = LLVMI64ReadNodeGen.create(slot);
                     if (retType == LLVMBaseType.STRUCT) {
                         switch (alloca.getType(outIndex)) {
@@ -667,26 +713,102 @@ public class AsmFactory {
                                 throw new AsmParseException("invalid operand size");
                         }
                     } else {
-                        this.result = castResult(register);
+                        result = castResult(register);
+                    }
+                } else {
+                    slot = getArgumentSlot(argument, retType);
+                    switch (retType) {
+                        case I8:
+                            result = LLVMI8ReadNodeGen.create(slot);
+                            break;
+                        case I16:
+                            result = LLVMI16ReadNodeGen.create(slot);
+                            break;
+                        case I32:
+                            result = LLVMI32ReadNodeGen.create(slot);
+                            break;
+                        case I64:
+                            result = LLVMI64ReadNodeGen.create(slot);
+                            break;
+                        case STRUCT:
+                            switch (alloca.getType(outIndex)) {
+                                case I8:
+                                    writeNodes[outIndex] = new LLVMI8StructWriteNode(LLVMI8ReadNodeGen.create(slot));
+                                    break;
+                                case I16:
+                                    writeNodes[outIndex] = new LLVMI16StructWriteNode(LLVMI16ReadNodeGen.create(slot));
+                                    break;
+                                case I32:
+                                    writeNodes[outIndex] = new LLVMI32StructWriteNode(LLVMI32ReadNodeGen.create(slot));
+                                    break;
+                                case I64:
+                                    writeNodes[outIndex] = new LLVMI64StructWriteNode(LLVMI64ReadNodeGen.create(slot));
+                                    break;
+                                default:
+                                    throw new AsmParseException("invalid operand size");
+                            }
+                            break;
+                        case VOID:
+                            result = null;
+                            break;
+                        // FIXME: implement properly
+                        case FLOAT:
+                            result = LLVMFloatReadNodeGen.create(slot);
+                            break;
+                        case DOUBLE:
+                            result = LLVMDoubleReadNodeGen.create(slot);
+                            break;
+                        case ADDRESS:
+                            result = LLVMAddressReadNodeGen.create(slot);
+                            break;
+                        default:
+                            throw new AsmParseException("invalid operand size: " + retType);
                     }
                 }
                 outIndex++;
-                continue;
             }
+
             // input register
-            if (AsmRegisterOperand.isRegister(registerName)) {
-                String reg = AsmRegisterOperand.getBaseRegister(registerName);
-                if (registers.contains(reg)) {
+            if (isInput) {
+                FrameSlot slot = null;
+                if (registerName != null && AsmRegisterOperand.isRegister(registerName)) {
+                    String reg = AsmRegisterOperand.getBaseRegister(registerName);
+                    slot = getRegisterSlot(reg);
+                    todoRegisters.remove(reg);
                     LLVMExpressionNode arg = LLVMArgNodeGen.create(index);
                     LLVMExpressionNode node = LLVMAnyToI64NodeGen.create(arg);
-                    FrameSlot slot = getRegisterSlot(reg);
                     arguments.add(LLVMWriteI64NodeGen.create(node, slot));
-                    index++;
-                    todoRegisters.remove(reg);
-                } else {
-                    index++;
                 }
+                slot = getArgumentSlot(argument, argTypes[index]);
+                LLVMExpressionNode arg = LLVMArgNodeGen.create(index);
+                switch (argTypes[index]) {
+                    case I8:
+                        arguments.add(LLVMWriteI8NodeGen.create(arg, slot));
+                        break;
+                    case I16:
+                        arguments.add(LLVMWriteI16NodeGen.create(arg, slot));
+                        break;
+                    case I32:
+                        arguments.add(LLVMWriteI32NodeGen.create(arg, slot));
+                        break;
+                    case I64:
+                        arguments.add(LLVMWriteI64NodeGen.create(arg, slot));
+                        break;
+                    case FLOAT:
+                        arguments.add(LLVMWriteFloatNodeGen.create(arg, slot));
+                        break;
+                    case DOUBLE:
+                        arguments.add(LLVMWriteDoubleNodeGen.create(arg, slot));
+                        break;
+                    case ADDRESS:
+                        arguments.add(LLVMWriteAddressNodeGen.create(arg, slot));
+                        break;
+                    default:
+                        throw new AsmParseException("invalid operand size: " + argTypes[index]);
+                }
+                index++;
             }
+            argument++;
         }
 
         if (retType == LLVMBaseType.STRUCT) {
@@ -700,6 +822,9 @@ public class AsmFactory {
 
         // initialize registers
         for (String register : todoRegisters) {
+            if (register.startsWith("$")) {
+                continue;
+            }
             LLVMExpressionNode node = LLVMAMD64I64NodeGen.create(0);
             FrameSlot slot = getRegisterSlot(register);
             arguments.add(LLVMWriteI64NodeGen.create(node, slot));
@@ -757,8 +882,23 @@ public class AsmFactory {
                         throw new AsmParseException("invalid dst type");
                 }
             }
+        } else if (operand instanceof AsmArgumentOperand) {
+            AsmArgumentOperand op = (AsmArgumentOperand) operand;
+            FrameSlot frame = getArgumentSlot(op.getIndex());
+            switch (type) {
+                case I8:
+                    return LLVMI8ReadNodeGen.create(frame);
+                case I16:
+                    return LLVMI16ReadNodeGen.create(frame);
+                case I32:
+                    return LLVMI32ReadNodeGen.create(frame);
+                case I64:
+                    return LLVMI64ReadNodeGen.create(frame);
+                default:
+                    throw new AsmParseException("invalid operand size");
+            }
         }
-        throw new AsmParseException("unsupported operand type");
+        throw new AsmParseException("unsupported operand type: " + operand);
     }
 
     private LLVMWriteNode getOperandStore(LLVMBaseType type, AsmOperand operand, LLVMExpressionNode from) {
@@ -786,8 +926,23 @@ public class AsmFactory {
                     throw new AsmParseException("unsupported operand size");
             }
             return LLVMWriteI64NodeGen.create(out, frame);
+        } else if (operand instanceof AsmArgumentOperand) {
+            AsmArgumentOperand op = (AsmArgumentOperand) operand;
+            FrameSlot frame = getArgumentSlot(op.getIndex());
+            switch (type) {
+                case I8:
+                    return LLVMWriteI8NodeGen.create(from, frame);
+                case I16:
+                    return LLVMWriteI16NodeGen.create(from, frame);
+                case I32:
+                    return LLVMWriteI32NodeGen.create(from, frame);
+                case I64:
+                    return LLVMWriteI64NodeGen.create(from, frame);
+                default:
+                    throw new AsmParseException("invalid operand size");
+            }
         }
-        throw new AsmParseException("unsupported operand type");
+        throw new AsmParseException("unsupported operand type: " + operand);
     }
 
     @SuppressWarnings("unchecked")
@@ -818,5 +973,22 @@ public class AsmFactory {
         addFrameSlot(baseRegister, LLVMBaseType.I64);
         FrameSlot frame = frameDescriptor.findFrameSlot(baseRegister);
         return frame;
+    }
+
+    private static String getArgumentName(int index) {
+        return "$" + index;
+    }
+
+    private FrameSlot getArgumentSlot(int index) {
+        String name = getArgumentName(index);
+        // FIXME: register correct sizes
+        addFrameSlot(name, LLVMBaseType.I32);
+        return frameDescriptor.findFrameSlot(name);
+    }
+
+    private FrameSlot getArgumentSlot(int index, LLVMBaseType type) {
+        String name = getArgumentName(index);
+        addFrameSlot(name, type);
+        return frameDescriptor.findFrameSlot(name);
     }
 }

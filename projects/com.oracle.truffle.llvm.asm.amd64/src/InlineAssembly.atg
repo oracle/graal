@@ -64,7 +64,7 @@ PRODUCTIONS
 
 InlineAssembly<> =
   "\""
-  AssemblyInstruction { AssemblyInstruction }
+  { AssemblyInstruction }
   "\""
   							(. root = factory.finishInline(); .)
   .
@@ -84,6 +84,7 @@ AssemblyInstruction<> =
   | BinOp<>
   | IMulDiv<>
   | Jump<>
+  |
   )
   ";"
   .
@@ -573,6 +574,7 @@ Operand8<out AsmOperand op> =				(. op = null; .)
   ( Register8<out op>
   | MemoryReference<out op>
   | Immediate<out op>
+  | Argument<out op>
   )
   .
 
@@ -580,6 +582,7 @@ Operand16<out AsmOperand op> =				(. op = null; .)
   ( Register16<out op>
   | MemoryReference<out op>
   | Immediate<out op>
+  | Argument<out op>
   )
   .
 
@@ -587,6 +590,7 @@ Operand32<out AsmOperand op> =				(. op = null; .)
   ( Register32<out op>
   | MemoryReference<out op>
   | Immediate<out op>
+  | Argument<out op>
   )
   .
 
@@ -594,6 +598,7 @@ Operand64<out AsmOperand op> =				(. op = null; .)
   ( Register64<out op>
   | MemoryReference<out op>
   | Immediate<out op>
+  | Argument<out op>
   )
   .
 
@@ -604,6 +609,7 @@ Operand<out AsmOperand op> =				(. op = null; .)
   | Register64<out op>
   | MemoryReference<out op>
   | Immediate<out op>
+  | Argument<out op>
   )
   .
 
@@ -755,6 +761,11 @@ Number<out long n> =					(. n = 0; .)
 Immediate<out AsmImmediateOperand imm> =		(. long n; .)
   "$$"
   Number<out n>						(. imm = new AsmImmediateOperand(n); .)
+  .
+
+Argument<out AsmArgumentOperand arg> =			(. long n; .)
+  "$"
+  Number<out n>						(. arg = new AsmArgumentOperand((int) n); .)
   .
 
 END InlineAssembly.
