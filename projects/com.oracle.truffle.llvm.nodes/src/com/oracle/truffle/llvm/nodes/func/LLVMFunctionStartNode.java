@@ -79,19 +79,23 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
         return getFunctionName();
     }
 
     public String getFunctionName() {
+        CompilerAsserts.neverPartOfCompilation();
         return functionHeader == null ? "null" : functionHeader.getName();
     }
 
     public FunctionDefinition getFunctionHeader() {
+        CompilerAsserts.neverPartOfCompilation();
         return functionHeader;
     }
 
     @Override
     public String getName() {
+        CompilerAsserts.neverPartOfCompilation();
         return getFunctionName();
     }
 
