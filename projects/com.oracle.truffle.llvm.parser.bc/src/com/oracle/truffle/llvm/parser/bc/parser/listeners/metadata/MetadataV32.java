@@ -96,7 +96,7 @@ public class MetadataV32 extends Metadata {
                 return;
         }
 
-        if (LLVMOptions.DEBUG.verbose()) {
+        if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.verbose())) {
             printMetadataDebugMsg();
         }
     }

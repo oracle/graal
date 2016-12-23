@@ -58,7 +58,7 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
     private static final String FORMAT_STRING = "basic block %s (#statements: %s, successors: %s)";
     public static final int DEFAULT_SUCCESSOR = 0;
 
-    private static final boolean TRACE = LLVMOptions.DEBUG.traceExecution();
+    private static final boolean TRACE = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.traceExecution());
 
     @Children private final LLVMExpressionNode[] statements;
     @Child private LLVMControlFlowNode termInstruction;
@@ -117,7 +117,8 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     @TruffleBoundary
     private static void trace(LLVMExpressionNode statement) {
-        LLVMLogger.unconditionalInfo(String.format("[sulong] %s in %s", statement.getSourceDescription(), statement.getEncapsulatingSourceSection().getSource().getName()));
+        LLVMLogger.print(LLVMOptions.DEBUG.traceExecution()).accept(
+                        String.format("[sulong] %s in %s", statement.getSourceDescription(), statement.getEncapsulatingSourceSection().getSource().getName()));
     }
 
     /**

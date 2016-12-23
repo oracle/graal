@@ -72,6 +72,7 @@ import com.oracle.truffle.llvm.parser.api.model.visitors.AbstractTerminatingInst
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ValueSymbolVisitor;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserAsserts;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -100,7 +101,7 @@ public final class LLVMLifetimeAnalysis {
         LLVMParserAsserts.assertNoNullElement(frameDescriptor.getSlots());
         final LLVMLifetimeAnalysisVisitor visitor = new LLVMLifetimeAnalysisVisitor(frameDescriptor, functionDefinition, phiRefs);
         final LLVMLifetimeAnalysis lifetimes = visitor.visit();
-        if (LLVMOptions.DEBUG.printLifetimeAnalysisStatistics()) {
+        if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printLifetimeAnalysisStatistics())) {
             printResult(functionDefinition, lifetimes);
         }
         return lifetimes;
@@ -111,21 +112,26 @@ public final class LLVMLifetimeAnalysis {
 
     private static void printResult(FunctionDefinition functionDefinition, LLVMLifetimeAnalysis lifetimes) {
         final Map<InstructionBlock, FrameSlot[]> mapping = lifetimes.getNullableAfter();
-        System.out.print(String.format(FUNCTION_FORMAT, functionDefinition.getName()));
+
+        final StringBuilder builder = new StringBuilder();
+        builder.append(String.format(FUNCTION_FORMAT, functionDefinition.getName()));
+        builder.append('\n');
         for (InstructionBlock b : mapping.keySet()) {
-            System.out.print(String.format(AFTER_BLOCK_FORMAT, b.getName()));
+            builder.append(String.format(AFTER_BLOCK_FORMAT, b.getName())).append('\n');
             FrameSlot[] variables = mapping.get(b);
             if (variables.length != 0) {
-                System.out.print("\t");
+                builder.append("\t");
                 for (int i = 0; i < variables.length; i++) {
                     if (i != 0) {
-                        System.out.print(", ");
+                        builder.append(", ");
                     }
-                    System.out.print(variables[i].getIdentifier());
+                    builder.append(variables[i].getIdentifier());
                 }
             }
-            System.out.println();
+            builder.append('\n');
         }
+
+        LLVMLogger.print(LLVMOptions.DEBUG.printLifetimeAnalysisStatistics()).accept(builder.toString());
     }
 
     private static final class LLVMReadVisitor {
