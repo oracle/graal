@@ -110,7 +110,7 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createSimpleConstantNoArray(LLVMParserRuntime runtime, String stringValue, LLVMBaseType instructionType, Type type) {
+    public LLVMExpressionNode createSimpleConstantNoArray(LLVMParserRuntime runtime, Object objectValue, LLVMBaseType instructionType, Type type) {
         return null;
     }
 

@@ -74,6 +74,10 @@ public final class LLVMIVarBit {
         return create(bits, ByteBuffer.allocate(Long.BYTES).putLong(from).array());
     }
 
+    public static LLVMIVarBit fromBigInteger(int bits, BigInteger from) {
+        return asIVar(bits, from);
+    }
+
     public static LLVMIVarBit fromByte(int bits, byte from) {
         return new LLVMIVarBit(bits, ByteBuffer.allocate(Byte.BYTES).put(from).array());
     }

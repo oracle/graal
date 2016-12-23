@@ -40,7 +40,7 @@ public final class FloatConstant extends FloatingPointConstant {
         this.value = value;
     }
 
-    public float getFloat() {
+    public float getValue() {
         return value;
     }
 
