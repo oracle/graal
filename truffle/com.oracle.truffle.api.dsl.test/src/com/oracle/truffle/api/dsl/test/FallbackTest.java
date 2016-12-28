@@ -43,6 +43,7 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback4Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback6Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback7Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback8NodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback9NodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
@@ -346,6 +347,50 @@ public class FallbackTest {
         protected boolean guard1(Object arg) {
             guard1count++;
             return arg instanceof String;
+        }
+
+        @Fallback
+        protected Object f(Object arg) {
+            fcount++;
+            return arg;
+        }
+
+    }
+
+    @Test
+    public void testFallback9() {
+        Fallback9 node = Fallback9NodeGen.create();
+        Assert.assertEquals(0, node.s0count);
+        Assert.assertEquals(0, node.fcount);
+        node.execute(1);
+        Assert.assertEquals(1, node.s0count);
+        Assert.assertEquals(0, node.fcount);
+        node.execute("");
+        Assert.assertEquals(1, node.s0count);
+        Assert.assertEquals(1, node.fcount);
+
+        /*
+         * The fallback is now active and the new implicit casted type (double) must use the
+         * specialization instead of the fall back case even if double is not an active implicit
+         * cast type.
+         */
+        node.execute(1d);
+        Assert.assertEquals(2, node.s0count);
+        Assert.assertEquals(1, node.fcount);
+    }
+
+    @TypeSystemReference(ExampleTypes.class)
+    abstract static class Fallback9 extends Node {
+
+        public abstract Object execute(Object arg);
+
+        int s0count = 0;
+        int fcount = 0;
+
+        @Specialization
+        protected Object s0(double arg) {
+            s0count++;
+            return arg;
         }
 
         @Fallback
