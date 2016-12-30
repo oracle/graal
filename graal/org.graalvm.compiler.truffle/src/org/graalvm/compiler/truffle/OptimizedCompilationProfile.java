@@ -78,8 +78,10 @@ public class OptimizedCompilationProfile {
     @ExplodeLoop
     void profileDirectCall(Object[] args) {
         Assumption typesAssumption = profiledArgumentTypesAssumption;
-        if (CompilerDirectives.inInterpreter() && typesAssumption == null) {
-            initializeProfiledArgumentTypes(args);
+        if (typesAssumption == null) {
+            if (CompilerDirectives.inInterpreter()) {
+                initializeProfiledArgumentTypes(args);
+            }
         } else {
             Class<?>[] types = profiledArgumentTypes;
             if (types != null) {
