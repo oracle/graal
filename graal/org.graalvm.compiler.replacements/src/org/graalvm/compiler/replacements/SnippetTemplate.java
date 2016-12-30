@@ -683,7 +683,7 @@ public class SnippetTemplate {
                 snippetCopy.disableUnsafeAccessTracking();
             }
 
-            Map<Node, Node> nodeReplacements = NodeCollectionsFactory.newIdentityMap();
+            Map<Node, Node> nodeReplacements = NodeCollectionsFactory.newMap();
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
             MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -1040,7 +1040,7 @@ public class SnippetTemplate {
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
     private Map<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
-        Map<Node, Node> replacements = NodeCollectionsFactory.newIdentityMap();
+        Map<Node, Node> replacements = NodeCollectionsFactory.newMap();
         assert args.info.getParameterCount() == parameters.length : "number of args (" + args.info.getParameterCount() + ") != number of parameters (" + parameters.length + ")";
         for (int i = 0; i < parameters.length; i++) {
             Object parameter = parameters[i];

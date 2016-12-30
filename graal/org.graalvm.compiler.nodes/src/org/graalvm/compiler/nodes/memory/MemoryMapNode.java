@@ -30,7 +30,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -101,7 +100,7 @@ public final class MemoryMapNode extends FloatingNode implements MemoryMap, Memo
     }
 
     public Map<LocationIdentity, MemoryNode> toMap() {
-        HashMap<LocationIdentity, MemoryNode> res = CollectionsFactory.newMap(locationIdentities.size());
+        Map<LocationIdentity, MemoryNode> res = CollectionsFactory.newMap(locationIdentities.size());
         for (int i = 0; i < nodes.size(); i++) {
             res.put(locationIdentities.get(i), (MemoryNode) nodes.get(i));
         }

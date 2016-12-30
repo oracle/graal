@@ -25,10 +25,10 @@ package org.graalvm.compiler.salver.dumper;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Debug;
@@ -67,7 +67,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
     private static final Map<Class<?>, String> nodeClassCategoryMap;
 
     static {
-        nodeClassCategoryMap = new LinkedHashMap<>();
+        nodeClassCategoryMap = CollectionsFactory.newLinkedMap();
         nodeClassCategoryMap.put(ControlSinkNode.class, "ControlSink");
         nodeClassCategoryMap.put(ControlSplitNode.class, "ControlSplit");
         nodeClassCategoryMap.put(AbstractMergeNode.class, "Merge");
@@ -77,7 +77,6 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         nodeClassCategoryMap.put(VirtualState.class, "State");
         nodeClassCategoryMap.put(PhiNode.class, "Phi");
         nodeClassCategoryMap.put(ProxyNode.class, "Proxy");
-        // nodeClassCategoryMap.put(Node.class, "Floating");
     }
 
     @Override

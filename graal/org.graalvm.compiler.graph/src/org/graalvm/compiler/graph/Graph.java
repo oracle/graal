@@ -24,7 +24,6 @@ package org.graalvm.compiler.graph;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -109,7 +108,7 @@ public class Graph {
      * Used to global value number {@link ValueNumberable} {@linkplain NodeClass#isLeafNode() leaf}
      * nodes.
      */
-    private final HashMap<CacheEntry, Node> cachedLeafNodes = CollectionsFactory.newMap();
+    private final Map<CacheEntry, Node> cachedLeafNodes = CollectionsFactory.newMap();
 
     /*
      * Indicates that the graph should no longer be modified. Frozen graphs can be used my multiple

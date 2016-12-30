@@ -72,10 +72,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
-    private final Map<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionsFactory.newIdentityMap();
+    private final Map<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionsFactory.newMap();
     // Intended to be used by read-eliminating phases based on the effects phase.
-    protected final Map<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionsFactory.newIdentityMap();
-    private final Map<LoopBeginNode, BlockT> loopEntryStates = NodeCollectionsFactory.newIdentityMap();
+    protected final Map<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionsFactory.newMap();
+    private final Map<LoopBeginNode, BlockT> loopEntryStates = NodeCollectionsFactory.newMap();
     private final NodeBitMap hasScalarReplacedInputs;
 
     protected boolean changed;

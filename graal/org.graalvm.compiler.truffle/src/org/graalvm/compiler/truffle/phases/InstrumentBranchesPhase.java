@@ -29,10 +29,10 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -174,7 +174,7 @@ public class InstrumentBranchesPhase extends BasePhase<HighTierContext> {
                 }
             }
         };
-        public Map<String, Point> pointMap = new LinkedHashMap<>();
+        public Map<String, Point> pointMap = CollectionsFactory.newLinkedMap();
         public int tableCount = 0;
 
         /*

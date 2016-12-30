@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -225,13 +224,13 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
     private class ReadEliminationMergeProcessor extends EffectsClosure<ReadEliminationBlockState>.MergeProcessor {
 
-        private final HashMap<Object, ValuePhiNode> materializedPhis = CollectionsFactory.newMap();
+        private final Map<Object, ValuePhiNode> materializedPhis = new HashMap<>();
 
         ReadEliminationMergeProcessor(Block mergeBlock) {
             super(mergeBlock);
         }
 
-        protected <T> PhiNode getCachedPhi(T virtual, Stamp stamp) {
+        protected ValuePhiNode getCachedPhi(CacheEntry<?> virtual, Stamp stamp) {
             ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
                 result = createValuePhi(stamp);
@@ -267,7 +266,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     }
                 }
                 if (phi) {
-                    PhiNode phiNode = getCachedPhi(entry, value.stamp().unrestricted());
+                    PhiNode phiNode = getCachedPhi(key, value.stamp().unrestricted());
                     mergeEffects.addFloatingNode(phiNode, "mergeReadCache");
                     for (int i = 0; i < states.size(); i++) {
                         ValueNode v = states.get(i).getCacheEntry(key);

@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.virtual.phases.ea;
 
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +36,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadEliminationBlockState> {
 
-    final HashMap<ReadCacheEntry, ValueNode> readCache;
+    final Map<ReadCacheEntry, ValueNode> readCache;
 
     static final class ReadCacheEntry {
 
@@ -54,7 +53,7 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         @Override
         public int hashCode() {
             int result = 31 + ((identity == null) ? 0 : identity.hashCode());
-            result = 31 * result + ((object == null) ? 0 : object.hashCode());
+            result = 31 * result + ((object == null) ? 0 : System.identityHashCode(object));
             return result * 31 + index;
         }
 
@@ -74,12 +73,12 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
     }
 
     public PEReadEliminationBlockState() {
-        readCache = CollectionsFactory.newMap();
+        readCache = CollectionsFactory.newLinkedMap();
     }
 
     public PEReadEliminationBlockState(PEReadEliminationBlockState other) {
         super(other);
-        readCache = CollectionsFactory.newMap(other.readCache);
+        readCache = CollectionsFactory.newLinkedMap(other.readCache);
     }
 
     @Override

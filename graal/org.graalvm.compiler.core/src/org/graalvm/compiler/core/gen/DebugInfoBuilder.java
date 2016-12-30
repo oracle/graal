@@ -69,7 +69,7 @@ public class DebugInfoBuilder {
     private static final JavaKind[] NO_JAVA_KINDS = {};
 
     protected final Map<VirtualObjectNode, VirtualObject> virtualObjects = NodeCollectionsFactory.newMap();
-    protected final Map<VirtualObjectNode, EscapeObjectState> objectStates = NodeCollectionsFactory.newIdentityMap();
+    protected final Map<VirtualObjectNode, EscapeObjectState> objectStates = NodeCollectionsFactory.newMap();
 
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 

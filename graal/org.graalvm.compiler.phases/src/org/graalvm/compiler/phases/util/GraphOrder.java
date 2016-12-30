@@ -156,7 +156,7 @@ public final class GraphOrder {
         assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
         try {
             final SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
-            final Map<LoopBeginNode, NodeBitMap> loopEntryStates = NodeCollectionsFactory.newIdentityMap();
+            final Map<LoopBeginNode, NodeBitMap> loopEntryStates = NodeCollectionsFactory.newMap();
             schedulePhase.apply(graph, false);
             final ScheduleResult schedule = graph.getLastSchedule();
 

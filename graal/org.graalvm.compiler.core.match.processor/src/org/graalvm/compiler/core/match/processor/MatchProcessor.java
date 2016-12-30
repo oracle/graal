@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,6 +61,7 @@ import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.ComplexMatchResult;
 import org.graalvm.compiler.core.match.MatchRule;
@@ -663,8 +663,8 @@ public class MatchProcessor extends AbstractProcessor {
 
         final TypeElement topDeclaringType;
         final List<MatchRuleItem> matchRules = new ArrayList<>();
-        private final Set<Element> originatingElements = new HashSet<>();
-        public Set<String> positionDeclarations = new LinkedHashSet<>();
+        private final Set<Element> originatingElements = CollectionsFactory.newLinkedSet();
+        public Set<String> positionDeclarations = CollectionsFactory.newSet();
 
         /**
          * The mapping between elements with MatchRules and the wrapper class used invoke the code

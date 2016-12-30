@@ -226,14 +226,6 @@ suite = {
       "workingSets" : "Graal",
     },
 
-    "org.graalvm.compiler.api.collections" : {
-      "subDir" : "graal",
-      "sourceDirs" : ["src"],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
-      "workingSets" : "API,Graal",
-    },
-
     "org.graalvm.compiler.api.directives" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
@@ -446,7 +438,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.nodeinfo",
         "org.graalvm.compiler.core.common",
-        "org.graalvm.compiler.api.collections",
       ],
       "javaCompliance" : "1.8",
       "annotationProcessors" : [

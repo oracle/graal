@@ -36,12 +36,12 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
+import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.Debug;
@@ -543,7 +543,7 @@ public class PartialEvaluator {
         TruffleInliningDecision decision = inlining.findByCall(callNode);
         if (decision == null) {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
-                Map<String, Object> properties = new LinkedHashMap<>();
+                Map<String, Object> properties = CollectionsFactory.newLinkedMap();
                 properties.put("callNode", callNode);
                 logPerformanceWarning(target, null, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
             }
@@ -551,7 +551,7 @@ public class PartialEvaluator {
 
         if (decision != null && decision.getTarget() != decision.getProfile().getCallNode().getCurrentCallTarget()) {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
-                Map<String, Object> properties = new LinkedHashMap<>();
+                Map<String, Object> properties = CollectionsFactory.newLinkedMap();
                 properties.put("originalTarget", decision.getTarget());
                 properties.put("callNode", callNode);
                 logPerformanceWarning(target, null, "CallTarget changed during compilation. Call node could not be inlined.", properties);

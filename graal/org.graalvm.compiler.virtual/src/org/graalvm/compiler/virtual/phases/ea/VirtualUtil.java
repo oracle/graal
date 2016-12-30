@@ -49,7 +49,7 @@ public final class VirtualUtil {
         // helper code that determines the paths that keep obsolete nodes alive:
 
         NodeFlood flood = graph.createNodeFlood();
-        Map<Node, Node> path = NodeCollectionsFactory.newIdentityMap();
+        Map<Node, Node> path = NodeCollectionsFactory.newMap();
         flood.add(graph.start());
         for (Node current : flood) {
             if (current instanceof AbstractEndNode) {

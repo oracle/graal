@@ -30,8 +30,9 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleReplace
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleReturnTypeSpeculation;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleTimeThreshold;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+
+import org.graalvm.compiler.core.common.CollectionsFactory;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -300,7 +301,7 @@ public class OptimizedCompilationProfile {
     }
 
     public Map<String, Object> getDebugProperties() {
-        Map<String, Object> properties = new LinkedHashMap<>();
+        Map<String, Object> properties = CollectionsFactory.newLinkedMap();
         String callsThreshold = String.format("%7d/%5d", getInterpreterCallCount(), getCompilationCallThreshold());
         String loopsThreshold = String.format("%7d/%5d", getInterpreterCallAndLoopCount(), getCompilationCallAndLoopThreshold());
         String invalidations = String.format("%5d", invalidationCount);

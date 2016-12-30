@@ -28,8 +28,8 @@ import static org.graalvm.compiler.graph.Graph.NodeEvent.ZERO_USAGES;
 
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,6 +40,7 @@ import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -83,19 +84,19 @@ public class FloatingReadPhase extends Phase {
 
     public static class MemoryMapImpl implements MemoryMap {
 
-        private final Map<LocationIdentity, MemoryNode> lastMemorySnapshot;
+        private final LinkedHashMap<LocationIdentity, MemoryNode> lastMemorySnapshot;
 
         public MemoryMapImpl(MemoryMapImpl memoryMap) {
-            lastMemorySnapshot = CollectionsFactory.newMap(memoryMap.lastMemorySnapshot);
+            lastMemorySnapshot = new LinkedHashMap<>(memoryMap.lastMemorySnapshot);
         }
 
         public MemoryMapImpl(StartNode start) {
-            lastMemorySnapshot = CollectionsFactory.newMap();
+            lastMemorySnapshot = new LinkedHashMap<>();
             lastMemorySnapshot.put(any(), start);
         }
 
         public MemoryMapImpl() {
-            lastMemorySnapshot = CollectionsFactory.newMap();
+            lastMemorySnapshot = new LinkedHashMap<>();
         }
 
         @Override
@@ -188,7 +189,7 @@ public class FloatingReadPhase extends Phase {
             return result;
         }
 
-        result = CollectionsFactory.newSet();
+        result = CollectionsFactory.newLinkedSet();
         for (Loop<Block> inner : loop.getChildren()) {
             result.addAll(processLoop((HIRLoop) inner, modifiedInLoops));
         }
@@ -208,7 +209,7 @@ public class FloatingReadPhase extends Phase {
     protected void run(StructuredGraph graph) {
         Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = null;
         if (graph.hasLoops()) {
-            modifiedInLoops = new HashMap<>();
+            modifiedInLoops = NodeCollectionsFactory.newMap();
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
             for (Loop<?> l : cfg.getLoops()) {
                 HIRLoop loop = (HIRLoop) l;
@@ -236,7 +237,7 @@ public class FloatingReadPhase extends Phase {
     public static MemoryMapImpl mergeMemoryMaps(AbstractMergeNode merge, List<? extends MemoryMap> states) {
         MemoryMapImpl newState = new MemoryMapImpl();
 
-        Set<LocationIdentity> keys = CollectionsFactory.newSet();
+        Set<LocationIdentity> keys = CollectionsFactory.newLinkedSet();
         for (MemoryMap other : states) {
             keys.addAll(other.getLocations());
         }
@@ -409,10 +410,10 @@ public class FloatingReadPhase extends Phase {
         @Override
         protected Map<LoopExitNode, MemoryMapImpl> processLoop(LoopBeginNode loop, MemoryMapImpl initialState) {
             Set<LocationIdentity> modifiedLocations = modifiedInLoops.get(loop);
-            Map<LocationIdentity, MemoryPhiNode> phis = CollectionsFactory.newMap();
+            Map<LocationIdentity, MemoryPhiNode> phis = new LinkedHashMap<>();
             if (modifiedLocations.contains(LocationIdentity.any())) {
                 // create phis for all locations if ANY is modified in the loop
-                modifiedLocations = CollectionsFactory.newSet(modifiedLocations);
+                modifiedLocations = CollectionsFactory.newLinkedSet(modifiedLocations);
                 modifiedLocations.addAll(initialState.lastMemorySnapshot.keySet());
             }
 

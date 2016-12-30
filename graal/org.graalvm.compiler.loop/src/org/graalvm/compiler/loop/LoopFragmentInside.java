@@ -351,7 +351,7 @@ public class LoopFragmentInside extends LoopFragment {
                 reverseEnds.put(duplicate, le);
             }
         }
-        mergedInitializers = NodeCollectionsFactory.newIdentityMap();
+        mergedInitializers = NodeCollectionsFactory.newMap();
         AbstractBeginNode newExit;
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {

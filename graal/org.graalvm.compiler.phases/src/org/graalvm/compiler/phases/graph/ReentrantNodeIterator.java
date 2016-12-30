@@ -49,8 +49,8 @@ public final class ReentrantNodeIterator {
         public final Map<LoopExitNode, StateT> exitStates;
 
         public LoopInfo(int endCount, int exitCount) {
-            endStates = NodeCollectionsFactory.newIdentityMap(endCount);
-            exitStates = NodeCollectionsFactory.newIdentityMap(exitCount);
+            endStates = NodeCollectionsFactory.newMap(endCount);
+            exitStates = NodeCollectionsFactory.newMap(exitCount);
         }
     }
 
@@ -102,7 +102,7 @@ public final class ReentrantNodeIterator {
     private static <StateT> Map<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, LoopBeginNode boundary) {
         assert start != null;
         Deque<AbstractBeginNode> nodeQueue = new ArrayDeque<>();
-        Map<FixedNode, StateT> blockEndStates = NodeCollectionsFactory.newIdentityMap();
+        Map<FixedNode, StateT> blockEndStates = NodeCollectionsFactory.newMap();
 
         StateT state = initialState;
         FixedNode current = start;

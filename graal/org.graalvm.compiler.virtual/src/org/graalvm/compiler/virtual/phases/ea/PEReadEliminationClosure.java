@@ -325,7 +325,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                     }
                 }
                 if (phi) {
-                    PhiNode phiNode = getPhi(entry, value.stamp().unrestricted());
+                    PhiNode phiNode = getPhi(key, value.stamp().unrestricted());
                     mergeEffects.addFloatingNode(phiNode, "mergeReadCache");
                     for (int i = 0; i < states.size(); i++) {
                         ValueNode v = states.get(i).getReadCache(key.object, key.identity, key.index, PEReadEliminationClosure.this);

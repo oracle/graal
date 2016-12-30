@@ -38,7 +38,7 @@ public final class LinearScanRegisterAllocationPhase extends AllocationPhase {
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult result, AllocationContext context) {
         allocator.printIntervals("Before register allocation");
         allocateRegisters();
         allocator.printIntervals("After register allocation");

@@ -24,11 +24,11 @@ package org.graalvm.compiler.truffle.debug;
 
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleCompilationCallTree;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
@@ -69,13 +69,13 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
                     if (inlining != null && inlining.isInline()) {
                         dispatched = "";
                     }
-                    Map<String, Object> properties = new LinkedHashMap<>();
+                    Map<String, Object> properties = CollectionsFactory.newLinkedMap();
                     addASTSizeProperty(callNode.getCurrentCallTarget(), inliningDecision, properties);
                     properties.putAll(callNode.getCurrentCallTarget().getDebugProperties(inliningDecision));
                     log(depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
                 } else if (node instanceof OptimizedIndirectCallNode) {
                     int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
-                    log(depth, "opt call tree", "<indirect>", new LinkedHashMap<String, Object>());
+                    log(depth, "opt call tree", "<indirect>", CollectionsFactory.newLinkedMap());
                 }
                 return true;
             }

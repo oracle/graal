@@ -79,9 +79,6 @@ import sun.misc.Unsafe;
  * <li>{@link NodeCollectionsFactory#newMap()}</li>
  * <li>{@link NodeCollectionsFactory#newMap(int)}</li>
  * <li>{@link NodeCollectionsFactory#newMap(Map)}</li>
- * <li>{@link NodeCollectionsFactory#newIdentityMap()}</li>
- * <li>{@link NodeCollectionsFactory#newIdentityMap(int)}</li>
- * <li>{@link NodeCollectionsFactory#newIdentityMap(Map)}</li>
  * </ul>
  *
  * <h1>Assertions and Verification</h1>
@@ -481,12 +478,16 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
-    public boolean isDeleted() {
+    public final boolean isDeleted() {
         return id <= DELETED_ID_START;
     }
 
-    public boolean isAlive() {
+    public final boolean isAlive() {
         return id >= ALIVE_ID_START;
+    }
+
+    public final boolean isUnregistered() {
+        return id == INITIAL_ID;
     }
 
     /**
@@ -976,20 +977,23 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Nodes always use an {@linkplain System#identityHashCode(Object) identity} hash code.
+     * Nodes using their {@link #id} as the hash code. This works very well when nodes of the same
+     * graph are stored in sets. It can give bad behavior when storing nodes of different graphs in
+     * the same set.
      */
     @Override
     public final int hashCode() {
-        return System.identityHashCode(this);
+        assert !this.isUnregistered() : "node not yet constructed";
+        if (this.isDeleted()) {
+            return -id + DELETED_ID_START;
+        }
+        return id;
     }
 
     /**
-     * Equality tests must rely solely on identity.
+     * Do not overwrite the equality test of a node in subclasses. Equality tests must rely solely
+     * on identity.
      */
-    @Override
-    public final boolean equals(Object obj) {
-        return super.equals(obj);
-    }
 
     /**
      * Provides a {@link Map} of properties of this node for use in debugging (e.g., to view in the

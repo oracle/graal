@@ -85,10 +85,10 @@ public class ComputeInliningRelevance {
             rootScope = new Scope(graph.start(), null);
         } else {
             if (nodeRelevances == null) {
-                nodeRelevances = NodeCollectionsFactory.newIdentityMap(EXPECTED_MIN_INVOKE_COUNT + InliningUtil.getNodeCount(graph) / EXPECTED_INVOKE_RATIO);
+                nodeRelevances = NodeCollectionsFactory.newMap(EXPECTED_MIN_INVOKE_COUNT + InliningUtil.getNodeCount(graph) / EXPECTED_INVOKE_RATIO);
             }
             NodeWorkList workList = graph.createNodeWorkList();
-            Map<LoopBeginNode, Scope> loops = NodeCollectionsFactory.newIdentityMap(EXPECTED_LOOP_COUNT);
+            Map<LoopBeginNode, Scope> loops = NodeCollectionsFactory.newMap(EXPECTED_LOOP_COUNT);
 
             loops.put(null, new Scope(graph.start(), null));
             for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {

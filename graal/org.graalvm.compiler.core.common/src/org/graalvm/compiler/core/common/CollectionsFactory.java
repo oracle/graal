@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,9 @@
  */
 package org.graalvm.compiler.core.common;
 
-import static org.graalvm.compiler.core.common.CollectionsFactory.Mode.STANDARD;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -38,95 +35,109 @@ import java.util.Set;
  */
 public class CollectionsFactory {
 
-    private static final ThreadLocal<Mode> tl = new ThreadLocal<>();
-
-    public static class ModeScope implements AutoCloseable {
-        private final Mode previousMode;
-
-        public ModeScope(Mode previousMode) {
-            this.previousMode = previousMode;
-        }
-
-        @Override
-        public void close() {
-            tl.set(previousMode);
-        }
-    }
-
     /**
-     * Constants denoting what type of collections are {@link CollectionsFactory#getMode()
-     * currently} returned by the factory.
+     * Creates a new map without guaranteeing insertion order on the key set. Do <b>not</b> use and
+     * use {@link #newLinkedMap()} instead if
+     * <ul>
+     * <li>key iteration order is required in insertion order,
+     * <li>or if key iteration order makes any different to the program and the hash codes of the
+     * keys are derived from the random {@link System#identityHashCode(Object)}.</li>
+     * </ul>
      */
-    public enum Mode {
-        /**
-         * Denotes standard collections such as {@link HashSet} and {@link HashMap}.
-         */
-        STANDARD,
-
-        /**
-         * Denotes collections that have a deterministic iteration order over their keys/entries.
-         */
-        DETERMINISTIC_ITERATION_ORDER;
+    public static <K, V> Map<K, V> newMap() {
+        return new HashMap<>();
     }
 
     /**
-     * Gets the current mode determining the type of collection objects created by this factory.
+     * Creates a new map without guaranteeing insertion order on the key set and initializes with a
+     * specified capacity. Do <b>not</b> use and use {@link #newLinkedMap(int)} instead if
+     * <ul>
+     * <li>key iteration order is required in insertion order,
+     * <li>or if key iteration order makes any different to the program and the hash codes of the
+     * keys are derived from the random {@link System#identityHashCode(Object)}.</li>
+     * </ul>
      */
-    public static Mode getMode() {
-        Mode mode = tl.get();
-        return mode == null ? Mode.STANDARD : mode;
+    public static <K, V> Map<K, V> newMap(int initialCapacity) {
+        return new HashMap<>(initialCapacity);
     }
 
     /**
-     * Updates the mode for the current thread.
-     *
-     * @return an object which when {@linkplain ModeScope#close() closed} will revert the mode of
-     *         the current thread to the state before calling this method
+     * Creates a new map without guaranteeing insertion order on the key set and copies all elements
+     * from the specified existing map. Do <b>not</b> use and use {@link #newLinkedMap(Map)} instead
+     * if
+     * <ul>
+     * <li>key iteration order is required in insertion order,
+     * <li>or if key iteration order makes any different to the program and the hash codes of the
+     * keys are derived from the random {@link System#identityHashCode(Object)}.</li>
+     * </ul>
      */
-    public static ModeScope changeMode(Mode mode) {
-        Mode previousMode = tl.get();
-        tl.set(mode);
-        return new ModeScope(previousMode);
-    }
-
-    public static <K, V> HashMap<K, V> newMap() {
-        return getMode() == STANDARD ? new HashMap<>() : new LinkedHashMap<>();
-    }
-
-    public static <K, V> HashMap<K, V> newMap(Map<K, V> m) {
-        return getMode() == STANDARD ? new HashMap<>(m) : new LinkedHashMap<>(m);
-    }
-
-    public static <K, V> HashMap<K, V> newMap(int initialCapacity) {
-        return getMode() == STANDARD ? new HashMap<>(initialCapacity) : new LinkedHashMap<>(initialCapacity);
-    }
-
-    public static <K, V> Map<K, V> newIdentityMap() {
-        return getMode() == STANDARD ? new IdentityHashMap<>() : new LinkedIdentityHashMap<>();
-    }
-
-    public static <K, V> Map<K, V> newIdentityMap(int expectedMaxSize) {
-        return getMode() == STANDARD ? new IdentityHashMap<>(expectedMaxSize) : new LinkedIdentityHashMap<>();
-    }
-
-    public static <K, V> Map<K, V> newIdentityMap(Map<K, V> m) {
-        return getMode() == STANDARD ? new IdentityHashMap<>(m) : new LinkedIdentityHashMap<>(m);
+    public static <K, V> Map<K, V> newMap(Map<K, V> m) {
+        return new HashMap<>(m);
     }
 
     /**
-     * Creates a set. If the current thread is {@linkplain CollectionsFactory#getMode() using}
-     * {@link Mode#DETERMINISTIC_ITERATION_ORDER} collections, the returned set will have an
-     * iteration order determined by the order in which elements are inserted in the set.
+     * Creates a new map that guarantees insertion order when iterating over its keys.
+     */
+    public static <K, V> Map<K, V> newLinkedMap() {
+        return new LinkedHashMap<>();
+    }
+
+    /**
+     * Creates a new map that guarantees insertion order when iterating over its keys and
+     * initializes with a specified capacity.
+     */
+    public static <K, V> Map<K, V> newLinkedMap(int initialCapacity) {
+        return new LinkedHashMap<>(initialCapacity);
+    }
+
+    /**
+     * Creates a new map that guarantees insertion order when iterating over its keys and copies all
+     * elements from the specified existing map.
+     */
+    public static <K, V> Map<K, V> newLinkedMap(Map<K, V> m) {
+        return new LinkedHashMap<>(m);
+    }
+
+    /**
+     * Creates a new set without guaranteeing insertion order when iterating over its elements. Do
+     * <b>not</b> use and use {@link #newLinkedSet()} instead if
+     * <ul>
+     * <li>element iteration order is required in insertion order,
+     * <li>or if element iteration order makes any different to the program and the hash codes of
+     * the elements are derived from the random {@link System#identityHashCode(Object)}.</li>
+     * </ul>
      */
     public static <E> Set<E> newSet() {
-        return CollectionsFactory.getMode() == Mode.STANDARD ? new HashSet<>() : new LinkedHashSet<>();
+        return new HashSet<>();
     }
 
     /**
-     * @see #newSet()
+     * Creates a new set without guaranteeing insertion order when iterating over its elements and
+     * inserts all elements of the specified collection. Do <b>not</b> use and use
+     * {@link #newLinkedSet(Collection)} instead if
+     * <ul>
+     * <li>element iteration order is required in insertion order,
+     * <li>or if element iteration order makes any different to the program and the hash codes of
+     * the elements are derived from the random {@link System#identityHashCode(Object)}.</li>
+     * </ul>
      */
     public static <E> Set<E> newSet(Collection<? extends E> c) {
-        return CollectionsFactory.getMode() == Mode.STANDARD ? new HashSet<>(c) : new LinkedHashSet<>(c);
+        return new HashSet<>(c);
+    }
+
+    /**
+     * Creates a new set that guarantees insertion order when iterating over its elements.
+     */
+    public static <E> Set<E> newLinkedSet() {
+        return new LinkedHashSet<>();
+    }
+
+    /**
+     * Creates a new set that guarantees insertion order when iterating over its elements and adds
+     * all elements of the specified collectin.
+     */
+    public static <E> Set<E> newLinkedSet(Collection<? extends E> c) {
+        return new LinkedHashSet<>(c);
     }
 
 }

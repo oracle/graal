@@ -98,7 +98,7 @@ public final class ReentrantBlockIterator {
         /*
          * States are stored on EndNodes before merges, and on BeginNodes after ControlSplitNodes.
          */
-        Map<FixedNode, StateT> states = NodeCollectionsFactory.newIdentityMap();
+        Map<FixedNode, StateT> states = NodeCollectionsFactory.newMap();
 
         StateT state = initialState;
         Block current = start;

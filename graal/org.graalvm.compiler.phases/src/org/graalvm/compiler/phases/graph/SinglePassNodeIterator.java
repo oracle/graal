@@ -155,7 +155,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         StructuredGraph graph = start.graph();
         visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
-        nodeStates = NodeCollectionsFactory.newIdentityMap();
+        nodeStates = NodeCollectionsFactory.newMap();
         this.start = start;
         this.state = initialState;
     }

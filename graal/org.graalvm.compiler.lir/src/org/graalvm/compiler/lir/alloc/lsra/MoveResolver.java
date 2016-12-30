@@ -27,9 +27,10 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
@@ -146,7 +147,7 @@ public class MoveResolver {
             }
         }
 
-        HashSet<Value> usedRegs = new HashSet<>();
+        Set<Value> usedRegs = CollectionsFactory.newSet();
         if (!areMultipleReadsAllowed()) {
             for (i = 0; i < mappingFrom.size(); i++) {
                 Interval interval = mappingFrom.get(i);
@@ -175,7 +176,7 @@ public class MoveResolver {
     }
 
     protected void verifyStackSlotMapping() {
-        HashSet<Value> usedRegs = new HashSet<>();
+        Set<Value> usedRegs = CollectionsFactory.newSet();
         for (int i = 0; i < mappingFrom.size(); i++) {
             Interval interval = mappingFrom.get(i);
             if (interval != null && !isRegister(interval.location())) {

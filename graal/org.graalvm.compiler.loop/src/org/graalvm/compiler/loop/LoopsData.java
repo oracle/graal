@@ -43,8 +43,8 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 public class LoopsData {
 
-    private Map<Loop<Block>, LoopEx> loopToEx = CollectionsFactory.newIdentityMap();
-    private Map<LoopBeginNode, LoopEx> loopBeginToEx = NodeCollectionsFactory.newIdentityMap();
+    private Map<Loop<Block>, LoopEx> loopToEx = CollectionsFactory.newMap();
+    private Map<LoopBeginNode, LoopEx> loopBeginToEx = NodeCollectionsFactory.newMap();
     private ControlFlowGraph cfg;
 
     @SuppressWarnings("try")

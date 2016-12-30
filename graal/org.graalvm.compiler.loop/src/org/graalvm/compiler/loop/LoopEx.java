@@ -334,7 +334,7 @@ public class LoopEx {
      * @return a map from node to induction variable
      */
     private static Map<Node, InductionVariable> findInductionVariables(LoopEx loop) {
-        Map<Node, InductionVariable> ivs = NodeCollectionsFactory.newIdentityMap();
+        Map<Node, InductionVariable> ivs = NodeCollectionsFactory.newMap();
 
         Queue<InductionVariable> scanQueue = new LinkedList<>();
         LoopBeginNode loopBegin = loop.loopBegin();

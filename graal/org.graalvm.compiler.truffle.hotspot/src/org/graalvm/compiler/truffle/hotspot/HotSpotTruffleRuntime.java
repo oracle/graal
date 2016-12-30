@@ -241,7 +241,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         Suites suites = suitesProvider.getDefaultSuites().copy();
         LIRSuites lirSuites = suitesProvider.getDefaultLIRSuites();
         removeInliningPhase(suites);
-        StructuredGraph graph = new StructuredGraph(javaMethod, AllowAssumptions.NO, compilationId);
+        StructuredGraph graph = new StructuredGraph(javaMethod, AllowAssumptions.NO, false, compilationId);
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));

@@ -817,7 +817,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             newNodes = new NodeNodeMap(oldGraph);
         } else {
             // Use sparse map
-            newNodes = NodeCollectionsFactory.newIdentityMap();
+            newNodes = NodeCollectionsFactory.newMap();
         }
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 

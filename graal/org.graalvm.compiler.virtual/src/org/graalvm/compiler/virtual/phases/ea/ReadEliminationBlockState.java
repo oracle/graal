@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.virtual.phases.ea;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
@@ -31,7 +30,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 
 public class ReadEliminationBlockState extends EffectsBlockState<ReadEliminationBlockState> {
 
-    final HashMap<CacheEntry<?>, ValueNode> readCache;
+    final Map<CacheEntry<?>, ValueNode> readCache;
 
     abstract static class CacheEntry<T> {
 
@@ -143,11 +142,11 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
     }
 
     public ReadEliminationBlockState() {
-        readCache = CollectionsFactory.newMap();
+        readCache = CollectionsFactory.newLinkedMap();
     }
 
     public ReadEliminationBlockState(ReadEliminationBlockState other) {
-        readCache = CollectionsFactory.newMap(other.readCache);
+        readCache = CollectionsFactory.newLinkedMap(other.readCache);
     }
 
     @Override

@@ -36,7 +36,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.api.collections.CollectionsProvider;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -47,8 +46,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.internal.DebugValuesPrinter;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsPrinter;
-import org.graalvm.compiler.graph.DefaultNodeCollectionsProvider;
-import org.graalvm.compiler.graph.NodeCollectionsProvider;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory.BackendMap;
 import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -227,15 +224,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return getClass().getSimpleName();
     }
 
-    private final NodeCollectionsProvider nodeCollectionsProvider = new DefaultNodeCollectionsProvider();
-
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
-        } else if (clazz == CollectionsProvider.class || clazz == NodeCollectionsProvider.class) {
-            return (T) nodeCollectionsProvider;
         } else if (clazz == StackIntrospection.class) {
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {

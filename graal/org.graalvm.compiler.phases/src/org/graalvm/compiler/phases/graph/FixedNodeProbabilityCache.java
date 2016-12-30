@@ -46,7 +46,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
     private static final DebugCounter computeNodeProbabilityCounter = Debug.counter("ComputeNodeProbability");
 
-    private final Map<FixedNode, Double> cache = NodeCollectionsFactory.newIdentityMap();
+    private final Map<FixedNode, Double> cache = NodeCollectionsFactory.newMap();
 
     /**
      * <p>

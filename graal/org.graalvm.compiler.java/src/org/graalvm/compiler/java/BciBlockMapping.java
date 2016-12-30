@@ -85,6 +85,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -753,7 +754,7 @@ public final class BciBlockMapping {
         }
     }
 
-    private HashMap<ExceptionHandler, ExceptionDispatchBlock> initialExceptionDispatch = CollectionsFactory.newMap();
+    private Map<ExceptionHandler, ExceptionDispatchBlock> initialExceptionDispatch = CollectionsFactory.newMap();
 
     private ExceptionDispatchBlock handleExceptions(BciBlock[] blockMap, int bci) {
         ExceptionDispatchBlock lastHandler = null;
@@ -767,7 +768,7 @@ public final class BciBlockMapping {
                     lastHandler = null;
                 }
 
-                HashMap<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = lastHandler != null ? lastHandler.exceptionDispatch : initialExceptionDispatch;
+                Map<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = lastHandler != null ? lastHandler.exceptionDispatch : initialExceptionDispatch;
                 ExceptionDispatchBlock curHandler = exceptionDispatch.get(h);
                 if (curHandler == null) {
                     curHandler = new ExceptionDispatchBlock();

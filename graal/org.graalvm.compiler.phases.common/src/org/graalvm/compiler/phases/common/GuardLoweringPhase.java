@@ -83,7 +83,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
-        private final Map<ValueNode, ValueNode> nullGuarded = NodeCollectionsFactory.newIdentityMap();
+        private final Map<ValueNode, ValueNode> nullGuarded = NodeCollectionsFactory.newMap();
         private final int implicitNullCheckLimit;
 
         UseImplicitNullChecks(int implicitNullCheckLimit) {
