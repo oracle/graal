@@ -145,6 +145,18 @@ public final class ModuleAPI {
         }
     }
 
+    /**
+     * Exports the package named {@code packageName} declared in {@code moduleMember}'s module to
+     * {@code requestor}'s module.
+     */
+    public static void exportPackageTo(Class<?> moduleMember, String packageName, Class<?> requestor) {
+        Object moduleToExport = getModule.invoke(moduleMember);
+        Object requestorModule = getModule.invoke(requestor);
+        if (moduleToExport != requestorModule) {
+            addExports.invokeStatic(moduleToExport, packageName, requestorModule);
+        }
+    }
+
     private void checkAvailability() throws InternalError {
         if (method == null) {
             throw new InternalError("Cannot use Module API on JDK " + JAVA_SPECIFICATION_VERSION);

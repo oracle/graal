@@ -526,11 +526,8 @@ def _unittest_config_participant(config):
             cp = os.pathsep.join([e for e in cp if e not in redundantClasspathEntries])
             vmArgs[cpIndex] = cp
         else:
-            deployedModules = []
             redundantClasspathEntries = set()
             for dist in [entry.dist() for entry in _jvmci_classpath] + _bootclasspath_appends:
-                deployedModule = as_java_module(dist, jdk)
-                deployedModules.append(deployedModule)
                 redundantClasspathEntries.update(mx.classpath(dist, preferProjects=False, jdk=jdk).split(os.pathsep))
                 redundantClasspathEntries.update(mx.classpath(dist, preferProjects=True, jdk=jdk).split(os.pathsep))
                 if hasattr(dist, 'overlaps'):
@@ -542,44 +539,6 @@ def _unittest_config_participant(config):
             # Remove entries from the class path that are in the deployed modules
             cp = [classpathEntry for classpathEntry in cp if classpathEntry not in redundantClasspathEntries]
             vmArgs[cpIndex] = os.pathsep.join(cp)
-
-            # Junit libraries are made into automatic modules so that they are visible to tests
-            # patched into modules. These automatic modules must be declared to be read by
-            # Graal which means they must also be made root modules (i.e., ``--add-modules``)
-            # since ``--add-reads`` can only be applied to root modules.
-            junitCp = [e.classpath_repr() for e in mx.classpath_entries(['JUNIT'])]
-            junitModules = [jdk.get_automatic_module_name(e) for e in junitCp]
-            vmArgs.append('--module-path=' + os.pathsep.join(junitCp))
-            vmArgs.append('--add-modules=' + ','.join(junitModules + [m.name for m in deployedModules]))
-            for deployedModule in deployedModules:
-                vmArgs.append('--add-reads=' + deployedModule.name + '=' + ','.join(junitModules))
-
-            # Explicitly export concealed JVMCI packages required by Graal. Even though
-            # normally exported via jdk.vm.ci.services.Services.exportJVMCITo(), the
-            # Junit harness wants to access JVMCI classes (e.g., when loading classes
-            # to find test methods) without going through that entry point.
-            addedExports = {}
-            for deployedModule in deployedModules:
-                for concealingModule, packages in deployedModule.concealedRequires.iteritems():
-                    if concealingModule == 'jdk.vm.ci':
-                        for package in packages:
-                            addedExports.setdefault(concealingModule + '/' + package, set()).add(deployedModule.name)
-
-            pathToDep = {p.output_dir() if p.isJavaProject() else p.path: p for p in mx.dependencies() if p.isJavaProject() or p.isJARDistribution()}
-            for classpathEntry in cp:
-                # Export concealed packages used by the class path entry
-                _add_exports_for_concealed_packages(classpathEntry, pathToDep, addedExports, 'ALL-UNNAMED', deployedModules)
-
-                for deployedModule in deployedModules:
-                    assert deployedModule.dist.path != classpathEntry, deployedModule.dist.path + ' should no longer be on the class path'
-                    # Ensure the class path entry does not define packages already defined by the module.
-                    # Packages definitions cannot be split between modules.
-                    classpathEntryPackages = frozenset(_defined_packages(classpathEntry))
-                    intersection = classpathEntryPackages.intersection(deployedModule.packages)
-                    if intersection:
-                        mx.abort(classpathEntry + ' cannot extend package(s) defined in the module ' + deployedModule.name + ': ' + ', '.join(intersection))
-
-            vmArgs.extend(['--add-exports=' + export + '=' + ','.join(sorted(targets)) for export, targets in addedExports.iteritems()])
 
     if isJDK8:
         # Run the VM in a mode where application/test classes can
@@ -600,68 +559,6 @@ def _uniqify(alist):
     """
     seen = set()
     return [e for e in alist if e not in seen and seen.add(e) is None]
-
-def _defined_packages(classpathEntry):
-    """
-    Gets the packages defined by `classpathEntry`.
-    """
-    packages = set()
-    if os.path.isdir(classpathEntry):
-        for root, _, filenames in os.walk(classpathEntry):
-            if any(f.endswith('.class') for f in filenames):
-                package = root[len(classpathEntry) + 1:].replace(os.sep, '.')
-                packages.add(package)
-    elif classpathEntry.endswith('.zip') or classpathEntry.endswith('.jar'):
-        with zipfile.ZipFile(classpathEntry, 'r') as zf:
-            for name in zf.namelist():
-                if name.endswith('.class') and '/' in name:
-                    package = name[0:name.rfind('/')].replace('/', '.')
-                    packages.add(package)
-    return packages
-
-def _automatic_module_name(modulejar):
-    """
-    Derives the name of an automatic module from an automatic module jar according to
-    specification of java.lang.module.ModuleFinder.of(Path... entries).
-
-    :param str modulejar: the path to a jar file treated as an automatic module
-    :return: the name of the automatic module derived from `modulejar`
-    """
-
-    # Drop directory prefix and .jar (or .zip) suffix
-    name = os.path.basename(modulejar)[0:-4]
-
-    # Find first occurrence of -${NUMBER}. or -${NUMBER}$
-    m = re.search(r'-(\d+(\.|$))', name)
-    if m:
-        name = name[0:m.start()]
-
-    # Finally clean up the module name (see java.lang.module.ModulePath.cleanModuleName())
-    if jdk.buildNumber >= 148:
-        name = re.sub(r'(\.|\d)*$', '', name) # drop trailing version from name
-    name = re.sub(r'[^A-Za-z0-9]', '.', name) # replace non-alphanumeric
-    name = re.sub(r'(\.)(\1)+', '.', name) # collapse repeating dots
-    name = re.sub(r'^\.', '', name) # drop leading dots
-    return re.sub(r'\.$', '', name) # drop trailing dots
-
-def _add_exports_for_concealed_packages(classpathEntry, pathToDep, exports, module, modulepath):
-    """
-    Adds exports for concealed packages imported by the project whose output directory matches `classpathEntry`.
-
-    :param str classpathEntry: a class path entry
-    :param dict pathToDep: map from an output directory to its defining `JavaProject` or `JARDistribution`
-    :param dict exports: map from a module/package specifier to the set of modules it must be exported to
-    :param str module: the name of the module containing the classes in `classpathEntry`
-    :param list modulepath: modules to be searched for concealed packages
-    """
-    dep = pathToDep.get(classpathEntry, None)
-    if dep:
-        projects = [dep] if dep.isJavaProject() else [d for d in dep.deps if d.isJavaProject()]
-        for project in projects:
-            concealed = project.get_concealed_imported_packages(jdk, modulepath)
-            for concealingModule, packages in concealed.iteritems():
-                for package in packages:
-                    exports.setdefault(concealingModule + '/' + package, set()).add(module)
 
 def _extract_added_exports(args, addedExports):
     """
@@ -707,12 +604,21 @@ def _parseVmArgs(args, addDefaultArgs=True):
         deployedModules = [as_java_module(dist, jdk) for dist in deployedDists]
 
         # Set or update module path to include Graal and its dependencies as modules
+        jdkModuleNames = frozenset([m.name for m in jdk.get_modules()])
         graalModulepath = []
-        for deployedModule in deployedModules:
-            graalModulepath.extend([jmd.jarpath for jmd in deployedModule.modulepath if jmd.jarpath])
-            graalModulepath.append(deployedModule.jarpath)
-        graalModulepath = _uniqify(graalModulepath)
+        graalUpgrademodulepath = []
 
+        def _addToModulepath(modules):
+            for m in modules:
+                if m.jarpath:
+                    modulepath = graalModulepath if m.name not in jdkModuleNames else graalUpgrademodulepath
+                    if m not in modulepath:
+                        modulepath.append(m)
+
+        for deployedModule in deployedModules:
+            _addToModulepath(deployedModule.modulepath)
+            _addToModulepath([deployedModule])
+        
         # Update added exports to include concealed JDK packages required by Graal
         addedExports = {}
         args = _extract_added_exports(args, addedExports)
@@ -729,18 +635,27 @@ def _parseVmArgs(args, addDefaultArgs=True):
         # Extend or set --module-path argument
         mpUpdated = False
         for mpIndex in range(len(args)):
+            assert not args[mpIndex].startswith('--upgrade-module-path')
             if args[mpIndex] == '--module-path':
                 assert mpIndex + 1 < len(args), 'VM option ' + args[mpIndex] + ' requires an argument'
-                args[mpIndex + 1] = os.pathsep.join(_uniqify(args[mpIndex + 1].split(os.pathsep) + graalModulepath))
+                args[mpIndex + 1] = os.pathsep.join(_uniqify(args[mpIndex + 1].split(os.pathsep) + [m.jarpath for m in graalModulepath]))
                 mpUpdated = True
                 break
             elif args[mpIndex].startswith('--module-path='):
                 mp = args[mpIndex][len('--module-path='):]
-                args[mpIndex] = '--module-path=' + os.pathsep.join(_uniqify(mp.split(os.pathsep) + graalModulepath))
+                args[mpIndex] = '--module-path=' + os.pathsep.join(_uniqify(mp.split(os.pathsep) + [m.jarpath for m in graalModulepath]))
                 mpUpdated = True
                 break
         if not mpUpdated:
-            argsPrefix.append('--module-path=' + os.pathsep.join(graalModulepath))
+            argsPrefix.append('--module-path=' + os.pathsep.join([m.jarpath for m in graalModulepath]))
+            
+        if graalUpgrademodulepath:
+            argsPrefix.append('--upgrade-module-path=' + os.pathsep.join([m.jarpath for m in graalUpgrademodulepath]))
+            for m in graalUpgrademodulepath:
+                # The upgraded module may not be upgradeable by default. In this case, supplying
+                # a non-existent jar file as a patch for the module makes it upgradeable (i.e.,
+                # disables the hash based checking of the module's contents).  
+                argsPrefix.append('--patch-module=' + m.name + '=.jar')
 
     if '-version' in args:
         ignoredArgs = args[args.index('-version') + 1:]
