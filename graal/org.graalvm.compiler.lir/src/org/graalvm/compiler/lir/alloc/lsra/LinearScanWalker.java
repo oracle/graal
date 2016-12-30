@@ -621,12 +621,17 @@ class LinearScanWalker extends IntervalWalker {
             }
 
             case OneSpillStore: {
-                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
-                    // the interval is spilled more then once
-                    interval.setSpillState(SpillState.SpillInDominator);
-                } else {
-                    // It is better to store it to memory at the definition.
-                    interval.setSpillState(SpillState.StoreAtDefinition);
+                int defLoopDepth = allocator.blockForId(interval.spillDefinitionPos()).getLoopDepth();
+                int spillLoopDepth = allocator.blockForId(spillPos).getLoopDepth();
+
+                if (defLoopDepth <= spillLoopDepth) {
+                    if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
+                        // the interval is spilled more then once
+                        interval.setSpillState(SpillState.SpillInDominator);
+                    } else {
+                        // It is better to store it to memory at the definition.
+                        interval.setSpillState(SpillState.StoreAtDefinition);
+                    }
                 }
                 break;
             }
