@@ -139,12 +139,12 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final Symbol count = allocate.getCount();
         final LLVMExpressionNode result;
         if (count instanceof NullConstant) {
-            result = factoryFacade.createAlloc(runtime, type, size, alignment, null, null);
+            result = factoryFacade.createNamedAllocation(runtime, type, size, alignment, null, null, allocate.getName());
         } else if (count instanceof IntegerConstant) {
-            result = factoryFacade.createAlloc(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null);
+            result = factoryFacade.createNamedAllocation(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment, null, null, allocate.getName());
         } else {
             LLVMExpressionNode num = symbols.resolve(count);
-            result = factoryFacade.createAlloc(runtime, type, size, alignment, count.getType().getLLVMBaseType(), num);
+            result = factoryFacade.createNamedAllocation(runtime, type, size, alignment, count.getType().getLLVMBaseType(), num, allocate.getName());
         }
 
         createFrameWrite(result, allocate);

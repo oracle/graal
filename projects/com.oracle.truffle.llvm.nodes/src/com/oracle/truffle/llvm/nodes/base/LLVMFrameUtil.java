@@ -80,6 +80,13 @@ public class LLVMFrameUtil {
         return (LLVM80BitFloat) FrameUtil.getObjectSafe(frame, frameSlot);
     }
 
+    public static LLVMAddress allocateMemory(LLVMStack stack, VirtualFrame frame, FrameSlot stackPointerSlot, int size, int alignment, String name) {
+        LLVMAddress stackPointer = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
+        AllocationResult allocResult = stack.allocateMemory(stackPointer, size, alignment, name);
+        frame.setObject(stackPointerSlot, allocResult.getStackPointer());
+        return allocResult.getAllocatedMemory();
+    }
+
     public static LLVMAddress allocateMemory(LLVMStack stack, VirtualFrame frame, FrameSlot stackPointerSlot, int size, int alignment) {
         LLVMAddress stackPointer = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
         AllocationResult allocResult = stack.allocateMemory(stackPointer, size, alignment);

@@ -129,6 +129,27 @@ public final class LLVMStack extends LLVMMemory {
         return new AllocationResult(newStackPointer, allocatedMemory);
     }
 
+    /**
+     * Allocates stack memory and associates it with a symbol name.
+     *
+     * @param size the size of the memory to be allocated, must be greater equals zero
+     * @param alignment the alignment, either {@link #NO_ALIGNMENT_REQUIREMENTS} or a power of two.
+     * @param name the name of the object for which memory is to be allocated
+     * @return the allocated memory, satisfying the alignment requirements
+     */
+    public AllocationResult allocateMemory(final LLVMAddress stackPointer, final long size, final int alignment, final String name) {
+        assert size >= 0;
+        assert alignment != 0 && powerOfTo(alignment);
+        final long alignedAllocation = (stackPointer.getVal() - size) & -alignment;
+        LLVMAddress newStackPointer = LLVMAddress.fromLong(alignedAllocation);
+        if (newStackPointer.getVal() < lowerBounds) {
+            CompilerDirectives.transferToInterpreter();
+            throw new StackOverflowError("stack overflow");
+        }
+        final LLVMAddress allocatedMemory = LLVMAddress.fromLong(name, alignedAllocation);
+        return new AllocationResult(newStackPointer, allocatedMemory);
+    }
+
     private static boolean powerOfTo(int value) {
         return (value & -value) == value;
     }
