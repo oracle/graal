@@ -65,3 +65,4 @@ tests/benchmarksgame/revcomp/**
 
 output
 /bench-results.json
+/.project
