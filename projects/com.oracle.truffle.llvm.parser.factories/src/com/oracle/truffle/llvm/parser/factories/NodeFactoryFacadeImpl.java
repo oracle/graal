@@ -457,7 +457,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         if ((globalVariable.getInitialiser() > 0 || !globalVariable.isExtern()) && !descriptor.isDeclared()) {
             final Type resolvedType = ((PointerType) globalVariable.getType()).getPointeeType();
             final int byteSize = runtime.getByteSize(resolvedType);
-            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
+            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(globalVariable.getName(), byteSize);
             final LLVMExpressionNode addressLiteralNode = createLiteral(runtime, nativeStorage, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
             descriptor.declare(nativeStorage);
@@ -483,7 +483,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         if ((globalConstant.getInitialiser() > 0 || !globalConstant.isExtern()) && !descriptor.isDeclared()) {
             final Type resolvedType = ((PointerType) globalConstant.getType()).getPointeeType();
             final int byteSize = runtime.getByteSize(resolvedType);
-            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
+            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(globalConstant.getName(), byteSize);
             final LLVMExpressionNode addressLiteralNode = createLiteral(runtime, nativeStorage, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
             descriptor.declare(nativeStorage);

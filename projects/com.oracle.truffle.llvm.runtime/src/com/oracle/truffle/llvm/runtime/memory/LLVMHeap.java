@@ -48,6 +48,11 @@ public final class LLVMHeap extends LLVMMemory {
         return baseAddress;
     }
 
+    public static LLVMAddress allocateMemory(String name, long size) {
+        long allocateMemory = (long) mallocHandle.call(size);
+        return LLVMAddress.fromLong(name, allocateMemory);
+    }
+
     public static LLVMAddress allocateMemory(long size) {
         long allocateMemory = (long) mallocHandle.call(size);
         return LLVMAddress.fromLong(allocateMemory);

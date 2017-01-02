@@ -38,14 +38,40 @@ public final class LLVMAddress {
 
     public static final LLVMAddress NULL_POINTER = fromLong(0);
 
+    private final String symbolName;
+
+    private final long symbolIndex;
+
     private final long val;
 
-    private LLVMAddress(long val) {
+    private LLVMAddress(String symbolName, long val, long index) {
+        this.symbolName = symbolName;
         this.val = val;
+        this.symbolIndex = index;
+    }
+
+    private LLVMAddress(long val, long index) {
+        this(null, val, index);
+    }
+
+    private LLVMAddress(long val) {
+        this(null, val, -1);
     }
 
     public static LLVMAddress fromLong(long val) {
         return new LLVMAddress(val);
+    }
+
+    public static LLVMAddress fromLong(String symbolName, long val) {
+        return new LLVMAddress(symbolName, val, 0);
+    }
+
+    public String getSymbolName() {
+        return symbolName;
+    }
+
+    public long getSymbolIndex() {
+        return symbolIndex;
     }
 
     public long getVal() {
@@ -62,6 +88,14 @@ public final class LLVMAddress {
 
     public LLVMAddress decrement(int decr) {
         return new LLVMAddress(val - decr);
+    }
+
+    public LLVMAddress index(int incr, long index) {
+        return this.index((long) incr, index);
+    }
+
+    public LLVMAddress index(long incr, long index) {
+        return new LLVMAddress(symbolName, val + incr, index);
     }
 
     @Override
@@ -96,6 +130,9 @@ public final class LLVMAddress {
 
     @Override
     public String toString() {
+        if (getSymbolName() != null) {
+            return String.format("0x%x (%s)", getVal(), getSymbolName());
+        }
         return String.format("0x%x", getVal());
     }
 
