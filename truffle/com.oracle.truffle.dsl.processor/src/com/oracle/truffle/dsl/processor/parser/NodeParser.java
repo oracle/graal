@@ -62,7 +62,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
-import com.oracle.truffle.api.dsl.Reflectable;
+import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
@@ -200,7 +200,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             return node;
         }
 
-        AnnotationMirror reflectable = findFirstAnnotation(lookupTypes, Reflectable.class);
+        AnnotationMirror reflectable = findFirstAnnotation(lookupTypes, Introspectable.class);
         if (reflectable != null) {
             node.setReflectable(true);
             if (node.getTypeSystem().getOptions().defaultGenerator() != DSLGenerator.FLAT) {

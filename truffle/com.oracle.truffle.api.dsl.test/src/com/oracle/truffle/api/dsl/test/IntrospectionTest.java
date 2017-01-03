@@ -23,8 +23,8 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
@@ -33,20 +33,20 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Reflectable;
-import com.oracle.truffle.api.dsl.Reflection;
-import com.oracle.truffle.api.dsl.Reflection.ReflectedSpecialization;
+import com.oracle.truffle.api.dsl.Introspectable;
+import com.oracle.truffle.api.dsl.Introspection;
+import com.oracle.truffle.api.dsl.Introspection.IntrospectedSpecialization;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
 import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
-import com.oracle.truffle.api.dsl.test.ReflectionTestFactory.FallbackNodeGen;
-import com.oracle.truffle.api.dsl.test.ReflectionTestFactory.Reflection1NodeGen;
+import com.oracle.truffle.api.dsl.test.IntrospectionTestFactory.FallbackNodeGen;
+import com.oracle.truffle.api.dsl.test.IntrospectionTestFactory.Introspection1NodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
-public class ReflectionTest {
+public class IntrospectionTest {
 
     @TypeSystem
     @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
@@ -55,12 +55,12 @@ public class ReflectionTest {
     }
 
     @TypeSystemReference(ReflectionTypeSystem.class)
-    @Reflectable
+    @Introspectable
     public static class ReflectableNode extends Node {
 
     }
 
-    public abstract static class Reflection1Node extends ReflectableNode {
+    public abstract static class Introspection1Node extends ReflectableNode {
 
         abstract Object execute(Object o);
 
@@ -77,9 +77,9 @@ public class ReflectionTest {
 
     @Test
     public void testReflection1() {
-        Reflection1Node node = Reflection1NodeGen.create();
-        ReflectedSpecialization specialization = Reflection.getSpecialization(node, "doInt");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
+        Introspection1Node node = Introspection1NodeGen.create();
+        IntrospectedSpecialization specialization = Introspection.getSpecialization(node, "doInt");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
         assertFalse(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -90,8 +90,8 @@ public class ReflectionTest {
         } catch (IllegalArgumentException e) {
         }
 
-        specialization = Reflection.getSpecialization(node, "doGeneric");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
+        specialization = Introspection.getSpecialization(node, "doGeneric");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
         assertFalse(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -105,16 +105,16 @@ public class ReflectionTest {
 
         node.execute(1);
 
-        specialization = Reflection.getSpecialization(node, "doInt");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
+        specialization = Introspection.getSpecialization(node, "doInt");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
         assertTrue(specialization.isActive());
         assertFalse(specialization.isExcluded());
         assertEquals(1, specialization.getInstances());
         assertEquals(1, specialization.getCachedData(0).get(0));
 
-        specialization = Reflection.getSpecialization(node, "doGeneric");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
+        specialization = Introspection.getSpecialization(node, "doGeneric");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
         assertFalse(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -122,16 +122,16 @@ public class ReflectionTest {
 
         node.execute(1);
 
-        specialization = Reflection.getSpecialization(node, "doInt");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
+        specialization = Introspection.getSpecialization(node, "doInt");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
         assertTrue(specialization.isActive());
         assertFalse(specialization.isExcluded());
         assertEquals(1, specialization.getInstances());
         assertEquals(1, specialization.getCachedData(0).get(0));
 
-        specialization = Reflection.getSpecialization(node, "doGeneric");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
+        specialization = Introspection.getSpecialization(node, "doGeneric");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
         assertFalse(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -139,8 +139,8 @@ public class ReflectionTest {
 
         node.execute(2);
 
-        specialization = Reflection.getSpecialization(node, "doInt");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
+        specialization = Introspection.getSpecialization(node, "doInt");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
         assertTrue(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -148,8 +148,8 @@ public class ReflectionTest {
         assertEquals(2, specialization.getCachedData(0).get(0));
         assertEquals(1, specialization.getCachedData(1).get(0));
 
-        specialization = Reflection.getSpecialization(node, "doGeneric");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
+        specialization = Introspection.getSpecialization(node, "doGeneric");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
         assertFalse(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -157,8 +157,8 @@ public class ReflectionTest {
 
         node.execute(3);
 
-        specialization = Reflection.getSpecialization(node, "doInt");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
+        specialization = Introspection.getSpecialization(node, "doInt");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
         assertTrue(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -167,8 +167,8 @@ public class ReflectionTest {
         assertEquals(2, specialization.getCachedData(1).get(0));
         assertEquals(1, specialization.getCachedData(2).get(0));
 
-        specialization = Reflection.getSpecialization(node, "doGeneric");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
+        specialization = Introspection.getSpecialization(node, "doGeneric");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
         assertFalse(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -176,15 +176,15 @@ public class ReflectionTest {
 
         node.execute(4);
 
-        specialization = Reflection.getSpecialization(node, "doInt");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
+        specialization = Introspection.getSpecialization(node, "doInt");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
         assertFalse(specialization.isActive());
         assertTrue(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
 
-        specialization = Reflection.getSpecialization(node, "doGeneric");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
+        specialization = Introspection.getSpecialization(node, "doGeneric");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
         assertTrue(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -196,16 +196,16 @@ public class ReflectionTest {
     public void testFallbackReflection() {
         FallbackNode node = FallbackNodeGen.create();
 
-        ReflectedSpecialization specialization = Reflection.getSpecialization(node, "doFallback");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
+        IntrospectedSpecialization specialization = Introspection.getSpecialization(node, "doFallback");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(1));
         assertEquals("doFallback", specialization.getMethodName());
         assertFalse(specialization.isActive());
         assertFalse(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
 
         node.execute("fallback");
-        specialization = Reflection.getSpecialization(node, "doFallback");
-        assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
+        specialization = Introspection.getSpecialization(node, "doFallback");
+        assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(1));
         assertEquals("doFallback", specialization.getMethodName());
         assertTrue(specialization.isActive());
         assertFalse(specialization.isExcluded());
@@ -228,7 +228,7 @@ public class ReflectionTest {
         }
     }
 
-    private static void assertSpecializationEquals(ReflectedSpecialization s1, ReflectedSpecialization s2) {
+    private static void assertSpecializationEquals(IntrospectedSpecialization s1, IntrospectedSpecialization s2) {
         assertEquals(s1.getMethodName(), s2.getMethodName());
         assertEquals(s1.isActive(), s2.isActive());
         assertEquals(s1.isExcluded(), s2.isExcluded());
@@ -246,7 +246,7 @@ public class ReflectionTest {
     }
 
     @ExpectError("Reflection is not supported by the used DSL layout. Only the flat DSL layout supports reflection.")
-    @Reflectable
+    @Introspectable
     public abstract static class SomeReflection1Node extends Node {
 
         abstract Object execute(Object o);

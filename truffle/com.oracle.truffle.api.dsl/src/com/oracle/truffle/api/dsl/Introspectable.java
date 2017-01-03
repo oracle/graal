@@ -30,13 +30,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotate a DSL operation using this annotation to be reflectable. The methods in
- * {@link Reflection} can only be used if the operation is annotated with {@link Reflectable}.
+ * Annotate a DSL operation using this annotation to be introspectable. The methods in
+ * {@link Introspection} can only be used if the operation is annotated with {@link Introspectable}.
  *
  * @since 0.22
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
-public @interface Reflectable {
+public @interface Introspectable {
 
 }
