@@ -181,7 +181,7 @@ public @interface Specialization {
     /**
      * <p>
      * Declares other specializations of the same operation to be replaced by this specialization.
-     * Other specializations are references using their unique method name. If this specialization
+     * Other specializations are referenced using their unique method name. If this specialization
      * is instantiated then all replaced specialization instances are removed and never instantiated
      * again for this node instance. Therefore this specialization should handle strictly more
      * inputs than which were handled by the replaced specialization, otherwise the removal of the
