@@ -152,7 +152,10 @@ import jdk.vm.ci.services.Services;
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
-@AddExports({"jdk.vm.ci/jdk.vm.ci.meta", "jdk.vm.ci/jdk.vm.ci.code"})
+@AddExports({"jdk.vm.ci/jdk.vm.ci.meta",
+                "jdk.vm.ci/jdk.vm.ci.code",
+                "java.base/jdk.internal.org.objectweb.asm",
+                "java.base/jdk.internal.org.objectweb.asm.tree"})
 public abstract class GraalCompilerTest extends GraalTest {
 
     private static final int BAILOUT_RETRY_LIMIT = 1;
