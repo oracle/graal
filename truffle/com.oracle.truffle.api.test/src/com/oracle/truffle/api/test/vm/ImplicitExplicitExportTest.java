@@ -228,6 +228,7 @@ public class ImplicitExplicitExportTest {
 
         @Override
         protected Object findExportedSymbol(Ctx context, String globalName, boolean onlyExplicit) {
+            assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);
             if (onlyExplicit && context.explicit.containsKey(globalName)) {
                 return context.explicit.get(globalName);
             }

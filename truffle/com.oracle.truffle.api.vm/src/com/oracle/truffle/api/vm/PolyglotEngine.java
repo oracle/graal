@@ -716,7 +716,14 @@ public class PolyglotEngine {
 
             @Override
             public boolean hasNext() {
-                return delegate.hasNext();
+                ComputeInExecutor<Boolean> compute = new ComputeInExecutor<Boolean>(executor) {
+                    @Override
+                    protected Boolean compute() {
+                        return delegate.hasNext();
+                    }
+                };
+                compute.perform();
+                return compute.get();
             }
 
             @Override
