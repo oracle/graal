@@ -30,7 +30,7 @@ package com.oracle.truffle.api.dsl.internal;
  *
  * @since 0.22
  */
-public interface IntrospectionAccesor {
+public interface IntrospectionAccessor {
 
     /**
      * Returns internal reflection data in undefined format. A DSL user must not call this method

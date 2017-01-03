@@ -29,7 +29,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.truffle.api.dsl.internal.IntrospectionAccesor;
+import com.oracle.truffle.api.dsl.internal.IntrospectionAccessor;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -58,7 +58,7 @@ public final class Introspection {
      * @since 0.22
      */
     public static boolean isIntrospectable(Node node) {
-        return node instanceof IntrospectionAccesor;
+        return node instanceof IntrospectionAccessor;
     }
 
     /**
@@ -139,10 +139,10 @@ public final class Introspection {
     }
 
     private static Object[] getIntrospectionData(Node node) {
-        if (!(node instanceof IntrospectionAccesor)) {
+        if (!(node instanceof IntrospectionAccessor)) {
             throw new IllegalArgumentException(String.format("Provided node is not introspectable. Annotate with @%s to make a node introspectable.", Introspectable.class.getSimpleName()));
         }
-        Object data = ((IntrospectionAccesor) node).getIntrospectionData();
+        Object data = ((IntrospectionAccessor) node).getIntrospectionData();
         if (!(data instanceof Object[])) {
             throw new IllegalStateException("Invalid introspection data.");
         }
