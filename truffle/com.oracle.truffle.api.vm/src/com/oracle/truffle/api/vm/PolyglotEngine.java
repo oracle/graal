@@ -707,16 +707,11 @@ public class PolyglotEngine {
         assertNoTruffle();
         final TruffleLanguage<?>[] lang = {null};
         Iterable<? extends Object> it = importSymbol(lang, globalName);
-        class Iter implements Iterable<Value>, Iterator<Value> {
+        class ValueIterator implements Iterator<Value> {
             private final Iterator<? extends Object> delegate;
 
-            Iter(Iterator<? extends Object> delegate) {
+            ValueIterator(Iterator<? extends Object> delegate) {
                 this.delegate = delegate;
-            }
-
-            @Override
-            public Iterator<Value> iterator() {
-                return new Iter(it.iterator());
             }
 
             @Override
@@ -736,24 +731,24 @@ public class PolyglotEngine {
                 return new ExecutorValue(lang, compute);
             }
         }
-        return new Iter(null);
+        return new Iterable<Value>() {
+            @Override
+            public ValueIterator iterator() {
+                return new ValueIterator(it.iterator());
+            }
+        };
     }
 
     final Iterable<? extends Object> importSymbol(TruffleLanguage<?>[] arr, String globalName) {
-        class Iter implements Iterable<Object>, Iterator<Object> {
+        class SymbolIterator implements Iterator<Object> {
             private final Collection<? extends Language> uniqueLang;
             private Object next;
             private Iterator<? extends Language> explicit;
             private Iterator<? extends Language> implicit;
 
-            Iter(Collection<? extends Language> uniqueLang, Object first) {
+            SymbolIterator(Collection<? extends Language> uniqueLang, Object first) {
                 this.uniqueLang = uniqueLang;
                 this.next = first;
-            }
-
-            @Override
-            public Iterator<Object> iterator() {
-                return new Iter(new LinkedHashSet<>(uniqueLang), next);
             }
 
             @Override
@@ -816,7 +811,13 @@ public class PolyglotEngine {
             }
         }
         Object g = globals.get(globalName);
-        return new Iter(getLanguages().values(), g);
+        final Collection<? extends Language> uniqueLang = getLanguages().values();
+        return new Iterable<Object>() {
+            @Override
+            public Iterator<Object> iterator() {
+                return new SymbolIterator(new LinkedHashSet<>(uniqueLang), g);
+            }
+        };
     }
 
     boolean checkThread() {
