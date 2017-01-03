@@ -25,6 +25,9 @@
 package com.oracle.truffle.api;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -36,14 +39,18 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.FindContextNode;
+import com.oracle.truffle.api.impl.ReadOnlyArrayList;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -117,6 +124,25 @@ public abstract class TruffleLanguage<C> {
          * @return array of MIME types assigned to your language files
          */
         String[] mimeType();
+
+        /**
+         * Indicates whether the language implements an interactive response to evaluation of
+         * {@link Source#isInteractive() interactive sources}. When
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is called over an
+         * {@link Source#isInteractive() interactive source}, interactive languages print the result
+         * to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard
+         * output} or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream)
+         * error output} and can use
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream) standard
+         * input}. Non-interactive languages are not expected to use the polyglot engine streams in
+         * an interactive way and whoever supplies an interactive source is expected to implement an
+         * appropriate response.
+         *
+         * @return <code>true</code> if the language implements an interactive response to
+         *         evaluation of interactive sources.
+         * @since 0.22
+         */
+        boolean interactive() default false;
     }
 
     /**
@@ -200,9 +226,141 @@ public abstract class TruffleLanguage<C> {
      *             who called one of <code>eval</code> methods of
      *             {@link com.oracle.truffle.api.vm.PolyglotEngine}
      * @since 0.8 or earlier
+     * @deprecated override {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)}
      */
-    protected abstract CallTarget parse(Source code, Node context, String... argumentNames)
-                    throws Exception;
+    @Deprecated
+    protected CallTarget parse(Source code, Node context, String... argumentNames) throws Exception {
+        throw new UnsupportedOperationException("Call parse with ParsingRequest parameter!");
+    }
+
+    /**
+     * Parses the {@link ParsingRequest#getSource() provided source} and generates its appropriate
+     * AST representation. The parsing should execute no user code, it should only create the
+     * {@link Node} tree to represent the source. If the {@link ParsingRequest#getSource() provided
+     * source} does not correspond naturally to a {@link CallTarget call target}, the returned call
+     * target should create and if necessary initialize the corresponding language entity and return
+     * it.
+     *
+     * The parsing may be performed in a context (specified by {@link ParsingRequest#getLocation()})
+     * or without context. The {@code argumentNames} may contain symbolic names for actual
+     * parameters of the call to the returned value. The result should be a call target with method
+     * {@link CallTarget#call(java.lang.Object...)} that accepts as many arguments as were provided
+     * via the {@link ParsingRequest#getArgumentNames()} method.
+     *
+     * @param request request for parsing
+     * @return a call target to invoke which also keeps in memory the {@link Node} tree representing
+     *         just parsed <code>code</code>
+     * @throws Exception exception can be thrown parsing goes wrong. Here-in thrown exception is
+     *             propagated to the user who called one of <code>eval</code> methods of
+     *             {@link com.oracle.truffle.api.vm.PolyglotEngine}
+     * @since 0.22
+     */
+    protected CallTarget parse(ParsingRequest request) throws Exception {
+        throw new UnsupportedOperationException(
+                        String.format("Override parse method of %s, it will be made abstract in future version of Truffle API!", getClass().getName()));
+    }
+
+    /**
+     * Request for parsing. Contains information of what to parse and in which context.
+     *
+     * @since 0.22
+     */
+    public static final class ParsingRequest {
+        private final Node node;
+        private final MaterializedFrame frame;
+        private final Source source;
+        private final String[] argumentNames;
+        private boolean disposed;
+
+        @SuppressWarnings("unused")
+        ParsingRequest(Object vm, TruffleLanguage<?> language, Source source, Node node, MaterializedFrame frame, String... argumentNames) {
+            Objects.nonNull(source);
+            this.node = node;
+            this.frame = frame;
+            this.source = source;
+            this.argumentNames = argumentNames;
+        }
+
+        /**
+         * The source code to parse.
+         *
+         * @return the source code, never <code>null</code>
+         * @since 0.22
+         */
+        public Source getSource() {
+            if (disposed) {
+                throw new IllegalStateException();
+            }
+            return source;
+        }
+
+        /**
+         * Specifies the code location for parsing. The location is specified as an instance of a
+         * {@link Node} in the AST. There doesn't have to be any specific location and in such case
+         * this method returns <code>null</code>. If the node is provided, it can be for example
+         * {@link com.oracle.truffle.api.instrumentation.EventContext#getInstrumentedNode()} when
+         * {@link com.oracle.truffle.api.instrumentation.EventContext#parseInContext} is called.
+         *
+         *
+         * @return a {@link Node} defining AST context for the parsing or <code>null</code>
+         * @since 0.22
+         */
+        public Node getLocation() {
+            if (disposed) {
+                throw new IllegalStateException();
+            }
+            return node;
+        }
+
+        /**
+         * Specifies the execution context for parsing. If the parsing request is used for
+         * evaluation during halted execution, for example as in
+         * {@link com.oracle.truffle.api.debug.SuspendedEvent#eval} method, this method provides
+         * access to current {@link MaterializedFrame frame} with local variables, etc.
+         *
+         * @return a {@link MaterializedFrame} exposing the current execution state or
+         *         <code>null</code> if there is none
+         * @since 0.22
+         */
+        public MaterializedFrame getFrame() {
+            if (disposed) {
+                throw new IllegalStateException();
+            }
+            return frame;
+        }
+
+        /**
+         * Argument names. The result of
+         * {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest) parsing} is an
+         * instance of {@link CallTarget} that {@link CallTarget#call(java.lang.Object...) can be
+         * invoked} without or with some parameters. If the invocation requires some arguments, and
+         * the {@link #getSource()} references them, it is essential to name them. Example that uses
+         * the argument names:
+         *
+         * {@link TruffleLanguageSnippets#parseWithParams}
+         *
+         * @return symbolic names for parameters of {@link CallTarget#call(java.lang.Object...)}
+         * @since 0.22
+         */
+        public List<String> getArgumentNames() {
+            if (disposed) {
+                throw new IllegalStateException();
+            }
+            return argumentNames == null ? Collections.<String> emptyList() : ReadOnlyArrayList.asList(argumentNames, 0, argumentNames.length);
+        }
+
+        void dispose() {
+            disposed = true;
+        }
+
+        CallTarget parse(TruffleLanguage<?> truffleLanguage) throws Exception {
+            try {
+                return truffleLanguage.parse(this);
+            } catch (UnsupportedOperationException ex) {
+                return truffleLanguage.parse(source, node, argumentNames);
+            }
+        }
+    }
 
     /**
      * Called when some other language is seeking for a global symbol. This method is supposed to do
@@ -263,8 +421,30 @@ public abstract class TruffleLanguage<C> {
      * @return result of running the code in the context, or at top level if no execution context.
      * @throws Exception if the evaluation cannot be performed
      * @since 0.8 or earlier
+     * @deprecated override {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)}
+     *             and use {@link ParsingRequest#getFrame()} to obtain the current frame information
      */
-    protected abstract Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws Exception;
+    @Deprecated
+    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        return evalInContext(null, source, node, mFrame);
+    }
+
+    final Object evalInContext(Object profile, Source source, Node node, MaterializedFrame mFrame) throws IOException {
+        ParsingRequest request = new ParsingRequest(profile, this, source, node, mFrame);
+        CallTarget target;
+        try {
+            target = parse(request);
+        } catch (Exception ex) {
+            if (ex instanceof IOException) {
+                throw (IOException) ex;
+            }
+            if (ex instanceof RuntimeException) {
+                throw (RuntimeException) ex;
+            }
+            throw new RuntimeException(ex);
+        }
+        return target.call();
+    }
 
     /**
      * Generates language specific textual representation of a value. Each language may have special
@@ -281,6 +461,41 @@ public abstract class TruffleLanguage<C> {
      */
     protected String toString(C context, Object value) {
         return Objects.toString(value);
+    }
+
+    /**
+     * Find a meta-object of a value, if any. The meta-object represents a description of the
+     * object, reveals it's kind and it's features. Some information that a meta-object might define
+     * includes the base object's type, interface, class, methods, attributes, etc.
+     * <p>
+     * A programmatic {@link #toString(java.lang.Object, java.lang.Object) textual representation}
+     * should be provided for meta-objects, when possible. The meta-object may have properties
+     * describing their structure.
+     * <p>
+     * When no meta-object is known, return <code>null</code>. The default implementation returns
+     * <code>null</code>.
+     *
+     * @param context the execution context
+     * @param value a value to find the meta-object of
+     * @return the meta-object, or <code>null</code>
+     * @since 0.22
+     */
+    protected Object findMetaObject(C context, Object value) {
+        return null;
+    }
+
+    /**
+     * Find a source location where a value is declared, if any. This is often useful especially for
+     * retrieval of source locations of {@link #findMetaObject meta-objects}. The default
+     * implementation returns <code>null</code>.
+     *
+     * @param context the execution context
+     * @param value a value to get the source location for
+     * @return a source location of the object, or <code>null</code>
+     * @since 0.22
+     */
+    protected SourceSection findSourceLocation(C context, Object value) {
+        return null;
     }
 
     /**
@@ -343,6 +558,16 @@ public abstract class TruffleLanguage<C> {
         String toString(TruffleLanguage<?> language, Object obj) {
             assert lang == language;
             return lang.toString(ctx, obj);
+        }
+
+        private Object findMetaObject(TruffleLanguage<?> language, Object obj) {
+            assert lang == language;
+            return lang.findMetaObject(ctx, obj);
+        }
+
+        private SourceSection findSourceLocation(TruffleLanguage<?> language, Object obj) {
+            assert lang == language;
+            return lang.findSourceLocation(ctx, obj);
         }
 
         void postInit() {
@@ -449,14 +674,22 @@ public abstract class TruffleLanguage<C> {
          */
         public CallTarget parse(Source source, String... argumentNames) {
             TruffleLanguage<?> language = AccessAPI.engineAccess().findLanguageImpl(vm, null, source.getMimeType());
+            return parseForLanguage(vm, language, source, argumentNames);
+        }
+
+        private static <C> CallTarget parseForLanguage(Object profile, TruffleLanguage<C> language, Source source, String... argumentNames) {
+            ParsingRequest env = new ParsingRequest(profile, language, source, null, null, argumentNames);
+            CallTarget target;
             try {
-                return language.parse(source, null, argumentNames);
+                target = env.parse(language);
+            } catch (RuntimeException ex) {
+                throw ex;
             } catch (Exception ex) {
-                if (ex instanceof RuntimeException) {
-                    throw (RuntimeException) ex;
-                }
                 throw new RuntimeException(ex);
+            } finally {
+                env.dispose();
             }
+            return target;
         }
 
         /**
@@ -580,9 +813,16 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        public void postInitEnv(Env env) {
+            env.postInit();
+        }
+
+        @Override
         public CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) {
             try {
                 return truffleLanguage.parse(code, context, argumentNames);
+            } catch (UnsupportedOperationException ex) {
+                return parseForLanguage(null, truffleLanguage, code, context, argumentNames);
             } catch (Exception ex) {
                 if (ex instanceof RuntimeException) {
                     throw (RuntimeException) ex;
@@ -591,21 +831,142 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
-        @Override
-        public void postInitEnv(Env env) {
-            env.postInit();
+        private static <C> CallTarget parseForLanguage(Object profile, TruffleLanguage<C> truffleLanguage, Source code, Node context, String... argumentNames) {
+            ParsingRequest env = new ParsingRequest(profile, truffleLanguage, code, context, null, argumentNames);
+            CallTarget target;
+            try {
+                target = env.parse(truffleLanguage);
+            } catch (RuntimeException ex) {
+                throw ex;
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+            env.dispose();
+            return target;
         }
 
         @Override
         @SuppressWarnings({"rawtypes"})
-        public Object evalInContext(Object sourceVM, String code, Node node, MaterializedFrame frame) {
+        public Object evalInContext(Object sourceVM, String code, Node node, final MaterializedFrame mFrame) {
             RootNode rootNode = node.getRootNode();
             Class<? extends TruffleLanguage> languageType = AccessAPI.nodesAccess().findLanguage(rootNode);
             final Env env = AccessAPI.engineAccess().findEnv(sourceVM, languageType);
             final TruffleLanguage<?> lang = findLanguage(env);
             final Source source = Source.newBuilder(code).name("eval in context").mimeType("content/unknown").build();
+            CallTarget target = parseForLanguage(sourceVM, lang, source, node);
+
+            RootNode exec;
+            if (target instanceof RootCallTarget) {
+                exec = ((RootCallTarget) target).getRootNode();
+            } else {
+                throw new IllegalStateException("" + target);
+            }
+
             try {
-                return lang.evalInContext(source, node, frame);
+                // TODO find a better way to convert from materialized frame to virtual frame.
+                // maybe we should always use Frame everywhere?
+                return exec.execute(new VirtualFrame() {
+
+                    public void setObject(FrameSlot slot, Object value) {
+                        mFrame.setObject(slot, value);
+                    }
+
+                    public void setLong(FrameSlot slot, long value) {
+                        mFrame.setLong(slot, value);
+                    }
+
+                    public void setInt(FrameSlot slot, int value) {
+                        mFrame.setInt(slot, value);
+                    }
+
+                    public void setFloat(FrameSlot slot, float value) {
+                        mFrame.setFloat(slot, value);
+                    }
+
+                    public void setDouble(FrameSlot slot, double value) {
+                        mFrame.setDouble(slot, value);
+                    }
+
+                    public void setByte(FrameSlot slot, byte value) {
+                        mFrame.setByte(slot, value);
+                    }
+
+                    public void setBoolean(FrameSlot slot, boolean value) {
+                        mFrame.setBoolean(slot, value);
+                    }
+
+                    public MaterializedFrame materialize() {
+                        return mFrame;
+                    }
+
+                    public boolean isObject(FrameSlot slot) {
+                        return mFrame.isObject(slot);
+                    }
+
+                    public boolean isLong(FrameSlot slot) {
+                        return mFrame.isLong(slot);
+                    }
+
+                    public boolean isInt(FrameSlot slot) {
+                        return mFrame.isInt(slot);
+                    }
+
+                    public boolean isFloat(FrameSlot slot) {
+                        return mFrame.isFloat(slot);
+                    }
+
+                    public boolean isDouble(FrameSlot slot) {
+                        return mFrame.isDouble(slot);
+                    }
+
+                    public boolean isByte(FrameSlot slot) {
+                        return mFrame.isByte(slot);
+                    }
+
+                    public boolean isBoolean(FrameSlot slot) {
+                        return mFrame.isBoolean(slot);
+                    }
+
+                    public Object getValue(FrameSlot slot) {
+                        return mFrame.getValue(slot);
+                    }
+
+                    public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
+                        return mFrame.getObject(slot);
+                    }
+
+                    public long getLong(FrameSlot slot) throws FrameSlotTypeException {
+                        return mFrame.getLong(slot);
+                    }
+
+                    public int getInt(FrameSlot slot) throws FrameSlotTypeException {
+                        return mFrame.getInt(slot);
+                    }
+
+                    public FrameDescriptor getFrameDescriptor() {
+                        return mFrame.getFrameDescriptor();
+                    }
+
+                    public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
+                        return mFrame.getFloat(slot);
+                    }
+
+                    public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
+                        return mFrame.getDouble(slot);
+                    }
+
+                    public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
+                        return mFrame.getByte(slot);
+                    }
+
+                    public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
+                        return mFrame.getBoolean(slot);
+                    }
+
+                    public Object[] getArguments() {
+                        return mFrame.getArguments();
+                    }
+                });
             } catch (Exception ex) {
                 if (ex instanceof RuntimeException) {
                     throw (RuntimeException) ex;
@@ -643,6 +1004,16 @@ public abstract class TruffleLanguage<C> {
         @Override
         public String toString(TruffleLanguage<?> language, Env env, Object obj) {
             return env.langCtx.toString(language, obj);
+        }
+
+        @Override
+        public Object findMetaObject(TruffleLanguage<?> language, Env env, Object obj) {
+            return env.langCtx.findMetaObject(language, obj);
+        }
+
+        @Override
+        public SourceSection findSourceLocation(TruffleLanguage<?> language, Env env, Object obj) {
+            return env.langCtx.findSourceLocation(language, obj);
         }
 
         @Override
@@ -704,4 +1075,18 @@ class TruffleLanguageSnippets {
         }
     }
     // END: TruffleLanguageSnippets.PostInitLanguage#createContext
+
+    // BEGIN: TruffleLanguageSnippets#parseWithParams
+    public void parseWithParams(Env env) {
+        Source multiply = Source.newBuilder("a * b").
+            mimeType("text/javascript").
+            name("mul.js").
+            build();
+        CallTarget method = env.parse(multiply, "a", "b");
+        Number fortyTwo = (Number) method.call(6, 7);
+        assert 42 == fortyTwo.intValue();
+        Number ten = (Number) method.call(2, 5);
+        assert 10 == ten.intValue();
+    }
+    // END: TruffleLanguageSnippets#parseWithParams
 }

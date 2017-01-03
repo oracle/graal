@@ -31,6 +31,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -186,6 +187,40 @@ public abstract class DebugValue {
             }
         }
         return arrayList;
+    }
+
+    /**
+     * Get a meta-object of this value, if any. The meta-object represents a description of the
+     * value, reveals it's kind and it's features.
+     *
+     * @return a value representing the meta-object, or <code>null</code>
+     * @since 0.22
+     */
+    public final DebugValue getMetaObject() {
+        Object obj = get();
+        if (obj == null) {
+            return null;
+        }
+        obj = getDebugger().getEnv().findMetaObject(getSourceRoot(), obj);
+        if (obj == null) {
+            return null;
+        } else {
+            return new HeapValue(getDebugger(), getSourceRoot(), obj);
+        }
+    }
+
+    /**
+     * Get a source location where this value is declared, if any.
+     *
+     * @return a source location of the object, or <code>null</code>
+     * @since 0.22
+     */
+    public final SourceSection getSourceLocation() {
+        Object obj = get();
+        if (obj == null) {
+            return null;
+        }
+        return getDebugger().getEnv().findSourceLocation(getSourceRoot(), obj);
     }
 
     abstract Debugger getDebugger();

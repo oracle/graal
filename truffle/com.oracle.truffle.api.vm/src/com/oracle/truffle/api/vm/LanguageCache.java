@@ -58,6 +58,7 @@ final class LanguageCache {
     private final Set<String> mimeTypes;
     private final String name;
     private final String version;
+    private final boolean interactive;
     private final ClassLoader loader;
 
     static {
@@ -98,6 +99,7 @@ final class LanguageCache {
             ts.add(mt);
         }
         this.mimeTypes = Collections.unmodifiableSet(ts);
+        this.interactive = Boolean.valueOf(info.getProperty(prefix + "interactive"));
         this.language = language;
     }
 
@@ -190,6 +192,10 @@ final class LanguageCache {
 
     String getClassName() {
         return className;
+    }
+
+    boolean isInteractive() {
+        return interactive;
     }
 
     TruffleLanguage<?> loadLanguage() {

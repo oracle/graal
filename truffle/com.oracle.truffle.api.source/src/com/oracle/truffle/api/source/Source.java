@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.source;
 
+import com.oracle.truffle.api.source.impl.SourceAccessor;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -38,10 +39,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Objects;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
 
 /**
  * Representation of a source code unit and its contents. Source instances are created by using one
@@ -258,7 +255,7 @@ public abstract class Source {
      */
     @Deprecated
     public static Source fromFileName(CharSequence chars, String fileName) throws IOException {
-        CompilerAsserts.neverPartOfCompilation("do not call Source.fromFileName from compiled code");
+        SourceAccessor.neverPartOfCompilation("do not call Source.fromFileName from compiled code");
         assert chars != null;
 
         final File file = new File(fileName);
@@ -284,7 +281,7 @@ public abstract class Source {
      */
     @Deprecated
     public static Source fromText(CharSequence chars, String name) {
-        CompilerAsserts.neverPartOfCompilation("do not call Source.fromText from compiled code");
+        SourceAccessor.neverPartOfCompilation("do not call Source.fromText from compiled code");
         Content content = new LiteralSourceImpl(name, chars.toString());
         return new SourceImpl(content);
     }
@@ -317,7 +314,7 @@ public abstract class Source {
      */
     @Deprecated
     public static Source fromAppendableText(String name) {
-        CompilerAsserts.neverPartOfCompilation("do not call Source.fromAppendableText from compiled code");
+        SourceAccessor.neverPartOfCompilation("do not call Source.fromAppendableText from compiled code");
         Content content = new AppendableLiteralSourceImpl(name);
         return new SourceImpl(content);
     }
@@ -335,7 +332,7 @@ public abstract class Source {
      */
     @Deprecated
     public static Source fromNamedText(CharSequence chars, String name) {
-        CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedText from compiled code");
+        SourceAccessor.neverPartOfCompilation("do not call Source.fromNamedText from compiled code");
         Content content = new LiteralSourceImpl(name, chars.toString());
         final Source source = new SourceImpl(content);
         return source;
@@ -354,7 +351,7 @@ public abstract class Source {
      */
     @Deprecated
     public static Source fromNamedAppendableText(String name) {
-        CompilerAsserts.neverPartOfCompilation("do not call Source.fromNamedAppendable from compiled code");
+        SourceAccessor.neverPartOfCompilation("do not call Source.fromNamedAppendable from compiled code");
         final Content content = new AppendableLiteralSourceImpl(name);
         final Source source = new SourceImpl(content);
         return source;
@@ -374,7 +371,7 @@ public abstract class Source {
      */
     @Deprecated
     public static Source subSource(Source base, int baseCharIndex, int length) {
-        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
+        SourceAccessor.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
         final SubSourceImpl subSource = SubSourceImpl.create(base, baseCharIndex, length);
         return new SourceImpl(subSource);
     }
@@ -390,7 +387,7 @@ public abstract class Source {
      * @since 0.15
      */
     public Source subSource(int baseCharIndex, int length) {
-        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
+        SourceAccessor.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
         final SubSourceImpl subSource = SubSourceImpl.create(this, baseCharIndex, length);
         return new SourceImpl(subSource);
     }
@@ -410,7 +407,7 @@ public abstract class Source {
     @SuppressWarnings("sourcebuilder")
     @Deprecated
     public static Source subSource(Source base, int baseCharIndex) {
-        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
+        SourceAccessor.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
 
         return subSource(base, baseCharIndex, base.getLength() - baseCharIndex);
     }
@@ -427,7 +424,7 @@ public abstract class Source {
      */
     @Deprecated
     public static Source fromURL(URL url, String description) throws IOException {
-        CompilerAsserts.neverPartOfCompilation("do not call Source.fromURL from compiled code");
+        SourceAccessor.neverPartOfCompilation("do not call Source.fromURL from compiled code");
         Content content = URLSourceImpl.get(url, description);
         return new SourceImpl(content);
     }
@@ -458,7 +455,7 @@ public abstract class Source {
      */
     @Deprecated
     public static Source fromReader(Reader reader, String description) throws IOException {
-        CompilerAsserts.neverPartOfCompilation("do not call Source.fromReader from compiled code");
+        SourceAccessor.neverPartOfCompilation("do not call Source.fromReader from compiled code");
         Content content = new LiteralSourceImpl(description, read(reader));
         return new SourceImpl(content);
     }
@@ -519,7 +516,7 @@ public abstract class Source {
      */
     @Deprecated
     public static Source fromBytes(byte[] bytes, int byteIndex, int length, String name, Charset charset) {
-        CompilerAsserts.neverPartOfCompilation("do not call Source.fromBytes from compiled code");
+        SourceAccessor.neverPartOfCompilation("do not call Source.fromBytes from compiled code");
         Content content = new BytesSourceImpl(name, bytes, byteIndex, length, charset);
         return new SourceImpl(content);
     }
@@ -627,18 +624,25 @@ public abstract class Source {
     }
 
     /**
-     * Check whether this source has been marked as <em>interactive</em>, meaning that it has been
-     * provided by a user through an interactive shell. When <em>interactive</em> sources are
-     * executed, the appropriate result could be passed directly to the {@link Env#out() polyglot
-     * engine output stream}. If the output stream is used, no value should be provided as a result
-     * of the execution. When there is a need for a user input during the execution, {@link Env#in()
-     * polyglot engine input stream} can be used for that purpose.
+     * Check whether this source has been marked as <em>interactive</em>. Interactive sources are
+     * provided by an entity which is able to interactively read output and provide an input during
+     * the source execution; that can be a user I/O through an interactive shell for instance.
+     * <p>
+     * Depending on {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#isInteractive()
+     * language interactive} capability, when <em>interactive</em> sources are executed, the
+     * appropriate result could be passed directly to the polyglot engine
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) output stream}
+     * or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream) error stream}
+     * and polyglot engine
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream) input stream} can
+     * be used to read user input during the execution, to clarify the execution behavior by asking
+     * questions for instance. Non-interactive languages are expected to ignore this property.
      * <p>
      * One can specify whether a source is interactive when {@link Builder#interactive() building
      * it}.
      *
      * @return whether this source is marked as <em>interactive</em>
-     * @since 0.20
+     * @since 0.21
      */
     public boolean isInteractive() {
         return interactive;
@@ -1087,8 +1091,9 @@ public abstract class Source {
 
     /**
      * Associates the source with specified MIME type. The mime type may be used to select the right
-     * {@link Registration Truffle language} to use to execute the returned source. The value of
-     * MIME type can be obtained via {@link #getMimeType()} method.
+     * {@link com.oracle.truffle.api.TruffleLanguage.Registration Truffle language} to use to
+     * execute the returned source. The value of MIME type can be obtained via
+     * {@link #getMimeType()} method.
      *
      * @param mime mime type to use
      * @return new (identical) source, just associated {@link #getMimeType()}
@@ -1245,12 +1250,18 @@ public abstract class Source {
         }
 
         /**
-         * Marks the source as interactive. Interactive sources are those that come from an
-         * interactive shell and an interactive response is possible. Calling this method influences
-         * result of {@link Source#isInteractive()}.
+         * Marks the source as interactive. {@link com.oracle.truffle.api.vm.PolyglotEngine#eval
+         * Evaluation} of interactive sources by an
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#isInteractive() interactive
+         * language} can use the {@link com.oracle.truffle.api.vm.PolyglotEngine} streams to print
+         * the result and read an input. However, non-interactive languages are expected to ignore
+         * the interactive property of sources and not use the polyglot engine streams. Any desired
+         * printing of the evaluated result provided by a non-interactive language needs to be
+         * handled by the caller. Calling of this method influences the result of
+         * {@link Source#isInteractive()}.
          *
          * @return the instance of this builder
-         * @since 0.20
+         * @since 0.21
          */
         public Builder<E1, E2, E3> interactive() {
             this.interactive = true;

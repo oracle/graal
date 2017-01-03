@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.impl;
+package com.oracle.truffle.api.source.impl;
 
-import java.util.List;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.ServiceLoader;
 
-/**
- * Kept around. Graal-Core tests are referencing this class.
- */
-public final class ReadOnlyArrayList {
-    private ReadOnlyArrayList() {
+public abstract class SourceAccessor {
+    private static final SourceAccessor ACCESSOR;
+    static {
+        final Iterator<SourceAccessor> it = ServiceLoader.load(SourceAccessor.class).iterator();
+        ACCESSOR = it.hasNext() ? it.next() : null;
     }
 
-    public static <T> List<T> asList(T[] arr, int first, int last) {
-        return com.oracle.truffle.api.impl.ReadOnlyArrayList.asList(arr, first, last);
+    protected SourceAccessor() {
+        if (!"com.oracle.truffle.api.impl.SourceAccessorImpl".equals(getClass().getName())) {
+            throw new IllegalStateException();
+        }
     }
+
+    public static Collection<ClassLoader> allLoaders() {
+        return ACCESSOR.loaders();
+    }
+
+    public static boolean isAOT() {
+        return ACCESSOR.checkAOT();
+    }
+
+    public static void neverPartOfCompilation(String msg) {
+        ACCESSOR.assertNeverPartOfCompilation(msg);
+    }
+
+    protected abstract Collection<ClassLoader> loaders();
+
+    protected abstract boolean checkAOT();
+
+    protected abstract void assertNeverPartOfCompilation(String msg);
 
 }

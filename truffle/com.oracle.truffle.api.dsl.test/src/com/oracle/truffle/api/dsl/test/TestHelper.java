@@ -122,7 +122,7 @@ class TestHelper {
     }
 
     static <E> Object executeWith(TestRootNode<? extends ValueNode> node, Object... values) {
-        return createCallTarget(node).call(values);
+        return node.execute(Truffle.getRuntime().createVirtualFrame(values, node.getFrameDescriptor()));
     }
 
     static Object[] array(Object... val) {

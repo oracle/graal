@@ -26,9 +26,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
@@ -42,8 +40,8 @@ public class HashLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) {
-        return Truffle.getRuntime().createCallTarget(new HashNode(this, code));
+    protected CallTarget parse(ParsingRequest env) {
+        return Truffle.getRuntime().createCallTarget(new HashNode(this, env.getSource()));
     }
 
     @Override
@@ -59,11 +57,6 @@ public class HashLanguage extends TruffleLanguage<Env> {
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         return false;
-    }
-
-    @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
-        throw new UnsupportedOperationException();
     }
 
     private static class HashNode extends RootNode {

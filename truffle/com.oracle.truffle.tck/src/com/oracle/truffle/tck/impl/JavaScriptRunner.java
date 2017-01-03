@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.impl;
+package com.oracle.truffle.tck.impl;
 
-import java.util.List;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import org.junit.runner.Description;
+import org.junit.runner.notification.RunNotifier;
+import org.junit.runners.BlockJUnit4ClassRunner;
+import org.junit.runners.model.FrameworkMethod;
+import org.junit.runners.model.InitializationError;
 
-/**
- * Kept around. Graal-Core tests are referencing this class.
- */
-public final class ReadOnlyArrayList {
-    private ReadOnlyArrayList() {
+public final class JavaScriptRunner extends BlockJUnit4ClassRunner {
+
+    public JavaScriptRunner(Class<?> klass) throws InitializationError {
+        super(klass);
     }
 
-    public static <T> List<T> asList(T[] arr, int first, int last) {
-        return com.oracle.truffle.api.impl.ReadOnlyArrayList.asList(arr, first, last);
+    @Override
+    protected void runChild(FrameworkMethod method, RunNotifier notifier) {
+        if (skipOnMissingJavaScript()) {
+            notifier.fireTestIgnored(Description.createTestDescription(method.getType(), method.getName()));
+        } else {
+            super.runChild(method, notifier);
+        }
     }
 
+    private static boolean skipOnMissingJavaScript() {
+        return !PolyglotEngine.newBuilder().build().getLanguages().containsKey("text/javascript");
+    }
 }

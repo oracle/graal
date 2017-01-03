@@ -70,6 +70,7 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             for (int i = 0; i < mimes.length; i++) {
                 p.setProperty(prefix + "mimeType." + i, mimes[i]);
             }
+            p.setProperty(prefix + "interactive", Boolean.toString(annotation.interactive()));
         }
         if (cnt > 0) {
             try {

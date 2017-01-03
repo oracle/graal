@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.source;
+package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.source.impl.SourceAccessor;
 import java.util.Collection;
 
-final class SourceAccessor extends Accessor {
-    private static final SourceAccessor ACCESSOR = new SourceAccessor();
+public final class SourceAccessorImpl extends SourceAccessor {
 
-    static Collection<ClassLoader> allLoaders() {
-        return ACCESSOR.loaders();
+    @Override
+    protected Collection<ClassLoader> loaders() {
+        return TruffleLocator.loaders();
     }
+
+    @Override
+    protected boolean checkAOT() {
+        return TruffleOptions.AOT;
+    }
+
+    @Override
+    protected void assertNeverPartOfCompilation(String msg) {
+        CompilerAsserts.neverPartOfCompilation(msg);
+    }
+
 }
