@@ -451,8 +451,6 @@ public class FlatNodeGenFactory {
             if (mayBeExcluded(specialization)) {
                 builder.startElseIf().tree(exclude.createContains(frameState, new Object[]{specialization})).end().startBlock();
                 builder.startStatement().string("s[1] = (byte)0b10 /* excluded */").end();
-// builder.startStatement().string("s[1] =
-// (byte)0b01").staticReference(context.getType(State.class), "EXCLUDED").end();
                 builder.end();
             }
             builder.startElseBlock();
