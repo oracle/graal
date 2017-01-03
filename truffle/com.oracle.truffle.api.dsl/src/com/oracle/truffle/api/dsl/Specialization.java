@@ -184,8 +184,8 @@ public @interface Specialization {
      * Other specializations are references using their unique method name. If this specialization
      * is instantiated then all replaced specialization instances are removed and never instantiated
      * again for this node instance. Therefore this specialization should handle strictly more
-     * inputs than which were handled by the contained specialization, otherwise the removal of the
-     * contained specialization will lead to unspecialized types of input values. The replaces
+     * inputs than which were handled by the replaced specialization, otherwise the removal of the
+     * replaced specialization will lead to unspecialized types of input values. The replaces
      * declaration is transitive for multiple involved specializations.
      * </p>
      * <b>Example usage:</b>
