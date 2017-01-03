@@ -33,7 +33,7 @@ import java.lang.annotation.Target;
  * Annotate a DSL operation using this annotation to be reflectable. The methods in
  * {@link Reflection} can only be used if the operation is annotated with {@link Reflectable}.
  *
- * @since 0.20
+ * @since 0.22
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})

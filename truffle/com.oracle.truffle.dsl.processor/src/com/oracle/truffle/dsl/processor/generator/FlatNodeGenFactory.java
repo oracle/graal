@@ -53,6 +53,7 @@ import java.util.concurrent.locks.Lock;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -61,9 +62,9 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Reflection.ReflectedSpecialization.State;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
+import com.oracle.truffle.api.dsl.internal.ReflectionAccesor;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -401,9 +402,9 @@ public class FlatNodeGenFactory {
         for (SpecializationData specialization : filteredSpecializations) {
             builder.startStatement().string("s = ").startNewArray(objectArray, CodeTreeBuilder.singleString("3")).end().end();
             builder.startStatement().string("s[0] = ").doubleQuote(specialization.getMethodName()).end();
-            builder.startIf().tree(state.createContains(frameState, new Object[]{specialization})).end().startBlock();
-            builder.startStatement().string("s[1] = ").staticReference(context.getType(State.class), "ACTIVE").end();
 
+            builder.startIf().tree(state.createContains(frameState, new Object[]{specialization})).end().startBlock();
+            builder.startStatement().string("s[1] = (byte)0b01 /* active */").end();
             TypeMirror listType = new DeclaredCodeTypeMirror((TypeElement) context.getDeclaredType(ArrayList.class).asElement(), Arrays.asList(context.getType(Object.class)));
 
             if (!specialization.getCaches().isEmpty()) {
@@ -449,11 +450,13 @@ public class FlatNodeGenFactory {
             builder.end();
             if (mayBeExcluded(specialization)) {
                 builder.startElseIf().tree(exclude.createContains(frameState, new Object[]{specialization})).end().startBlock();
-                builder.startStatement().string("s[1] = ").staticReference(context.getType(State.class), "EXCLUDED").end();
+                builder.startStatement().string("s[1] = (byte)0b10 /* excluded */").end();
+// builder.startStatement().string("s[1] =
+// (byte)0b01").staticReference(context.getType(State.class), "EXCLUDED").end();
                 builder.end();
             }
             builder.startElseBlock();
-            builder.startStatement().string("s[1] = ").staticReference(context.getType(State.class), "INACTIVE").end();
+            builder.startStatement().string("s[1] = (byte)0b00 /* inactive */").end();
             builder.end();
             builder.startStatement().string("data[", String.valueOf(index), "] = s").end();
             index++;

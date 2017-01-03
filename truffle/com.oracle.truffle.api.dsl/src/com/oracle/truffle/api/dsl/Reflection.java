@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.truffle.api.dsl.Reflection.ReflectedSpecialization.State;
 import com.oracle.truffle.api.dsl.internal.ReflectionAccesor;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -37,7 +36,7 @@ import com.oracle.truffle.api.nodes.Node;
  * Contains reflection utilties for Truffle DSL. The contained utilities are only usable if the
  * operation node is annotated with {@link Reflectable}.
  *
- * @since 0.20
+ * @since 0.22
  * @see Reflectable
  */
 public final class Reflection {
@@ -56,7 +55,7 @@ public final class Reflection {
      *
      * @param node a DSL generated node
      * @return true if the given node is reflectable
-     * @since 0.20
+     * @since 0.22
      */
     public static boolean isReflectable(Node node) {
         return node instanceof ReflectionAccesor;
@@ -75,7 +74,7 @@ public final class Reflection {
      * @param node a reflectable DSL operation with at least one specialization
      * @param methodName the method name of thes specialization to reflect
      * @return reflection info for the method
-     * @since 0.20
+     * @since 0.22
      */
     public static ReflectedSpecialization getSpecialization(Node node, String methodName) {
         for (Object object : getReflectionData(node)) {
@@ -95,7 +94,7 @@ public final class Reflection {
      * this method might be slow, do not use it in performance critical code.
      *
      * @param node a reflectable DSL operation with at least one specialization
-     * @since 0.20
+     * @since 0.22
      */
     public static List<ReflectedSpecialization> getSpecializations(Node node) {
         List<ReflectedSpecialization> specializations = new ArrayList<>();
@@ -108,10 +107,10 @@ public final class Reflection {
     @SuppressWarnings("unchecked")
     private static ReflectedSpecialization createSpecialization(Object[] fieldData) {
         String id = (String) fieldData[0];
-        State state = (State) fieldData[1];
+        byte state = (byte) fieldData[1];
         List<List<Object>> cachedData = (List<List<Object>>) fieldData[2];
         if (cachedData == null || cachedData.isEmpty()) {
-            if (state == State.ACTIVE) {
+            if ((state & 0b01) != 0) {
                 cachedData = EMPTY_CACHED;
             } else {
                 cachedData = NO_CACHED;
@@ -131,7 +130,7 @@ public final class Reflection {
         }
         Object[] fieldData = (Object[]) specializationData;
         if (fieldData.length < 3 || !(fieldData[0] instanceof String) //
-                        || !(fieldData[1] instanceof State) //
+                        || !(fieldData[1] instanceof Byte) //
                         || (fieldData[2] != null && !(fieldData[2] instanceof List))) {
             throw new IllegalStateException("Invalid reflection data.");
         }
@@ -153,36 +152,15 @@ public final class Reflection {
     /**
      * Represents dynamic reflection information of a specialization of a DSL operation.
      *
-     * @since 0.20
+     * @since 0.22
      */
     public static final class ReflectedSpecialization {
 
-        /**
-         * The dynamic state of a specialization.
-         *
-         * @since 0.20
-         * @see ReflectedSpecialization
-         */
-        public enum State {
-            /**
-             * The specialization is currently not active.
-             */
-            INACTIVE,
-            /**
-             * The specialization is active at least once.
-             */
-            ACTIVE,
-            /**
-             * The specialization was excluded from use.
-             */
-            EXCLUDED;
-        }
-
         private final String methodName;
-        private final State state;
+        private final byte state; /* 0b000000<excluded><active> */
         private final List<List<Object>> cachedData;
 
-        private ReflectedSpecialization(String methodName, State state, List<List<Object>> cachedData) {
+        private ReflectedSpecialization(String methodName, byte state, List<List<Object>> cachedData) {
             this.methodName = methodName;
             this.state = state;
             this.cachedData = cachedData;
@@ -192,26 +170,37 @@ public final class Reflection {
          * Returns the method name of the reflected specialization. Please note that the returned
          * method name might not be unique for a given node.
          *
-         * @since 0.20
+         * @since 0.22
          */
         public String getMethodName() {
             return methodName;
         }
 
         /**
-         * Returns the state of the specialization at the time when the reflection was performed.
+         * Returns <code>true</code> if the specialization was active at the time when the
+         * reflection was performed.
          *
-         * @since 0.20
+         * @since 0.22
          */
-        public State getState() {
-            return state;
+        public boolean isActive() {
+            return (state & 0b1) != 0;
+        }
+
+        /**
+         * Returns <code>true</code> if the specialization was excluded at the time when the
+         * reflection was performed.
+         *
+         * @since 0.22
+         */
+        public boolean isExcluded() {
+            return (state & 0b10) != 0;
         }
 
         /**
          * Returns the number of dynamic specialization instances that are active of this
          * specialization.
          *
-         * @since 0.20
+         * @since 0.22
          */
         public int getInstances() {
             return cachedData.size();
@@ -222,7 +211,7 @@ public final class Reflection {
          * must be greater or equal <code>0</code> and smaller {@link #getInstances()}. The returned
          * list is unmodifiable and never <code>null</code>.
          *
-         * @since 0.20
+         * @since 0.22
          */
         public List<Object> getCachedData(int instanceIndex) {
             if (instanceIndex < 0 || instanceIndex >= cachedData.size()) {

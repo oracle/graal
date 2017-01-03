@@ -31,8 +31,8 @@ import java.lang.annotation.Target;
 
 /**
  * @since 0.8 or earlier
- * @deprecated deprecated without replacement. Implement short circuits by manually executing child
- *             nodes.
+ * @deprecated deprecated without replacement since 0.22. Implement short circuits by manually
+ *             executing child nodes.
  **/
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})

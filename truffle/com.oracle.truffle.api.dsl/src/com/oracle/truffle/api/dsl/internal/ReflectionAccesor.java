@@ -28,7 +28,7 @@ package com.oracle.truffle.api.dsl.internal;
  * Internal marker interface for DSL generated code to access reflection information. A DSL user
  * must not refer to this type manually.
  *
- * @since 0.20
+ * @since 0.22
  */
 public interface ReflectionAccesor {
 
@@ -36,7 +36,7 @@ public interface ReflectionAccesor {
      * Returns internal reflection data in undefined format. A DSL user must not call this method
      * method.
      *
-     * @since 0.20
+     * @since 0.22
      */
     Object getReflectionData();
 

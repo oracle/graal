@@ -23,6 +23,8 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import java.util.List;
@@ -34,7 +36,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Reflectable;
 import com.oracle.truffle.api.dsl.Reflection;
 import com.oracle.truffle.api.dsl.Reflection.ReflectedSpecialization;
-import com.oracle.truffle.api.dsl.Reflection.ReflectedSpecialization.State;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -80,7 +81,8 @@ public class ReflectionTest {
         ReflectedSpecialization specialization = Reflection.getSpecialization(node, "doInt");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
-        assertEquals(State.INACTIVE, specialization.getState());
+        assertFalse(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
         try {
             assertEquals(0, specialization.getCachedData(0));
@@ -91,7 +93,8 @@ public class ReflectionTest {
         specialization = Reflection.getSpecialization(node, "doGeneric");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
-        assertEquals(State.INACTIVE, specialization.getState());
+        assertFalse(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
 
         try {
@@ -105,14 +108,16 @@ public class ReflectionTest {
         specialization = Reflection.getSpecialization(node, "doInt");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
-        assertEquals(State.ACTIVE, specialization.getState());
+        assertTrue(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(1, specialization.getInstances());
         assertEquals(1, specialization.getCachedData(0).get(0));
 
         specialization = Reflection.getSpecialization(node, "doGeneric");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
-        assertEquals(State.INACTIVE, specialization.getState());
+        assertFalse(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
 
         node.execute(1);
@@ -120,14 +125,16 @@ public class ReflectionTest {
         specialization = Reflection.getSpecialization(node, "doInt");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
-        assertEquals(State.ACTIVE, specialization.getState());
+        assertTrue(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(1, specialization.getInstances());
         assertEquals(1, specialization.getCachedData(0).get(0));
 
         specialization = Reflection.getSpecialization(node, "doGeneric");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
-        assertEquals(State.INACTIVE, specialization.getState());
+        assertFalse(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
 
         node.execute(2);
@@ -135,7 +142,8 @@ public class ReflectionTest {
         specialization = Reflection.getSpecialization(node, "doInt");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
-        assertEquals(State.ACTIVE, specialization.getState());
+        assertTrue(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(2, specialization.getInstances());
         assertEquals(2, specialization.getCachedData(0).get(0));
         assertEquals(1, specialization.getCachedData(1).get(0));
@@ -143,7 +151,8 @@ public class ReflectionTest {
         specialization = Reflection.getSpecialization(node, "doGeneric");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
-        assertEquals(State.INACTIVE, specialization.getState());
+        assertFalse(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
 
         node.execute(3);
@@ -151,7 +160,8 @@ public class ReflectionTest {
         specialization = Reflection.getSpecialization(node, "doInt");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
-        assertEquals(State.ACTIVE, specialization.getState());
+        assertTrue(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(3, specialization.getInstances());
         assertEquals(3, specialization.getCachedData(0).get(0));
         assertEquals(2, specialization.getCachedData(1).get(0));
@@ -160,7 +170,8 @@ public class ReflectionTest {
         specialization = Reflection.getSpecialization(node, "doGeneric");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
-        assertEquals(State.INACTIVE, specialization.getState());
+        assertFalse(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
 
         node.execute(4);
@@ -168,13 +179,15 @@ public class ReflectionTest {
         specialization = Reflection.getSpecialization(node, "doInt");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
-        assertEquals(State.EXCLUDED, specialization.getState());
+        assertFalse(specialization.isActive());
+        assertTrue(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
 
         specialization = Reflection.getSpecialization(node, "doGeneric");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
         assertEquals("doGeneric", specialization.getMethodName());
-        assertEquals(State.ACTIVE, specialization.getState());
+        assertTrue(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(1, specialization.getInstances());
         assertEquals(0, specialization.getCachedData(0).size());
     }
@@ -186,14 +199,16 @@ public class ReflectionTest {
         ReflectedSpecialization specialization = Reflection.getSpecialization(node, "doFallback");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
         assertEquals("doFallback", specialization.getMethodName());
-        assertEquals(State.INACTIVE, specialization.getState());
+        assertFalse(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(0, specialization.getInstances());
 
         node.execute("fallback");
         specialization = Reflection.getSpecialization(node, "doFallback");
         assertSpecializationEquals(specialization, Reflection.getSpecializations(node).get(1));
         assertEquals("doFallback", specialization.getMethodName());
-        assertEquals(State.ACTIVE, specialization.getState());
+        assertTrue(specialization.isActive());
+        assertFalse(specialization.isExcluded());
         assertEquals(1, specialization.getInstances());
 
     }
@@ -215,7 +230,8 @@ public class ReflectionTest {
 
     private static void assertSpecializationEquals(ReflectedSpecialization s1, ReflectedSpecialization s2) {
         assertEquals(s1.getMethodName(), s2.getMethodName());
-        assertEquals(s1.getState(), s2.getState());
+        assertEquals(s1.isActive(), s2.isActive());
+        assertEquals(s1.isExcluded(), s2.isExcluded());
         assertEquals(s1.getInstances(), s2.getInstances());
 
         for (int i = 0; i < s1.getInstances(); i++) {

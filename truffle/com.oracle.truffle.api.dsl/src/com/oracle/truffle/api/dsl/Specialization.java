@@ -173,7 +173,7 @@ public @interface Specialization {
 
     /**
      * @see #replaces()
-     * @deprecated renamed to {@link #replaces()}.
+     * @deprecated renamed to {@link #replaces()} since 0.22
      */
     @Deprecated
     String[] contains() default {};
@@ -213,6 +213,7 @@ public @interface Specialization {
      * </p>
      *
      * @see #guards()
+     * @since 0.22
      */
     String[] replaces() default {};
 
