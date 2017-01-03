@@ -368,8 +368,9 @@ public abstract class TruffleLanguage<C> {
      * somebody asks for it (by calling this method).
      * <p>
      * The exported object can either be <code>TruffleObject</code> (e.g. a native object from the
-     * other language) to support interoperability between languages, {@link String} or one of Java
-     * primitive wrappers ( {@link Integer}, {@link Double}, {@link Short}, {@link Boolean}, etc.).
+     * other language) to support interoperability between languages, {@link String} or one of the
+     * Java primitive wrappers ( {@link Integer}, {@link Double}, {@link Short}, {@link Boolean},
+     * etc.).
      * <p>
      * The way a symbol becomes <em>exported</em> is language dependent. In general it is preferred
      * to make the export explicit - e.g. call some function or method to register an object under
@@ -394,7 +395,7 @@ public abstract class TruffleLanguage<C> {
      * Returns global object for the language.
      * <p>
      * The object is expected to be <code>TruffleObject</code> (e.g. a native object from the other
-     * language) but technically it can be one of Java primitive wrappers ({@link Integer},
+     * language) but technically it can be one of the Java primitive wrappers ({@link Integer},
      * {@link Double}, {@link Short}, etc.).
      *
      * @param context context to find the language global in
@@ -615,8 +616,8 @@ public abstract class TruffleLanguage<C> {
         /**
          * Asks the environment to go through other registered languages and find whether they
          * export global symbol of specified name. The expected return type is either
-         * <code>TruffleObject</code>, or one of wrappers of Java primitive types ({@link Integer},
-         * {@link Double}).
+         * <code>TruffleObject</code>, or one of the wrappers of Java primitive types (
+         * {@link Integer}, {@link Double}).
          *
          * @param globalName the name of the symbol to search for
          * @return object representing the symbol or <code>null</code>
@@ -633,7 +634,7 @@ public abstract class TruffleLanguage<C> {
          * be used to disambiguate exported symbols. The objects returned from the iterable conform
          * to {@link com.oracle.truffle.api.interop.java.JavaInterop#asTruffleValue interop
          * semantics} e.g. the expected returned type is either
-         * {@link com.oracle.truffle.api.interop.TruffleObject}, or one of wrappers of Java
+         * {@link com.oracle.truffle.api.interop.TruffleObject}, or one of the wrappers of Java
          * primitive types (like {@link Integer}, {@link Double}).
          *
          * @param globalName the name of the symbol to search for
