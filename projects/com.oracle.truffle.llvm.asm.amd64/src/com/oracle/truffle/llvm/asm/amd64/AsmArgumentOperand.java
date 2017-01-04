@@ -27,61 +27,21 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.asm.amd64;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+public class AsmArgumentOperand extends AsmOperand {
+    private final int index;
 
-public abstract class LLVMAMD64ImmNode extends LLVMExpressionNode {
-    public abstract static class LLVMAMD64I8Node extends LLVMExpressionNode {
-        private final byte value;
-
-        public LLVMAMD64I8Node(byte value) {
-            this.value = value;
-        }
-
-        @Specialization
-        public byte executeI8() {
-            return value;
-        }
+    public AsmArgumentOperand(int index) {
+        this.index = index;
     }
 
-    public abstract static class LLVMAMD64I16Node extends LLVMExpressionNode {
-        private final short value;
-
-        public LLVMAMD64I16Node(short value) {
-            this.value = value;
-        }
-
-        @Specialization
-        public short executeI16() {
-            return value;
-        }
+    public int getIndex() {
+        return index;
     }
 
-    public abstract static class LLVMAMD64I32Node extends LLVMExpressionNode {
-        private final int value;
-
-        public LLVMAMD64I32Node(int value) {
-            this.value = value;
-        }
-
-        @Specialization
-        public int executeI32() {
-            return value;
-        }
-    }
-
-    public abstract static class LLVMAMD64I64Node extends LLVMExpressionNode {
-        private final long value;
-
-        public LLVMAMD64I64Node(long value) {
-            this.value = value;
-        }
-
-        @Specialization
-        public long executeI64() {
-            return value;
-        }
+    @Override
+    public String toString() {
+        return "%" + index;
     }
 }

@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
+import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.types.LLVMAddress;
 
 @NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"), @NodeField(type = LLVMContext.class, name = "context"),
@@ -53,6 +55,33 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
     abstract FrameSlot getStackPointerSlot();
 
     public abstract static class LLVMAllocaInstruction extends LLVMAllocInstruction {
+        @CompilationFinal(dimensions = 1) private LLVMBaseType[] types = null;
+        @CompilationFinal(dimensions = 1) private int[] offsets = null;
+
+        public void setTypes(LLVMBaseType[] types) {
+            this.types = types;
+        }
+
+        public void setOffsets(int[] offsets) {
+            this.offsets = offsets;
+        }
+
+        public LLVMBaseType getType(int i) {
+            return types[i];
+        }
+
+        public int getOffset(int i) {
+            return offsets[i];
+        }
+
+        public int[] getOffsets() {
+            return offsets;
+        }
+
+        public int getLength() {
+            return offsets.length;
+        }
+
         @Specialization
         public LLVMAddress execute(VirtualFrame frame) {
             return LLVMFrameUtil.allocateMemory(getContext().getStack(), frame, getStackPointerSlot(), getSize(), getAlignment());

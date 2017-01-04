@@ -27,18 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.asm.amd64;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-
-@NodeChild("valueNode")
-public abstract class LLVMAMD64InclNode extends LLVMExpressionNode {
-
-    @Specialization
-    protected int executeI32(int value) {
-        return (value + 1);
-    }
-
+public abstract class AsmOperand {
 }

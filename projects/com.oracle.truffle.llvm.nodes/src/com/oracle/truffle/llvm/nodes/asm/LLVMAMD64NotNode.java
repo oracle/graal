@@ -29,45 +29,40 @@
  */
 package com.oracle.truffle.llvm.nodes.asm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdtscNodeGen.LLVMAMD64RdtscReadNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
 
-public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
-    private final LLVMAMD64WriteI64RegisterNode low;
-    private final LLVMAMD64WriteI64RegisterNode high;
-    private final LLVMExpressionNode rdtsc;
-
-    public LLVMAMD64RdtscNode(LLVMAMD64WriteI64RegisterNode low, LLVMAMD64WriteI64RegisterNode high) {
-        this.low = low;
-        this.high = high;
-        rdtsc = LLVMAMD64RdtscReadNodeGen.create();
-    }
-
-    @Specialization
-    public Object execute(VirtualFrame frame) {
-        long value;
-        try {
-            value = rdtsc.executeI64(frame);
-        } catch (UnexpectedResultException e) {
-            throw new RuntimeException(e);
-        }
-        long lo = value & LLVMExpressionNode.I32_MASK;
-        long hi = (value >> LLVMExpressionNode.I32_SIZE_IN_BITS) & LLVMExpressionNode.I32_MASK;
-        low.execute(frame, lo);
-        high.execute(frame, hi);
-        return null;
-    }
-
-    public abstract static class LLVMAMD64RdtscReadNode extends LLVMExpressionNode {
-        @TruffleBoundary
+public abstract class LLVMAMD64NotNode extends LLVMExpressionNode {
+    @NodeChild("valueNode")
+    public abstract static class LLVMAMD64NotbNode extends LLVMExpressionNode {
         @Specialization
-        public long executeRdtsc() {
-            return System.currentTimeMillis();
+        protected byte executeI16(byte value) {
+            return (byte) ~value;
+        }
+    }
+
+    @NodeChild("valueNode")
+    public abstract static class LLVMAMD64NotwNode extends LLVMExpressionNode {
+        @Specialization
+        protected short executeI16(short value) {
+            return (short) ~value;
+        }
+    }
+
+    @NodeChild("valueNode")
+    public abstract static class LLVMAMD64NotlNode extends LLVMExpressionNode {
+        @Specialization
+        protected int executeI32(int value) {
+            return ~value;
+        }
+    }
+
+    @NodeChild("valueNode")
+    public abstract static class LLVMAMD64NotqNode extends LLVMExpressionNode {
+        @Specialization
+        protected long executeI64(long value) {
+            return ~value;
         }
     }
 }
