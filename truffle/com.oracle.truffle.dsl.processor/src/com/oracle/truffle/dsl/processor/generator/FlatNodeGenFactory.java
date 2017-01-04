@@ -62,9 +62,9 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
-import com.oracle.truffle.api.dsl.internal.IntrospectionAccessor;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -375,8 +375,8 @@ public class FlatNodeGenFactory {
     }
 
     private void generateReflectionInfo(CodeTypeElement clazz) {
-        clazz.getImplements().add(context.getType(IntrospectionAccessor.class));
-        CodeExecutableElement reflection = new CodeExecutableElement(modifiers(PUBLIC), context.getType(Object.class), "getIntrospectionData");
+        clazz.getImplements().add(context.getType(Introspection.Provider.class));
+        CodeExecutableElement reflection = new CodeExecutableElement(modifiers(PUBLIC), context.getType(Introspection.Data.class), "getIntrospectionData");
 
         CodeTreeBuilder builder = reflection.createBuilder();
 
@@ -460,7 +460,7 @@ public class FlatNodeGenFactory {
             index++;
         }
 
-        builder.startReturn().string("data").end();
+        builder.startReturn().startNew(context.getType(Introspection.Data.class)).string("data").end().end();
 
         clazz.add(reflection);
     }
