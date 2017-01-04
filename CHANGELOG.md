@@ -4,6 +4,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 0.22
 1-Feb-2017
+* [PolyglotEngine](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/vm/PolyglotEngine.html)`.findGlobalSymbols` that returns `Iterable`
+* [TruffleLanguage](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.html)`.importSymbols` that returns `Iterable`
 * [RootNode.setCallTarget](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/RootNode.html#setCallTarget-com.oracle.truffle.api.RootCallTarget-) is deprecated
 * Generic parsing method [TruffleLanguage](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.html).`parse(`[ParsingRequest](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.ParsingRequest.html) `)` replaces now deprecated multi-argument `parse` method.
 * Added [TruffleLanguage.findMetaObject](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.html#findMetaObject-C-java.lang.Object-) and [DebugValue.getMetaObject](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/debug/DebugValue.html#getMetaObject--) to retrieve a meta-object of a value.

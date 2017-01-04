@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -62,7 +61,11 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.NoSuchElementException;
 
 /**
  * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #newBuilder()
@@ -654,17 +657,14 @@ public class PolyglotEngine {
 
     /**
      * Looks global symbol provided by one of initialized languages up. First of all execute your
-     * program via one of your {@link #eval(com.oracle.truffle.api.source.Source)} and then look
-     * expected symbol up using this method.
+     * program via {@link #eval(com.oracle.truffle.api.source.Source)} method and then look expected
+     * symbol up using this method.
      * <p>
-     * The names of the symbols are language dependent, but for example the Java language bindings
-     * follow the specification for method references:
-     * <ul>
-     * <li>"java.lang.Exception::new" is a reference to constructor of {@link Exception}
-     * <li>"java.lang.Integer::valueOf" is a reference to static method in {@link Integer} class
-     * </ul>
-     * Once an symbol is obtained, it remembers values for fast access and is ready for being
-     * invoked.
+     * The names of the symbols are language dependent. This method finds only "first" symbol - in
+     * an unspecified order - if there are multiple languages exporting a symbol and the same name,
+     * it is safer to obtain all via {@link #findGlobalSymbols(java.lang.String)} and process them
+     * accordingly. Once an symbol is obtained, it remembers values for fast access and is ready for
+     * being invoked.
      *
      * @param globalName the name of the symbol to find
      * @return found symbol or <code>null</code> if it has not been found
@@ -677,7 +677,8 @@ public class PolyglotEngine {
         ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
             @Override
             protected Object compute() {
-                return importSymbol(lang, globalName);
+                Iterator<?> it = importSymbol(lang, globalName).iterator();
+                return it.hasNext() ? it.next() : null;
             }
         };
         compute.perform();
@@ -687,28 +688,143 @@ public class PolyglotEngine {
         return new ExecutorValue(lang, compute);
     }
 
-    final Object importSymbol(TruffleLanguage<?>[] arr, String globalName) {
-        Object g = globals.get(globalName);
-        if (g != null) {
-            return g;
-        }
-        Set<Language> uniqueLang = new LinkedHashSet<>(langs.values());
-        for (int onlyExplicit = 1; onlyExplicit >= 0; onlyExplicit--) {
-            for (Language dl : uniqueLang) {
-                TruffleLanguage<?> l = dl.getImpl(false);
-                TruffleLanguage.Env env = dl.getEnv(false);
-                if (l == arr[0] || l == null || env == null) {
-                    continue;
-                }
-                Object obj = Access.LANGS.findExportedSymbol(env, globalName, onlyExplicit == 1);
-                if (obj != null) {
-                    arr[0] = l;
-                    return obj;
-                }
+    /**
+     * Searches for global symbols provided by all initialized languages. First of all execute your
+     * program via {@link #eval(com.oracle.truffle.api.source.Source)} method and then look expected
+     * symbols up using this method. If you want to be sure only one symbol has been exported, you
+     * can use:
+     * <p>
+     * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols}
+     * <p>
+     * to make sure the <code>iterator</code> contains only one element.
+     *
+     * @param globalName the name of the symbols to find
+     * @return iterable to provide access to all found symbols exported under requested name
+     * @since 0.22
+     */
+    public Iterable<Value> findGlobalSymbols(String globalName) {
+        assert checkThread();
+        assertNoTruffle();
+        final TruffleLanguage<?>[] lang = {null};
+        Iterable<? extends Object> it = importSymbol(lang, globalName);
+        class ValueIterator implements Iterator<Value> {
+            private final Iterator<? extends Object> delegate;
+
+            ValueIterator(Iterator<? extends Object> delegate) {
+                this.delegate = delegate;
+            }
+
+            @Override
+            public boolean hasNext() {
+                ComputeInExecutor<Boolean> compute = new ComputeInExecutor<Boolean>(executor) {
+                    @Override
+                    protected Boolean compute() {
+                        return delegate.hasNext();
+                    }
+                };
+                compute.perform();
+                return compute.get();
+            }
+
+            @Override
+            public Value next() {
+                ComputeInExecutor<Object> compute = new ComputeInExecutor<Object>(executor) {
+                    @Override
+                    protected Object compute() {
+                        return delegate.next();
+                    }
+                };
+                compute.perform();
+                return new ExecutorValue(lang, compute);
             }
         }
-        arr[0] = null;
-        return null;
+        return new Iterable<Value>() {
+            @Override
+            public ValueIterator iterator() {
+                return new ValueIterator(it.iterator());
+            }
+        };
+    }
+
+    final Iterable<? extends Object> importSymbol(TruffleLanguage<?>[] arr, String globalName) {
+        class SymbolIterator implements Iterator<Object> {
+            private final Collection<? extends Language> uniqueLang;
+            private Object next;
+            private Iterator<? extends Language> explicit;
+            private Iterator<? extends Language> implicit;
+
+            SymbolIterator(Collection<? extends Language> uniqueLang, Object first) {
+                this.uniqueLang = uniqueLang;
+                this.next = first;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return findNext() != this;
+            }
+
+            @Override
+            public Object next() {
+                Object res = findNext();
+                if (res == this) {
+                    throw new NoSuchElementException();
+                }
+                next = null;
+                return res;
+            }
+
+            private Object findNext() {
+                if (next != null) {
+                    return next;
+                }
+
+                if (explicit == null) {
+                    explicit = uniqueLang.iterator();
+                }
+
+                while (explicit.hasNext()) {
+                    Language dl = explicit.next();
+                    TruffleLanguage<?> l = dl.getImpl(false);
+                    TruffleLanguage.Env env = dl.getEnv(false);
+                    if (l != arr[0] && l != null && env != null) {
+                        Object obj = Access.LANGS.findExportedSymbol(env, globalName, true);
+                        if (obj != null) {
+                            next = obj;
+                            explicit.remove();
+                            arr[0] = l;
+                            return next;
+                        }
+                    }
+                }
+
+                if (implicit == null) {
+                    implicit = uniqueLang.iterator();
+                }
+
+                while (implicit.hasNext()) {
+                    Language dl = implicit.next();
+                    TruffleLanguage<?> l = dl.getImpl(false);
+                    TruffleLanguage.Env env = dl.getEnv(false);
+                    if (l != arr[0] && l != null && env != null) {
+                        Object obj = Access.LANGS.findExportedSymbol(env, globalName, false);
+                        if (obj != null) {
+                            next = obj;
+                            arr[0] = l;
+                            return next;
+                        }
+                    }
+                }
+                return next = this;
+            }
+        }
+        Object g = globals.get(globalName);
+        final Collection<? extends Language> uniqueLang = getLanguages().values();
+        return new Iterable<Object>() {
+            @Override
+            public Iterator<Object> iterator() {
+                return new SymbolIterator(new LinkedHashSet<>(uniqueLang), g);
+            }
+        };
     }
 
     boolean checkThread() {
@@ -1512,7 +1628,7 @@ public class PolyglotEngine {
             }
 
             @Override
-            public Object importSymbol(Object vmObj, TruffleLanguage<?> ownLang, String globalName) {
+            public Iterable<? extends Object> importSymbols(Object vmObj, TruffleLanguage<?> ownLang, String globalName) {
                 PolyglotEngine vm = (PolyglotEngine) vmObj;
                 return vm.importSymbol(new TruffleLanguage<?>[]{ownLang}, globalName);
             }
@@ -1586,4 +1702,23 @@ class PolyglotEngineSnippets {
         };
         return configureJavaInterop(multi);
     }
+
+    // @formatter:off
+    // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols
+    static Value findAndReportMultipleExportedSymbols(
+        PolyglotEngine engine, String name
+    ) {
+        Value found = null;
+        for (Value value : engine.findGlobalSymbols(name)) {
+            if (found != null) {
+                throw new IllegalStateException(
+                    "Multiple global symbols exported with " + name + " name"
+                );
+            }
+            found = value;
+        }
+        return found;
+    }
+    // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols
+    // @formatter:on
 }

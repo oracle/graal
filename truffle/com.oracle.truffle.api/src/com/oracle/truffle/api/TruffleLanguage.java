@@ -49,6 +49,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -367,8 +368,9 @@ public abstract class TruffleLanguage<C> {
      * somebody asks for it (by calling this method).
      * <p>
      * The exported object can either be <code>TruffleObject</code> (e.g. a native object from the
-     * other language) to support interoperability between languages, {@link String} or one of Java
-     * primitive wrappers ( {@link Integer}, {@link Double}, {@link Short}, {@link Boolean}, etc.).
+     * other language) to support interoperability between languages, {@link String} or one of the
+     * Java primitive wrappers ( {@link Integer}, {@link Double}, {@link Short}, {@link Boolean},
+     * etc.).
      * <p>
      * The way a symbol becomes <em>exported</em> is language dependent. In general it is preferred
      * to make the export explicit - e.g. call some function or method to register an object under
@@ -393,7 +395,7 @@ public abstract class TruffleLanguage<C> {
      * Returns global object for the language.
      * <p>
      * The object is expected to be <code>TruffleObject</code> (e.g. a native object from the other
-     * language) but technically it can be one of Java primitive wrappers ({@link Integer},
+     * language) but technically it can be one of the Java primitive wrappers ({@link Integer},
      * {@link Double}, {@link Short}, etc.).
      *
      * @param context context to find the language global in
@@ -614,15 +616,33 @@ public abstract class TruffleLanguage<C> {
         /**
          * Asks the environment to go through other registered languages and find whether they
          * export global symbol of specified name. The expected return type is either
-         * <code>TruffleObject</code>, or one of wrappers of Java primitive types ({@link Integer},
-         * {@link Double}).
+         * <code>TruffleObject</code>, or one of the wrappers of Java primitive types (
+         * {@link Integer}, {@link Double}).
          *
          * @param globalName the name of the symbol to search for
          * @return object representing the symbol or <code>null</code>
          * @since 0.8 or earlier
          */
         public Object importSymbol(String globalName) {
-            return AccessAPI.engineAccess().importSymbol(vm, lang, globalName);
+            Iterator<? extends Object> it = AccessAPI.engineAccess().importSymbols(vm, lang, globalName).iterator();
+            return it.hasNext() ? it.next() : null;
+        }
+
+        /**
+         * Returns an iterable collection of global symbols that are exported for a given name.
+         * Multiple languages may export a symbol with a particular name. This method is intended to
+         * be used to disambiguate exported symbols. The objects returned from the iterable conform
+         * to {@link com.oracle.truffle.api.interop.java.JavaInterop#asTruffleValue interop
+         * semantics} e.g. the expected returned type is either
+         * {@link com.oracle.truffle.api.interop.TruffleObject}, or one of the wrappers of Java
+         * primitive types (like {@link Integer}, {@link Double}).
+         *
+         * @param globalName the name of the symbol to search for
+         * @return iterable returning objects representing the symbol
+         * @since 0.22
+         */
+        public Iterable<? extends Object> importSymbols(String globalName) {
+            return AccessAPI.engineAccess().importSymbols(vm, lang, globalName);
         }
 
         /**
