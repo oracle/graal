@@ -379,7 +379,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
             }
             i++;
         }
-        return new LLVMFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, sourceSection, frameDescriptor, functionHeader.getName(), nullers);
+        return new LLVMFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, sourceSection, frameDescriptor, functionHeader, nullers);
     }
 
     @Override

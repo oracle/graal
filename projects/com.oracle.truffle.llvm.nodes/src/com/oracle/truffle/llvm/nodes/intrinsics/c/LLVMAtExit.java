@@ -70,7 +70,7 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
                                         new LLVMExpressionNode[]{},
                                         null,
                                         new FrameDescriptor(),
-                                        func.getName(),
+                                        null,
                                         new LLVMStackFrameNuller[0]));
 
         context.registerAtExitFunction(callTarget);
