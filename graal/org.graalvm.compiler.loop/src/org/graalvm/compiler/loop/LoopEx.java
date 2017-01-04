@@ -34,8 +34,8 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -76,7 +76,6 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.code.BytecodeFrame;
 
 public class LoopEx {
-
     private final Loop<Block> loop;
     private LoopFragmentInside inside;
     private LoopFragmentWhole whole;
