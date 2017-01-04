@@ -39,8 +39,18 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 
 public abstract class LLVMExtractElementNode {
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMI1ExtractElementNode extends LLVMExpressionNode {
+
+        @Specialization
+        public boolean executeI1(LLVMI1Vector vector, int index) {
+            return vector.getValue(index);
+        }
+    }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMI8ExtractElementNode extends LLVMExpressionNode {
