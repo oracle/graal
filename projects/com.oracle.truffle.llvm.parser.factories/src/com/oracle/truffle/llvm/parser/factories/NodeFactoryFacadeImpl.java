@@ -61,7 +61,10 @@ import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode.LLVMResolvedDirectCallNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI16CallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI32CallUnboxNodeGen;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI64CallUnboxNodeGen;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI8CallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMStructCallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
@@ -69,18 +72,15 @@ import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMFreeFactory;
 import com.oracle.truffle.llvm.nodes.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressZeroNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
 import com.oracle.truffle.llvm.nodes.others.LLVMStaticInitsBlockNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVM80BitFloatUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMAddressUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMDoubleUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMFloatUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMFunctionUnsupportedInlineAssemblerNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMI16UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMI1UnsupportedInlineAssemblerNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMI64UnsupportedInlineAssemblerNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMI8UnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.api.LLVMType;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
@@ -94,6 +94,7 @@ import com.oracle.truffle.llvm.parser.api.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.api.model.types.ArrayType;
 import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.api.model.types.PointerType;
+import com.oracle.truffle.llvm.parser.api.model.types.StructureType;
 import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.types.VectorType;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
@@ -288,6 +289,27 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     public LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, LLVMBaseType llvmType, LLVMExpressionNode numElements) {
         if (numElements == null) {
             assert llvmType == null;
+            if (type instanceof StructureType) {
+                StructureType struct = (StructureType) type;
+                final int[] offsets = new int[struct.getLength()];
+                final LLVMBaseType[] types = new LLVMBaseType[struct.getLength()];
+                int currentOffset = 0;
+                for (int i = 0; i < struct.getLength(); i++) {
+                    final Type elemType = struct.getElementType(i);
+
+                    if (!struct.isPacked()) {
+                        currentOffset += runtime.getBytePadding(currentOffset, elemType);
+                    }
+
+                    offsets[i] = currentOffset;
+                    types[i] = elemType.getLLVMBaseType();
+                    currentOffset += runtime.getByteSize(elemType);
+                }
+                LLVMAllocaInstruction alloc = LLVMAllocFactory.createAlloc(runtime, byteSize, alignment);
+                alloc.setTypes(types);
+                alloc.setOffsets(offsets);
+                return alloc;
+            }
             return LLVMAllocFactory.createAlloc(runtime, byteSize, alignment);
         } else {
             return LLVMAllocFactory.createAlloc(runtime, llvmType, numElements, byteSize, alignment);
@@ -367,22 +389,26 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, LLVMType[] argTypes, LLVMBaseType retType) {
-        Parser asmParser = new Parser(asmExpression, asmFlags, args, retType);
+        LLVMBaseType[] argBaseTypes = new LLVMBaseType[argTypes.length];
+        for (int i = 0; i < argTypes.length; i++) {
+            argBaseTypes[i] = argTypes[i].getType();
+        }
+        Parser asmParser = new Parser(asmExpression, asmFlags, args, argBaseTypes, retType);
         LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
         CallTarget target = Truffle.getRuntime().createCallTarget(assemblyRoot);
         switch (retType) {
             case VOID:
-                return new LLVMUnsupportedInlineAssemblerNode();
+                return new LLVMResolvedDirectCallNode(target, args, argTypes);
             case I1:
                 return new LLVMI1UnsupportedInlineAssemblerNode();
             case I8:
-                return new LLVMI8UnsupportedInlineAssemblerNode();
+                return LLVMI8CallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args, argTypes));
             case I16:
-                return new LLVMI16UnsupportedInlineAssemblerNode();
+                return LLVMI16CallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args, argTypes));
             case I32:
                 return LLVMI32CallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args, argTypes));
             case I64:
-                return new LLVMI64UnsupportedInlineAssemblerNode();
+                return LLVMI64CallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args, argTypes));
             case FLOAT:
                 return new LLVMFloatUnsupportedInlineAssemblerNode();
             case DOUBLE:
