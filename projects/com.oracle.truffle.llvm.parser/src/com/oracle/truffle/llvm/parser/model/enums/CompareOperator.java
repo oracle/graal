@@ -31,33 +31,33 @@ package com.oracle.truffle.llvm.parser.model.enums;
 
 public enum CompareOperator {
 
-    FP_FALSE,
-    FP_ORDERED_EQUAL,
-    FP_ORDERED_GREATER_THAN,
-    FP_ORDERED_GREATER_OR_EQUAL,
-    FP_ORDERED_LESS_THAN,
-    FP_ORDERED_LESS_OR_EQUAL,
-    FP_ORDERED_NOT_EQUAL,
-    FP_ORDERED,
-    FP_UNORDERED,
-    FP_UNORDERED_EQUAL,
-    FP_UNORDERED_GREATER_THAN,
-    FP_UNORDERED_GREATER_OR_EQUAL,
-    FP_UNORDERED_LESS_THAN,
-    FP_UNORDERED_LESS_OR_EQUAL,
-    FP_UNORDERED_NOT_EQUAL,
-    FP_TRUE,
+    FP_FALSE(true, "false"),
+    FP_ORDERED_EQUAL(true, "oeq"),
+    FP_ORDERED_GREATER_THAN(true, "ogt"),
+    FP_ORDERED_GREATER_OR_EQUAL(true, "oge"),
+    FP_ORDERED_LESS_THAN(true, "olt"),
+    FP_ORDERED_LESS_OR_EQUAL(true, "ole"),
+    FP_ORDERED_NOT_EQUAL(true, "one"),
+    FP_ORDERED(true, "ord"),
+    FP_UNORDERED(true, "uno"),
+    FP_UNORDERED_EQUAL(true, "ueq"),
+    FP_UNORDERED_GREATER_THAN(true, "ugt"),
+    FP_UNORDERED_GREATER_OR_EQUAL(true, "uge"),
+    FP_UNORDERED_LESS_THAN(true, "ult"),
+    FP_UNORDERED_LESS_OR_EQUAL(true, "ule"),
+    FP_UNORDERED_NOT_EQUAL(true, "une"),
+    FP_TRUE(true, "true"),
 
-    INT_EQUAL,
-    INT_NOT_EQUAL,
-    INT_UNSIGNED_GREATER_THAN,
-    INT_UNSIGNED_GREATER_OR_EQUAL,
-    INT_UNSIGNED_LESS_THAN,
-    INT_UNSIGNED_LESS_OR_EQUAL,
-    INT_SIGNED_GREATER_THAN,
-    INT_SIGNED_GREATER_OR_EQUAL,
-    INT_SIGNED_LESS_THAN,
-    INT_SIGNED_LESS_OR_EQUAL;
+    INT_EQUAL(false, "eq"),
+    INT_NOT_EQUAL(false, "ne"),
+    INT_UNSIGNED_GREATER_THAN(false, "ugt"),
+    INT_UNSIGNED_GREATER_OR_EQUAL(false, "uge"),
+    INT_UNSIGNED_LESS_THAN(false, "ult"),
+    INT_UNSIGNED_LESS_OR_EQUAL(false, "ule"),
+    INT_SIGNED_GREATER_THAN(false, "sgt"),
+    INT_SIGNED_GREATER_OR_EQUAL(false, "sge"),
+    INT_SIGNED_LESS_THAN(false, "slt"),
+    INT_SIGNED_LESS_OR_EQUAL(false, "sle");
 
     private static final long INTEGER_OPERATOR_FLAG = 32L;
 
@@ -75,5 +75,24 @@ public enum CompareOperator {
             }
         }
         return null;
+    }
+
+    private final boolean isFloatingPoint;
+    private final String irString;
+
+    CompareOperator(boolean isFloatingPoint, String irString) {
+        this.isFloatingPoint = isFloatingPoint;
+        this.irString = irString;
+    }
+
+    public boolean isFloatingPoint() {
+        return isFloatingPoint;
+    }
+
+    /**
+     * Useful to get the llvm ir equivalent string of the enum
+     */
+    public String getIrString() {
+        return irString;
     }
 }

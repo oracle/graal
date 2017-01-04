@@ -30,22 +30,31 @@
 package com.oracle.truffle.llvm.parser.model.enums;
 
 public enum AtomicOrdering {
-    NOT_ATOMIC(0L),
-    UNORDERED(1L),
-    MONOTONIC(2L),
-    ACQUIRE(3L),
-    RELEASE(4L),
-    ACQUIRE_RELEASE(5L),
-    SEQUENTIALLY_CONSISTENT(6L);
+    NOT_ATOMIC(0L, ""),
+    UNORDERED(1L, "unordered"),
+    MONOTONIC(2L, "monotonic"),
+    ACQUIRE(3L, "acquire"),
+    RELEASE(4L, "release"),
+    ACQUIRE_RELEASE(5L, "acq_rel"),
+    SEQUENTIALLY_CONSISTENT(6L, "seq_cst");
 
     private final long encodedValue;
+    private final String irString;
 
-    AtomicOrdering(long encodeValue) {
+    AtomicOrdering(long encodeValue, String irString) {
         this.encodedValue = encodeValue;
+        this.irString = irString;
     }
 
     public long getEncodedValue() {
         return encodedValue;
+    }
+
+    /**
+     * Useful to get the llvm ir equivalent string of the enum
+     */
+    public String getIrString() {
+        return irString;
     }
 
     public static AtomicOrdering decode(long id) {
