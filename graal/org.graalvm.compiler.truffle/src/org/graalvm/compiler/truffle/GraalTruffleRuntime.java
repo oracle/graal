@@ -430,6 +430,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return createClonedCallTarget(null, rootNode);
     }
 
+    @SuppressWarnings("deprecation")
     public RootCallTarget createClonedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
 
