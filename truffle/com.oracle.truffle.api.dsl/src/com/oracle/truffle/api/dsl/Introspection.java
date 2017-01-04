@@ -35,6 +35,45 @@ import com.oracle.truffle.api.nodes.Node;
 /**
  * Contains introspection utilities for Truffle DSL. The contained utilities are only usable if the
  * operation node is annotated with {@link Introspectable}.
+ * <p>
+ * Introspection is useful for using testing the node declaration and verifying that particular
+ * specializations become active.
+ * <p>
+ * Example for using introspection in unit testing:
+ *
+ * <pre>
+ * &#64;{@link Introspectable}
+ * abstract static class NegateNode extends {@link Node} {
+ *
+ *     abstract Object execute(Object o);
+ *
+ *     &#64;{@link Specialization}(guards = "cachedvalue == value", limit = "1")
+ *     protected static int doInt(int value,
+ *                     &#64;Cached("value") int cachedvalue) {
+ *         return -cachedvalue;
+ *     }
+ *
+ *     &#64;Specialization(replaces = "doInt")
+ *     protected static int doGeneric(int value) {
+ *         return -value;
+ *     }
+ * }
+ *
+ * &#64;Test
+ * public void testUsingIntrospection() {
+ *     NegateNode node = NegateNodeGen.create();
+ *
+ *     node.execute(1);
+ *     assertEquals(1, {@link Introspection}.getSpecialization(node, "doInt").getInstances());
+ *
+ *     node.execute(1);
+ *     assertEquals(1, {@link Introspection}.getSpecialization(node, "doInt").getInstances());
+ *
+ *     node.execute(2);
+ *     assertEquals(0, {@link Introspection}.getSpecialization(node, "doInt").getInstances());
+ *     assertEquals(1, {@link Introspection}.getSpecialization(node, "doGeneric").getInstances());
+ * }
+ * </pre>
  *
  * @since 0.22
  * @see Introspectable

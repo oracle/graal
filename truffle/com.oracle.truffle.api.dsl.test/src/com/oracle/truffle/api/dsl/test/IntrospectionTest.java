@@ -50,11 +50,11 @@ public class IntrospectionTest {
 
     @TypeSystem
     @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
-    public static class ReflectionTypeSystem {
+    public static class IntrospectionTypeSystem {
 
     }
 
-    @TypeSystemReference(ReflectionTypeSystem.class)
+    @TypeSystemReference(IntrospectionTypeSystem.class)
     @Introspectable
     public static class ReflectableNode extends Node {
 
