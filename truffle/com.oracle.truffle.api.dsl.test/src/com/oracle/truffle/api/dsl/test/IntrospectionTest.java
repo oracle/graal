@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Introspection;
-import com.oracle.truffle.api.dsl.Introspection.IntrospectedSpecialization;
+import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -78,7 +78,7 @@ public class IntrospectionTest {
     @Test
     public void testReflection1() {
         Introspection1Node node = Introspection1NodeGen.create();
-        IntrospectedSpecialization specialization = Introspection.getSpecialization(node, "doInt");
+        SpecializationInfo specialization = Introspection.getSpecialization(node, "doInt");
         assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(0));
         assertEquals("doInt", specialization.getMethodName());
         assertFalse(specialization.isActive());
@@ -196,7 +196,7 @@ public class IntrospectionTest {
     public void testFallbackReflection() {
         FallbackNode node = FallbackNodeGen.create();
 
-        IntrospectedSpecialization specialization = Introspection.getSpecialization(node, "doFallback");
+        SpecializationInfo specialization = Introspection.getSpecialization(node, "doFallback");
         assertSpecializationEquals(specialization, Introspection.getSpecializations(node).get(1));
         assertEquals("doFallback", specialization.getMethodName());
         assertFalse(specialization.isActive());
@@ -228,7 +228,7 @@ public class IntrospectionTest {
         }
     }
 
-    private static void assertSpecializationEquals(IntrospectedSpecialization s1, IntrospectedSpecialization s2) {
+    private static void assertSpecializationEquals(SpecializationInfo s1, SpecializationInfo s2) {
         assertEquals(s1.getMethodName(), s2.getMethodName());
         assertEquals(s1.isActive(), s2.isActive());
         assertEquals(s1.isExcluded(), s2.isExcluded());

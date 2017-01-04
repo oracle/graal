@@ -76,7 +76,7 @@ public final class Introspection {
      * @return introspection info for the method
      * @since 0.22
      */
-    public static IntrospectedSpecialization getSpecialization(Node node, String methodName) {
+    public static SpecializationInfo getSpecialization(Node node, String methodName) {
         for (Object object : getIntrospectionData(node)) {
             Object[] fieldData = getIntrospectionData(object);
             if (methodName.equals(fieldData[0])) {
@@ -97,8 +97,8 @@ public final class Introspection {
      * @param node a introspectable DSL operation with at least one specialization
      * @since 0.22
      */
-    public static List<IntrospectedSpecialization> getSpecializations(Node node) {
-        List<IntrospectedSpecialization> specializations = new ArrayList<>();
+    public static List<SpecializationInfo> getSpecializations(Node node) {
+        List<SpecializationInfo> specializations = new ArrayList<>();
         for (Object object : getIntrospectionData(node)) {
             specializations.add(createSpecialization(getIntrospectionData(object)));
         }
@@ -106,7 +106,7 @@ public final class Introspection {
     }
 
     @SuppressWarnings("unchecked")
-    private static IntrospectedSpecialization createSpecialization(Object[] fieldData) {
+    private static SpecializationInfo createSpecialization(Object[] fieldData) {
         String id = (String) fieldData[0];
         byte state = (byte) fieldData[1];
         List<List<Object>> cachedData = (List<List<Object>>) fieldData[2];
@@ -121,7 +121,7 @@ public final class Introspection {
                 cachedData.set(i, Collections.unmodifiableList(cachedData.get(i)));
             }
         }
-        IntrospectedSpecialization s = new IntrospectedSpecialization(id, state, cachedData);
+        SpecializationInfo s = new SpecializationInfo(id, state, cachedData);
         return s;
     }
 
@@ -155,13 +155,13 @@ public final class Introspection {
      *
      * @since 0.22
      */
-    public static final class IntrospectedSpecialization {
+    public static final class SpecializationInfo {
 
         private final String methodName;
         private final byte state; /* 0b000000<excluded><active> */
         private final List<List<Object>> cachedData;
 
-        private IntrospectedSpecialization(String methodName, byte state, List<List<Object>> cachedData) {
+        private SpecializationInfo(String methodName, byte state, List<List<Object>> cachedData) {
             this.methodName = methodName;
             this.state = state;
             this.cachedData = cachedData;
