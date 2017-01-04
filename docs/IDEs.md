@@ -13,7 +13,7 @@ Open IntelliJ and go to "Preferences > Plugins > Browse Repositories". Install t
 * [Save Actions](https://plugins.jetbrains.com/plugin/7642): allows code reformatting on save similar to Eclipse
 * [FindBugs-IDEA](https://plugins.jetbrains.com/plugin/3847): looks for suspicious code
 
-Make sure you have [`mx`](https://github.com/graalvm/mx) installed and updated (`mx update`). Then, to initialize IntelliJ project files, go to the root of your project and invoke: `mx ideinit`
+Make sure you have [`mx`](https://github.com/graalvm/mx) installed and updated (`mx update`). Then, to initialize IntelliJ project files, go to the root of your project and invoke: `mx intellijinit`
 
 Open the folder of your freshly initialized project from IntelliJ (*IntelliJ IDEA > File > Open…*). All depending projects will be included automatically.
 
