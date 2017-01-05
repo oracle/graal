@@ -33,7 +33,6 @@ import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.types.LLVMFunction;
@@ -102,8 +101,9 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
-    protected CallTarget parse(Source code, Node context, String... argumentNames) throws IOException {
-        return provider.parse(code, context, argumentNames);
+    protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
+        Source source = request.getSource();
+        return provider.parse(source, request.getLocation(), request.getArgumentNames().toArray(new String[request.getArgumentNames().size()]));
     }
 
     @Override
@@ -135,11 +135,6 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public Node createFindContextNode0() {
         return createFindContextNode();
-    }
-
-    @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) throws IOException {
-        throw new AssertionError();
     }
 
 }
