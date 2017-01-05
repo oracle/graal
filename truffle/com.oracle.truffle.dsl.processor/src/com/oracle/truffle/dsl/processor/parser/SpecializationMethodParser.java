@@ -107,16 +107,24 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                 specialization.setInsertBeforeName(insertBeforeName);
             }
 
-            List<String> containsDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "contains");
-            Set<String> containsNames = specialization.getContainsNames();
+            List<String> replacesDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "replaces");
+            if (replacesDefs == null) {
+                // TODO remove if deprecated contains API is removed.
+                replacesDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "contains");
+            }
+            Set<String> containsNames = specialization.getReplacesNames();
             containsNames.clear();
-            if (containsDefs != null) {
-                for (String include : containsDefs) {
+            if (replacesDefs != null) {
+                for (String include : replacesDefs) {
                     if (!containsNames.contains(include)) {
-                        specialization.getContainsNames().add(include);
+                        specialization.getReplacesNames().add(include);
                     } else {
-                        AnnotationValue value = ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "contains");
-                        specialization.addError(value, "Duplicate contains declaration '%s'.", include);
+                        AnnotationValue value = ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "replaces");
+                        if (value == null) {
+                            // TODO remove if deprecated api was removed.
+                            value = ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "contains");
+                        }
+                        specialization.addError(value, "Duplicate replace declaration '%s'.", include);
                     }
                 }
 

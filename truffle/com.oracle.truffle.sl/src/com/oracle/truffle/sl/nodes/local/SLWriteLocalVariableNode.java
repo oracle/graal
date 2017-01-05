@@ -96,7 +96,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      * {@link Object}, it is guaranteed to never fail, i.e., once we are in this specialization the
      * node will never be re-specialized.
      */
-    @Specialization(contains = {"writeLong", "writeBoolean"})
+    @Specialization(replaces = {"writeLong", "writeBoolean"})
     protected Object write(VirtualFrame frame, Object value) {
         /*
          * Regardless of the type before, the new and final type of the local variable is Object.

@@ -84,7 +84,7 @@ abstract class ToJavaNode extends Node {
         return convertedValue;
     }
 
-    @Specialization(guards = "operand != null", contains = "doCached")
+    @Specialization(guards = "operand != null", replaces = "doCached")
     protected Object doGeneric(VirtualFrame frame, Object operand, TypeAndClass<?> type) {
         // TODO this specialization should be a TruffleBoundary because it produces too much code.
         // It can't be because a frame is passed in. We need extract all uses of frame out of

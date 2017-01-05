@@ -1,0 +1,8 @@
+<? 
+  import com.oracle.truffle.api.dsl.Specialization
+?>
+'Rename deprecated specialization contains 1':
+@Specialization($1$, contains=$2, $3$)
+=> 
+@Specialization($1$, replaces=$2, $3$)
+;;

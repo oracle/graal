@@ -58,6 +58,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final boolean generateFactory;
 
     private TypeMirror frameType;
+    private boolean reflectable;
 
     public NodeData(ProcessorContext context, TypeElement type, String shortName, TypeSystemData typeSystem, boolean generateFactory) {
         super(context, type, null);
@@ -82,6 +83,14 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public NodeExecutionData getThisExecution() {
         return thisExecution;
+    }
+
+    public boolean isReflectable() {
+        return reflectable;
+    }
+
+    public void setReflectable(boolean reflectable) {
+        this.reflectable = reflectable;
     }
 
     public boolean isFallbackReachable() {

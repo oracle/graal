@@ -106,7 +106,7 @@ public class MathPow extends Node {
             return Math.pow(base, exponent);
         }
 
-        @Specialization(contains = "doPowCached", guards = {"exponent == cachedExponent", "cachedExponent <= 10"})
+        @Specialization(replaces = "doPowCached", guards = {"exponent == cachedExponent", "cachedExponent <= 10"})
         double doPowCachedExponent(double base, int exponent, @Cached("exponent") int cachedExponent) {
             doPowCachedExponent++;
             double result = 1.0;
@@ -116,7 +116,7 @@ public class MathPow extends Node {
             return result;
         }
 
-        @Specialization(contains = "doPowCachedExponent", guards = "exponent >= 0")
+        @Specialization(replaces = "doPowCachedExponent", guards = "exponent >= 0")
         double doPowDoubleInt(double base, int exponent) {
             doPowDoubleInt++;
             // Uses binary decomposition to limit the number of
@@ -135,7 +135,7 @@ public class MathPow extends Node {
             return result;
         }
 
-        @Specialization(contains = {"doPowCached", "doPowDoubleInt"})
+        @Specialization(replaces = {"doPowCached", "doPowDoubleInt"})
         double doPow(double base, double exponent) {
             doPow++;
             return Math.pow(base, exponent);

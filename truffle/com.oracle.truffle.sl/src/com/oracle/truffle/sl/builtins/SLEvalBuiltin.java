@@ -69,7 +69,7 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
     }
 
     @TruffleBoundary
-    @Specialization(contains = "evalCached")
+    @Specialization(replaces = "evalCached")
     public Object evalUncached(String mimeType, String code) {
         return parse(mimeType, code).call();
     }

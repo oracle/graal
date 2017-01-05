@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,15 +30,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * @since 0.8 or earlier
- * @deprecated deprecated without replacement since 0.22. Implement short circuits by manually
- *             executing child nodes.
- **/
+ * Annotate a DSL operation using this annotation to be introspectable. The methods in
+ * {@link Introspection} can only be used if the operation is annotated with {@link Introspectable}.
+ *
+ * @since 0.22
+ */
 @Retention(RetentionPolicy.CLASS)
-@Target({ElementType.METHOD})
-@Deprecated
-public @interface ShortCircuit {
-
-    String value();
+@Target({ElementType.TYPE})
+public @interface Introspectable {
 
 }

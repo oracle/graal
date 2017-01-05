@@ -124,7 +124,7 @@ public class NodeFieldTest {
             throw new RuntimeException();
         }
 
-        @Specialization(contains = "alwaysRewrite")
+        @Specialization(replaces = "alwaysRewrite")
         Object returnField() {
             return getField();
         }

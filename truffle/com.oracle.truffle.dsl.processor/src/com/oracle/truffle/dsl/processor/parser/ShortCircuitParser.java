@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import com.oracle.truffle.api.dsl.ShortCircuit;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
@@ -75,9 +74,10 @@ public class ShortCircuitParser extends NodeMethodParser<ShortCircuitData> {
         return new ShortCircuitData(method, shortCircuitValue);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public Class<? extends Annotation> getAnnotationType() {
-        return ShortCircuit.class;
+        return com.oracle.truffle.api.dsl.ShortCircuit.class;
     }
 
 }

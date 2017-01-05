@@ -73,9 +73,9 @@ import com.oracle.truffle.sl.nodes.expression.SLEqualNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLLessThanNodeGen;
-import com.oracle.truffle.sl.nodes.expression.SLLogicalAndNodeGen;
+import com.oracle.truffle.sl.nodes.expression.SLLogicalAndNode;
 import com.oracle.truffle.sl.nodes.expression.SLLogicalNotNodeGen;
-import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNodeGen;
+import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNode;
 import com.oracle.truffle.sl.nodes.expression.SLLongLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLMulNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLParenExpressionNode;
@@ -346,10 +346,10 @@ public class SLNodeFactory {
                 result = SLLogicalNotNodeGen.create(SLEqualNodeGen.create(leftNode, rightNode));
                 break;
             case "&&":
-                result = SLLogicalAndNodeGen.create(leftNode, rightNode);
+                result = new SLLogicalAndNode(leftNode, rightNode);
                 break;
             case "||":
-                result = SLLogicalOrNodeGen.create(leftNode, rightNode);
+                result = new SLLogicalOrNode(leftNode, rightNode);
                 break;
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.val);

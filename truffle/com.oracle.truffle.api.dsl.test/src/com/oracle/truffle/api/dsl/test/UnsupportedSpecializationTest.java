@@ -29,7 +29,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.ShortCircuit;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
@@ -91,7 +90,8 @@ public class UnsupportedSpecializationTest {
     @NodeChildren({@NodeChild("a"), @NodeChild("b")})
     abstract static class Unsupported2 extends ValueNode {
 
-        @ShortCircuit("b")
+        @SuppressWarnings("deprecation")
+        @com.oracle.truffle.api.dsl.ShortCircuit("b")
         public boolean needsB(Object a) {
             return false;
         }

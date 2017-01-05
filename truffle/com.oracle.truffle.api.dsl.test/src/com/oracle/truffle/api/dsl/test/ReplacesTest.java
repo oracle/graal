@@ -36,25 +36,25 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.internal.SpecializedNode;
-import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains1Factory;
-import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains2Factory;
-import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains3Factory;
-import com.oracle.truffle.api.dsl.test.ContainsTestFactory.Contains4Factory;
-import com.oracle.truffle.api.dsl.test.ContainsTestFactory.PolymorphicToMonomorphic0Factory;
+import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.PolymorphicToMonomorphic0Factory;
+import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces1Factory;
+import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces2Factory;
+import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces3Factory;
+import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces4Factory;
 import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 
 @SuppressWarnings("unused")
-public class ContainsTest {
+public class ReplacesTest {
 
     /*
      * Tests a simple monomorphic inclusion.
      */
     @Test
-    public void testContains1() {
-        assertRuns(Contains1Factory.getInstance(), //
+    public void testReplaces1() {
+        assertRuns(Replaces1Factory.getInstance(), //
                         array(1, "a", 2, "b"), //
                         array(2, "aa", 3, "ba"), //
                         new ExecutionListener() {
@@ -69,14 +69,14 @@ public class ContainsTest {
     }
 
     @NodeChild("a")
-    abstract static class Contains1 extends ValueNode {
+    abstract static class Replaces1 extends ValueNode {
 
         @Specialization
         int f1(int a) {
             return a + 1;
         }
 
-        @Specialization(contains = "f1")
+        @Specialization(replaces = "f1")
         Object f2(Object a) {
             if (a instanceof Integer) {
                 return ((Integer) a) + 1;
@@ -89,15 +89,15 @@ public class ContainsTest {
      * Tests an inclusion in within a polymorphic chain.
      */
     @Test
-    public void testContains2() {
-        assertRuns(Contains2Factory.getInstance(), //
+    public void testReplaces2() {
+        assertRuns(Replaces2Factory.getInstance(), //
                         array(true, 1, 0, false), //
                         array(false, -1, 1, true) //
         );
     }
 
     @NodeChild("a")
-    abstract static class Contains2 extends ValueNode {
+    abstract static class Replaces2 extends ValueNode {
 
         static boolean isZero(int a) {
             return a == 0;
@@ -108,7 +108,7 @@ public class ContainsTest {
             return a + 1;
         }
 
-        @Specialization(contains = "f1")
+        @Specialization(replaces = "f1")
         int f2(int a) {
             if (a == 0) {
                 return a + 1;
@@ -126,8 +126,8 @@ public class ContainsTest {
      * Tests transitive monomorphic inclusion.
      */
     @Test
-    public void testContains3() {
-        assertRuns(Contains3Factory.getInstance(), //
+    public void testReplaces3() {
+        assertRuns(Replaces3Factory.getInstance(), //
                         array(2, 1, 2, -3, -4), //
                         array(-2, 2, -2, -3, -4), //
                         new ExecutionListener() {
@@ -139,7 +139,7 @@ public class ContainsTest {
     }
 
     @NodeChild("a")
-    abstract static class Contains3 extends ValueNode {
+    abstract static class Replaces3 extends ValueNode {
 
         static boolean isGreaterZero(int a) {
             return a > 0;
@@ -154,7 +154,7 @@ public class ContainsTest {
             return a + 1;
         }
 
-        @Specialization(contains = "f1", guards = {"isGreaterZero(a)"})
+        @Specialization(replaces = "f1", guards = {"isGreaterZero(a)"})
         int f2(int a) {
             if (a == 1) {
                 return 2;
@@ -162,7 +162,7 @@ public class ContainsTest {
             return -a;
         }
 
-        @Specialization(contains = "f2")
+        @Specialization(replaces = "f2")
         int f3(int a) {
             if (a > 0) {
                 return a == 1 ? 2 : -a;
@@ -178,8 +178,8 @@ public class ContainsTest {
      * we can combine them. Therefore operation should always become monomorphic in the end.
      */
     @Test
-    public void testContains4() {
-        assertRuns(Contains4Factory.getInstance(), //
+    public void testReplaces4() {
+        assertRuns(Replaces4Factory.getInstance(), //
                         array(-1, 0, 1, 2), //
                         array(1, 0, 1, 2), //
                         new ExecutionListener() {
@@ -190,7 +190,7 @@ public class ContainsTest {
     }
 
     @NodeChild("a")
-    abstract static class Contains4 extends ValueNode {
+    abstract static class Replaces4 extends ValueNode {
 
         static boolean isOne(int a) {
             return a == 1;
@@ -201,12 +201,12 @@ public class ContainsTest {
             return 1;
         }
 
-        @Specialization(contains = "f0", guards = "a >= 0")
+        @Specialization(replaces = "f0", guards = "a >= 0")
         int f1(int a) {
             return a;
         }
 
-        @Specialization(contains = {"f1"})
+        @Specialization(replaces = {"f1"})
         int f2(int a) {
             return Math.abs(a);
         }
@@ -214,9 +214,9 @@ public class ContainsTest {
     }
 
     @NodeChild("a")
-    abstract static class ContainsError1 extends ValueNode {
-        @ExpectError("The contained specialization 'f1' must be declared before the containing specialization.")
-        @Specialization(contains = "f1")
+    abstract static class ReplacesError1 extends ValueNode {
+        @ExpectError("The replaced specialization 'f1' must be declared before the replacing specialization.")
+        @Specialization(replaces = "f1")
         int f0(int a) {
             return a;
         }
@@ -228,138 +228,138 @@ public class ContainsTest {
     }
 
     @NodeChild("a")
-    abstract static class ContainsError2 extends ValueNode {
+    abstract static class ReplacesError2 extends ValueNode {
 
         @ExpectError("The referenced specialization 'does not exist' could not be found.")
-        @Specialization(contains = "does not exist")
+        @Specialization(replaces = "does not exist")
         int f0(int a) {
             return a;
         }
     }
 
     @NodeChild("a")
-    abstract static class ContainsError3 extends ValueNode {
+    abstract static class ReplacesError3 extends ValueNode {
 
         @Specialization
         int f0(int a) {
             return a;
         }
 
-        @ExpectError("Duplicate contains declaration 'f0'.")
-        @Specialization(contains = {"f0", "f0"})
+        @ExpectError("Duplicate replace declaration 'f0'.")
+        @Specialization(replaces = {"f0", "f0"})
         Object f1(double a) {
             return a;
         }
     }
 
     @NodeChild("a")
-    abstract static class ContainsError4 extends ValueNode {
+    abstract static class ReplacesError4 extends ValueNode {
 
-        @ExpectError("Circular contained specialization 'f1(double)' found.")
-        @Specialization(contains = {"f1"})
+        @ExpectError("Circular replaced specialization 'f1(double)' found.")
+        @Specialization(replaces = {"f1"})
         Object f1(double a) {
             return a;
         }
     }
 
     @NodeChild("a")
-    abstract static class ContainsError5 extends ValueNode {
+    abstract static class ReplacesError5 extends ValueNode {
 
-        @ExpectError({"Circular contained specialization 'f0(int)' found.", "Circular contained specialization 'f1(double)' found.",
-                        "The contained specialization 'f1' must be declared before the containing specialization."})
-        @Specialization(contains = "f1")
+        @ExpectError({"Circular replaced specialization 'f0(int)' found.", "Circular replaced specialization 'f1(double)' found.",
+                        "The replaced specialization 'f1' must be declared before the replacing specialization."})
+        @Specialization(replaces = "f1")
         int f0(int a) {
             return a;
         }
 
-        @ExpectError("Circular contained specialization 'f1(double)' found.")
-        @Specialization(contains = {"f0"})
+        @ExpectError("Circular replaced specialization 'f1(double)' found.")
+        @Specialization(replaces = {"f0"})
         Object f1(double a) {
             return a;
         }
     }
 
     @NodeChild("a")
-    abstract static class ContainsType1 extends ValueNode {
+    abstract static class ReplacesType1 extends ValueNode {
         @Specialization
         int f0(int a) {
             return a;
         }
 
         @ExpectError("Specialization is not reachable. It is shadowed by f0(int).")
-        @Specialization(contains = "f0")
+        @Specialization(replaces = "f0")
         Object f1(int a) {
             return a;
         }
     }
 
     @NodeChild("a")
-    abstract static class ContainsType2 extends ValueNode {
+    abstract static class ReplacesType2 extends ValueNode {
         @Specialization
         int f0(int a) {
             return a;
         }
 
-        @Specialization(contains = "f0")
+        @Specialization(replaces = "f0")
         Object f1(Object a) {
             return a;
         }
     }
 
     @NodeChild("a")
-    abstract static class ContainsType3 extends ValueNode {
+    abstract static class ReplacesType3 extends ValueNode {
         @Specialization
         int f0(int a) {
             return a;
         }
 
-        @Specialization(contains = "f0")
+        @Specialization(replaces = "f0")
         Object f1(double a) { // implicit type
             return a;
         }
     }
 
     @NodeChild("a")
-    abstract static class ContainsType4 extends ValueNode {
+    abstract static class ReplacesType4 extends ValueNode {
         @Specialization
         double f0(double a) {
             return a;
         }
 
         @ExpectError({"Specialization is not reachable. It is shadowed by f0(double)."})
-        @Specialization(contains = "f0")
+        @Specialization(replaces = "f0")
         int f1(int a) { // implicit type
             return a;
         }
     }
 
     @NodeChildren({@NodeChild("a"), @NodeChild("b")})
-    abstract static class ContainsType5 extends ValueNode {
+    abstract static class ReplacesType5 extends ValueNode {
         @Specialization
         Object f0(Object a, int b) {
             return a;
         }
 
-        @Specialization(contains = "f0")
+        @Specialization(replaces = "f0")
         Object f1(int a, Object b) {
             return a;
         }
     }
 
     @NodeChildren({@NodeChild("a"), @NodeChild("b")})
-    abstract static class ContainsType6 extends ValueNode {
+    abstract static class ReplacesType6 extends ValueNode {
         @Specialization
         Object f0(double a, int b) {
             return a;
         }
 
-        @Specialization(contains = "f0")
+        @Specialization(replaces = "f0")
         Object f1(int a, double b) { // implicit type
             return a;
         }
     }
 
-    abstract static class ContainsGuard1 extends ValueNode {
+    abstract static class ReplacesGuard1 extends ValueNode {
 
         boolean g1() {
             return true;
@@ -370,13 +370,13 @@ public class ContainsTest {
             return null;
         }
 
-        @Specialization(contains = "f0")
+        @Specialization(replaces = "f0")
         Object f1() {
             return null;
         }
     }
 
-    abstract static class ContainsGuard2 extends ValueNode {
+    abstract static class ReplacesGuard2 extends ValueNode {
 
         boolean g1() {
             return true;
@@ -388,13 +388,13 @@ public class ContainsTest {
         }
 
         @ExpectError({"Specialization is not reachable. It is shadowed by f0()."})
-        @Specialization(guards = "g1()", contains = "f0")
+        @Specialization(guards = "g1()", replaces = "f0")
         Object f1() {
             return null;
         }
     }
 
-    abstract static class ContainsGuard3 extends ValueNode {
+    abstract static class ReplacesGuard3 extends ValueNode {
 
         boolean g1() {
             return true;
@@ -405,34 +405,13 @@ public class ContainsTest {
             return null;
         }
 
-        @Specialization(guards = "!g1()", contains = "f0")
+        @Specialization(guards = "!g1()", replaces = "f0")
         Object f1() {
             return null;
         }
     }
 
-    abstract static class ContainsGuard4 extends ValueNode {
-
-        boolean g1() {
-            return true;
-        }
-
-        boolean g2() {
-            return true;
-        }
-
-        @Specialization(guards = "g1()")
-        Object f0() {
-            return null;
-        }
-
-        @Specialization(guards = "g2()", contains = "f0")
-        Object f1() {
-            return null;
-        }
-    }
-
-    abstract static class ContainsGuard5 extends ValueNode {
+    abstract static class ReplacesGuard4 extends ValueNode {
 
         boolean g1() {
             return true;
@@ -447,13 +426,13 @@ public class ContainsTest {
             return null;
         }
 
-        @Specialization(guards = "g2()", contains = "f0")
+        @Specialization(guards = "g2()", replaces = "f0")
         Object f1() {
             return null;
         }
     }
 
-    abstract static class ContainsGuard6 extends ValueNode {
+    abstract static class ReplacesGuard5 extends ValueNode {
 
         boolean g1() {
             return true;
@@ -468,13 +447,34 @@ public class ContainsTest {
             return null;
         }
 
-        @Specialization(guards = "!g2()", contains = "f0")
+        @Specialization(guards = "g2()", replaces = "f0")
         Object f1() {
             return null;
         }
     }
 
-    abstract static class ContainsGuard7 extends ValueNode {
+    abstract static class ReplacesGuard6 extends ValueNode {
+
+        boolean g1() {
+            return true;
+        }
+
+        boolean g2() {
+            return true;
+        }
+
+        @Specialization(guards = "g1()")
+        Object f0() {
+            return null;
+        }
+
+        @Specialization(guards = "!g2()", replaces = "f0")
+        Object f1() {
+            return null;
+        }
+    }
+
+    abstract static class ReplacesGuard7 extends ValueNode {
 
         boolean g1() {
             return true;
@@ -489,38 +489,38 @@ public class ContainsTest {
             return null;
         }
 
-        @Specialization(guards = "g2()", contains = "f0")
+        @Specialization(guards = "g2()", replaces = "f0")
         Object f1() {
             return null;
         }
     }
 
-    abstract static class ContainsThrowable1 extends ValueNode {
+    abstract static class ReplacesThrowable1 extends ValueNode {
 
         @Specialization(rewriteOn = RuntimeException.class)
         Object f0() throws RuntimeException {
             throw new RuntimeException();
         }
 
-        @Specialization(contains = "f0")
+        @Specialization(replaces = "f0")
         Object f1() {
             return null;
         }
     }
 
-    abstract static class ContainsThrowable2 extends ValueNode {
+    abstract static class ReplacesThrowable2 extends ValueNode {
 
         @Specialization(rewriteOn = RuntimeException.class)
         Object f0() throws RuntimeException {
             throw new RuntimeException();
         }
 
-        @Specialization(contains = "f0", rewriteOn = RuntimeException.class)
+        @Specialization(replaces = "f0", rewriteOn = RuntimeException.class)
         Object f1() throws RuntimeException {
             throw new RuntimeException();
         }
 
-        @Specialization(contains = "f1")
+        @Specialization(replaces = "f1")
         Object f2() {
             return null;
         }
@@ -548,7 +548,7 @@ public class ContainsTest {
             return a;
         }
 
-        @Specialization(contains = {"do1", "do2"})
+        @Specialization(replaces = {"do1", "do2"})
         int do3(int a) {
             return a;
         }

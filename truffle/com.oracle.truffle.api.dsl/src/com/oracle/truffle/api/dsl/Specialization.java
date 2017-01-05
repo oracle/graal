@@ -172,13 +172,20 @@ public @interface Specialization {
     Class<? extends Throwable>[] rewriteOn() default {};
 
     /**
+     * @see #replaces()
+     * @deprecated renamed to {@link #replaces()} since 0.22
+     */
+    @Deprecated
+    String[] contains() default {};
+
+    /**
      * <p>
-     * Declares other specializations of the same node to be contained by this specialization. Other
-     * specializations are references using their unique method name. If this specialization is
-     * instantiated then all contained specialization instances are removed and never instantiated
+     * Declares other specializations of the same operation to be replaced by this specialization.
+     * Other specializations are referenced using their unique method name. If this specialization
+     * is instantiated then all replaced specialization instances are removed and never instantiated
      * again for this node instance. Therefore this specialization should handle strictly more
-     * inputs than which were handled by the contained specialization, otherwise the removal of the
-     * contained specialization will lead to unspecialized types of input values. The contains
+     * inputs than which were handled by the replaced specialization, otherwise the removal of the
+     * replaced specialization will lead to unspecialized types of input values. The replaces
      * declaration is transitive for multiple involved specializations.
      * </p>
      * <b>Example usage:</b>
@@ -188,16 +195,16 @@ public @interface Specialization {
      * void doDivPowerTwo(int a, int b) {
      *     return a >> 1;
      * }
-     * &#064;Specialization(contains ="doDivPowerTwo", guards = "b > 0")
+     * &#064;Specialization(replaces ="doDivPowerTwo", guards = "b > 0")
      * void doDivPositive(int a, int b) {
      *     return a / b;
      * }
      * ...
-     * Example executions with contains="doDivPowerTwo":
+     * Example executions with replaces="doDivPowerTwo":
      *   execute(4, 2) => doDivPowerTwo(4, 2)
      *   execute(9, 3) => doDivPositive(9, 3) // doDivPowerTwo instances get removed
      *   execute(4, 2) => doDivPositive(4, 2)
-     * Same executions without contains="doDivPowerTwo"
+     * Same executions without replaces="doDivPowerTwo"
      *   execute(4, 2) => doDivPowerTwo(4, 2)
      *   execute(9, 3) => doDivPositive(9, 3)
      *   execute(4, 2) => doDivPowerTwo(4, 2)
@@ -206,8 +213,9 @@ public @interface Specialization {
      * </p>
      *
      * @see #guards()
+     * @since 0.22
      */
-    String[] contains() default {};
+    String[] replaces() default {};
 
     /**
      * <p>
@@ -300,7 +308,7 @@ public @interface Specialization {
      * limit for specialization instantiations is defined as <code>"3"</code>. If the limit is
      * exceeded no more instantiations of the enclosing specialization method are created. Please
      * note that the existing specialization instantiations are <b>not</b> removed from the
-     * specialization chain. You can use {@link #contains()} to remove unnecessary specializations
+     * specialization chain. You can use {@link #replaces()} to remove unnecessary specializations
      * instances.
      * </p>
      * <p>
@@ -333,7 +341,7 @@ public @interface Specialization {
      * </p>
      *
      * @see #guards()
-     * @see #contains()
+     * @see #replaces()
      * @see Cached
      * @see ImportStatic
      */

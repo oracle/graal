@@ -144,7 +144,7 @@ public class CachedTest {
             return cachedValue;
         }
 
-        @Specialization(contains = "do1")
+        @Specialization(replaces = "do1")
         static int do2(int value) {
             return -1;
         }

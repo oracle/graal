@@ -104,7 +104,7 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
      * polymorphic inline cache.
      */
     @TruffleBoundary
-    @Specialization(contains = {"readCached"}, guards = {"isValidSLObject(receiver)"})
+    @Specialization(replaces = {"readCached"}, guards = {"isValidSLObject(receiver)"})
     protected static Object readUncached(DynamicObject receiver, Object name) {
 
         Object result = receiver.get(name);

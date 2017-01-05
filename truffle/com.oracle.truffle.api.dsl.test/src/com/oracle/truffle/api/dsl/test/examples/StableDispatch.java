@@ -52,7 +52,7 @@ public class StableDispatch {
             return callNode.call(frame, arguments);
         }
 
-        @Specialization(contains = "directDispatch")
+        @Specialization(replaces = "directDispatch")
         protected static Object indirectDispatch(VirtualFrame frame, SLFunction function, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
             return callNode.call(frame, function.getCallTarget(), arguments);
