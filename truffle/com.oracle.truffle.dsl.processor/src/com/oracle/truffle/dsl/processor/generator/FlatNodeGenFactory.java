@@ -389,8 +389,10 @@ public class FlatNodeGenFactory {
         }
 
         ArrayCodeTypeMirror objectArray = new ArrayCodeTypeMirror(context.getType(Object.class));
-        builder.declaration(objectArray, "data", builder.create().startNewArray(objectArray, CodeTreeBuilder.singleString(String.valueOf(filteredSpecializations.size()))).end().build());
+        builder.declaration(objectArray, "data", builder.create().startNewArray(objectArray, CodeTreeBuilder.singleString(String.valueOf(filteredSpecializations.size() + 1))).end().build());
         builder.declaration(objectArray, "s", (CodeTree) null);
+
+        builder.statement("data[0] = 0"); // declare version 0
 
         FrameState frameState = FrameState.load(this);
         builder.tree(state.createLoad(frameState, null));
@@ -398,7 +400,7 @@ public class FlatNodeGenFactory {
             builder.tree(exclude.createLoad(frameState, null));
         }
 
-        int index = 0;
+        int index = 1;
         for (SpecializationData specialization : filteredSpecializations) {
             builder.startStatement().string("s = ").startNewArray(objectArray, CodeTreeBuilder.singleString("3")).end().end();
             builder.startStatement().string("s[0] = ").doubleQuote(specialization.getMethodName()).end();
