@@ -2,62 +2,7 @@
   import com.oracle.truffle.api.dsl.Specialization
 ?>
 'Rename deprecated specialization contains 1':
-@Specialization(contains=$1)
+@Specialization($1$, contains=$2, $3$)
 => 
-@Specialization(replaces=$1)
-;;
-
-'Rename deprecated specialization contains 2':
-@Specialization(contains=$1, $2=$3)
-=> 
-@Specialization(replaces=$1, $2=$3)
-;;
-
-'Rename deprecated specialization contains 3':
-@Specialization(contains=$1, $2=$3, $4=$5)
-=> 
-@Specialization(replaces=$1, $2=$3, $4=$5)
-;;
-
-'Rename deprecated specialization contains 4':
-@Specialization(contains=$1, $2=$3, $4=$5, $6=$7)
-=> 
-@Specialization(replaces=$1, $2=$3, $4=$5, $6=$7)
-;;
-
-
-'Rename deprecated specialization contains 5':
-@Specialization($1=$2, contains=$3)
-=> 
-@Specialization($1=$2, replaces=$3)
-;;
-
-'Rename deprecated specialization contains 6':
-@Specialization($1=$2, contains=$3, $4=$5)
-=> 
-@Specialization($1=$2, replaces=$3, $4=$5)
-;;
-
-'Rename deprecated specialization contains 7':
-@Specialization($1=$2, contains=$3, $4=$5, $6=$7)
-=> 
-@Specialization($1=$2, replaces=$3, $4=$5, $6=$7)
-;;
-
-'Rename deprecated specialization contains 8':
-@Specialization($1=$2, $3=$4, contains=$5)
-=> 
-@Specialization($1=$2, $3=$4, replaces=$5)
-;;
-
-'Rename deprecated specialization contains 9':
-@Specialization($1=$2, $3=$4, contains=$5, $6=$7)
-=> 
-@Specialization($1=$2, $3=$4, replaces=$5, $6=$7)
-;;
-
-'Rename deprecated specialization contains 10':
-@Specialization($1=$2, $3=$4, $5=$6, contains=$7)
-=> 
-@Specialization($1=$2, $3=$4, $5=$6, replaces=$7)
+@Specialization($1$, replaces=$2, $3$)
 ;;
