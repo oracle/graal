@@ -2,14 +2,18 @@
 import re
 import mx, mx_benchmark, mx_sulong
 import os
-from os.path import join
-from mx_benchmark import JavaBenchmarkSuite
+from os.path import join, exists
+from mx_benchmark import VmRegistry, java_vm_registry, Vm, GuestVm, VmBenchmarkSuite
 
 
 def _benchmarksDirectory():
     return join(os.path.abspath(join(mx.suite('sulong').dir, os.pardir)), 'sulong-benchmarks')
 
-class SulongBenchmarkSuite(JavaBenchmarkSuite):
+_env_flags = []
+if 'CPPFLAGS' in os.environ:
+    _env_flags = os.environ['CPPFLAGS'].split(' ')
+
+class SulongBenchmarkSuite(VmBenchmarkSuite):
     def group(self):
         return 'Graal'
 
@@ -21,21 +25,9 @@ class SulongBenchmarkSuite(JavaBenchmarkSuite):
 
     def benchmarkList(self, bmSuiteArgs):
         benchDir = _benchmarksDirectory()
+        if not exists(benchDir):
+            mx.abort('Benchmarks directory {} is missing'.format(benchDir))
         return [f for f in os.listdir(benchDir) if f.endswith('.c') and os.path.isfile(join(benchDir, f))]
-
-    def getSulongEngine(self, bmSuiteArgs):
-        return self.parseCommandLineArgs(bmSuiteArgs)[0][0]
-
-    def getNativeArgs(self, bmSuiteArgs):
-        return self.parseCommandLineArgs(bmSuiteArgs)[1]
-
-    def parseCommandLineArgs(self, bmSuiteArgs):
-        vmArgs, runArgs = mx_benchmark.splitArgs(bmSuiteArgs, "--")
-
-        mx.logv('vmArgs: %s' % str(vmArgs))
-        mx.logv('runArgs: %s' % str(runArgs))
-
-        return vmArgs, runArgs
 
     def benchHigherScoreRegex(self):
         return r'^(### )?(?P<benchmark>[a-zA-Z0-9\.\-_]+): +(?P<score>[0-9]+(?:\.[0-9]+)?)'
@@ -49,51 +41,9 @@ class SulongBenchmarkSuite(JavaBenchmarkSuite):
     def successPatterns(self):
         return [re.compile(r'^(### )?([a-zA-Z0-9\.\-_]+): +([0-9]+(?:\.[0-9]+)?)', re.MULTILINE)]
 
-    def configName(self, bmSuiteArgs):
-        if self.getSulongEngine(bmSuiteArgs) == '--jvm':
-            if mx.suite('graal-enterprise', fatalIfMissing=False):
-                return 'enterprise'
-            elif mx.suite('graal-core', fatalIfMissing=False):
-                return 'core'
-            else:
-                return 'default'
-        else:
-            return 'native'
-
-
-    def host_vm_tuple(self, bmSuiteArgs):
-        if self.getSulongEngine(bmSuiteArgs) == '--jvm':
-            if mx.suite('graal-enterprise', fatalIfMissing=False):
-                hostVm = 'jvmci'
-                hostVmConfigPrefix = 'graal-enterprise'
-            elif mx.suite('graal-core', fatalIfMissing=False):
-                hostVm = 'jvmci'
-                hostVmConfigPrefix = 'graal-core'
-            else:
-                hostVm = 'server'
-                hostVmConfigPrefix = 'default'
-        elif self.getSulongEngine(bmSuiteArgs) == '--clang':
-            hostVm = 'clang'
-            hostVmConfigPrefix = '_'.join(self.getNativeArgs(bmSuiteArgs))
-        elif self.getSulongEngine(bmSuiteArgs) == '--gcc':
-            hostVm = 'gcc'
-            hostVmConfigPrefix = '_'.join(self.getNativeArgs(bmSuiteArgs))
-        else:
-            mx.abort('unknown engine')
-        return (hostVm, hostVmConfigPrefix)
-
-    def guest_vm_tuple(self, bmSuiteArgs):
-        if self.getSulongEngine(bmSuiteArgs) == '--jvm':
-            return ('sulong', 'default')
-        else:
-            return ('none', 'none')
-
     def rules(self, out, benchmarks, bmSuiteArgs):
-        host_vm, host_vm_config = self.host_vm_tuple(bmSuiteArgs)
-        guest_vm, guest_vm_config = self.guest_vm_tuple(bmSuiteArgs)
         return [
-          mx_benchmark.StdOutRule(self.benchHigherScoreRegex(), {
-                "vm": "sulong",
+            mx_benchmark.StdOutRule(self.benchHigherScoreRegex(), {
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "time",
                 "metric.type": "numeric",
@@ -101,12 +51,7 @@ class SulongBenchmarkSuite(JavaBenchmarkSuite):
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
-                "config.name": self.configName(bmSuiteArgs),
-                "host-vm": host_vm,
-                "host-vm-config": host_vm_config,
-                "guest-vm": guest_vm,
-                "guest-vm-config": guest_vm_config,
-          }),
+            }),
         ]
 
     def before(self, bmSuiteArgs):
@@ -116,43 +61,44 @@ class SulongBenchmarkSuite(JavaBenchmarkSuite):
     def after(self, bmSuiteArgs):
         os.chdir(self.currentDir)
 
-    def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
-        if self.getSulongEngine(bmSuiteArgs) == '--jvm':
-            return self.runSulong(benchmarks, bmSuiteArgs)
-        elif self.getSulongEngine(bmSuiteArgs) == '--clang':
-            return self.runCLANG(benchmarks, bmSuiteArgs)
-        elif self.getSulongEngine(bmSuiteArgs) == '--gcc':
-            return self.runGCC(benchmarks, bmSuiteArgs)
-        else:
-            mx.abort('unknown engine')
+    def createCommandLineArgs(self, benchmarks, runArgs):
+        if len(benchmarks) != 1:
+            mx.abort("Please run a specific benchmark (mx benchmark csuite:<benchmark-name>) or all the benchmarks (mx benchmark csuite:*)")
+        return [benchmarks[0]] + runArgs
 
-    def runSulong(self, benchmarks, bmSuiteArgs):
-        return JavaBenchmarkSuite.runAndReturnStdOut(self, benchmarks, bmSuiteArgs)
+    def get_vm_registry(self):
+        return native_vm_registry
 
-    def runGCC(self, benchmarks, bmSuiteArgs):
-        inputFile = benchmarks[0]
-        _, ext = os.path.splitext(benchmarks[0])
+
+class GccLikeVm(Vm):
+    def __init__(self, config_name, options):
+        self._config_name = config_name
+        self.options = options
+
+    def config_name(self):
+        return self._config_name
+
+    def c_compiler(self):
+        return self.compiler_name()
+
+    def cpp_compiler(self):
+        return self.compiler_name() + "++"
+
+    def before(self, bmSuiteArgs):
+        self.currentDir = os.getcwd()
+        os.chdir(_benchmarksDirectory())
+
+    def after(self, bmSuiteArgs):
+        os.chdir(self.currentDir)
+
+    def run(self, cwd, args):
+        inputFile = args[0]
+        _, ext = os.path.splitext(inputFile)
         f = open(os.devnull, 'w')
         if ext == '.c':
-            mx.run(['gcc', '-std=gnu99'] + ['-lm', '-lgmp'] + self.getNativeArgs(bmSuiteArgs) + [inputFile], out=f, err=f)
+            mx.run([self.c_compiler()] + self.options + ['-o', 'a.out'] + [inputFile] + _env_flags + ['-lm', '-lgmp'], out=f, err=f)
         elif ext == '.cpp':
-            mx.run(['g++'] + ['-lm', '-lgmp'] + self.getNativeArgs(bmSuiteArgs) + [inputFile], out=f, err=f)
-        else:
-            exit(ext + " is not supported!")
-
-        myStdOut = mx.OutputCapture()
-        retCode = mx.run(['./a.out'], out=myStdOut, err=f)
-        return [retCode, myStdOut.data]
-
-    def runCLANG(self, benchmarks, bmSuiteArgs):
-        print benchmarks
-        inputFile = benchmarks[0]
-        _, ext = os.path.splitext(benchmarks[0])
-        f = open(os.devnull, 'w')
-        if ext == '.c':
-            mx.run(['clang'] + ['-lm', '-lgmp'] + self.getNativeArgs(bmSuiteArgs)   + [inputFile], out=f, err=f)
-        elif ext == '.cpp':
-            mx.run(['clang++'] + ['-lm', '-lgmp'] + self.getNativeArgs(bmSuiteArgs) + [inputFile], out=f, err=f)
+            mx.run([self.cpp_compiler()] + self.options + ['-o', 'a.out'] +  [inputFile] + _env_flags + ['-lm', '-lgmp'], out=f, err=f)
         else:
             exit(ext + " is not supported!")
 
@@ -161,16 +107,65 @@ class SulongBenchmarkSuite(JavaBenchmarkSuite):
         print myStdOut.data
         return [retCode, myStdOut.data]
 
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+
+class GccVm(GccLikeVm):
+    def __init__(self, config_name, options):
+        super(GccVm, self).__init__(config_name, options)
+
+    def name(self):
+        return "gcc"
+
+    def compiler_name(self):
+        return "gcc"
+
+
+class ClangVm(GccLikeVm):
+    def __init__(self, config_name, options):
+        super(ClangVm, self).__init__(config_name, options)
+
+    def name(self):
+        return "clang"
+
+    def compiler_name(self):
+        mx_sulong.ensureLLVMBinariesExist()
+        return mx_sulong.findLLVMProgram('clang')
+
+
+class SulongVm(GuestVm):
+    def config_name(self):
+        return "default"
+
+    def name(self):
+        return "sulong"
+
+    def run(self, cwd, args):
         f = open(os.devnull, 'w')
 
         mx_sulong.ensureLLVMBinariesExist()
-        inputFile = benchmarks[0]
+        inputFile = args[0]
         outputFile = 'test.bc'
         mx_sulong.compileWithClangOpt(inputFile, outputFile, out=f, err=f)
 
-        vmArgs = self.vmArgs(bmSuiteArgs)
-        runArgs = self.runArgs(bmSuiteArgs)
-        sulongCmdLine = [mx_sulong.getSearchPathOption()] + mx_sulong.getBitcodeLibrariesOption() + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + [outputFile]
-        cmdLine = vmArgs + sulongCmdLine + runArgs
-        return cmdLine
+        suTruffleOptions = [
+            '-Dgraal.TruffleBackgroundCompilation=false',
+            '-Dgraal.TruffleTimeThreshold=1000000',
+            '-Dgraal.TruffleInliningMaxCallerSize=10000',
+        ]
+        sulongCmdLine = suTruffleOptions + [mx_sulong.getSearchPathOption()] + mx_sulong.getBitcodeLibrariesOption() + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + [outputFile]
+        return self.host_vm().run(cwd, sulongCmdLine + args)
+
+    def hosting_registry(self):
+        return java_vm_registry
+
+_suite = mx.suite("sulong")
+
+native_vm_registry = VmRegistry("Native", known_host_registries=[java_vm_registry])
+native_vm_registry.add_vm(GccVm('O0', ['-O0']), _suite)
+native_vm_registry.add_vm(ClangVm('O0', ['-O0']), _suite)
+native_vm_registry.add_vm(GccVm('O1', ['-O1']), _suite)
+native_vm_registry.add_vm(ClangVm('O1', ['-O1']), _suite)
+native_vm_registry.add_vm(GccVm('O2', ['-O2']), _suite)
+native_vm_registry.add_vm(ClangVm('O2', ['-O2']), _suite)
+native_vm_registry.add_vm(GccVm('O3', ['-O3']), _suite)
+native_vm_registry.add_vm(ClangVm('O3', ['-O3']), _suite)
+native_vm_registry.add_vm(SulongVm(), _suite, 10)

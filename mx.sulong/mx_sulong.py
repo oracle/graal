@@ -746,13 +746,17 @@ def suOptimalOpt(args=None):
     """use opt with the optimal opt flags for Sulong"""
     opt(getStandardLLVMOptFlags() + args)
 
-def compileWithClangOpt(inputFile, outputFile='test.bc', out=None, err=None):
+_env_flags = []
+if 'CPPFLAGS' in os.environ:
+    _env_flags = os.environ['CPPFLAGS'].split(' ')
+
+def compileWithClangOpt(inputFile, outputFile='test.bc', args=None, out=None, err=None):
     """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
-        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, inputFile], out=out, err=err)
+        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, inputFile] + _env_flags, out=out, err=err)
     elif ext == '.cpp':
-        compileWithClangPP(['-c', '-emit-llvm', '-o', outputFile, inputFile], out=out, err=err)
+        compileWithClangPP(['-c', '-emit-llvm', '-o', outputFile, inputFile] + _env_flags, out=out, err=err)
     else:
         exit(ext + " is not supported!")
     opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags(), out=out, err=err)

@@ -16,6 +16,7 @@ gateCommon: {
     capabilities: [linux, amd64]
 }
 
+
 gateStyle: ${gateCommon} {
     packages: {
         ruby: "==2.1.0" # for mdl
@@ -62,6 +63,114 @@ requireJDT: {
     }
 }
 
+bench: {
+  capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64],  
+  packages: {
+      git: ""
+  }
+  downloads: {
+      JAVA_HOME: ${java8}
+  }
+  upload: [bench-uploader.py, "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}"]
+  logs: ["results-*.json"] # there's no variable expansion done on logs
+  timelimit: "5:00:00"
+}
+
+benchSulong: ${bench} {
+  targets: [bench, post-merge],
+
+  downloads: {
+      LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
+      LLVM: {name: "clang+llvm", version: "3.2", platformspecific: true}
+  }
+
+  environment: {
+    RESULTS_FILE_PREFIX: results-
+    RESULTS_FILE_SUFFIX: .json
+    BENCH_REPO_NAME: sulong-benchmarks
+    BENCHMARK: csuite
+    GRAAL_REPO_NAME: undefined        # needs to be overwritten
+    GRAAL_DYNAMIC_IMPORT: undefined   # needs to be overwritten
+    CPPFLAGS: "-I$LIBGMP/include"
+    LD_LIBRARY_PATH: "$LIBGMP/lib:$LLVM/lib:$LD_LIBRARY_PATH"
+    PATH: "$LLVM/bin:$PATH"
+  },
+
+  cmd: [mx, --dynamicimport, "${GRAAL_DYNAMIC_IMPORT}", --jdk, jvmci, benchmark, --ignore-suite-commit-info, sulong, --results-file, "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}", "csuite:*"],
+  vmArgs: [--, --native-vm, sulong, --jvm, server, --jvm-config, "${GRAAL_DYNAMIC_IMPORT}"],
+
+  setup: [
+    [git, clone, --depth, "1", "ssh://git@ol-bitbucket.us.oracle.com:7999/g/${BENCH_REPO_NAME}.git",  "../${BENCH_REPO_NAME}"]
+    [git, clone, --depth, "1", "ssh://git@ol-bitbucket.us.oracle.com:7999/g/${GRAAL_REPO_NAME}.git",  "../${GRAAL_REPO_NAME}"]
+    [mx, --dynamicimport, "${GRAAL_DYNAMIC_IMPORT}", build, --force-javac]
+  ],
+  run: [
+    [export, "BENCHMARK=csuite"]
+    ${benchSulong.cmd} ${benchSulong.vmArgs}
+    ${bench.upload}
+  ]
+}
+
+benchNative: ${bench} {
+  targets: [weekly],
+  cmd: [mx, benchmark, --ignore-suite-commit-info, sulong, --results-file, "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}", "csuite:*"]
+  setup: [
+    [git, clone, --depth, "1", "ssh://git@ol-bitbucket.us.oracle.com:7999/g/${BENCH_REPO_NAME}.git",  "../${BENCH_REPO_NAME}"]
+  ]
+  downloads: {
+      LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
+      LLVM: {name: "clang+llvm", version: "3.2", platformspecific: true}
+  }
+  environment: {
+    RESULTS_FILE_PREFIX: results-
+    RESULTS_FILE_SUFFIX: .json
+    BENCH_REPO_NAME: sulong-benchmarks
+    BENCHMARK: csuite
+    CPPFLAGS: "-I$LIBGMP/include"
+    LD_LIBRARY_PATH: "$LIBGMP/lib:$LLVM/lib:$LD_LIBRARY_PATH"
+    LIBRARY_PATH: "$LIBGMP/lib:$LLVM/lib:$LIBRARY_PATH"
+    PATH: "$LLVM/bin:$PATH"
+  }
+}
+
+benchGCC: ${benchNative} {
+  vmArgs: [--, --native-vm, gcc, --native-vm-config, O3]
+  run: [
+    [export, "BENCHMARK=csuite"]
+    ${benchNative.cmd} ${benchGCC.vmArgs}
+    ${bench.upload}
+  ]
+}
+
+benchCLANG_O3: ${benchNative} {
+  vmArgs: [--, --native-vm, clang, --native-vm-config, O3]
+  run: [
+    [export, "BENCHMARK=csuite"]
+    ${benchNative.cmd} ${benchCLANG_O3.vmArgs}
+    ${bench.upload}
+  ]
+}
+
+benchCLANG_O2: ${benchNative} {
+  vmArgs: [--, --native-vm, clang, --native-vm-config, O2]
+  run: [
+    [export, "BENCHMARK=csuite"]
+    ${benchNative.cmd} ${benchCLANG_O2.vmArgs}
+    ${bench.upload}
+  ]
+}
+
+benchCLANG_O1: ${benchNative} {
+  vmArgs: [--, --native-vm, clang, --native-vm-config, O1]
+  run: [
+    [export, "BENCHMARK=csuite"]
+    ${benchNative.cmd} ${benchCLANG_O1.vmArgs}
+    ${bench.upload}
+  ]
+}
+
+graal-core:       {environment: {GRAAL_REPO_NAME: graal-core, GRAAL_DYNAMIC_IMPORT: graal-core}}
+graal-enterprise: {environment: {GRAAL_REPO_NAME: graal-enterprise, GRAAL_DYNAMIC_IMPORT: "/graal-enterprise"}}
 
 builds = [
   ${gateStyle} { name: gate-style, run: [[mx, su-checks, --verbose, mdl, checkstyle, canonicalizeprojects, httpcheck, checkoverlap, clangformatcheck, pylint, eclipseformat ]] }
@@ -70,4 +179,13 @@ builds = [
   ${gateTest} ${requireGCC} { name: gate-travis1, run: [[mx, su-travis1]] }
   ${gateTest} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
   ${gateTest} { name: gate-travis-argon2, run: [[mx, su-travis-argon2]] }
+
+  ${benchSulong} ${requireGCC}    ${graal-core}           {name: sulong-bench-graal-core}
+  # TODO: enable once sulong's graal dependency is gone
+  # ${benchSulong} ${requireGCC}    ${graal-enterprise}     {name: sulong-bench-graal-enterprise}
+
+  ${benchCLANG_O3} ${requireGCC}                             {name: sulong-bench-clangO3}
+  # do not run O1/O2 (little performance difference, save time)
+  # ${benchCLANG_O1} ${requireGCC}                             {name: sulong-bench-clangO1}
+  # ${benchCLANG_O2} ${requireGCC}                             {name: sulong-bench-clangO2}
 ]
