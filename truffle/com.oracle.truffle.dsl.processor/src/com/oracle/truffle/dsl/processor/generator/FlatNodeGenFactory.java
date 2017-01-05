@@ -376,7 +376,7 @@ public class FlatNodeGenFactory {
 
     private void generateReflectionInfo(CodeTypeElement clazz) {
         clazz.getImplements().add(context.getType(Introspection.Provider.class));
-        CodeExecutableElement reflection = new CodeExecutableElement(modifiers(PUBLIC), context.getType(Introspection.Data.class), "getIntrospectionData");
+        CodeExecutableElement reflection = new CodeExecutableElement(modifiers(PUBLIC), context.getType(Introspection.class), "getIntrospectionData");
 
         CodeTreeBuilder builder = reflection.createBuilder();
 
@@ -460,7 +460,7 @@ public class FlatNodeGenFactory {
             index++;
         }
 
-        builder.startReturn().startNew(context.getType(Introspection.Data.class)).string("data").end().end();
+        builder.startReturn().startStaticCall(context.getType(Introspection.Provider.class), "create").string("data").end().end();
 
         clazz.add(reflection);
     }
