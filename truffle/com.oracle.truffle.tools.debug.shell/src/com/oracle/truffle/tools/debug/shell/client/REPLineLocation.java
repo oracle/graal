@@ -109,7 +109,7 @@ final class REPLineLocation {
     @SuppressWarnings("deprecation")
     public com.oracle.truffle.tools.debug.shell.REPLMessage createMessage(String op) {
         final com.oracle.truffle.tools.debug.shell.REPLMessage msg = new com.oracle.truffle.tools.debug.shell.REPLMessage(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, op);
-        msg.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, source.getShortName());
+        msg.put(com.oracle.truffle.tools.debug.shell.REPLMessage.SOURCE_NAME, source.getName());
         msg.put(com.oracle.truffle.tools.debug.shell.REPLMessage.FILE_PATH, source.getPath());
         msg.put(com.oracle.truffle.tools.debug.shell.REPLMessage.LINE_NUMBER, Integer.toString(lineNumber));
         return msg;

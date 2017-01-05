@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
-import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -36,22 +35,8 @@ import java.net.URLConnection;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
 
 final class URLSourceImpl extends Content {
-
-    private static final Map<URL, WeakReference<URLSourceImpl>> urlToSource = new HashMap<>();
-
-    public static URLSourceImpl get(URL url, String name) throws IOException {
-        WeakReference<URLSourceImpl> sourceRef = urlToSource.get(url);
-        URLSourceImpl source = sourceRef == null ? null : sourceRef.get();
-        if (source == null) {
-            source = new URLSourceImpl(url, name);
-            urlToSource.put(url, new WeakReference<>(source));
-        }
-        return source;
-    }
 
     private final URL url;
     private final URI uri;
@@ -89,11 +74,6 @@ final class URLSourceImpl extends Content {
 
     @Override
     public String getName() {
-        return name;
-    }
-
-    @Override
-    public String getShortName() {
         return name;
     }
 

@@ -46,7 +46,7 @@ public class SourceBuilderDocumentationTest {
         loadedOK = SOURCE_SNIPPETS != null;
     }
 
-    @SuppressWarnings({"deprecation", "sourcebuilder"})
+    @SuppressWarnings({"sourcebuilder"})
     @Test
     public void relativeFile() throws Exception {
         if (!loadedOK) {
@@ -64,7 +64,7 @@ public class SourceBuilderDocumentationTest {
             // skip the test
             return;
         }
-        Source direct = Source.fromFileName(relative.getPath());
+        Source direct = Source.newBuilder(relative).build();
         Source fromBuilder = (Source) invokeStatic(SOURCE_SNIPPETS, "likeFileName", relative.getPath());
         assertEquals("Both sources are equal", direct, fromBuilder);
     }

@@ -46,11 +46,6 @@ final class LiteralSourceImpl extends Content implements Content.CreateURI {
     }
 
     @Override
-    public String getShortName() {
-        return name;
-    }
-
-    @Override
     public String getCode() {
         return code;
     }
