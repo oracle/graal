@@ -1402,6 +1402,11 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
+    @Override
+    public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
+        createNonInlinedInvoke(callTarget, resultType, null);
+    }
+
     private Invoke appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
         ResolvedJavaMethod targetMethod = initialTargetMethod;
         InvokeKind invokeKind = initialInvokeKind;
@@ -1481,16 +1486,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, profile));
-
-        Invoke invoke;
-        if (omitInvokeExceptionEdge(callTarget, inlineInfo)) {
-            invoke = createInvoke(callTarget, resultType);
-        } else {
-            invoke = createInvokeWithException(callTarget, resultType);
-            AbstractBeginNode beginNode = graph.add(new KillingBeginNode(LocationIdentity.any()));
-            invoke.setNext(beginNode);
-            lastInstr = beginNode;
-        }
+        Invoke invoke = createNonInlinedInvoke(callTarget, resultType, inlineInfo);
 
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
             plugin.notifyNotInlined(this, targetMethod, invoke);
@@ -1499,13 +1495,25 @@ public class BytecodeParser implements GraphBuilderContext {
         return invoke;
     }
 
+    protected Invoke createNonInlinedInvoke(CallTargetNode callTarget, JavaKind resultType, InlineInfo inlineInfo) {
+        if (omitInvokeExceptionEdge(callTarget, inlineInfo)) {
+            return createInvoke(callTarget, resultType);
+        } else {
+            Invoke invoke = createInvokeWithException(callTarget, resultType);
+            AbstractBeginNode beginNode = graph.add(new KillingBeginNode(LocationIdentity.any()));
+            invoke.setNext(beginNode);
+            lastInstr = beginNode;
+            return invoke;
+        }
+    }
+
     /**
      * If the method returns true, the invocation of the given {@link MethodCallTargetNode call
      * target} does not need an exception edge.
      *
      * @param callTarget The call target.
      */
-    protected boolean omitInvokeExceptionEdge(MethodCallTargetNode callTarget, InlineInfo lastInlineInfo) {
+    protected boolean omitInvokeExceptionEdge(CallTargetNode callTarget, InlineInfo lastInlineInfo) {
         if (lastInlineInfo == InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION) {
             return false;
         } else if (lastInlineInfo == InlineInfo.DO_NOT_INLINE_NO_EXCEPTION) {
