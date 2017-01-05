@@ -42,10 +42,8 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionGenerator;
-import com.oracle.truffle.llvm.parser.api.model.blocks.MetadataBlock;
 import com.oracle.truffle.llvm.parser.api.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.api.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.api.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.BinaryOperationConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.BlockAddressConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.CastConstant;
@@ -61,11 +59,13 @@ import com.oracle.truffle.llvm.parser.api.model.symbols.constants.integer.BigInt
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.api.model.types.FloatingPointType;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.visitors.FunctionVisitor;
+import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class FunctionDefinition extends FunctionType implements Constant, FunctionGenerator {
 

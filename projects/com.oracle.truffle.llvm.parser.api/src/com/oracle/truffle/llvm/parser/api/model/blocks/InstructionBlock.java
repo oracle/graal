@@ -34,7 +34,6 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.api.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.api.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.BinaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.BranchInstruction;
@@ -60,9 +59,10 @@ import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.SwitchOldIn
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.VoidCallInstruction;
-import com.oracle.truffle.llvm.parser.api.model.types.MetaType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class InstructionBlock implements InstructionGenerator, ValueSymbol {
 

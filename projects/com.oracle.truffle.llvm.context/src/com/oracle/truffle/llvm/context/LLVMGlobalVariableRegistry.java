@@ -32,8 +32,8 @@ package com.oracle.truffle.llvm.context;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
-import com.oracle.truffle.llvm.types.NativeResolver;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.NativeResolver;
 
 public class LLVMGlobalVariableRegistry {
 

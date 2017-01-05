@@ -117,8 +117,8 @@ import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeF
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorMulNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorRemNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI8VectorArithmeticNodeFactory.LLVMI8VectorSubNodeGen;
-import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMArithmeticInstructionType;
+import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
 public final class LLVMArithmeticFactory {
 

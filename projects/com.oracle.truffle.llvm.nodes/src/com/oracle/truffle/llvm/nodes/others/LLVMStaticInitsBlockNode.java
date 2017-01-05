@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.types.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 
 public class LLVMStaticInitsBlockNode extends RootNode {
 

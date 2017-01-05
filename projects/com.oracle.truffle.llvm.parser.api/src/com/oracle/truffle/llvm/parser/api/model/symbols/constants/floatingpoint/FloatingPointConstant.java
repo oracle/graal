@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.api.model.symbols.constants.floatingpoint
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.AbstractConstant;
-import com.oracle.truffle.llvm.parser.api.model.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
 
 public abstract class FloatingPointConstant extends AbstractConstant {
 

@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.api.model.generators;
 
-import com.oracle.truffle.llvm.parser.api.model.blocks.MetadataBlock;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
 
 public interface SymbolGenerator extends ConstantGenerator {
 

@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.api.model.functions;
 
-import com.oracle.truffle.llvm.parser.api.model.symbols.ValueSymbol;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class FunctionParameter implements ValueSymbol {
 

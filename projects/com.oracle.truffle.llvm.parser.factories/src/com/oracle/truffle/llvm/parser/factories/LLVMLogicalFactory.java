@@ -90,8 +90,8 @@ import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI8VectorLogicalNodeFa
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI8VectorLogicalNodeFactory.LLVMI8VectorOrNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI8VectorLogicalNodeFactory.LLVMI8VectorShlNodeGen;
 import com.oracle.truffle.llvm.nodes.op.logical.vector.LLVMI8VectorLogicalNodeFactory.LLVMI8VectorXorNodeGen;
-import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMLogicalInstructionType;
+import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
 public final class LLVMLogicalFactory {
 

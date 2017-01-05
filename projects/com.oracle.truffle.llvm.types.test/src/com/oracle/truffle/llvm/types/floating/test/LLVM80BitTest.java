@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.types.floating.test;
 
 import org.junit.Assert;
 
-import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
 public abstract class LLVM80BitTest {
 

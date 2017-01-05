@@ -76,7 +76,7 @@ public final class BitcodeParserResult {
         final LLVMLabelList labels = LLVMLabelList.generate(model);
 
         final TargetDataLayout layout = ((ModelModule) model.createModule()).getTargetDataLayout();
-        final DataLayoutConverter.DataSpecConverter targetDataLayout = layout != null ? DataLayoutConverter.getConverter(layout.getDataLayout()) : null;
+        final DataLayoutConverter.DataSpecConverterImpl targetDataLayout = layout != null ? DataLayoutConverter.getConverter(layout.getDataLayout()) : null;
         LLVMMetadata.generate(model, targetDataLayout);
 
         return new BitcodeParserResult(model, phis, stackAllocation, labels);

@@ -33,7 +33,7 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
 @NodeField(name = "index", type = int.class)
 public abstract class LLVMArgNode extends LLVMExpressionNode {

@@ -31,33 +31,33 @@ package com.oracle.truffle.llvm.parser.bc.parser.listeners.metadata;
 
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.api.model.blocks.MetadataBlock;
-import com.oracle.truffle.llvm.parser.api.model.enums.DwLangNameRecord;
 import com.oracle.truffle.llvm.parser.api.model.generators.SymbolGenerator;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataBasicType;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataCompileUnit;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataCompositeType;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataDerivedType;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataEnumerator;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataFile;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataFnNode;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataGlobalVariable;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataLexicalBlock;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataLexicalBlockFile;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataLocalVariable;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataNode;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataSubprogram;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataSubrange;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataTemplateTypeParameter;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerConstantType;
-import com.oracle.truffle.llvm.parser.api.model.types.MetadataConstantPointerType;
-import com.oracle.truffle.llvm.parser.api.model.types.MetadataConstantType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.parser.ir.module.records.DwTagRecord;
 import com.oracle.truffle.llvm.parser.bc.parser.ir.module.records.MetadataRecord;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.types.DwLangNameRecord;
+import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBasicType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataCompileUnit;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataCompositeType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantPointerType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataDerivedType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataEnumerator;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataFile;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataFnNode;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataGlobalVariable;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataLexicalBlock;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataLexicalBlockFile;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataLocalVariable;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataNode;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataSubprogram;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataSubrange;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataTemplateTypeParameter;
 
 public class MetadataV32 extends Metadata {
     public MetadataV32(Types types, List<Type> symbols, SymbolGenerator generator) {

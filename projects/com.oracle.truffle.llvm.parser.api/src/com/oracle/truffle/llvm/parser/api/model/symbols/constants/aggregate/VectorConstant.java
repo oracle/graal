@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.api.model.symbols.constants.aggregate;
 
-import com.oracle.truffle.llvm.parser.api.model.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
 
 public final class VectorConstant extends AggregateConstant {
 

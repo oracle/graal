@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.factories;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeFactory.LLVMAddressI32GetElementPtrNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeFactory.LLVMAddressI64GetElementPtrNodeGen;
-import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
 public class LLVMGetElementPtrFactory {
 

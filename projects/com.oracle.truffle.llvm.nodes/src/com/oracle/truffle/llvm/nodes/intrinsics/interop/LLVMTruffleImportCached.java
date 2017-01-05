@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleImportCachedFactory.ImportCacheNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {

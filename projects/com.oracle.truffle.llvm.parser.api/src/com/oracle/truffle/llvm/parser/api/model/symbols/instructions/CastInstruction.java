@@ -30,11 +30,11 @@
 package com.oracle.truffle.llvm.parser.api.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.parser.api.model.enums.CastOperator;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.api.model.symbols.ValueSymbol;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class CastInstruction extends ValueInstruction {
 

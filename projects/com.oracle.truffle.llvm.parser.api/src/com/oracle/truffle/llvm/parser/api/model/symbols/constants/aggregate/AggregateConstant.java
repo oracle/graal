@@ -30,14 +30,14 @@
 package com.oracle.truffle.llvm.parser.api.model.symbols.constants.aggregate;
 
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.Constant;
-import com.oracle.truffle.llvm.parser.api.model.types.ArrayType;
-import com.oracle.truffle.llvm.parser.api.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
-import com.oracle.truffle.llvm.parser.api.model.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public abstract class AggregateConstant extends AbstractConstant {
 

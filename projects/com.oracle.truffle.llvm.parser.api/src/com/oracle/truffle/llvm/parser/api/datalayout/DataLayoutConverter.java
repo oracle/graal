@@ -32,18 +32,20 @@ package com.oracle.truffle.llvm.parser.api.datalayout;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
+import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
 public class DataLayoutConverter {
 
-    public static class DataSpecConverter {
+    public static class DataSpecConverterImpl implements DataSpecConverter {
 
         private final List<DataLayoutParser.DataTypeSpecification> dataLayout;
 
-        DataSpecConverter(List<DataLayoutParser.DataTypeSpecification> dataLayout) {
+        DataSpecConverterImpl(List<DataLayoutParser.DataTypeSpecification> dataLayout) {
             this.dataLayout = dataLayout;
         }
 
+        @Override
         public int getBitAlignment(LLVMBaseType baseType) {
             if (baseType == LLVMBaseType.I_VAR_BITWIDTH) {
                 return 0;
@@ -99,9 +101,9 @@ public class DataLayoutConverter {
 
     }
 
-    public static DataSpecConverter getConverter(String layout) {
+    public static DataSpecConverterImpl getConverter(String layout) {
         final List<DataLayoutParser.DataTypeSpecification> dataLayout = DataLayoutParser.parseDataLayout(layout);
-        return new DataSpecConverter(dataLayout);
+        return new DataSpecConverterImpl(dataLayout);
     }
 
 }

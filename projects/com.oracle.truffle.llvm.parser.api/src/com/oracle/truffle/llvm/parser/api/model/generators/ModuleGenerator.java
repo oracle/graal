@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.parser.api.model.generators;
 
 import com.oracle.truffle.llvm.parser.api.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public interface ModuleGenerator extends SymbolGenerator {
 

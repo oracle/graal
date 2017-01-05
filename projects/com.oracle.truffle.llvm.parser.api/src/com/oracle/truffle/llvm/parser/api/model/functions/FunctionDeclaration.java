@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.parser.api.model.functions;
 
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.Constant;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class FunctionDeclaration extends FunctionType implements Constant {
 

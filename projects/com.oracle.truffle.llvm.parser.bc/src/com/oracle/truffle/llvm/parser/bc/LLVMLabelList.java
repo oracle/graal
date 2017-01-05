@@ -39,9 +39,9 @@ import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMLabelList {
 

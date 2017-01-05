@@ -34,7 +34,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
 @Ignore("do not support addition yet: fix other floating point bugs first")
 public class LLVM80BitAddition extends LLVM80BitTest {

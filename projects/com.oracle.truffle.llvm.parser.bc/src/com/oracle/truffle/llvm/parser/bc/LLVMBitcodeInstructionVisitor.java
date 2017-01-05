@@ -35,8 +35,6 @@ import java.util.List;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
-import com.oracle.truffle.llvm.parser.api.LLVMType;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMConversionType;
@@ -44,7 +42,6 @@ import com.oracle.truffle.llvm.parser.api.instructions.LLVMLogicalInstructionTyp
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.api.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDeclaration;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.integer.IntegerConstant;
@@ -72,11 +69,6 @@ import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.SwitchOldIn
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.VoidCallInstruction;
-import com.oracle.truffle.llvm.parser.api.model.types.AggregateType;
-import com.oracle.truffle.llvm.parser.api.model.types.ArrayType;
-import com.oracle.truffle.llvm.parser.api.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
-import com.oracle.truffle.llvm.parser.api.model.types.VectorType;
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.api.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
@@ -85,7 +77,15 @@ import com.oracle.truffle.llvm.parser.bc.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.bc.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.types.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.types.AggregateType;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.LLVMType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 

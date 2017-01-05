@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.parser.api.model.symbols.constants;
 
 import com.oracle.truffle.llvm.parser.api.model.enums.AsmDialect;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class InlineAsmConstant extends AbstractConstant {
 

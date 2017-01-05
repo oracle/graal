@@ -37,9 +37,6 @@ import com.oracle.truffle.llvm.parser.api.model.generators.ModuleGenerator;
 import com.oracle.truffle.llvm.parser.api.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.api.model.target.TargetInformation;
 import com.oracle.truffle.llvm.parser.api.model.target.TargetTriple;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.api.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.parser.bc.blocks.Block;
 import com.oracle.truffle.llvm.parser.bc.parser.bc.records.Records;
 import com.oracle.truffle.llvm.parser.bc.parser.ir.module.records.ModuleRecord;
@@ -49,6 +46,9 @@ import com.oracle.truffle.llvm.parser.bc.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.ValueSymbolTable;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class Module implements ParserListener {
 

@@ -38,11 +38,11 @@ import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.VoidInstruction;
-import com.oracle.truffle.llvm.parser.api.model.types.MetaType;
 import com.oracle.truffle.llvm.parser.api.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ReducedInstructionVisitor;
 import com.oracle.truffle.llvm.parser.bc.util.LLVMFrameIDs;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
 
 import java.util.HashMap;
 import java.util.Map;

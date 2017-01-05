@@ -47,9 +47,7 @@ import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.context.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
-import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.api.LLVMParserResult;
-import com.oracle.truffle.llvm.parser.api.LLVMType;
 import com.oracle.truffle.llvm.parser.api.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.api.model.Model;
@@ -61,16 +59,11 @@ import com.oracle.truffle.llvm.parser.api.model.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.VoidInstruction;
 import com.oracle.truffle.llvm.parser.api.model.target.TargetDataLayout;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.api.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.api.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ReducedInstructionVisitor;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserAsserts;
@@ -80,7 +73,14 @@ import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.bc.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.parser.bc.util.Pair;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.LLVMType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
 
@@ -89,7 +89,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         final Model model = parserResult.getModel();
         final StackAllocation stackAllocation = parserResult.getStackAllocation();
         final TargetDataLayout layout = ((ModelModule) model.createModule()).getTargetDataLayout();
-        final DataLayoutConverter.DataSpecConverter targetDataLayout = layout != null ? DataLayoutConverter.getConverter(layout.getDataLayout()) : null;
+        final DataLayoutConverter.DataSpecConverterImpl targetDataLayout = layout != null ? DataLayoutConverter.getConverter(layout.getDataLayout()) : null;
 
         final LLVMBitcodeVisitor visitor = new LLVMBitcodeVisitor(source, context, stackAllocation, parserResult.getLabels(), parserResult.getPhis(), targetDataLayout, factoryFacade);
         final LLVMModelVisitor module = new LLVMModelVisitor(visitor, context);
@@ -134,7 +134,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
 
     private final Map<GlobalValueSymbol, LLVMExpressionNode> globals = new HashMap<>();
 
-    private final DataLayoutConverter.DataSpecConverter targetDataLayout;
+    private final DataLayoutConverter.DataSpecConverterImpl targetDataLayout;
 
     private final NodeFactoryFacade factoryFacade;
 
@@ -147,7 +147,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
     private final NativeLookup nativeLookup;
 
     private LLVMBitcodeVisitor(Source source, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
-                    DataLayoutConverter.DataSpecConverter layout, NodeFactoryFacade factoryFacade) {
+                    DataLayoutConverter.DataSpecConverterImpl layout, NodeFactoryFacade factoryFacade) {
         this.source = source;
         this.context = context;
         this.stack = stack;

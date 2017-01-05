@@ -112,25 +112,11 @@ suite = {
       "license" : "BSD-new",
     },
 
-    "com.oracle.truffle.llvm.types" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.llvm.runtime",
-        "truffle:TRUFFLE_API",
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm.nodes.api",
-      "javaCompliance" : "1.8",
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-    },
-
     "com.oracle.truffle.llvm.types.test" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.types",
+        "com.oracle.truffle.llvm.runtime",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.test",
@@ -144,7 +130,9 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
-        "com.oracle.truffle.llvm.option"
+        "com.oracle.truffle.llvm.option",
+        "truffle:TRUFFLE_API",
+        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes.api",
       "annotationProcessors" : ["SULONG_OPTIONS"],
@@ -158,7 +146,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
-        "com.oracle.truffle.llvm.types"
+        "com.oracle.truffle.llvm.runtime"
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes.api",
       "javaCompliance" : "1.8",

@@ -34,15 +34,12 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
-import com.oracle.truffle.llvm.parser.api.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.BinaryOperationConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.BlockAddressConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.CastConstant;
@@ -59,21 +56,24 @@ import com.oracle.truffle.llvm.parser.api.model.symbols.constants.floatingpoint.
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.api.model.types.ArrayType;
-import com.oracle.truffle.llvm.parser.api.model.types.FloatingPointType;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerType;
-import com.oracle.truffle.llvm.parser.api.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.api.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
-import com.oracle.truffle.llvm.parser.api.model.types.VectorType;
 import com.oracle.truffle.llvm.parser.api.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.bc.LLVMLabelList;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.types.LLVMAddress;
-import com.oracle.truffle.llvm.types.LLVMFunction;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class LLVMSymbolResolver {
 

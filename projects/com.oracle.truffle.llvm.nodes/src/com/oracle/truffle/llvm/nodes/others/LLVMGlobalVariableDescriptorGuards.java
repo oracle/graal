@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.nodes.others;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.types.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 
 public abstract class LLVMGlobalVariableDescriptorGuards {
 

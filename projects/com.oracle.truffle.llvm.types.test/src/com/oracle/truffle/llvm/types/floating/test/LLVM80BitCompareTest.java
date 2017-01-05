@@ -34,7 +34,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.oracle.truffle.llvm.types.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
 public class LLVM80BitCompareTest extends LLVM80BitTest {
 

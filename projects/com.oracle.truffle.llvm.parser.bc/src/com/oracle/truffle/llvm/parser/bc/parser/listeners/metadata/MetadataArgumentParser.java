@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.parser.bc.parser.listeners.metadata;
 
-import com.oracle.truffle.llvm.parser.api.model.types.BigIntegerConstantType;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerConstantType;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerType;
-import com.oracle.truffle.llvm.parser.api.model.types.MetaType;
-import com.oracle.truffle.llvm.parser.api.model.types.MetadataConstantPointerType;
-import com.oracle.truffle.llvm.parser.api.model.types.MetadataConstantType;
-import com.oracle.truffle.llvm.parser.api.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
+import com.oracle.truffle.llvm.runtime.types.BigIntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantPointerType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantType;
 
 import java.util.Iterator;
 import java.util.List;

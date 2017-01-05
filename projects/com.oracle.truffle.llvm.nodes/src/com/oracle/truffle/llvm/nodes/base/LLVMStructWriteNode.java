@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.nodes.base;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.types.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
 public abstract class LLVMStructWriteNode extends Node {
 

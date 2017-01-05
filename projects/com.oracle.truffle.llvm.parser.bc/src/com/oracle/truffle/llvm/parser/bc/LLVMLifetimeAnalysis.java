@@ -42,8 +42,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
-import com.oracle.truffle.llvm.parser.api.model.symbols.ValueSymbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.BinaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.BranchInstruction;
@@ -70,12 +68,14 @@ import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.Terminating
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.VoidCallInstruction;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
 import com.oracle.truffle.llvm.parser.api.model.visitors.AbstractTerminatingInstructionVisitor;
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ValueSymbolVisitor;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class LLVMLifetimeAnalysis {
 

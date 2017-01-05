@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.api.model.symbols.constants.floatingpoint;
 
-import com.oracle.truffle.llvm.parser.api.model.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
 
 public final class FloatConstant extends FloatingPointConstant {
 

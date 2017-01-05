@@ -33,9 +33,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class ConditionalBranchInstruction implements VoidInstruction, TerminatingInstruction {
 

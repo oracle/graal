@@ -32,21 +32,8 @@ package com.oracle.truffle.llvm.parser.bc;
 import com.oracle.truffle.llvm.parser.api.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.parser.api.model.Model;
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.api.model.blocks.MetadataBlock;
-import com.oracle.truffle.llvm.parser.api.model.blocks.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataBaseNode;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataBasicType;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataCompositeType;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataDerivedType;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataFnNode;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataNode;
-import com.oracle.truffle.llvm.parser.api.model.metadata.MetadataString;
-import com.oracle.truffle.llvm.parser.api.model.metadata.subtypes.MetadataSubtypeName;
-import com.oracle.truffle.llvm.parser.api.model.metadata.subtypes.MetadataSubtypeType;
-import com.oracle.truffle.llvm.parser.api.model.metadata.subtypes.MetadataSubytypeSizeAlignOffset;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.MetadataConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.AllocateInstruction;
@@ -54,14 +41,27 @@ import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.CastInstruc
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.VoidCallInstruction;
-import com.oracle.truffle.llvm.parser.api.model.types.MetadataReferenceType;
-import com.oracle.truffle.llvm.parser.api.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitorAdapter;
-import com.oracle.truffle.llvm.parser.api.model.visitors.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.types.MetadataVisitor;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBaseNode;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBasicType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataCompositeType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataDerivedType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataFnNode;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataNode;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataReferenceType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataString;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.runtime.types.metadata.subtypes.MetadataSubtypeName;
+import com.oracle.truffle.llvm.runtime.types.metadata.subtypes.MetadataSubtypeType;
+import com.oracle.truffle.llvm.runtime.types.metadata.subtypes.MetadataSubytypeSizeAlignOffset;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 /**
  * Parse all those "@llvm.dbg.declare" call instructions and add the fitting Metadata reference to
@@ -69,7 +69,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLogger;
  */
 final class LLVMMetadata implements ModelVisitor {
 
-    public static LLVMMetadata generate(Model model, DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    public static LLVMMetadata generate(Model model, DataLayoutConverter.DataSpecConverterImpl targetDataLayout) {
         LLVMMetadata visitor = new LLVMMetadata(targetDataLayout);
 
         model.accept(visitor);
@@ -77,9 +77,9 @@ final class LLVMMetadata implements ModelVisitor {
         return visitor;
     }
 
-    private final DataLayoutConverter.DataSpecConverter targetDataLayout;
+    private final DataLayoutConverter.DataSpecConverterImpl targetDataLayout;
 
-    private LLVMMetadata(DataLayoutConverter.DataSpecConverter targetDataLayout) {
+    private LLVMMetadata(DataLayoutConverter.DataSpecConverterImpl targetDataLayout) {
         this.targetDataLayout = targetDataLayout;
     }
 

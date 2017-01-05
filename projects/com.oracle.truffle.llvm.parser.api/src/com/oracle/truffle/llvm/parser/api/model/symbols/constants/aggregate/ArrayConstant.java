@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.api.model.symbols.constants.aggregate;
 
-import com.oracle.truffle.llvm.parser.api.model.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
 
 public final class ArrayConstant extends AggregateConstant {
 

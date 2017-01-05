@@ -33,16 +33,6 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionGenerator;
 import com.oracle.truffle.llvm.parser.api.model.generators.FunctionGenerator;
-import com.oracle.truffle.llvm.parser.api.model.types.AggregateType;
-import com.oracle.truffle.llvm.parser.api.model.types.ArrayType;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerConstantType;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerType;
-import com.oracle.truffle.llvm.parser.api.model.types.MetaType;
-import com.oracle.truffle.llvm.parser.api.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.api.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
-import com.oracle.truffle.llvm.parser.api.model.types.VectorType;
 import com.oracle.truffle.llvm.parser.bc.parser.bc.blocks.Block;
 import com.oracle.truffle.llvm.parser.bc.parser.bc.records.Records;
 import com.oracle.truffle.llvm.parser.bc.parser.ir.module.records.FunctionRecord;
@@ -51,6 +41,16 @@ import com.oracle.truffle.llvm.parser.bc.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.ValueSymbolTable;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.types.AggregateType;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
 
 public class Function implements ParserListener {
 

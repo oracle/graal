@@ -35,9 +35,9 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public final class SwitchInstruction implements VoidInstruction, TerminatingInstruction {
 

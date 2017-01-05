@@ -36,7 +36,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public interface LLVMParserRuntime {
 
