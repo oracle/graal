@@ -60,6 +60,48 @@ public class IntrospectionTest {
 
     }
 
+    @SuppressWarnings("unused")
+    @TypeSystemReference(IntrospectionTypeSystem.class)
+    // BEGIN: com.oracle.truffle.api.dsl.test.IntrospectionTest
+    @Introspectable
+    abstract static class NegateNode extends Node {
+
+        abstract Object execute(Object o);
+
+        @Specialization(guards = "cachedvalue == value", limit = "1")
+        protected static int doInt(int value,
+                        @Cached("value") int cachedvalue) {
+            return -cachedvalue;
+        }
+
+        @Specialization(replaces = "doInt")
+        protected static int doGeneric(int value) {
+            return -value;
+        }
+    }
+
+    @Test
+    public void testUsingIntrospection() {
+        NegateNode node = IntrospectionTestFactory.NegateNodeGen.create();
+        SpecializationInfo info;
+
+        node.execute(1);
+        info = Introspection.getSpecialization(node, "doInt");
+        assertEquals(1, info.getInstances());
+
+        node.execute(1);
+        info = Introspection.getSpecialization(node, "doInt");
+        assertEquals(1, info.getInstances());
+
+        node.execute(2);
+        info = Introspection.getSpecialization(node, "doInt");
+        assertEquals(0, info.getInstances());
+
+        info = Introspection.getSpecialization(node, "doGeneric");
+        assertEquals(1, info.getInstances());
+    }
+    // END: com.oracle.truffle.api.dsl.test.IntrospectionTest
+
     public abstract static class Introspection1Node extends ReflectableNode {
 
         abstract Object execute(Object o);
