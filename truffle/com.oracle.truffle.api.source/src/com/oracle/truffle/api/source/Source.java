@@ -486,7 +486,7 @@ public abstract class Source {
      * @since 0.18
      */
     public final SourceSection createUnavailableSection() {
-        return new SourceSection(this, -1, -1);
+        return new SourceSection(this, 0, -1);
     }
 
     /**
