@@ -139,7 +139,7 @@ public final class SourceSection {
         }
         return source.createLineLocation(getStartLine());
     }
-    
+
     /**
      * Returns 1-based line number of the last character in this section (inclusive). Returns
      * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
