@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.parser.bc.parser.listeners.metadata;
 
 import com.oracle.truffle.llvm.parser.api.model.generators.SymbolGenerator;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 import java.util.List;
 

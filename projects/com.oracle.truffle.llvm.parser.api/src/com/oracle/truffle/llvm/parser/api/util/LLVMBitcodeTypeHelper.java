@@ -34,8 +34,8 @@ import com.oracle.truffle.llvm.parser.api.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMLogicalInstructionType;
 import com.oracle.truffle.llvm.parser.api.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.api.model.enums.CastOperator;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMBitcodeTypeHelper {
 

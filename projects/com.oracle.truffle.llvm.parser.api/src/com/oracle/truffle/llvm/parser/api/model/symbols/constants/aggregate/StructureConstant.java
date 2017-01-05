@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.api.model.symbols.constants.aggregate;
 
-import com.oracle.truffle.llvm.parser.api.model.types.StructureType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class StructureConstant extends AggregateConstant {
 

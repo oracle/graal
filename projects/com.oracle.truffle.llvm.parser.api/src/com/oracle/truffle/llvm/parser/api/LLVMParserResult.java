@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.llvm.types.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 
 public interface LLVMParserResult {
 

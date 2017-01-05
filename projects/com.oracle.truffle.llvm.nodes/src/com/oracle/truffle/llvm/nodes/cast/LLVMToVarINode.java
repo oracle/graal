@@ -33,7 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.types.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 
 public abstract class LLVMToVarINode extends LLVMExpressionNode {
 

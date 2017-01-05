@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.parser.api.model.generators;
 
 import com.oracle.truffle.llvm.parser.api.model.blocks.InstructionGenerator;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public interface FunctionGenerator extends SymbolGenerator {
 

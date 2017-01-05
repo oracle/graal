@@ -30,9 +30,9 @@
 package com.oracle.truffle.llvm.parser.bc.parser.listeners.function;
 
 import com.oracle.truffle.llvm.parser.api.model.generators.FunctionGenerator;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.ModuleVersion;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 import java.util.List;
 

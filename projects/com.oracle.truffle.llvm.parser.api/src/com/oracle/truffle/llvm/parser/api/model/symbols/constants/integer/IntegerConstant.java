@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.parser.api.model.symbols.constants.integer;
 
 import com.oracle.truffle.llvm.parser.api.model.symbols.constants.AbstractConstant;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
 
 public final class IntegerConstant extends AbstractConstant {
 

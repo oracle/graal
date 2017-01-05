@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.parser.bc.parser.listeners.function;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.api.model.generators.FunctionGenerator;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.api.model.types.MetaType;
-import com.oracle.truffle.llvm.parser.api.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.parser.bc.records.Records;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.ModuleVersion;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class FunctionV32 extends FunctionV38 {
 

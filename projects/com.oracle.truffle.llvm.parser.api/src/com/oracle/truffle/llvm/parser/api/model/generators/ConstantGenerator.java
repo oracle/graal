@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser.api.model.generators;
 
 import java.math.BigInteger;
 
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public interface ConstantGenerator {
 

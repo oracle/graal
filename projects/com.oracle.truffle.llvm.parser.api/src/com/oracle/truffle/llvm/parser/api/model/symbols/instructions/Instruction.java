@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.api.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public interface Instruction extends Symbol {
 

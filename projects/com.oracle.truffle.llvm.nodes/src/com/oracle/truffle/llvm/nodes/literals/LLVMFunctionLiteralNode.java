@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.nodes.literals;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.types.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 
 @NodeField(type = LLVMFunctionDescriptor.class, name = "function")
 public abstract class LLVMFunctionLiteralNode extends LLVMExpressionNode {

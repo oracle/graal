@@ -35,7 +35,7 @@ import java.io.ByteArrayInputStream;
 
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.parser.api.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
 COMPILER InlineAssembly
 

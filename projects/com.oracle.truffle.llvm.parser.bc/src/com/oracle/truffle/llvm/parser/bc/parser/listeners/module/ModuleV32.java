@@ -30,10 +30,10 @@
 package com.oracle.truffle.llvm.parser.bc.parser.listeners.module;
 
 import com.oracle.truffle.llvm.parser.api.model.generators.ModuleGenerator;
-import com.oracle.truffle.llvm.parser.api.model.types.FunctionType;
-import com.oracle.truffle.llvm.parser.api.model.types.PointerType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.ModuleVersion;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class ModuleV32 extends Module {
 

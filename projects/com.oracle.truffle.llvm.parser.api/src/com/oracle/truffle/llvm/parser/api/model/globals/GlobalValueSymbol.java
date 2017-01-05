@@ -30,11 +30,11 @@
 package com.oracle.truffle.llvm.parser.api.model.globals;
 
 import com.oracle.truffle.llvm.parser.api.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.api.model.symbols.Symbol;
 import com.oracle.truffle.llvm.parser.api.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.api.model.symbols.ValueSymbol;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public abstract class GlobalValueSymbol implements ValueSymbol {
 

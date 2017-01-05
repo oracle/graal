@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.api.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.api.model.types.MetaType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public interface VoidInstruction extends Instruction {
 

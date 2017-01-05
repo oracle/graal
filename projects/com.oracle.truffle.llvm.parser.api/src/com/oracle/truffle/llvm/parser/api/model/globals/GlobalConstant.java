@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.api.model.globals;
 
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class GlobalConstant extends GlobalValueSymbol {
 

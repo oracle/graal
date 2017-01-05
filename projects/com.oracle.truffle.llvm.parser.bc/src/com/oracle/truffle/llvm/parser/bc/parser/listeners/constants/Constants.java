@@ -33,14 +33,14 @@ import java.math.BigInteger;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.api.model.generators.ConstantGenerator;
-import com.oracle.truffle.llvm.parser.api.model.types.BigIntegerConstantType;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerConstantType;
-import com.oracle.truffle.llvm.parser.api.model.types.IntegerType;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.parser.bc.records.Records;
 import com.oracle.truffle.llvm.parser.bc.parser.ir.module.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
+import com.oracle.truffle.llvm.runtime.types.BigIntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class Constants implements ParserListener {
 

@@ -35,7 +35,6 @@ import com.oracle.truffle.llvm.parser.api.model.generators.ConstantGenerator;
 import com.oracle.truffle.llvm.parser.api.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.parser.api.model.generators.ModuleGenerator;
 import com.oracle.truffle.llvm.parser.api.model.generators.SymbolGenerator;
-import com.oracle.truffle.llvm.parser.api.model.types.Type;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.constants.Constants;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.constants.ConstantsV32;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.constants.ConstantsV38;
@@ -49,6 +48,7 @@ import com.oracle.truffle.llvm.parser.bc.parser.listeners.module.Module;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.module.ModuleV32;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.module.ModuleV38;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public enum ModuleVersion {
 
