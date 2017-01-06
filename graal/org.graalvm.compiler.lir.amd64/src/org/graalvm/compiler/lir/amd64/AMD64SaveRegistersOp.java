@@ -27,9 +27,8 @@ import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
-import java.util.Set;
-
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Opcode;
@@ -61,16 +60,16 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
     @Def(STACK) protected final AllocatableValue[] slots;
 
     /**
-     * Specifies if {@link #remove(Set)} should have an effect.
+     * Specifies if {@link #remove(EconomicSet)} should have an effect.
      */
     protected final boolean supportsRemove;
 
     /**
      *
      * @param savedRegisters the registers saved by this operation which may be subject to
-     *            {@linkplain #remove(Set) pruning}
+     *            {@linkplain #remove(EconomicSet) pruning}
      * @param savedRegisterLocations the slots to which the registers are saved
-     * @param supportsRemove determines if registers can be {@linkplain #remove(Set) pruned}
+     * @param supportsRemove determines if registers can be {@linkplain #remove(EconomicSet) pruned}
      */
     public AMD64SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
         this(TYPE, savedRegisters, savedRegisterLocations, supportsRemove);
@@ -108,14 +107,14 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
     }
 
     @Override
-    public int remove(Set<Register> doNotSave) {
+    public int remove(EconomicSet<Register> doNotSave) {
         if (!supportsRemove) {
             throw new UnsupportedOperationException();
         }
         return prune(doNotSave, savedRegisters);
     }
 
-    static int prune(Set<Register> toRemove, Register[] registers) {
+    static int prune(EconomicSet<Register> toRemove, Register[] registers) {
         int pruned = 0;
         for (int i = 0; i < registers.length; i++) {
             if (registers[i] != null) {

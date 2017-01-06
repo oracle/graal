@@ -30,16 +30,15 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitutionRegistry;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.ImmutableEconomicMap.Cursor;
+import org.graalvm.compiler.core.common.EconomicMap;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -494,7 +493,7 @@ public class InvocationPlugins {
 
     private final MetaAccessProvider metaAccess;
 
-    private final Map<String, ClassPlugins> registrations = new HashMap<>();
+    private final EconomicMap<String, ClassPlugins> registrations = CollectionsFactory.newMap();
 
     /**
      * Deferred registrations as well as guard for initialization. The guard uses double-checked
@@ -528,19 +527,19 @@ public class InvocationPlugins {
          *
          * Note: this must be volatile as threads may race to initialize it.
          */
-        private volatile Map<ResolvedJavaMethodKey, InvocationPlugin> entries;
+        private volatile EconomicMap<ResolvedJavaMethodKey, InvocationPlugin> entries;
 
         void initializeMap() {
             if (!isClosed()) {
                 if (registrations.isEmpty()) {
-                    entries = Collections.emptyMap();
+                    entries = CollectionsFactory.newMap();
                 } else {
                     Class<?> declaringClass = resolveType(declaringType, true);
                     if (declaringClass == null) {
                         // An optional type that could not be resolved
-                        entries = Collections.emptyMap();
+                        entries = CollectionsFactory.newMap();
                     } else {
-                        Map<ResolvedJavaMethodKey, InvocationPlugin> newEntries = new HashMap<>();
+                        EconomicMap<ResolvedJavaMethodKey, InvocationPlugin> newEntries = CollectionsFactory.newMap();
                         for (MethodKey methodKey : registrations) {
                             ResolvedJavaMethod m = methodKey.resolve(declaringClass);
                             if (m != null) {
@@ -565,7 +564,7 @@ public class InvocationPlugins {
         }
 
         public void register(MethodKey methodKey, boolean allowOverwrite) {
-            assert !isClosed() : "registration is closed: " + methodKey + " " + Arrays.toString(entries.keySet().toArray());
+            assert !isClosed() : "registration is closed: " + methodKey;
             if (allowOverwrite) {
                 int index = registrations.indexOf(methodKey);
                 if (index >= 0) {
@@ -639,8 +638,8 @@ public class InvocationPlugins {
                     deferredRegistrations = null;
                 }
             }
-            for (Map.Entry<String, ClassPlugins> e : registrations.entrySet()) {
-                e.getValue().initializeMap();
+            for (ClassPlugins e : registrations.getValues()) {
+                e.initializeMap();
             }
         }
     }
@@ -651,8 +650,8 @@ public class InvocationPlugins {
      */
     public void closeRegistration() {
         flushDeferrables();
-        for (Map.Entry<String, ClassPlugins> e : registrations.entrySet()) {
-            e.getValue().initializeMap();
+        for (ClassPlugins e : registrations.getValues()) {
+            e.initializeMap();
         }
     }
 
@@ -694,7 +693,7 @@ public class InvocationPlugins {
             if (classPlugins == null) {
                 classPlugins = new ClassPlugins(null);
                 registrations.put(internalName, classPlugins);
-                classPlugins.entries = new HashMap<>();
+                classPlugins.entries = CollectionsFactory.newMap();
             }
 
             classPlugins.entries.put(new ResolvedJavaMethodKey(method), plugin);
@@ -768,14 +767,14 @@ public class InvocationPlugins {
      * Gets the set of methods for which invocation plugins have been registered. Once this method
      * is called, no further registrations can be made.
      */
-    public Set<ResolvedJavaMethod> getMethods() {
-        Set<ResolvedJavaMethod> res = new HashSet<>();
+    public EconomicSet<ResolvedJavaMethod> getMethods() {
+        EconomicSet<ResolvedJavaMethod> res = CollectionsFactory.newSet();
         if (parent != null) {
             res.addAll(parent.getMethods());
         }
         flushDeferrables();
-        for (ClassPlugins cp : registrations.values()) {
-            for (ResolvedJavaMethodKey key : cp.entries.keySet()) {
+        for (ClassPlugins cp : registrations.getValues()) {
+            for (ResolvedJavaMethodKey key : cp.entries.getKeys()) {
                 res.add(key.method);
             }
         }
@@ -793,7 +792,11 @@ public class InvocationPlugins {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        registrations.forEach((name, cp) -> buf.append(name).append('.').append(cp).append(", "));
+        Cursor<String, ClassPlugins> entries = registrations.getEntries();
+        while (entries.advance()) {
+            buf.append(entries.getKey()).append('.').append(entries.getValue()).append(", ");
+        }
+
         String s = buf.toString();
         if (buf.length() != 0) {
             s = s.substring(buf.length() - ", ".length());

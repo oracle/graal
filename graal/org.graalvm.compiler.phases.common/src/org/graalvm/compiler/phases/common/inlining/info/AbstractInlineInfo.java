@@ -25,8 +25,7 @@ package org.graalvm.compiler.phases.common.inlining.info;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-
+import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import org.graalvm.compiler.graph.Node;
@@ -63,12 +62,12 @@ public abstract class AbstractInlineInfo implements InlineInfo {
         List<Node> canonicalizeNodes = new ArrayList<>();
         assert inlineable instanceof InlineableGraph;
         StructuredGraph calleeGraph = ((InlineableGraph) inlineable).getGraph();
-        Map<Node, Node> duplicateMap = InliningUtil.inline(invoke, calleeGraph, receiverNullCheck, canonicalizeNodes, concrete);
+        ImmutableEconomicMap<Node, Node> duplicateMap = InliningUtil.inline(invoke, calleeGraph, receiverNullCheck, canonicalizeNodes, concrete);
         getInlinedParameterUsages(canonicalizeNodes, calleeGraph, duplicateMap);
         return canonicalizeNodes;
     }
 
-    public static void getInlinedParameterUsages(Collection<Node> parameterUsages, StructuredGraph calleeGraph, Map<Node, Node> duplicateMap) {
+    public static void getInlinedParameterUsages(Collection<Node> parameterUsages, StructuredGraph calleeGraph, ImmutableEconomicMap<Node, Node> duplicateMap) {
         for (ParameterNode parameter : calleeGraph.getNodes(ParameterNode.TYPE)) {
             for (Node usage : parameter.usages()) {
                 Node node = duplicateMap.get(usage);

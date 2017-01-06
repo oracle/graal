@@ -32,10 +32,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Set;
-
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -97,11 +96,11 @@ public abstract class Stub {
     /**
      * The registers destroyed by this stub (from the caller's perspective).
      */
-    private Set<Register> destroyedCallerRegisters;
+    private EconomicSet<Register> destroyedCallerRegisters;
 
     private HotSpotCompiledCode compiledCode;
 
-    public void initDestroyedCallerRegisters(Set<Register> registers) {
+    public void initDestroyedCallerRegisters(EconomicSet<Register> registers) {
         assert registers != null;
         assert destroyedCallerRegisters == null || registers.equals(destroyedCallerRegisters) : "cannot redefine";
         destroyedCallerRegisters = registers;
@@ -111,7 +110,7 @@ public abstract class Stub {
      * Gets the registers destroyed by this stub from a caller's perspective. These are the
      * temporaries of this stub and must thus be caller saved by a callers of this stub.
      */
-    public Set<Register> getDestroyedCallerRegisters() {
+    public EconomicSet<Register> getDestroyedCallerRegisters() {
         assert destroyedCallerRegisters != null : "not yet initialized";
         return destroyedCallerRegisters;
     }

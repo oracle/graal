@@ -23,12 +23,11 @@
 package org.graalvm.compiler.hotspot.test;
 
 import java.util.List;
-import java.util.Set;
-
 import org.junit.Test;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -62,7 +61,7 @@ public class TestIntrinsicCompiles extends GraalCompilerTest {
         return false;
     }
 
-    private static ResolvedJavaMethod findMethod(Set<ResolvedJavaMethod> methods, VMIntrinsicMethod intrinsic) {
+    private static ResolvedJavaMethod findMethod(EconomicSet<ResolvedJavaMethod> methods, VMIntrinsicMethod intrinsic) {
         for (ResolvedJavaMethod method : methods) {
             if (match(method, intrinsic)) {
                 return method;
@@ -80,7 +79,7 @@ public class TestIntrinsicCompiles extends GraalCompilerTest {
         Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = graphBuilderPlugins.getInvocationPlugins();
 
-        Set<ResolvedJavaMethod> pluginMethods = invocationPlugins.getMethods();
+        EconomicSet<ResolvedJavaMethod> pluginMethods = invocationPlugins.getMethods();
         HotSpotVMConfigStore store = rt.getVMConfig().getStore();
         List<VMIntrinsicMethod> intrinsics = store.getIntrinsics();
         for (VMIntrinsicMethod intrinsic : intrinsics) {

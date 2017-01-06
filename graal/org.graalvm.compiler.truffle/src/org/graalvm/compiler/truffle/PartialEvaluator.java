@@ -35,7 +35,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,6 +43,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -491,7 +492,7 @@ public class PartialEvaluator {
             }
         }
 
-        HashMap<String, ArrayList<ValueNode>> groupedByType = new HashMap<>();
+        EconomicMap<String, ArrayList<ValueNode>> groupedByType = CollectionsFactory.newMap();
         for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
             if (!instanceOf.type().isExact()) {
                 warnings.add(instanceOf);
@@ -499,7 +500,8 @@ public class PartialEvaluator {
                 groupedByType.get(instanceOf.type().getType().getName()).add(instanceOf);
             }
         }
-        for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
+        EconomicMap.Cursor<String, ArrayList<ValueNode>> entry = groupedByType.getEntries();
+        while (entry.advance()) {
             logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type check: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
         }
 
@@ -543,7 +545,7 @@ public class PartialEvaluator {
         TruffleInliningDecision decision = inlining.findByCall(callNode);
         if (decision == null) {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
-                Map<String, Object> properties = CollectionsFactory.newLinkedMap();
+                Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("callNode", callNode);
                 logPerformanceWarning(target, null, "A direct call within the Truffle AST is not reachable anymore. Call node could not be inlined.", properties);
             }
@@ -551,7 +553,7 @@ public class PartialEvaluator {
 
         if (decision != null && decision.getTarget() != decision.getProfile().getCallNode().getCurrentCallTarget()) {
             if (TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue()) {
-                Map<String, Object> properties = CollectionsFactory.newLinkedMap();
+                Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("originalTarget", decision.getTarget());
                 properties.put("callNode", callNode);
                 logPerformanceWarning(target, null, "CallTarget changed during compilation. Call node could not be inlined.", properties);

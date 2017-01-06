@@ -23,9 +23,7 @@
 package org.graalvm.compiler.java;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
@@ -54,7 +52,11 @@ public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.N
     @Override
     protected Double merge(AbstractMergeNode merge, List<Double> states) {
         // a merge has the sum of all predecessor probabilities
-        return states.stream().collect(Collectors.summingDouble(d -> d));
+        double result = 0.0;
+        for (double d : states) {
+            result += d;
+        }
+        return result;
     }
 
     @Override
@@ -65,10 +67,13 @@ public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.N
     }
 
     @Override
-    protected Map<LoopExitNode, Double> processLoop(LoopBeginNode loop, Double initialState) {
-        Map<LoopExitNode, Double> exitStates = ReentrantNodeIterator.processLoop(this, loop, 1D).exitStates;
+    protected EconomicMap<LoopExitNode, Double> processLoop(LoopBeginNode loop, Double initialState) {
+        EconomicMap<LoopExitNode, Double> exitStates = ReentrantNodeIterator.processLoop(this, loop, 1D).exitStates;
 
-        double exitProbability = exitStates.values().stream().mapToDouble(d -> d).sum();
+        double exitProbability = 0.0;
+        for (double d : exitStates.getValues()) {
+            exitProbability += d;
+        }
         exitProbability = Math.min(1D, exitProbability);
         if (exitProbability < ControlFlowGraph.MIN_PROBABILITY) {
             exitProbability = ControlFlowGraph.MIN_PROBABILITY;

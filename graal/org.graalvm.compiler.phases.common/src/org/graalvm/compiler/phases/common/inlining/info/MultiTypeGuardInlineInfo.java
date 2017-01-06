@@ -26,10 +26,9 @@ import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentat
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.graph.Node;
@@ -100,7 +99,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private static boolean assertUniqueTypes(ArrayList<ProfiledType> ptypes) {
-        Set<ResolvedJavaType> set = new HashSet<>();
+        EconomicSet<ResolvedJavaType> set = CollectionsFactory.newSet();
         for (ProfiledType ptype : ptypes) {
             set.add(ptype.getType());
         }

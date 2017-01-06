@@ -30,6 +30,8 @@ import java.util.Map;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.ImmutableEconomicMap.Cursor;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -64,10 +66,10 @@ public class GraphDumper extends AbstractMethodScopeDumper {
 
     public static final String EVENT_NAMESPACE = "graal/graph";
 
-    private static final Map<Class<?>, String> nodeClassCategoryMap;
+    private static final EconomicMap<Class<?>, String> nodeClassCategoryMap;
 
     static {
-        nodeClassCategoryMap = CollectionsFactory.newLinkedMap();
+        nodeClassCategoryMap = CollectionsFactory.newMap();
         nodeClassCategoryMap.put(ControlSinkNode.class, "ControlSink");
         nodeClassCategoryMap.put(ControlSplitNode.class, "ControlSplit");
         nodeClassCategoryMap.put(AbstractMergeNode.class, "Merge");
@@ -354,9 +356,10 @@ public class GraphDumper extends AbstractMethodScopeDumper {
     }
 
     private static String getNodeClassCategory(Class<?> clazz) {
-        for (Map.Entry<Class<?>, String> entry : nodeClassCategoryMap.entrySet()) {
-            if (entry.getKey().isAssignableFrom(clazz)) {
-                return entry.getValue();
+        Cursor<Class<?>, String> cursor = nodeClassCategoryMap.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getKey().isAssignableFrom(clazz)) {
+                return cursor.getValue();
             }
         }
         return null;

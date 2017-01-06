@@ -25,10 +25,10 @@ package org.graalvm.compiler.truffle.debug;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleCompilation;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleCompilationDetails;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
@@ -60,7 +60,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
     @Override
     public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
         if (TraceTruffleCompilationDetails.getValue()) {
-            Map<String, Object> properties = CollectionsFactory.newLinkedMap();
+            Map<String, Object> properties = new LinkedHashMap<>();
             addSourceInfo(properties, source);
             properties.put("Reason", reason);
             log(0, "opt unqueued", target.toString(), properties);
@@ -116,7 +116,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
         }
 
         int dispatchedCalls = calls - inlinedCalls;
-        Map<String, Object> properties = CollectionsFactory.newLinkedMap();
+        Map<String, Object> properties = new LinkedHashMap<>();
         addASTSizeProperty(target, inliningDecision, properties);
         properties.put("Time", String.format("%5.0f(%4.0f+%-4.0f)ms", //
                         (timeCompilationFinished - compilation.timeCompilationStarted) / 1e6, //
@@ -141,7 +141,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
 
     @Override
     public void notifyCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
-        Map<String, Object> properties = CollectionsFactory.newLinkedMap();
+        Map<String, Object> properties = new LinkedHashMap<>();
         addSourceInfo(properties, source);
         properties.put("Reason", reason);
         log(0, "opt invalidated", target.toString(), properties);

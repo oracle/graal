@@ -32,10 +32,11 @@ import java.util.Set;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -110,7 +111,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
     @Override
     public void print(Graph graph, String title, Map<Object, Object> properties) {
         beginGraph(title);
-        Set<Node> noBlockNodes = NodeCollectionsFactory.newSet();
+        EconomicSet<Node> noBlockNodes = CollectionsFactory.newSet();
         ScheduleResult schedule = null;
         if (graph instanceof StructuredGraph) {
             StructuredGraph structuredGraph = (StructuredGraph) graph;
@@ -159,7 +160,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         flush();
     }
 
-    private List<Edge> printNodes(Graph graph, NodeMap<Block> nodeToBlock, Set<Node> noBlockNodes) {
+    private List<Edge> printNodes(Graph graph, NodeMap<Block> nodeToBlock, EconomicSet<Node> noBlockNodes) {
         ArrayList<Edge> edges = new ArrayList<>();
 
         NodeMap<Set<Entry<String, Integer>>> colors = graph.createNodeMap();
@@ -288,7 +289,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         endSuccessors();
         beginBlockNodes();
 
-        Set<Node> nodes = NodeCollectionsFactory.newSet();
+        EconomicSet<Node> nodes = CollectionsFactory.newSet();
 
         if (nodeToBlock != null) {
             for (Node n : graph.getNodes()) {
@@ -309,7 +310,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                 }
             }
 
-            Set<Node> snapshot = NodeCollectionsFactory.newSet(nodes);
+            EconomicSet<Node> snapshot = CollectionsFactory.newSet(nodes);
             // add all framestates and phis to their blocks
             for (Node node : snapshot) {
                 if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
@@ -330,7 +331,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         endBlock();
     }
 
-    private void printNoBlock(Set<Node> noBlockNodes) {
+    private void printNoBlock(EconomicSet<Node> noBlockNodes) {
         if (!noBlockNodes.isEmpty()) {
             beginBlock("noBlock");
             beginBlockNodes();

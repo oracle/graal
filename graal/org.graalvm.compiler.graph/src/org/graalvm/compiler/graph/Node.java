@@ -29,7 +29,6 @@ import static org.graalvm.compiler.graph.UnsafeAccess.UNSAFE;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formattable;
@@ -68,18 +67,6 @@ import sun.misc.Unsafe;
  * this field points to.
  * <p>
  * Nodes which are be value numberable should implement the {@link ValueNumberable} interface.
- *
- * <h1>Replay Compilation</h1>
- *
- * To enable deterministic replay compilation, node sets and node maps should be instantiated with
- * the following methods:
- * <ul>
- * <li>{@link NodeCollectionsFactory#newSet()}</li>
- * <li>{@link NodeCollectionsFactory#newSet(Collection)}</li>
- * <li>{@link NodeCollectionsFactory#newMap()}</li>
- * <li>{@link NodeCollectionsFactory#newMap(int)}</li>
- * <li>{@link NodeCollectionsFactory#newMap(Map)}</li>
- * </ul>
  *
  * <h1>Assertions and Verification</h1>
  *
@@ -981,14 +968,14 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * graph are stored in sets. It can give bad behavior when storing nodes of different graphs in
      * the same set.
      */
-    @Override
-    public final int hashCode() {
-        assert !this.isUnregistered() : "node not yet constructed";
-        if (this.isDeleted()) {
-            return -id + DELETED_ID_START;
-        }
-        return id;
-    }
+// @Override
+// public final int hashCode() {
+// assert !this.isUnregistered() : "node not yet constructed";
+// if (this.isDeleted()) {
+// return -id + DELETED_ID_START;
+// }
+// return id;
+// }
 
     /**
      * Do not overwrite the equality test of a node in subclasses. Equality tests must rely solely

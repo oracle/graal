@@ -23,10 +23,10 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.List;
-import java.util.Set;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StartNode;
@@ -46,14 +46,14 @@ public class ValueAnchorCleanupPhase extends Phase {
 
     private static class State extends MergeableState<State> implements Cloneable {
 
-        private final Set<Node> anchoredValues;
+        private final EconomicSet<Node> anchoredValues;
 
         State() {
-            anchoredValues = NodeCollectionsFactory.newSet();
+            anchoredValues = CollectionsFactory.newSet();
         }
 
         State(State other) {
-            anchoredValues = NodeCollectionsFactory.newSet(other.anchoredValues);
+            anchoredValues = CollectionsFactory.newSet(other.anchoredValues);
         }
 
         @Override

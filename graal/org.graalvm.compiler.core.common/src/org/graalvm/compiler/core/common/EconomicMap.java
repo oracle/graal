@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.graph;
+package org.graalvm.compiler.core.common;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
+import java.util.function.BiFunction;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
+public interface EconomicMap<K, V> extends ImmutableEconomicMap<K, V> {
 
-public class NodeCollectionsFactory {
+    V put(K key, V value);
 
-    public static <K extends Node, V> Map<K, V> newMap() {
-        return CollectionsFactory.newMap();
+    void clear();
+
+    V removeKey(K key);
+
+    void replaceAll(BiFunction<? super K, ? super V, ? extends V> function);
+
+    default void putIfAbsent(K key, V value) {
+        if (!containsKey(key)) {
+            put(key, value);
+        }
     }
 
-    public static <K extends Node, V> Map<K, V> newMap(int initialCapacity) {
-        return CollectionsFactory.newMap(initialCapacity);
-    }
+    @Override
+    Cursor<K, V> getEntries();
 
-    public static <K extends Node, V> Map<K, V> newMap(Map<K, V> m) {
-        return CollectionsFactory.newMap(m);
-    }
-
-    public static <E extends Node> Set<E> newSet() {
-        return CollectionsFactory.newSet();
-    }
-
-    public static <E extends Node> Set<E> newSet(Collection<? extends E> c) {
-        return CollectionsFactory.newSet(c);
+    public interface Cursor<K, V> extends ImmutableEconomicMap.Cursor<K, V> {
+        void remove();
     }
 }

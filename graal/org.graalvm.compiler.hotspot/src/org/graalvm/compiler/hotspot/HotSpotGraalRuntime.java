@@ -32,13 +32,11 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugEnvironment;
@@ -84,7 +82,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final HotSpotBackend hostBackend;
     private DebugValuesPrinter debugValuesPrinter;
 
-    private final Map<Class<? extends Architecture>, HotSpotBackend> backends = new HashMap<>();
+    private final EconomicMap<Class<? extends Architecture>, HotSpotBackend> backends = CollectionsFactory.newMap();
 
     private final GraalHotSpotVMConfig config;
 
@@ -186,7 +184,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         try (InitTimer st = timer(hostBackend.getTarget().arch.getName(), ".completeInitialization")) {
             hostBackend.completeInitialization(jvmciRuntime);
         }
-        for (HotSpotBackend backend : backends.values()) {
+        for (HotSpotBackend backend : backends.getValues()) {
             if (backend != hostBackend) {
                 try (InitTimer st = timer(backend.getTarget().arch.getName(), ".completeInitialization")) {
                     backend.completeInitialization(jvmciRuntime);
@@ -248,10 +246,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     public <T extends Architecture> Backend getBackend(Class<T> arch) {
         assert arch != Architecture.class;
         return backends.get(arch);
-    }
-
-    public Map<Class<? extends Architecture>, HotSpotBackend> getBackends() {
-        return Collections.unmodifiableMap(backends);
     }
 
     private long runtimeStartTime;

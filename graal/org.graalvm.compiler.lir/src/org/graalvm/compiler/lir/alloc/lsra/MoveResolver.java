@@ -28,10 +28,9 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.debug.GraalError;
@@ -147,7 +146,7 @@ public class MoveResolver {
             }
         }
 
-        Set<Value> usedRegs = CollectionsFactory.newSet();
+        EconomicSet<Value> usedRegs = CollectionsFactory.newSet();
         if (!areMultipleReadsAllowed()) {
             for (i = 0; i < mappingFrom.size(); i++) {
                 Interval interval = mappingFrom.get(i);
@@ -176,7 +175,7 @@ public class MoveResolver {
     }
 
     protected void verifyStackSlotMapping() {
-        Set<Value> usedRegs = CollectionsFactory.newSet();
+        EconomicSet<Value> usedRegs = CollectionsFactory.newSet();
         for (int i = 0; i < mappingFrom.size(); i++) {
             Interval interval = mappingFrom.get(i);
             if (interval != null && !isRegister(interval.location())) {

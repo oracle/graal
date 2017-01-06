@@ -36,11 +36,10 @@ import java.util.BitSet;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
-
 import org.graalvm.compiler.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.util.BitMap2D;
@@ -410,7 +409,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     try (Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, valueForOperandFromDebugContext)) {
 
                         Deque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
-                        Set<AbstractBlockBase<?>> usedIn = CollectionsFactory.newSet();
+                        EconomicSet<AbstractBlockBase<?>> usedIn = CollectionsFactory.newSet();
                         for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
                             if (allocator.getBlockData(block).liveGen.get(operandNum)) {
                                 usedIn.add(block);

@@ -24,8 +24,8 @@ package org.graalvm.compiler.loop;
 
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.Map;
 
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
@@ -60,7 +60,7 @@ public abstract class LoopFragment {
     private final LoopFragment original;
     protected NodeBitMap nodes;
     protected boolean nodesReady;
-    private Map<Node, Node> duplicationMap;
+    private EconomicMap<Node, Node> duplicationMap;
 
     public LoopFragment(LoopEx loop) {
         this(loop, null);

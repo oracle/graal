@@ -28,11 +28,10 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -82,7 +81,7 @@ interface GraphPrinter extends Closeable {
     /**
      * Classes whose {@link #toString()} method does not run any untrusted code.
      */
-    Set<Class<?>> TRUSTED_CLASSES = new HashSet<>(Arrays.asList(
+    EconomicSet<Class<?>> TRUSTED_CLASSES = CollectionsFactory.newSet(Arrays.asList(
                     String.class,
                     Class.class,
                     Boolean.class,

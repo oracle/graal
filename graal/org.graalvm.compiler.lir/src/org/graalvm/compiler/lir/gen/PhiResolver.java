@@ -29,9 +29,8 @@ import static jdk.vm.ci.meta.Value.ILLEGAL;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -130,7 +129,7 @@ public class PhiResolver {
     /**
      * Maps operands to nodes.
      */
-    private final Map<Value, PhiResolverNode> operandToNodeMap = CollectionsFactory.newMap();
+    private final EconomicMap<Value, PhiResolverNode> operandToNodeMap = CollectionsFactory.newMap();
 
     public static PhiResolver create(LIRGeneratorTool gen) {
         AbstractBlockBase<?> block = gen.getCurrentBlock();

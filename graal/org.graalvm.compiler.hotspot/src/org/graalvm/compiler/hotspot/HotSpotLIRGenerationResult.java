@@ -22,10 +22,9 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import java.util.Map;
-
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -52,14 +51,14 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
      */
-    private Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap();
+    private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap();
 
     public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub) {
         super(compilationId, lir, frameMapBuilder, callingConvention);
         this.stub = stub;
     }
 
-    public Map<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo() {
+    public EconomicMap<LIRFrameState, SaveRegistersOp> getCalleeSaveInfo() {
         return calleeSaveInfo;
     }
 

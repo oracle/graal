@@ -23,10 +23,11 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
@@ -101,15 +102,17 @@ public class OptimizeGuardAnchorsPhase extends Phase {
                 continue;
             }
             List<GuardNode> otherGuards = new ArrayList<>(successorCount - 1);
-            HashSet<Node> successorsWithoutGuards = new HashSet<>(controlSplit.successors().count());
-            controlSplit.successors().snapshotTo(successorsWithoutGuards);
-            successorsWithoutGuards.remove(guard.getAnchor());
+            EconomicSet<Node> successorsWithoutGuards = CollectionsFactory.newSet(controlSplit.successors().count());
+            for (Node n : controlSplit.successors()) {
+                successorsWithoutGuards.add(n);
+            }
+            successorsWithoutGuards.remove(guard.getAnchor().asNode());
             for (GuardNode conditonGuard : guard.getCondition().usages().filter(GuardNode.class)) {
                 if (conditonGuard != guard) {
                     AnchoringNode conditionGuardAnchor = conditonGuard.getAnchor();
                     if (conditionGuardAnchor.asNode().predecessor() == controlSplit && compatibleGuards(guard, conditonGuard)) {
                         otherGuards.add(conditonGuard);
-                        successorsWithoutGuards.remove(conditionGuardAnchor);
+                        successorsWithoutGuards.remove(conditionGuardAnchor.asNode());
                     }
                 }
             }

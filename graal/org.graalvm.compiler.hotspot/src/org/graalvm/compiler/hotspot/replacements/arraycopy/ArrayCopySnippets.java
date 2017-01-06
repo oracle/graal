@@ -39,13 +39,12 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probabil
 
 import java.lang.reflect.Method;
 import java.util.EnumMap;
-import java.util.Map;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -597,8 +596,8 @@ public class ArrayCopySnippets implements Snippets {
         private void instantiate(Arguments args, BasicArrayCopyNode arraycopy) {
             StructuredGraph graph = arraycopy.graph();
             SnippetTemplate template = template(args);
-            Map<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args);
-            for (Node originalNode : replacements.keySet()) {
+            ImmutableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args);
+            for (Node originalNode : replacements.getKeys()) {
                 if (originalNode instanceof Invoke) {
                     Invoke invoke = (Invoke) replacements.get(originalNode);
                     assert invoke.asNode().graph() == graph;

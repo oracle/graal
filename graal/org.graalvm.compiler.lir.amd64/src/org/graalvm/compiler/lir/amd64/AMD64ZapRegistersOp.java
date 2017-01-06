@@ -24,9 +24,8 @@ package org.graalvm.compiler.lir.amd64;
 
 import static org.graalvm.compiler.lir.amd64.AMD64SaveRegistersOp.prune;
 
-import java.util.Set;
-
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
@@ -76,7 +75,7 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
     }
 
     @Override
-    public int remove(Set<Register> doNotSave) {
+    public int remove(EconomicSet<Register> doNotSave) {
         return prune(doNotSave, zappedRegisters);
     }
 

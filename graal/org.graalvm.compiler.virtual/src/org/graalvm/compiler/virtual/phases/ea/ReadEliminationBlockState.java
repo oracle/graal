@@ -22,15 +22,15 @@
  */
 package org.graalvm.compiler.virtual.phases.ea;
 
-import java.util.Map;
-
+import java.util.Iterator;
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.nodes.ValueNode;
 
 public class ReadEliminationBlockState extends EffectsBlockState<ReadEliminationBlockState> {
 
-    final Map<CacheEntry<?>, ValueNode> readCache;
+    final EconomicMap<CacheEntry<?>, ValueNode> readCache;
 
     abstract static class CacheEntry<T> {
 
@@ -142,11 +142,11 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
     }
 
     public ReadEliminationBlockState() {
-        readCache = CollectionsFactory.newLinkedMap();
+        readCache = CollectionsFactory.newMap();
     }
 
     public ReadEliminationBlockState(ReadEliminationBlockState other) {
-        readCache = CollectionsFactory.newLinkedMap(other.readCache);
+        readCache = CollectionsFactory.newMap(other.readCache);
     }
 
     @Override
@@ -156,7 +156,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
     @Override
     public boolean equivalentTo(ReadEliminationBlockState other) {
-        return compareMapsNoSize(readCache, other.readCache);
+        return isSubMapOf(readCache, other.readCache);
     }
 
     public void addCacheEntry(CacheEntry<?> identifier, ValueNode value) {
@@ -172,10 +172,16 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
     }
 
     public void killReadCache(LocationIdentity identity) {
-        readCache.entrySet().removeIf(entry -> entry.getKey().conflicts(identity));
+        Iterator<CacheEntry<?>> iterator = readCache.getKeys().iterator();
+        while (iterator.hasNext()) {
+            CacheEntry<?> entry = iterator.next();
+            if (entry.conflicts(identity)) {
+                iterator.remove();
+            }
+        }
     }
 
-    public Map<CacheEntry<?>, ValueNode> getReadCache() {
+    public EconomicMap<CacheEntry<?>, ValueNode> getReadCache() {
         return readCache;
     }
 }

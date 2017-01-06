@@ -25,15 +25,14 @@ package org.graalvm.compiler.phases.common;
 import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullChecks;
 
 import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
@@ -83,7 +82,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
-        private final Map<ValueNode, ValueNode> nullGuarded = NodeCollectionsFactory.newMap();
+        private final EconomicMap<ValueNode, ValueNode> nullGuarded = CollectionsFactory.newMap();
         private final int implicitNullCheckLimit;
 
         UseImplicitNullChecks(int implicitNullCheckLimit) {
@@ -108,10 +107,9 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                  * the OffsetAddressNode, so we need to keep it in the nullGuarded map.
                  */
                 if (!(node instanceof OffsetAddressNode)) {
-                    Iterator<Entry<ValueNode, ValueNode>> it = nullGuarded.entrySet().iterator();
+                    Iterator<ValueNode> it = nullGuarded.getValues().iterator();
                     while (it.hasNext()) {
-                        Entry<ValueNode, ValueNode> entry = it.next();
-                        ValueNode guard = entry.getValue();
+                        ValueNode guard = it.next();
                         if (guard.usages().contains(node)) {
                             it.remove();
                         } else if (guard instanceof PiNode && guard != node) {
@@ -181,7 +179,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
                 if (condition.hasNoUsages()) {
                     GraphUtil.killWithUnusedFloatingInputs(condition);
                 }
-                nullGuarded.remove(base);
+                nullGuarded.removeKey(base);
             }
         }
 

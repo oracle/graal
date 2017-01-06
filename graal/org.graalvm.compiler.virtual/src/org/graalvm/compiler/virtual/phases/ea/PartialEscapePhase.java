@@ -25,8 +25,7 @@ package org.graalvm.compiler.virtual.phases.ea;
 import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalysisIterations;
 import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 
-import java.util.Set;
-
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
@@ -66,7 +65,7 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
     }
 
     @Override
-    protected void postIteration(StructuredGraph graph, PhaseContext context, Set<Node> changedNodes) {
+    protected void postIteration(StructuredGraph graph, PhaseContext context, EconomicSet<Node> changedNodes) {
         super.postIteration(graph, context, changedNodes);
         if (cleanupPhase != null) {
             cleanupPhase.apply(graph, context);

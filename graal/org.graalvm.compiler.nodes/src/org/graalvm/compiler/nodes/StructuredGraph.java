@@ -23,21 +23,21 @@
 package org.graalvm.compiler.nodes;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.ImmutableEconomicMap;
+import org.graalvm.compiler.core.common.EconomicMap;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -180,7 +180,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * Records the fields that were accessed while constructing this graph.
      */
 
-    private final Set<ResolvedJavaField> fields = new HashSet<>();
+    private final EconomicSet<ResolvedJavaField> fields = CollectionsFactory.newSet();
 
     private enum UnsafeAccessState {
         NO_ACCESS,
@@ -356,11 +356,11 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
     @Override
-    protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
+    protected Graph copy(String newName, Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback) {
         return copy(newName, duplicationMapCallback, compilationId);
     }
 
-    private StructuredGraph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId) {
+    private StructuredGraph copy(String newName, Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId) {
         AllowAssumptions allowAssumptions = AllowAssumptions.from(assumptions != null);
         StructuredGraph copy = new StructuredGraph(newName, method(), entryBCI, allowAssumptions, speculationLog, useProfilingInfo, newCompilationId);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
@@ -370,9 +370,9 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
-        Map<Node, Node> replacements = NodeCollectionsFactory.newMap();
+        EconomicMap<Node, Node> replacements = CollectionsFactory.newMap();
         replacements.put(start, copy.start);
-        Map<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
+        ImmutableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
@@ -688,7 +688,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     /**
      * Gets the fields that were accessed while constructing this graph.
      */
-    public Set<ResolvedJavaField> getFields() {
+    public EconomicSet<ResolvedJavaField> getFields() {
         return fields;
     }
 

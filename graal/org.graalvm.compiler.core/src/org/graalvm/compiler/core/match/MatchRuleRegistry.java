@@ -25,11 +25,9 @@ package org.graalvm.compiler.core.match;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.LogVerbose;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -67,7 +65,7 @@ public class MatchRuleRegistry {
         return result;
     }
 
-    private static final HashMap<Class<? extends NodeMatchRules>, Map<Class<? extends Node>, List<MatchStatement>>> registry = new HashMap<>();
+    private static final EconomicMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> registry = CollectionsFactory.newMap();
 
     /**
      * Collect all the {@link MatchStatement}s defined by the superclass chain of theClass.
@@ -76,11 +74,11 @@ public class MatchRuleRegistry {
      * @return the set of {@link MatchStatement}s applicable to theClass.
      */
     @SuppressWarnings("try")
-    public static synchronized Map<Class<? extends Node>, List<MatchStatement>> lookup(Class<? extends NodeMatchRules> theClass) {
-        Map<Class<? extends Node>, List<MatchStatement>> result = registry.get(theClass);
+    public static synchronized EconomicMap<Class<? extends Node>, List<MatchStatement>> lookup(Class<? extends NodeMatchRules> theClass) {
+        EconomicMap<Class<? extends Node>, List<MatchStatement>> result = registry.get(theClass);
 
         if (result == null) {
-            Map<Class<? extends Node>, List<MatchStatement>> rules = createRules(theClass);
+            EconomicMap<Class<? extends Node>, List<MatchStatement>> rules = createRules(theClass);
             registry.put(theClass, rules);
             assert registry.get(theClass) == rules;
             result = rules;
@@ -88,9 +86,10 @@ public class MatchRuleRegistry {
             if (LogVerbose.getValue()) {
                 try (Scope s = Debug.scope("MatchComplexExpressions")) {
                     Debug.log("Match rules for %s", theClass.getSimpleName());
-                    for (Entry<Class<? extends Node>, List<MatchStatement>> entry : result.entrySet()) {
-                        Debug.log("  For node class: %s", entry.getKey());
-                        for (MatchStatement statement : entry.getValue()) {
+                    EconomicMap.Cursor<Class<? extends Node>, List<MatchStatement>> cursor = result.getEntries();
+                    while (cursor.advance()) {
+                        Debug.log("  For node class: %s", cursor.getKey());
+                        for (MatchStatement statement : cursor.getValue()) {
                             Debug.log("    %s", statement.getPattern());
                         }
                     }
@@ -108,8 +107,9 @@ public class MatchRuleRegistry {
      * This is a separate, public method so that external clients can create rules with a custom
      * lookup and without the default caching behavior.
      */
-    public static Map<Class<? extends Node>, List<MatchStatement>> createRules(Class<? extends NodeMatchRules> theClass) {
-        HashMap<Class<? extends NodeMatchRules>, MatchStatementSet> matchSets = new HashMap<>();
+    @SuppressWarnings("unchecked")
+    public static EconomicMap<Class<? extends Node>, List<MatchStatement>> createRules(Class<? extends NodeMatchRules> theClass) {
+        EconomicMap<Class<? extends NodeMatchRules>, MatchStatementSet> matchSets = CollectionsFactory.newMap();
         Iterable<MatchStatementSet> sl = GraalServices.load(MatchStatementSet.class);
         for (MatchStatementSet rules : sl) {
             matchSets.put(rules.forClass(), rules);
@@ -117,8 +117,8 @@ public class MatchRuleRegistry {
 
         // Walk the class hierarchy collecting lists and merge them together. The subclass
         // rules are first which gives them preference over earlier rules.
-        Map<Class<? extends Node>, List<MatchStatement>> rules = new HashMap<>();
-        Class<?> currentClass = theClass;
+        EconomicMap<Class<? extends Node>, List<MatchStatement>> rules = CollectionsFactory.newMap();
+        Class<? extends NodeMatchRules> currentClass = theClass;
         do {
             MatchStatementSet matchSet = matchSets.get(currentClass);
             if (matchSet != null) {
@@ -133,7 +133,7 @@ public class MatchRuleRegistry {
                     current.add(statement);
                 }
             }
-            currentClass = currentClass.getSuperclass();
+            currentClass = (Class<? extends NodeMatchRules>) currentClass.getSuperclass();
         } while (currentClass != NodeMatchRules.class);
         return rules;
     }

@@ -22,9 +22,8 @@
  */
 package org.graalvm.compiler.core.phases;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
@@ -77,11 +76,17 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
                 Debug.handle(t);
             }
         }
-        /*
-         * Ignore LogicConstantNode since those are sometimes created and deleted as part of running
-         * a phase.
-         */
-        if (listener.getNodes().stream().filter(e -> !(e instanceof LogicConstantNode)).findFirst().isPresent()) {
+
+        EconomicSet<Node> filteredNodes = CollectionsFactory.newSet();
+        for (Node n : listener.getNodes()) {
+            if (n instanceof LogicConstantNode) {
+                // Ignore LogicConstantNode since those are sometimes created and deleted as part of
+                // running a phase.
+            } else {
+                filteredNodes.add(n);
+            }
+        }
+        if (!filteredNodes.isEmpty()) {
             /* rerun it on the real graph in a new Debug scope so Dump and Log can find it. */
             listener = new HashSetNodeEventListener();
             try (NodeEventScope s = graph.trackNodeEvents(listener)) {
@@ -90,11 +95,10 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
                         Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "*** Before phase %s", getName());
                     }
                     super.run(graph, context);
-                    Set<Node> collect = listener.getNodes().stream().filter(e -> !e.isAlive()).filter(e -> !(e instanceof LogicConstantNode)).collect(Collectors.toSet());
                     if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL)) {
-                        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "*** After phase %s %s", getName(), collect);
+                        Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "*** After phase %s %s", getName(), filteredNodes);
                     }
-                    Debug.log("*** %s %s %s\n", message, graph, collect);
+                    Debug.log("*** %s %s %s\n", message, graph, filteredNodes);
                 }
             }
         } else {

@@ -28,13 +28,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -43,8 +41,8 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 public class LoopsData {
 
-    private Map<Loop<Block>, LoopEx> loopToEx = CollectionsFactory.newMap();
-    private Map<LoopBeginNode, LoopEx> loopBeginToEx = NodeCollectionsFactory.newMap();
+    private EconomicMap<Loop<?>, LoopEx> loopToEx = CollectionsFactory.newMap();
+    private EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx = CollectionsFactory.newMap();
     private ControlFlowGraph cfg;
 
     @SuppressWarnings("try")
@@ -70,12 +68,15 @@ public class LoopsData {
         return loopBeginToEx.get(loopBegin);
     }
 
-    public Collection<LoopEx> loops() {
-        return loopToEx.values();
+    public Iterable<LoopEx> loops() {
+        return loopToEx.getValues();
     }
 
     public List<LoopEx> outerFirst() {
-        ArrayList<LoopEx> loops = new ArrayList<>(loops());
+        ArrayList<LoopEx> loops = new ArrayList<>();
+        for (LoopEx l : loops()) {
+            loops.add(l);
+        }
         Collections.sort(loops, new Comparator<LoopEx>() {
 
             @Override
@@ -87,7 +88,10 @@ public class LoopsData {
     }
 
     public List<LoopEx> innerFirst() {
-        ArrayList<LoopEx> loops = new ArrayList<>(loops());
+        ArrayList<LoopEx> loops = new ArrayList<>();
+        for (LoopEx l : loops()) {
+            loops.add(l);
+        }
         Collections.sort(loops, new Comparator<LoopEx>() {
 
             @Override

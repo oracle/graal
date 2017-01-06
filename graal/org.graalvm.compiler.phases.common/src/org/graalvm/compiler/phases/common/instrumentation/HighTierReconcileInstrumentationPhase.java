@@ -22,8 +22,8 @@
  */
 package org.graalvm.compiler.phases.common.instrumentation;
 
-import java.util.HashMap;
-
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -138,7 +138,7 @@ public class HighTierReconcileInstrumentationPhase extends Phase {
 
     }
 
-    private final HashMap<FixedWithNextNode, NodeFlood> cachedNodeFloods = new HashMap<>();
+    private final EconomicMap<FixedWithNextNode, NodeFlood> cachedNodeFloods = CollectionsFactory.newMap();
 
     /**
      * @return true if there is a control flow path between {@code from} and {@code to}.

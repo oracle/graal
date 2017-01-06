@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 import org.junit.Test;
 
 import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -75,7 +76,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         return false;
     }
 
-    private static ResolvedJavaMethod findMethod(Set<ResolvedJavaMethod> methods, VMIntrinsicMethod intrinsic) {
+    private static ResolvedJavaMethod findMethod(EconomicSet<ResolvedJavaMethod> methods, VMIntrinsicMethod intrinsic) {
         for (ResolvedJavaMethod method : methods) {
             if (match(method, intrinsic)) {
                 return method;
@@ -434,7 +435,7 @@ public class CheckGraalIntrinsics extends GraalTest {
             impl.put(method, plugin);
         }
 
-        Set<ResolvedJavaMethod> methods = invocationPlugins.getMethods();
+        EconomicSet<ResolvedJavaMethod> methods = invocationPlugins.getMethods();
         HotSpotVMConfigStore store = rt.getVMConfig().getStore();
         List<VMIntrinsicMethod> intrinsics = store.getIntrinsics();
 

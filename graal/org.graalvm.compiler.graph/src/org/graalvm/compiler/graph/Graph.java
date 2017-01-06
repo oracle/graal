@@ -25,10 +25,11 @@ package org.graalvm.compiler.graph;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.ImmutableEconomicMap;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
@@ -108,7 +109,7 @@ public class Graph {
      * Used to global value number {@link ValueNumberable} {@linkplain NodeClass#isLeafNode() leaf}
      * nodes.
      */
-    private final Map<CacheEntry, Node> cachedLeafNodes = CollectionsFactory.newMap();
+    private final EconomicMap<CacheEntry, Node> cachedLeafNodes = CollectionsFactory.newMap();
 
     /*
      * Indicates that the graph should no longer be modified. Frozen graphs can be used my multiple
@@ -317,7 +318,7 @@ public class Graph {
      *
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
-    public final Graph copy(Consumer<Map<Node, Node>> duplicationMapCallback) {
+    public final Graph copy(Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback) {
         return copy(name, duplicationMapCallback);
     }
 
@@ -336,9 +337,9 @@ public class Graph {
      * @param newName the name of the copy, used for debugging purposes (can be null)
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
-    protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
+    protected Graph copy(String newName, Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback) {
         Graph copy = new Graph(newName);
-        Map<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (Map<Node, Node>) null);
+        ImmutableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (EconomicMap<Node, Node>) null);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
@@ -611,7 +612,7 @@ public class Graph {
         CacheEntry key = new CacheEntry(node);
         Node result = cachedLeafNodes.get(key);
         if (result != null && result.isDeleted()) {
-            cachedLeafNodes.remove(key);
+            cachedLeafNodes.removeKey(key);
             return null;
         }
         return result;
@@ -1052,7 +1053,7 @@ public class Graph {
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
-    public Map<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, Map<Node, Node> replacementsMap) {
+    public ImmutableEconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, EconomicMap<Node, Node> replacementsMap) {
         DuplicationReplacement replacements;
         if (replacementsMap == null) {
             replacements = null;
@@ -1069,9 +1070,9 @@ public class Graph {
 
     private static final class MapReplacement implements DuplicationReplacement {
 
-        private final Map<Node, Node> map;
+        private final EconomicMap<Node, Node> map;
 
-        MapReplacement(Map<Node, Node> map) {
+        MapReplacement(EconomicMap<Node, Node> map) {
             this.map = map;
         }
 
@@ -1086,7 +1087,7 @@ public class Graph {
     private static final DebugTimer DuplicateGraph = Debug.timer("DuplicateGraph");
 
     @SuppressWarnings({"all", "try"})
-    public Map<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
+    public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
         try (DebugCloseable s = DuplicateGraph.start()) {
             return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);
         }

@@ -32,13 +32,11 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-
+import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.FieldIntrospection;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.FieldsScanner;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 
@@ -151,21 +149,22 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
     protected abstract static class LIRFieldsScanner extends FieldsScanner {
 
-        public final Map<Class<? extends Annotation>, OperandModeAnnotation> valueAnnotations;
+        public final EconomicMap<Class<? extends Annotation>, OperandModeAnnotation> valueAnnotations;
         public final ArrayList<FieldsScanner.FieldInfo> states = new ArrayList<>();
 
         public LIRFieldsScanner(FieldsScanner.CalcOffset calc) {
             super(calc);
-            valueAnnotations = new HashMap<>();
+            valueAnnotations = CollectionsFactory.newMap();
         }
 
         protected OperandModeAnnotation getOperandModeAnnotation(Field field) {
             OperandModeAnnotation result = null;
-            for (Entry<Class<? extends Annotation>, OperandModeAnnotation> entry : valueAnnotations.entrySet()) {
-                Annotation annotation = field.getAnnotation(entry.getKey());
+            EconomicMap.Cursor<Class<? extends Annotation>, OperandModeAnnotation> cursor = valueAnnotations.getEntries();
+            while (cursor.advance()) {
+                Annotation annotation = field.getAnnotation(cursor.getKey());
                 if (annotation != null) {
                     assert result == null : "Field has two operand mode annotations: " + field;
-                    result = entry.getValue();
+                    result = cursor.getValue();
                 }
             }
             return result;

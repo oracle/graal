@@ -23,8 +23,7 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.List;
-import java.util.Map;
-
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -107,7 +106,7 @@ public class FrameStateAssignmentPhase extends Phase {
         }
 
         @Override
-        protected Map<LoopExitNode, FrameState> processLoop(LoopBeginNode loop, FrameState initialState) {
+        protected EconomicMap<LoopExitNode, FrameState> processLoop(LoopBeginNode loop, FrameState initialState) {
             return ReentrantNodeIterator.processLoop(this, loop, initialState).exitStates;
         }
     }

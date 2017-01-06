@@ -24,15 +24,15 @@ package org.graalvm.compiler.phases.util;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -156,7 +156,7 @@ public final class GraphOrder {
         assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
         try {
             final SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
-            final Map<LoopBeginNode, NodeBitMap> loopEntryStates = NodeCollectionsFactory.newMap();
+            final EconomicMap<LoopBeginNode, NodeBitMap> loopEntryStates = CollectionsFactory.newMap();
             schedulePhase.apply(graph, false);
             final ScheduleResult schedule = graph.getLastSchedule();
 

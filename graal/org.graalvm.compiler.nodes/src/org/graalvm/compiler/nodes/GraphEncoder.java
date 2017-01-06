@@ -27,10 +27,10 @@ import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COM
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Objects;
 
 import org.graalvm.compiler.core.common.Fields;
+import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.TypeReader;
@@ -213,9 +213,10 @@ public class GraphEncoder {
         assert nodeCount == graph.getNodeCount() + 1;
 
         long[] nodeStartOffsets = new long[nodeCount];
-        for (Map.Entry<Node, Integer> entry : nodeOrder.orderIds.entries()) {
-            Node node = entry.getKey();
-            Integer orderId = entry.getValue();
+        ImmutableEconomicMap.Cursor<Node, Integer> cursor = nodeOrder.orderIds.getEntries();
+        while (cursor.advance()) {
+            Node node = cursor.getKey();
+            Integer orderId = cursor.getValue();
 
             assert !(node instanceof AbstractBeginNode) || nodeOrder.orderIds.get(((AbstractBeginNode) node).next()) == orderId + BEGIN_NEXT_ORDER_ID_OFFSET;
             nodeStartOffsets[orderId] = writer.getBytesWritten();

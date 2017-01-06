@@ -24,13 +24,13 @@ package org.graalvm.compiler.core.gen;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Queue;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LabelRef;
@@ -68,8 +68,8 @@ public class DebugInfoBuilder {
     private static final JavaValue[] NO_JAVA_VALUES = {};
     private static final JavaKind[] NO_JAVA_KINDS = {};
 
-    protected final Map<VirtualObjectNode, VirtualObject> virtualObjects = NodeCollectionsFactory.newMap();
-    protected final Map<VirtualObjectNode, EscapeObjectState> objectStates = NodeCollectionsFactory.newMap();
+    protected final EconomicMap<VirtualObjectNode, VirtualObject> virtualObjects = CollectionsFactory.newMap();
+    protected final EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = CollectionsFactory.newMap();
 
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 
@@ -137,7 +137,11 @@ public class DebugInfoBuilder {
                 vobjValue.setValues(values, slotKinds);
             }
 
-            virtualObjectsArray = virtualObjects.values().toArray(new VirtualObject[virtualObjects.size()]);
+            virtualObjectsArray = new VirtualObject[virtualObjects.size()];
+            int index = 0;
+            for (VirtualObject value : virtualObjects.getValues()) {
+                virtualObjectsArray[index++] = value;
+            }
             virtualObjects.clear();
         }
         objectStates.clear();

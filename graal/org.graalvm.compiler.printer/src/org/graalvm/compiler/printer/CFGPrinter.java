@@ -35,6 +35,7 @@ import java.util.TreeMap;
 
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.bytecode.Bytecode;
+import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -309,9 +310,10 @@ class CFGPrinter extends CompilationPrinter {
             printNode(cur, false);
 
             if (cur == block.getEndNode()) {
-                for (Map.Entry<Node, Block> entry : latestScheduling.entries()) {
-                    if (entry.getValue() == block && !inFixedSchedule(entry.getKey()) && !printedNodes.isMarked(entry.getKey())) {
-                        printNode(entry.getKey(), true);
+                ImmutableEconomicMap.Cursor<Node, Block> cursor = latestScheduling.getEntries();
+                while (cursor.advance()) {
+                    if (cursor.getValue() == block && !inFixedSchedule(cursor.getKey()) && !printedNodes.isMarked(cursor.getKey())) {
+                        printNode(cursor.getKey(), true);
                     }
                 }
                 break;

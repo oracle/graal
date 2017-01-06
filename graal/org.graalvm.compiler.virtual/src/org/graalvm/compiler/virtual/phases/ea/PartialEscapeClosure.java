@@ -25,15 +25,13 @@ package org.graalvm.compiler.virtual.phases.ea;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.IntFunction;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -43,7 +41,6 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -480,7 +477,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     @Override
     protected void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects) {
         if (exitNode.graph().hasValueProxies()) {
-            Map<Integer, ProxyNode> proxies = CollectionsFactory.newMap();
+            EconomicMap<Integer, ProxyNode> proxies = CollectionsFactory.newMap();
             for (ProxyNode proxy : exitNode.proxies()) {
                 ValueNode alias = getAlias(proxy.value());
                 if (alias instanceof VirtualObjectNode) {
@@ -503,7 +500,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    private static void processMaterializedAtLoopExit(LoopExitNode exitNode, GraphEffectList effects, Map<Integer, ProxyNode> proxies, int object, ObjectState exitObjState,
+    private static void processMaterializedAtLoopExit(LoopExitNode exitNode, GraphEffectList effects, EconomicMap<Integer, ProxyNode> proxies, int object, ObjectState exitObjState,
                     ObjectState initialObjState, PartialEscapeBlockState<?> exitState) {
         if (initialObjState == null || initialObjState.isVirtual()) {
             ProxyNode proxy = proxies.get(object);
@@ -543,9 +540,9 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     protected class MergeProcessor extends EffectsClosure<BlockT>.MergeProcessor {
 
-        private Map<Object, ValuePhiNode> materializedPhis;
-        private Map<ValueNode, ValuePhiNode[]> valuePhis;
-        private Map<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals;
+        private EconomicMap<Object, ValuePhiNode> materializedPhis;
+        private EconomicMap<ValueNode, ValuePhiNode[]> valuePhis;
+        private EconomicMap<ValuePhiNode, VirtualObjectNode> valueObjectVirtuals;
         private final boolean needsCaching;
 
         public MergeProcessor(Block mergeBlock) {
@@ -563,7 +560,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private <T> PhiNode getPhiCached(T virtual, Stamp stamp) {
             if (materializedPhis == null) {
-                materializedPhis = new HashMap<>();
+                materializedPhis = CollectionsFactory.newMap();
             }
             ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
@@ -583,7 +580,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private PhiNode[] getValuePhisCached(ValueNode key, int entryCount) {
             if (valuePhis == null) {
-                valuePhis = new IdentityHashMap<>();
+                valuePhis = CollectionsFactory.newMap();
             }
             ValuePhiNode[] result = valuePhis.get(key);
             if (result == null) {
@@ -604,7 +601,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private VirtualObjectNode getValueObjectVirtualCached(ValuePhiNode phi, VirtualObjectNode virtual) {
             if (valueObjectVirtuals == null) {
-                valueObjectVirtuals = NodeCollectionsFactory.newMap();
+                valueObjectVirtuals = CollectionsFactory.newMap();
             }
             VirtualObjectNode result = valueObjectVirtuals.get(phi);
             if (result == null) {

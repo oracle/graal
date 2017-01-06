@@ -22,9 +22,8 @@
  */
 package org.graalvm.compiler.truffle;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
-
-import org.graalvm.compiler.core.common.CollectionsFactory;
 
 public class TruffleInliningProfile {
 
@@ -99,7 +98,7 @@ public class TruffleInliningProfile {
     }
 
     public Map<String, Object> getDebugProperties() {
-        Map<String, Object> properties = CollectionsFactory.newMap();
+        Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("ASTSize", String.format("%5d/%5d", nodeCount, deepNodeCount));
         properties.put("frequency", String.format("%8.4f", getFrequency()));
         properties.put("score", String.format("%8.4f", getScore()));

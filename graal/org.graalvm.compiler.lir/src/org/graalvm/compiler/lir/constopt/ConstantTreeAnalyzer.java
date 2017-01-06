@@ -28,7 +28,6 @@ import java.util.BitSet;
 import java.util.Deque;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -138,7 +137,6 @@ public final class ConstantTreeAnalyzer {
             // stick with the current solution
         }
 
-        assert (CollectionsFactory.newSet(usages)).size() == usages.size() : "doulbe entries? " + usages;
         NodeCost nodeCost = new NodeCost(bestCost, usages, numMat);
         tree.setCost(block, nodeCost);
     }

@@ -27,11 +27,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,6 +59,8 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.EconomicMap;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.ComplexMatchResult;
 import org.graalvm.compiler.core.match.MatchRule;
@@ -234,7 +233,7 @@ public class MatchProcessor extends AbstractProcessor {
         /**
          * Recursively accumulate any required Position declarations.
          */
-        void generatePositionDeclarations(Set<String> declarations) {
+        void generatePositionDeclarations(EconomicSet<String> declarations) {
             matchDescriptor.generatePositionDeclarations(declarations);
         }
 
@@ -366,7 +365,7 @@ public class MatchProcessor extends AbstractProcessor {
     /**
      * The types which are know for purpose of parsing MatchRule expressions.
      */
-    Map<String, TypeDescriptor> knownTypes = new HashMap<>();
+    EconomicMap<String, TypeDescriptor> knownTypes = CollectionsFactory.newMap();
 
     private TypeDescriptor valueType;
 
@@ -407,7 +406,7 @@ public class MatchProcessor extends AbstractProcessor {
             }
         }
 
-        public void generatePositionDeclarations(Set<String> declarations) {
+        public void generatePositionDeclarations(EconomicSet<String> declarations) {
             if (inputs.length == 0) {
                 return;
             }
@@ -504,7 +503,11 @@ public class MatchProcessor extends AbstractProcessor {
         Name topDeclaringClass = info.topDeclaringType.getSimpleName();
 
         String matchStatementClassName = topDeclaringClass + "_" + MatchStatementSet.class.getSimpleName();
-        Element[] originatingElements = info.originatingElements.toArray(new Element[info.originatingElements.size()]);
+        Element[] originatingElements = new Element[info.originatingElements.size()];
+        int z = 0;
+        for (Element e : info.originatingElements) {
+            originatingElements[z++] = e;
+        }
 
         Types typeUtils = typeUtils();
         Filer filer = processingEnv.getFiler();
@@ -532,7 +535,7 @@ public class MatchProcessor extends AbstractProcessor {
             out.println();
 
             // Generate declarations for the wrapper class to invoke the code generation methods.
-            for (MethodInvokerItem invoker : info.invokers.values()) {
+            for (MethodInvokerItem invoker : info.invokers.getValues()) {
                 StringBuilder args = new StringBuilder();
                 StringBuilder types = new StringBuilder();
                 int count = invoker.fields.size();
@@ -663,14 +666,14 @@ public class MatchProcessor extends AbstractProcessor {
 
         final TypeElement topDeclaringType;
         final List<MatchRuleItem> matchRules = new ArrayList<>();
-        private final Set<Element> originatingElements = CollectionsFactory.newLinkedSet();
-        public Set<String> positionDeclarations = CollectionsFactory.newSet();
+        private final EconomicSet<Element> originatingElements = CollectionsFactory.newSet();
+        public EconomicSet<String> positionDeclarations = CollectionsFactory.newSet();
 
         /**
          * The mapping between elements with MatchRules and the wrapper class used invoke the code
          * generation after the match.
          */
-        Map<String, MethodInvokerItem> invokers = new LinkedHashMap<>();
+        EconomicMap<String, MethodInvokerItem> invokers = CollectionsFactory.newMap();
 
         /**
          * The set of packages which must be imported to refer the classes mention in matchRules.
@@ -728,7 +731,7 @@ public class MatchProcessor extends AbstractProcessor {
             TypeMirror valueTypeMirror = processingEnv.getElementUtils().getTypeElement(ValueNode.class.getName()).asType();
             valueType = new TypeDescriptor(valueTypeMirror, "Value", ValueNode.class.getSimpleName(), ValueNode.class.getPackage().getName(), new String[0], false, false);
 
-            Map<TypeElement, MatchRuleDescriptor> map = new LinkedHashMap<>();
+            EconomicMap<TypeElement, MatchRuleDescriptor> map = CollectionsFactory.newMap();
 
             for (Element element : roundEnv.getElementsAnnotatedWith(MatchRule.class)) {
                 currentElement = element;
@@ -740,7 +743,7 @@ public class MatchProcessor extends AbstractProcessor {
             }
 
             currentElement = null;
-            for (MatchRuleDescriptor info : map.values()) {
+            for (MatchRuleDescriptor info : map.getValues()) {
                 createFiles(info);
             }
 
@@ -834,7 +837,7 @@ public class MatchProcessor extends AbstractProcessor {
         declareType(nodeClassMirror, shortName, nodeClass, nodePackage, matchable.inputs(), matchable.commutative(), matchable.shareable(), element);
     }
 
-    private void processMatchRule(Map<TypeElement, MatchRuleDescriptor> map, Element element, AnnotationMirror mirror) {
+    private void processMatchRule(EconomicMap<TypeElement, MatchRuleDescriptor> map, Element element, AnnotationMirror mirror) {
         if (!processedMatchRule.contains(element)) {
             try {
                 processedMatchRule.add(element);
@@ -961,7 +964,7 @@ public class MatchProcessor extends AbstractProcessor {
             Element enclosing = method.getEnclosingElement();
             String declaringClass = "";
             String separator = "";
-            Set<Element> originatingElementsList = info.originatingElements;
+            EconomicSet<Element> originatingElementsList = info.originatingElements;
             originatingElementsList.add(method);
             while (enclosing != null) {
                 if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE) {
