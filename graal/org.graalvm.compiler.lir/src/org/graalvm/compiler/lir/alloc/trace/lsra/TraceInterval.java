@@ -379,6 +379,7 @@ final class TraceInterval extends IntervalHint {
     private int numMaterializationValuesAdded;
 
     private boolean splitChildrenEmpty() {
+        assert splitChildren == null || !splitChildren.isEmpty();
         return splitChildren == null;
     }
 
