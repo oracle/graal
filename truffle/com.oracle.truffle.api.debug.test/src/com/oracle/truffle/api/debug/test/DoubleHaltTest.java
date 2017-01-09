@@ -135,7 +135,7 @@ public class DoubleHaltTest extends AbstractDebugTest {
                 });
             }
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 6, false, "CALL(foo)\n");
+                checkState(event, 6, false, "CALL(foo)");
             });
 
             expectDone();
