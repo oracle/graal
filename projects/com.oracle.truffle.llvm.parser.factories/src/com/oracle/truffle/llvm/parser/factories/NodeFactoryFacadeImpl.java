@@ -286,11 +286,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, LLVMBaseType llvmType, LLVMExpressionNode numElements) {
-        return createNamedAllocation(runtime, type, byteSize, alignment, llvmType, numElements, null);
-    }
-
-    @Override
-    public LLVMExpressionNode createNamedAllocation(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, LLVMBaseType llvmType, LLVMExpressionNode numElements, String name) {
         if (numElements == null) {
             assert llvmType == null;
             if (type instanceof StructureType) {
@@ -309,14 +304,14 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
                     types[i] = elemType.getLLVMBaseType();
                     currentOffset += runtime.getByteSize(elemType);
                 }
-                LLVMAllocaInstruction alloc = LLVMAllocFactory.createAlloc(runtime, byteSize, alignment, name);
+                LLVMAllocaInstruction alloc = LLVMAllocFactory.createAlloc(runtime, byteSize, alignment, type);
                 alloc.setTypes(types);
                 alloc.setOffsets(offsets);
                 return alloc;
             }
-            return LLVMAllocFactory.createAlloc(runtime, byteSize, alignment, name);
+            return LLVMAllocFactory.createAlloc(runtime, byteSize, alignment, type);
         } else {
-            return LLVMAllocFactory.createAlloc(runtime, llvmType, numElements, byteSize, alignment, name);
+            return LLVMAllocFactory.createAlloc(runtime, llvmType, numElements, byteSize, alignment, type);
         }
     }
 
@@ -462,7 +457,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         if ((globalVariable.getInitialiser() > 0 || !globalVariable.isExtern()) && !descriptor.isDeclared()) {
             final Type resolvedType = ((PointerType) globalVariable.getType()).getPointeeType();
             final int byteSize = runtime.getByteSize(resolvedType);
-            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(globalVariable.getName(), byteSize);
+            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(resolvedType, byteSize);
             final LLVMExpressionNode addressLiteralNode = createLiteral(runtime, nativeStorage, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
             descriptor.declare(nativeStorage);
@@ -488,7 +483,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         if ((globalConstant.getInitialiser() > 0 || !globalConstant.isExtern()) && !descriptor.isDeclared()) {
             final Type resolvedType = ((PointerType) globalConstant.getType()).getPointeeType();
             final int byteSize = runtime.getByteSize(resolvedType);
-            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(globalConstant.getName(), byteSize);
+            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(resolvedType, byteSize);
             final LLVMExpressionNode addressLiteralNode = createLiteral(runtime, nativeStorage, LLVMBaseType.ADDRESS);
             runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
             descriptor.declare(nativeStorage);

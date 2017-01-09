@@ -38,24 +38,25 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMI32A
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMI64AllocaInstructionNodeGen;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMAllocFactory {
 
-    public static LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment, String name) {
+    public static LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, LLVMBaseType llvmType, LLVMExpressionNode numElements, int byteSize, int alignment, Type symbolType) {
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
         switch (llvmType) {
             case I32:
-                return LLVMI32AllocaInstructionNodeGen.create(numElements, byteSize, alignment, context, runtime.getStackPointerSlot(), name);
+                return LLVMI32AllocaInstructionNodeGen.create(numElements, byteSize, alignment, context, runtime.getStackPointerSlot(), symbolType);
             case I64:
-                return LLVMI64AllocaInstructionNodeGen.create(numElements, byteSize, alignment, context, runtime.getStackPointerSlot(), name);
+                return LLVMI64AllocaInstructionNodeGen.create(numElements, byteSize, alignment, context, runtime.getStackPointerSlot(), symbolType);
             default:
                 throw new AssertionError(llvmType);
         }
     }
 
-    public static LLVMAllocaInstruction createAlloc(LLVMParserRuntime runtime, int byteSize, int alignment, String name) {
+    public static LLVMAllocaInstruction createAlloc(LLVMParserRuntime runtime, int byteSize, int alignment, Type type) {
         LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-        return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, context, runtime.getStackPointerSlot(), name);
+        return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, context, runtime.getStackPointerSlot(), type);
     }
 
 }

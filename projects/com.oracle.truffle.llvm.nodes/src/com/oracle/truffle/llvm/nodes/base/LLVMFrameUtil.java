@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.AllocationResult;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMFrameUtil {
 
@@ -80,9 +81,9 @@ public class LLVMFrameUtil {
         return (LLVM80BitFloat) FrameUtil.getObjectSafe(frame, frameSlot);
     }
 
-    public static LLVMAddress allocateMemory(LLVMStack stack, VirtualFrame frame, FrameSlot stackPointerSlot, int size, int alignment, String name) {
+    public static LLVMAddress allocateMemory(LLVMStack stack, VirtualFrame frame, FrameSlot stackPointerSlot, int size, int alignment, Type type) {
         LLVMAddress stackPointer = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
-        AllocationResult allocResult = stack.allocateMemory(stackPointer, size, alignment, name);
+        AllocationResult allocResult = stack.allocateMemory(stackPointer, size, alignment, type);
         frame.setObject(stackPointerSlot, allocResult.getStackPointer());
         return allocResult.getAllocatedMemory();
     }

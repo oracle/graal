@@ -41,9 +41,10 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeFields({@NodeField(type = int.class, name = "size"), @NodeField(type = int.class, name = "alignment"), @NodeField(type = LLVMContext.class, name = "context"),
-                @NodeField(type = FrameSlot.class, name = "stackPointerSlot"), @NodeField(type = String.class, name = "name")})
+                @NodeField(type = FrameSlot.class, name = "stackPointerSlot"), @NodeField(type = Type.class, name = "symbolType")})
 public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
 
     abstract int getSize();
@@ -54,7 +55,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
 
     abstract FrameSlot getStackPointerSlot();
 
-    abstract String getName();
+    abstract Type getSymbolType();
 
     public abstract static class LLVMAllocaInstruction extends LLVMAllocInstruction {
         @CompilationFinal(dimensions = 1) private LLVMBaseType[] types = null;
@@ -86,7 +87,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
 
         @Specialization
         public LLVMAddress execute(VirtualFrame frame) {
-            return LLVMFrameUtil.allocateMemory(getContext().getStack(), frame, getStackPointerSlot(), getSize(), getAlignment(), getName());
+            return LLVMFrameUtil.allocateMemory(getContext().getStack(), frame, getStackPointerSlot(), getSize(), getAlignment(), getSymbolType());
         }
 
     }
@@ -95,7 +96,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
     public abstract static class LLVMI32AllocaInstruction extends LLVMAllocInstruction {
         @Specialization
         public LLVMAddress execute(VirtualFrame frame, int nr) {
-            return LLVMFrameUtil.allocateMemory(getContext().getStack(), frame, getStackPointerSlot(), getSize() * nr, getAlignment(), getName());
+            return LLVMFrameUtil.allocateMemory(getContext().getStack(), frame, getStackPointerSlot(), getSize() * nr, getAlignment(), getSymbolType());
         }
     }
 
@@ -103,7 +104,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
     public abstract static class LLVMI64AllocaInstruction extends LLVMAllocInstruction {
         @Specialization
         public LLVMAddress execute(VirtualFrame frame, long nr) {
-            return LLVMFrameUtil.allocateMemory(getContext().getStack(), frame, getStackPointerSlot(), (int) (getSize() * nr), getAlignment(), getName());
+            return LLVMFrameUtil.allocateMemory(getContext().getStack(), frame, getStackPointerSlot(), (int) (getSize() * nr), getAlignment(), getSymbolType());
         }
     }
 

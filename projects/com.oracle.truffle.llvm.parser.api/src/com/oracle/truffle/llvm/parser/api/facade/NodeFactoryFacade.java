@@ -194,21 +194,6 @@ public interface NodeFactoryFacade {
      */
     LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, LLVMBaseType numElementsType, LLVMExpressionNode numElements);
 
-    /**
-     * Creates an <code>alloca</code> node with a certain number of elements.
-     *
-     * @param numElementsType the type of <code>numElements</code>
-     * @param byteSize the size of an element
-     * @param alignment the alignment requirement
-     * @param numElements how many elements to allocate, may be <code>null</code> if only one
-     *            element should be allocated
-     * @param type the type of an element, may be <code>null</code> if only one element should be
-     *            allocated
-     * @param name the name of an object to be allocated, may be <code>null</code>
-     * @return a node that allocates the specified number of elements
-     */
-    LLVMExpressionNode createNamedAllocation(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, LLVMBaseType numElementsType, LLVMExpressionNode numElements, String name);
-
     LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
                     LLVMBaseType llvmType);
 

@@ -228,11 +228,6 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createNamedAllocation(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, LLVMBaseType numElementsType, LLVMExpressionNode numElements, String name) {
-        return null;
-    }
-
-    @Override
     public LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
                     LLVMExpressionNode valueToInsert, LLVMBaseType llvmType) {
         return null;
