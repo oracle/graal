@@ -1,4 +1,5 @@
-Graal is a dynamic compiler written in Java that integrates with the HotSpot JVM. It has a focus on high performance and extensibility. In addition, it provides optimized performance for [Truffle](https://github.com/graalvm/truffle) based languages running on the JVM.
+Graal is a dynamic compiler written in Java that integrates with the HotSpot JVM. It has a focus on high performance and extensibility.
+In addition, it provides optimized performance for [Truffle](https://github.com/graalvm/truffle)-based languages running on the JVM.
 
 ## Setup
 
@@ -22,10 +23,10 @@ export PATH=$PWD/mx:$PATH
 
 Graal depends on a JDK that supports JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
 Graal works with build 143 or later of a [JDK9 Early Access Release](https://jdk9.java.net/download/).
-JVMCI enabled builds of JDK8 for selected platforms are available via [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
+JVMCI-enabled builds of JDK8 for selected platforms are available via [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 If you are not on one of these platforms (e.g., Windows), see [Building JVMCI JDK8](#building-jvmci-jdk8) below.
 
-Once you have installed (or built) a JVMCI JDK, ensure `JAVA_HOME` is pointing at the JDK home directory (or at `<jdk_home>/Contents/Home` on Mac OS X if the JDK has this layout).
+Once you have installed (or built) a JVMCI-enabled JDK, ensure `JAVA_HOME` is pointing at the JDK home directory (or at `<jdk_home>/Contents/Home` on Mac OS X if the JDK has this layout).
 
 Graal also depends on Truffle which needs to be cloned along with Graal.
 
@@ -41,7 +42,7 @@ All subsequent mx commands should be executed from this directory.
 
 After pulling subsequent Graal changes, the `mx sforceimports` command should be run to bring the Truffle dependency up to date.
 
-Here's the recipe for building and running the GraalVM (If on Windows, replace mx with mx.cmd):
+Here's the recipe for building and running Graal (If on Windows, replace mx with mx.cmd):
 
 ```
 mx build
