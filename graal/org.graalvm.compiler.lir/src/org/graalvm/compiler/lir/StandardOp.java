@@ -28,8 +28,8 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.OUTGOING;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Set;
 
 import org.graalvm.compiler.asm.Label;
@@ -384,13 +384,13 @@ public class StandardOp {
         }
 
         public void replace(LIR lir, LIRInstruction replacement) {
-            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
             assert instructions.get(index).equals(this) : String.format("Replacing the wrong instruction: %s instead of %s", instructions.get(index), this);
             instructions.set(index, replacement);
         }
 
         public void remove(LIR lir) {
-            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
             assert instructions.get(index).equals(this) : String.format("Removing the wrong instruction: %s instead of %s", instructions.get(index), this);
             instructions.remove(index);
         }

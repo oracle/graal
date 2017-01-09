@@ -22,13 +22,6 @@
  */
 package org.graalvm.compiler.hotspot.sparc;
 
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPCC;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.isGlobalRegister;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Xcc;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.NotEqual;
-import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.sparc.SPARC.g0;
@@ -40,9 +33,16 @@ import static jdk.vm.ci.sparc.SPARC.l7;
 import static jdk.vm.ci.sparc.SPARC.o0;
 import static jdk.vm.ci.sparc.SPARC.o7;
 import static jdk.vm.ci.sparc.SPARC.sp;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BPCC;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.isGlobalRegister;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Annul.NOT_ANNUL;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.BranchPredict.PREDICT_NOT_TAKEN;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Xcc;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag.NotEqual;
+import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,11 +62,11 @@ import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.sparc.SPARCNodeMatchRules;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotHostBackend;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.Stub;
@@ -421,7 +421,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
      * possible.
      */
     private static void stuffDelayedControlTransfers(LIR l, AbstractBlockBase<?> block) {
-        List<LIRInstruction> instructions = l.getLIRforBlock(block);
+        ArrayList<LIRInstruction> instructions = l.getLIRforBlock(block);
         if (instructions.size() >= 2) {
             LIRDependencyAccumulator acc = new LIRDependencyAccumulator();
             SPARCDelayedControlTransfer delayedTransfer = null;
