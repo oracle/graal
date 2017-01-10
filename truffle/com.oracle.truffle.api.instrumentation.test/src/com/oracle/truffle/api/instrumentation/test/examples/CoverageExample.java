@@ -38,7 +38,6 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.EXPRESSION;
 import com.oracle.truffle.api.source.SourceSection;
 
