@@ -69,7 +69,7 @@ public final class CoverageExample extends TruffleInstrument {
 
         private final Env env;
 
-        public CoverageEventFactory(final Env env) {
+        CoverageEventFactory(final Env env) {
             this.env = env;
         }
 
