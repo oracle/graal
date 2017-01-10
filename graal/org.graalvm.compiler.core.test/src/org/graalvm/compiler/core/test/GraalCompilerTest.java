@@ -44,12 +44,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.internal.AssumptionViolatedException;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
@@ -62,8 +56,10 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
@@ -113,6 +109,11 @@ import org.graalvm.compiler.phases.tiers.TargetProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.GraalTest;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.internal.AssumptionViolatedException;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
@@ -1201,5 +1202,16 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     protected boolean isArchitecture(String name) {
         return name.equals(backend.getTarget().arch.getName());
+    }
+
+    /**
+     * This method should be called in "timeout" tests which JUnit runs in a different thread.
+     */
+    public static void initializeForTimeout() {
+        if (Debug.isEnabled() && DebugScope.getConfig() == null) {
+            // timeout tests run in a separate thread which needs the DebugEnvironment to be
+            // initialized
+            DebugEnvironment.initialize(TTY.out);
+        }
     }
 }
