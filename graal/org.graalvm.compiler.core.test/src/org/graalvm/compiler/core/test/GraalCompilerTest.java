@@ -115,6 +115,7 @@ import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.GraalTest;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.TargetDescription;
@@ -149,6 +150,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  */
 public abstract class GraalCompilerTest extends GraalTest {
 
+    private static final int BAILOUT_RETRY_LIMIT = 1;
     private final Providers providers;
     private final Backend backend;
     private final DerivedOptionValue<Suites> suites;
@@ -852,40 +854,54 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
         }
 
-        final CompilationIdentifier id = getOrCreateCompilationId(installedCodeOwner, graph);
+        // loop for retrying compilation
+        for (int retry = 0; retry <= BAILOUT_RETRY_LIMIT; retry++) {
+            final CompilationIdentifier id = getOrCreateCompilationId(installedCodeOwner, graph);
 
-        InstalledCode installedCode = null;
-        try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(id.toString(CompilationIdentifier.Verbosity.ID), true))) {
-            final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
-            if (printCompilation) {
-                TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(), installedCodeOwner.getSignature()));
-            }
-            long start = System.currentTimeMillis();
-            CompilationResult compResult = compile(installedCodeOwner, graph, id);
-            if (printCompilation) {
-                TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
-            }
-
-            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult)) {
-                if (installDefault) {
-                    installedCode = addDefaultMethod(installedCodeOwner, compResult);
-                } else {
-                    installedCode = addMethod(installedCodeOwner, compResult);
+            InstalledCode installedCode = null;
+            try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(id.toString(CompilationIdentifier.Verbosity.ID), true))) {
+                final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
+                if (printCompilation) {
+                    TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(),
+                                    installedCodeOwner.getSignature()));
                 }
-                if (installedCode == null) {
-                    throw new GraalError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
+                long start = System.currentTimeMillis();
+                CompilationResult compResult = compile(installedCodeOwner, graph, id);
+                if (printCompilation) {
+                    TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
+                }
+
+                try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult)) {
+                    try {
+                        if (installDefault) {
+                            installedCode = addDefaultMethod(installedCodeOwner, compResult);
+                        } else {
+                            installedCode = addMethod(installedCodeOwner, compResult);
+                        }
+                        if (installedCode == null) {
+                            throw new GraalError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
+                        }
+                    } catch (BailoutException e) {
+                        if (retry <= BAILOUT_RETRY_LIMIT && graph == null && !e.isPermanent()) {
+                            // retry (if there is no predefined graph)
+                            TTY.println(String.format("Restart compilation %s (%s) due to a non-permanent bailout!", installedCodeOwner, id));
+                            continue;
+                        }
+                        throw e;
+                    }
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
 
-        if (!forceCompile) {
-            cache.put(installedCodeOwner, installedCode);
+            if (!forceCompile) {
+                cache.put(installedCodeOwner, installedCode);
+            }
+            return installedCode;
         }
-        return installedCode;
+        throw GraalError.shouldNotReachHere();
     }
 
     /**
