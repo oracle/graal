@@ -53,11 +53,33 @@ public class InteractiveEvalTest {
     }
 
     @Test
+    public void testDefaultInteractiveLanguageDirectly() throws UnsupportedEncodingException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(out).build();
+        Source s = Source.newBuilder("").mimeType("application/x-test-definteract").name("definteract").interactive().build();
+        PolyglotEngine.Value value = engine.getLanguages().get("application/x-test-definteract").eval(s);
+        Assert.assertEquals("42", value.get());
+        String strOutput = out.toString(StandardCharsets.UTF_8.name());
+        Assert.assertEquals("42" + System.getProperty("line.separator"), strOutput);
+    }
+
+    @Test
     public void testSpecialInteractiveLanguage() throws UnsupportedEncodingException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(out).build();
         Source s = Source.newBuilder("").mimeType("application/x-test-specinteract").name("specinteract").interactive().build();
         PolyglotEngine.Value value = engine.eval(s);
+        Assert.assertEquals("42", value.get());
+        String strOutput = out.toString(StandardCharsets.UTF_8.name());
+        Assert.assertEquals("\"42\"", strOutput);
+    }
+
+    @Test
+    public void testSpecialInteractiveLanguageDirectly() throws UnsupportedEncodingException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(out).build();
+        Source s = Source.newBuilder("").mimeType("application/x-test-specinteract").name("specinteract").interactive().build();
+        PolyglotEngine.Value value = engine.getLanguages().get("application/x-test-specinteract").eval(s);
         Assert.assertEquals("42", value.get());
         String strOutput = out.toString(StandardCharsets.UTF_8.name());
         Assert.assertEquals("\"42\"", strOutput);
