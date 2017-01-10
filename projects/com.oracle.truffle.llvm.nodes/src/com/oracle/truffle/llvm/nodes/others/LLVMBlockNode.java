@@ -35,8 +35,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
@@ -50,7 +50,6 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
         @CompilationFinal(dimensions = 2) private final LLVMStackFrameNuller[][] beforeSlotNullerNodes;
         @CompilationFinal(dimensions = 2) private final LLVMStackFrameNuller[][] afterSlotNullerNodes;
         private final FrameSlot returnSlot;
-        private static final boolean INJECT_BRANCH_PROBABILITIES = true;
 
         public LLVMBlockControlFlowNode(LLVMBasicBlockNode[] bodyNodes, LLVMStackFrameNuller[][] beforeSlotNullerNodes, LLVMStackFrameNuller[][] afterSlotNullerNodes, FrameSlot returnSlot) {
             this.bodyNodes = bodyNodes;
@@ -66,34 +65,26 @@ public abstract class LLVMBlockNode extends LLVMExpressionNode {
             int bci = 0;
             int loopCount = 0;
             outer: while (bci != LLVMRetNode.RETURN_FROM_FUNCTION) {
-                if (CompilerDirectives.inInterpreter()) {
-                    loopCount++;
-                }
                 CompilerAsserts.partialEvaluationConstant(bci);
                 LLVMBasicBlockNode bb = bodyNodes[bci];
                 nullDeadSlots(frame, bci, beforeSlotNullerNodes);
                 int successorSelection = bb.executeGetSuccessorIndex(frame);
                 nullDeadSlots(frame, bci, afterSlotNullerNodes);
                 int[] successors = bb.getSuccessors();
+
                 for (int i = 0; i < successors.length; i++) {
-                    if (INJECT_BRANCH_PROBABILITIES) {
-                        if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), i == successorSelection)) {
-                            bb.increaseBranchProbabilityDeoptIfZero(i);
-                            bci = successors[i];
-                            continue outer;
+                    if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), i == successorSelection)) {
+                        bb.increaseBranchProbabilityDeoptIfZero(i);
+                        if (CompilerDirectives.inInterpreter()) {
+                            if (successors[i] < bci) {
+                                // backedge
+                                loopCount++;
+                            }
                         }
-                    } else {
-                        if (i == successorSelection) {
-                            bci = successors[i];
-                            continue outer;
-                        }
+                        bci = successors[i];
+                        continue outer;
                     }
                 }
-                /*
-                 * Avoid a little loop after partial evaluation where the bci remains constant.
-                 * Later compiler optimizations would remove the loop, but that way we simplify the
-                 * compiler's life.
-                 */
                 CompilerDirectives.transferToInterpreter();
                 throw new Error("No matching successor found");
             }

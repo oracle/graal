@@ -31,9 +31,9 @@ package com.oracle.truffle.llvm.nodes.others;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
+import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 
-public class LLVMUnreachableNode extends LLVMTerminatorNode {
+public class LLVMUnreachableNode extends LLVMControlFlowNode {
 
     public static class LLVMUnreachableException extends ControlFlowException {
 
