@@ -1,9 +1,5 @@
 suite = {
-<<<<<<< 848c88a0945ae71622b49f425ee76bffe3b15c56
-  "mxversion" : "5.65.0",
-=======
-  "mxversion" : "5.63.0",
->>>>>>> support module changes from JDK-8169069
+  "mxversion" : "5.67.1",
   "name" : "graal-core",
 
   "imports" : {
@@ -1221,7 +1217,7 @@ suite = {
         "org.graalvm.compiler.asm.aarch64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "1.8=",
       "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
       "workingSets" : "Graal,Truffle,AArch64",
     },

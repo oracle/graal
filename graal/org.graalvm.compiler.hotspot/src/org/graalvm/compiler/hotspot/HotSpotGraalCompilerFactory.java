@@ -94,7 +94,6 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     public void onSelection() {
         initializeOptions();
         JVMCIVersionCheck.check(false);
-        System.out.println("[running github Graal]");
     }
 
     @Override
