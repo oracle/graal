@@ -62,6 +62,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -594,7 +596,19 @@ public class PolyglotEngine {
             target = Truffle.getRuntime().createCallTarget(new PolyglotEvalRootNode(this, l, source));
             l.cache.put(source, target);
         }
-        return target.call((Object) langTarget);
+        Object value = target.call((Object) langTarget);
+        if (source.isInteractive() && !l.isPrintResultOfEval() && value != null) {
+            // print res to standard out stream:
+            String stringResult = Access.LANGS.toString(langTarget[0], findEnv(langTarget[0].getClass()), value);
+            try {
+                PolyglotEngine.this.out.write(stringResult.getBytes(StandardCharsets.UTF_8));
+                PolyglotEngine.this.out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
+            } catch (IOException ioex) {
+                // out stream has problems.
+                throw new IllegalStateException(ioex);
+            }
+        }
+        return value;
     }
 
     ContextStore context() {
@@ -1445,6 +1459,10 @@ public class PolyglotEngine {
             } finally {
                 ExecutionImpl.executionEnded(prev);
             }
+        }
+
+        boolean isPrintResultOfEval() {
+            return info.isInteractive();
         }
 
         TruffleLanguage<?> getImpl(boolean create) {
