@@ -503,6 +503,13 @@ public class PolyglotEngine {
      * <p>
      * More examples can be found in description of {@link Value#execute(java.lang.Object...)} and
      * {@link Value#as(java.lang.Class)} methods.
+     * <p>
+     * When evaluating an {@link Source#isInteractive() interactive source} the result of the
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluation} is
+     * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) converted to string} and
+     * printed to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut standard output}.
+     * Evaluating {@link Source#isInteractive() non-interactive source} doesn't access
+     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut output stream} in any way.
      *
      * @param source code snippet to execute
      * @return a {@link Value} object that holds result of an execution, never <code>null</code>
@@ -1416,14 +1423,25 @@ public class PolyglotEngine {
          * @return <code>true</code> if the language implements an interactive response to
          *         evaluation of interactive sources, <code>false</code> otherwise.
          * @since 0.22
+         * @deprecated No longer useful. The meaning of this method could be misused for other
+         *             purposes than {@link Registration#interactive() intended}, and thus the
+         *             method has been scheduled for removal
          */
+        @Deprecated
         public boolean isInteractive() {
-            return info.isInteractive();
+            return false;
         }
 
         /**
          * Evaluates provided source. Ignores the particular {@link Source#getMimeType() MIME type}
          * and forces evaluation in the context of <code>this</code> language.
+         * <p>
+         * When evaluating an {@link Source#isInteractive() interactive source} the result of the
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluation} is
+         * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) converted to string}
+         * and printed to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut standard
+         * output}. Evaluating {@link Source#isInteractive() non-interactive source} doesn't access
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut output stream} in any way.
          *
          * @param source code snippet to execute
          * @return a {@link Value} object that holds result of an execution, never <code>null</code>

@@ -126,18 +126,35 @@ public abstract class TruffleLanguage<C> {
         String[] mimeType();
 
         /**
-         * Indicates whether the language implements an interactive response to evaluation of
-         * {@link Source#isInteractive() interactive sources}. When
+         * Indicates whether the language implements a custom behavior when evaluating
+         * {@link Source#isInteractive() interactive sources}. This is completely optional operation
+         * that doesn't affect treatment of the language. One can successfully create a user facing
+         * language without taking control of the {@link #interactive() interactive behavior}.
+         * <p>
+         * Non-interactive languages get the default behavior of
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} for free. E.g. when evaluating an
+         * {@link Source#isInteractive() interactive source} the result of the
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluation} is
+         * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) converted to string}
+         * and printed to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut standard
+         * output} automatically. This is the behaviour suitable for majority of the (scripting)
+         * {@link TruffleLanguage languages}.
+         * <p>
+         * Should the default behavior be found insufficient, one can take over and fully control
+         * the access to {@link com.oracle.truffle.api.vm.PolyglotEngine polyglot engine}
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut output},
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr error} and
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn input} streams. When
          * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is called over an
-         * {@link Source#isInteractive() interactive source}, interactive languages print the result
-         * to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard
+         * {@link Source#isInteractive() interactive source} of a language that controls the
+         * interactive behavior (by returning {@link #interactive() interactive=true}), it is the
+         * reponsibility of the language itself to print the result to
+         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard
          * output} or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream)
-         * error output} and can use
+         * error output} and/or access
          * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream) standard
-         * input}. Non-interactive languages are not expected to use the polyglot engine streams in
-         * an interactive way and whoever supplies an interactive source is expected to implement an
-         * appropriate response.
-         *
+         * input} in appropriate way.
+         * 
          * @return <code>true</code> if the language implements an interactive response to
          *         evaluation of interactive sources.
          * @since 0.22
