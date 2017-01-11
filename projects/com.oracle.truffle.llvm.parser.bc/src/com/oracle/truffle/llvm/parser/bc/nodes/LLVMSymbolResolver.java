@@ -114,32 +114,46 @@ public final class LLVMSymbolResolver {
         LLVMExpressionNode currentAddress = resolve(base);
         Type currentType = base.getType();
 
-        for (final Symbol symbol : indices) {
-            final Type type = symbol.getType();
+        for (final Symbol indexSymbol : indices) {
+            final Type indexType = indexSymbol.getType();
+            final LLVMBaseType indexLLVMBaseType = indexType.getLLVMBaseType();
 
-            final Integer constantIndex = LLVMSymbolResolver.evaluateIntegerConstant(symbol);
-            if (constantIndex == null) {
+            final Integer indexInteger = LLVMSymbolResolver.evaluateIntegerConstant(indexSymbol);
+            if (indexInteger == null) {
+                // the index is determined at runtime
+                if (currentType instanceof StructureType) {
+                    // according to http://llvm.org/docs/LangRef.html#getelementptr-instruction
+                    throw new IllegalStateException("Indices on structs must be constant integers!");
+                }
                 final int indexedTypeLength = runtime.getIndexOffset(1, currentType);
                 currentType = currentType.getIndexType(1);
-                final LLVMExpressionNode valueref = resolve(symbol);
-                currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, type.getLLVMBaseType(), currentAddress, valueref, indexedTypeLength);
+                final LLVMExpressionNode indexNode = resolve(indexSymbol);
+                currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, indexLLVMBaseType, currentAddress, indexNode, indexedTypeLength);
 
             } else {
-                final int indexedTypeLength = runtime.getIndexOffset(constantIndex, currentType);
-                currentType = currentType.getIndexType(constantIndex);
-                if (indexedTypeLength != 0) {
-                    final LLVMExpressionNode constantNode;
-                    switch (type.getLLVMBaseType()) {
+                // the index is a constant integer
+                int addressOffset = runtime.getIndexOffset(indexInteger, currentType);
+                final Type parentType = currentType;
+                currentType = currentType.getIndexType(indexInteger);
+
+                if (parentType instanceof StructureType && !((StructureType) parentType).isPacked()) {
+                    final int structPadding = runtime.getBytePadding(0, parentType);
+                    addressOffset += structPadding;
+                }
+
+                if (addressOffset != 0) {
+                    final LLVMExpressionNode indexNode;
+                    switch (indexLLVMBaseType) {
                         case I32:
-                            constantNode = runtime.getNodeFactoryFacade().createLiteral(runtime, 1, LLVMBaseType.I32);
+                            indexNode = runtime.getNodeFactoryFacade().createLiteral(runtime, 1, LLVMBaseType.I32);
                             break;
                         case I64:
-                            constantNode = runtime.getNodeFactoryFacade().createLiteral(runtime, 1L, LLVMBaseType.I64);
+                            indexNode = runtime.getNodeFactoryFacade().createLiteral(runtime, 1L, LLVMBaseType.I64);
                             break;
                         default:
                             throw new AssertionError();
                     }
-                    currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, type.getLLVMBaseType(), currentAddress, constantNode, indexedTypeLength);
+                    currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, indexLLVMBaseType, currentAddress, indexNode, addressOffset);
                 }
             }
         }
@@ -268,32 +282,7 @@ public final class LLVMSymbolResolver {
     }
 
     private LLVMExpressionNode toElementPointer(GetElementPointerConstant constant) {
-        LLVMExpressionNode currentAddress = resolve(constant.getBasePointer());
-        Type currentType = constant.getBasePointer().getType();
-        Type parentType = null;
-        int currentOffset = 0;
-
-        for (final Symbol index : constant.getIndices()) {
-            final Integer indexVal = LLVMSymbolResolver.evaluateIntegerConstant(index);
-            if (indexVal == null) {
-                throw new IllegalStateException("Invalid index: " + index);
-            }
-
-            currentOffset += runtime.getIndexOffset(indexVal, currentType);
-            parentType = currentType;
-            currentType = currentType.getIndexType(indexVal);
-        }
-
-        if (currentType != null && !((parentType instanceof StructureType) && (((StructureType) parentType).isPacked()))) {
-            currentOffset += runtime.getBytePadding(currentOffset, currentType);
-        }
-
-        if (currentOffset != 0) {
-            final LLVMExpressionNode oneValueNode = runtime.getNodeFactoryFacade().createLiteral(runtime, 1, LLVMBaseType.I32);
-            currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, LLVMBaseType.I32, currentAddress, oneValueNode, currentOffset);
-        }
-
-        return currentAddress;
+        return resolveElementPointer(constant.getBasePointer(), constant.getIndices());
     }
 
     private LLVMExpressionNode toComparison(CompareConstant compare) {
