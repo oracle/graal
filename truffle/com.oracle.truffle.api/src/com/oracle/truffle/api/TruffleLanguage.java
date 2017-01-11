@@ -563,12 +563,14 @@ public abstract class TruffleLanguage<C> {
 
         private Object findMetaObject(TruffleLanguage<?> language, Object obj) {
             assert lang == language;
-            return lang.findMetaObject(ctx, obj);
+            final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
+            return lang.findMetaObject(ctx, rawValue);
         }
 
         private SourceSection findSourceLocation(TruffleLanguage<?> language, Object obj) {
             assert lang == language;
-            return lang.findSourceLocation(ctx, obj);
+            final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
+            return lang.findSourceLocation(ctx, rawValue);
         }
 
         void postInit() {

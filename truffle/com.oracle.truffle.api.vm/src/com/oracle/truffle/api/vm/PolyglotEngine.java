@@ -622,11 +622,7 @@ public class PolyglotEngine {
         } else {
             res = invokeForeignOnExecutor(foreignNode, frame, receiver);
         }
-        if (res instanceof TruffleObject) {
-            return new EngineTruffleObject(this, (TruffleObject) res);
-        } else {
-            return res;
-        }
+        return EngineTruffleObject.wrap(this, res);
     }
 
     static void assertNoTruffle() {
@@ -986,8 +982,8 @@ public class PolyglotEngine {
                 if (unwrapJava) {
                     result = JavaInterop.asJavaObject(Object.class, (TruffleObject) result);
                 }
-                if (wrapEngine && executor != null && result instanceof TruffleObject) {
-                    return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
+                if (wrapEngine && result instanceof TruffleObject) {
+                    return EngineTruffleObject.wrap(PolyglotEngine.this, result);
                 }
             }
             return result;
@@ -1643,6 +1639,14 @@ public class PolyglotEngine {
                 PolyglotEngine engine = (PolyglotEngine) vm;
                 assert engine.debugger()[0] == null || engine.debugger()[0] == debugger;
                 engine.debugger()[0] = debugger;
+            }
+
+            @Override
+            public Object findOriginalObject(Object truffleObject) {
+                if (truffleObject instanceof EngineTruffleObject) {
+                    return ((EngineTruffleObject) truffleObject).getDelegate();
+                }
+                return truffleObject;
             }
         }
 

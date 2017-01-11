@@ -91,6 +91,8 @@ public abstract class Accessor {
 
         @SuppressWarnings("rawtypes")
         public abstract Object findLanguage(Class<? extends TruffleLanguage> language);
+
+        public abstract Object findOriginalObject(Object truffleObject);
     }
 
     public abstract static class LanguageSupport {

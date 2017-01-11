@@ -36,12 +36,38 @@ import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Objects;
 
 final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory {
+    private static final Class<?> JFO_CLASS;
+    private static final Class<?> JO_CLASS;
+    static {
+        try {
+            ClassLoader l = EngineTruffleObject.class.getClassLoader();
+            JFO_CLASS = Class.forName("com.oracle.truffle.api.interop.java.JavaFunctionObject", false, l);
+            JO_CLASS = Class.forName("com.oracle.truffle.api.interop.java.JavaObject", false, l);
+        } catch (ClassNotFoundException ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
+
     private final PolyglotEngine engine;
     private final TruffleObject delegate;
 
-    EngineTruffleObject(PolyglotEngine engine, TruffleObject obj) {
+    private EngineTruffleObject(PolyglotEngine engine, TruffleObject obj) {
         this.engine = engine;
         this.delegate = obj;
+    }
+
+    static Object wrap(PolyglotEngine engine, Object obj) {
+        if (obj instanceof TruffleObject) {
+            if (obj.getClass() == JO_CLASS) {
+                return obj;
+            }
+            if (obj.getClass() == JFO_CLASS) {
+                return obj;
+            }
+            return new EngineTruffleObject(engine, (TruffleObject) obj);
+        } else {
+            return obj;
+        }
     }
 
     @Override
