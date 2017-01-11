@@ -33,9 +33,9 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
+import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMMainFunctionReturnValueRootNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVM80BitFloatRetNodeGen;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMAddressRetNodeGen;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMDoubleRetNodeGen;
@@ -80,11 +80,11 @@ public final class LLVMFunctionFactory {
     private LLVMFunctionFactory() {
     }
 
-    public static LLVMTerminatorNode createRetVoid(LLVMParserRuntime runtime) {
+    public static LLVMControlFlowNode createRetVoid(LLVMParserRuntime runtime) {
         return LLVMVoidReturnNodeGen.create(runtime.getReturnSlot());
     }
 
-    public static LLVMTerminatorNode createNonVoidRet(LLVMParserRuntime runtime, LLVMExpressionNode retValue, Type resolvedType) {
+    public static LLVMControlFlowNode createNonVoidRet(LLVMParserRuntime runtime, LLVMExpressionNode retValue, Type resolvedType) {
         FrameSlot retSlot = runtime.getReturnSlot();
         if (retValue == null || retSlot == null) {
             throw new AssertionError();

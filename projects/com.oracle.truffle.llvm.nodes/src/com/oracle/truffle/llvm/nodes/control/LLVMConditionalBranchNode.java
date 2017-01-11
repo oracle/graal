@@ -33,11 +33,11 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMConditionalBranchNode extends LLVMTerminatorNode {
+public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
     @Children final LLVMExpressionNode[] truePhiWriteNodes;
     @Children final LLVMExpressionNode[] falsePhiWriteNodes;

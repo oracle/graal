@@ -31,22 +31,22 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI16SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI32SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI64SwitchNode;
-import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI8ProfilingSwitchNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI8SwitchNode;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
 public class LLVMSwitchFactory {
 
-    public static LLVMTerminatorNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases,
+    public static LLVMControlFlowNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases,
                     LLVMBaseType llvmType, LLVMExpressionNode[] phiWriteNodes) {
         switch (llvmType) {
             case I8:
                 LLVMExpressionNode[] i8Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
-                return new LLVMI8ProfilingSwitchNode(cond, i8Cases, otherLabels, defaultLabel, phiWriteNodes);
+                return new LLVMI8SwitchNode(cond, i8Cases, otherLabels, defaultLabel, phiWriteNodes);
             case I16:
                 LLVMExpressionNode[] i16Cases = Arrays.copyOf(cases, cases.length, LLVMExpressionNode[].class);
                 return new LLVMI16SwitchNode(cond, i16Cases, otherLabels, defaultLabel, phiWriteNodes);

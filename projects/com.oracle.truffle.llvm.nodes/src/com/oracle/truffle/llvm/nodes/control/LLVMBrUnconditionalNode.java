@@ -32,12 +32,12 @@ package com.oracle.truffle.llvm.nodes.control;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
-import com.oracle.truffle.llvm.nodes.base.LLVMTerminatorNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public class LLVMBrUnconditionalNode extends LLVMTerminatorNode {
+public class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
 
     @Children private final LLVMExpressionNode[] phiWrites;
 

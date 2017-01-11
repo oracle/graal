@@ -29,8 +29,23 @@
  */
 package com.oracle.truffle.llvm.nodes.api;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 public abstract class LLVMControlFlowNode extends LLVMNode {
+    @CompilationFinal(dimensions = 1) private final int[] successors;
+
+    public LLVMControlFlowNode(int... successors) {
+        this.successors = successors;
+    }
+
+    public int nrSuccessors() {
+        return successors.length;
+    }
+
+    public int[] getSuccessors() {
+        return successors;
+    }
+
     public abstract int executeGetSuccessorIndex(VirtualFrame frame);
 }
