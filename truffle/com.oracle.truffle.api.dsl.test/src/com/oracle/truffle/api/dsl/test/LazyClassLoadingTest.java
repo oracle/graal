@@ -37,6 +37,7 @@ import com.oracle.truffle.api.dsl.internal.DSLOptions.DSLGenerator;
 import com.oracle.truffle.api.dsl.test.LazyClassLoadingTestFactory.TestNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 @DSLOptions
 public class LazyClassLoadingTest {
@@ -89,7 +90,7 @@ public class LazyClassLoadingTest {
         Method m;
         try {
             m = ClassLoader.class.getDeclaredMethod("findLoadedClass", String.class);
-            m.setAccessible(true);
+            ReflectionUtils.setAccessible(m, true);
             return m.invoke(classLoader, className) != null;
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);

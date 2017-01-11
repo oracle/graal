@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.source;
+package com.oracle.truffle.tck.impl;
 
-import com.oracle.truffle.api.impl.Accessor;
-import java.util.Collection;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
-final class SourceAccessor extends Accessor {
-    private static final SourceAccessor ACCESSOR = new SourceAccessor();
+@TruffleInstrument.Registration(name = "TruffleTCK", id = TckInstrument.ID)
+public final class TckInstrument extends TruffleInstrument {
 
-    static Collection<ClassLoader> allLoaders() {
-        return ACCESSOR.loaders();
+    public static final String ID = "truffleTCK";
+
+    private TruffleInstrument.Env environment;
+
+    @Override
+    protected void onCreate(Env env) {
+        this.environment = env;
+        env.registerService(this);
+    }
+
+    public TruffleInstrument.Env getEnvironment() {
+        return environment;
     }
 }

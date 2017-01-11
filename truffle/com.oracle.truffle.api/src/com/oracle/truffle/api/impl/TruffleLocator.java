@@ -72,6 +72,9 @@ public abstract class TruffleLocator {
      */
     static Class<?> loadClass(String name) {
         for (ClassLoader loader : loaders()) {
+            if (loader == null) {
+                continue;
+            }
             try {
                 return loader.loadClass(name);
             } catch (ClassNotFoundException ex) {

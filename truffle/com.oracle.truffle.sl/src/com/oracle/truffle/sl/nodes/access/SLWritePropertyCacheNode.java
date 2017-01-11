@@ -177,7 +177,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
      * polymorphic inline cache.
      */
     @TruffleBoundary
-    @Specialization(contains = {"writeExistingPropertyCached", "writeNewPropertyCached"}, guards = {"isValidSLObject(receiver)"})
+    @Specialization(replaces = {"writeExistingPropertyCached", "writeNewPropertyCached"}, guards = {"isValidSLObject(receiver)"})
     protected static void writeUncached(DynamicObject receiver, Object name, Object value) {
         receiver.define(name, value);
     }

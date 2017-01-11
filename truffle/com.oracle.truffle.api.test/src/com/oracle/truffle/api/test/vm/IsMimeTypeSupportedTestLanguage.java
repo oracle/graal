@@ -26,9 +26,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
@@ -43,7 +41,8 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected CallTarget parse(final Source code, Node context, String... argumentNames) {
+    protected CallTarget parse(ParsingRequest request) throws Exception {
+        final Source code = request.getSource();
         final String mimeType = code.getCode();
         return Truffle.getRuntime().createCallTarget(new RootNode(IsMimeTypeSupportedTestLanguage.class, null, null) {
             @Override
@@ -67,10 +66,4 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
     protected boolean isObjectOfLanguage(Object object) {
         throw new UnsupportedOperationException();
     }
-
-    @Override
-    protected Object evalInContext(Source source, Node node, MaterializedFrame mFrame) {
-        throw new UnsupportedOperationException();
-    }
-
 }

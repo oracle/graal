@@ -43,7 +43,7 @@ abstract class ArrayReadNode extends Node {
         return doArrayAccess(receiver, numberClazz.cast(index).intValue());
     }
 
-    @Specialization(contains = "doNumber")
+    @Specialization(replaces = "doNumber")
     protected static Object doNumberGeneric(JavaObject receiver, Number index) {
         return doArrayAccess(receiver, index.intValue());
     }

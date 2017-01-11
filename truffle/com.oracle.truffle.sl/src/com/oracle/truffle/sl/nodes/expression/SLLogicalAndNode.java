@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,45 +40,34 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import com.oracle.truffle.api.dsl.ShortCircuit;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.nodes.SLBinaryNode;
+import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
 /**
- * This class declares specializations similar to the extensively documented {@link SLAddNode}. It
- * uses one additional feature of the Truffle DSL: {@link ShortCircuit}.
- * <p>
- * Logical operations in SL use short circuit evaluation: if the evaluation of the left operand
- * already decides the result of the operation, the right operand must not be executed. This is
- * expressed in the Truffle DSL via a method annotated with {@link ShortCircuit}, which returns
- * whether a child needs to be executed based on the result of already executed children.
+ * Logical conjunction node with short circuit evaluation.
  */
 @NodeInfo(shortName = "&&")
-@SuppressWarnings("unused")
-public abstract class SLLogicalAndNode extends SLBinaryNode {
+public final class SLLogicalAndNode extends SLShortCircuitNode {
 
-    /**
-     * This method is called after the left child was evaluated, but before the right child is
-     * evaluated. The right child is only evaluated when the return value is {code true}.
-     */
-    @ShortCircuit("rightNode")
-    protected boolean needsRightNode(boolean left) {
-        return left;
+    public SLLogicalAndNode(SLExpressionNode left, SLExpressionNode right) {
+        super(left, right);
     }
 
     /**
-     * Similar to {@link #needsRightNode(boolean)}, but for generic cases where the type of the left
-     * child is not known.
+     * The right value does not need to be evaluated if the left value is already <code>true</code>.
      */
-    @ShortCircuit("rightNode")
-    protected boolean needsRightNode(Object left) {
-        return left instanceof Boolean && needsRightNode(((Boolean) left).booleanValue());
+    @Override
+    protected boolean isEvaluateRight(boolean left) {
+        return false;
     }
 
-    @Specialization
-    protected boolean doBoolean(boolean left, boolean hasRight, boolean right) {
+    /**
+     * Only if left and right value are true the result of the logical and is <code>true</code>. If
+     * the second parameter is not evaluated, <code>false</code> is provided.
+     */
+    @Override
+    protected boolean execute(boolean left, boolean right) {
         return left && right;
     }
+
 }

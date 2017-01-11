@@ -124,7 +124,7 @@ public class FunctionCall {
             return false;
         }
 
-        @Specialization(limit = "CACHE_SIZE", contains = "directCallFunctionGuard", guards = {"function.getTarget() == cachedTarget"})
+        @Specialization(limit = "CACHE_SIZE", replaces = "directCallFunctionGuard", guards = {"function.getTarget() == cachedTarget"})
         protected Object directCall(VirtualFrame frame, Function function, Object argument,  //
                         @Cached("function.getTarget()") CallTarget cachedTarget, //
                         @Cached("create(cachedTarget)") DirectCallNode callNode) {
@@ -132,7 +132,7 @@ public class FunctionCall {
             return callNode.call(frame, new Object[]{argument});
         }
 
-        @Specialization(contains = "directCall")
+        @Specialization(replaces = "directCall")
         protected Object indirectCall(VirtualFrame frame, Function function, Object argument, //
                         @Cached("create()") IndirectCallNode callNode) {
             indirectCall++;

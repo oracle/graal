@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.test.TypeBoxingTest.TypeBoxingTypeSystem;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class MergeSpecializationsTest {
 
@@ -229,7 +230,7 @@ public class MergeSpecializationsTest {
 
     private static void assertState(Node node, int[] expectedOrder, int checkedIndices) throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException, SecurityException {
         Field stateField = node.getClass().getDeclaredField("state_");
-        stateField.setAccessible(true);
+        ReflectionUtils.setAccessible(stateField, true);
         int state = ((((Number) stateField.get(node))).intValue() & ~0x1) >> 1; // exclude
                                                                                 // uninitialized
         Arrays.sort(expectedOrder, 0, checkedIndices);

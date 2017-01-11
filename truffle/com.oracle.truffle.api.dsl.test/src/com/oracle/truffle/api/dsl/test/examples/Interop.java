@@ -75,7 +75,7 @@ public class Interop {
             return operation.execute(frame, target, value);
         }
 
-        @Specialization(contains = "interopCached")
+        @Specialization(replaces = "interopCached")
         protected Object interopGeneric(VirtualFrame frame, TruffleObject target, Object value) {
             generic++;
             return target.createOperation().execute(frame, target, value);

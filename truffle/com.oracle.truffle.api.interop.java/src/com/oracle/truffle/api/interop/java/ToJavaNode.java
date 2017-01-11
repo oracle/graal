@@ -58,15 +58,18 @@ abstract class ToJavaNode extends Node {
     protected Object doCached(VirtualFrame frame, Object operand, @SuppressWarnings("unused") TypeAndClass<?> targetType,
                     @Cached("operand.getClass()") Class<?> cachedOperandType,
                     @Cached("targetType") TypeAndClass<?> cachedTargetType) {
-        return convertImpl(frame, cachedOperandType.cast(operand), cachedTargetType, cachedOperandType);
+        return convertImpl(frame, cachedOperandType.cast(operand), cachedTargetType);
     }
 
-    private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass<?> targetType, Class<?> cachedOperandType) {
+    private Object convertImpl(VirtualFrame frame, Object value, TypeAndClass<?> targetType) {
         Object convertedValue;
-        if (isPrimitiveType(cachedOperandType)) {
+        if (isPrimitiveType(targetType.clazz)) {
             convertedValue = toPrimitive(value, targetType.clazz);
-            assert convertedValue != null;
-        } else if (value instanceof JavaObject && targetType.clazz.isInstance(((JavaObject) value).obj)) {
+            if (convertedValue != null) {
+                return convertedValue;
+            }
+        }
+        if (value instanceof JavaObject && targetType.clazz.isInstance(((JavaObject) value).obj)) {
             convertedValue = ((JavaObject) value).obj;
         } else if (!TruffleOptions.AOT && value instanceof TruffleObject && JavaInterop.isJavaFunctionInterface(targetType.clazz) && isExecutable(frame, (TruffleObject) value)) {
             convertedValue = JavaInteropReflect.asJavaFunction(targetType.clazz, (TruffleObject) value);
@@ -81,12 +84,12 @@ abstract class ToJavaNode extends Node {
         return convertedValue;
     }
 
-    @Specialization(guards = "operand != null", contains = "doCached")
+    @Specialization(guards = "operand != null", replaces = "doCached")
     protected Object doGeneric(VirtualFrame frame, Object operand, TypeAndClass<?> type) {
         // TODO this specialization should be a TruffleBoundary because it produces too much code.
         // It can't be because a frame is passed in. We need extract all uses of frame out of
         // convertImpl.
-        return convertImpl(frame, operand, type, operand.getClass());
+        return convertImpl(frame, operand, type);
     }
 
     private static boolean isPrimitiveType(Class<?> clazz) {
@@ -98,6 +101,7 @@ abstract class ToJavaNode extends Node {
                         clazz == float.class || clazz == Float.class ||
                         clazz == double.class || clazz == Double.class ||
                         clazz == char.class || clazz == Character.class ||
+                        clazz == Number.class ||
                         CharSequence.class.isAssignableFrom(clazz);
     }
 

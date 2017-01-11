@@ -26,6 +26,7 @@ package com.oracle.truffle.tck;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -37,11 +38,14 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory18;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -49,6 +53,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
@@ -64,6 +69,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import com.oracle.truffle.tck.impl.LongBinaryOperation;
 import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
+import com.oracle.truffle.tck.impl.TckInstrument;
 import com.oracle.truffle.tck.impl.TestObject;
 
 /**
@@ -640,6 +646,61 @@ public abstract class TruffleTCK {
      */
     protected void assertDouble(String msg, double expectedValue, double actualValue) {
         assertEquals(msg, expectedValue, actualValue, 0.1);
+    }
+
+    /**
+     * Provide at least one pair of functions that return a value and it's meta-object. The value's
+     * meta-object is found using
+     * {@link TruffleLanguage#findMetaObject(java.lang.Object, java.lang.Object)} and compared to
+     * the provided meta-object. Provide names of an even number of functions, which return a value
+     * and value's meta-object, respectively. The code in JavaScript could look like:
+     *
+     * <pre>
+     * function numberValue() {
+     *     return 42;
+     * }
+     *
+     * function numberType() {
+     *     return "Number";
+     * }
+     *
+     * function functionValue() {
+     *     return functionValue;
+     * }
+     *
+     * function functionType() {
+     *     return "Function";
+     * }
+     * </pre>
+     *
+     * @return names of functions that return a value and value's meta-object, respectively.
+     * @since 0.22
+     */
+    protected String[] metaObjects() {
+        throw new UnsupportedOperationException("metaObjects() method not implemented");
+    }
+
+    /**
+     * Name of a function that returns a value for which a source location can be found using
+     * {@link TruffleLanguage#findSourceLocation(java.lang.Object, java.lang.Object)}. It needs to
+     * be possible to find the source location among currently loaded sources for verification. The
+     * code in JavaScript could look like (returns a function object, which should have a source
+     * associated):
+     *
+     * <pre>
+     * function foo() {
+     * }
+     *
+     * function getValueWithASource() {
+     *     return foo;
+     * }
+     * </pre>
+     *
+     * @return name of a function that returns a value with source location associated
+     * @since 0.22
+     */
+    protected String valueWithSource() {
+        throw new UnsupportedOperationException("valueWithSource() method not implemented");
     }
 
     private PolyglotEngine vm() throws Exception {
@@ -2045,6 +2106,69 @@ public abstract class TruffleTCK {
         apply.execute(JavaInterop.asTruffleObject(obj));
         Assert.assertEquals(obj.arg1, 41.0, 0.1);
         Assert.assertEquals(obj.arg2, 42.0, 0.1);
+    }
+
+    /** @since 0.22 */
+    @Test
+    public void testMetaObject() throws Exception {
+        String[] ids = metaObjects();
+        if (ids == null) {
+            return;
+        }
+        assert (ids.length > 0);
+        assert (ids.length % 2 == 0);
+        for (int i = 0; i < ids.length; i += 2) {
+            PolyglotEngine.Value valueFunction = findGlobalSymbol(ids[i]);
+            Object metaObject;
+            PolyglotEngine.Instrument instr = vm().getInstruments().get(TckInstrument.ID);
+            instr.setEnabled(true);
+            try {
+                Object value = valueFunction.execute(JavaInterop.asTruffleObject(null)).get();
+                TckInstrument tckInstrument = instr.lookup(TckInstrument.class);
+                assertNotNull(tckInstrument);
+                Field targetField = PolyglotEngine.Value.class.getDeclaredField("target");
+                targetField.setAccessible(true);
+                RootCallTarget rct = (RootCallTarget) targetField.get(valueFunction);
+                TruffleInstrument.Env env = tckInstrument.getEnvironment();
+                assertNotNull(env);
+                metaObject = env.findMetaObject(rct.getRootNode(), value);
+            } finally {
+                instr.setEnabled(false);
+            }
+            PolyglotEngine.Value moFunction = findGlobalSymbol(ids[i + 1]);
+            Object mo = moFunction.execute(JavaInterop.asTruffleObject(null)).get();
+
+            assertEquals(mo, metaObject);
+        }
+    }
+
+    /** @since 0.22 */
+    @Test
+    public void testValueWithSource() throws Exception {
+        String id = valueWithSource();
+        if (id == null) {
+            return;
+        }
+        PolyglotEngine.Value valueFunction = findGlobalSymbol(id);
+        SourceSection sourceLocation;
+        PolyglotEngine.Instrument instr = vm().getInstruments().get(TckInstrument.ID);
+        instr.setEnabled(true);
+        try {
+            Object value = valueFunction.execute(JavaInterop.asTruffleObject(null)).get();
+            TckInstrument tckInstrument = instr.lookup(TckInstrument.class);
+            assertNotNull(tckInstrument);
+            Field targetField = PolyglotEngine.Value.class.getDeclaredField("target");
+            targetField.setAccessible(true);
+            RootCallTarget rct = (RootCallTarget) targetField.get(valueFunction);
+            TruffleInstrument.Env env = tckInstrument.getEnvironment();
+            assertNotNull(env);
+            sourceLocation = env.findSourceLocation(rct.getRootNode(), value);
+            assertNotNull(sourceLocation);
+            List<SourceSection> lss = env.getInstrumenter().querySourceSections(SourceSectionFilter.ANY);
+            assertTrue("Source section not among loaded sections", lss.contains(sourceLocation));
+        } finally {
+            instr.setEnabled(false);
+        }
     }
 
     private static void putDoubles(byte[] buffer, double[] values) {

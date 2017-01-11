@@ -43,8 +43,10 @@ public abstract class TVMCI {
      * @since 0.12
      */
     protected TVMCI() {
-        // export only for com.oracle.graal.truffle and com.oracle.truffle.api.impl
-        assert getClass().getPackage().getName().equals("com.oracle.graal.truffle") || getClass().getPackage().getName().equals("com.oracle.truffle.api.impl");
+        // export only for select packages
+        assert getClass().getPackage().getName().equals("org.graalvm.compiler.truffle") ||
+                        getClass().getPackage().getName().equals("com.oracle.graal.truffle") ||
+                        getClass().getPackage().getName().equals("com.oracle.truffle.api.impl");
     }
 
     /**

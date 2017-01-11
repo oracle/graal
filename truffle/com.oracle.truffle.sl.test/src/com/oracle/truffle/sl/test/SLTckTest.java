@@ -147,6 +147,27 @@ public class SLTckTest extends TruffleTCK {
                     "}\n" +
                     "function isExecutableOfForeign(o) {\n" +
                     "  return isExecutable(o);\n" +
+                    "}\n" +
+                    "function numberValue() {\n" +
+                    "  return 42;\n" +
+                    "}\n" +
+                    "function numberType() {\n" +
+                    "  return \"Number\";\n" +
+                    "}\n" +
+                    "function stringValue() {\n" +
+                    "  return \"42\";\n" +
+                    "}\n" +
+                    "function stringType() {\n" +
+                    "  return \"String\";\n" +
+                    "}\n" +
+                    "function functionValue() {\n" +
+                    "  return functionValue;\n" +
+                    "}\n" +
+                    "function functionType() {\n" +
+                    "  return \"Function\";\n" +
+                    "}\n" +
+                    "function valueWithSource() {\n" +
+                    "  return numberValue;\n" +
                     "}\n"
                         ).name("SL TCK").mimeType(SLLanguage.MIME_TYPE
             ).build()
@@ -287,12 +308,7 @@ public class SLTckTest extends TruffleTCK {
 
     @Override
     protected String multiplyCode(String firstName, String secondName) {
-        // @formatter:off
-        return
-            "function main(" + firstName + ", " + secondName + ") {\n" +
-            "  return " + firstName + " * " + secondName + ";\n" +
-            "}\n";
-        // @formatter:on
+        return firstName + " * " + secondName;
     }
 
     @Override
@@ -343,4 +359,16 @@ public class SLTckTest extends TruffleTCK {
     protected void assertDouble(String msg, double expectedValue, double actualValue) {
         // don't compare doubles, SL had to convert them to longs
     }
+
+    @Override
+    protected String[] metaObjects() {
+        return new String[]{"numberValue", "numberType", "stringValue", "stringType",
+                        "functionValue", "functionType"};
+    }
+
+    @Override
+    protected String valueWithSource() {
+        return "valueWithSource";
+    }
+
 }

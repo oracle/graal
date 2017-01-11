@@ -122,7 +122,7 @@ public abstract class SLDispatchNode extends Node {
      * specified in <code>INLINE_CACHE_SIZE</code>. Such calls are not optimized any further, e.g.,
      * no method inlining is performed.
      */
-    @Specialization(contains = "doDirect")
+    @Specialization(replaces = "doDirect")
     protected static Object doIndirect(VirtualFrame frame, SLFunction function, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode) {
         /*

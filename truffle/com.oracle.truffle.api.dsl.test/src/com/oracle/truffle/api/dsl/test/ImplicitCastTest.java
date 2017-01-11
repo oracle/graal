@@ -133,7 +133,7 @@ public class ImplicitCastTest {
             throw new RuntimeException();
         }
 
-        @Specialization(contains = "op1")
+        @Specialization(replaces = "op1")
         public boolean op2(boolean value) {
             return value;
         }
@@ -168,7 +168,7 @@ public class ImplicitCastTest {
             throw new RuntimeException();
         }
 
-        @Specialization(contains = "op1")
+        @Specialization(replaces = "op1")
         public boolean op2(boolean v0, boolean v1) {
             return v0 && v1;
         }

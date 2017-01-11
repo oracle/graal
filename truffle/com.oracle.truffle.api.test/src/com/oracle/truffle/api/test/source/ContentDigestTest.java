@@ -30,6 +30,8 @@ import java.util.Random;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.test.ReflectionUtils;
+
 public class ContentDigestTest {
     @Test
     public void emptyMD2() throws Exception {
@@ -72,7 +74,7 @@ public class ContentDigestTest {
         String expecting = new BigInteger(1, result).toString(16);
 
         Method m = Class.forName("com.oracle.truffle.api.source.Content").getDeclaredMethod("digest", byte[].class, int.class, int.class);
-        m.setAccessible(true);
+        ReflectionUtils.setAccessible(m, true);
         String own = (String) m.invoke(null, arr, 0, arr.length);
 
         Assert.assertEquals(msg, expecting, own);

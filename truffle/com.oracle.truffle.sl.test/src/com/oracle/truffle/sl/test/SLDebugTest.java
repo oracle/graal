@@ -65,6 +65,7 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
@@ -384,6 +385,86 @@ public class SLDebugTest {
                 assertEquals("p21", p21.getName());
                 assertEquals("21", p21.as(String.class));
                 assertFalse(propertiesIt.hasNext());
+            });
+
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testMetaObjects() {
+        final Source varsSource = slCode("function main() {\n" +
+                        "  a = doNull();\n" +
+                        "  b = 10 == 10;\n" +
+                        "  c = 10;\n" +
+                        "  cBig = 1000000000*1000000000*1000000000*1000000000;\n" +
+                        "  d = \"str\";\n" +
+                        "  e = new();\n" +
+                        "  f = doNull;\n" +
+                        "  return;\n" +
+                        "}\n" +
+                        "function doNull() {}\n");
+
+        try (DebuggerSession session = startSession()) {
+            session.install(Breakpoint.newBuilder(varsSource).lineIs(9).build());
+            startEval(varsSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+
+                DebugValue v = frame.getValue("a");
+                assertEquals("Null", v.getMetaObject().as(String.class));
+                v = frame.getValue("b");
+                assertEquals("Boolean", v.getMetaObject().as(String.class));
+                v = frame.getValue("c");
+                assertEquals("Number", v.getMetaObject().as(String.class));
+                v = frame.getValue("cBig");
+                assertEquals("Number", v.getMetaObject().as(String.class));
+                v = frame.getValue("d");
+                assertEquals("String", v.getMetaObject().as(String.class));
+                v = frame.getValue("e");
+                assertEquals("Object", v.getMetaObject().as(String.class));
+                v = frame.getValue("f");
+                assertEquals("Function", v.getMetaObject().as(String.class));
+            });
+
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testSourceLocation() {
+        final Source varsSource = slCode("function main() {\n" +
+                        "  a = doNull();\n" +
+                        "  c = 10;\n" +
+                        "  d = \"str\";\n" +
+                        "  e = new();\n" +
+                        "  f = doNull;\n" +
+                        "  return;\n" +
+                        "}\n" +
+                        "function doNull() {}\n");
+
+        try (DebuggerSession session = startSession()) {
+            session.install(Breakpoint.newBuilder(varsSource).lineIs(7).build());
+            startEval(varsSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+
+                DebugValue v = frame.getValue("a");
+                assertNull(v.getSourceLocation());
+                v = frame.getValue("c");
+                assertNull(v.getSourceLocation());
+                v = frame.getValue("d");
+                assertNull(v.getSourceLocation());
+                v = frame.getValue("e");
+                assertNull(v.getSourceLocation());
+                v = frame.getValue("f");
+                SourceSection sourceLocation = v.getSourceLocation();
+                Assert.assertNotNull(sourceLocation);
+                assertEquals(9, sourceLocation.getStartLine());
+                assertEquals(9, sourceLocation.getEndLine());
+                assertEquals("doNull() {}", sourceLocation.getCode());
             });
 
             expectDone();

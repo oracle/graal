@@ -53,6 +53,7 @@ import java.util.concurrent.locks.Lock;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -61,6 +62,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.internal.DSLOptions;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -87,6 +89,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.AssumptionExpression;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
@@ -364,7 +367,104 @@ public class FlatNodeGenFactory {
 
         clazz.getEnclosedElements().addAll(removeThisMethods.values());
 
+        if (node.isReflectable()) {
+            generateReflectionInfo(clazz);
+        }
+
         return clazz;
+    }
+
+    private void generateReflectionInfo(CodeTypeElement clazz) {
+        clazz.getImplements().add(context.getType(Introspection.Provider.class));
+        CodeExecutableElement reflection = new CodeExecutableElement(modifiers(PUBLIC), context.getType(Introspection.class), "getIntrospectionData");
+
+        CodeTreeBuilder builder = reflection.createBuilder();
+
+        List<SpecializationData> filteredSpecializations = new ArrayList<>();
+        for (SpecializationData s : node.getSpecializations()) {
+            if (s.getMethod() == null) {
+                continue;
+            }
+            filteredSpecializations.add(s);
+        }
+
+        ArrayCodeTypeMirror objectArray = new ArrayCodeTypeMirror(context.getType(Object.class));
+        builder.declaration(objectArray, "data", builder.create().startNewArray(objectArray, CodeTreeBuilder.singleString(String.valueOf(filteredSpecializations.size() + 1))).end().build());
+        builder.declaration(objectArray, "s", (CodeTree) null);
+
+        builder.statement("data[0] = 0"); // declare version 0
+
+        FrameState frameState = FrameState.load(this);
+        builder.tree(state.createLoad(frameState, null));
+        if (requiresExclude()) {
+            builder.tree(exclude.createLoad(frameState, null));
+        }
+
+        int index = 1;
+        for (SpecializationData specialization : filteredSpecializations) {
+            builder.startStatement().string("s = ").startNewArray(objectArray, CodeTreeBuilder.singleString("3")).end().end();
+            builder.startStatement().string("s[0] = ").doubleQuote(specialization.getMethodName()).end();
+
+            builder.startIf().tree(state.createContains(frameState, new Object[]{specialization})).end().startBlock();
+            builder.startStatement().string("s[1] = (byte)0b01 /* active */").end();
+            TypeMirror listType = new DeclaredCodeTypeMirror((TypeElement) context.getDeclaredType(ArrayList.class).asElement(), Arrays.asList(context.getType(Object.class)));
+
+            if (!specialization.getCaches().isEmpty()) {
+                builder.declaration(listType, "cached", "new ArrayList<>()");
+
+                boolean useSpecializationClass = useSpecializationClass(specialization);
+
+                String name = createSpecializationLocalName(specialization);
+
+                if (useSpecializationClass) {
+                    builder.declaration(createSpecializationTypeName(specialization), name, CodeTreeBuilder.singleString(createSpecializationFieldName(specialization)));
+
+                    if (specialization.getMaximumNumberOfInstances() > 1) {
+                        builder.startWhile();
+                    } else {
+                        builder.startIf();
+                    }
+                    builder.string(name, " != null");
+                    builder.end();
+                    builder.startBlock();
+                }
+
+                builder.startStatement().startCall("cached", "add");
+                builder.startStaticCall(context.getType(Arrays.class), "asList");
+                for (CacheExpression cache : specialization.getCaches()) {
+                    builder.startGroup();
+                    builder.tree(createCacheReference(specialization, cache.getParameter()));
+                    builder.end();
+                }
+                builder.end();
+                builder.end().end();
+
+                if (useSpecializationClass) {
+                    if (specialization.getMaximumNumberOfInstances() > 1) {
+                        builder.startStatement().string(name, " = ", name, ".next_").end();
+                    }
+
+                    builder.end(); // cache while or if
+                }
+
+                builder.statement("s[2] = cached");
+            }
+            builder.end();
+            if (mayBeExcluded(specialization)) {
+                builder.startElseIf().tree(exclude.createContains(frameState, new Object[]{specialization})).end().startBlock();
+                builder.startStatement().string("s[1] = (byte)0b10 /* excluded */").end();
+                builder.end();
+            }
+            builder.startElseBlock();
+            builder.startStatement().string("s[1] = (byte)0b00 /* inactive */").end();
+            builder.end();
+            builder.startStatement().string("data[", String.valueOf(index), "] = s").end();
+            index++;
+        }
+
+        builder.startReturn().startStaticCall(context.getType(Introspection.Provider.class), "create").string("data").end().end();
+
+        clazz.add(reflection);
     }
 
     private void createFields(CodeTypeElement clazz) {
@@ -1904,12 +2004,14 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = parent.create();
 
         boolean hasFallthrough = false;
+        boolean hasImplicitCast = false;
         List<IfTriple> cachedTriples = new ArrayList<>();
         for (TypeGuard guard : group.getTypeGuards()) {
             IfTriple triple = createTypeCheckOrCast(frameState, group, guard, mode, false, true);
             if (triple != null) {
                 cachedTriples.add(triple);
             }
+            hasImplicitCast = hasImplicitCast || node.getTypeSystem().hasImplicitSourceTypes(guard.getType());
             if (!mode.isGuardFallback()) {
                 triple = createTypeCheckOrCast(frameState, group, guard, mode, true, true);
                 if (triple != null) {
@@ -2119,15 +2221,15 @@ public class FlatNodeGenFactory {
 
             cachedTriples = IfTriple.optimize(cachedTriples);
 
-            if (!useClass && specialization != null) {
+            if (!useClass && specialization != null && !hasImplicitCast) {
                 IfTriple singleCondition = null;
                 if (cachedTriples.size() == 1) {
                     singleCondition = cachedTriples.get(0);
                 }
                 if (singleCondition != null) {
                     int index = cachedTriples.indexOf(singleCondition);
-                    CodeTree stateCheck = state.createContains(frameState, specializations);
-                    cachedTriples.set(index, new IfTriple(singleCondition.prepare, combineTrees(" || ", stateCheck, singleCondition.condition), singleCondition.statements));
+                    CodeTree stateCheck = state.createNotContains(frameState, specializations);
+                    cachedTriples.set(index, new IfTriple(singleCondition.prepare, combineTrees(" && ", stateCheck, singleCondition.condition), singleCondition.statements));
                     fallbackNeedsState = true;
                 }
             }

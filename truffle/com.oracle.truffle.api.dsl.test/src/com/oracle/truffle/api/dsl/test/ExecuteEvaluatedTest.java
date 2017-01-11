@@ -28,7 +28,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.ShortCircuit;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.DoubleEvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.EvaluatedNodeFactory;
@@ -302,7 +301,8 @@ public class ExecuteEvaluatedTest {
 
         public abstract Object execute3(VirtualFrame frame, Object value, boolean hasB, Object b);
 
-        @ShortCircuit("b")
+        @SuppressWarnings("deprecation")
+        @com.oracle.truffle.api.dsl.ShortCircuit("b")
         public boolean needsB(Object a) {
             return true;
         }
@@ -323,7 +323,8 @@ public class ExecuteEvaluatedTest {
 
         public abstract Object execute3(VirtualFrame frame, Object value, boolean hasB, Object b);
 
-        @ShortCircuit("b")
+        @SuppressWarnings("deprecation")
+        @com.oracle.truffle.api.dsl.ShortCircuit("b")
         public boolean needsB(Object a) {
             return true;
         }
