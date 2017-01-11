@@ -101,7 +101,7 @@ public class LegacyStepTest extends LegacyAbstractDebugTest {
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
-        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
+        expectSuspendedEvent().checkState(6, false, "CALL(foo)").resume();
         getEngine().eval(loop);
         assertExecutedOK();
     }
@@ -111,7 +111,7 @@ public class LegacyStepTest extends LegacyAbstractDebugTest {
         final Source loop = LegacyTestSource.createCallLoop3("testCallLoopStepInto");
         expectExecutionEvent().stepInto();
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOut();
-        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
+        expectSuspendedEvent().checkState(6, false, "CALL(foo)").resume();
         getEngine().eval(loop);
         assertExecutedOK();
     }

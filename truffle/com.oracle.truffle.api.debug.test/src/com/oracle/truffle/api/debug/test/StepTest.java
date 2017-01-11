@@ -161,7 +161,7 @@ public class StepTest extends AbstractDebugTest {
                 checkState(event, 4, true, "STATEMENT").prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 6, false, "CALL(foo)\n").prepareContinue();
+                checkState(event, 6, false, "CALL(foo)").prepareContinue();
             });
 
             expectDone();
@@ -186,7 +186,7 @@ public class StepTest extends AbstractDebugTest {
                 checkState(event, 4, true, "STATEMENT").prepareStepOut();
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 6, false, "CALL(foo)\n").prepareContinue();
+                checkState(event, 6, false, "CALL(foo)").prepareContinue();
             });
 
             expectDone();
@@ -215,7 +215,7 @@ public class StepTest extends AbstractDebugTest {
                 checkState(event, 6, true, "STATEMENT(CALL(foo))").prepareStepOver(1);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 7, true, "STATEMENT(CALL(foo))\n").prepareStepOver(1);
+                checkState(event, 7, true, "STATEMENT(CALL(foo))").prepareStepOver(1);
             });
 
             expectDone();
@@ -305,7 +305,7 @@ public class StepTest extends AbstractDebugTest {
                 checkState(event, 5, false, "CALL(foo)").prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 6, true, "STATEMENT(CALL(foo))\n").prepareContinue();
+                checkState(event, 6, true, "STATEMENT(CALL(foo))").prepareContinue();
             });
 
             expectDone();
