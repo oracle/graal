@@ -29,8 +29,6 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -48,6 +46,7 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
@@ -116,6 +115,7 @@ public class RecursiveInliningTest extends GraalCompilerTest {
     }
 
     private void testAndTime(String snippet) {
+        initializeForTimeout();
         for (int i = IterationsStart; i < IterationsEnd; i++) {
             StructuredGraph graph = getGraph(snippet, i);
             long elapsed = runAndTimeEarlyReadEliminationPhase(graph);
