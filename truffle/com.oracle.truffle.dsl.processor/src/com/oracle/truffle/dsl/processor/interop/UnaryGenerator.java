@@ -98,7 +98,7 @@ public final class UnaryGenerator extends MessageGenerator {
         if (params.size() != expectedNumberOfArguments) {
             return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject)";
         }
-        return null;
+        return super.checkSignature(method);
     }
 
 }
