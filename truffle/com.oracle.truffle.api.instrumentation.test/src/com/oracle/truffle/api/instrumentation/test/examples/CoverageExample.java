@@ -34,10 +34,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.EXPRESSION;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -48,6 +49,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * Covered statements are printed to the instrument stream which should demonstrate an alternate way
  * of communication from the instrument to the user.
  */
+// BEGIN: com.oracle.truffle.api.instrumentation.test.examples.CoverageExample
 @Registration(id = CoverageExample.ID)
 public final class CoverageExample extends TruffleInstrument {
 
@@ -57,25 +59,38 @@ public final class CoverageExample extends TruffleInstrument {
 
     @Override
     protected void onCreate(final Env env) {
-        final PrintStream out = new PrintStream(env.out());
-        env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventNodeFactory() {
-            public ExecutionEventNode create(final EventContext context) {
-                return new ExecutionEventNode() {
-                    @CompilationFinal private boolean visited;
+        SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
+        SourceSectionFilter filter = builder.tagIs(EXPRESSION).build();
+        Instrumenter instrumenter = env.getInstrumenter();
+        instrumenter.attachFactory(filter, new CoverageEventFactory(env));
+    }
 
-                    @Override
-                    public void onReturnValue(VirtualFrame vFrame, Object result) {
-                        if (!visited) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            visited = true;
-                            out.print(context.getInstrumentedSourceSection().getCharIndex() + " ");
-                            coverage.add(context.getInstrumentedSourceSection());
-                        }
+    private class CoverageEventFactory implements ExecutionEventNodeFactory {
+
+        private final Env env;
+
+        CoverageEventFactory(final Env env) {
+            this.env = env;
+        }
+
+        public ExecutionEventNode create(final EventContext ec) {
+            final PrintStream out = new PrintStream(env.out());
+            return new ExecutionEventNode() {
+                @CompilationFinal private boolean visited;
+
+                @Override
+                public void onReturnValue(VirtualFrame vFrame, Object result) {
+                    if (!visited) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        visited = true;
+                        SourceSection src = ec.getInstrumentedSourceSection();
+                        out.print(src.getCharIndex() + " ");
+                        coverage.add(src);
                     }
-
-                };
-            }
-        });
+                }
+            };
+        }
     }
 
 }
+// END: com.oracle.truffle.api.instrumentation.test.examples.CoverageExample
