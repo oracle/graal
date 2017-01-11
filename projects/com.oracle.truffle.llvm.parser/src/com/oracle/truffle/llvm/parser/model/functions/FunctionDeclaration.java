@@ -30,12 +30,18 @@
 package com.oracle.truffle.llvm.parser.model.functions;
 
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
+import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class FunctionDeclaration extends FunctionType implements Constant {
 
     public FunctionDeclaration(FunctionType type) {
         super(type.getReturnType(), type.getArgumentTypes(), type.isVarArg());
+    }
+
+    @Override
+    public void accept(ConstantVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override
