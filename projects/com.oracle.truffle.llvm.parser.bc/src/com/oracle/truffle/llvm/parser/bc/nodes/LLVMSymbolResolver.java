@@ -128,7 +128,7 @@ public final class LLVMSymbolResolver {
                 final int indexedTypeLength = runtime.getIndexOffset(1, currentType);
                 currentType = currentType.getIndexType(1);
                 final LLVMExpressionNode indexNode = resolve(indexSymbol);
-                currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, indexLLVMBaseType, currentAddress, indexNode, indexedTypeLength);
+                currentAddress = runtime.getNodeFactoryFacade().createTypedElementPointer(runtime, indexLLVMBaseType, currentAddress, indexNode, indexedTypeLength, currentType);
 
             } else {
                 // the index is a constant integer
@@ -153,7 +153,7 @@ public final class LLVMSymbolResolver {
                         default:
                             throw new AssertionError();
                     }
-                    currentAddress = runtime.getNodeFactoryFacade().createGetElementPtr(runtime, indexLLVMBaseType, currentAddress, indexNode, addressOffset);
+                    currentAddress = runtime.getNodeFactoryFacade().createTypedElementPointer(runtime, indexLLVMBaseType, currentAddress, indexNode, addressOffset, currentType);
                 }
             }
         }

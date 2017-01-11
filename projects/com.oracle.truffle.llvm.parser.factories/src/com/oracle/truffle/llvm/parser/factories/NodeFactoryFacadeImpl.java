@@ -228,7 +228,13 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createGetElementPtr(LLVMParserRuntime runtime, LLVMBaseType llvmBaseType, LLVMExpressionNode currentAddress, LLVMExpressionNode valueRef, int indexedTypeLength) {
-        return LLVMGetElementPtrFactory.create(llvmBaseType, currentAddress, valueRef, indexedTypeLength);
+        return LLVMGetElementPtrFactory.create(llvmBaseType, currentAddress, valueRef, indexedTypeLength, null);
+    }
+
+    @Override
+    public LLVMExpressionNode createTypedElementPointer(LLVMParserRuntime runtime, LLVMBaseType indexType, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, int indexedTypeLength,
+                    Type targetType) {
+        return LLVMGetElementPtrFactory.create(indexType, aggregateAddress, index, indexedTypeLength, targetType);
     }
 
     @Override
