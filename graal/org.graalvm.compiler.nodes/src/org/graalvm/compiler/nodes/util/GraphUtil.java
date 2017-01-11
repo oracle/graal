@@ -23,6 +23,7 @@
 package org.graalvm.compiler.nodes.util;
 
 import static org.graalvm.compiler.graph.Graph.Options.VerifyGraalGraphs;
+import static org.graalvm.compiler.nodes.util.GraphUtil.Options.VerifyKillCFGUnusedNodes;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,6 +67,9 @@ import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValue;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
@@ -77,6 +81,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class GraphUtil {
 
+    public static class Options {
+        @Option(help = "Verify that there are no new unused nodes when performing killCFG", type = OptionType.Debug)//
+        public static final OptionValue<Boolean> VerifyKillCFGUnusedNodes = new OptionValue<>(false);
+    }
+
     @SuppressWarnings("try")
     public static void killCFG(FixedNode node, SimplifierTool tool) {
         try (Debug.Scope scope = Debug.scope("KillCFG", node)) {
@@ -84,16 +93,18 @@ public class GraphUtil {
             Set<Node> unsafeNodes = null;
             Graph.NodeEventScope nodeEventScope = null;
             if (VerifyGraalGraphs.getValue()) {
-                Set<Node> collectedUnusedNodes = unusedNodes = CollectionsFactory.newSet();
-                unsafeNodes = collectUnsafeNodes(node.graph());
-                nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
-                    @Override
-                    public void event(Graph.NodeEvent e, Node n) {
-                        if (e == Graph.NodeEvent.ZERO_USAGES && isFloatingNode(n)) {
-                            collectedUnusedNodes.add(n);
+                if (VerifyKillCFGUnusedNodes.getValue()) {
+                    Set<Node> collectedUnusedNodes = unusedNodes = CollectionsFactory.newSet();
+                    nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
+                        @Override
+                        public void event(Graph.NodeEvent e, Node n) {
+                            if (e == Graph.NodeEvent.ZERO_USAGES && isFloatingNode(n)) {
+                                collectedUnusedNodes.add(n);
+                            }
                         }
-                    }
-                });
+                    });
+                }
+                unsafeNodes = collectUnsafeNodes(node.graph());
             }
             Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "Before killCFG %s", node);
             NodeWorkList worklist = killCFG(node, tool, null);
@@ -103,9 +114,11 @@ public class GraphUtil {
                 }
             }
             if (VerifyGraalGraphs.getValue()) {
-                nodeEventScope.close();
-                unusedNodes.removeIf(n -> n.isDeleted());
-                assert unusedNodes.isEmpty() : "New unused nodes: " + unusedNodes;
+                if (VerifyKillCFGUnusedNodes.getValue()) {
+                    nodeEventScope.close();
+                    unusedNodes.removeIf(n -> n.isDeleted());
+                    assert unusedNodes.isEmpty() : "New unused nodes: " + unusedNodes;
+                }
                 Set<Node> newUnsafeNodes = collectUnsafeNodes(node.graph());
                 newUnsafeNodes.removeAll(unsafeNodes);
                 assert newUnsafeNodes.isEmpty() : "New unsafe nodes: " + newUnsafeNodes;
