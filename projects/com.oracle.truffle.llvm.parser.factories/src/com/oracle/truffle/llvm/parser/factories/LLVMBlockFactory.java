@@ -34,7 +34,7 @@ import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMBlockNode.LLVMBlockControlFlowNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
 
 public class LLVMBlockFactory {
 
@@ -44,7 +44,7 @@ public class LLVMBlockFactory {
 
     public static LLVMExpressionNode createFunctionBlock(FrameSlot returnSlot, LLVMBasicBlockNode[] bbs, LLVMStackFrameNuller[][] beforeSlotNullerNodes,
                     LLVMStackFrameNuller[][] afterSlotNullerNodes) {
-        return new LLVMBlockControlFlowNode(bbs, beforeSlotNullerNodes, afterSlotNullerNodes, returnSlot);
+        return new LLVMDispatchBasicBlockNode(bbs, beforeSlotNullerNodes, afterSlotNullerNodes, returnSlot);
     }
 
 }
