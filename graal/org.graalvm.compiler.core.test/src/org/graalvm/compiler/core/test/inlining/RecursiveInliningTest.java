@@ -97,7 +97,7 @@ public class RecursiveInliningTest extends GraalCompilerTest {
     public static final boolean LOG = false;
 
     public static int IterationsStart = 1;
-    public static int IterationsEnd = 128;
+    public static int IterationsEnd = 64;
 
     @Test(timeout = 120_000)
     public void inlineDirectRecursiveLoopCallUnsafeLoad() {
