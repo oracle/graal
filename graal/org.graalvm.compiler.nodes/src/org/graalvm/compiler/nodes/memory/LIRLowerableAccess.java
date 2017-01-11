@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot;
+package org.graalvm.compiler.nodes.memory;
 
-import org.graalvm.compiler.core.match.MatchableNode;
-import org.graalvm.compiler.hotspot.nodes.CompressionNode;
-import org.graalvm.compiler.lir.gen.LIRGenerator;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
 
-/**
- * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
- * to abstract methods from {@link LIRGenerator} and {@link NodeLIRBuilderTool}.
- */
-@MatchableNode(nodeClass = CompressionNode.class, inputs = {"value"})
-public interface HotSpotNodeLIRBuilder {
-
-    void emitPatchReturnAddress(ValueNode address);
-
-    default void emitJumpToExceptionHandler(ValueNode address) {
-        emitPatchReturnAddress(address);
-    }
-
-    void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc);
+public interface LIRLowerableAccess extends LIRLowerable, Access {
+    Stamp getAccessStamp();
 }

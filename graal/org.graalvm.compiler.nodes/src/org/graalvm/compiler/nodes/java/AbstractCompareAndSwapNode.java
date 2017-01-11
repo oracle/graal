@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,11 @@ package org.graalvm.compiler.nodes.java;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -38,26 +37,16 @@ import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-
-import jdk.vm.ci.meta.Value;
-import sun.misc.Unsafe;
 
 /**
- * Represents the lowered version of an atomic read-and-write operation like
- * {@link Unsafe#getAndSetInt(Object, long, int)} .
+ * Low-level atomic compare-and-swap operation.
  */
-@NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_8, size = SIZE_2)
-public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode implements StateSplit, LIRLowerableAccess, MemoryCheckpoint.Single {
-
-    public static final NodeClass<LoweredAtomicReadAndWriteNode> TYPE = NodeClass.create(LoweredAtomicReadAndWriteNode.class);
+@NodeInfo(allowedUsageTypes = {InputType.Value, Memory})
+public abstract class AbstractCompareAndSwapNode extends FixedAccessNode implements StateSplit, LIRLowerableAccess, MemoryCheckpoint.Single {
+    public static final NodeClass<AbstractCompareAndSwapNode> TYPE = NodeClass.create(AbstractCompareAndSwapNode.class);
+    @Input ValueNode expectedValue;
     @Input ValueNode newValue;
     @OptionalInput(State) FrameState stateAfter;
-
-    public LoweredAtomicReadAndWriteNode(AddressNode address, LocationIdentity location, ValueNode newValue, BarrierType barrierType) {
-        super(TYPE, address, location, newValue.stamp().unrestricted(), barrierType);
-        this.newValue = newValue;
-    }
 
     @Override
     public FrameState stateAfter() {
@@ -76,10 +65,20 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
         return true;
     }
 
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(gen.operand(getAddress()), gen.operand(getNewValue()));
-        gen.setResult(this, result);
+    public ValueNode getExpectedValue() {
+        return expectedValue;
+    }
+
+    public ValueNode getNewValue() {
+        return newValue;
+    }
+
+    public AbstractCompareAndSwapNode(NodeClass<? extends AbstractCompareAndSwapNode> c, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue,
+                    BarrierType barrierType, Stamp stamp) {
+        super(c, address, location, stamp, barrierType);
+        assert expectedValue.getStackKind() == newValue.getStackKind();
+        this.expectedValue = expectedValue;
+        this.newValue = newValue;
     }
 
     @Override
@@ -87,12 +86,8 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
         return false;
     }
 
-    public ValueNode getNewValue() {
-        return newValue;
-    }
-
     @Override
     public Stamp getAccessStamp() {
-        return stamp();
+        return expectedValue.stamp().meet(newValue.stamp()).unrestricted();
     }
 }
