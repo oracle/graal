@@ -30,26 +30,44 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMTruffleObject {
     private final TruffleObject object;
     private final long offset;
     private final String name;
+    private final Type type;
 
     public LLVMTruffleObject(TruffleObject object) {
         this(object, 0);
+    }
+
+    public LLVMTruffleObject(TruffleObject object, long offset, Type type) {
+        this.object = object;
+        this.offset = offset;
+        this.name = null;
+        this.type = type;
     }
 
     public LLVMTruffleObject(TruffleObject object, long offset) {
         this.object = object;
         this.offset = offset;
         this.name = null;
+        this.type = null;
     }
 
     public LLVMTruffleObject(TruffleObject object, String name) {
         this.object = object;
         this.offset = 0;
         this.name = name;
+        this.type = null;
+    }
+
+    public LLVMTruffleObject(TruffleObject object, Type type) {
+        this.object = object;
+        this.offset = 0;
+        this.name = null;
+        this.type = type;
     }
 
     public long getOffset() {
@@ -62,6 +80,10 @@ public final class LLVMTruffleObject {
 
     public String getName() {
         return name;
+    }
+
+    public Type getType() {
+        return type;
     }
 
 }

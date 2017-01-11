@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")})
 public abstract class LLVMStoreNode extends LLVMExpressionNode {
@@ -105,7 +106,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization
         public Object execute(VirtualFrame frame, TruffleObject address, byte value) {
-            execute(frame, new LLVMTruffleObject(address), value);
+            execute(frame, new LLVMTruffleObject(address, IntegerType.BYTE), value);
             return null;
         }
     }
@@ -138,7 +139,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Specialization
         public Object execute(VirtualFrame frame, TruffleObject address, int value) {
-            execute(frame, new LLVMTruffleObject(address), value);
+            execute(frame, new LLVMTruffleObject(address, IntegerType.INTEGER), value);
             return null;
         }
 
