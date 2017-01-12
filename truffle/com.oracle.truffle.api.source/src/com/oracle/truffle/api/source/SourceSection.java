@@ -32,9 +32,9 @@ package com.oracle.truffle.api.source;
  * {@link #isAvailable() Unavailable} source sections are compared by identity. Source sections can
  * be used as keys in hash maps.
  *
- * @see Source#createSection(String, int, int, int)
- * @see Source#createSection(String, int, int)
- * @see Source#createSection(String, int)
+ * @see Source#createSection(int)
+ * @see Source#createSection(int, int)
+ * @see Source#createSection(int, int, int)
  * @see Source#createUnavailableSection()
  * @since 0.8 or earlier
  */
@@ -252,7 +252,6 @@ public final class SourceSection {
      * debugging purposes only.
      *
      * @see #getCode()
-     * @see #getShortDescription()
      * @since 0.8 or earlier
      */
     @Override

@@ -89,15 +89,6 @@ import java.util.Objects;
  * methods otherwise {@link MissingMIMETypeException} and/or {@link MissingNameException} are
  * thrown.
  *
- * <!-- <strong>Sub-Source:</strong> A representation of the contents of a sub-range of another
- * {@link Source}.<br>
- * See {@link Source#subSource(Source, int, int)}<br>
- * See {@link Source#subSource(Source, int)}
- * <p>
- * <strong>AppendableSource:</strong> Literal contents are provided by the client, incrementally,
- * after the instance is created.<br>
- * See {@link Source#fromAppendableText(String)}<br>
- * -->
  *
  * <h2>Immutability of {@link Source}</h2>
  *
@@ -338,8 +329,8 @@ public abstract class Source {
      * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
      * evaluated}. The {@link URI} returned by this method should be as unique as possible, yet it
      * can happen that different {@link Source sources} return the same {@link #getURI} - for
-     * example when content of a {@link Source#fromFileName file on a disk} changes and is
-     * re-loaded.
+     * example when content of a {@link Source#newBuilder(java.io.File) file on a disk} changes and
+     * is re-loaded.
      *
      * @return a URI, it's never <code>null</code>
      * @since 0.14
@@ -622,7 +613,8 @@ public abstract class Source {
     /**
      * MIME type that is associated with this source. By default file extensions known to the system
      * are used to determine the MIME type (via registered {@link FileTypeDetector} classes), yet
-     * one can directly {@link #withMimeType(java.lang.String) provide a MIME type} to each source.
+     * one can directly {@link Builder#mimeType(java.lang.String) provide a MIME type} to each
+     * source.
      *
      * @return MIME type of this source or <code>null</code>, if unknown
      * @since 0.8 or earlier
