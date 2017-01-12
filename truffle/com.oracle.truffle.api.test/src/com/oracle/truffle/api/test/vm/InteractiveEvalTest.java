@@ -37,6 +37,8 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.Assert;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class InteractiveEvalTest {
@@ -107,6 +109,27 @@ public class InteractiveEvalTest {
         Assert.assertTrue(strOutput.isEmpty());
     }
 
+    @Test
+    public void isInteractive1() throws UnsupportedEncodingException {
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        PolyglotEngine.Language language = engine.getLanguages().get("application/x-test-specinteract");
+        assertFalse("SpecialInteractive language isn't interactive", language.isInteractive());
+    }
+
+    @Test
+    public void isInteractive2() throws UnsupportedEncodingException {
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        PolyglotEngine.Language language = engine.getLanguages().get("application/x-test-definteract");
+        assertTrue("DefaultInteractive language is interactive", language.isInteractive());
+    }
+
+    @Test
+    public void isInteractive3() throws UnsupportedEncodingException {
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        PolyglotEngine.Language language = engine.getLanguages().get("application/x-test-async");
+        assertTrue("By default a language is interactive", language.isInteractive());
+    }
+
     private static class InteractiveContext {
 
         final Env env;
@@ -158,7 +181,7 @@ public class InteractiveEvalTest {
         }
     }
 
-    @TruffleLanguage.Registration(name = "SpecialInteractive", mimeType = "application/x-test-specinteract", version = "1.0", interactive = true)
+    @TruffleLanguage.Registration(name = "SpecialInteractive", mimeType = "application/x-test-specinteract", version = "1.0", interactive = false)
     public static class SpecialInteractiveLanguage extends TruffleLanguage<InteractiveContext> {
         public static final SpecialInteractiveLanguage INSTANCE = new SpecialInteractiveLanguage();
 
@@ -188,6 +211,11 @@ public class InteractiveEvalTest {
                     return value;
                 }
             });
+        }
+
+        @Override
+        protected boolean isVisible(InteractiveContext context, Object value) {
+            return false;
         }
 
         @Override

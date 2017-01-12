@@ -506,10 +506,10 @@ public class PolyglotEngine {
      * <p>
      * When evaluating an {@link Source#isInteractive() interactive source} the result of the
      * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluation} is
+     * {@link TruffleLanguage#isVisible(java.lang.Object, java.lang.Object) tested to be visible}
+     * and if the value is visible, it gets
      * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) converted to string} and
      * printed to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut standard output}.
-     * Evaluating {@link Source#isInteractive() non-interactive source} doesn't access
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut output stream} in any way.
      *
      * @param source code snippet to execute
      * @return a {@link Value} object that holds result of an execution, never <code>null</code>
@@ -604,15 +604,16 @@ public class PolyglotEngine {
             l.cache.put(source, target);
         }
         Object value = target.call((Object) langTarget);
-        if (source.isInteractive() && !l.isPrintResultOfEval() && value != null) {
-            // print res to standard out stream:
-            String stringResult = Access.LANGS.toString(langTarget[0], findEnv(langTarget[0].getClass()), value);
-            try {
-                PolyglotEngine.this.out.write(stringResult.getBytes(StandardCharsets.UTF_8));
-                PolyglotEngine.this.out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
-            } catch (IOException ioex) {
-                // out stream has problems.
-                throw new IllegalStateException(ioex);
+        if (source.isInteractive()) {
+            String stringResult = Access.LANGS.toString(langTarget[0], findEnv(langTarget[0].getClass()), value, source);
+            if (stringResult != null) {
+                try {
+                    PolyglotEngine.this.out.write(stringResult.getBytes(StandardCharsets.UTF_8));
+                    PolyglotEngine.this.out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
+                } catch (IOException ioex) {
+                    // out stream has problems.
+                    throw new IllegalStateException(ioex);
+                }
             }
         }
         return value;
@@ -1074,7 +1075,7 @@ public class PolyglotEngine {
                 while (unwrapped instanceof EngineTruffleObject) {
                     unwrapped = ((EngineTruffleObject) obj).getDelegate();
                 }
-                return representation.cast(Access.LANGS.toString(language[0], findEnv(clazz), unwrapped));
+                return representation.cast(Access.LANGS.toString(language[0], findEnv(clazz), unwrapped, null));
             }
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);
@@ -1408,28 +1409,17 @@ public class PolyglotEngine {
         }
 
         /**
-         * Test whether the language has a support for interactive evaluation of
-         * {@link Source#isInteractive() interactive sources}. When
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} is called over an
-         * {@link Source#isInteractive() interactive source}, interactive languages print the result
-         * to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) standard
-         * output} or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream)
-         * error output} and can use
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream) standard
-         * input}. Non-interactive languages are not expected to use the polyglot engine streams in
-         * an interactive way and whoever supplies an interactive source is expected to implement an
-         * appropriate response.
+         * Test whether the language has a support for interactive evaluation of {@link Source
+         * sources}. Such languages should be displayed in interactive environments and presented to
+         * the user. This value is specified by {@link Registration#interactive() interactive
+         * attribute} when registering the {@link TruffleLanguage language}.
          *
          * @return <code>true</code> if the language implements an interactive response to
          *         evaluation of interactive sources, <code>false</code> otherwise.
          * @since 0.22
-         * @deprecated No longer useful. The meaning of this method could be misused for other
-         *             purposes than {@link Registration#interactive() intended}, and thus the
-         *             method has been scheduled for removal
          */
-        @Deprecated
         public boolean isInteractive() {
-            return false;
+            return info.isInteractive();
         }
 
         /**
@@ -1438,10 +1428,11 @@ public class PolyglotEngine {
          * <p>
          * When evaluating an {@link Source#isInteractive() interactive source} the result of the
          * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluation} is
+         * {@link TruffleLanguage#isVisible(java.lang.Object, java.lang.Object) tested to be
+         * visible} and if the value is visible, it gets
          * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) converted to string}
          * and printed to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut standard
-         * output}. Evaluating {@link Source#isInteractive() non-interactive source} doesn't access
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut output stream} in any way.
+         * output}.
          *
          * @param source code snippet to execute
          * @return a {@link Value} object that holds result of an execution, never <code>null</code>
@@ -1477,10 +1468,6 @@ public class PolyglotEngine {
             } finally {
                 ExecutionImpl.executionEnded(prev);
             }
-        }
-
-        boolean isPrintResultOfEval() {
-            return info.isInteractive();
         }
 
         TruffleLanguage<?> getImpl(boolean create) {
