@@ -110,21 +110,21 @@ public class InteractiveEvalTest {
     }
 
     @Test
-    public void isInteractive1() throws UnsupportedEncodingException {
+    public void isInteractive1() {
         PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language language = engine.getLanguages().get("application/x-test-specinteract");
         assertFalse("SpecialInteractive language isn't interactive", language.isInteractive());
     }
 
     @Test
-    public void isInteractive2() throws UnsupportedEncodingException {
+    public void isInteractive2() {
         PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language language = engine.getLanguages().get("application/x-test-definteract");
         assertTrue("DefaultInteractive language is interactive", language.isInteractive());
     }
 
     @Test
-    public void isInteractive3() throws UnsupportedEncodingException {
+    public void isInteractive3() {
         PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         PolyglotEngine.Language language = engine.getLanguages().get("application/x-test-async");
         assertTrue("By default a language is interactive", language.isInteractive());
