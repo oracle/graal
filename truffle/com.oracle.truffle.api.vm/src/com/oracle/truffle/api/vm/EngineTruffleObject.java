@@ -27,6 +27,7 @@ package com.oracle.truffle.api.vm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -41,7 +42,11 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
     static {
         try {
             ClassLoader l = EngineTruffleObject.class.getClassLoader();
-            JFO_CLASS = Class.forName("com.oracle.truffle.api.interop.java.JavaFunctionObject", false, l);
+            if (!TruffleOptions.AOT) {
+                JFO_CLASS = Class.forName("com.oracle.truffle.api.interop.java.JavaFunctionObject", false, l);
+            } else {
+                JFO_CLASS = null;
+            }
             JO_CLASS = Class.forName("com.oracle.truffle.api.interop.java.JavaObject", false, l);
         } catch (ClassNotFoundException ex) {
             throw new ExceptionInInitializerError(ex);
