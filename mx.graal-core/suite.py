@@ -1212,6 +1212,19 @@ suite = {
       "workingSets" : "Graal,Truffle,SPARC",
     },
 
+    "org.graalvm.compiler.truffle.hotspot.aarch64" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.hotspot",
+        "org.graalvm.compiler.asm.aarch64",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "1.8",
+      "annotationProcessors" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"],
+      "workingSets" : "Graal,Truffle,AArch64",
+    },
+
     # ------------- Salver -------------
 
     "org.graalvm.compiler.salver" : {
@@ -1379,7 +1392,8 @@ suite = {
       "subDir" : "graal",
       "dependencies" : [
         "org.graalvm.compiler.truffle.hotspot.amd64",
-        "org.graalvm.compiler.truffle.hotspot.sparc"
+        "org.graalvm.compiler.truffle.hotspot.sparc",
+        "org.graalvm.compiler.truffle.hotspot.aarch64",
       ],
       "distDependencies" : [
         "GRAAL_HOTSPOT",
@@ -1462,7 +1476,8 @@ suite = {
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.truffle",
         "org.graalvm.compiler.truffle.hotspot.amd64",
-        "org.graalvm.compiler.truffle.hotspot.sparc"
+        "org.graalvm.compiler.truffle.hotspot.sparc",
+        "org.graalvm.compiler.truffle.hotspot.aarch64",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
