@@ -459,8 +459,8 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Decides whether a given value should be <em>visible</em> for end user. By default this
-     * methods returns <code>true</code> claiming all values are visible.
+     * Decides whether the result of evaluating an interactive source should be printed to stdout.
+     * By default this methods returns <code>true</code> claiming all values are visible.
      * <p>
      * This method affects behavior of {@link com.oracle.truffle.api.vm.PolyglotEngine#eval} - when
      * evaluating an {@link Source#isInteractive() interactive source} the result of the
@@ -1039,7 +1039,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public String toString(TruffleLanguage<?> language, Env env, Object obj, Source interactiveSource) {
+        public String toStringIfVisible(TruffleLanguage<?> language, Env env, Object obj, Source interactiveSource) {
             if (interactiveSource != null && interactiveSource.isInteractive()) {
                 if (!env.langCtx.isVisible(language, obj)) {
                     return null;

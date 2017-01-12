@@ -605,7 +605,7 @@ public class PolyglotEngine {
         }
         Object value = target.call((Object) langTarget);
         if (source.isInteractive()) {
-            String stringResult = Access.LANGS.toString(langTarget[0], findEnv(langTarget[0].getClass()), value, source);
+            String stringResult = Access.LANGS.toStringIfVisible(langTarget[0], findEnv(langTarget[0].getClass()), value, source);
             if (stringResult != null) {
                 try {
                     PolyglotEngine.this.out.write(stringResult.getBytes(StandardCharsets.UTF_8));
@@ -1075,7 +1075,7 @@ public class PolyglotEngine {
                 while (unwrapped instanceof EngineTruffleObject) {
                     unwrapped = ((EngineTruffleObject) obj).getDelegate();
                 }
-                return representation.cast(Access.LANGS.toString(language[0], findEnv(clazz), unwrapped, null));
+                return representation.cast(Access.LANGS.toStringIfVisible(language[0], findEnv(clazz), unwrapped, null));
             }
             if (representation.isInstance(obj)) {
                 return representation.cast(obj);

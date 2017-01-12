@@ -311,7 +311,7 @@ public abstract class TruffleInstrument {
         public String toString(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
             final TruffleLanguage<?> language = AccessorInstrumentHandler.langAccess().findLanguage(env);
-            return AccessorInstrumentHandler.langAccess().toString(language, env, value, null);
+            return AccessorInstrumentHandler.langAccess().toStringIfVisible(language, env, value, null);
         }
 
         /**

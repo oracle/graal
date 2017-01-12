@@ -108,7 +108,7 @@ public abstract class Accessor {
 
         public abstract CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames);
 
-        public abstract String toString(TruffleLanguage<?> language, Env env, Object obj, Source interactiveSource);
+        public abstract String toStringIfVisible(TruffleLanguage<?> language, Env env, Object obj, Source interactiveSource);
 
         public abstract Object findContext(Env env);
 
