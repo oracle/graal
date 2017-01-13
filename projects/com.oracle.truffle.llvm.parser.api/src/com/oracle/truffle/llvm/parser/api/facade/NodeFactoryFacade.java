@@ -85,7 +85,7 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createLiteral(LLVMParserRuntime runtime, Object value, LLVMBaseType type);
 
-    LLVMExpressionNode createSimpleConstantNoArray(LLVMParserRuntime runtime, String stringValue, LLVMBaseType instructionType, Type type);
+    LLVMExpressionNode createSimpleConstantNoArray(LLVMParserRuntime runtime, Object constant, LLVMBaseType instructionType, Type type);
 
     LLVMExpressionNode createVectorLiteralNode(LLVMParserRuntime runtime, List<LLVMExpressionNode> listValues, LLVMExpressionNode target, LLVMBaseType type);
 

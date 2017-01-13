@@ -149,8 +149,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createSimpleConstantNoArray(LLVMParserRuntime runtime, String stringValue, LLVMBaseType instructionType, Type type) {
-        return LLVMLiteralFactory.createSimpleConstantNoArray(stringValue, instructionType, type);
+    public LLVMExpressionNode createSimpleConstantNoArray(LLVMParserRuntime runtime, Object constant, LLVMBaseType instructionType, Type type) {
+        return LLVMLiteralFactory.createSimpleConstantNoArray(constant, instructionType, type);
     }
 
     @Override
