@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -42,6 +43,12 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
 public final class LLVMTruffleBinary {
+    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
+        if (value.getOffset() != 0 || value.getName() != null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalAccessError("Pointee must be unmodified");
+        }
+    }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleIsBoxed extends LLVMIntrinsic {
@@ -50,9 +57,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            if (value.getOffset() != 0 || value.getName() != null) {
-                throw new IllegalAccessError("Pointee must be unmodified");
-            }
+            checkLLVMTruffleObject(value);
             return ForeignAccess.sendIsBoxed(foreignIsBoxed, frame, value.getObject());
         }
 
@@ -69,9 +74,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            if (value.getOffset() != 0 || value.getName() != null) {
-                throw new IllegalAccessError("Pointee must be unmodified");
-            }
+            checkLLVMTruffleObject(value);
             return ForeignAccess.sendIsExecutable(foreignIsExecutable, frame, value.getObject());
         }
 
@@ -88,9 +91,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            if (value.getOffset() != 0 || value.getName() != null) {
-                throw new IllegalAccessError("Pointee must be unmodified");
-            }
+            checkLLVMTruffleObject(value);
             return ForeignAccess.sendIsNull(foreignIsNull, frame, value.getObject());
         }
 
@@ -107,9 +108,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            if (value.getOffset() != 0 || value.getName() != null) {
-                throw new IllegalAccessError("Pointee must be unmodified");
-            }
+            checkLLVMTruffleObject(value);
             return ForeignAccess.sendHasSize(foreignHasSize, frame, value.getObject());
         }
 

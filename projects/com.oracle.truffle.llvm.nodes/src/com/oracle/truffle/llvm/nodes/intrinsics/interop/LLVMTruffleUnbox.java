@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -42,150 +43,41 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
-public final class LLVMTruffleUnbox {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
 
-    private static Object doUnbox(VirtualFrame frame, Node foreignUnbox, LLVMTruffleObject value, ToLLVMNode toLLVM, Class<?> expectedType) {
+    @Child private Node foreignUnbox = Message.UNBOX.createNode();
+    @Child private ToLLVMNode toLLVM;
+
+    public LLVMTruffleUnbox(ToLLVMNode toLLVMNode) {
+        this.toLLVM = toLLVMNode;
+    }
+
+    @Specialization
+    public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
+        checkLLVMTruffleObject(value);
+        return doUnbox(frame, value.getObject());
+    }
+
+    @Specialization
+    public Object executeIntrinsic(VirtualFrame frame, TruffleObject value) {
+        return doUnbox(frame, value);
+    }
+
+    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
+        if (value.getOffset() != 0 || value.getName() != null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalAccessError("Pointee must be unmodified");
+        }
+    }
+
+    private Object doUnbox(VirtualFrame frame, TruffleObject value) {
         try {
-            if (value.getOffset() != 0 || value.getName() != null) {
-                throw new IllegalAccessError("Pointee must be unmodified");
-            }
-            Object rawValue = ForeignAccess.sendUnbox(foreignUnbox, frame, value.getObject());
-            return toLLVM.convert(frame, rawValue, expectedType);
+            Object rawValue = ForeignAccess.sendUnbox(foreignUnbox, frame, value);
+            return toLLVM.executeWithTarget(frame, rawValue);
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleUnboxP extends LLVMIntrinsic {
-
-        @Child private Node foreignUnbox = Message.UNBOX.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = TruffleObject.class;
-
-        @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            return doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return executeIntrinsic(frame, new LLVMTruffleObject(value));
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleUnboxI extends LLVMIntrinsic {
-
-        @Child private Node foreignUnbox = Message.UNBOX.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = int.class;
-
-        @Specialization
-        public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            return (int) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public int executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return executeIntrinsic(frame, new LLVMTruffleObject(value));
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleUnboxL extends LLVMIntrinsic {
-
-        @Child private Node foreignUnbox = Message.UNBOX.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = long.class;
-
-        @Specialization
-        public long executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            return (long) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public long executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return executeIntrinsic(frame, new LLVMTruffleObject(value));
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleUnboxC extends LLVMIntrinsic {
-
-        @Child private Node foreignUnbox = Message.UNBOX.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = byte.class;
-
-        @Specialization
-        public byte executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            return (byte) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public byte executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return executeIntrinsic(frame, new LLVMTruffleObject(value));
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleUnboxF extends LLVMIntrinsic {
-
-        @Child private Node foreignUnbox = Message.UNBOX.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = float.class;
-
-        @Specialization
-        public float executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            return (float) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public float executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return executeIntrinsic(frame, new LLVMTruffleObject(value));
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleUnboxD extends LLVMIntrinsic {
-
-        @Child private Node foreignUnbox = Message.UNBOX.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = double.class;
-
-        @Specialization
-        public double executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            return (double) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public double executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return executeIntrinsic(frame, new LLVMTruffleObject(value));
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleUnboxB extends LLVMIntrinsic {
-
-        @Child private Node foreignUnbox = Message.UNBOX.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = boolean.class;
-
-        @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-            return (boolean) doUnbox(frame, foreignUnbox, value, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return executeIntrinsic(frame, new LLVMTruffleObject(value));
-        }
-    }
 }

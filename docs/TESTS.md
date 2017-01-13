@@ -1,11 +1,25 @@
 # Sulong test cases
 
-You can use `mx su-tests` to run all the test cases. You can selectively
-run one or several test suites with `mx su-tests <test suite names>`.
-The most important test cases are `mx su-tests sulong` (Sulong's own
-test suite which mostly consists of C files), `mx su-tests gcc`
-(selected GCC test cases), and `mx su-tests llvm` (selected LLVM test cases).
-To display the test suite names and further options, use `mx su-tests -h`.
+You can use `mx su-suite` to run all the test cases. You can selectively
+run one or several test suites with `mx su-suite <test suite names>`.
+The most important test cases are `mx su-suite sulong` (Sulong's own
+test suite which mostly consists of C files), `mx su-suite gcc`
+(selected GCC test cases), and `mx su-suite llvm` (selected LLVM test cases).
+
+The `mx su-suite` command is a conventient command that translates to
+`mx unittest <test suite class name>` and ensures that all path and options are set.
+For example, `mx su-suite sulong` corresponds to `mx unittest SulongSuite`.
+If you are in Sulongs root directory, you can use `mx unittest` as a direct
+replacement.
+
+To attach a debugger to Sulong tests, run `mx -d unittest SulongSuite` or
+`mx -d su-suite sulong`.
+To get a verbose output of all tests that run as part of a suite, run
+`mx -v su-suite sulong`. This also prints names for all individual tests.
+You can use the test names to run a single test of a suite.
+For example, `test[c/max-unsigned-short-to-float-cast.c]` is part of the
+SulongSuite. You can run this single test using
+`mx unittest SulongSuite#test[c/max-unsigned-short-to-float-cast.c]`
 
 The test cases consist of LLVM IR, C, C++, and Fortran files. While
 Sulong's Truffle LLVM IR interpreter can directly execute the LLVM IR
@@ -15,7 +29,7 @@ before executing them.
 ## Test case options
 
 You can pass VM arguments as the last argument to the test runner. For
-example, you can use `mx su-tests sulong -Dsulong.Debug=true` to get useful
+example, you can use `mx su-suite sulong -Dsulong.Debug=true` to get useful
 information for debugging the test cases. With `mx su-options` you can
 get a complete list of options that you can use with Sulong.
 
@@ -44,41 +58,19 @@ exclude files from this discovery, there are also `.exclude` files in
 the suite configuration, which are useful for test cases that crash the
 JVM process or which will not be supported by Sulong in the near future.
 
-## Local vs. remote tests
-
-The test suite contains local and remote tests. Local tests are executed
-in the same JVM process as the test suite is started. Remote test cases
-are executed in a separate (remote) JVM process.
-
-We start such remote processes to capture `stdout` and `stderr` of the tests.
-Sulong can call native functions such as `printf` that do not use Java's
-`System.out` or `System.err`, but directly communicate with the operating
-system to print the output. By starting the remote process we can capture
-the process output and then compare it with our reference output.
-
-Thus, remote test cases compare both the exit values and the process output,
-while local test cases only compare the exit value with the reference value.
-
-The table below shows in `type` which test suites are local, and which ones
-are remote test cases.
-
 ## Test Suites
 
-| test suite | type   | config | description                              |
-|------------|--------|--------|------------------------------------------|
-| llvm       | remote | yes    | LLVM's test suite                        |
-| llvm-bc    | remote | yes    | LLVM's test suite for BitCode parser     |
-| interop    | local  | no     | Truffle interoperability test suite      |
-| polyglot   | local  | no     | Minimal Polyglot engine test             |
-| tck        | local  | no     | Test suite to certify Truffle compliance |
-| lifetime   | local  | no     | Tests the lifetime of variables          |
-| nwcc       | remote | yes    | Test suite of the NWCC compiler          |
-| asm        | local  | no     | Inline assembler tests                   |
-| sulong     | local  | no     | Sulong's own primary test suite          |
-| gcc        | local  | yes    | GCC's test suite                         |
-| gcc-bc     | local  | yes    | GCC's test suite for BitCode parser      |
-| main-arg   | local  | no     | Tests arguments to the main function     |
-| bench      | local  | no     | Language Benchmark game benchmarks       |
-| compile    | local  | yes    | GCC's compile-only test cases            |
-| argon2     | local  | no     | Argon2 hash test case                    |
-| types      | local  | no     | Type tests for the 80 bit float          |
+| test suite       | Class Name             | description                     |
+|------------------|------------------------|---------------------------------|
+| llvm             | LLVMSuite              | LLVM's test suite               |
+| parserTorture    | ParserTortureSuite     | Parser test using GCC suite     |
+| interop          | LLVMInteropTest        | Test Truffle interoperability   |
+| polyglot         | TestPolyGlotEngine     | Minimal Polyglot engine test    |
+| tck              | LLVMTckTest            | Certify Truffle compliance      |
+| lifetimeanalysis | LifetimeAnaylysisSuite | Tests the lifetime of variables |
+| nwcc             | NWCCSuite              | Test suite of the NWCC compiler |
+| assembly         | InlineAssemblyTest     | Inline assembler tests          |
+| sulong           | SulongSuite            | Sulong's own primary test suite |
+| gcc              | GCCSuite               | GCC's test suite                |
+| arguments        | MainArgsTest           | Tests main args passing         |
+| shootout         | ShootoutsSuite         | Language Benchmark game tests   |

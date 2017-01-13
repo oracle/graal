@@ -76,7 +76,7 @@ public abstract class LLVMCallNode {
 
     public static final int ARG_START_INDEX = 1;
 
-    private static Object doExecute(VirtualFrame frame, Node foreignExecute, TruffleObject value, Object[] rawArgs, ToLLVMNode toLLVM, LLVMRuntimeType expectedType) {
+    private static Object doExecute(VirtualFrame frame, Node foreignExecute, TruffleObject value, Object[] rawArgs, ToLLVMNode toLLVM) {
         int argsLength = rawArgs.length - ARG_START_INDEX;
         Object[] args = new Object[argsLength];
         for (int i = ARG_START_INDEX, j = 0; i < rawArgs.length; i++, j++) {
@@ -84,7 +84,7 @@ public abstract class LLVMCallNode {
         }
         try {
             Object rawValue = ForeignAccess.sendExecute(foreignExecute, frame, value, args);
-            return toLLVM.convert(frame, rawValue, expectedType);
+            return toLLVM.executeWithTarget(frame, rawValue);
         } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             throw new IllegalStateException(e);
         }
@@ -303,13 +303,14 @@ public abstract class LLVMCallNode {
 
         @Child private LLVMFunctionCallChain chain;
         @Child private LLVMExpressionNode functionCallNode;
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
+        @Child private ToLLVMNode toLLVM;
         @Child private Node foreignExecute;
 
         public LLVMFunctionCallChainStartNode(LLVMExpressionNode functionCallNode, LLVMFunctionCallChain chain, LLVMExpressionNode[] args, LLVMType[] argsTypes) {
             super(args, argsTypes);
             this.functionCallNode = functionCallNode;
             this.chain = chain;
+            this.toLLVM = ToLLVMNode.createNode(ToLLVMNode.convert(chain.returnType));
         }
 
         @Override
@@ -324,7 +325,7 @@ public abstract class LLVMCallNode {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         foreignExecute = insert(Message.createExecute(getFunctionArgumentLength(frame)).createNode());
                     }
-                    return doExecute(frame, foreignExecute, function, args, toLLVM, chain.returnType);
+                    return doExecute(frame, foreignExecute, function, args, toLLVM);
                 }
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();
