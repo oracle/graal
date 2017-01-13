@@ -35,31 +35,31 @@ import com.oracle.truffle.llvm.option.OptionCategory;
 @OptionCategory(name = "Debug Options")
 abstract class SulongDebugOption {
 
-    @Option(commandLineName = "Debug", help = "Turns debugging on/off.", name = "debug") //
-    protected static final Boolean DEBUG = false;
+    @Option(commandLineName = "Debug", help = "Turns debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "debug") //
+    protected static final String DEBUG = String.valueOf(false);
 
-    @Option(commandLineName = "Verbose", help = "Enables verbose printing of debugging information.", name = "verbose") //
-    protected static final Boolean VERBOSE = false;
+    @Option(commandLineName = "Verbose", help = "Enables verbose printing of debugging information. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "verbose") //
+    protected static final String VERBOSE = String.valueOf(false);
 
-    @Option(commandLineName = "PrintPerformanceWarnings", help = "Prints performance warnings.", name = "printPerformanceWarnings") //
-    protected static final Boolean PRINT_PERFORMANCE_WARNINGS = false;
+    @Option(commandLineName = "PrintPerformanceWarnings", help = "Prints performance warnings. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "printPerformanceWarnings") //
+    protected static final String PRINT_PERFORMANCE_WARNINGS = String.valueOf(false);
 
     @Option(commandLineName = "PerformanceWarningsAreFatal", help = "Terminates the program after a performance issue is encountered.", name = "performanceWarningsAreFatal") //
     protected static final Boolean PERFORMANCE_WARNING_ARE_FATAL = false;
 
-    @Option(commandLineName = "PrintASTs", help = "Prints the Truffle ASTs for the parsed functions.", name = "printFunctionASTs") //
-    protected static final Boolean PRINT_FUNCTION_ASTS = false;
+    @Option(commandLineName = "PrintASTs", help = "Prints the Truffle ASTs for the parsed functions. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "printFunctionASTs") //
+    protected static final String PRINT_FUNCTION_ASTS = String.valueOf(false);
 
-    @Option(commandLineName = "PrintExecutionTime", help = "Prints the execution time for the main function of the program.", name = "printExecutionTime") //
-    protected static final Boolean PRINT_EXECUTION_TIME = false;
+    @Option(commandLineName = "PrintExecutionTime", help = "Prints the execution time for the main function of the program. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "printExecutionTime") //
+    protected static final String PRINT_EXECUTION_TIME = String.valueOf(false);
 
-    @Option(commandLineName = "PrintNativeCallStats", help = "Outputs stats about native call site frequencies.", name = "printNativeCallStatistics") //
-    protected static final Boolean NATIVE_CALL_STATS = false;
+    @Option(commandLineName = "PrintNativeCallStats", help = "Outputs stats about native call site frequencies. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "printNativeCallStatistics") //
+    protected static final String NATIVE_CALL_STATS = String.valueOf(false);
 
-    @Option(commandLineName = "PrintLifetimeAnalysisStats", help = "Outputs the results of the lifetime analysis (if enabled).", name = "printLifetimeAnalysisStatistics") //
-    protected static final Boolean PRINT_LIFE_TIME_ANALYSIS_STATS = false;
+    @Option(commandLineName = "PrintLifetimeAnalysisStats", help = "Prints the results of the lifetime analysis. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "printLifetimeAnalysisStatistics") //
+    protected static final String PRINT_LIFE_TIME_ANALYSIS_STATS = String.valueOf(false);
 
-    @Option(commandLineName = "TraceExecution", help = "Trace execution, printing each SSA assignment.", name = "traceExecution") //
-    protected static final Boolean TRACE_EXECUTION = false;
+    @Option(commandLineName = "TraceExecution", help = "Trace execution, printing each SSA assignment. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "traceExecution") //
+    protected static final String TRACE_EXECUTION = String.valueOf(false);
 
 }

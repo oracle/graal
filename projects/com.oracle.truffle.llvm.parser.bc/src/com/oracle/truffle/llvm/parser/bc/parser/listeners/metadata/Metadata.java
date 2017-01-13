@@ -76,7 +76,7 @@ public class Metadata implements ParserListener {
     }
 
     protected void printMetadataDebugMsg() {
-        LLVMLogger.info("!" + (metadata.getCurrentIndex() - 1) + " - " + metadata.getAbsolute(metadata.size() - 1));
+        LLVMLogger.print(LLVMOptions.DEBUG.verbose()).accept(String.format("!%d - %s", metadata.getCurrentIndex() - 1, metadata.getAbsolute(metadata.size() - 1)));
     }
 
     protected static long unrotateSign(long u) {
@@ -189,7 +189,7 @@ public class Metadata implements ParserListener {
                 break;
         }
 
-        if (LLVMOptions.DEBUG.verbose()) {
+        if (!LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.verbose())) {
             printMetadataDebugMsg();
         }
     }

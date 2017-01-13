@@ -58,6 +58,8 @@ public class NativeLookup {
 
     static final int LOOKUP_FAILURE = 0;
 
+    private static final boolean printNativeCallStats = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printNativeCallStatistics());
+
     private static NativeFunctionInterface nfi;
 
     private List<NativeLibraryHandle> libraryHandles;
@@ -101,7 +103,7 @@ public class NativeLookup {
     }
 
     public NativeLookup() {
-        if (LLVMOptions.DEBUG.printNativeCallStatistics()) {
+        if (printNativeCallStats) {
             nativeFunctionLookupStats = new TreeMap<>();
         } else {
             nativeFunctionLookupStats = null;
@@ -178,7 +180,7 @@ public class NativeLookup {
         } else {
             functionHandle = getNFI().getFunctionHandle(getLibraryHandlesArray(), functionName, retType, paramTypes);
         }
-        if (LLVMOptions.DEBUG.printNativeCallStatistics() && functionHandle != null) {
+        if (printNativeCallStats && functionHandle != null) {
             recordNativeFunctionCallSite(function);
         }
         return functionHandle;
