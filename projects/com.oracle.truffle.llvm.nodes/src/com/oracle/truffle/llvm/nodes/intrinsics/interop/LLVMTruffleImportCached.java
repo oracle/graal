@@ -32,41 +32,35 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleImportCachedFactory.ImportCacheNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
 
-    @Child private ImportCache cache = ImportCacheNodeGen.create();
-
-    @Specialization
-    public Object executeIntrinsic(LLVMAddress value) {
-        String id = LLVMTruffleIntrinsicUtil.readString(value);
-        return cache.execute(id);
+    protected static Object resolve(String name) {
+        return LLVMLanguage.INSTANCE.getEnvironment().importSymbol(name);
     }
 
-    abstract static class ImportCache extends Node {
+    protected static boolean stringEquals(String s1, String s2) {
+        return s1.equals(s2);
+    }
 
-        public abstract Object execute(String name);
+    protected static String getString(LLVMAddress value) {
+        return LLVMTruffleIntrinsicUtil.readString(value);
+    }
 
-        @SuppressWarnings("unused")
-        @Specialization(limit = "10", guards = {"stringEquals(name, cachedName)"})
-        public Object importValue(String name, @Cached("name") String cachedName, @Cached("resolve(cachedName)") Object value) {
-            return value;
-        }
+    protected static long getPtr(LLVMAddress value) {
+        return value.getVal();
+    }
 
-        protected static Object resolve(String name) {
-            return LLVMLanguage.INSTANCE.getEnvironment().importSymbol(name);
-        }
-
-        protected static boolean stringEquals(String s1, String s2) {
-            return s1.equals(s2);
-        }
+    @SuppressWarnings("unused")
+    @Specialization(limit = "10", guards = {"getPtr(value) == cachedAddress"})
+    public Object executeIntrinsic(LLVMAddress value, @Cached("getPtr(value)") long cachedAddress, @Cached("getString(value)") String cachedName,
+                    @Cached("resolve(cachedName)") Object cachedValue) {
+        return cachedValue;
     }
 
 }
