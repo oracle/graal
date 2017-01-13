@@ -618,7 +618,7 @@ def _parseVmArgs(args, addDefaultArgs=True):
         for deployedModule in deployedModules:
             _addToModulepath(deployedModule.modulepath)
             _addToModulepath([deployedModule])
-        
+
         # Update added exports to include concealed JDK packages required by Graal
         addedExports = {}
         args = _extract_added_exports(args, addedExports)
@@ -648,13 +648,13 @@ def _parseVmArgs(args, addDefaultArgs=True):
                 break
         if not mpUpdated:
             argsPrefix.append('--module-path=' + os.pathsep.join([m.jarpath for m in graalModulepath]))
-            
+
         if graalUpgrademodulepath:
             argsPrefix.append('--upgrade-module-path=' + os.pathsep.join([m.jarpath for m in graalUpgrademodulepath]))
             for m in graalUpgrademodulepath:
                 # The upgraded module may not be upgradeable by default. In this case, supplying
                 # a non-existent jar file as a patch for the module makes it upgradeable (i.e.,
-                # disables the hash based checking of the module's contents).  
+                # disables the hash based checking of the module's contents).
                 argsPrefix.append('--patch-module=' + m.name + '=.jar')
 
     if '-version' in args:
