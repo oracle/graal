@@ -28,8 +28,6 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -53,6 +51,7 @@ import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.truffle.nodes.ObjectLocationIdentity;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
+import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -146,7 +145,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         // get UnsafeAccessImpl.unsafeGetInt intrinsified
         Registration r = new Registration(conf.getPlugins().getInvocationPlugins(), MyUnsafeAccess.class);
-        TruffleGraphBuilderPlugins.registerUnsafeLoadStorePlugins(r, JavaKind.Int);
+        TruffleGraphBuilderPlugins.registerUnsafeLoadStorePlugins(r, null, JavaKind.Int);
         // get UnsafeAccess.getInt inlined
         conf.getPlugins().appendInlineInvokePlugin(new InlineEverythingPlugin());
         return super.editGraphBuilderConfiguration(conf);

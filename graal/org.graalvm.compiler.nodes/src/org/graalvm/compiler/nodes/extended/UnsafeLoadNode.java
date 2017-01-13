@@ -50,11 +50,11 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
     public static final NodeClass<UnsafeLoadNode> TYPE = NodeClass.create(UnsafeLoadNode.class);
 
     public UnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
+        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, false);
     }
 
     public UnsafeLoadNode(NodeClass<? extends UnsafeLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
-        super(c, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
+        super(c, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, false);
     }
 
     @Override
