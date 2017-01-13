@@ -67,23 +67,14 @@ SULONG_GPP=g++47
 
 ### How can I debug a failing test case?
 
-You can use the Sulong `-Dsulong.Debug=true` option to print the test
-case that is currently executed, e.g. with
-`mx su-tests-sulong -Dsulong.Debug=true`.
-After you identified the failing test case you can run the bitcode file
-with `mx su-run <file name>.ll`. To see other useful debug
-options you can invoke `mx su-options` and look at the `DEBUG`
-category.
-
-### Why are some test cases launched in a remote JVM?
-
-We use the Graal Native Function Interface to call native functions such
-as `printf`. Thus, we cannot intercept printing to the console such as
-we could do in Java. Instead, we create a remote JVM for some test case
-suites for which we then read the process output. We use this process
-output for validating the test case output. You can disable the remote
-launching (for debugging purposes) with the
-`sulong.LaunchRemoteTestCasesLocally` option.
+To attach a debugger to Sulong tests, run `mx -d unittest SulongSuite` or
+`mx -d su-suite sulong`.
+To get a verbose output of all tests that run as part of a suite, run
+`mx -v su-suite sulong`. This also prints names for all individual tests.
+You can use the test names to run a single test of a suite.
+For example, `test[c/max-unsigned-short-to-float-cast.c]` is part of the
+SulongSuite. You can run this single test using
+`mx unittest SulongSuite#test[c/max-unsigned-short-to-float-cast.c]`
 
 ## Eclipse
 
