@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -45,31 +46,34 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleGetSize extends LLVMIntrinsic {
 
-    private Object getSize(VirtualFrame frame, LLVMTruffleObject value) {
+    @Child private Node foreignGetSize = Message.GET_SIZE.createNode();
+    @Child private ToLLVMNode toLLVM = ToLLVMNode.createNode(int.class);
+
+    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
+        if (value.getOffset() != 0 || value.getName() != null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalAccessError("Pointee must be unmodified");
+        }
+    }
+
+    private int getSize(VirtualFrame frame, TruffleObject value) {
         try {
-            if (value.getOffset() != 0 || value.getName() != null) {
-                throw new IllegalAccessError("Pointee must be unmodified");
-            }
-            Object rawValue = ForeignAccess.sendGetSize(foreignGetSize, frame, value.getObject());
-            return toLLVM.convert(frame, rawValue, expectedType);
+            Object rawValue = ForeignAccess.sendGetSize(foreignGetSize, frame, value);
+            return (int) toLLVM.executeWithTarget(frame, rawValue);
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    @Child private Node foreignGetSize = Message.GET_SIZE.createNode();
-    @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-    private static final Class<?> expectedType = int.class;
-
     @Specialization
     public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-        return (int) getSize(frame, value);
+        checkLLVMTruffleObject(value);
+        return getSize(frame, value.getObject());
     }
 
     @Specialization
     public int executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-        return executeIntrinsic(frame, new LLVMTruffleObject(value));
+        return getSize(frame, value);
     }
 
 }

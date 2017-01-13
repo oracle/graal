@@ -30,38 +30,538 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToBooleanNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToByteNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToCharNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToDoubleNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToFloatNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToIntNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShortNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToLongNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 
-public final class ToLLVMNode extends Node {
+public abstract class ToLLVMNode extends Node {
 
-    @Child private Node isBoxed = Message.IS_BOXED.createNode();
-    @Child private Node unboxed = Message.UNBOX.createNode();
+    @Child protected Node unbox = Message.UNBOX.createNode();
+    @Child protected Node isBoxed = Message.IS_BOXED.createNode();
 
-    public <T> T convert(VirtualFrame frame, Object value, Class<T> type) {
-        Object convertedValue;
-        if (value == null) {
-            return null;
-        }
-        if (isPrimitiveType(type)) {
-            convertedValue = toPrimitive(frame, value, type);
+    public static ToLLVMNode createNode(Class<?> expectedType) {
+        if (expectedType == TruffleObject.class) {
+            return ToTruffleObjectNodeGen.create();
+        } else if (expectedType == int.class) {
+            return ToIntNodeGen.create();
+        } else if (expectedType == long.class) {
+            return ToLongNodeGen.create();
+        } else if (expectedType == byte.class) {
+            return ToByteNodeGen.create();
+        } else if (expectedType == short.class) {
+            return ToShortNodeGen.create();
+        } else if (expectedType == char.class) {
+            return ToCharNodeGen.create();
+        } else if (expectedType == float.class) {
+            return ToFloatNodeGen.create();
+        } else if (expectedType == double.class) {
+            return ToDoubleNodeGen.create();
+        } else if (expectedType == boolean.class) {
+            return ToBooleanNodeGen.create();
+        } else if (expectedType == null || expectedType == void.class) {
+            return new SlowConvertNodeObject();
         } else {
-            assert TruffleObject.class.isAssignableFrom(type);
-            convertedValue = value;
+            throw new IllegalStateException("Unsupported Type");
         }
-        @SuppressWarnings("unchecked")
-        T convertedValue2 = (T) convertedValue;
-        return convertedValue2;
     }
 
-    public Object convert(VirtualFrame frame, Object value, LLVMRuntimeType type) {
+    public abstract Object executeWithTarget(VirtualFrame frame, Object value);
+
+    abstract static class ToIntNode extends ToLLVMNode {
+        @Specialization
+        public int fromInt(int value) {
+            return value;
+        }
+
+        @Specialization
+        public int fromChar(char value) {
+            return value;
+        }
+
+        @Specialization
+        public int fromShort(short value) {
+            return value;
+        }
+
+        @Specialization
+        public int fromLong(long value) {
+            return (int) value;
+        }
+
+        @Specialization
+        public int fromByte(byte value) {
+            return value;
+        }
+
+        @Specialization
+        public int fromFloat(float value) {
+            return (int) value;
+        }
+
+        @Specialization
+        public int fromDouble(double value) {
+            return (int) value;
+        }
+
+        @Specialization
+        public int fromBoolean(boolean value) {
+            return value ? 1 : 0;
+        }
+
+        @Specialization
+        public int fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                return (int) convertPrimitive(int.class, unboxed);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    abstract static class ToLongNode extends ToLLVMNode {
+        @Specialization
+        public long fromInt(int value) {
+            return value;
+        }
+
+        @Specialization
+        public long fromChar(char value) {
+            return value;
+        }
+
+        @Specialization
+        public long fromShort(short value) {
+            return value;
+        }
+
+        @Specialization
+        public long fromLong(long value) {
+            return value;
+        }
+
+        @Specialization
+        public long fromByte(byte value) {
+            return value;
+        }
+
+        @Specialization
+        public long fromFloat(float value) {
+            return (long) value;
+        }
+
+        @Specialization
+        public long fromDouble(double value) {
+            return (long) value;
+        }
+
+        @Specialization
+        public long fromBoolean(boolean value) {
+            return value ? 1 : 0;
+        }
+
+        @Specialization
+        public long fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                return (long) convertPrimitive(long.class, unboxed);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    abstract static class ToShortNode extends ToLLVMNode {
+        @Specialization
+        public short fromInt(int value) {
+            return (short) value;
+        }
+
+        @Specialization
+        public short fromChar(char value) {
+            return (short) value;
+        }
+
+        @Specialization
+        public short fromShort(short value) {
+            return value;
+        }
+
+        @Specialization
+        public short fromLong(long value) {
+            return (short) value;
+        }
+
+        @Specialization
+        public short fromByte(byte value) {
+            return value;
+        }
+
+        @Specialization
+        public short fromFloat(float value) {
+            return (short) value;
+        }
+
+        @Specialization
+        public short fromDouble(double value) {
+            return (short) value;
+        }
+
+        @Specialization
+        public short fromBoolean(boolean value) {
+            return (short) (value ? 1 : 0);
+        }
+
+        @Specialization
+        public long fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                return (short) convertPrimitive(short.class, unboxed);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    abstract static class ToByteNode extends ToLLVMNode {
+        @Specialization
+        public byte fromInt(int value) {
+            return (byte) value;
+        }
+
+        @Specialization
+        public byte fromChar(char value) {
+            return (byte) value;
+        }
+
+        @Specialization
+        public byte fromLong(long value) {
+            return (byte) value;
+        }
+
+        @Specialization
+        public byte fromShort(short value) {
+            return (byte) value;
+        }
+
+        @Specialization
+        public byte fromByte(byte value) {
+            return value;
+        }
+
+        @Specialization
+        public byte fromFloat(float value) {
+            return (byte) value;
+        }
+
+        @Specialization
+        public byte fromDouble(double value) {
+            return (byte) value;
+        }
+
+        @Specialization
+        public byte fromBoolean(boolean value) {
+            return (byte) (value ? 1 : 0);
+        }
+
+        @Specialization
+        public byte fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                return (byte) convertPrimitive(byte.class, unboxed);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    abstract static class ToCharNode extends ToLLVMNode {
+        @Specialization
+        public char fromInt(int value) {
+            return (char) value;
+        }
+
+        @Specialization
+        public char fromLong(long value) {
+            return (char) value;
+        }
+
+        @Specialization
+        public char fromChar(char value) {
+            return value;
+        }
+
+        @Specialization
+        public char fromShort(short value) {
+            return (char) value;
+        }
+
+        @Specialization
+        public char fromByte(byte value) {
+            return (char) value;
+        }
+
+        @Specialization
+        public char fromFloat(float value) {
+            return (char) value;
+        }
+
+        @Specialization
+        public char fromDouble(double value) {
+            return (char) value;
+        }
+
+        @Specialization
+        public char fromBoolean(boolean value) {
+            return (char) (value ? 1 : 0);
+        }
+
+        @Specialization
+        public char fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                return (char) convertPrimitive(char.class, unboxed);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    abstract static class ToFloatNode extends ToLLVMNode {
+        @Specialization
+        public float fromInt(int value) {
+            return value;
+        }
+
+        @Specialization
+        public float fromLong(long value) {
+            return value;
+        }
+
+        @Specialization
+        public float fromChar(char value) {
+            return value;
+        }
+
+        @Specialization
+        public float fromShort(short value) {
+            return value;
+        }
+
+        @Specialization
+        public float fromByte(byte value) {
+            return value;
+        }
+
+        @Specialization
+        public float fromFloat(float value) {
+            return value;
+        }
+
+        @Specialization
+        public float fromDouble(double value) {
+            return (float) value;
+        }
+
+        @Specialization
+        public float fromBoolean(boolean value) {
+            return (value ? 1 : 0);
+        }
+
+        @Specialization
+        public float fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                return (float) convertPrimitive(float.class, unboxed);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    abstract static class ToDoubleNode extends ToLLVMNode {
+        @Specialization
+        public double fromInt(int value) {
+            return value;
+        }
+
+        @Specialization
+        public double fromChar(char value) {
+            return value;
+        }
+
+        @Specialization
+        public double fromLong(long value) {
+            return value;
+        }
+
+        @Specialization
+        public double fromByte(byte value) {
+            return value;
+        }
+
+        @Specialization
+        public double fromShort(short value) {
+            return value;
+        }
+
+        @Specialization
+        public double fromFloat(float value) {
+            return value;
+        }
+
+        @Specialization
+        public double fromDouble(double value) {
+            return value;
+        }
+
+        @Specialization
+        public double fromBoolean(boolean value) {
+            return (value ? 1 : 0);
+        }
+
+        @Specialization
+        public double fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                return (double) convertPrimitive(double.class, unboxed);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    abstract static class ToBooleanNode extends ToLLVMNode {
+        @Specialization
+        public boolean fromInt(int value) {
+            return value != 0;
+        }
+
+        @Specialization
+        public boolean fromChar(char value) {
+            return value != 0;
+        }
+
+        @Specialization
+        public boolean fromShort(short value) {
+            return value != 0;
+        }
+
+        @Specialization
+        public boolean fromLong(long value) {
+            return value != 0;
+        }
+
+        @Specialization
+        public boolean fromByte(byte value) {
+            return value != 0;
+        }
+
+        @Specialization
+        public boolean fromFloat(float value) {
+            return value != 0;
+        }
+
+        @Specialization
+        public boolean fromDouble(double value) {
+            return value != 0;
+        }
+
+        @Specialization
+        public boolean fromBoolean(boolean value) {
+            return value;
+        }
+
+        @Specialization
+        public boolean fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+            try {
+                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                return (boolean) convertPrimitive(boolean.class, unboxed);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
+        }
+    }
+
+    abstract static class ToTruffleObject extends ToLLVMNode {
+        @Specialization
+        public int fromInt(int value) {
+            return value;
+        }
+
+        @Specialization
+        public char fromChar(char value) {
+            return value;
+        }
+
+        @Specialization
+        public long fromLong(long value) {
+            return value;
+        }
+
+        @Specialization
+        public byte fromByte(byte value) {
+            return value;
+        }
+
+        @Specialization
+        public short fromShort(short value) {
+            return value;
+        }
+
+        @Specialization
+        public float fromFloat(float value) {
+            return value;
+        }
+
+        @Specialization
+        public double fromDouble(double value) {
+            return value;
+        }
+
+        @Specialization
+        public boolean fromBoolean(boolean value) {
+            return value;
+        }
+
+        @Specialization
+        public String fromString(String obj) {
+            return obj;
+        }
+
+        @Specialization
+        public TruffleObject fromTruffleObject(TruffleObject obj) {
+            return obj;
+        }
+    }
+
+    public static Class<?> convert(LLVMRuntimeType type) {
         Class<?> t;
         switch (type) {
             case I1:
@@ -97,12 +597,42 @@ public final class ToLLVMNode extends Node {
             case FUNCTION_ADDRESS:
                 t = TruffleObject.class;
                 break;
+            case VOID:
+                t = void.class;
+                break;
             default:
                 throw UnsupportedTypeException.raise(new Object[]{type});
         }
-        return convert(frame, value, t);
+        return t;
     }
 
+    static final class SlowConvertNodeObject extends ToLLVMNode {
+
+        @Override
+        public Object executeWithTarget(VirtualFrame frame, Object value) {
+            return value;
+        }
+    }
+
+    public Object slowConvert(VirtualFrame frame, Object value, Class<?> requestedType) {
+        Object attr;
+        if (value instanceof TruffleObject) {
+            if (!Boolean.TRUE.equals(ForeignAccess.sendIsBoxed(isBoxed, frame, (TruffleObject) value))) {
+                return null;
+            }
+            try {
+                attr = ForeignAccess.sendUnbox(unbox, frame, (TruffleObject) value);
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedTypeException.raise(new Object[]{value});
+            }
+        } else {
+            attr = value;
+        }
+        return convertPrimitive(requestedType, attr);
+    }
+
+    @TruffleBoundary
     private static boolean isPrimitiveType(Class<?> clazz) {
         CompilerAsserts.compilationConstant(clazz);
         return clazz == int.class || clazz == Integer.class ||
@@ -114,23 +644,6 @@ public final class ToLLVMNode extends Node {
                         clazz == double.class || clazz == Double.class ||
                         clazz == char.class || clazz == Character.class ||
                         CharSequence.class.isAssignableFrom(clazz);
-    }
-
-    private Object toPrimitive(VirtualFrame frame, Object value, Class<?> requestedType) {
-        Object attr;
-        if (value instanceof TruffleObject) {
-            if (!Boolean.TRUE.equals(ForeignAccess.sendIsBoxed(isBoxed, frame, (TruffleObject) value))) {
-                return null;
-            }
-            try {
-                attr = ForeignAccess.sendUnbox(unboxed, frame, (TruffleObject) value);
-            } catch (InteropException e) {
-                throw UnsupportedTypeException.raise(new Object[]{value});
-            }
-        } else {
-            attr = value;
-        }
-        return convertPrimitive(requestedType, attr);
     }
 
     @TruffleBoundary

@@ -104,7 +104,7 @@ public final class LLVMTruffleOnlyIntrinsics {
 
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
         @Child private Node foreignGetSize = Message.GET_SIZE.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
+        @Child private ToLLVMNode toLLVM = ToLLVMNode.createNode(long.class);
 
         @Specialization
         public long executeIntrinsic(VirtualFrame frame, TruffleObject object) {
@@ -113,7 +113,7 @@ public final class LLVMTruffleOnlyIntrinsics {
                 Object strlen;
                 try {
                     strlen = ForeignAccess.sendGetSize(foreignGetSize, frame, object);
-                    long size = toLLVM.convert(frame, strlen, long.class);
+                    long size = (long) toLLVM.executeWithTarget(frame, strlen);
                     return size;
                 } catch (UnsupportedMessageException e) {
                     throw new AssertionError(e);
@@ -147,10 +147,10 @@ public final class LLVMTruffleOnlyIntrinsics {
         @Child private Node readStr2 = Message.READ.createNode();
         @Child private Node getSize1 = Message.GET_SIZE.createNode();
         @Child private Node getSize2 = Message.GET_SIZE.createNode();
-        @Child private ToLLVMNode toLLVMSize1 = new ToLLVMNode();
-        @Child private ToLLVMNode toLLVMSize2 = new ToLLVMNode();
-        @Child private ToLLVMNode toLLVM1 = new ToLLVMNode();
-        @Child private ToLLVMNode toLLVM2 = new ToLLVMNode();
+        @Child private ToLLVMNode toLLVMSize1 = ToLLVMNode.createNode(long.class);
+        @Child private ToLLVMNode toLLVMSize2 = ToLLVMNode.createNode(long.class);
+        @Child private ToLLVMNode toLLVM1 = ToLLVMNode.createNode(char.class);
+        @Child private ToLLVMNode toLLVM2 = ToLLVMNode.createNode(char.class);
 
         @Specialization(limit = "20", guards = {"getSize1(frame, str1) == size1", "getSize2(frame, str2) == size2"})
         @ExplodeLoop
@@ -159,19 +159,19 @@ public final class LLVMTruffleOnlyIntrinsics {
                 int i;
                 for (i = 0; i < size1; i++) {
                     Object s1 = ForeignAccess.sendRead(readStr1, frame, str1, i);
-                    char c1 = toLLVM1.convert(frame, s1, char.class);
+                    char c1 = (char) toLLVM1.executeWithTarget(frame, s1);
                     if (i >= size2) {
                         return c1;
                     }
                     Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                    char c2 = toLLVM2.convert(frame, s2, char.class);
+                    char c2 = (char) toLLVM2.executeWithTarget(frame, s2);
                     if (c1 != c2) {
                         return c1 - c2;
                     }
                 }
                 if (i < size2) {
                     Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                    char c2 = toLLVM2.convert(frame, s2, char.class);
+                    char c2 = (char) toLLVM2.executeWithTarget(frame, s2);
                     return -c2;
                 } else {
                     return 0;
@@ -183,7 +183,7 @@ public final class LLVMTruffleOnlyIntrinsics {
 
         protected long getSize2(VirtualFrame frame, TruffleObject str2) {
             try {
-                return toLLVMSize2.convert(frame, ForeignAccess.sendGetSize(getSize2, frame, str2), long.class);
+                return (long) toLLVMSize2.executeWithTarget(frame, ForeignAccess.sendGetSize(getSize2, frame, str2));
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
@@ -192,7 +192,7 @@ public final class LLVMTruffleOnlyIntrinsics {
 
         protected long getSize1(VirtualFrame frame, TruffleObject str1) {
             try {
-                return toLLVMSize1.convert(frame, ForeignAccess.sendGetSize(getSize1, frame, str1), long.class);
+                return (long) toLLVMSize1.executeWithTarget(frame, ForeignAccess.sendGetSize(getSize1, frame, str1));
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
@@ -206,7 +206,7 @@ public final class LLVMTruffleOnlyIntrinsics {
                 char[] arr = new char[(int) size2];
                 for (int i = 0; i < size2; i++) {
                     Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                    char c2 = toLLVM2.convert(frame, s2, char.class);
+                    char c2 = (char) toLLVM2.executeWithTarget(frame, s2);
                     arr[i] = c2;
                 }
                 return compare(str1, arr);
