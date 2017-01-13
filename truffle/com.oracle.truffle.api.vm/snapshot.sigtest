@@ -20,6 +20,7 @@ innr public abstract Value
 innr public final Instrument
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value eval(com.oracle.truffle.api.source.Source)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value findGlobalSymbol(java.lang.String)
+meth public java.lang.Iterable<com.oracle.truffle.api.vm.PolyglotEngine$Value> findGlobalSymbols(java.lang.String)
 meth public java.util.Map<java.lang.String,? extends com.oracle.truffle.api.vm.PolyglotEngine$Language> getLanguages()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.vm.PolyglotEngine$Instrument> getInstruments()
 meth public static com.oracle.truffle.api.vm.PolyglotEngine$Builder buildNew()
@@ -58,6 +59,7 @@ hfds enabled,info,instrumentLock
 
 CLSS public com.oracle.truffle.api.vm.PolyglotEngine$Language
  outer com.oracle.truffle.api.vm.PolyglotEngine
+meth public boolean isInteractive()
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value eval(com.oracle.truffle.api.source.Source)
 meth public com.oracle.truffle.api.vm.PolyglotEngine$Value getGlobalObject()
 meth public java.lang.String getName()
