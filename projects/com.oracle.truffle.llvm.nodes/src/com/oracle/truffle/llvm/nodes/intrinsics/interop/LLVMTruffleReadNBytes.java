@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
+
     @Specialization
     public Object executeIntrinsic(LLVMAddress value, int n) {
         LLVMAddress adr = value;

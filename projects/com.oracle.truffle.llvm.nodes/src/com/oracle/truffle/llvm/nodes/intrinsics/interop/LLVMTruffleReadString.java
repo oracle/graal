@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
@@ -41,6 +42,13 @@ public abstract class LLVMTruffleReadString extends LLVMIntrinsic {
     @Specialization
     public Object executeIntrinsic(String value) {
         return value;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
+    public Object executeIntrinsicCached(LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
+                    @Cached("readString(id)") String cachedId) {
+        return cachedId;
     }
 
     @Specialization

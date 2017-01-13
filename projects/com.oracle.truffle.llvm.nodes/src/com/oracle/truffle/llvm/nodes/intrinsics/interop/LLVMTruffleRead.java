@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -44,317 +46,94 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
-public final class LLVMTruffleRead {
+public abstract class LLVMTruffleRead extends LLVMIntrinsic {
 
-    private static Object doRead(VirtualFrame frame, Node foreignRead, LLVMTruffleObject value, LLVMAddress id, ToLLVMNode toLLVM, Class<?> expectedType) {
-        String name = LLVMTruffleIntrinsicUtil.readString(id);
-        try {
-            if (value.getOffset() != 0 || value.getName() != null) {
-                throw new IllegalAccessError("Pointee must be unmodified");
-            }
-            Object rawValue = ForeignAccess.sendRead(foreignRead, frame, value.getObject(), name);
-            return toLLVM.convert(frame, rawValue, expectedType);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            throw new IllegalStateException(e);
+    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
+        if (value.getOffset() != 0 || value.getName() != null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalAccessError("Pointee must be unmodified");
         }
     }
 
-    private static Object doReadIdx(VirtualFrame frame, Node foreignRead, LLVMTruffleObject value, int id, ToLLVMNode toLLVM, Class<?> expectedType) {
-        try {
-            if (value.getOffset() != 0 || value.getName() != null) {
-                throw new IllegalAccessError("Pointee must be unmodified");
-            }
-            Object rawValue = ForeignAccess.sendRead(foreignRead, frame, value.getObject(), id);
-            return toLLVM.convert(frame, rawValue, expectedType);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-            throw new IllegalStateException(e);
-        }
+    private static Object doRead(VirtualFrame frame, TruffleObject value, LLVMAddress id, Node foreignRead, ToLLVMNode toLLVM) {
+        String name = LLVMTruffleIntrinsicUtil.readString(id);
+        return doRead(frame, value, name, foreignRead, toLLVM);
     }
 
-    private static Object doRead(VirtualFrame frame, Node foreignRead, TruffleObject value, LLVMAddress id, ToLLVMNode toLLVM, Class<?> expectedType) {
-        String name = LLVMTruffleIntrinsicUtil.readString(id);
+    private static Object doRead(VirtualFrame frame, TruffleObject value, String name, Node foreignRead, ToLLVMNode toLLVM) {
         try {
             Object rawValue = ForeignAccess.sendRead(foreignRead, frame, value, name);
-            return toLLVM.convert(frame, rawValue, expectedType);
+            return toLLVM.executeWithTarget(frame, rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    private static Object doReadIdx(VirtualFrame frame, Node foreignRead, TruffleObject value, int id, ToLLVMNode toLLVM, Class<?> expectedType) {
+    private static Object doReadIdx(VirtualFrame frame, TruffleObject value, int id, Node foreignRead, ToLLVMNode toLLVM) {
         try {
             Object rawValue = ForeignAccess.sendRead(foreignRead, frame, value, id);
-            return toLLVM.convert(frame, rawValue, expectedType);
+            return toLLVM.executeWithTarget(frame, rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadP extends LLVMIntrinsic {
+    public abstract static class LLVMTruffleReadFromName extends LLVMTruffleRead {
 
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
+        @Child protected Node foreignRead = Message.READ.createNode();
+        @Child protected ToLLVMNode toLLVM;
 
-        private static final Class<?> expectedType = TruffleObject.class;
+        public LLVMTruffleReadFromName(ToLLVMNode toLLVM) {
+            this.toLLVM = toLLVM;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
+        public Object executeIntrinsicCached(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
+                        @Cached("readString(id)") String cachedId) {
+            checkLLVMTruffleObject(value);
+            return doRead(frame, value.getObject(), cachedId, foreignRead, toLLVM);
+        }
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
-            return doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+            checkLLVMTruffleObject(value);
+            return doRead(frame, value.getObject(), id, foreignRead, toLLVM);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
+        public Object executeIntrinsicCached(VirtualFrame frame, TruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
+                        @Cached("readString(id)") String cachedId) {
+            return doRead(frame, value, cachedId, foreignRead, toLLVM);
         }
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
-            return doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+            return doRead(frame, value, id, foreignRead, toLLVM);
         }
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadI extends LLVMIntrinsic {
+    public abstract static class LLVMTruffleReadFromIndex extends LLVMTruffleRead {
 
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
+        @Child protected Node foreignRead = Message.READ.createNode();
+        @Child protected ToLLVMNode toLLVM;
 
-        private static final Class<?> expectedType = int.class;
-
-        @Specialization
-        public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
-            return (int) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
+        public LLVMTruffleReadFromIndex(ToLLVMNode toLLVM) {
+            this.toLLVM = toLLVM;
         }
-
-        @Specialization
-        public int executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
-            return (int) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadL extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = long.class;
-
-        @Specialization
-        public long executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
-            return (long) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public long executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
-            return (long) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadC extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = byte.class;
-
-        @Specialization
-        public byte executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
-            return (byte) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public byte executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
-            return (byte) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadF extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = float.class;
-
-        @Specialization
-        public float executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
-            return (float) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public float executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
-            return (float) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadD extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = double.class;
-
-        @Specialization
-        public double executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
-            return (double) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public double executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
-            return (double) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadB extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = boolean.class;
-
-        @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
-            return (boolean) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
-            return (boolean) doRead(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    // INDEXED:
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadIdxP extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = TruffleObject.class;
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
-            return doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
+            checkLLVMTruffleObject(value);
+            return doReadIdx(frame, value.getObject(), id, foreignRead, toLLVM);
         }
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
-            return doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadIdxI extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = int.class;
-
-        @Specialization
-        public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
-            return (int) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public int executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
-            return (int) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadIdxL extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = long.class;
-
-        @Specialization
-        public long executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
-            return (long) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public long executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
-            return (long) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadIdxC extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = byte.class;
-
-        @Specialization
-        public byte executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
-            return (byte) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public byte executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
-            return (byte) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadIdxF extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = float.class;
-
-        @Specialization
-        public float executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
-            return (float) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public float executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
-            return (float) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadIdxD extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = double.class;
-
-        @Specialization
-        public double executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
-            return (double) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public double executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
-            return (double) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-    }
-
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    public abstract static class LLVMTruffleReadIdxB extends LLVMIntrinsic {
-
-        @Child private Node foreignRead = Message.READ.createNode();
-        @Child private ToLLVMNode toLLVM = new ToLLVMNode();
-
-        private static final Class<?> expectedType = boolean.class;
-
-        @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
-            return (boolean) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
-        }
-
-        @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
-            return (boolean) doReadIdx(frame, foreignRead, value, id, toLLVM, expectedType);
+            return doReadIdx(frame, value, id, foreignRead, toLLVM);
         }
     }
 

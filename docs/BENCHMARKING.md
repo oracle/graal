@@ -80,3 +80,16 @@ given by the warm-up data, which results in invalidations in the measuring
 runs, i.e., the compiled code is again discarded and execution continues
 in the interpreter, until the benchmark has been executed often enough to
 get recompiled.
+
+## Internal Benchmark Suite
+
+If Sulong's internal benchmark suite is available, you can run the benchmark
+suite in different configurations:
+
+### Sulong
+
+`mx benchmark csuite:* -- --native-vm sulong --jvm server --jvm-config graal-core`
+
+### e.g. Clang O3
+
+`mx -v benchmark csuite:* -- --native-vm clang --native-vm-config O3`
