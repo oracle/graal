@@ -329,7 +329,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         if (offset != 0) {
             final LLVMExpressionNode oneLiteralNode = factoryFacade.createLiteral(runtime, 1, LLVMBaseType.I32);
-            targetAddress = factoryFacade.createGetElementPtr(runtime, LLVMBaseType.I32, targetAddress, oneLiteralNode, offset);
+            targetAddress = factoryFacade.createTypedElementPointer(runtime, LLVMBaseType.I32, targetAddress, oneLiteralNode, offset, extract.getType());
         }
 
         final LLVMExpressionNode result = factoryFacade.createExtractValue(runtime, resultType, targetAddress);

@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
@@ -75,7 +76,7 @@ public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
 
         @Specialization
         public long executeI64(VirtualFrame frame, TruffleObject addr) {
-            return executeI64(frame, new LLVMTruffleObject(addr));
+            return executeI64(frame, new LLVMTruffleObject(addr, IntegerType.LONG));
         }
 
     }
@@ -97,7 +98,7 @@ public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
 
         @Specialization
         public long executeI64(VirtualFrame frame, TruffleObject addr) {
-            return executeI64(frame, new LLVMTruffleObject(addr));
+            return executeI64(frame, new LLVMTruffleObject(addr, IntegerType.LONG));
         }
 
     }

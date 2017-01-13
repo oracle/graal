@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeFactory.LLVMI16D
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
 
 // Truffle has no branch profiles for short
 @NodeChild(type = LLVMExpressionNode.class)
@@ -76,7 +77,7 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
 
         @Specialization
         public short executeI16(VirtualFrame frame, TruffleObject addr) {
-            return executeI16(frame, new LLVMTruffleObject(addr));
+            return executeI16(frame, new LLVMTruffleObject(addr, IntegerType.SHORT));
         }
 
     }
@@ -99,7 +100,7 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
             } else if (addr instanceof LLVMTruffleObject) {
                 val = doForeignAccess(frame, (LLVMTruffleObject) addr);
             } else {
-                val = doForeignAccess(frame, new LLVMTruffleObject((TruffleObject) addr));
+                val = doForeignAccess(frame, new LLVMTruffleObject((TruffleObject) addr, IntegerType.SHORT));
             }
             replace(new LLVMI16ProfilingLoadNode(addressNode, val));
             return val;
@@ -131,7 +132,7 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
             } else if (addr instanceof LLVMTruffleObject) {
                 value = doForeignAccess(frame, (LLVMTruffleObject) addr);
             } else {
-                value = doForeignAccess(frame, new LLVMTruffleObject((TruffleObject) addr));
+                value = doForeignAccess(frame, new LLVMTruffleObject((TruffleObject) addr, IntegerType.SHORT));
             }
             if (value == profiledValue) {
                 return profiledValue;

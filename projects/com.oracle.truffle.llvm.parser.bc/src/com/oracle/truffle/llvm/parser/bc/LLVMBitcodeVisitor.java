@@ -354,11 +354,11 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         for (int i = 0; i < elemCount; i++) {
             final LLVMExpressionNode globalVarAddress = factoryFacade.createLiteral(this, globalVariableDescriptor, LLVMBaseType.ADDRESS);
             final LLVMExpressionNode iNode = factoryFacade.createLiteral(this, i, LLVMBaseType.I32);
-            final LLVMExpressionNode structPointer = factoryFacade.createGetElementPtr(this, LLVMBaseType.I32, globalVarAddress, iNode, structSize);
+            final LLVMExpressionNode structPointer = factoryFacade.createTypedElementPointer(this, LLVMBaseType.I32, globalVarAddress, iNode, structSize, elementType);
             final LLVMExpressionNode loadedStruct = factoryFacade.createLoad(this, elementType, structPointer);
 
             final LLVMExpressionNode oneLiteralNode = factoryFacade.createLiteral(this, 1, LLVMBaseType.I32);
-            final LLVMExpressionNode functionLoadTarget = factoryFacade.createGetElementPtr(this, LLVMBaseType.I32, loadedStruct, oneLiteralNode, indexedTypeLength);
+            final LLVMExpressionNode functionLoadTarget = factoryFacade.createTypedElementPointer(this, LLVMBaseType.I32, loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
             final LLVMExpressionNode loadedFunction = factoryFacade.createLoad(this, functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{factoryFacade.createFrameRead(this, LLVMBaseType.ADDRESS, getStackPointerSlot())};
             final LLVMType[] argTypes = new LLVMType[]{new LLVMType(LLVMBaseType.ADDRESS)};

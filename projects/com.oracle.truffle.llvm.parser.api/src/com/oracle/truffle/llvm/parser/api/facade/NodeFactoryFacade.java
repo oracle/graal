@@ -146,6 +146,18 @@ public interface NodeFactoryFacade {
      */
     LLVMExpressionNode createGetElementPtr(LLVMParserRuntime runtime, LLVMBaseType indexType, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, int indexedTypeLength);
 
+    /**
+     * Creates a pointer to an object of a certain Type.
+     *
+     * @param indexType the integer type of the index parameter.
+     * @param aggregateAddress the address of the aggregate data structure
+     * @param index a multiplicator for indexedTypeLength
+     * @param indexedTypeLength size of the elements in the base object
+     * @return a node representing the element pointer
+     */
+    LLVMExpressionNode createTypedElementPointer(LLVMParserRuntime runtime, LLVMBaseType indexType, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, int indexedTypeLength,
+                    Type targetType);
+
     LLVMExpressionNode createSelect(LLVMParserRuntime runtime, Type type, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue);
 
     /**

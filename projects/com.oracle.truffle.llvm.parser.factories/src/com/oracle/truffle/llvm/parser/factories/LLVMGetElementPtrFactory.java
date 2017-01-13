@@ -33,15 +33,16 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeFactory.LLVMAddressI32GetElementPtrNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeFactory.LLVMAddressI64GetElementPtrNodeGen;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMGetElementPtrFactory {
 
-    public static LLVMExpressionNode create(LLVMBaseType llvmBaseType, LLVMExpressionNode currentAddress, LLVMExpressionNode valueRef, int indexedTypeLength) {
+    public static LLVMExpressionNode create(LLVMBaseType llvmBaseType, LLVMExpressionNode currentAddress, LLVMExpressionNode valueRef, int indexedTypeLength, Type type) {
         switch (llvmBaseType) {
             case I32:
-                return LLVMAddressI32GetElementPtrNodeGen.create(currentAddress, valueRef, indexedTypeLength);
+                return LLVMAddressI32GetElementPtrNodeGen.create(currentAddress, valueRef, indexedTypeLength, type);
             case I64:
-                return LLVMAddressI64GetElementPtrNodeGen.create(currentAddress, valueRef, indexedTypeLength);
+                return LLVMAddressI64GetElementPtrNodeGen.create(currentAddress, valueRef, indexedTypeLength, type);
             default:
                 throw new AssertionError();
         }

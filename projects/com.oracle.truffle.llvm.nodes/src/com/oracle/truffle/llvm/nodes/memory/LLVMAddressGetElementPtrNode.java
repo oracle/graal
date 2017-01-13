@@ -32,62 +32,68 @@ package com.oracle.truffle.llvm.nodes.memory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    @NodeField(type = int.class, name = "typeWidth")
+    @NodeFields({@NodeField(type = int.class, name = "typeWidth"), @NodeField(type = Type.class, name = "targetType")})
     public abstract static class LLVMAddressI32GetElementPtrNode extends LLVMAddressGetElementPtrNode {
 
         public abstract int getTypeWidth();
 
+        public abstract Type getTargetType();
+
         @Specialization
         public LLVMAddress executePointee(LLVMAddress addr, int val) {
             int incr = getTypeWidth() * val;
-            return addr.increment(incr);
+            return addr.increment(incr, getTargetType());
         }
 
         @Specialization
         public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr, int val) {
             int incr = getTypeWidth() * val;
-            return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr);
+            return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, getTargetType());
         }
 
         @Specialization
         public LLVMTruffleObject executeTruffleObject(TruffleObject addr, int val) {
             int incr = getTypeWidth() * val;
-            return new LLVMTruffleObject(addr, incr);
+            return new LLVMTruffleObject(addr, incr, getTargetType());
         }
 
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-    @NodeField(type = int.class, name = "typeWidth")
+    @NodeFields({@NodeField(type = int.class, name = "typeWidth"), @NodeField(type = Type.class, name = "targetType")})
     public abstract static class LLVMAddressI64GetElementPtrNode extends LLVMAddressGetElementPtrNode {
 
         public abstract int getTypeWidth();
 
+        public abstract Type getTargetType();
+
         @Specialization
         public LLVMAddress executePointee(LLVMAddress addr, long val) {
             long incr = getTypeWidth() * val;
-            return addr.increment(incr);
+            return addr.increment(incr, getTargetType());
         }
 
         @Specialization
         public LLVMTruffleObject executeTruffleObject(LLVMTruffleObject addr, long val) {
             long incr = getTypeWidth() * val;
-            return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr);
+            return new LLVMTruffleObject(addr.getObject(), addr.getOffset() + incr, getTargetType());
         }
 
         @Specialization
         public LLVMTruffleObject executeTruffleObject(TruffleObject addr, long val) {
             long incr = getTypeWidth() * val;
-            return new LLVMTruffleObject(addr, incr);
+            return new LLVMTruffleObject(addr, incr, getTargetType());
         }
 
     }
