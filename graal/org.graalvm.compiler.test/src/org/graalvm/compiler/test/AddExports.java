@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,27 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.test;
+package org.graalvm.compiler.test;
 
-import org.graalvm.compiler.test.AddExports;
-import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
-import org.graalvm.compiler.truffle.test.nodes.ReadOnlyArrayListConstantNode;
-import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
-import org.junit.Test;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-
-@AddExports("com.oracle.truffle.truffle_api/com.oracle.truffle.api.interop.impl")
-public class ReadOnlyArrayListPartialEvaluationTest extends PartialEvaluationTest {
-
-    public static Object constant42() {
-        return 42;
-    }
-
-    @Test
-    public void constantValue() {
-        FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new ReadOnlyArrayListConstantNode(42);
-        assertPartialEvalEquals("constant42", new RootTestNode(fd, "constantValue", result));
-    }
+/**
+ * Specifies packages concealed in JDK modules used by a test. The mx unit test runner will ensure
+ * the packages are exported to the module containing annotated test class.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface AddExports {
+    /**
+     * The qualified name of the concealed package in {@code <module>/<package>} format (e.g.,
+     * "jdk.vm.ci/jdk.vm.ci.code").
+     */
+    String[] value() default "";
 }

@@ -39,7 +39,7 @@ import java.util.stream.IntStream;
 
 import org.junit.Ignore;
 import org.junit.Test;
-
+import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.options.OptionValue.OverrideScope;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
@@ -69,7 +69,7 @@ public class OptimizedCallTargetTest {
     static {
         try {
             nodeRewritingAssumptionField = OptimizedCallTarget.class.getDeclaredField("nodeRewritingAssumption");
-            nodeRewritingAssumptionField.setAccessible(true);
+            Util.setAccessible(nodeRewritingAssumptionField, true);
         } catch (NoSuchFieldException | SecurityException e) {
             throw new AssertionError(e);
         }

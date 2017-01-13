@@ -24,9 +24,12 @@ package org.graalvm.compiler.truffle.test.nodes;
 
 import java.util.List;
 
+import org.graalvm.compiler.test.AddExports;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 
+@AddExports("com.oracle.truffle.truffle_api/com.oracle.truffle.api.interop.impl")
 public class ReadOnlyArrayListConstantNode extends AbstractTestNode {
 
     private final int value;

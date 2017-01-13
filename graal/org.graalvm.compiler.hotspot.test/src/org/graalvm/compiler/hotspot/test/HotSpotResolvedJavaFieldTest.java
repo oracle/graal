@@ -36,7 +36,7 @@ import java.lang.reflect.Method;
 
 import org.junit.Assert;
 import org.junit.Test;
-
+import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
@@ -58,7 +58,7 @@ public class HotSpotResolvedJavaFieldTest extends HotSpotGraalCompilerTest {
         try {
             Class<?> typeImpl = Class.forName("jdk.vm.ci.hotspot.HotSpotResolvedObjectTypeImpl");
             ret = typeImpl.getDeclaredMethod("createField", String.class, JavaType.class, long.class, int.class);
-            ret.setAccessible(true);
+            Util.setAccessible(ret, true);
         } catch (ClassNotFoundException | NoSuchMethodException | SecurityException e) {
             e.printStackTrace();
         }
