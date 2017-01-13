@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.nodes.util;
 
-import static org.graalvm.compiler.graph.Graph.Options.VerifyGraalGraphs;
+import static org.graalvm.compiler.graph.Graph.Options.VerifyGraalGraphEdges;
 import static org.graalvm.compiler.nodes.util.GraphUtil.Options.VerifyKillCFGUnusedNodes;
 
 import java.util.ArrayList;
@@ -92,19 +92,19 @@ public class GraphUtil {
             Set<Node> unusedNodes = null;
             Set<Node> unsafeNodes = null;
             Graph.NodeEventScope nodeEventScope = null;
-            if (VerifyGraalGraphs.getValue()) {
-                if (VerifyKillCFGUnusedNodes.getValue()) {
-                    Set<Node> collectedUnusedNodes = unusedNodes = CollectionsFactory.newSet();
-                    nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
-                        @Override
-                        public void event(Graph.NodeEvent e, Node n) {
-                            if (e == Graph.NodeEvent.ZERO_USAGES && isFloatingNode(n)) {
-                                collectedUnusedNodes.add(n);
-                            }
-                        }
-                    });
-                }
+            if (VerifyGraalGraphEdges.getValue()) {
                 unsafeNodes = collectUnsafeNodes(node.graph());
+            }
+            if (VerifyKillCFGUnusedNodes.getValue()) {
+                Set<Node> collectedUnusedNodes = unusedNodes = CollectionsFactory.newSet();
+                nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
+                    @Override
+                    public void event(Graph.NodeEvent e, Node n) {
+                        if (e == Graph.NodeEvent.ZERO_USAGES && isFloatingNode(n)) {
+                            collectedUnusedNodes.add(n);
+                        }
+                    }
+                });
             }
             Debug.dump(Debug.VERY_DETAILED_LOG_LEVEL, node.graph(), "Before killCFG %s", node);
             NodeWorkList worklist = killCFG(node, tool, null);
@@ -113,15 +113,15 @@ public class GraphUtil {
                     killCFG(n, tool, worklist);
                 }
             }
-            if (VerifyGraalGraphs.getValue()) {
-                if (VerifyKillCFGUnusedNodes.getValue()) {
-                    nodeEventScope.close();
-                    unusedNodes.removeIf(n -> n.isDeleted());
-                    assert unusedNodes.isEmpty() : "New unused nodes: " + unusedNodes;
-                }
+            if (VerifyGraalGraphEdges.getValue()) {
                 Set<Node> newUnsafeNodes = collectUnsafeNodes(node.graph());
                 newUnsafeNodes.removeAll(unsafeNodes);
                 assert newUnsafeNodes.isEmpty() : "New unsafe nodes: " + newUnsafeNodes;
+            }
+            if (VerifyKillCFGUnusedNodes.getValue()) {
+                nodeEventScope.close();
+                unusedNodes.removeIf(n -> n.isDeleted());
+                assert unusedNodes.isEmpty() : "New unused nodes: " + unusedNodes;
             }
         } catch (Throwable t) {
             throw Debug.handle(t);
