@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,14 @@ public class EffectList implements Iterable<EffectList.Effect> {
 
         default boolean isCfgKill() {
             return false;
+        }
+
+        /**
+         * Determines how many objects are virtualized (positive) or materialized (negative) by this
+         * effect.
+         */
+        default int virtualObjects() {
+            return 0;
         }
 
         void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes);
