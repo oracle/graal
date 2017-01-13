@@ -21,7 +21,7 @@
       <property name="checkHtml" value="false"/>
     </module>
     <module name="MagicNumber">
-		<property name="ignoreHashCodeMethod" value="true"/>
+      <property name="ignoreHashCodeMethod" value="true"/>
     </module>
     <module name="MissingSwitchDefault"/>
     <module name="LocalFinalVariableName"/>

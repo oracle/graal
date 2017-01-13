@@ -31,8 +31,20 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleIntrinsicUtil;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
 @GenerateNodeFactory
 public abstract class LLVMIntrinsic extends LLVMExpressionNode {
+    public static boolean constantPointer(LLVMAddress id, long cachedPointer) {
+        return id.getVal() == cachedPointer;
+    }
 
+    public static String readString(LLVMAddress ptr) {
+        return LLVMTruffleIntrinsicUtil.readString(ptr);
+    }
+
+    public static long pointerOf(LLVMAddress ptr) {
+        return ptr.getVal();
+    }
 }

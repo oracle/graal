@@ -49,13 +49,13 @@ import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
-    @Child protected ToLLVMNode toLLVM = new ToLLVMNode();
+    @Child protected ToLLVMNode toLLVM = ToLLVMNode.createNode(double.class);
 
     protected double doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
         try {
             int index = (int) (addr.getOffset() / LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES);
             Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
-            return toLLVM.convert(frame, value, double.class);
+            return (double) toLLVM.executeWithTarget(frame, value);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
