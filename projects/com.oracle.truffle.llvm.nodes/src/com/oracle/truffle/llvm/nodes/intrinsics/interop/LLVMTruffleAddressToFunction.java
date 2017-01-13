@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
@@ -39,9 +40,25 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleAddressToFunction extends LLVMIntrinsic {
 
-    @Specialization
-    public Object executeIntrinsic(LLVMAddress value) {
-        return LLVMFunctionDescriptor.create((int) value.getVal());
+    protected static long getPtr(LLVMAddress value) {
+        return value.getVal();
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(limit = "10", guards = {"getPtr(value) == cachedAddress"})
+    public Object cached(LLVMAddress value,
+                    @Cached("getPtr(value)") long cachedAddress,
+                    @Cached("getDescriptor(cachedAddress)") LLVMFunctionDescriptor cachedDescriptor) {
+        return cachedDescriptor;
+    }
+
+    @Specialization(contains = "cached")
+    public Object uncached(LLVMAddress value) {
+        return getDescriptor(value.getVal());
+    }
+
+    protected static LLVMFunctionDescriptor getDescriptor(long value) {
+        return LLVMFunctionDescriptor.create((int) value);
     }
 
 }
