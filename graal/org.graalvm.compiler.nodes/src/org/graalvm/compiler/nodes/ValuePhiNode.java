@@ -102,6 +102,7 @@ public class ValuePhiNode extends PhiNode implements ArrayLengthProvider {
     public boolean verify() {
         Stamp s = null;
         for (ValueNode input : values()) {
+            assert input != null;
             if (s == null) {
                 s = input.stamp();
             } else {

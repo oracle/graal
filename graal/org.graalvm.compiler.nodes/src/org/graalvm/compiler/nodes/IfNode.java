@@ -595,8 +595,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         AbstractBeginNode trueBegin = trueSuccessor();
         graph().removeSplitPropagate(this, trueBegin, tool);
         tool.addToWorkList(trueBegin);
-        if (condition() != null && condition().isAlive() && condition().hasNoUsages()) {
-            GraphUtil.killWithUnusedFloatingInputs(condition());
+        if (condition() != null) {
+            GraphUtil.tryKillUnused(condition());
         }
     }
 

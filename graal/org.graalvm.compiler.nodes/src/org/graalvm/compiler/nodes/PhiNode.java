@@ -239,13 +239,4 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     public boolean isLoopPhi() {
         return merge() instanceof LoopBeginNode;
     }
-
-    public boolean hasValidInput() {
-        for (ValueNode n : values()) {
-            if (n != null) {
-                return true;
-            }
-        }
-        return false;
-    }
 }
