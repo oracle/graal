@@ -90,7 +90,16 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
+    @Specialization(limit = "2", guards = {"constantPointer(id, cachedPtr)", "value == cachedValue"})
+    public Object doIntrinsicReceiverCachedTruffleObjectCached(VirtualFrame frame, TruffleObject value, LLVMAddress id,
+                    @Cached("value") TruffleObject cachedValue,
+                    @Cached("pointerOf(id)") long cachedPtr,
+                    @Cached("readString(id)") String cachedId) {
+        return doInvoke(frame, cachedValue, cachedId);
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)", contains = "doIntrinsicReceiverCachedTruffleObjectCached")
     public Object doIntrinsicTruffleObjectCached(VirtualFrame frame, TruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
                     @Cached("readString(id)") String cachedId) {
         return doInvoke(frame, value, cachedId);
@@ -102,7 +111,17 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
+    @Specialization(limit = "2", guards = {"constantPointer(id, cachedPtr)", "value == cachedValue"})
+    public Object doIntrinsicReceiverCachedLLVMTruffleObjectCached(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id,
+                    @Cached("value") LLVMTruffleObject cachedValue,
+                    @Cached("pointerOf(id)") long cachedPtr,
+                    @Cached("readString(id)") String cachedId) {
+        checkLLVMTruffleObject(cachedValue);
+        return doInvoke(frame, cachedValue.getObject(), cachedId);
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)", contains = "doIntrinsicReceiverCachedLLVMTruffleObjectCached")
     public Object doIntrinsicLLVMTruffleObjectCached(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
                     @Cached("readString(id)") String cachedId) {
         checkLLVMTruffleObject(value);

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -81,12 +82,25 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
         }
     }
 
-    @Specialization
+    @SuppressWarnings("unused")
+    @Specialization(guards = "value == cachedValue", limit = "2")
+    public Object doIntrinsicCachedTruffleObject(VirtualFrame frame, TruffleObject value, @Cached("value") TruffleObject cachedValue) {
+        return doExecute(frame, cachedValue);
+    }
+
+    @Specialization(contains = "doIntrinsicCachedTruffleObject")
     public Object doIntrinsicTruffleObject(VirtualFrame frame, TruffleObject value) {
         return doExecute(frame, value);
     }
 
-    @Specialization
+    @SuppressWarnings("unused")
+    @Specialization(guards = "value == cachedValue")
+    public Object doIntrinsicCachedLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value, @Cached("value") LLVMTruffleObject cachedValue) {
+        checkLLVMTruffleObject(cachedValue);
+        return doExecute(frame, cachedValue.getObject());
+    }
+
+    @Specialization(contains = "doIntrinsicCachedLLVMTruffleObject")
     public Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value) {
         checkLLVMTruffleObject(value);
         return doExecute(frame, value.getObject());
