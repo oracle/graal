@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,8 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
 
         public abstract boolean hasChanged();
 
+        public abstract boolean needsApplyEffects();
+
         public abstract void applyEffects();
     }
 
@@ -97,25 +99,27 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                         stop = true;
                     }
 
-                    // apply the effects collected during this iteration
-                    HashSetNodeEventListener listener = new HashSetNodeEventListener();
-                    try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-                        closure.applyEffects();
-                    }
-
-                    if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
-                        Debug.dump(Debug.INFO_LOG_LEVEL, graph, "%s iteration", getName());
-                    }
-
-                    new DeadCodeEliminationPhase(Required).apply(graph);
-
-                    EconomicSet<Node> changedNodes = listener.getNodes();
-                    for (Node node : graph.getNodes()) {
-                        if (node instanceof Simplifiable) {
-                            changedNodes.add(node);
+                    if (closure.needsApplyEffects()) {
+                        // apply the effects collected during this iteration
+                        HashSetNodeEventListener listener = new HashSetNodeEventListener();
+                        try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
+                            closure.applyEffects();
                         }
+
+                        if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
+                            Debug.dump(Debug.INFO_LOG_LEVEL, graph, "%s iteration", getName());
+                        }
+
+                        new DeadCodeEliminationPhase(Required).apply(graph);
+
+                        EconomicSet<Node> changedNodes = listener.getNodes();
+                        for (Node node : graph.getNodes()) {
+                            if (node instanceof Simplifiable) {
+                                changedNodes.add(node);
+                            }
+                        }
+                        postIteration(graph, context, changedNodes);
                     }
-                    postIteration(graph, context, changedNodes);
                 } catch (Throwable t) {
                     throw Debug.handle(t);
                 }

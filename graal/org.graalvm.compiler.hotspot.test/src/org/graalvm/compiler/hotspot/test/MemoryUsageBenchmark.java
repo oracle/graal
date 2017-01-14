@@ -26,9 +26,7 @@ import static org.graalvm.compiler.debug.internal.MemUseTrackerImpl.getCurrentTh
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.AllocSpy;
-import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugEnvironment;
-import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.CompileTheWorld;
 import org.graalvm.compiler.hotspot.CompileTheWorldOptions;
@@ -125,9 +123,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         Graal.getRuntime();
 
         // Ensure a debug configuration for this thread is initialized
-        if (Debug.isEnabled() && DebugScope.getConfig() == null) {
-            DebugEnvironment.initialize(System.out);
-        }
+        DebugEnvironment.ensureInitialized();
         new MemoryUsageBenchmark().run();
     }
 

@@ -339,7 +339,7 @@ public class GraphEncoder {
             } while (current != null);
 
             for (Node node : graph.getNodes()) {
-                assert (node instanceof FixedNode) == (orderIds.get(node) != null) : "all fixed nodes must be ordered";
+                assert (node instanceof FixedNode) == (orderIds.get(node) != null) : "all fixed nodes must be ordered: " + node;
                 add(node);
             }
         }

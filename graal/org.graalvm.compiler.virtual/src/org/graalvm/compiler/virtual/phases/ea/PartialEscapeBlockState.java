@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -37,6 +39,7 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.LockState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.virtual.phases.ea.EffectList.Effect;
 
 public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<T>> extends EffectsBlockState<T> {
 
@@ -152,39 +155,47 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         materializeWithCommit(fixed, virtual, objects, locks, values, ensureVirtual, otherAllocations);
         assert fixed != null;
 
-        materializeEffects.add("materializeBefore", (graph, obsoleteNodes) -> {
-            for (ValueNode otherAllocation : otherAllocations) {
-                graph.addWithoutUnique(otherAllocation);
-                if (otherAllocation instanceof FixedWithNextNode) {
-                    graph.addBeforeFixed(fixed, (FixedWithNextNode) otherAllocation);
-                } else {
-                    assert otherAllocation instanceof FloatingNode;
-                }
+        materializeEffects.add("materializeBefore", new Effect() {
+            @Override
+            public int virtualObjects() {
+                return -(objects.size() + otherAllocations.size());
             }
-            if (!objects.isEmpty()) {
-                CommitAllocationNode commit;
-                if (fixed.predecessor() instanceof CommitAllocationNode) {
-                    commit = (CommitAllocationNode) fixed.predecessor();
-                } else {
-                    commit = graph.add(new CommitAllocationNode());
-                    graph.addBeforeFixed(fixed, commit);
-                }
-                for (AllocatedObjectNode obj : objects) {
-                    graph.addWithoutUnique(obj);
-                    commit.getVirtualObjects().add(obj.getVirtualObject());
-                    obj.setCommit(commit);
-                }
-                commit.getValues().addAll(values);
-                for (List<MonitorIdNode> monitorIds : locks) {
-                    commit.addLocks(monitorIds);
-                }
-                commit.getEnsureVirtual().addAll(ensureVirtual);
 
-                assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.getUsageCount();
-                List<AllocatedObjectNode> materializedValues = commit.usages().filter(AllocatedObjectNode.class).snapshot();
-                for (int i = 0; i < commit.getValues().size(); i++) {
-                    if (materializedValues.contains(commit.getValues().get(i))) {
-                        commit.getValues().set(i, ((AllocatedObjectNode) commit.getValues().get(i)).getVirtualObject());
+            @Override
+            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                for (ValueNode otherAllocation : otherAllocations) {
+                    graph.addWithoutUnique(otherAllocation);
+                    if (otherAllocation instanceof FixedWithNextNode) {
+                        graph.addBeforeFixed(fixed, (FixedWithNextNode) otherAllocation);
+                    } else {
+                        assert otherAllocation instanceof FloatingNode;
+                    }
+                }
+                if (!objects.isEmpty()) {
+                    CommitAllocationNode commit;
+                    if (fixed.predecessor() instanceof CommitAllocationNode) {
+                        commit = (CommitAllocationNode) fixed.predecessor();
+                    } else {
+                        commit = graph.add(new CommitAllocationNode());
+                        graph.addBeforeFixed(fixed, commit);
+                    }
+                    for (AllocatedObjectNode obj : objects) {
+                        graph.addWithoutUnique(obj);
+                        commit.getVirtualObjects().add(obj.getVirtualObject());
+                        obj.setCommit(commit);
+                    }
+                    commit.getValues().addAll(values);
+                    for (List<MonitorIdNode> monitorIds : locks) {
+                        commit.addLocks(monitorIds);
+                    }
+                    commit.getEnsureVirtual().addAll(ensureVirtual);
+
+                    assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.getUsageCount();
+                    List<AllocatedObjectNode> materializedValues = commit.usages().filter(AllocatedObjectNode.class).snapshot();
+                    for (int i = 0; i < commit.getValues().size(); i++) {
+                        if (materializedValues.contains(commit.getValues().get(i))) {
+                            commit.getValues().set(i, ((AllocatedObjectNode) commit.getValues().get(i)).getVirtualObject());
+                        }
                     }
                 }
             }

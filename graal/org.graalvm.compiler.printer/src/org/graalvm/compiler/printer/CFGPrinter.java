@@ -473,7 +473,7 @@ class CFGPrinter extends CompilationPrinter {
         if (lir == null) {
             return;
         }
-        List<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
+        ArrayList<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
         if (lirInstructions == null) {
             return;
         }
@@ -700,7 +700,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println("LIR");
 
         for (AbstractBlockBase<?> block : trace.getBlocks()) {
-            List<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
+            ArrayList<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
             if (lirInstructions == null) {
                 continue;
             }

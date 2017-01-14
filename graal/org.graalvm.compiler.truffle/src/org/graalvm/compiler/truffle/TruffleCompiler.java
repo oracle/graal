@@ -110,7 +110,7 @@ public abstract class TruffleCompiler {
         this.partialEvaluator = createPartialEvaluator();
 
         if (Debug.isEnabled()) {
-            DebugEnvironment.initialize(System.out, graalTruffleRuntime.getRequiredGraalCapability(SnippetReflectionProvider.class));
+            DebugEnvironment.ensureInitialized(graalTruffleRuntime.getRequiredGraalCapability(SnippetReflectionProvider.class));
         }
 
         graalTruffleRuntime.reinstallStubs();
@@ -156,25 +156,27 @@ public abstract class TruffleCompiler {
                 return;
             }
 
-            dequeueInlinedCallSites(inliningDecision);
+            dequeueInlinedCallSites(inliningDecision, compilable);
 
             compilationNotify.notifyCompilationTruffleTierFinished(compilable, inliningDecision, graph);
             CompilationResult compilationResult = compileMethodHelper(graph, compilable.toString(), graphBuilderSuite, compilable, asCompilationRequest(compilationId));
             compilationNotify.notifyCompilationSuccess(compilable, inliningDecision, graph, compilationResult);
-            dequeueInlinedCallSites(inliningDecision);
+            dequeueInlinedCallSites(inliningDecision, compilable);
         } catch (Throwable t) {
             compilationNotify.notifyCompilationFailed(compilable, graph, t);
             throw t;
         }
     }
 
-    private static void dequeueInlinedCallSites(TruffleInlining inliningDecision) {
+    private static void dequeueInlinedCallSites(TruffleInlining inliningDecision, OptimizedCallTarget compilable) {
         if (inliningDecision != null) {
             for (TruffleInliningDecision decision : inliningDecision) {
                 if (decision.isInline()) {
                     OptimizedCallTarget target = decision.getTarget();
-                    target.cancelInstalledTask(decision.getProfile().getCallNode(), "Inlining caller compiled.");
-                    dequeueInlinedCallSites(decision);
+                    if (target != compilable) {
+                        target.cancelInstalledTask(decision.getProfile().getCallNode(), "Inlining caller compiled.");
+                    }
+                    dequeueInlinedCallSites(decision, compilable);
                 }
             }
         }

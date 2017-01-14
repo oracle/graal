@@ -22,9 +22,9 @@
  */
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -120,6 +121,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      *            handling the replaced invoke are to be force inlined
      */
     void handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything);
+
+    void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType);
 
     /**
      * Intrinsifies an invocation of a given method by inlining the bytecodes of a given

@@ -22,22 +22,21 @@
  */
 package org.graalvm.compiler.lir.alloc.trace;
 
-import static org.graalvm.compiler.lir.LIRValueUtil.asVirtualStackSlot;
-import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
-import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
-import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.asVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
+import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
+import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.Debug;
@@ -69,9 +68,9 @@ public final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhas
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
 
-    private final List<Value> mappingFrom;
-    private final List<Value> mappingFromStack;
-    private final List<AllocatableValue> mappingTo;
+    private final ArrayList<Value> mappingFrom;
+    private final ArrayList<Value> mappingFromStack;
+    private final ArrayList<AllocatableValue> mappingTo;
     private final int[] registerBlocked;
     private static final int STACK_SLOT_IN_CALLER_FRAME_IDX = -1;
     private int[] stackBlocked;
@@ -296,7 +295,7 @@ public final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhas
         return isRegister(location) || isStackSlotValue(location);
     }
 
-    private void createInsertionBuffer(List<LIRInstruction> list) {
+    private void createInsertionBuffer(ArrayList<LIRInstruction> list) {
         assert !insertionBuffer.initialized() : "overwriting existing buffer";
         insertionBuffer.init(list);
     }
@@ -435,7 +434,7 @@ public final class TraceGlobalMoveResolver extends TraceGlobalMoveResolutionPhas
         }
     }
 
-    public void setInsertPosition(List<LIRInstruction> insertList, int insertIdx) {
+    public void setInsertPosition(ArrayList<LIRInstruction> insertList, int insertIdx) {
         assert this.insertIdx == -1 : "use moveInsertPosition instead of setInsertPosition when data already set";
 
         createInsertionBuffer(insertList);

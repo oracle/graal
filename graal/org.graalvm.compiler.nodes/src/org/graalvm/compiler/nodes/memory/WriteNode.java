@@ -26,6 +26,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.Guard;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -38,7 +39,6 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -47,7 +47,7 @@ import org.graalvm.compiler.nodes.spi.VirtualizerTool;
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
 @NodeInfo(nameTemplate = "Write#{p#location/s}")
-public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simplifiable, Virtualizable {
+public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Simplifiable, Virtualizable {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
 
@@ -107,5 +107,10 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerable, Simpli
     public void setStoreCheckGuard(GuardingNode newStoreCheckGuard) {
         updateUsages((Node) this.storeCheckGuard, (Node) newStoreCheckGuard);
         this.storeCheckGuard = newStoreCheckGuard;
+    }
+
+    @Override
+    public Stamp getAccessStamp() {
+        return value().stamp();
     }
 }

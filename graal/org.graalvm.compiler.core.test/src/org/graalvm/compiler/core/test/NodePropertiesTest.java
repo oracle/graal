@@ -298,7 +298,7 @@ public class NodePropertiesTest extends GraalCompilerTest {
         new CanonicalizerPhase().apply(g1, htc);
         GraphCostPhase gc1 = new GraphCostPhase();
         gc1.apply(g1, htc);
-        Assert.assertEquals(120, gc1.finalCycles, 25);
+        Assert.assertEquals(40, gc1.finalCycles, 25);
     }
 
     static class ImprovementSavingCanonicalizer extends CustomCanonicalizer {

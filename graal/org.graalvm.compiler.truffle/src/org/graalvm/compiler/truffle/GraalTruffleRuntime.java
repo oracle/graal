@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.WeakHashMap;
 import java.util.concurrent.CancellationException;
@@ -66,6 +67,7 @@ import org.graalvm.compiler.truffle.debug.TraceCompilationPolymorphismListener;
 import org.graalvm.compiler.truffle.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.phases.InstrumentBranchesPhase;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -96,7 +98,6 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.services.Services;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -368,11 +369,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         } else if (capability == LayoutFactory.class) {
             return capability.cast(loadObjectLayoutFactory());
         }
-        Iterator<T> services = Services.load(capability).iterator();
-        if (services.hasNext()) {
-            return services.next();
+        try {
+            Iterator<T> services = GraalServices.load(capability).iterator();
+            if (services.hasNext()) {
+                return services.next();
+            }
+            return null;
+        } catch (ServiceConfigurationError e) {
+            // Happens on JDK9 when a service type has not been exported to Graal
+            // or Graal's module descriptor does not declare a use of capability.
+            return null;
         }
-        return null;
     }
 
     @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
@@ -430,6 +437,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return createClonedCallTarget(null, rootNode);
     }
 
+    @SuppressWarnings("deprecation")
     public RootCallTarget createClonedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
 

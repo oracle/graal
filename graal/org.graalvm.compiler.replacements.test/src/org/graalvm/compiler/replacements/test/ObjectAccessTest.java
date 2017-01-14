@@ -22,9 +22,6 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LocationIdentity;
@@ -42,6 +39,8 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;

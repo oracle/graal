@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.lir.alloc.trace;
 
-import java.util.List;
+import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
@@ -63,7 +63,7 @@ public class TraceUtil {
         if (trace.size() != 1) {
             return false;
         }
-        List<LIRInstruction> instructions = lir.getLIRforBlock(trace.getBlocks()[0]);
+        ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(trace.getBlocks()[0]);
         if (instructions.size() != 2) {
             return false;
         }

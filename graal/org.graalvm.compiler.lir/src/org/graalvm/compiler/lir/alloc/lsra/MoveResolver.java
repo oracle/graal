@@ -27,9 +27,9 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
-import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.CompareStrategy;
+
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.Debug;
@@ -55,9 +55,9 @@ public class MoveResolver {
     private int insertIdx;
     private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
 
-    private final List<Interval> mappingFrom;
-    private final List<Constant> mappingFromOpr;
-    private final List<Interval> mappingTo;
+    private final ArrayList<Interval> mappingFrom;
+    private final ArrayList<Constant> mappingFromOpr;
+    private final ArrayList<Interval> mappingTo;
     private boolean multipleReadsAllowed;
     private final int[] registerBlocked;
 
@@ -252,7 +252,7 @@ public class MoveResolver {
         return isRegister(location);
     }
 
-    private void createInsertionBuffer(List<LIRInstruction> list) {
+    private void createInsertionBuffer(ArrayList<LIRInstruction> list) {
         assert !insertionBuffer.initialized() : "overwriting existing buffer";
         insertionBuffer.init(list);
     }
@@ -428,14 +428,14 @@ public class MoveResolver {
         }
     }
 
-    void setInsertPosition(List<LIRInstruction> insertList, int insertIdx) {
+    void setInsertPosition(ArrayList<LIRInstruction> insertList, int insertIdx) {
         assert this.insertIdx == -1 : "use moveInsertPosition instead of setInsertPosition when data already set";
 
         createInsertionBuffer(insertList);
         this.insertIdx = insertIdx;
     }
 
-    void moveInsertPosition(List<LIRInstruction> newInsertList, int newInsertIdx) {
+    void moveInsertPosition(ArrayList<LIRInstruction> newInsertList, int newInsertIdx) {
         if (insertionBuffer.lirList() != null && (insertionBuffer.lirList() != newInsertList || this.insertIdx != newInsertIdx)) {
             // insert position changed . resolve current mappings
             resolveMappings();

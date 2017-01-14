@@ -48,7 +48,6 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -61,7 +60,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, Virtualizable, GuardingNode {
+public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
@@ -93,7 +92,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(stamp());
+        LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp());
         gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitLoad(readKind, gen.operand(address), gen.state(this)));
     }
 
@@ -179,5 +178,10 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerable, Canon
     @Override
     public boolean canNullCheck() {
         return true;
+    }
+
+    @Override
+    public Stamp getAccessStamp() {
+        return stamp();
     }
 }

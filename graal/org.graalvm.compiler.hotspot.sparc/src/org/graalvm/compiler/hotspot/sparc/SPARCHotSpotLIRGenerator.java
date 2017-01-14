@@ -279,13 +279,22 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+    public Variable emitLogicCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         ValueKind<?> kind = newValue.getValueKind();
         assert kind.equals(expectedValue.getValueKind());
         SPARCKind memKind = (SPARCKind) kind.getPlatformKind();
         Variable result = newVariable(newValue.getValueKind());
         append(new CompareAndSwapOp(result, asAllocatable(address), asAllocatable(expectedValue), asAllocatable(newValue)));
         return emitConditionalMove(memKind, expectedValue, result, Condition.EQ, true, trueValue, falseValue);
+    }
+
+    @Override
+    public Variable emitValueCompareAndSwap(Value address, Value expectedValue, Value newValue) {
+        ValueKind<?> kind = newValue.getValueKind();
+        assert kind.equals(expectedValue.getValueKind());
+        Variable result = newVariable(newValue.getValueKind());
+        append(new CompareAndSwapOp(result, asAllocatable(address), asAllocatable(expectedValue), asAllocatable(newValue)));
+        return result;
     }
 
     @Override

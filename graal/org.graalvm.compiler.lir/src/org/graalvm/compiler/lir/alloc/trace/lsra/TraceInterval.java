@@ -339,7 +339,7 @@ final class TraceInterval extends IntervalHint {
      * List of all intervals that are split off from this interval. This is only used if this is a
      * {@linkplain #isSplitParent() split parent}.
      */
-    private List<TraceInterval> splitChildren = Collections.emptyList();
+    private ArrayList<TraceInterval> splitChildren = null;
 
     /**
      * Current split child that has been active or inactive last (always stored in split parents).
@@ -377,6 +377,11 @@ final class TraceInterval extends IntervalHint {
      * The number of times {@link #addMaterializationValue(JavaConstant)} is called.
      */
     private int numMaterializationValuesAdded;
+
+    private boolean splitChildrenEmpty() {
+        assert splitChildren == null || !splitChildren.isEmpty();
+        return splitChildren == null;
+    }
 
     void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {
@@ -592,7 +597,7 @@ final class TraceInterval extends IntervalHint {
 
     // consistency check of split-children
     boolean checkSplitChildren() {
-        if (!splitChildren.isEmpty()) {
+        if (!splitChildrenEmpty()) {
             assert isSplitParent() : "only split parents can have children";
 
             for (int i = 0; i < splitChildren.size(); i++) {
@@ -632,7 +637,7 @@ final class TraceInterval extends IntervalHint {
                 return locationHint;
             } else if (locationHint instanceof TraceInterval) {
                 TraceInterval hint = (TraceInterval) locationHint;
-                if (!hint.splitChildren.isEmpty()) {
+                if (!hint.splitChildrenEmpty()) {
                     // search the first split child that has a register assigned
                     int len = hint.splitChildren.size();
                     for (int i = 0; i < len; i++) {
@@ -653,7 +658,7 @@ final class TraceInterval extends IntervalHint {
         assert isSplitParent() : "can only be called for split parents";
         assert opId >= 0 : "invalid opId (method cannot be called for spill moves)";
 
-        if (splitChildren.isEmpty()) {
+        if (splitChildrenEmpty()) {
             assert this.covers(opId, mode) : this + " does not cover " + opId;
             return this;
         } else {
@@ -689,7 +694,7 @@ final class TraceInterval extends IntervalHint {
         if (result == null) {
             // this is an error
             StringBuilder msg = new StringBuilder(this.toString()).append(" has no child at ").append(opId);
-            if (!splitChildren.isEmpty()) {
+            if (!splitChildrenEmpty()) {
                 TraceInterval firstChild = splitChildren.get(0);
                 TraceInterval lastChild = splitChildren.get(splitChildren.size() - 1);
                 msg.append(" (first = ").append(firstChild).append(", last = ").append(lastChild).append(")");
@@ -697,7 +702,7 @@ final class TraceInterval extends IntervalHint {
             throw new GraalError("Linear Scan Error: %s", msg);
         }
 
-        if (!splitChildren.isEmpty()) {
+        if (!splitChildrenEmpty()) {
             for (TraceInterval interval : splitChildren) {
                 if (interval != result && interval.from() <= opId && opId < interval.to() + toOffset) {
                     /*
@@ -725,7 +730,7 @@ final class TraceInterval extends IntervalHint {
         TraceInterval parent = splitParent();
         TraceInterval result = null;
 
-        assert !parent.splitChildren.isEmpty() : "no split children available";
+        assert !parent.splitChildrenEmpty() : "no split children available";
         int len = parent.splitChildren.size();
 
         for (int i = len - 1; i >= 0; i--) {
@@ -746,7 +751,7 @@ final class TraceInterval extends IntervalHint {
         TraceInterval parent = splitParent();
         TraceInterval result = null;
 
-        assert !parent.splitChildren.isEmpty() : "no split children available";
+        assert !parent.splitChildrenEmpty() : "no split children available";
         int len = parent.splitChildren.size();
 
         for (int i = len - 1; i >= 0; i--) {
@@ -765,7 +770,7 @@ final class TraceInterval extends IntervalHint {
         assert isSplitParent() : "can only be called for split parents";
         assert opId >= 0 : "invalid opId (method can not be called for spill moves)";
 
-        if (splitChildren.isEmpty()) {
+        if (splitChildrenEmpty()) {
             // simple case if interval was not split
             return covers(opId, mode);
 
@@ -893,7 +898,7 @@ final class TraceInterval extends IntervalHint {
         result.setLocationHint(parent);
 
         // insert new interval in children-list of parent
-        if (parent.splitChildren.isEmpty()) {
+        if (parent.splitChildrenEmpty()) {
             assert isSplitParent() : "list must be initialized at first split";
 
             // Create new non-shared list

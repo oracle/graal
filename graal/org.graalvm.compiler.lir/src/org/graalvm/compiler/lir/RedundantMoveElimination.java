@@ -25,10 +25,10 @@ package org.graalvm.compiler.lir;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -179,7 +179,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
              * slots which occur as destinations of move instructions.
              */
             for (AbstractBlockBase<?> block : blocks) {
-                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 for (LIRInstruction op : instructions) {
                     if (isEligibleMove(op)) {
                         Value dest = ((MoveOp) op).getResult();
@@ -286,7 +286,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                                      */
                                     int[] iterState = data.exitState;
                                     copyState(iterState, data.entryState);
-                                    List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+                                    ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
 
                                     for (LIRInstruction op : instructions) {
                                         valueNum = updateState(iterState, op, valueNum);
@@ -331,7 +331,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
                     try (Indent indent2 = Debug.logAndIndent("eliminate moves in block %d", block.getId())) {
 
-                        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+                        ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                         BlockData data = blockData.get(block);
                         boolean hasDead = false;
 

@@ -22,17 +22,17 @@
  */
 package org.graalvm.compiler.lir.alloc.trace.lsra;
 
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 import static org.graalvm.compiler.lir.alloc.trace.TraceRegisterAllocationPhase.Options.TraceRAshareSpillInformation;
-import static jdk.vm.ci.code.ValueUtil.isIllegal;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -163,7 +163,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
             info.forEachState(op, this::debugInfoProcedure);
         }
 
-        private void assignLocations(List<LIRInstruction> instructions) {
+        private void assignLocations(ArrayList<LIRInstruction> instructions) {
             int numInst = instructions.size();
             boolean hasDead = false;
 
@@ -203,7 +203,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
          * @param instructions The instructions of the current block.
          * @return {@code true} if the instruction was deleted.
          */
-        private boolean assignLocations(LIRInstruction op, List<LIRInstruction> instructions, int j) {
+        private boolean assignLocations(LIRInstruction op, ArrayList<LIRInstruction> instructions, int j) {
             assert op != null && instructions.get(j) == op;
             if (TraceRAshareSpillInformation.getValue()) {
                 if (op instanceof BlockEndOp) {

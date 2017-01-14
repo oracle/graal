@@ -94,7 +94,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
-import org.graalvm.compiler.nodes.java.CompareAndSwapNode;
+import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
@@ -256,7 +256,7 @@ public class StandardGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode expected, ValueNode x) {
                     // Emits a null-check for the otherwise unused receiver
                     unsafe.get();
-                    b.addPush(JavaKind.Int, new CompareAndSwapNode(object, offset, expected, x, kind, LocationIdentity.any()));
+                    b.addPush(JavaKind.Int, new UnsafeCompareAndSwapNode(object, offset, expected, x, kind, LocationIdentity.any()));
                     b.getGraph().markUnsafeAccess();
                     return true;
                 }

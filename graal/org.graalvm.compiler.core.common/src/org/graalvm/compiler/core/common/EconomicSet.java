@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.core.common;
 
+import java.util.Iterator;
+
 public interface EconomicSet<E> extends Iterable<E> {
 
     boolean contains(E element);
@@ -38,7 +40,21 @@ public interface EconomicSet<E> extends Iterable<E> {
 
     boolean isEmpty();
 
-    void retainAll(EconomicSet<E> values);
+    default void removeAll(EconomicSet<E> values) {
+        for (E element : values) {
+            remove(element);
+        }
+    }
+
+    default void retainAll(EconomicSet<E> values) {
+        Iterator<E> iterator = iterator();
+        while (iterator.hasNext()) {
+            E key = iterator.next();
+            if (!values.contains(key)) {
+                iterator.remove();
+            }
+        }
+    }
 
     default E[] toArray(E[] target) {
         if (target.length != size()) {

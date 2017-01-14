@@ -63,7 +63,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
 
     private final boolean tryToSchedule;
-    private final SnippetReflectionProvider snippetReflection;
+    private SnippetReflectionProvider snippetReflection;
 
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
@@ -71,10 +71,14 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * @param tryToSchedule If false, no scheduling is done, which avoids exceptions for
      *            non-schedulable graphs.
      */
-    public IdealGraphPrinter(OutputStream stream, boolean tryToSchedule, SnippetReflectionProvider snippetReflection) {
+    public IdealGraphPrinter(OutputStream stream, boolean tryToSchedule) {
         super(stream);
         this.begin();
         this.tryToSchedule = tryToSchedule;
+    }
+
+    @Override
+    public void setSnippetReflectionProvider(SnippetReflectionProvider snippetReflection) {
         this.snippetReflection = snippetReflection;
     }
 

@@ -654,15 +654,4 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
     public void remove(K element) {
         removeKey(element);
     }
-
-    @Override
-    public void retainAll(EconomicSet<K> values) {
-        Iterator<K> iterator = this.getKeys().iterator();
-        while (iterator.hasNext()) {
-            K key = iterator.next();
-            if (!values.contains(key)) {
-                iterator.remove();
-            }
-        }
-    }
 }

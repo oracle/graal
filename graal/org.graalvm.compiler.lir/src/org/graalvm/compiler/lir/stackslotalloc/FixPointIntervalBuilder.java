@@ -26,11 +26,10 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asVirtualStackSlot;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Deque;
 import java.util.EnumSet;
-import java.util.List;
-
 import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicSet;
@@ -116,7 +115,7 @@ final class FixPointIntervalBuilder {
     private void processBlock(AbstractBlockBase<?> block, Deque<AbstractBlockBase<?>> worklist) {
         if (updateOutBlock(block)) {
             try (Indent indent = Debug.logAndIndent("handle block %s", block)) {
-                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 // get out set and mark intervals
                 BitSet outSet = liveOutMap.get(block);
                 markOutInterval(outSet, getBlockEnd(instructions));
@@ -307,11 +306,11 @@ final class FixPointIntervalBuilder {
         return stackSlotMap[id];
     }
 
-    private static int getBlockBegin(List<LIRInstruction> instructions) {
+    private static int getBlockBegin(ArrayList<LIRInstruction> instructions) {
         return instructions.get(0).id();
     }
 
-    private static int getBlockEnd(List<LIRInstruction> instructions) {
+    private static int getBlockEnd(ArrayList<LIRInstruction> instructions) {
         return instructions.get(instructions.size() - 1).id() + 1;
     }
 

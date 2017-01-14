@@ -87,14 +87,14 @@ import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.AccessIndexedNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
-import org.graalvm.compiler.nodes.java.CompareAndSwapNode;
+import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.FinalFieldBarrierNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
-import org.graalvm.compiler.nodes.java.LoweredCompareAndSwapNode;
+import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
@@ -181,8 +181,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             lowerLoadHubNode((LoadHubNode) n, tool);
         } else if (n instanceof MonitorEnterNode) {
             lowerMonitorEnterNode((MonitorEnterNode) n, tool, graph);
-        } else if (n instanceof CompareAndSwapNode) {
-            lowerCompareAndSwapNode((CompareAndSwapNode) n);
+        } else if (n instanceof UnsafeCompareAndSwapNode) {
+            lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
         } else if (n instanceof AtomicReadAndWriteNode) {
             lowerAtomicReadAndWriteNode((AtomicReadAndWriteNode) n);
         } else if (n instanceof UnsafeLoadNode) {
@@ -478,7 +478,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         graph.replaceFixedWithFixed(monitorEnter, rawMonitorEnter);
     }
 
-    protected void lowerCompareAndSwapNode(CompareAndSwapNode cas) {
+    protected void lowerCompareAndSwapNode(UnsafeCompareAndSwapNode cas) {
         StructuredGraph graph = cas.graph();
         JavaKind valueKind = cas.getValueKind();
 
@@ -486,7 +486,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
-        LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(address, cas.getLocationIdentity(), expectedValue, newValue, compareAndSwapBarrierType(cas)));
+        LogicCompareAndSwapNode atomicNode = graph.add(new LogicCompareAndSwapNode(address, cas.getLocationIdentity(), expectedValue, newValue, compareAndSwapBarrierType(cas)));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
@@ -804,7 +804,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return storeBarrierType(store.object(), store.value());
     }
 
-    protected BarrierType compareAndSwapBarrierType(CompareAndSwapNode cas) {
+    protected BarrierType compareAndSwapBarrierType(UnsafeCompareAndSwapNode cas) {
         return storeBarrierType(cas.object(), cas.expected());
     }
 

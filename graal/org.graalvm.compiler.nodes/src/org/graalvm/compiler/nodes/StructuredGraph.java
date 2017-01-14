@@ -509,7 +509,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         for (Node successor : snapshot) {
             if (successor != null && successor.isAlive()) {
                 if (successor != survivingSuccessor) {
-                    GraphUtil.killCFG(successor, tool);
+                    GraphUtil.killCFG((FixedNode) successor, tool);
                 }
             }
         }
@@ -569,6 +569,9 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
             reduceTrivialMerge(begin);
         } else { // convert to merge
             AbstractMergeNode merge = this.add(new MergeNode());
+            for (EndNode end : begin.forwardEnds()) {
+                merge.addForwardEnd(end);
+            }
             this.replaceFixedWithFixed(begin, merge);
         }
     }
@@ -579,7 +582,14 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         for (PhiNode phi : merge.phis().snapshot()) {
             assert phi.valueCount() == 1;
             ValueNode singleValue = phi.valueAt(0);
-            phi.replaceAtUsagesAndDelete(singleValue);
+            if (phi.hasUsages()) {
+                phi.replaceAtUsagesAndDelete(singleValue);
+            } else {
+                phi.safeDelete();
+                if (singleValue != null) {
+                    GraphUtil.tryKillUnused(singleValue);
+                }
+            }
         }
         // remove loop exits
         if (merge instanceof LoopBeginNode) {
@@ -591,8 +601,8 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         // evacuateGuards
         merge.prepareDelete((FixedNode) singleEnd.predecessor());
         merge.safeDelete();
-        if (stateAfter != null && stateAfter.isAlive() && stateAfter.hasNoUsages()) {
-            GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+        if (stateAfter != null) {
+            GraphUtil.tryKillUnused(stateAfter);
         }
         if (sux == null) {
             singleEnd.replaceAtPredecessor(null);

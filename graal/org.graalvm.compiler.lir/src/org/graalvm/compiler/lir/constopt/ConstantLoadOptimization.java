@@ -342,7 +342,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             }
 
             // delete instructions
-            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
             boolean hasDead = false;
             for (LIRInstruction inst : instructions) {
                 if (inst == null) {
@@ -370,7 +370,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                 insertionBuffer = new LIRInsertionBuffer();
                 insertionBuffers.put(block, insertionBuffer);
                 assert !insertionBuffer.initialized() : "already initialized?";
-                List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 insertionBuffer.init(instructions);
             }
             return insertionBuffer;

@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.core.test;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.GraalError;
@@ -32,6 +30,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.options.OptionValue.OverrideScope;
 import org.graalvm.compiler.phases.Phase;
+import org.junit.Test;
 
 public class CooperativePhaseTest extends GraalCompilerTest {
 
@@ -101,6 +100,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @Test(timeout = 60_000)
     @SuppressWarnings("try")
     public void test01() {
+        initializeForTimeout();
         StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
         try (OverrideScope o = OptionValue.override(CompilationAlarm.Options.CompilationExpirationPeriod, 1/* sec */);
                         CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod()) {
@@ -111,6 +111,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @Test(expected = RetryableBailoutException.class, timeout = 60_000)
     @SuppressWarnings("try")
     public void test02() {
+        initializeForTimeout();
         StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
         try (OverrideScope o = OptionValue.override(CompilationAlarm.Options.CompilationExpirationPeriod, 1/* sec */);
                         CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod()) {
@@ -121,6 +122,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @Test(timeout = 60_000)
     @SuppressWarnings("try")
     public void test03() {
+        initializeForTimeout();
         StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
         // 0 disables alarm utility
         try (OverrideScope o = OptionValue.override(CompilationAlarm.Options.CompilationExpirationPeriod, 0);
@@ -132,6 +134,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @Test(timeout = 60_000)
     @SuppressWarnings("try")
     public void test04() {
+        initializeForTimeout();
         StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
         new CooperativePhaseWithoutAlarm().apply(g);
     }

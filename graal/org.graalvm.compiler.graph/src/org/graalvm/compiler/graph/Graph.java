@@ -592,7 +592,7 @@ public class Graph {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     void putNodeIntoCache(Node node) {
         assert node.graph() == this || node.graph() == null;
         assert node.getNodeClass().valueNumberable();
@@ -600,7 +600,7 @@ public class Graph {
 
         int leafId = node.getNodeClass().getLeafId();
         if (cachedLeafNodes == null || cachedLeafNodes.length <= leafId) {
-            EconomicMap<Node, Node>[] newLeafNodes = new EconomicMap[leafId + 1];
+            EconomicMap[] newLeafNodes = new EconomicMap[leafId + 1];
             if (cachedLeafNodes != null) {
                 System.arraycopy(cachedLeafNodes, 0, newLeafNodes, 0, cachedLeafNodes.length);
             }

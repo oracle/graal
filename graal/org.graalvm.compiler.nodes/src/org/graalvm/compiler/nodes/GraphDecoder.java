@@ -594,6 +594,11 @@ public class GraphDecoder {
     protected LoopScope handleInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
         assert invokeData.invoke.callTarget() == null : "callTarget edge is ignored during decoding of Invoke";
         CallTargetNode callTarget = (CallTargetNode) ensureNodeCreated(methodScope, loopScope, invokeData.callTargetOrderId);
+        appendInvoke(methodScope, loopScope, invokeData, callTarget);
+        return loopScope;
+    }
+
+    protected void appendInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData, CallTargetNode callTarget) {
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
             ((InvokeWithExceptionNode) invokeData.invoke).setCallTarget(callTarget);
         } else {
@@ -607,7 +612,6 @@ public class GraphDecoder {
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
             ((InvokeWithExceptionNode) invokeData.invoke).setExceptionEdge((AbstractBeginNode) makeStubNode(methodScope, loopScope, invokeData.exceptionOrderId));
         }
-        return loopScope;
     }
 
     /**

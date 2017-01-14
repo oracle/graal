@@ -53,7 +53,7 @@ public class CollectionsTest {
     private static final class BadHashClass {
         private int value;
 
-        public BadHashClass(int randomInt) {
+        BadHashClass(int randomInt) {
             this.value = randomInt;
         }
 
@@ -72,7 +72,7 @@ public class CollectionsTest {
         }
     }
 
-    static interface MapAction {
+    interface MapAction {
         Object perform(EconomicMap<Object, Object> map, int randomInt);
     }
 
