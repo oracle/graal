@@ -60,6 +60,8 @@ interface GraphPrinter extends Closeable {
 
     SnippetReflectionProvider getSnippetReflectionProvider();
 
+    void setSnippetReflectionProvider(SnippetReflectionProvider snippetReflection);
+
     /**
      * Ends the current group.
      */
