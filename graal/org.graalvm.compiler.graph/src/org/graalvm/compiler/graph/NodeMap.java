@@ -26,8 +26,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.BiFunction;
 
-import org.graalvm.compiler.core.common.EconomicMap;
-import org.graalvm.compiler.core.common.MapCursor;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
 
 public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 

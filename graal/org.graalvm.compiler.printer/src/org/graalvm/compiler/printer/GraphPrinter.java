@@ -28,15 +28,12 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.ConstantNode;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
@@ -84,7 +81,7 @@ interface GraphPrinter extends Closeable {
     /**
      * Classes whose {@link #toString()} method does not run any untrusted code.
      */
-    EconomicSet<Class<?>> TRUSTED_CLASSES = CollectionsFactory.newSet(CompareStrategy.EQUALS, Arrays.asList(
+    List<Class<?>> TRUSTED_CLASSES = Arrays.asList(
                     String.class,
                     Class.class,
                     Boolean.class,
@@ -94,7 +91,7 @@ interface GraphPrinter extends Closeable {
                     Integer.class,
                     Float.class,
                     Long.class,
-                    Double.class));
+                    Double.class);
     int MAX_CONSTANT_TO_STRING_LENGTH = 50;
 
     /**

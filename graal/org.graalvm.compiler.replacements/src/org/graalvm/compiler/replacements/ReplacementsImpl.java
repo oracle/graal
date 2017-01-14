@@ -42,10 +42,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -82,6 +79,9 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -183,7 +183,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.graphs = new ConcurrentHashMap<>();
-        this.snippetTemplateCache = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+        this.snippetTemplateCache = CollectionFactory.newMap(CompareStrategy.EQUALS);
         this.bytecodeProvider = bytecodeProvider;
     }
 

@@ -38,10 +38,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.graalvm.compiler.common.PermanentBailoutException;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.Fields;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.util.TypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.debug.Debug;
@@ -64,6 +61,9 @@ import org.graalvm.compiler.nodes.GraphDecoder.ProxyPlaceholder;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -535,7 +535,7 @@ public class GraphDecoder {
                     resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId,
                                     Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length), loopScope.createdNodes, //
                                     methodScope.loopExplosion != LoopExplosionKind.NONE ? new ArrayDeque<>() : null, //
-                                    methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE ? CollectionsFactory.newMap(CompareStrategy.EQUALS) : null);
+                                    methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE ? CollectionFactory.newMap(CompareStrategy.EQUALS) : null);
                     phiInputScope = resultScope;
                     phiNodeScope = resultScope;
 
@@ -1333,7 +1333,7 @@ class LoopDetector implements Runnable {
 
     private List<Loop> findLoops() {
         /* Mapping from the loop header node to additional loop information. */
-        EconomicMap<MergeNode, Loop> unorderedLoops = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<MergeNode, Loop> unorderedLoops = CollectionFactory.newMap(CompareStrategy.IDENTITY);
         /* Loops in reverse order of, i.e., inner loops before outer loops. */
         List<Loop> orderedLoops = new ArrayList<>();
 

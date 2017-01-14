@@ -22,16 +22,16 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
@@ -52,7 +52,7 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
      */
-    private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
+    private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
 
     public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub) {
         super(compilationId, lir, frameMapBuilder, callingConvention);

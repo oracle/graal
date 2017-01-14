@@ -22,9 +22,9 @@
  */
 package org.graalvm.compiler.lir.util;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.meta.Value;
 
@@ -33,7 +33,7 @@ public final class GenericValueMap<T> extends ValueMap<Value, T> {
     private final EconomicMap<Value, T> data;
 
     public GenericValueMap() {
-        data = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+        data = CollectionFactory.newMap(CompareStrategy.EQUALS);
     }
 
     @Override

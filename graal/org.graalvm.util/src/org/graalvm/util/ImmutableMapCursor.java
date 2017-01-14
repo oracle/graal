@@ -20,52 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.util;
 
-import java.util.Iterator;
+public interface ImmutableMapCursor<K, V> {
+    boolean advance();
 
-public interface EconomicSet<E> extends Iterable<E> {
+    K getKey();
 
-    boolean contains(E element);
-
-    void addAll(Iterable<E> values);
-
-    int size();
-
-    boolean add(E element);
-
-    void remove(E element);
-
-    void clear();
-
-    boolean isEmpty();
-
-    default void removeAll(EconomicSet<E> values) {
-        for (E element : values) {
-            remove(element);
-        }
-    }
-
-    default void retainAll(EconomicSet<E> values) {
-        Iterator<E> iterator = iterator();
-        while (iterator.hasNext()) {
-            E key = iterator.next();
-            if (!values.contains(key)) {
-                iterator.remove();
-            }
-        }
-    }
-
-    default E[] toArray(E[] target) {
-        if (target.length != size()) {
-            throw new UnsupportedOperationException("target array must have correct length");
-        }
-
-        int index = 0;
-        for (E element : this) {
-            target[index++] = element;
-        }
-
-        return target;
-    }
+    V getValue();
 }

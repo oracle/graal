@@ -26,12 +26,7 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
 
 import java.util.EnumSet;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.EconomicMap;
-import org.graalvm.compiler.core.common.EconomicSet;
-import org.graalvm.compiler.core.common.MapCursor;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -73,6 +68,11 @@ import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
@@ -350,7 +350,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @return the registers that are defined by or used as temps for any instruction in {@code lir}
      */
     protected final EconomicSet<Register> gatherDestroyedCallerRegisters(LIR lir) {
-        final EconomicSet<Register> destroyedRegisters = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+        final EconomicSet<Register> destroyedRegisters = CollectionFactory.newSet(CompareStrategy.IDENTITY);
         ValueConsumer defConsumer = new ValueConsumer() {
 
             @Override

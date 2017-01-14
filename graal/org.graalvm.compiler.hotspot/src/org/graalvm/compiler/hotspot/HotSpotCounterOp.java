@@ -29,14 +29,14 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import java.util.Arrays;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.NumUtil;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
@@ -103,7 +103,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
             proc.apply(0, increments[0], displacement);
         } else { // Slow path with sort by displacements ascending
             int[] displacements = new int[names.length];
-            EconomicMap<Integer, Integer> offsetMap = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+            EconomicMap<Integer, Integer> offsetMap = CollectionFactory.newMap(CompareStrategy.EQUALS);
             for (int i = 0; i < names.length; i++) {
                 int arrayIndex = getIndex(names[i], groups[i], increments[i]);
                 displacements[i] = getDisplacementForLongIndex(target, arrayIndex);

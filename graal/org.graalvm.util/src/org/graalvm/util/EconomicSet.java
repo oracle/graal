@@ -20,8 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.util;
 
-public interface MapCursor<K, V> extends ImmutableMapCursor<K, V> {
-    void remove();
+import java.util.Iterator;
+
+/**
+ * Memory efficient set data structure.
+ */
+public interface EconomicSet<E> extends ImmutableEconomicSet<E> {
+
+    void addAll(Iterable<E> values);
+
+    boolean add(E element);
+
+    void remove(E element);
+
+    void clear();
+
+    default void removeAll(EconomicSet<E> values) {
+        for (E element : values) {
+            remove(element);
+        }
+    }
+
+    default void retainAll(EconomicSet<E> values) {
+        Iterator<E> iterator = iterator();
+        while (iterator.hasNext()) {
+            E key = iterator.next();
+            if (!values.contains(key)) {
+                iterator.remove();
+            }
+        }
+    }
 }

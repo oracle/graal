@@ -20,8 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.util;
 
+/**
+ * Immutable memory efficient map data structure.
+ */
 public interface ImmutableEconomicMap<K, V> {
 
     V get(K key);

@@ -25,7 +25,7 @@ package org.graalvm.compiler.phases.common.inlining.info;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import org.graalvm.compiler.core.common.ImmutableEconomicMap;
+
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import org.graalvm.compiler.graph.Node;
@@ -37,6 +37,7 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.common.inlining.info.elem.Inlineable;
 import org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.util.ImmutableEconomicMap;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

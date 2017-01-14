@@ -25,9 +25,6 @@ package org.graalvm.compiler.phases.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
@@ -59,6 +56,9 @@ import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClo
 import org.graalvm.compiler.phases.graph.StatelessPostOrderNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 public final class GraphOrder {
 
@@ -157,7 +157,7 @@ public final class GraphOrder {
         assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
         try {
             final SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS);
-            final EconomicMap<LoopBeginNode, NodeBitMap> loopEntryStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+            final EconomicMap<LoopBeginNode, NodeBitMap> loopEntryStates = CollectionFactory.newMap(CompareStrategy.IDENTITY);
             schedulePhase.apply(graph, false);
             final ScheduleResult schedule = graph.getLastSchedule();
 

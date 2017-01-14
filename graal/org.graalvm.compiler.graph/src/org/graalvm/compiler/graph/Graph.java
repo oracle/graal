@@ -27,10 +27,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.ImmutableEconomicMap;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
@@ -42,6 +38,10 @@ import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.ImmutableEconomicMap;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
@@ -385,7 +385,7 @@ public class Graph {
 
     public <T extends Node> T addOrUnique(T node) {
         if (node.getNodeClass().valueNumberable()) {
-            return uniqueHelper(node, true);
+            return uniqueHelper(node);
         }
         return add(node);
     }
@@ -398,7 +398,7 @@ public class Graph {
     public <T extends Node> T addOrUniqueWithInputs(T node) {
         addInputs(node);
         if (node.getNodeClass().valueNumberable()) {
-            return uniqueHelper(node, true);
+            return uniqueHelper(node);
         }
         return add(node);
     }
@@ -564,16 +564,16 @@ public class Graph {
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
     public <T extends Node & ValueNumberable> T unique(T node) {
-        return uniqueHelper(node, true);
+        return uniqueHelper(node);
     }
 
-    <T extends Node> T uniqueHelper(T node, boolean addIfMissing) {
+    <T extends Node> T uniqueHelper(T node) {
         assert node.getNodeClass().valueNumberable();
         T other = this.findDuplicate(node);
         if (other != null) {
             return other;
         } else {
-            T result = addIfMissing ? addHelper(node) : node;
+            T result = addHelper(node);
             if (node.getNodeClass().isLeafNode()) {
                 putNodeIntoCache(result);
             }
@@ -608,7 +608,7 @@ public class Graph {
         }
 
         if (cachedLeafNodes[leafId] == null) {
-            cachedLeafNodes[leafId] = CollectionsFactory.newMap(NODE_VALUE_COMPARE);
+            cachedLeafNodes[leafId] = CollectionFactory.newMap(NODE_VALUE_COMPARE);
         }
 
         cachedLeafNodes[leafId].put(node, node);

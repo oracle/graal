@@ -28,12 +28,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.ImmutableEconomicMap;
-import org.graalvm.compiler.core.common.EconomicMap;
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -48,6 +43,11 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.ImmutableEconomicMap;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
@@ -372,7 +372,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
-        EconomicMap<Node, Node> replacements = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<Node, Node> replacements = CollectionFactory.newMap(CompareStrategy.IDENTITY);
         replacements.put(start, copy.start);
         ImmutableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
         if (duplicationMapCallback != null) {
@@ -710,7 +710,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     public void recordField(ResolvedJavaField field) {
         assert GraalOptions.GeneratePIC.getValue();
         if (this.fields == null) {
-            this.fields = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+            this.fields = CollectionFactory.newSet(CompareStrategy.IDENTITY);
         }
         fields.add(field);
     }
@@ -723,7 +723,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         assert this != other;
         assert GraalOptions.GeneratePIC.getValue();
         if (this.fields == null) {
-            this.fields = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+            this.fields = CollectionFactory.newSet(CompareStrategy.IDENTITY);
         }
         this.fields.addAll(other.fields);
     }

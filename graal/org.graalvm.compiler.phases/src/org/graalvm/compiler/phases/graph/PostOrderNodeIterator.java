@@ -27,9 +27,6 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Set;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -44,6 +41,9 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 /**
  * A PostOrderNodeIterator iterates the fixed nodes of the graph in post order starting from a
@@ -71,7 +71,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         StructuredGraph graph = start.graph();
         visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
-        nodeStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+        nodeStates = CollectionFactory.newMap(CompareStrategy.IDENTITY);
         this.start = start;
         this.state = initialState;
     }

@@ -27,9 +27,7 @@ import static org.graalvm.compiler.debug.GraalDebugConfig.Options.LogVerbose;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
+
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.core.match.MatchPattern.Result;
 import org.graalvm.compiler.debug.Debug;
@@ -37,6 +35,9 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 /**
  * Container for state captured during a match.
@@ -85,7 +86,7 @@ public class MatchContext {
 
     public Result captureNamedValue(String name, Class<? extends Node> type, Node value) {
         if (namedNodes == null) {
-            namedNodes = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+            namedNodes = CollectionFactory.newMap(CompareStrategy.EQUALS);
         }
         NamedNode current = namedNodes.get(name);
         if (current == null) {

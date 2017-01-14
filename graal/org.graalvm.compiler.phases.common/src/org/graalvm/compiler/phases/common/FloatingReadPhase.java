@@ -29,12 +29,8 @@ import static org.graalvm.compiler.graph.Graph.NodeEvent.ZERO_USAGES;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.ImmutableMapCursor;
+
 import org.graalvm.compiler.core.common.LocationIdentity;
-import org.graalvm.compiler.core.common.EconomicMap;
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -74,6 +70,11 @@ import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.ImmutableMapCursor;
 
 public class FloatingReadPhase extends Phase {
 
@@ -85,7 +86,7 @@ public class FloatingReadPhase extends Phase {
         private final EconomicMap<LocationIdentity, MemoryNode> lastMemorySnapshot;
 
         public MemoryMapImpl(MemoryMapImpl memoryMap) {
-            lastMemorySnapshot = CollectionsFactory.newMap(CompareStrategy.EQUALS, memoryMap.lastMemorySnapshot);
+            lastMemorySnapshot = CollectionFactory.newMap(CompareStrategy.EQUALS, memoryMap.lastMemorySnapshot);
         }
 
         public MemoryMapImpl(StartNode start) {
@@ -94,7 +95,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         public MemoryMapImpl() {
-            lastMemorySnapshot = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+            lastMemorySnapshot = CollectionFactory.newMap(CompareStrategy.EQUALS);
         }
 
         @Override
@@ -187,7 +188,7 @@ public class FloatingReadPhase extends Phase {
             return result;
         }
 
-        result = CollectionsFactory.newSet(CompareStrategy.EQUALS);
+        result = CollectionFactory.newSet(CompareStrategy.EQUALS);
         for (Loop<Block> inner : loop.getChildren()) {
             result.addAll(processLoop((HIRLoop) inner, modifiedInLoops));
         }
@@ -207,7 +208,7 @@ public class FloatingReadPhase extends Phase {
     protected void run(StructuredGraph graph) {
         EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops = null;
         if (graph.hasLoops()) {
-            modifiedInLoops = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+            modifiedInLoops = CollectionFactory.newMap(CompareStrategy.IDENTITY);
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
             for (Loop<?> l : cfg.getLoops()) {
                 HIRLoop loop = (HIRLoop) l;
@@ -235,7 +236,7 @@ public class FloatingReadPhase extends Phase {
     public static MemoryMapImpl mergeMemoryMaps(AbstractMergeNode merge, List<? extends MemoryMap> states) {
         MemoryMapImpl newState = new MemoryMapImpl();
 
-        EconomicSet<LocationIdentity> keys = CollectionsFactory.newSet(CompareStrategy.EQUALS);
+        EconomicSet<LocationIdentity> keys = CollectionFactory.newSet(CompareStrategy.EQUALS);
         for (MemoryMap other : states) {
             keys.addAll(other.getLocations());
         }
@@ -408,10 +409,10 @@ public class FloatingReadPhase extends Phase {
         @Override
         protected EconomicMap<LoopExitNode, MemoryMapImpl> processLoop(LoopBeginNode loop, MemoryMapImpl initialState) {
             EconomicSet<LocationIdentity> modifiedLocations = modifiedInLoops.get(loop);
-            EconomicMap<LocationIdentity, MemoryPhiNode> phis = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+            EconomicMap<LocationIdentity, MemoryPhiNode> phis = CollectionFactory.newMap(CompareStrategy.EQUALS);
             if (modifiedLocations.contains(LocationIdentity.any())) {
                 // create phis for all locations if ANY is modified in the loop
-                modifiedLocations = CollectionsFactory.newSet(CompareStrategy.EQUALS, modifiedLocations);
+                modifiedLocations = CollectionFactory.newSet(CompareStrategy.EQUALS, modifiedLocations);
                 modifiedLocations.addAll(initialState.lastMemorySnapshot.getKeys());
             }
 

@@ -26,9 +26,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullCheck
 
 import java.util.Iterator;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -62,6 +59,9 @@ import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -83,7 +83,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
-        private final EconomicMap<ValueNode, ValueNode> nullGuarded = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+        private final EconomicMap<ValueNode, ValueNode> nullGuarded = CollectionFactory.newMap(CompareStrategy.IDENTITY);
         private final int implicitNullCheckLimit;
 
         UseImplicitNullChecks(int implicitNullCheckLimit) {

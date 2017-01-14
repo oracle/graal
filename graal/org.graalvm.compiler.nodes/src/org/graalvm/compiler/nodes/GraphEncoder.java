@@ -29,7 +29,6 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.Objects;
 
-import org.graalvm.compiler.core.common.ImmutableMapCursor;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
@@ -45,6 +44,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.util.ImmutableMapCursor;
 
 import jdk.vm.ci.code.Architecture;
 

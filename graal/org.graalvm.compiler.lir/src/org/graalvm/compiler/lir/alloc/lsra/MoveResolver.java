@@ -27,11 +27,8 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.debug.GraalError;
@@ -39,6 +36,9 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRValueUtil;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -147,7 +147,7 @@ public class MoveResolver {
             }
         }
 
-        EconomicSet<Value> usedRegs = CollectionsFactory.newSet(CompareStrategy.EQUALS);
+        EconomicSet<Value> usedRegs = CollectionFactory.newSet(CompareStrategy.EQUALS);
         if (!areMultipleReadsAllowed()) {
             for (i = 0; i < mappingFrom.size(); i++) {
                 Interval interval = mappingFrom.get(i);
@@ -176,7 +176,7 @@ public class MoveResolver {
     }
 
     protected void verifyStackSlotMapping() {
-        EconomicSet<Value> usedRegs = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+        EconomicSet<Value> usedRegs = CollectionFactory.newSet(CompareStrategy.IDENTITY);
         for (int i = 0; i < mappingFrom.size(); i++) {
             Interval interval = mappingFrom.get(i);
             if (interval != null && !isRegister(interval.location())) {

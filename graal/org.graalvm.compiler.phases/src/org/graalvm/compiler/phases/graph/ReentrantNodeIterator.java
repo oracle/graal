@@ -28,10 +28,6 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
-import org.graalvm.compiler.core.common.MapCursor;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -42,6 +38,10 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
 
 public final class ReentrantNodeIterator {
 
@@ -51,8 +51,8 @@ public final class ReentrantNodeIterator {
         public final EconomicMap<LoopExitNode, StateT> exitStates;
 
         public LoopInfo(int endCount, int exitCount) {
-            endStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY, endCount);
-            exitStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY, exitCount);
+            endStates = CollectionFactory.newMap(CompareStrategy.IDENTITY, endCount);
+            exitStates = CollectionFactory.newMap(CompareStrategy.IDENTITY, exitCount);
         }
     }
 
@@ -104,7 +104,7 @@ public final class ReentrantNodeIterator {
     private static <StateT> EconomicMap<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, LoopBeginNode boundary) {
         assert start != null;
         Deque<AbstractBeginNode> nodeQueue = new ArrayDeque<>();
-        EconomicMap<FixedNode, StateT> blockEndStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<FixedNode, StateT> blockEndStates = CollectionFactory.newMap(CompareStrategy.IDENTITY);
 
         StateT state = initialState;
         FixedNode current = start;

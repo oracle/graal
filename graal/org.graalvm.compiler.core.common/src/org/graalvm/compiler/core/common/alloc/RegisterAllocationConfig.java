@@ -29,10 +29,10 @@ import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.PlatformKind;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.EconomicMap;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 /**
  * Configuration for register allocation. This is different to {@link RegisterConfig} as it only
@@ -95,7 +95,7 @@ public class RegisterAllocationConfig {
     }
 
     protected final RegisterConfig registerConfig;
-    private final EconomicMap<PlatformKind.Key, AllocatableRegisters> categorized = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+    private final EconomicMap<PlatformKind.Key, AllocatableRegisters> categorized = CollectionFactory.newMap(CompareStrategy.EQUALS);
     private RegisterArray cachedRegisters;
 
     public RegisterAllocationConfig(RegisterConfig registerConfig) {

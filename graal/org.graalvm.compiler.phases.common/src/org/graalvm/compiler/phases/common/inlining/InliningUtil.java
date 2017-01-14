@@ -32,11 +32,6 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.ImmutableMapCursor;
-import org.graalvm.compiler.core.common.ImmutableEconomicMap;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -98,6 +93,11 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.ImmutableMapCursor;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
@@ -503,7 +503,7 @@ public class InliningUtil {
             NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
             assert invokePos != null : "missing source information";
 
-            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = CollectionFactory.newMap(CompareStrategy.EQUALS);
             ImmutableMapCursor<Node, Node> cursor = duplicates.getEntries();
             while (cursor.advance()) {
                 NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();

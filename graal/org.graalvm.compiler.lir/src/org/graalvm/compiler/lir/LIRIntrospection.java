@@ -32,15 +32,16 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
+
 import org.graalvm.compiler.core.common.FieldIntrospection;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.FieldsScanner;
-import org.graalvm.compiler.core.common.MapCursor;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -156,7 +157,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
         public LIRFieldsScanner(FieldsScanner.CalcOffset calc) {
             super(calc);
-            valueAnnotations = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+            valueAnnotations = CollectionFactory.newMap(CompareStrategy.EQUALS);
         }
 
         protected OperandModeAnnotation getOperandModeAnnotation(Field field) {

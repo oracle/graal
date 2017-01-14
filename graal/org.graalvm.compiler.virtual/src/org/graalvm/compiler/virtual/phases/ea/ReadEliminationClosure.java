@@ -27,12 +27,8 @@ import static org.graalvm.compiler.core.common.LocationIdentity.any;
 
 import java.util.Iterator;
 import java.util.List;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
+
 import org.graalvm.compiler.core.common.LocationIdentity;
-import org.graalvm.compiler.core.common.MapCursor;
-import org.graalvm.compiler.core.common.EconomicMap;
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.Debug;
@@ -63,6 +59,11 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.UnsafeLoadCacheEntry;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -225,7 +226,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
     private class ReadEliminationMergeProcessor extends EffectsClosure<ReadEliminationBlockState>.MergeProcessor {
 
-        private final EconomicMap<Object, ValuePhiNode> materializedPhis = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+        private final EconomicMap<Object, ValuePhiNode> materializedPhis = CollectionFactory.newMap(CompareStrategy.EQUALS);
 
         ReadEliminationMergeProcessor(Block mergeBlock) {
             super(mergeBlock);
@@ -336,7 +337,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     loopKilledLocations.setKillsAll();
                 } else {
                     // we have fully processed this loop >1 times, update the killed locations
-                    EconomicSet<LocationIdentity> forwardEndLiveLocations = CollectionsFactory.newSet(CompareStrategy.EQUALS);
+                    EconomicSet<LocationIdentity> forwardEndLiveLocations = CollectionFactory.newSet(CompareStrategy.EQUALS);
                     for (CacheEntry<?> entry : initialState.readCache.getKeys()) {
                         forwardEndLiveLocations.add(entry.getIdentity());
                     }

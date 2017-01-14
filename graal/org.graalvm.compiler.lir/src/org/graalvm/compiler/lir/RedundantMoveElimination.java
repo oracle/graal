@@ -29,10 +29,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
+
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
@@ -44,6 +42,9 @@ import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -103,7 +104,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
     private static final class Optimization {
 
-        EconomicMap<AbstractBlockBase<?>, BlockData> blockData = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<AbstractBlockBase<?>, BlockData> blockData = CollectionFactory.newMap(CompareStrategy.IDENTITY);
 
         RegisterArray callerSaveRegs;
 
@@ -116,7 +117,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          * A map from the {@link StackSlot} {@link #getOffset offset} to an index into the state.
          * StackSlots of different kinds that map to the same location will map to the same index.
          */
-        EconomicMap<Integer, Integer> stackIndices = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+        EconomicMap<Integer, Integer> stackIndices = CollectionFactory.newMap(CompareStrategy.EQUALS);
 
         int numRegs;
 

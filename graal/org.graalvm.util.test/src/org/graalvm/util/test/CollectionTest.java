@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,268 +20,188 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.util.test;
+
+import static org.junit.Assert.*;
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.function.BiFunction;
 
-/**
- * Factory for creating collection objects used during compilation.
- */
-public class CollectionsFactory {
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.MapCursor;
+import org.graalvm.util.ObjectSizeEstimate;
+import org.junit.Assert;
+import org.junit.Test;
 
-    private static final boolean DEBUG_MAPS = false;
+public class CollectionTest {
 
-    /**
-     * Creates a new map that guarnatees insertion order on the key set.
-     */
-    public static <K, V> EconomicMap<K, V> newMap(CompareStrategy strategy) {
-        if (DEBUG_MAPS) {
-            return debugNewMap();
-        }
-        return new EconomicMapImpl<>(strategy);
+    @Test
+    public void testSize() {
+        EconomicMap<Object, Object> map = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+        assertEquals(48, ObjectSizeEstimate.forObject(map).getTotalBytes());
+
+        Integer value = 1;
+        map.put(value, value);
+        assertEquals(152, ObjectSizeEstimate.forObject(map).getTotalBytes());
+
+        Integer secondValue = 2;
+        map.put(secondValue, secondValue);
+        assertEquals(152 + 20, ObjectSizeEstimate.forObject(map).getTotalBytes());
     }
 
-    /**
-     * Creates a new map that guarantees insertion order on the key set and initializes with a
-     * specified capacity.
-     */
-    public static <K, V> EconomicMap<K, V> newMap(CompareStrategy strategy, int initialCapacity) {
-        if (DEBUG_MAPS) {
-            return debugNewMap();
-        } else {
-            return new EconomicMapImpl<>(strategy, initialCapacity);
-        }
-    }
-
-    /**
-     * Creates a new map that guarantees insertion order on the key set and copies all elements from
-     * the specified existing map.
-     */
-    public static <K, V> EconomicMap<K, V> newMap(CompareStrategy strategy, ImmutableEconomicMap<K, V> m) {
-        EconomicMap<K, V> result;
-        if (DEBUG_MAPS) {
-            result = debugNewMap(m);
-        } else {
-            result = new EconomicMapImpl<>(strategy, m);
-        }
-
-        return result;
-    }
-
-    /**
-     * Creates a new set guaranteeing insertion order when iterating over its elements.
-     */
-    public static <E> EconomicSet<E> newSet(CompareStrategy strategy) {
-        if (DEBUG_MAPS) {
-            return newDebugSet();
-        }
-        return new EconomicMapImpl<E, E>(strategy);
-    }
-
-    /**
-     * Creates a new set guaranteeing insertion order when iterating over its elements and inserts
-     * all elements of the specified collection.
-     */
-    public static <E> EconomicSet<E> newSet(CompareStrategy strategy, EconomicSet<E> c) {
-        return new EconomicMapImpl<E, E>(strategy, c);
-    }
-
-    /**
-     * Creates a new set guaranteeing insertion order when iterating over its elements and inserts
-     * all elements of the specified collection.
-     */
-    public static <E> EconomicSet<E> newSet(CompareStrategy strategy, Iterable<? extends E> c) {
-        EconomicSet<E> result = newSet(strategy);
-        for (E element : c) {
-            result.add(element);
+    private static int[] createRandomRange(Random random, int count) {
+        int[] result = new int[count];
+        for (int i = 0; i < count; ++i) {
+            int range = random.nextInt(20);
+            if (range == 0 || range > 10) {
+                range = Integer.MAX_VALUE;
+            } else if (range == 10) {
+                range = 100;
+            }
+            result[i] = range;
         }
         return result;
     }
 
-    public static <E> EconomicSet<E> newSet(CompareStrategy strategy, int initialCapacity) {
-        if (DEBUG_MAPS) {
-            return newDebugSet();
+    private static final class BadHashClass {
+        private int value;
+
+        BadHashClass(int randomInt) {
+            this.value = randomInt;
         }
-        return new EconomicMapImpl<E, E>(strategy, initialCapacity);
-    }
 
-    /**
-     * Creates a reference set used for debugging only.
-     */
-    private static <E> EconomicSet<E> newDebugSet() {
-        LinkedHashSet<E> linkedSet = new LinkedHashSet<>();
-        return new EconomicSet<E>() {
-
-            @Override
-            public Iterator<E> iterator() {
-                return linkedSet.iterator();
-            }
-
-            @Override
-            public boolean contains(E element) {
-                return linkedSet.contains(element);
-            }
-
-            @Override
-            public void addAll(Iterable<E> values) {
-                for (E e : values) {
-                    linkedSet.add(e);
-                }
-            }
-
-            @Override
-            public int size() {
-                return linkedSet.size();
-            }
-
-            @Override
-            public boolean add(E element) {
-                return linkedSet.add(element);
-            }
-
-            @Override
-            public void remove(E element) {
-                linkedSet.remove(element);
-            }
-
-            @Override
-            public void clear() {
-                linkedSet.clear();
-            }
-
-            @Override
-            public boolean isEmpty() {
-                return linkedSet.isEmpty();
-            }
-
-            @Override
-            public void retainAll(EconomicSet<E> values) {
-                Iterator<E> iterator = linkedSet.iterator();
-                while (iterator.hasNext()) {
-                    E element = iterator.next();
-                    if (!values.contains(element)) {
-                        iterator.remove();
-                    }
-                }
-            }
-
-        };
-    }
-
-    public static <K, V> EconomicMap<K, V> debugNewMap(ImmutableEconomicMap<K, V> m) {
-        EconomicMap<K, V> result = debugNewMap();
-        ImmutableMapCursor<K, V> cursor = m.getEntries();
-        while (cursor.advance()) {
-            result.put(cursor.getKey(), cursor.getValue());
+        @Override
+        public int hashCode() {
+            return 0;
         }
-        return result;
+
+        @Override
+        public boolean equals(Object other) {
+            if (other instanceof BadHashClass) {
+                BadHashClass badHashClass = (BadHashClass) other;
+                return badHashClass.value == value;
+            }
+            return false;
+        }
     }
 
-    public static <K, V> EconomicMap<K, V> wrapMap(Map<K, V> map) {
-        return new EconomicMap<K, V>() {
+    interface MapAction {
+        Object perform(EconomicMap<Object, Object> map, int randomInt);
+    }
 
-            @Override
-            public V get(K key) {
-                V result = map.get(key);
-                return result;
-            }
+    static final Object EXISTING_VALUE = new Object();
 
-            @Override
-            public V put(K key, V value) {
-                V result = map.put(key, value);
-                return result;
-            }
-
-            @Override
-            public int size() {
-                int result = map.size();
-                return result;
-            }
-
-            @Override
-            public boolean containsKey(K key) {
-                return map.containsKey(key);
-            }
-
-            @Override
-            public void clear() {
-                map.clear();
-            }
-
-            @Override
-            public V removeKey(K key) {
-                V result = map.remove(key);
-                return result;
-            }
-
-            @Override
-            public Iterable<V> getValues() {
-                return map.values();
-            }
-
-            @Override
-            public Iterable<K> getKeys() {
-                return map.keySet();
-            }
-
-            @Override
-            public boolean isEmpty() {
-                return map.isEmpty();
-            }
-
-            @Override
-            public MapCursor<K, V> getEntries() {
-                Iterator<java.util.Map.Entry<K, V>> iterator = map.entrySet().iterator();
-                return new MapCursor<K, V>() {
-
-                    private Map.Entry<K, V> current;
-
-                    @Override
-                    public boolean advance() {
-                        boolean result = iterator.hasNext();
-                        if (result) {
-                            current = iterator.next();
+    static MapAction[] ACTIONS = new MapAction[]{
+                    (map, randomInt) -> map.removeKey(randomInt),
+                    (map, randomInt) -> map.put(randomInt, "value"),
+                    (map, randomInt) -> map.put(randomInt, null),
+                    (map, randomInt) -> map.put(EXISTING_VALUE, randomInt),
+                    (map, randomInt) -> {
+                        if (randomInt == 0) {
+                            map.clear();
                         }
-
-                        return result;
+                        return map.isEmpty();
+                    },
+                    (map, randomInt) -> map.containsKey(randomInt),
+                    (map, randomInt) -> map.get(randomInt),
+                    (map, randomInt) -> map.put(new BadHashClass(randomInt), "unique"),
+                    (map, randomInt) -> {
+                        if (randomInt == 0) {
+                            map.replaceAll((key, value) -> Objects.toString(value) + "!");
+                        }
+                        return map.isEmpty();
                     }
 
-                    @Override
-                    public K getKey() {
-                        return current.getKey();
-                    }
+    };
 
-                    @Override
-                    public V getValue() {
-                        return current.getValue();
-                    }
+    @Test
+    public void testAdd() {
+        EconomicMap<Object, Object> map = CollectionFactory.newMap(CompareStrategy.EQUALS);
+        EconomicMap<Object, Object> referenceMap = createDebugMap();
 
-                    @Override
-                    public void remove() {
-                        iterator.remove();
+        for (int seed = 0; seed < 10; ++seed) {
+            Random random = new Random(seed);
+            int[] ranges = createRandomRange(random, ACTIONS.length);
+            int value = random.nextInt(1000);
+            for (int i = 0; i < value; ++i) {
+
+                for (int j = 0; j < ACTIONS.length; ++j) {
+                    if (random.nextInt(ranges[j]) == 0) {
+                        int nextInt = random.nextInt(100);
+                        MapAction action = ACTIONS[j];
+                        Object result = action.perform(map, nextInt);
+                        Object referenceResult = action.perform(referenceMap, nextInt);
+                        Assert.assertEquals(result, referenceResult);
+                        checkEquality(map, referenceMap);
                     }
-                };
+                }
+
+                if (random.nextInt(20) == 0) {
+                    removeElement(random.nextInt(100), map, referenceMap);
+                }
             }
-
-            @Override
-            public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
-                map.replaceAll(function);
-            }
-
-        };
+        }
     }
 
-    /**
-     * Creates a new map for debugging purposes only.
-     */
-    public static <K, V> EconomicMap<K, V> debugNewMap() {
+    private static void removeElement(int index, EconomicMap<?, ?> map, EconomicMap<?, ?> referenceMap) {
+        Assert.assertEquals(referenceMap.size(), map.size());
+        MapCursor<?, ?> cursor = map.getEntries();
+        MapCursor<?, ?> referenceCursor = referenceMap.getEntries();
+        int z = 0;
+        while (cursor.advance()) {
+            Assert.assertTrue(referenceCursor.advance());
+            Assert.assertEquals(referenceCursor.getKey(), cursor.getKey());
+            Assert.assertEquals(referenceCursor.getValue(), cursor.getValue());
+            if (index == z) {
+                cursor.remove();
+                referenceCursor.remove();
+            }
+            ++z;
+        }
+
+        Assert.assertFalse(referenceCursor.advance());
+    }
+
+    private static void checkEquality(EconomicMap<?, ?> map, EconomicMap<?, ?> referenceMap) {
+        Assert.assertEquals(referenceMap.size(), map.size());
+
+        // Check entries.
+        ImmutableMapCursor<?, ?> cursor = map.getEntries();
+        ImmutableMapCursor<?, ?> referenceCursor = referenceMap.getEntries();
+        while (cursor.advance()) {
+            Assert.assertTrue(referenceCursor.advance());
+            Assert.assertEquals(referenceCursor.getKey(), cursor.getKey());
+            Assert.assertEquals(referenceCursor.getValue(), cursor.getValue());
+        }
+
+        // Check keys.
+        Iterator<?> iterator = map.getKeys().iterator();
+        Iterator<?> referenceIterator = referenceMap.getKeys().iterator();
+        while (iterator.hasNext()) {
+            Assert.assertTrue(referenceIterator.hasNext());
+            Assert.assertEquals(iterator.next(), referenceIterator.next());
+        }
+
+        // Check values.
+        iterator = map.getValues().iterator();
+        referenceIterator = referenceMap.getValues().iterator();
+        while (iterator.hasNext()) {
+            Assert.assertTrue(referenceIterator.hasNext());
+            Assert.assertEquals(iterator.next(), referenceIterator.next());
+        }
+        Assert.assertFalse(referenceIterator.hasNext());
+    }
+
+    public static <K, V> EconomicMap<K, V> createDebugMap() {
         final LinkedHashMap<K, V> linkedMap = new LinkedHashMap<>();
-        final EconomicMapImpl<K, V> sparseMap = new EconomicMapImpl<>(CompareStrategy.EQUALS);
+        final EconomicMap<K, V> sparseMap = CollectionFactory.newMap(CompareStrategy.EQUALS);
         return new EconomicMap<K, V>() {
 
             @Override
@@ -459,5 +379,4 @@ public class CollectionsFactory {
 
         };
     }
-
 }

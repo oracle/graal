@@ -25,9 +25,6 @@ package org.graalvm.compiler.phases.common.inlining.walker;
 import java.util.ArrayList;
 import java.util.function.ToDoubleFunction;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeWorkList;
@@ -46,6 +43,9 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 public class ComputeInliningRelevance {
 
@@ -86,10 +86,10 @@ public class ComputeInliningRelevance {
             rootScope = new Scope(graph.start(), null);
         } else {
             if (nodeRelevances == null) {
-                nodeRelevances = CollectionsFactory.newMap(CompareStrategy.IDENTITY, EXPECTED_MIN_INVOKE_COUNT + InliningUtil.getNodeCount(graph) / EXPECTED_INVOKE_RATIO);
+                nodeRelevances = CollectionFactory.newMap(CompareStrategy.IDENTITY, EXPECTED_MIN_INVOKE_COUNT + InliningUtil.getNodeCount(graph) / EXPECTED_INVOKE_RATIO);
             }
             NodeWorkList workList = graph.createNodeWorkList();
-            EconomicMap<LoopBeginNode, Scope> loops = CollectionsFactory.newMap(CompareStrategy.IDENTITY, EXPECTED_LOOP_COUNT);
+            EconomicMap<LoopBeginNode, Scope> loops = CollectionFactory.newMap(CompareStrategy.IDENTITY, EXPECTED_LOOP_COUNT);
 
             Scope topScope = new Scope(graph.start(), null);
             for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {

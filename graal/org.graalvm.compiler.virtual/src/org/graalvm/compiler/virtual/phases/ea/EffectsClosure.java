@@ -24,11 +24,8 @@ package org.graalvm.compiler.virtual.phases.ea;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
+
 import org.graalvm.compiler.core.common.LocationIdentity;
-import org.graalvm.compiler.core.common.EconomicMap;
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -62,6 +59,10 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.LoopInfo;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
 
 public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> extends EffectsPhase.Closure<BlockT> {
 
@@ -70,10 +71,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
-    protected final EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+    protected final EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionFactory.newMap(CompareStrategy.IDENTITY);
     // Intended to be used by read-eliminating phases based on the effects phase.
-    protected final EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
-    private final EconomicMap<LoopBeginNode, BlockT> loopEntryStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+    protected final EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+    private final EconomicMap<LoopBeginNode, BlockT> loopEntryStates = CollectionFactory.newMap(CompareStrategy.IDENTITY);
     private final NodeBitMap hasScalarReplacedInputs;
 
     protected boolean changed;
@@ -493,7 +494,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 firstLocation = locationIdentity;
             } else {
                 if (killedLocations == null) {
-                    killedLocations = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+                    killedLocations = CollectionFactory.newSet(CompareStrategy.IDENTITY);
                 }
                 killedLocations.add(locationIdentity);
             }

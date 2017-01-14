@@ -42,12 +42,9 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.FieldIntrospection;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.FieldsScanner;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
@@ -72,6 +69,9 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.options.StableOptionValue;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 /**
  * Metadata for every {@link Node} type. The metadata includes:
@@ -827,7 +827,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             newNodes = new NodeMap<>(oldGraph);
         } else {
             // Use sparse map
-            newNodes = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+            newNodes = CollectionFactory.newMap(CompareStrategy.IDENTITY);
         }
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 

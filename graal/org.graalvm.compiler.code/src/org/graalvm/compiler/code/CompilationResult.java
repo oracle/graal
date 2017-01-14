@@ -33,8 +33,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.StackSlot;

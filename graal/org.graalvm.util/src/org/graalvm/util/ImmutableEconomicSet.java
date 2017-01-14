@@ -20,12 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.util;
 
-public interface ImmutableMapCursor<K, V> {
-    boolean advance();
+/**
+ * Immutable memory efficient set data structure.
+ */
+public interface ImmutableEconomicSet<E> extends Iterable<E> {
 
-    K getKey();
+    boolean contains(E element);
 
-    V getValue();
+    int size();
+
+    boolean isEmpty();
+
+    default E[] toArray(E[] target) {
+        if (target.length != size()) {
+            throw new UnsupportedOperationException("target array must have correct length");
+        }
+
+        int index = 0;
+        for (E element : this) {
+            target[index++] = element;
+        }
+
+        return target;
+    }
 }

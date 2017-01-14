@@ -34,7 +34,6 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.PriorityQueue;
 
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -55,6 +54,7 @@ import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.compiler.options.NestedBooleanOptionValue;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;

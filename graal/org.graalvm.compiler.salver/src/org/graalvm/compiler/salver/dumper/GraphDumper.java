@@ -28,11 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.ImmutableMapCursor;
 import org.graalvm.compiler.core.common.Fields;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -62,6 +58,10 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.salver.data.DataDict;
 import org.graalvm.compiler.salver.data.DataList;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.ImmutableMapCursor;
 
 public class GraphDumper extends AbstractMethodScopeDumper {
 
@@ -70,7 +70,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
     private static final EconomicMap<Class<?>, String> nodeClassCategoryMap;
 
     static {
-        nodeClassCategoryMap = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+        nodeClassCategoryMap = CollectionFactory.newMap(CompareStrategy.IDENTITY);
         nodeClassCategoryMap.put(ControlSinkNode.class, "ControlSink");
         nodeClassCategoryMap.put(ControlSplitNode.class, "ControlSplit");
         nodeClassCategoryMap.put(AbstractMergeNode.class, "Merge");

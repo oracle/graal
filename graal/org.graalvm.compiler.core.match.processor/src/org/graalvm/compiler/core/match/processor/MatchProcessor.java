@@ -58,10 +58,6 @@ import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.ComplexMatchResult;
 import org.graalvm.compiler.core.match.MatchRule;
@@ -74,6 +70,10 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
 
 /**
  * Processes classes annotated with {@link MatchRule}. A {@link MatchStatementSet} service is
@@ -366,7 +366,7 @@ public class MatchProcessor extends AbstractProcessor {
     /**
      * The types which are know for purpose of parsing MatchRule expressions.
      */
-    EconomicMap<String, TypeDescriptor> knownTypes = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+    EconomicMap<String, TypeDescriptor> knownTypes = CollectionFactory.newMap(CompareStrategy.EQUALS);
 
     private TypeDescriptor valueType;
 
@@ -663,14 +663,14 @@ public class MatchProcessor extends AbstractProcessor {
 
         final TypeElement topDeclaringType;
         final List<MatchRuleItem> matchRules = new ArrayList<>();
-        private final EconomicSet<Element> originatingElements = CollectionsFactory.newSet(CompareStrategy.EQUALS);
-        public EconomicSet<String> positionDeclarations = CollectionsFactory.newSet(CompareStrategy.EQUALS);
+        private final EconomicSet<Element> originatingElements = CollectionFactory.newSet(CompareStrategy.EQUALS);
+        public EconomicSet<String> positionDeclarations = CollectionFactory.newSet(CompareStrategy.EQUALS);
 
         /**
          * The mapping between elements with MatchRules and the wrapper class used invoke the code
          * generation after the match.
          */
-        EconomicMap<String, MethodInvokerItem> invokers = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+        EconomicMap<String, MethodInvokerItem> invokers = CollectionFactory.newMap(CompareStrategy.EQUALS);
 
         /**
          * The set of packages which must be imported to refer the classes mention in matchRules.
@@ -728,7 +728,7 @@ public class MatchProcessor extends AbstractProcessor {
             TypeMirror valueTypeMirror = processingEnv.getElementUtils().getTypeElement(ValueNode.class.getName()).asType();
             valueType = new TypeDescriptor(valueTypeMirror, "Value", ValueNode.class.getSimpleName(), ValueNode.class.getPackage().getName(), new String[0], false, false);
 
-            EconomicMap<TypeElement, MatchRuleDescriptor> map = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+            EconomicMap<TypeElement, MatchRuleDescriptor> map = CollectionFactory.newMap(CompareStrategy.EQUALS);
 
             for (Element element : roundEnv.getElementsAnnotatedWith(MatchRule.class)) {
                 currentElement = element;

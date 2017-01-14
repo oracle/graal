@@ -66,7 +66,6 @@ import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
@@ -100,6 +99,7 @@ import org.graalvm.compiler.lir.sparc.SPARCImmediateAddressValue;
 import org.graalvm.compiler.lir.sparc.SPARCMove.CompareAndSwapOp;
 import org.graalvm.compiler.lir.sparc.SPARCMove.NullCheckOp;
 import org.graalvm.compiler.lir.sparc.SPARCMove.StoreOp;
+import org.graalvm.util.EconomicMap;
 import org.graalvm.compiler.lir.sparc.SPARCPrefetchOp;
 import org.graalvm.compiler.lir.sparc.SPARCSaveRegistersOp;
 

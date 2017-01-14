@@ -23,7 +23,7 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.List;
-import org.graalvm.compiler.core.common.EconomicMap;
+
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
+import org.graalvm.util.EconomicMap;
 
 /**
  * This phase transfers {@link FrameState} nodes from {@link StateSplit} nodes to

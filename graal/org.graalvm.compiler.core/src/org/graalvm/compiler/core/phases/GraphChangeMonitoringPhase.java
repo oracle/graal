@@ -22,9 +22,6 @@
  */
 package org.graalvm.compiler.core.phases;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
@@ -36,6 +33,9 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicSet;
 
 /**
  * A utility phase for detecting when a phase would change the graph and reporting extra information
@@ -78,7 +78,7 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
             }
         }
 
-        EconomicSet<Node> filteredNodes = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+        EconomicSet<Node> filteredNodes = CollectionFactory.newSet(CompareStrategy.IDENTITY);
         for (Node n : listener.getNodes()) {
             if (n instanceof LogicConstantNode) {
                 // Ignore LogicConstantNode since those are sometimes created and deleted as part of

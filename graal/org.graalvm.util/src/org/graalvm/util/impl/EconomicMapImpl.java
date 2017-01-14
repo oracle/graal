@@ -20,10 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.util.impl;
 
 import java.util.Iterator;
 import java.util.function.BiFunction;
+
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.ImmutableEconomicSet;
+import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.MapCursor;
 
 public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
@@ -63,7 +71,7 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
     }
 
     @SuppressWarnings("unchecked")
-    public EconomicMapImpl(CompareStrategy strategy, EconomicSet<K> other) {
+    public EconomicMapImpl(CompareStrategy strategy, ImmutableEconomicSet<K> other) {
         this(strategy);
         if (other instanceof EconomicMapImpl) {
             initFrom((EconomicMapImpl<K, V>) other);
@@ -203,7 +211,7 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
             return (hashArray[adjustedIndex] & 0xFF) | ((hashArray[adjustedIndex + 1] & 0xFF) << 8);
         } else {
             int adjustedIndex = index << 2;
-            return (hashArray[adjustedIndex] & 0xFF) | ((hashArray[adjustedIndex + 1] << 8) & 0xFF) | ((hashArray[adjustedIndex + 2] & 0xFF) << 16) | (hashArray[adjustedIndex + 3] << 24);
+            return (hashArray[adjustedIndex] & 0xFF) | ((hashArray[adjustedIndex + 1] & 0xFF) << 8) | ((hashArray[adjustedIndex + 2] & 0xFF) << 16) | ((hashArray[adjustedIndex + 3] & 0xFF) << 24);
         }
     }
 

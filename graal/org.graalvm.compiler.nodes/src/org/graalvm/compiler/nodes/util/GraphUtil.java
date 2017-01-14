@@ -32,9 +32,6 @@ import java.util.Iterator;
 
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
@@ -71,6 +68,9 @@ import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
@@ -97,7 +97,7 @@ public class GraphUtil {
                 unsafeNodes = collectUnsafeNodes(node.graph());
             }
             if (VerifyKillCFGUnusedNodes.getValue()) {
-                EconomicSet<Node> collectedUnusedNodes = unusedNodes = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+                EconomicSet<Node> collectedUnusedNodes = unusedNodes = CollectionFactory.newSet(CompareStrategy.IDENTITY);
                 nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
                     @Override
                     public void event(Graph.NodeEvent e, Node n) {
@@ -139,7 +139,7 @@ public class GraphUtil {
      * Collects all node in the graph which have non-optional inputs that are null.
      */
     private static EconomicSet<Node> collectUnsafeNodes(Graph graph) {
-        EconomicSet<Node> unsafeNodes = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+        EconomicSet<Node> unsafeNodes = CollectionFactory.newSet(CompareStrategy.IDENTITY);
         for (Node n : graph.getNodes()) {
             for (Position pos : n.inputPositions()) {
                 Node input = pos.get(n);

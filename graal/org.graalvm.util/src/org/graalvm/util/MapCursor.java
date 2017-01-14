@@ -20,20 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.util;
 
-import java.util.function.BiFunction;
-
-public interface EconomicMap<K, V> extends ImmutableEconomicMap<K, V> {
-
-    V put(K key, V value);
-
-    void clear();
-
-    V removeKey(K key);
-
-    void replaceAll(BiFunction<? super K, ? super V, ? extends V> function);
-
-    @Override
-    MapCursor<K, V> getEntries();
+public interface MapCursor<K, V> extends ImmutableMapCursor<K, V> {
+    void remove();
 }

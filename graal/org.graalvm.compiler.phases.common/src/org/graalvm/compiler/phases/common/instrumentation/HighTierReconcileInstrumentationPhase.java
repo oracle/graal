@@ -22,9 +22,6 @@
  */
 package org.graalvm.compiler.phases.common.instrumentation;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -40,6 +37,9 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.Phase;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 /**
  * The {@code HighTierReconcileInstrumentationPhase} reconciles the InstrumentationNodes according
@@ -139,7 +139,7 @@ public class HighTierReconcileInstrumentationPhase extends Phase {
 
     }
 
-    private final EconomicMap<FixedWithNextNode, NodeFlood> cachedNodeFloods = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+    private final EconomicMap<FixedWithNextNode, NodeFlood> cachedNodeFloods = CollectionFactory.newMap(CompareStrategy.IDENTITY);
 
     /**
      * @return true if there is a control flow path between {@code from} and {@code to}.

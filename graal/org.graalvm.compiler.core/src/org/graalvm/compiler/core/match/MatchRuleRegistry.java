@@ -26,10 +26,7 @@ import static org.graalvm.compiler.debug.GraalDebugConfig.Options.LogVerbose;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
-import org.graalvm.compiler.core.common.MapCursor;
+
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -39,6 +36,10 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
 
 public class MatchRuleRegistry {
 
@@ -67,7 +68,7 @@ public class MatchRuleRegistry {
         return result;
     }
 
-    private static final EconomicMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> registry = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+    private static final EconomicMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> registry = CollectionFactory.newMap(CompareStrategy.IDENTITY);
 
     /**
      * Collect all the {@link MatchStatement}s defined by the superclass chain of theClass.
@@ -111,7 +112,7 @@ public class MatchRuleRegistry {
      */
     @SuppressWarnings("unchecked")
     public static EconomicMap<Class<? extends Node>, List<MatchStatement>> createRules(Class<? extends NodeMatchRules> theClass) {
-        EconomicMap<Class<? extends NodeMatchRules>, MatchStatementSet> matchSets = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<Class<? extends NodeMatchRules>, MatchStatementSet> matchSets = CollectionFactory.newMap(CompareStrategy.IDENTITY);
         Iterable<MatchStatementSet> sl = GraalServices.load(MatchStatementSet.class);
         for (MatchStatementSet rules : sl) {
             matchSets.put(rules.forClass(), rules);
@@ -119,7 +120,7 @@ public class MatchRuleRegistry {
 
         // Walk the class hierarchy collecting lists and merge them together. The subclass
         // rules are first which gives them preference over earlier rules.
-        EconomicMap<Class<? extends Node>, List<MatchStatement>> rules = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<Class<? extends Node>, List<MatchStatement>> rules = CollectionFactory.newMap(CompareStrategy.IDENTITY);
         Class<? extends NodeMatchRules> currentClass = theClass;
         do {
             MatchStatementSet matchSet = matchSets.get(currentClass);

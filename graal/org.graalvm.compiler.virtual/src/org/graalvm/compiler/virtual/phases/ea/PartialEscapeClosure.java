@@ -29,10 +29,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.IntFunction;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -74,6 +71,9 @@ import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.LoopInfo;
 import org.graalvm.compiler.virtual.phases.ea.EffectList.Effect;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -540,7 +540,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     @Override
     protected void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects) {
         if (exitNode.graph().hasValueProxies()) {
-            EconomicMap<Integer, ProxyNode> proxies = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+            EconomicMap<Integer, ProxyNode> proxies = CollectionFactory.newMap(CompareStrategy.EQUALS);
             for (ProxyNode proxy : exitNode.proxies()) {
                 ValueNode alias = getAlias(proxy.value());
                 if (alias instanceof VirtualObjectNode) {
@@ -623,7 +623,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private <T> PhiNode getPhiCached(T virtual, Stamp stamp) {
             if (materializedPhis == null) {
-                materializedPhis = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+                materializedPhis = CollectionFactory.newMap(CompareStrategy.EQUALS);
             }
             ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
@@ -643,7 +643,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private PhiNode[] getValuePhisCached(ValueNode key, int entryCount) {
             if (valuePhis == null) {
-                valuePhis = CollectionsFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
+                valuePhis = CollectionFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
             }
             ValuePhiNode[] result = valuePhis.get(key);
             if (result == null) {
@@ -664,7 +664,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private VirtualObjectNode getValueObjectVirtualCached(ValuePhiNode phi, VirtualObjectNode virtual) {
             if (valueObjectVirtuals == null) {
-                valueObjectVirtuals = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+                valueObjectVirtuals = CollectionFactory.newMap(CompareStrategy.IDENTITY);
             }
             VirtualObjectNode result = valueObjectVirtuals.get(phi);
             if (result == null) {
