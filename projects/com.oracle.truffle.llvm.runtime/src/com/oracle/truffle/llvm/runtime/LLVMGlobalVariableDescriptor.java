@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 public class LLVMGlobalVariableDescriptor {
@@ -66,6 +67,8 @@ public class LLVMGlobalVariableDescriptor {
         DECLARED,
         INITIAL_NATIVE,
         NATIVE,
+        MANAGED_UNINIT,
+        MANAGED_CACHED,
         MANAGED
     }
 
@@ -89,6 +92,7 @@ public class LLVMGlobalVariableDescriptor {
     @CompilationFinal private LLVMAddress nativeStorage;
 
     private Object managedStorage;
+    @CompilationFinal private Object managedStorageCached;
 
     public LLVMGlobalVariableDescriptor(String name, NativeResolver nativeResolver) {
         this.name = name;
@@ -109,7 +113,7 @@ public class LLVMGlobalVariableDescriptor {
     }
 
     public boolean isManaged() {
-        return state == State.MANAGED;
+        return state == State.MANAGED || state == State.MANAGED_CACHED || state == State.MANAGED_UNINIT;
     }
 
     public void declare(LLVMAddress setNativeStorage) {
@@ -139,8 +143,7 @@ public class LLVMGlobalVariableDescriptor {
                 /*
                  * If we're writing a managed value then the state just goes straight to managed.
                  */
-
-                state = State.MANAGED;
+                state = State.MANAGED_UNINIT;
             } else {
                 /*
                  * If we're writing and the global variable has been declared in managed code, then
@@ -168,14 +171,29 @@ public class LLVMGlobalVariableDescriptor {
     }
 
     public Object getManagedStorage() {
-        assert state == State.MANAGED : this;
-        return managedStorage;
+        assert state == State.MANAGED || state == State.MANAGED_CACHED : this;
+        if (state == State.MANAGED_CACHED) {
+            return managedStorageCached;
+        } else {
+            return managedStorage;
+        }
     }
 
     public void setManagedStorage(Object object) {
-        assert state == State.MANAGED : this;
+        assert state == State.MANAGED || state == State.MANAGED_CACHED || state == State.MANAGED_UNINIT : this;
         assert !(object instanceof LLVMAddress);
-        managedStorage = object;
+        if (state == State.MANAGED_UNINIT) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            state = State.MANAGED_CACHED;
+            managedStorageCached = object;
+            return;
+        } else if (state == State.MANAGED_CACHED) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            state = State.MANAGED;
+            managedStorage = object;
+        } else {
+            managedStorage = object;
+        }
     }
 
     @Override
