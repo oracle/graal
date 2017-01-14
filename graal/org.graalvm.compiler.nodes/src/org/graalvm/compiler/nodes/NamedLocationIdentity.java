@@ -24,6 +24,7 @@ package org.graalvm.compiler.nodes;
 
 import java.util.EnumMap;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.EconomicSet;
 
@@ -39,7 +40,7 @@ public class NamedLocationIdentity extends LocationIdentity implements FormatWit
      * Map for asserting all {@link NamedLocationIdentity} instances have a unique name.
      */
     static class DB {
-        private static final EconomicSet<String> map = CollectionsFactory.newSet();
+        private static final EconomicSet<String> map = CollectionsFactory.newSet(CompareStrategy.EQUALS);
 
         static boolean checkUnique(String name) {
             if (!map.add(name)) {

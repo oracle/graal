@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,35 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.util;
+package org.graalvm.compiler.core.common;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.CompareStrategy;
-import org.graalvm.compiler.core.common.EconomicMap;
-
-import jdk.vm.ci.meta.Value;
-
-public final class GenericValueMap<T> extends ValueMap<Value, T> {
-
-    private final EconomicMap<Value, T> data;
-
-    public GenericValueMap() {
-        data = CollectionsFactory.newMap(CompareStrategy.EQUALS);
-    }
-
-    @Override
-    public T get(Value value) {
-        return data.get(value);
-    }
-
-    @Override
-    public void remove(Value value) {
-        data.removeKey(value);
-    }
-
-    @Override
-    public void put(Value value, T object) {
-        data.put(value, object);
-    }
-
+public interface MapCursor<K, V> extends ImmutableMapCursor<K, V> {
+    void remove();
 }

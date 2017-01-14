@@ -35,6 +35,7 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.target.Backend;
@@ -82,7 +83,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final HotSpotBackend hostBackend;
     private DebugValuesPrinter debugValuesPrinter;
 
-    private final EconomicMap<Class<? extends Architecture>, HotSpotBackend> backends = CollectionsFactory.newMap();
+    private final EconomicMap<Class<? extends Architecture>, HotSpotBackend> backends = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
 
     private final GraalHotSpotVMConfig config;
 

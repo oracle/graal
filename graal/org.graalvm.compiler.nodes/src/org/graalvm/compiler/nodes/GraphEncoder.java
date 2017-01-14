@@ -29,8 +29,8 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.Objects;
 
+import org.graalvm.compiler.core.common.ImmutableMapCursor;
 import org.graalvm.compiler.core.common.Fields;
-import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.TypeReader;
@@ -213,7 +213,7 @@ public class GraphEncoder {
         assert nodeCount == graph.getNodeCount() + 1;
 
         long[] nodeStartOffsets = new long[nodeCount];
-        ImmutableEconomicMap.Cursor<Node, Integer> cursor = nodeOrder.orderIds.getEntries();
+        ImmutableMapCursor<Node, Integer> cursor = nodeOrder.orderIds.getEntries();
         while (cursor.advance()) {
             Node node = cursor.getKey();
             Integer orderId = cursor.getValue();

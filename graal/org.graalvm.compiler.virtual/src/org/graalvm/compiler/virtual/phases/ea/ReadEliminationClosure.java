@@ -28,7 +28,9 @@ import static org.graalvm.compiler.core.common.LocationIdentity.any;
 import java.util.Iterator;
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.MapCursor;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -200,7 +202,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     @Override
     protected void processLoopExit(LoopExitNode exitNode, ReadEliminationBlockState initialState, ReadEliminationBlockState exitState, GraphEffectList effects) {
         if (exitNode.graph().hasValueProxies()) {
-            EconomicMap.Cursor<CacheEntry<?>, ValueNode> entry = exitState.getReadCache().getEntries();
+            MapCursor<CacheEntry<?>, ValueNode> entry = exitState.getReadCache().getEntries();
             while (entry.advance()) {
                 if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
                     ProxyNode proxy = new ValueProxyNode(exitState.getCacheEntry(entry.getKey()), exitNode);
@@ -223,7 +225,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
     private class ReadEliminationMergeProcessor extends EffectsClosure<ReadEliminationBlockState>.MergeProcessor {
 
-        private final EconomicMap<Object, ValuePhiNode> materializedPhis = CollectionsFactory.newMap();
+        private final EconomicMap<Object, ValuePhiNode> materializedPhis = CollectionsFactory.newMap(CompareStrategy.EQUALS);
 
         ReadEliminationMergeProcessor(Block mergeBlock) {
             super(mergeBlock);
@@ -246,7 +248,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         }
 
         private void mergeReadCache(List<ReadEliminationBlockState> states) {
-            EconomicMap.Cursor<CacheEntry<?>, ValueNode> cursor = states.get(0).readCache.getEntries();
+            MapCursor<CacheEntry<?>, ValueNode> cursor = states.get(0).readCache.getEntries();
             while (cursor.advance()) {
                 CacheEntry<?> key = cursor.getKey();
                 ValueNode value = cursor.getValue();
@@ -334,7 +336,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     loopKilledLocations.setKillsAll();
                 } else {
                     // we have fully processed this loop >1 times, update the killed locations
-                    EconomicSet<LocationIdentity> forwardEndLiveLocations = CollectionsFactory.newSet();
+                    EconomicSet<LocationIdentity> forwardEndLiveLocations = CollectionsFactory.newSet(CompareStrategy.EQUALS);
                     for (CacheEntry<?> entry : initialState.readCache.getKeys()) {
                         forwardEndLiveLocations.add(entry.getIdentity());
                     }

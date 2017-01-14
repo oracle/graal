@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Map;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.graph.Graph;
@@ -81,7 +82,7 @@ interface GraphPrinter extends Closeable {
     /**
      * Classes whose {@link #toString()} method does not run any untrusted code.
      */
-    EconomicSet<Class<?>> TRUSTED_CLASSES = CollectionsFactory.newSet(Arrays.asList(
+    EconomicSet<Class<?>> TRUSTED_CLASSES = CollectionsFactory.newSet(CompareStrategy.EQUALS, Arrays.asList(
                     String.class,
                     Class.class,
                     Boolean.class,

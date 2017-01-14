@@ -24,6 +24,7 @@ package org.graalvm.compiler.phases.schedule;
 
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
@@ -57,7 +58,7 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Econo
 
     @Override
     protected EconomicSet<FloatingReadNode> getInitialState() {
-        return CollectionsFactory.newSet();
+        return CollectionsFactory.newSet(CompareStrategy.IDENTITY);
     }
 
     @Override
@@ -137,7 +138,7 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Econo
 
     @Override
     protected EconomicSet<FloatingReadNode> cloneState(EconomicSet<FloatingReadNode> oldState) {
-        EconomicSet<FloatingReadNode> result = CollectionsFactory.newSet();
+        EconomicSet<FloatingReadNode> result = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
         if (oldState != null) {
             result.addAll(oldState);
         }
@@ -147,7 +148,7 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Econo
     @Override
     protected List<EconomicSet<FloatingReadNode>> processLoop(Loop<Block> loop, EconomicSet<FloatingReadNode> initialState) {
         HIRLoop l = (HIRLoop) loop;
-        for (MemoryPhiNode memoryPhi : ((LoopBeginNode) l.getHeader().getBeginNode()).phis().filter(MemoryPhiNode.class)) {
+        for (MemoryPhiNode memoryPhi : ((LoopBeginNode) l.getHeader().getBeginNode()).memoryPhis()) {
             for (FloatingReadNode r : cloneState(initialState)) {
                 if (r.getLocationIdentity().overlaps(memoryPhi.getLocationIdentity())) {
                     initialState.remove(r);

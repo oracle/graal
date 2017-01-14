@@ -27,6 +27,7 @@ import java.util.LinkedList;
 import java.util.function.ToDoubleFunction;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.Invoke;
@@ -97,9 +98,9 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
      */
     private EconomicSet<ParameterNode> fixedParamsAt(BitSet freshlyInstantiatedArguments) {
         if (freshlyInstantiatedArguments == null || freshlyInstantiatedArguments.isEmpty()) {
-            return CollectionsFactory.newSet();
+            return CollectionsFactory.newSet(CompareStrategy.IDENTITY);
         }
-        EconomicSet<ParameterNode> result = CollectionsFactory.newSet();
+        EconomicSet<ParameterNode> result = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
         for (ParameterNode p : graph.getNodes(ParameterNode.TYPE)) {
             if (freshlyInstantiatedArguments.get(p.index())) {
                 result.add(p);

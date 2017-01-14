@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.function.ToDoubleFunction;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.graph.Node;
@@ -85,10 +86,10 @@ public class ComputeInliningRelevance {
             rootScope = new Scope(graph.start(), null);
         } else {
             if (nodeRelevances == null) {
-                nodeRelevances = CollectionsFactory.newMap(EXPECTED_MIN_INVOKE_COUNT + InliningUtil.getNodeCount(graph) / EXPECTED_INVOKE_RATIO);
+                nodeRelevances = CollectionsFactory.newMap(CompareStrategy.IDENTITY, EXPECTED_MIN_INVOKE_COUNT + InliningUtil.getNodeCount(graph) / EXPECTED_INVOKE_RATIO);
             }
             NodeWorkList workList = graph.createNodeWorkList();
-            EconomicMap<LoopBeginNode, Scope> loops = CollectionsFactory.newMap(EXPECTED_LOOP_COUNT);
+            EconomicMap<LoopBeginNode, Scope> loops = CollectionsFactory.newMap(CompareStrategy.IDENTITY, EXPECTED_LOOP_COUNT);
 
             Scope topScope = new Scope(graph.start(), null);
             for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {

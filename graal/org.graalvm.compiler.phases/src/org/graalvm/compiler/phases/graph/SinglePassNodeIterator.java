@@ -28,6 +28,7 @@ import java.util.Deque;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
@@ -155,7 +156,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         StructuredGraph graph = start.graph();
         visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
-        nodeStates = CollectionsFactory.newMap();
+        nodeStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
         this.start = start;
         this.state = initialState;
     }

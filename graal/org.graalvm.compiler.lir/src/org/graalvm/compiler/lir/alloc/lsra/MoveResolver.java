@@ -29,6 +29,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import java.util.ArrayList;
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.Debug;
@@ -146,7 +147,7 @@ public class MoveResolver {
             }
         }
 
-        EconomicSet<Value> usedRegs = CollectionsFactory.newSet();
+        EconomicSet<Value> usedRegs = CollectionsFactory.newSet(CompareStrategy.EQUALS);
         if (!areMultipleReadsAllowed()) {
             for (i = 0; i < mappingFrom.size(); i++) {
                 Interval interval = mappingFrom.get(i);
@@ -175,7 +176,7 @@ public class MoveResolver {
     }
 
     protected void verifyStackSlotMapping() {
-        EconomicSet<Value> usedRegs = CollectionsFactory.newSet();
+        EconomicSet<Value> usedRegs = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
         for (int i = 0; i < mappingFrom.size(); i++) {
             Interval interval = mappingFrom.get(i);
             if (interval != null && !isRegister(interval.location())) {

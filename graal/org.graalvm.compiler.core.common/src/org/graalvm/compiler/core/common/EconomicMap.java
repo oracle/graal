@@ -34,16 +34,6 @@ public interface EconomicMap<K, V> extends ImmutableEconomicMap<K, V> {
 
     void replaceAll(BiFunction<? super K, ? super V, ? extends V> function);
 
-    default void putIfAbsent(K key, V value) {
-        if (!containsKey(key)) {
-            put(key, value);
-        }
-    }
-
     @Override
-    Cursor<K, V> getEntries();
-
-    public interface Cursor<K, V> extends ImmutableEconomicMap.Cursor<K, V> {
-        void remove();
-    }
+    MapCursor<K, V> getEntries();
 }

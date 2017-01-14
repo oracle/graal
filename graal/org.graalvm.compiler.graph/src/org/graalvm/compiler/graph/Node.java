@@ -872,7 +872,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
             if (input == null) {
                 assertTrue(pos.isInputOptional(), "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", pos, this);
             } else {
-                assertFalse(input.isDeleted(), "input was deleted");
+                assertFalse(input.isDeleted(), "input was deleted %s", input);
                 assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
                 assertTrue(pos.getInputType() == InputType.Unchecked || input.isAllowedUsageType(pos.getInputType()), "invalid usage type %s %s", input, pos.getInputType());
             }
@@ -968,14 +968,14 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * graph are stored in sets. It can give bad behavior when storing nodes of different graphs in
      * the same set.
      */
-// @Override
-// public final int hashCode() {
-// assert !this.isUnregistered() : "node not yet constructed";
-// if (this.isDeleted()) {
-// return -id + DELETED_ID_START;
-// }
-// return id;
-// }
+    @Override
+    public final int hashCode() {
+        assert !this.isUnregistered() : "node not yet constructed";
+        if (this.isDeleted()) {
+            return -id + DELETED_ID_START;
+        }
+        return id;
+    }
 
     /**
      * Do not overwrite the equality test of a node in subclasses. Equality tests must rely solely

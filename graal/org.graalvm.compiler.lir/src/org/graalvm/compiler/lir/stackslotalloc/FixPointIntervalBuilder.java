@@ -29,10 +29,11 @@ import java.util.ArrayDeque;
 import java.util.BitSet;
 import java.util.Deque;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
+import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Debug;
@@ -57,7 +58,7 @@ final class FixPointIntervalBuilder {
     private final LIR lir;
     private final int maxOpId;
     private final StackInterval[] stackSlotMap;
-    private final HashSet<LIRInstruction> usePos;
+    private final EconomicSet<LIRInstruction> usePos;
 
     /**
      * The number of allocated stack slots.
@@ -70,7 +71,7 @@ final class FixPointIntervalBuilder {
         this.maxOpId = maxOpId;
         liveInMap = new BlockMap<>(lir.getControlFlowGraph());
         liveOutMap = new BlockMap<>(lir.getControlFlowGraph());
-        this.usePos = new HashSet<>();
+        this.usePos = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
     }
 
     /**
@@ -78,7 +79,7 @@ final class FixPointIntervalBuilder {
      * {@link #stackSlotMap} and returns a set of use positions, i.e. instructions that contain
      * virtual stack slots.
      */
-    Set<LIRInstruction> build() {
+    EconomicSet<LIRInstruction> build() {
         Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
         AbstractBlockBase<?>[] blocks = lir.getControlFlowGraph().getBlocks();
         for (int i = blocks.length - 1; i >= 0; i--) {

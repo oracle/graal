@@ -27,9 +27,11 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
 import java.util.EnumSet;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.EconomicSet;
+import org.graalvm.compiler.core.common.MapCursor;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -348,7 +350,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @return the registers that are defined by or used as temps for any instruction in {@code lir}
      */
     protected final EconomicSet<Register> gatherDestroyedCallerRegisters(LIR lir) {
-        final EconomicSet<Register> destroyedRegisters = CollectionsFactory.newSet();
+        final EconomicSet<Register> destroyedRegisters = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
         ValueConsumer defConsumer = new ValueConsumer() {
 
             @Override
@@ -394,7 +396,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     protected void updateStub(Stub stub, EconomicSet<Register> destroyedRegisters, EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo, FrameMap frameMap) {
         stub.initDestroyedCallerRegisters(destroyedRegisters);
 
-        EconomicMap.Cursor<LIRFrameState, SaveRegistersOp> cursor = calleeSaveInfo.getEntries();
+        MapCursor<LIRFrameState, SaveRegistersOp> cursor = calleeSaveInfo.getEntries();
         while (cursor.advance()) {
             SaveRegistersOp save = cursor.getValue();
             if (save.supportsRemove()) {

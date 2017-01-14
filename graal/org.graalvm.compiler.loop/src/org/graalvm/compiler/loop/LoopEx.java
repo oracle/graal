@@ -27,6 +27,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -333,12 +334,12 @@ public class LoopEx {
      * @return a map from node to induction variable
      */
     private static EconomicMap<Node, InductionVariable> findInductionVariables(LoopEx loop) {
-        EconomicMap<Node, InductionVariable> ivs = CollectionsFactory.newMap();
+        EconomicMap<Node, InductionVariable> ivs = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
 
         Queue<InductionVariable> scanQueue = new LinkedList<>();
         LoopBeginNode loopBegin = loop.loopBegin();
         AbstractEndNode forwardEnd = loopBegin.forwardEnd();
-        for (PhiNode phi : loopBegin.phis().filter(ValuePhiNode.class)) {
+        for (PhiNode phi : loopBegin.valuePhis()) {
             ValueNode backValue = phi.singleBackValue();
             if (backValue == PhiNode.MULTIPLE_VALUES) {
                 continue;

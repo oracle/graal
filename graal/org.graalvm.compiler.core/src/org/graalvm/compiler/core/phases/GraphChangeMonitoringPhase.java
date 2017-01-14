@@ -23,6 +23,7 @@
 package org.graalvm.compiler.core.phases;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -77,7 +78,7 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
             }
         }
 
-        EconomicSet<Node> filteredNodes = CollectionsFactory.newSet();
+        EconomicSet<Node> filteredNodes = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
         for (Node n : listener.getNodes()) {
             if (n instanceof LogicConstantNode) {
                 // Ignore LogicConstantNode since those are sometimes created and deleted as part of

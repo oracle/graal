@@ -36,13 +36,5 @@ public interface ImmutableEconomicMap<K, V> {
 
     Iterable<K> getKeys();
 
-    Cursor<K, V> getEntries();
-
-    public interface Cursor<K, V> {
-        boolean advance();
-
-        K getKey();
-
-        V getValue();
-    }
+    ImmutableMapCursor<K, V> getEntries();
 }

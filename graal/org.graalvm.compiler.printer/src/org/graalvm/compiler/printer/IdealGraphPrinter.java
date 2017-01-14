@@ -33,6 +33,7 @@ import java.util.Set;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.graph.Graph;
@@ -111,7 +112,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
     @Override
     public void print(Graph graph, String title, Map<Object, Object> properties) {
         beginGraph(title);
-        EconomicSet<Node> noBlockNodes = CollectionsFactory.newSet();
+        EconomicSet<Node> noBlockNodes = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
         ScheduleResult schedule = null;
         if (graph instanceof StructuredGraph) {
             StructuredGraph structuredGraph = (StructuredGraph) graph;
@@ -289,7 +290,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         endSuccessors();
         beginBlockNodes();
 
-        EconomicSet<Node> nodes = CollectionsFactory.newSet();
+        EconomicSet<Node> nodes = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
 
         if (nodeToBlock != null) {
             for (Node n : graph.getNodes()) {
@@ -310,7 +311,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                 }
             }
 
-            EconomicSet<Node> snapshot = CollectionsFactory.newSet(nodes);
+            EconomicSet<Node> snapshot = CollectionsFactory.newSet(CompareStrategy.IDENTITY, nodes);
             // add all framestates and phis to their blocks
             for (Node node : snapshot) {
                 if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {

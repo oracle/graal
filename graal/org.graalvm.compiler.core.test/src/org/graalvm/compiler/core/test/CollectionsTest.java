@@ -27,27 +27,14 @@ import java.util.Objects;
 import java.util.Random;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
-import org.graalvm.compiler.core.common.ImmutableEconomicMap.Cursor;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
+import org.graalvm.compiler.core.common.ImmutableMapCursor;
+import org.graalvm.compiler.core.common.MapCursor;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class CollectionsTest {
-
-    @Test
-    @Ignore
-    public void performanceTest() {
-        long start = System.currentTimeMillis();
-        for (int j = 0; j < 100000000; ++j) {
-            EconomicMap<Object, Object> map = CollectionsFactory.newMap();
-            // LinkedHashMap<Object, Object> map = new LinkedHashMap<Object, Object>();
-            for (int i = 0; i < 1; ++i) {
-                map.put(i, i);
-            }
-        }
-        System.out.println("performance: " + (System.currentTimeMillis() - start));
-    }
 
     private static int[] createRandomRange(Random random, int count) {
         int[] result = new int[count];
@@ -116,10 +103,10 @@ public class CollectionsTest {
 
     @Test
     public void testAdd() {
-        EconomicMap<Object, Object> map = CollectionsFactory.newMap();
+        EconomicMap<Object, Object> map = CollectionsFactory.newMap(CompareStrategy.EQUALS);
         EconomicMap<Object, Object> referenceMap = CollectionsFactory.debugNewMap();
 
-        for (int seed = 0; seed < 1000; ++seed) {
+        for (int seed = 0; seed < 10; ++seed) {
             Random random = new Random(seed);
             int[] ranges = createRandomRange(random, ACTIONS.length);
             int value = random.nextInt(1000);
@@ -141,13 +128,12 @@ public class CollectionsTest {
                 }
             }
         }
-
     }
 
     private static void removeElement(int index, EconomicMap<?, ?> map, EconomicMap<?, ?> referenceMap) {
         Assert.assertEquals(referenceMap.size(), map.size());
-        EconomicMap.Cursor<?, ?> cursor = map.getEntries();
-        EconomicMap.Cursor<?, ?> referenceCursor = referenceMap.getEntries();
+        MapCursor<?, ?> cursor = map.getEntries();
+        MapCursor<?, ?> referenceCursor = referenceMap.getEntries();
         int z = 0;
         while (cursor.advance()) {
             Assert.assertTrue(referenceCursor.advance());
@@ -167,8 +153,8 @@ public class CollectionsTest {
         Assert.assertEquals(referenceMap.size(), map.size());
 
         // Check entries.
-        Cursor<?, ?> cursor = map.getEntries();
-        Cursor<?, ?> referenceCursor = referenceMap.getEntries();
+        ImmutableMapCursor<?, ?> cursor = map.getEntries();
+        ImmutableMapCursor<?, ?> referenceCursor = referenceMap.getEntries();
         while (cursor.advance()) {
             Assert.assertTrue(referenceCursor.advance());
             Assert.assertEquals(referenceCursor.getKey(), cursor.getKey());

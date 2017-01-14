@@ -29,8 +29,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
+import org.graalvm.compiler.core.common.ImmutableMapCursor;
 import org.graalvm.compiler.core.common.Fields;
-import org.graalvm.compiler.core.common.ImmutableEconomicMap.Cursor;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Debug;
@@ -69,7 +70,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
     private static final EconomicMap<Class<?>, String> nodeClassCategoryMap;
 
     static {
-        nodeClassCategoryMap = CollectionsFactory.newMap();
+        nodeClassCategoryMap = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
         nodeClassCategoryMap.put(ControlSinkNode.class, "ControlSink");
         nodeClassCategoryMap.put(ControlSplitNode.class, "ControlSplit");
         nodeClassCategoryMap.put(AbstractMergeNode.class, "Merge");
@@ -356,7 +357,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
     }
 
     private static String getNodeClassCategory(Class<?> clazz) {
-        Cursor<Class<?>, String> cursor = nodeClassCategoryMap.getEntries();
+        ImmutableMapCursor<Class<?>, String> cursor = nodeClassCategoryMap.getEntries();
         while (cursor.advance()) {
             if (cursor.getKey().isAssignableFrom(clazz)) {
                 return cursor.getValue();

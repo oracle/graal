@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
@@ -102,7 +103,7 @@ public class OptimizeGuardAnchorsPhase extends Phase {
                 continue;
             }
             List<GuardNode> otherGuards = new ArrayList<>(successorCount - 1);
-            EconomicSet<Node> successorsWithoutGuards = CollectionsFactory.newSet(controlSplit.successors().count());
+            EconomicSet<Node> successorsWithoutGuards = CollectionsFactory.newSet(CompareStrategy.IDENTITY, controlSplit.successors().count());
             for (Node n : controlSplit.successors()) {
                 successorsWithoutGuards.add(n);
             }

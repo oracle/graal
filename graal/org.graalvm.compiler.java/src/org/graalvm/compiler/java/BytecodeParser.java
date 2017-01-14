@@ -269,6 +269,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.EconomicMap;
@@ -3741,7 +3742,7 @@ public class BytecodeParser implements GraphBuilderContext {
         int nofCases = bs.numberOfCases();
         double[] keyProbabilities = switchProbability(nofCases + 1, bci);
 
-        EconomicMap<Integer, SuccessorInfo> bciToBlockSuccessorIndex = CollectionsFactory.newMap();
+        EconomicMap<Integer, SuccessorInfo> bciToBlockSuccessorIndex = CollectionsFactory.newMap(CompareStrategy.EQUALS);
         for (int i = 0; i < currentBlock.getSuccessorCount(); i++) {
             assert !bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci);
             bciToBlockSuccessorIndex.put(currentBlock.getSuccessor(i).startBci, new SuccessorInfo(i));

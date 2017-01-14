@@ -27,6 +27,7 @@ import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COM
 import java.util.Collections;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -163,7 +164,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
         StructuredGraph genInstrumentationGraph(StructuredGraph oldGraph, InstrumentationNode instrumentationNode) {
 
             StructuredGraph instrumentationGraph = new StructuredGraph(AllowAssumptions.YES, INVALID_COMPILATION_ID);
-            EconomicMap<Node, Node> replacements = CollectionsFactory.newMap();
+            EconomicMap<Node, Node> replacements = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
             int index = 0; // for ParameterNode index
             for (Node current : nodes) {
                 // mark any input that is not included in the instrumentation a weak dependency

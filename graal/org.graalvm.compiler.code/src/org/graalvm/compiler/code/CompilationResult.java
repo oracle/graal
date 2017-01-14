@@ -365,11 +365,8 @@ public class CompilationResult {
      * @param accessedFields the collected set of fields accessed during compilation
      */
     public void setFields(EconomicSet<ResolvedJavaField> accessedFields) {
-        assert accessedFields != null;
-        fields = new ResolvedJavaField[accessedFields.size()];
-        int index = 0;
-        for (ResolvedJavaField field : accessedFields) {
-            fields[index++] = field;
+        if (accessedFields != null) {
+            fields = accessedFields.toArray(new ResolvedJavaField[accessedFields.size()]);
         }
     }
 

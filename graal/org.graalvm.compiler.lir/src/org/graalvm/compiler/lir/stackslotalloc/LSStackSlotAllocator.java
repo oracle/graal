@@ -33,8 +33,8 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.PriorityQueue;
-import java.util.Set;
 
+import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -134,7 +134,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
             Debug.dump(Debug.INFO_LOG_LEVEL, lir, "After StackSlot numbering");
 
             long currentFrameSize = StackSlotAllocatorUtil.allocatedFramesize.isEnabled() ? frameMapBuilder.getFrameMap().currentFrameSize() : 0;
-            Set<LIRInstruction> usePos;
+            EconomicSet<LIRInstruction> usePos;
             // step 2: build intervals
             try (Scope s = Debug.scope("StackSlotAllocationBuildIntervals"); Indent indent = Debug.logAndIndent("BuildIntervals"); DebugCloseable t = BuildIntervalsTimer.start()) {
                 usePos = buildIntervals();
@@ -199,7 +199,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
         // step 2: build intervals
         // ====================
 
-        private Set<LIRInstruction> buildIntervals() {
+        private EconomicSet<LIRInstruction> buildIntervals() {
             return new FixPointIntervalBuilder(lir, stackSlotMap, maxOpId()).build();
         }
 
@@ -394,7 +394,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
         // step 5: assign stack slots
         // ====================
 
-        private void assignStackSlots(Set<LIRInstruction> usePos) {
+        private void assignStackSlots(EconomicSet<LIRInstruction> usePos) {
             for (LIRInstruction op : usePos) {
                 op.forEachInput(assignSlot);
                 op.forEachAlive(assignSlot);

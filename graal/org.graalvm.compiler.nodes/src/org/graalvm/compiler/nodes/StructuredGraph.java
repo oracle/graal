@@ -29,10 +29,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.EconomicSet;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.JavaMethodContext;
@@ -180,7 +182,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * Records the fields that were accessed while constructing this graph.
      */
 
-    private final EconomicSet<ResolvedJavaField> fields = CollectionsFactory.newSet();
+    private EconomicSet<ResolvedJavaField> fields = null;
 
     private enum UnsafeAccessState {
         NO_ACCESS,
@@ -370,7 +372,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
-        EconomicMap<Node, Node> replacements = CollectionsFactory.newMap();
+        EconomicMap<Node, Node> replacements = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
         replacements.put(start, copy.start);
         ImmutableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
         if (duplicationMapCallback != null) {
@@ -696,6 +698,10 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * Records that {@code field} was accessed in this graph.
      */
     public void recordField(ResolvedJavaField field) {
+        assert GraalOptions.GeneratePIC.getValue();
+        if (this.fields == null) {
+            this.fields = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+        }
         fields.add(field);
     }
 
@@ -705,6 +711,10 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public void updateFields(StructuredGraph other) {
         assert this != other;
+        assert GraalOptions.GeneratePIC.getValue();
+        if (this.fields == null) {
+            this.fields = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
+        }
         this.fields.addAll(other.fields);
     }
 

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.core.match.MatchPattern.Result;
@@ -84,7 +85,7 @@ public class MatchContext {
 
     public Result captureNamedValue(String name, Class<? extends Node> type, Node value) {
         if (namedNodes == null) {
-            namedNodes = CollectionsFactory.newMap();
+            namedNodes = CollectionsFactory.newMap(CompareStrategy.EQUALS);
         }
         NamedNode current = namedNodes.get(name);
         if (current == null) {

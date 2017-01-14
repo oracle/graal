@@ -43,6 +43,7 @@ import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -182,7 +183,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.graphs = new ConcurrentHashMap<>();
-        this.snippetTemplateCache = CollectionsFactory.newMap();
+        this.snippetTemplateCache = CollectionsFactory.newMap(CompareStrategy.EQUALS);
         this.bytecodeProvider = bytecodeProvider;
     }
 

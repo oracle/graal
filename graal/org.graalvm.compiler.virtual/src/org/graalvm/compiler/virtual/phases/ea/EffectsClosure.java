@@ -25,6 +25,7 @@ package org.graalvm.compiler.virtual.phases.ea;
 import java.util.ArrayList;
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.EconomicSet;
@@ -69,10 +70,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
-    private final EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionsFactory.newMap();
+    private final EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
     // Intended to be used by read-eliminating phases based on the effects phase.
-    protected final EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionsFactory.newMap();
-    private final EconomicMap<LoopBeginNode, BlockT> loopEntryStates = CollectionsFactory.newMap();
+    protected final EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+    private final EconomicMap<LoopBeginNode, BlockT> loopEntryStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
     private final NodeBitMap hasScalarReplacedInputs;
 
     protected boolean changed;
@@ -487,7 +488,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 firstLocation = locationIdentity;
             } else {
                 if (killedLocations == null) {
-                    killedLocations = CollectionsFactory.newSet();
+                    killedLocations = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
                 }
                 killedLocations.add(locationIdentity);
             }

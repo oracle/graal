@@ -33,7 +33,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.ImmutableEconomicMap;
+import org.graalvm.compiler.core.common.ImmutableMapCursor;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -176,7 +176,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     @Override
     public ValueNode valueForOperand(Value value) {
         assert nodeOperands != null;
-        ImmutableEconomicMap.Cursor<Node, Value> cursor = nodeOperands.getEntries();
+        ImmutableMapCursor<Node, Value> cursor = nodeOperands.getEntries();
         while (cursor.advance()) {
             if (cursor.getValue().equals(value)) {
                 return (ValueNode) cursor.getKey();

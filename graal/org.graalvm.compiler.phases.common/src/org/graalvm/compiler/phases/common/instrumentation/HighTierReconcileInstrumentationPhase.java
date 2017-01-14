@@ -23,6 +23,7 @@
 package org.graalvm.compiler.phases.common.instrumentation;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeFlood;
@@ -138,7 +139,7 @@ public class HighTierReconcileInstrumentationPhase extends Phase {
 
     }
 
-    private final EconomicMap<FixedWithNextNode, NodeFlood> cachedNodeFloods = CollectionsFactory.newMap();
+    private final EconomicMap<FixedWithNextNode, NodeFlood> cachedNodeFloods = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
 
     /**
      * @return true if there is a control flow path between {@code from} and {@code to}.

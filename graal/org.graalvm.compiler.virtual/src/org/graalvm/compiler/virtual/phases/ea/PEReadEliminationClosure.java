@@ -29,7 +29,9 @@ import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.MapCursor;
 import org.graalvm.compiler.core.common.Pair;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.EconomicSet;
@@ -258,7 +260,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                     ValueNode unproxified = GraphUtil.unproxify(firstValue);
                     Pair<ValueNode, Object> pair = new Pair<>(unproxified, null);
                     if (firstValueSet == null) {
-                        firstValueSet = CollectionsFactory.newMap();
+                        firstValueSet = CollectionsFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
                     }
                     Pair<ValueNode, Object> oldValue = firstValueSet.put(unproxified, pair);
                     pair.setRight(oldValue);
@@ -291,7 +293,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
         super.processLoopExit(exitNode, initialState, exitState, effects);
 
         if (exitNode.graph().hasValueProxies()) {
-            EconomicMap.Cursor<ReadCacheEntry, ValueNode> entry = exitState.getReadCache().getEntries();
+            MapCursor<ReadCacheEntry, ValueNode> entry = exitState.getReadCache().getEntries();
             while (entry.advance()) {
                 if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
                     ValueNode value = exitState.getReadCache(entry.getKey().object, entry.getKey().identity, entry.getKey().index, this);
@@ -330,7 +332,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
         }
 
         private void mergeReadCache(List<PEReadEliminationBlockState> states) {
-            EconomicMap.Cursor<ReadCacheEntry, ValueNode> cursor = states.get(0).readCache.getEntries();
+            MapCursor<ReadCacheEntry, ValueNode> cursor = states.get(0).readCache.getEntries();
             while (cursor.advance()) {
                 ReadCacheEntry key = cursor.getKey();
                 ValueNode value = cursor.getValue();
@@ -415,7 +417,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                     loopKilledLocations.setKillsAll();
                 } else {
                     // we have fully processed this loop >1 times, update the killed locations
-                    EconomicSet<LocationIdentity> forwardEndLiveLocations = CollectionsFactory.newSet();
+                    EconomicSet<LocationIdentity> forwardEndLiveLocations = CollectionsFactory.newSet(CompareStrategy.EQUALS);
                     for (ReadCacheEntry entry : initialState.readCache.getKeys()) {
                         forwardEndLiveLocations.add(entry.identity);
                     }

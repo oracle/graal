@@ -52,6 +52,7 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.ImmutableEconomicMap;
@@ -684,7 +685,7 @@ public class SnippetTemplate {
                 snippetCopy.disableUnsafeAccessTracking();
             }
 
-            EconomicMap<Node, Node> nodeReplacements = CollectionsFactory.newMap();
+            EconomicMap<Node, Node> nodeReplacements = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
             MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -1045,7 +1046,7 @@ public class SnippetTemplate {
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
     private EconomicMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
-        EconomicMap<Node, Node> replacements = CollectionsFactory.newMap();
+        EconomicMap<Node, Node> replacements = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
         assert args.info.getParameterCount() == parameters.length : "number of args (" + args.info.getParameterCount() + ") != number of parameters (" + parameters.length + ")";
         for (int i = 0; i < parameters.length; i++) {
             Object parameter = parameters[i];
@@ -1154,7 +1155,7 @@ public class SnippetTemplate {
             return true;
         }
 
-        EconomicSet<LocationIdentity> kills = CollectionsFactory.newSet(memoryMap.getLocations());
+        EconomicSet<LocationIdentity> kills = CollectionsFactory.newSet(CompareStrategy.EQUALS, memoryMap.getLocations());
 
         if (replacee instanceof MemoryCheckpoint.Single) {
             // check if some node in snippet graph also kills the same location

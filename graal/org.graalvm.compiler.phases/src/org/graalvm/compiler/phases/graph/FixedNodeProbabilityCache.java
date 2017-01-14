@@ -25,6 +25,7 @@ package org.graalvm.compiler.phases.graph;
 import java.util.function.ToDoubleFunction;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
@@ -46,7 +47,7 @@ public class FixedNodeProbabilityCache implements ToDoubleFunction<FixedNode> {
 
     private static final DebugCounter computeNodeProbabilityCounter = Debug.counter("ComputeNodeProbability");
 
-    private final EconomicMap<FixedNode, Double> cache = CollectionsFactory.newMap();
+    private final EconomicMap<FixedNode, Double> cache = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
 
     /**
      * <p>

@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.debug.Debug;
@@ -390,7 +391,7 @@ public class InliningData {
         InlineInfo calleeInfo = calleeInvocation.callee();
         try {
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph); Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(), false)) {
-                EconomicSet<Node> canonicalizedNodes = CollectionsFactory.newSet();
+                EconomicSet<Node> canonicalizedNodes = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
                 canonicalizedNodes.addAll(calleeInfo.invoke().asNode().usages());
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context));
                 canonicalizedNodes.addAll(parameterUsages);

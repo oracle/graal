@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.function.IntFunction;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -477,7 +478,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     @Override
     protected void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects) {
         if (exitNode.graph().hasValueProxies()) {
-            EconomicMap<Integer, ProxyNode> proxies = CollectionsFactory.newMap();
+            EconomicMap<Integer, ProxyNode> proxies = CollectionsFactory.newMap(CompareStrategy.EQUALS);
             for (ProxyNode proxy : exitNode.proxies()) {
                 ValueNode alias = getAlias(proxy.value());
                 if (alias instanceof VirtualObjectNode) {
@@ -560,7 +561,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private <T> PhiNode getPhiCached(T virtual, Stamp stamp) {
             if (materializedPhis == null) {
-                materializedPhis = CollectionsFactory.newMap();
+                materializedPhis = CollectionsFactory.newMap(CompareStrategy.EQUALS);
             }
             ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
@@ -580,7 +581,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private PhiNode[] getValuePhisCached(ValueNode key, int entryCount) {
             if (valuePhis == null) {
-                valuePhis = CollectionsFactory.newMap();
+                valuePhis = CollectionsFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
             }
             ValuePhiNode[] result = valuePhis.get(key);
             if (result == null) {
@@ -601,7 +602,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private VirtualObjectNode getValueObjectVirtualCached(ValuePhiNode phi, VirtualObjectNode virtual) {
             if (valueObjectVirtuals == null) {
-                valueObjectVirtuals = CollectionsFactory.newMap();
+                valueObjectVirtuals = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
             }
             VirtualObjectNode result = valueObjectVirtuals.get(phi);
             if (result == null) {

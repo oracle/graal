@@ -103,6 +103,7 @@ import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 
 import java.util.EnumMap;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -230,7 +231,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
          * but only within the same Kind. For instance short and char are the same copy routines but
          * they kill different memory so they still have to be distinct.
          */
-        EconomicMap<Long, ForeignCallDescriptor> descMap = CollectionsFactory.newMap();
+        EconomicMap<Long, ForeignCallDescriptor> descMap = CollectionsFactory.newMap(CompareStrategy.EQUALS);
         registerArraycopyDescriptor(descMap, kind, false, false, uninit, false, routine);
         registerArraycopyDescriptor(descMap, kind, true, false, uninit, false, alignedRoutine);
         registerArraycopyDescriptor(descMap, kind, false, true, uninit, false, disjointRoutine);

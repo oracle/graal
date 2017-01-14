@@ -23,6 +23,7 @@
 package org.graalvm.compiler.hotspot;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.hotspot.stubs.Stub;
@@ -51,7 +52,7 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
      */
-    private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap();
+    private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionsFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
 
     public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub) {
         super(compilationId, lir, frameMapBuilder, callingConvention);

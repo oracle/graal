@@ -22,34 +22,48 @@
  */
 package org.graalvm.compiler.core.common;
 
-public interface EconomicSet<E> extends Iterable<E> {
+public abstract class CompareStrategy {
 
-    boolean contains(E element);
+    public static final CompareStrategy EQUALS = new CompareStrategy() {
 
-    void addAll(Iterable<E> values);
-
-    int size();
-
-    boolean add(E element);
-
-    void remove(E element);
-
-    void clear();
-
-    boolean isEmpty();
-
-    void retainAll(EconomicSet<E> values);
-
-    default E[] toArray(E[] target) {
-        if (target.length != size()) {
-            throw new UnsupportedOperationException("target array must have correct length");
+        @Override
+        public boolean equals(Object a, Object b) {
+            return a.equals(b);
         }
 
-        int index = 0;
-        for (E element : this) {
-            target[index++] = element;
+        @Override
+        public int hashCode(Object k) {
+            return k.hashCode();
+        }
+    };
+
+    public static final CompareStrategy IDENTITY = new CompareStrategy() {
+
+        @Override
+        public boolean equals(Object a, Object b) {
+            return a == b;
         }
 
-        return target;
-    }
+        @Override
+        public int hashCode(Object k) {
+            return k.hashCode();
+        }
+    };
+
+    public static final CompareStrategy IDENTITY_WITH_SYSTEM_HASHCODE = new CompareStrategy() {
+
+        @Override
+        public boolean equals(Object a, Object b) {
+            return a == b;
+        }
+
+        @Override
+        public int hashCode(Object k) {
+            return System.identityHashCode(k);
+        }
+    };
+
+    public abstract boolean equals(Object a, Object b);
+
+    public abstract int hashCode(Object k);
 }

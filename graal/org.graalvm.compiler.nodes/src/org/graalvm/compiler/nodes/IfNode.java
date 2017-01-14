@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -971,7 +972,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
         List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
-        EconomicMap<AbstractEndNode, ValueNode> phiValues = CollectionsFactory.newMap(mergePredecessors.size());
+        EconomicMap<AbstractEndNode, ValueNode> phiValues = CollectionsFactory.newMap(CompareStrategy.IDENTITY, mergePredecessors.size());
 
         AbstractBeginNode oldFalseSuccessor = falseSuccessor();
         AbstractBeginNode oldTrueSuccessor = trueSuccessor();

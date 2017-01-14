@@ -30,8 +30,9 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
+import org.graalvm.compiler.core.common.ImmutableMapCursor;
 import org.graalvm.compiler.core.common.LocationIdentity;
-import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -84,7 +85,7 @@ public class FloatingReadPhase extends Phase {
         private final EconomicMap<LocationIdentity, MemoryNode> lastMemorySnapshot;
 
         public MemoryMapImpl(MemoryMapImpl memoryMap) {
-            lastMemorySnapshot = CollectionsFactory.newMap(memoryMap.lastMemorySnapshot);
+            lastMemorySnapshot = CollectionsFactory.newMap(CompareStrategy.EQUALS, memoryMap.lastMemorySnapshot);
         }
 
         public MemoryMapImpl(StartNode start) {
@@ -93,7 +94,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         public MemoryMapImpl() {
-            lastMemorySnapshot = CollectionsFactory.newMap();
+            lastMemorySnapshot = CollectionsFactory.newMap(CompareStrategy.EQUALS);
         }
 
         @Override
@@ -186,7 +187,7 @@ public class FloatingReadPhase extends Phase {
             return result;
         }
 
-        result = CollectionsFactory.newSet();
+        result = CollectionsFactory.newSet(CompareStrategy.EQUALS);
         for (Loop<Block> inner : loop.getChildren()) {
             result.addAll(processLoop((HIRLoop) inner, modifiedInLoops));
         }
@@ -206,7 +207,7 @@ public class FloatingReadPhase extends Phase {
     protected void run(StructuredGraph graph) {
         EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops = null;
         if (graph.hasLoops()) {
-            modifiedInLoops = CollectionsFactory.newMap();
+            modifiedInLoops = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
             for (Loop<?> l : cfg.getLoops()) {
                 HIRLoop loop = (HIRLoop) l;
@@ -234,7 +235,7 @@ public class FloatingReadPhase extends Phase {
     public static MemoryMapImpl mergeMemoryMaps(AbstractMergeNode merge, List<? extends MemoryMap> states) {
         MemoryMapImpl newState = new MemoryMapImpl();
 
-        EconomicSet<LocationIdentity> keys = CollectionsFactory.newSet();
+        EconomicSet<LocationIdentity> keys = CollectionsFactory.newSet(CompareStrategy.EQUALS);
         for (MemoryMap other : states) {
             keys.addAll(other.getLocations());
         }
@@ -407,27 +408,27 @@ public class FloatingReadPhase extends Phase {
         @Override
         protected EconomicMap<LoopExitNode, MemoryMapImpl> processLoop(LoopBeginNode loop, MemoryMapImpl initialState) {
             EconomicSet<LocationIdentity> modifiedLocations = modifiedInLoops.get(loop);
-            EconomicMap<LocationIdentity, MemoryPhiNode> phis = CollectionsFactory.newMap();
+            EconomicMap<LocationIdentity, MemoryPhiNode> phis = CollectionsFactory.newMap(CompareStrategy.EQUALS);
             if (modifiedLocations.contains(LocationIdentity.any())) {
                 // create phis for all locations if ANY is modified in the loop
-                modifiedLocations = CollectionsFactory.newSet(modifiedLocations);
+                modifiedLocations = CollectionsFactory.newSet(CompareStrategy.EQUALS, modifiedLocations);
                 modifiedLocations.addAll(initialState.lastMemorySnapshot.getKeys());
             }
 
             for (LocationIdentity location : modifiedLocations) {
                 createMemoryPhi(loop, initialState, phis, location);
             }
-            ImmutableEconomicMap.Cursor<LocationIdentity, MemoryPhiNode> cursor = phis.getEntries();
+            ImmutableMapCursor<LocationIdentity, MemoryPhiNode> cursor = phis.getEntries();
             while (cursor.advance()) {
                 initialState.lastMemorySnapshot.put(cursor.getKey(), cursor.getValue());
             }
 
             LoopInfo<MemoryMapImpl> loopInfo = ReentrantNodeIterator.processLoop(this, loop, initialState);
 
-            ImmutableEconomicMap.Cursor<LoopEndNode, MemoryMapImpl> endStateCursor = loopInfo.endStates.getEntries();
+            ImmutableMapCursor<LoopEndNode, MemoryMapImpl> endStateCursor = loopInfo.endStates.getEntries();
             while (endStateCursor.advance()) {
                 int endIndex = loop.phiPredecessorIndex(endStateCursor.getKey());
-                ImmutableEconomicMap.Cursor<LocationIdentity, MemoryPhiNode> phiCursor = phis.getEntries();
+                ImmutableMapCursor<LocationIdentity, MemoryPhiNode> phiCursor = phis.getEntries();
                 while (phiCursor.advance()) {
                     LocationIdentity key = phiCursor.getKey();
                     PhiNode phi = phiCursor.getValue();

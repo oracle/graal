@@ -26,8 +26,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.BiFunction;
 
-import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.core.common.EconomicMap;
+import org.graalvm.compiler.core.common.MapCursor;
 
 public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
@@ -170,8 +170,8 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     }
 
     @Override
-    public EconomicMap.Cursor<Node, T> getEntries() {
-        return new EconomicMap.Cursor<Node, T>() {
+    public MapCursor<Node, T> getEntries() {
+        return new MapCursor<Node, T>() {
 
             int current = -1;
 
@@ -245,7 +245,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public String toString() {
-        ImmutableEconomicMap.Cursor<Node, T> i = getEntries();
+        MapCursor<Node, T> i = getEntries();
         if (!i.advance()) {
             return "{}";
         }

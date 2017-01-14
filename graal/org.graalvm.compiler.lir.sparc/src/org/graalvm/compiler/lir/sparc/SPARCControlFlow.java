@@ -89,6 +89,7 @@ import org.graalvm.compiler.asm.sparc.SPARCAssembler.ConditionFlag;
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.debug.GraalError;
@@ -442,7 +443,7 @@ public class SPARCControlFlow {
             this.constantTableBase = constantTableBase;
             this.key = key;
             this.scratch = scratch;
-            this.labelHints = CollectionsFactory.newMap();
+            this.labelHints = CollectionsFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
             assert keyConstants.length == keyTargets.length;
             assert keyConstants.length == strategy.keyProbabilities.length;
         }

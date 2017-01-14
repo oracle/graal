@@ -25,6 +25,7 @@ package org.graalvm.compiler.phases.common;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -49,11 +50,11 @@ public class ValueAnchorCleanupPhase extends Phase {
         private final EconomicSet<Node> anchoredValues;
 
         State() {
-            anchoredValues = CollectionsFactory.newSet();
+            anchoredValues = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
         }
 
         State(State other) {
-            anchoredValues = CollectionsFactory.newSet(other.anchoredValues);
+            anchoredValues = CollectionsFactory.newSet(CompareStrategy.IDENTITY, other.anchoredValues);
         }
 
         @Override

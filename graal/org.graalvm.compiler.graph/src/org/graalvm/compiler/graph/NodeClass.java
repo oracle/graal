@@ -43,6 +43,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.FieldIntrospection;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.FieldsScanner;
@@ -140,6 +141,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private static final Class<?> SUCCESSOR_LIST_CLASS = NodeSuccessorList.class;
 
     private static AtomicInteger nextIterableId = new AtomicInteger();
+    private static AtomicInteger nextLeafId = new AtomicInteger();
 
     private final InputEdges inputs;
     private final SuccessorEdges successors;
@@ -172,6 +174,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
+
+    private final int leafId;
 
     public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass) {
         this(clazz, superNodeClass, new FieldsScanner.DefaultCalcOffset(), null, 0);
@@ -207,6 +211,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         }
 
         isLeafNode = inputs.getCount() + successors.getCount() == 0;
+        if (isLeafNode) {
+            this.leafId = nextLeafId.getAndIncrement();
+        } else {
+            this.leafId = -1;
+        }
 
         canGVN = Node.ValueNumberable.class.isAssignableFrom(clazz);
         startGVNNumber = clazz.getName().hashCode();
@@ -818,7 +827,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             newNodes = new NodeMap<>(oldGraph);
         } else {
             // Use sparse map
-            newNodes = CollectionsFactory.newMap();
+            newNodes = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
         }
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 
@@ -924,6 +933,10 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     public boolean isLeafNode() {
         return isLeafNode;
+    }
+
+    public int getLeafId() {
+        return this.leafId;
     }
 
     public long inputsIteration() {

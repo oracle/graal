@@ -38,6 +38,7 @@ import java.util.EnumSet;
 import java.util.List;
 import org.graalvm.compiler.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
@@ -409,7 +410,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     try (Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, valueForOperandFromDebugContext)) {
 
                         Deque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
-                        EconomicSet<AbstractBlockBase<?>> usedIn = CollectionsFactory.newSet();
+                        EconomicSet<AbstractBlockBase<?>> usedIn = CollectionsFactory.newSet(CompareStrategy.IDENTITY);
                         for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
                             if (allocator.getBlockData(block).liveGen.get(operandNum)) {
                                 usedIn.add(block);

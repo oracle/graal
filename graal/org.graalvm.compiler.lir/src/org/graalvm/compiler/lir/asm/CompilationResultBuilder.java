@@ -40,6 +40,7 @@ import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.code.DataSection.RawData;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -149,7 +150,7 @@ public class CompilationResultBuilder {
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult) {
-        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, CollectionsFactory.newMap());
+        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, CollectionsFactory.newMap(CompareStrategy.EQUALS));
     }
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,

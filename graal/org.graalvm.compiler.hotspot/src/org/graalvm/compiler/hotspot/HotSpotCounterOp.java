@@ -30,6 +30,7 @@ import java.util.Arrays;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.NumUtil;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
@@ -102,7 +103,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
             proc.apply(0, increments[0], displacement);
         } else { // Slow path with sort by displacements ascending
             int[] displacements = new int[names.length];
-            EconomicMap<Integer, Integer> offsetMap = CollectionsFactory.newMap();
+            EconomicMap<Integer, Integer> offsetMap = CollectionsFactory.newMap(CompareStrategy.EQUALS);
             for (int i = 0; i < names.length; i++) {
                 int arrayIndex = getIndex(names[i], groups[i], increments[i]);
                 displacements[i] = getDisplacementForLongIndex(target, arrayIndex);

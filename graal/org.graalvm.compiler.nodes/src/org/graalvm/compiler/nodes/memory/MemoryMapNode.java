@@ -33,7 +33,9 @@ import java.util.Collection;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.MapCursor;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
@@ -67,7 +69,7 @@ public final class MemoryMapNode extends FloatingNode implements MemoryMap, Memo
         locationIdentities = new ArrayList<>(size);
         nodes = new NodeInputList<>(this, size);
         int index = 0;
-        EconomicMap.Cursor<LocationIdentity, MemoryNode> cursor = mmap.getEntries();
+        MapCursor<LocationIdentity, MemoryNode> cursor = mmap.getEntries();
         while (cursor.advance()) {
             locationIdentities.add(cursor.getKey());
             nodes.initialize(index, (ValueNode) cursor.getValue());
@@ -108,7 +110,7 @@ public final class MemoryMapNode extends FloatingNode implements MemoryMap, Memo
     }
 
     public EconomicMap<LocationIdentity, MemoryNode> toMap() {
-        EconomicMap<LocationIdentity, MemoryNode> res = CollectionsFactory.newMap(locationIdentities.size());
+        EconomicMap<LocationIdentity, MemoryNode> res = CollectionsFactory.newMap(CompareStrategy.EQUALS, locationIdentities.size());
         for (int i = 0; i < nodes.size(); i++) {
             res.put(locationIdentities.get(i), (MemoryNode) nodes.get(i));
         }

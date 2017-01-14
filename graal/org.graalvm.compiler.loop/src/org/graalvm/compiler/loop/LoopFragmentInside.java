@@ -25,6 +25,7 @@ package org.graalvm.compiler.loop;
 import java.util.LinkedList;
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
@@ -163,7 +164,7 @@ public class LoopFragmentInside extends LoopFragment {
         final StructuredGraph graph = graph();
         return new DuplicationReplacement() {
 
-            private EconomicMap<Node, Node> seenNode = CollectionsFactory.newMap();
+            private EconomicMap<Node, Node> seenNode = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
 
             @Override
             public Node replacement(Node original) {
@@ -340,7 +341,7 @@ public class LoopFragmentInside extends LoopFragment {
         assert isDuplicate();
         List<EndNode> endsToMerge = new LinkedList<>();
         // map peel exits to the corresponding loop exits
-        EconomicMap<AbstractEndNode, LoopEndNode> reverseEnds = CollectionsFactory.newMap();
+        EconomicMap<AbstractEndNode, LoopEndNode> reverseEnds = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
         LoopBeginNode loopBegin = original().loop().loopBegin();
         for (LoopEndNode le : loopBegin.loopEnds()) {
             AbstractEndNode duplicate = getDuplicatedNode(le);
@@ -349,7 +350,7 @@ public class LoopFragmentInside extends LoopFragment {
                 reverseEnds.put(duplicate, le);
             }
         }
-        mergedInitializers = CollectionsFactory.newMap();
+        mergedInitializers = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
         AbstractBeginNode newExit;
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {

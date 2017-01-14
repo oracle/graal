@@ -33,8 +33,11 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
+import org.graalvm.compiler.core.common.ImmutableMapCursor;
 import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.core.common.EconomicMap;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -469,7 +472,9 @@ public class InliningUtil {
         graph.updateMethods(inlineGraph);
 
         // Update the set of accessed fields
-        graph.updateFields(inlineGraph);
+        if (GraalOptions.GeneratePIC.getValue()) {
+            graph.updateFields(inlineGraph);
+        }
 
         if (inlineGraph.hasUnsafeAccess()) {
             graph.markUnsafeAccess();
@@ -498,13 +503,15 @@ public class InliningUtil {
             NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
             assert invokePos != null : "missing source information";
 
-            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = CollectionsFactory.newMap();
-            ImmutableEconomicMap.Cursor<Node, Node> cursor = duplicates.getEntries();
+            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = CollectionsFactory.newMap(CompareStrategy.EQUALS);
+            ImmutableMapCursor<Node, Node> cursor = duplicates.getEntries();
             while (cursor.advance()) {
                 NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
                 if (pos != null) {
                     NodeSourcePosition callerPos = pos.addCaller(constantReceiver, invokePos);
-                    posMap.putIfAbsent(callerPos, callerPos);
+                    if (!posMap.containsKey(callerPos)) {
+                        posMap.put(callerPos, callerPos);
+                    }
                     cursor.getValue().setNodeSourcePosition(posMap.get(callerPos));
                 }
             }

@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Queue;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
@@ -68,8 +69,8 @@ public class DebugInfoBuilder {
     private static final JavaValue[] NO_JAVA_VALUES = {};
     private static final JavaKind[] NO_JAVA_KINDS = {};
 
-    protected final EconomicMap<VirtualObjectNode, VirtualObject> virtualObjects = CollectionsFactory.newMap();
-    protected final EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = CollectionsFactory.newMap();
+    protected final EconomicMap<VirtualObjectNode, VirtualObject> virtualObjects = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
+    protected final EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
 
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 

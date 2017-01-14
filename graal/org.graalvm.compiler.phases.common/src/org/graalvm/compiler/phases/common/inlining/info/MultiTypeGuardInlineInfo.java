@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicSet;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
@@ -99,7 +100,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private static boolean assertUniqueTypes(ArrayList<ProfiledType> ptypes) {
-        EconomicSet<ResolvedJavaType> set = CollectionsFactory.newSet();
+        EconomicSet<ResolvedJavaType> set = CollectionsFactory.newSet(CompareStrategy.EQUALS);
         for (ProfiledType ptype : ptypes) {
             set.add(ptype.getType());
         }

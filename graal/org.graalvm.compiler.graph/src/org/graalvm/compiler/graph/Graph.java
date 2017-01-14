@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.ImmutableEconomicMap;
 import org.graalvm.compiler.core.common.EconomicMap;
 import org.graalvm.compiler.debug.Debug;
@@ -109,51 +110,31 @@ public class Graph {
      * Used to global value number {@link ValueNumberable} {@linkplain NodeClass#isLeafNode() leaf}
      * nodes.
      */
-    private final EconomicMap<CacheEntry, Node> cachedLeafNodes = CollectionsFactory.newMap();
+    private EconomicMap<Node, Node>[] cachedLeafNodes;
+
+    private static final CompareStrategy NODE_VALUE_COMPARE = new CompareStrategy() {
+
+        @Override
+        public boolean equals(Object a, Object b) {
+            if (a == b) {
+                return true;
+            }
+
+            assert a.getClass() == b.getClass();
+            return ((Node) a).valueEquals((Node) b);
+        }
+
+        @Override
+        public int hashCode(Object k) {
+            return ((Node) k).getNodeClass().valueNumber((Node) k);
+        }
+    };
 
     /*
      * Indicates that the graph should no longer be modified. Frozen graphs can be used my multiple
      * threads so it's only safe to read them.
      */
     private boolean isFrozen = false;
-
-    /**
-     * Entry in {@link Graph#cachedLeafNodes}.
-     */
-    private static final class CacheEntry {
-
-        private final Node node;
-
-        CacheEntry(Node node) {
-            assert node.getNodeClass().valueNumberable();
-            assert node.getNodeClass().isLeafNode();
-            this.node = node;
-        }
-
-        @Override
-        public int hashCode() {
-            return node.getNodeClass().valueNumber(node);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) {
-                return true;
-            }
-            if (obj instanceof CacheEntry) {
-                CacheEntry other = (CacheEntry) obj;
-                if (other.node.getClass() == node.getClass()) {
-                    return node.valueEquals(other.node);
-                }
-            }
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            return node.toString();
-        }
-    }
 
     private class NodeSourcePositionScope implements DebugCloseable {
         private final NodeSourcePosition previous;
@@ -600,21 +581,47 @@ public class Graph {
         }
     }
 
+    void removeNodeFromCache(Node node) {
+        assert node.graph() == this || node.graph() == null;
+        assert node.getNodeClass().valueNumberable();
+        assert node.getNodeClass().isLeafNode() : node.getClass();
+
+        int leafId = node.getNodeClass().getLeafId();
+        if (cachedLeafNodes != null && cachedLeafNodes.length > leafId && cachedLeafNodes[leafId] != null) {
+            cachedLeafNodes[leafId].removeKey(node);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
     void putNodeIntoCache(Node node) {
         assert node.graph() == this || node.graph() == null;
         assert node.getNodeClass().valueNumberable();
         assert node.getNodeClass().isLeafNode() : node.getClass();
-        CacheEntry entry = new CacheEntry(node);
-        cachedLeafNodes.put(entry, node);
+
+        int leafId = node.getNodeClass().getLeafId();
+        if (cachedLeafNodes == null || cachedLeafNodes.length <= leafId) {
+            EconomicMap<Node, Node>[] newLeafNodes = new EconomicMap[leafId + 1];
+            if (cachedLeafNodes != null) {
+                System.arraycopy(cachedLeafNodes, 0, newLeafNodes, 0, cachedLeafNodes.length);
+            }
+            cachedLeafNodes = newLeafNodes;
+        }
+
+        if (cachedLeafNodes[leafId] == null) {
+            cachedLeafNodes[leafId] = CollectionsFactory.newMap(NODE_VALUE_COMPARE);
+        }
+
+        cachedLeafNodes[leafId].put(node, node);
     }
 
     Node findNodeInCache(Node node) {
-        CacheEntry key = new CacheEntry(node);
-        Node result = cachedLeafNodes.get(key);
-        if (result != null && result.isDeleted()) {
-            cachedLeafNodes.removeKey(key);
+        int leafId = node.getNodeClass().getLeafId();
+        if (cachedLeafNodes == null || cachedLeafNodes.length <= leafId || cachedLeafNodes[leafId] == null) {
             return null;
         }
+
+        Node result = cachedLeafNodes[leafId].get(node);
+        assert result == null || result.isAlive() : result;
         return result;
     }
 
@@ -1003,7 +1010,10 @@ public class Graph {
 
     void unregister(Node node) {
         assert !isFrozen();
-        assert !node.isDeleted() : "cannot delete a node twice! node=" + node;
+        assert !node.isDeleted() : node;
+        if (node.getNodeClass().isLeafNode() && node.getNodeClass().valueNumberable()) {
+            removeNodeFromCache(node);
+        }
         nodes[node.id] = null;
         nodesDeletedSinceLastCompression++;
 

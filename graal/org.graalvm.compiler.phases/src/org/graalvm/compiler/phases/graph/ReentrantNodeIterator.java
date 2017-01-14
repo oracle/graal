@@ -29,7 +29,9 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.CollectionsFactory;
+import org.graalvm.compiler.core.common.CompareStrategy;
 import org.graalvm.compiler.core.common.EconomicMap;
+import org.graalvm.compiler.core.common.MapCursor;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -49,8 +51,8 @@ public final class ReentrantNodeIterator {
         public final EconomicMap<LoopExitNode, StateT> exitStates;
 
         public LoopInfo(int endCount, int exitCount) {
-            endStates = CollectionsFactory.newMap(endCount);
-            exitStates = CollectionsFactory.newMap(exitCount);
+            endStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY, endCount);
+            exitStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY, exitCount);
         }
     }
 
@@ -102,7 +104,7 @@ public final class ReentrantNodeIterator {
     private static <StateT> EconomicMap<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, LoopBeginNode boundary) {
         assert start != null;
         Deque<AbstractBeginNode> nodeQueue = new ArrayDeque<>();
-        EconomicMap<FixedNode, StateT> blockEndStates = CollectionsFactory.newMap();
+        EconomicMap<FixedNode, StateT> blockEndStates = CollectionsFactory.newMap(CompareStrategy.IDENTITY);
 
         StateT state = initialState;
         FixedNode current = start;
@@ -131,7 +133,7 @@ public final class ReentrantNodeIterator {
                             AbstractMergeNode merge = ((EndNode) current).merge();
                             if (merge instanceof LoopBeginNode) {
                                 EconomicMap<LoopExitNode, StateT> loopExitState = closure.processLoop((LoopBeginNode) merge, state);
-                                EconomicMap.Cursor<LoopExitNode, StateT> entry = loopExitState.getEntries();
+                                MapCursor<LoopExitNode, StateT> entry = loopExitState.getEntries();
                                 while (entry.advance()) {
                                     blockEndStates.put(entry.getKey(), entry.getValue());
                                     nodeQueue.add(entry.getKey());
