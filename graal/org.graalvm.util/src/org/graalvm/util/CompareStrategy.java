@@ -22,6 +22,10 @@
  */
 package org.graalvm.util;
 
+/**
+ * Strategy for comparing two objects. Default predefined strategies are {@link #EQUALS},
+ * {@link #IDENTITY}, and {@link #IDENTITY_WITH_SYSTEM_HASHCODE}.
+ */
 public abstract class CompareStrategy {
 
     public static final CompareStrategy EQUALS = new CompareStrategy() {
@@ -32,8 +36,8 @@ public abstract class CompareStrategy {
         }
 
         @Override
-        public int hashCode(Object k) {
-            return k.hashCode();
+        public int hashCode(Object o) {
+            return o.hashCode();
         }
     };
 
@@ -45,8 +49,8 @@ public abstract class CompareStrategy {
         }
 
         @Override
-        public int hashCode(Object k) {
-            return k.hashCode();
+        public int hashCode(Object o) {
+            return o.hashCode();
         }
     };
 
@@ -58,12 +62,12 @@ public abstract class CompareStrategy {
         }
 
         @Override
-        public int hashCode(Object k) {
-            return System.identityHashCode(k);
+        public int hashCode(Object o) {
+            return System.identityHashCode(o);
         }
     };
 
     public abstract boolean equals(Object a, Object b);
 
-    public abstract int hashCode(Object k);
+    public abstract int hashCode(Object o);
 }

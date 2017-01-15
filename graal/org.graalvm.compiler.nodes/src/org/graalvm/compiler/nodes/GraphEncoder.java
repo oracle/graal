@@ -45,6 +45,7 @@ import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.Pair;
 
 import jdk.vm.ci.code.Architecture;
 
@@ -431,8 +432,8 @@ class GraphComparison {
         pushToWorklist(expectedGraph.start(), actualGraph.start(), nodeMapping, workList);
         while (!workList.isEmpty()) {
             Pair<Node, Node> pair = workList.removeFirst();
-            Node expectedNode = pair.first;
-            Node actualNode = pair.second;
+            Node expectedNode = pair.getLeft();
+            Node actualNode = pair.getRight();
             assert expectedNode.getClass() == actualNode.getClass();
 
             NodeClass<?> nodeClass = expectedNode.getNodeClass();
@@ -535,15 +536,5 @@ class GraphComparison {
         } else {
             workList.addFirst(new Pair<>(expectedNode, actualNode));
         }
-    }
-}
-
-class Pair<F, S> {
-    public final F first;
-    public final S second;
-
-    Pair(F first, S second) {
-        this.first = first;
-        this.second = second;
     }
 }

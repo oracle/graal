@@ -22,7 +22,7 @@
  */
 package org.graalvm.util.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -42,6 +42,9 @@ import org.junit.Test;
 
 public class CollectionTest {
 
+    /**
+     * Tests the memory size of an empty map and a map with only one or two entries.
+     */
     @Test
     public void testSize() {
         EconomicMap<Object, Object> map = CollectionFactory.newMap(CompareStrategy.IDENTITY);
@@ -56,10 +59,50 @@ public class CollectionTest {
         assertEquals(152 + 20, ObjectSizeEstimate.forObject(map).getTotalBytes());
     }
 
+    /**
+     * Tests whether the map actually compresses the entries array when a large number of entries
+     * are deleted.
+     */
+    @Test
+    public void testCompress() {
+        EconomicMap<Object, Object> map = CollectionFactory.newMap();
+
+        // Measuring size of map with one entry.
+        Object firstValue = 0;
+        map.put(firstValue, firstValue);
+        ObjectSizeEstimate afterFirstValue = ObjectSizeEstimate.forObject(map);
+
+        // Add 999 more entries.
+        for (int i = 1; i < 1000; ++i) {
+            Object value = i;
+            map.put(value, value);
+        }
+        ObjectSizeEstimate beforeRemove = ObjectSizeEstimate.forObject(map);
+
+        // Remove 999 first entries.
+        for (int i = 0; i < 999; ++i) {
+            map.removeKey(i);
+        }
+        ObjectSizeEstimate afterRemove = ObjectSizeEstimate.forObject(map);
+
+        // Check that size is same size as with one entry.
+        assertEquals(afterFirstValue, afterRemove);
+
+        // Add 999 new entries.
+        for (int i = 0; i < 999; ++i) {
+            Object value = i;
+            map.put(value, value);
+        }
+        ObjectSizeEstimate afterAdd = ObjectSizeEstimate.forObject(map);
+
+        // Check that entries array is same size again.
+        assertEquals(beforeRemove.getPointerCount(), afterAdd.getPointerCount());
+    }
+
     private static int[] createRandomRange(Random random, int count) {
         int[] result = new int[count];
         for (int i = 0; i < count; ++i) {
-            int range = random.nextInt(20);
+            int range = random.nextInt(14);
             if (range == 0 || range > 10) {
                 range = Integer.MAX_VALUE;
             } else if (range == 10) {
@@ -98,7 +141,12 @@ public class CollectionTest {
 
     static final Object EXISTING_VALUE = new Object();
 
-    static MapAction[] ACTIONS = new MapAction[]{
+    static final MapAction[] INCREASE_ACTIONS = new MapAction[]{
+                    (map, randomInt) -> map.put(randomInt, "value"),
+                    (map, randomInt) -> map.get(randomInt)
+    };
+
+    static final MapAction[] ACTIONS = new MapAction[]{
                     (map, randomInt) -> map.removeKey(randomInt),
                     (map, randomInt) -> map.put(randomInt, "value"),
                     (map, randomInt) -> map.put(randomInt, null),
@@ -122,16 +170,35 @@ public class CollectionTest {
     };
 
     @Test
-    public void testAdd() {
+    public void testVeryLarge() {
+        EconomicMap<Object, Object> map = CollectionFactory.newMap(CompareStrategy.EQUALS);
+        EconomicMap<Object, Object> referenceMap = createDebugMap();
+
+        Random random = new Random(0);
+        for (int i = 0; i < 200000; ++i) {
+            for (int j = 0; j < INCREASE_ACTIONS.length; ++j) {
+                int nextInt = random.nextInt(10000000);
+                MapAction action = INCREASE_ACTIONS[j];
+                Object result = action.perform(map, nextInt);
+                Object referenceResult = action.perform(referenceMap, nextInt);
+                Assert.assertEquals(result, referenceResult);
+            }
+        }
+    }
+
+    /**
+     * Tests a sequence of random operations on the map.
+     */
+    @Test
+    public void testAddRemove() {
         EconomicMap<Object, Object> map = CollectionFactory.newMap(CompareStrategy.EQUALS);
         EconomicMap<Object, Object> referenceMap = createDebugMap();
 
         for (int seed = 0; seed < 10; ++seed) {
             Random random = new Random(seed);
             int[] ranges = createRandomRange(random, ACTIONS.length);
-            int value = random.nextInt(1000);
+            int value = random.nextInt(10000);
             for (int i = 0; i < value; ++i) {
-
                 for (int j = 0; j < ACTIONS.length; ++j) {
                     if (random.nextInt(ranges[j]) == 0) {
                         int nextInt = random.nextInt(100);
@@ -139,7 +206,9 @@ public class CollectionTest {
                         Object result = action.perform(map, nextInt);
                         Object referenceResult = action.perform(referenceMap, nextInt);
                         Assert.assertEquals(result, referenceResult);
-                        checkEquality(map, referenceMap);
+                        if (j % 100 == 0) {
+                            checkEquality(map, referenceMap);
+                        }
                     }
                 }
 
@@ -376,7 +445,6 @@ public class CollectionTest {
                 linkedMap.replaceAll(function);
                 sparseMap.replaceAll(function);
             }
-
         };
     }
 }

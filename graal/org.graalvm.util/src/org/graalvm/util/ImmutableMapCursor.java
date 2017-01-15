@@ -22,10 +22,24 @@
  */
 package org.graalvm.util;
 
+/**
+ * Cursor to iterate over an immutable map.
+ */
 public interface ImmutableMapCursor<K, V> {
+    /**
+     * Advances to the next entry.
+     *
+     * @return {@code true} if a next entry exists, {@code false} if there is no next entry.
+     */
     boolean advance();
 
+    /**
+     * The key of the current entry.
+     */
     K getKey();
 
+    /**
+     * The value of the current entry.
+     */
     V getValue();
 }

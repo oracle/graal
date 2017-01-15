@@ -26,6 +26,7 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
+import org.graalvm.util.Pair;
 
 import jdk.vm.ci.code.TargetDescription;
 
@@ -50,9 +51,9 @@ public final class LinearScanRegisterAllocationPhase extends AllocationPhase {
             Interval precoloredIntervals;
             Interval notPrecoloredIntervals;
 
-            Interval.Pair result = allocator.createUnhandledLists(LinearScan.IS_PRECOLORED_INTERVAL, LinearScan.IS_VARIABLE_INTERVAL);
-            precoloredIntervals = result.first;
-            notPrecoloredIntervals = result.second;
+            Pair<Interval, Interval> result = allocator.createUnhandledLists(LinearScan.IS_PRECOLORED_INTERVAL, LinearScan.IS_VARIABLE_INTERVAL);
+            precoloredIntervals = result.getLeft();
+            notPrecoloredIntervals = result.getRight();
 
             // allocate cpu registers
             LinearScanWalker lsw;

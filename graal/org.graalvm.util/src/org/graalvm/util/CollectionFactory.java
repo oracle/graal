@@ -29,7 +29,7 @@ import java.util.function.BiFunction;
 import org.graalvm.util.impl.EconomicMapImpl;
 
 /**
- * Factory for creating collection objects used during compilation.
+ * Factory for creating map and set collection objects.
  */
 public class CollectionFactory {
 
@@ -46,7 +46,7 @@ public class CollectionFactory {
      * strategy for keys.
      */
     public static <K, V> EconomicMap<K, V> newMap(CompareStrategy strategy) {
-        return new EconomicMapImpl<>(strategy);
+        return EconomicMapImpl.create(strategy);
     }
 
     /**
@@ -63,7 +63,7 @@ public class CollectionFactory {
      * specified capacity.
      */
     public static <K, V> EconomicMap<K, V> newMap(CompareStrategy strategy, int initialCapacity) {
-        return new EconomicMapImpl<>(strategy, initialCapacity);
+        return EconomicMapImpl.create(strategy, initialCapacity);
     }
 
     /**
@@ -80,7 +80,7 @@ public class CollectionFactory {
      * the specified existing map.
      */
     public static <K, V> EconomicMap<K, V> newMap(CompareStrategy strategy, ImmutableEconomicMap<K, V> m) {
-        return new EconomicMapImpl<>(strategy, m);
+        return EconomicMapImpl.create(strategy, m);
     }
 
     /**
@@ -95,7 +95,7 @@ public class CollectionFactory {
      * Creates a new set guaranteeing insertion order when iterating over its elements.
      */
     public static <E> EconomicSet<E> newSet(CompareStrategy strategy) {
-        return new EconomicMapImpl<E, E>(strategy);
+        return EconomicMapImpl.create(strategy);
     }
 
     /**
@@ -112,7 +112,7 @@ public class CollectionFactory {
      * all elements of the specified collection.
      */
     public static <E> EconomicSet<E> newSet(CompareStrategy strategy, ImmutableEconomicSet<E> c) {
-        return new EconomicMapImpl<E, E>(strategy, c);
+        return EconomicMapImpl.create(strategy, c);
     }
 
     /**
@@ -129,7 +129,7 @@ public class CollectionFactory {
      * initializes with the given capacity.
      */
     public static <E> EconomicSet<E> newSet(CompareStrategy strategy, int initialCapacity) {
-        return new EconomicMapImpl<E, E>(strategy, initialCapacity);
+        return EconomicMapImpl.create(strategy, initialCapacity);
     }
 
     /**
@@ -225,7 +225,6 @@ public class CollectionFactory {
             public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
                 map.replaceAll(function);
             }
-
         };
     }
 

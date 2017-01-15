@@ -24,12 +24,14 @@ package org.graalvm.util;
 
 import java.util.Objects;
 
+/**
+ * Utility class repres4enting a pair of values.
+ */
 public class Pair<L, R> {
     private L left;
     private R right;
 
     public Pair() {
-
     }
 
     public Pair(L left) {

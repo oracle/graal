@@ -23,7 +23,8 @@
 package org.graalvm.util;
 
 /**
- * Immutable memory efficient map data structure.
+ * Immutable memory efficient map data structure. Use methods in {@link CollectionFactory} to
+ * create.
  */
 public interface ImmutableEconomicMap<K, V> {
 

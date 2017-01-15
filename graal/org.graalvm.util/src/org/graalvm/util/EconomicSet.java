@@ -25,7 +25,7 @@ package org.graalvm.util;
 import java.util.Iterator;
 
 /**
- * Memory efficient set data structure.
+ * Memory efficient set data structure. Use methods in {@link CollectionFactory} to create.
  */
 public interface EconomicSet<E> extends ImmutableEconomicSet<E> {
 

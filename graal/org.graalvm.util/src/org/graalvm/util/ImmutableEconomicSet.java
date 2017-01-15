@@ -23,7 +23,8 @@
 package org.graalvm.util;
 
 /**
- * Immutable memory efficient set data structure.
+ * Immutable memory efficient set data structure. Use methods in {@link CollectionFactory} to
+ * create.
  */
 public interface ImmutableEconomicSet<E> extends Iterable<E> {
 
@@ -35,7 +36,7 @@ public interface ImmutableEconomicSet<E> extends Iterable<E> {
 
     default E[] toArray(E[] target) {
         if (target.length != size()) {
-            throw new UnsupportedOperationException("target array must have correct length");
+            throw new UnsupportedOperationException("Length of target array must equal the size of the set.");
         }
 
         int index = 0;

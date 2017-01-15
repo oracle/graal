@@ -25,7 +25,7 @@ package org.graalvm.util;
 import java.util.function.BiFunction;
 
 /**
- * Memory efficient map data structure.
+ * Memory efficient map data structure. Use methods in {@link CollectionFactory} to create.
  */
 public interface EconomicMap<K, V> extends ImmutableEconomicMap<K, V> {
 

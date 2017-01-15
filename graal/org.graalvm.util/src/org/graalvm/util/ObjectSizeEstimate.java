@@ -26,31 +26,47 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 
-public class ObjectSizeEstimate {
+/**
+ * Calculates approximate estimates of the size of an object graph.
+ *
+ * The result contains number of object headers {@link #getHeaderCount()}, number of pointers
+ * {@link #getPointerCount()} and size of the primitive data {@link #getPrimitiveByteSize()}.
+ *
+ * The methods {@link #getTotalBytes()} and {@link #getCompressedTotalBytes()} estimate the total
+ * number of bytes occupied. The real number of bytes occupied may vary due to different alignment
+ * or different header sizes on different virtual machines.
+ */
+public final class ObjectSizeEstimate {
 
     private static final int UNCOMPRESSED_POINTER_SIZE = 8;
     private static final int UNCOMPRESSED_HEADER_SIZE = 16;
     private static final int COMPRESSED_POINTER_SIZE = 4;
     private static final int COMPRESSED_HEADER_SIZE = 12;
 
-    public static ObjectSizeEstimate forObject(Object object) {
-        return forObject(object, Integer.MAX_VALUE);
+    /**
+     * Collect the size occupied by the object graph reachable from the given root object.
+     *
+     * @param root the starting point of the object graph traversal
+     */
+    public static ObjectSizeEstimate forObject(Object root) {
+        return forObject(root, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Collect the size occupied by the object graph reachable from the given root object.
+     *
+     * @param root the starting point of the object graph traversal
+     * @param maxDepth the maximum depth of the traversal
+     */
+    public static ObjectSizeEstimate forObject(Object root, int maxDepth) {
+        return forObjectHelper(root, maxDepth);
     }
 
     private int headerCount;
     private int pointerCount;
     private int primitiveByteSize;
 
-    private void recordHeader() {
-        headerCount++;
-    }
-
-    private void recordPointer() {
-        pointerCount++;
-    }
-
-    private void recordPrimitiveBytes(int size) {
-        primitiveByteSize += size;
+    private ObjectSizeEstimate() {
     }
 
     public ObjectSizeEstimate add(ObjectSizeEstimate other) {
@@ -69,6 +85,18 @@ public class ObjectSizeEstimate {
         return result;
     }
 
+    public int getHeaderCount() {
+        return headerCount;
+    }
+
+    public int getPointerCount() {
+        return pointerCount;
+    }
+
+    public int getPrimitiveByteSize() {
+        return primitiveByteSize;
+    }
+
     @Override
     public String toString() {
         return String.format("(#headers=%s, #pointers=%s, #primitiveBytes=%s, totalCompressed=%s, totalNonCompressed=%s)", headerCount, pointerCount, primitiveByteSize,
@@ -83,7 +111,19 @@ public class ObjectSizeEstimate {
         return headerCount * UNCOMPRESSED_HEADER_SIZE + pointerCount * UNCOMPRESSED_POINTER_SIZE + primitiveByteSize;
     }
 
-    public static ObjectSizeEstimate forObject(Object object, int maxDepth) {
+    private void recordHeader() {
+        headerCount++;
+    }
+
+    private void recordPointer() {
+        pointerCount++;
+    }
+
+    private void recordPrimitiveBytes(int size) {
+        primitiveByteSize += size;
+    }
+
+    private static ObjectSizeEstimate forObjectHelper(Object object, int maxDepth) {
         EconomicMap<Object, Object> identityHashMap = CollectionFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
         ObjectSizeEstimate size = new ObjectSizeEstimate();
 
@@ -175,5 +215,26 @@ public class ObjectSizeEstimate {
             }
         }
         return size;
+    }
+
+    public static ObjectSizeEstimate zero() {
+        return new ObjectSizeEstimate();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        return headerCount + prime * (pointerCount + prime * primitiveByteSize);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (obj instanceof ObjectSizeEstimate) {
+            ObjectSizeEstimate other = (ObjectSizeEstimate) obj;
+            return headerCount == other.headerCount && pointerCount == other.pointerCount && primitiveByteSize == other.primitiveByteSize;
+        }
+        return false;
     }
 }

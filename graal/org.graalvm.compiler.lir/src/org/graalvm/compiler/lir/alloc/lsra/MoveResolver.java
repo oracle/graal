@@ -176,7 +176,7 @@ public class MoveResolver {
     }
 
     protected void verifyStackSlotMapping() {
-        EconomicSet<Value> usedRegs = CollectionFactory.newSet(CompareStrategy.IDENTITY);
+        EconomicSet<Value> usedRegs = CollectionFactory.newSet(CompareStrategy.EQUALS);
         for (int i = 0; i < mappingFrom.size(); i++) {
             Interval interval = mappingFrom.get(i);
             if (interval != null && !isRegister(interval.location())) {
