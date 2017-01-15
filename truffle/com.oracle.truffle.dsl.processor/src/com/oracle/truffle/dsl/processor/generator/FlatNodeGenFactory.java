@@ -2754,7 +2754,7 @@ public class FlatNodeGenFactory {
         for (GuardExpression guard : guardExpressions) {
             triples.addAll(initializeCaches(frameState, group, group.getSpecialization().getBoundCaches(guard.getExpression()), mode));
             triples.addAll(initializeCasts(frameState, group, guard.getExpression(), mode));
-            triples.add(createMethodGuardCheck(frameState, group.getSpecialization(), guard, mode.isFastPath()));
+            triples.add(createMethodGuardCheck(frameState, group.getSpecialization(), guard, mode.isFastPath() || mode.isGuardFallback()));
         }
         return triples;
     }

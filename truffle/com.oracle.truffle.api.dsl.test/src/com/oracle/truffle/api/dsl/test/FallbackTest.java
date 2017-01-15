@@ -30,12 +30,17 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Introspectable;
+import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback10NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback1Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback2Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback3Factory;
@@ -397,6 +402,63 @@ public class FallbackTest {
         protected Object f(Object arg) {
             fcount++;
             return arg;
+        }
+
+    }
+
+    @Test
+    public void testFallback10() {
+        Fallback10 node = Fallback10NodeGen.create();
+
+        Assert.assertFalse(Introspection.getSpecialization(node, "s0").isActive());
+        Assert.assertFalse(Introspection.getSpecialization(node, "f0").isActive());
+        Assert.assertEquals("s0", node.execute(1, 1));
+        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getInstances());
+        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(0));
+        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(1));
+        Assert.assertFalse(Introspection.getSpecialization(node, "f0").isActive());
+
+        Assert.assertEquals("f0", node.execute(1, ""));
+        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getInstances());
+        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(0));
+        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(1));
+        Assert.assertTrue(Introspection.getSpecialization(node, "f0").isActive());
+
+        /*
+         * Without a generic specialization that covers (int, int), once fallback is triggered it
+         * will always trigger instead of adding new cache entries.
+         */
+        Assert.assertEquals("f0", node.execute(1, 2));
+        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getInstances());
+        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(0));
+        Assert.assertEquals(1, Introspection.getSpecialization(node, "s0").getCachedData(0).get(1));
+        Assert.assertTrue(Introspection.getSpecialization(node, "f0").isActive());
+
+    }
+
+    /*
+     * Tests that fallback behavior with cached guards that do not have a generic case.
+     */
+    @TypeSystemReference(ExampleTypes.class)
+    @Introspectable
+    @SuppressWarnings("unused")
+    public static abstract class Fallback10 extends Node {
+
+        public abstract String execute(Object left, Object right);
+
+        @Specialization(limit = "2", guards = {"left == cachedLeft", "right == cachedRight"})
+        protected String s0(
+                        int left,
+                        int right,
+                        @Cached("left") int cachedLeft,
+                        @Cached("right") int cachedRight) {
+            return "s0";
+        }
+
+        @Fallback
+        @TruffleBoundary
+        protected String f0(Object left, Object right) {
+            return "f0";
         }
 
     }
