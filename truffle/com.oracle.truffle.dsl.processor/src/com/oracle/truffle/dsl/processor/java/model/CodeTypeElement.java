@@ -124,11 +124,18 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
 
     private Name createQualifiedName() {
         TypeElement enclosingType = getEnclosingClass();
+
+        String name;
         if (enclosingType == null) {
-            return CodeNames.of(packageName + "." + simpleName);
+            if (packageName == null || packageName.length() == 0) {
+                name = simpleName.toString();
+            } else {
+                name = packageName + "." + simpleName;
+            }
         } else {
-            return CodeNames.of(enclosingType.getQualifiedName() + "." + simpleName);
+            name = enclosingType.getQualifiedName() + "." + simpleName;
         }
+        return CodeNames.of(name);
     }
 
     @Override
