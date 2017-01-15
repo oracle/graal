@@ -107,11 +107,11 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                 specialization.setInsertBeforeName(insertBeforeName);
             }
 
-            List<String> replacesDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "replaces");
-            if (replacesDefs == null) {
-                // TODO remove if deprecated contains API is removed.
-                replacesDefs = ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "contains");
-            }
+            List<String> replacesDefs = new ArrayList<>();
+            replacesDefs.addAll(ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "replaces"));
+
+            // TODO remove if deprecated contains api is removed.
+            replacesDefs.addAll(ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "contains"));
             Set<String> containsNames = specialization.getReplacesNames();
             containsNames.clear();
             if (replacesDefs != null) {

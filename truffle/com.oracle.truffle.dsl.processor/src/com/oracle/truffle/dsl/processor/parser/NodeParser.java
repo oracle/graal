@@ -1017,7 +1017,6 @@ public class NodeParser extends AbstractParser<NodeData> {
                         if (foundSpecialization.compareTo(specialization) > 0) {
                             specialization.addError(value, "The replaced specialization '%s' must be declared before the replacing specialization.", includeName);
                         }
-
                     }
                     resolvedSpecializations.add(foundSpecialization);
                 }

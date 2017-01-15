@@ -32,10 +32,14 @@ import static org.junit.Assert.assertThat;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Introspectable;
+import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.internal.SpecializedNode;
+import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.ContainsTestNodeGen;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.PolymorphicToMonomorphic0Factory;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces1Factory;
 import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces2Factory;
@@ -44,6 +48,8 @@ import com.oracle.truffle.api.dsl.test.ReplacesTestFactory.Replaces4Factory;
 import com.oracle.truffle.api.dsl.test.TestHelper.ExecutionListener;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 
 @SuppressWarnings("unused")
@@ -551,6 +557,75 @@ public class ReplacesTest {
         @Specialization(replaces = {"do1", "do2"})
         int do3(int a) {
             return a;
+        }
+
+    }
+
+    @Test
+    public void testContainsLegacy() {
+        ContainsTest test = ContainsTestNodeGen.create();
+        test.execute(1);
+        Assert.assertTrue(Introspection.getSpecialization(test, "f0").isActive());
+        Assert.assertFalse(Introspection.getSpecialization(test, "f0").isExcluded());
+        Assert.assertFalse(Introspection.getSpecialization(test, "f1").isActive());
+        test.execute("");
+        Assert.assertFalse(Introspection.getSpecialization(test, "f0").isActive());
+        Assert.assertTrue(Introspection.getSpecialization(test, "f0").isExcluded());
+        Assert.assertTrue(Introspection.getSpecialization(test, "f1").isActive());
+    }
+
+    @TypeSystemReference(ExampleTypes.class)
+    @Introspectable
+    abstract static class ContainsTest extends Node {
+
+        abstract Object execute(Object value);
+
+        @Specialization
+        Object f0(int value) {
+            return value;
+        }
+
+        @Specialization(contains = "f0")
+        Object f1(Object value) {
+            return value;
+        }
+
+    }
+
+    @TypeSystemReference(ExampleTypes.class)
+    @Introspectable
+    abstract static class ContainsTestError1 extends Node {
+
+        abstract Object execute(Object value);
+
+        @Specialization
+        Object f0(int value) {
+            return value;
+        }
+
+        @ExpectError("Duplicate replace declaration 'f0'.")
+        @Specialization(replaces = "f0", contains = "f0")
+        Object f1(Object value) {
+            return value;
+        }
+
+    }
+
+    @TypeSystemReference(ExampleTypes.class)
+    @Introspectable
+    abstract static class ContainsTestError2 extends Node {
+
+        abstract Object execute(Object value);
+
+        @Specialization
+        Object f0(int value) {
+            return value;
+        }
+
+        @ExpectError("Circular replaced specialization 'f1(Object)' found.")
+        @Specialization(contains = "f1")
+        Object f1(Object value) {
+            return value;
         }
 
     }
