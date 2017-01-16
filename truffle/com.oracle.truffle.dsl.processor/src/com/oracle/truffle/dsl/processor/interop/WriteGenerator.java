@@ -99,7 +99,7 @@ public final class WriteGenerator extends MessageGenerator {
         if (params.size() != expectedNumberOfArguments) {
             return "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String, value: Object)";
         }
-        return null;
+        return super.checkSignature(method);
     }
 
 }

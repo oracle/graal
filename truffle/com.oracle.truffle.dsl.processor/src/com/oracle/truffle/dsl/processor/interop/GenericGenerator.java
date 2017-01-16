@@ -27,7 +27,6 @@ import java.io.Writer;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
@@ -104,11 +103,6 @@ public final class GenericGenerator extends MessageGenerator {
     @Override
     String getRootNodeName() {
         return executeRootNode;
-    }
-
-    @Override
-    public String checkSignature(ExecutableElement method) {
-        return null;
     }
 
 }
