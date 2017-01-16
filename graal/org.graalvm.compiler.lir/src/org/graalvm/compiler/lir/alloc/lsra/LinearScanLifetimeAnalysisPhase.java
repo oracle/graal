@@ -57,7 +57,7 @@ import org.graalvm.compiler.lir.alloc.lsra.LinearScan.BlockData;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.Register;
@@ -409,7 +409,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     try (Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, valueForOperandFromDebugContext)) {
 
                         ArrayDeque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
-                        EconomicSet<AbstractBlockBase<?>> usedIn = CollectionFactory.newSet(CompareStrategy.IDENTITY);
+                        EconomicSet<AbstractBlockBase<?>> usedIn = CollectionFactory.newSet(Equivalence.IDENTITY);
                         for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
                             if (allocator.getBlockData(block).liveGen.get(operandNum)) {
                                 usedIn.add(block);

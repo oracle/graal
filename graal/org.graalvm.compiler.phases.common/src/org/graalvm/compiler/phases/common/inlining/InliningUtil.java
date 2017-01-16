@@ -94,7 +94,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.ImmutableEconomicMap;
 import org.graalvm.util.ImmutableMapCursor;
@@ -503,7 +503,7 @@ public class InliningUtil {
             NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
             assert invokePos != null : "missing source information";
 
-            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = CollectionFactory.newMap(CompareStrategy.EQUALS);
+            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = CollectionFactory.newMap(Equivalence.DEFAULT);
             ImmutableMapCursor<Node, Node> cursor = duplicates.getEntries();
             while (cursor.advance()) {
                 NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();

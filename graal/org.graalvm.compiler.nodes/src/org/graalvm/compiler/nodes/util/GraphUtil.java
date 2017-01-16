@@ -69,7 +69,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.BailoutException;
@@ -97,7 +97,7 @@ public class GraphUtil {
                 unsafeNodes = collectUnsafeNodes(node.graph());
             }
             if (VerifyKillCFGUnusedNodes.getValue()) {
-                EconomicSet<Node> collectedUnusedNodes = unusedNodes = CollectionFactory.newSet(CompareStrategy.IDENTITY);
+                EconomicSet<Node> collectedUnusedNodes = unusedNodes = CollectionFactory.newSet(Equivalence.IDENTITY);
                 nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
                     @Override
                     public void event(Graph.NodeEvent e, Node n) {
@@ -139,7 +139,7 @@ public class GraphUtil {
      * Collects all node in the graph which have non-optional inputs that are null.
      */
     private static EconomicSet<Node> collectUnsafeNodes(Graph graph) {
-        EconomicSet<Node> unsafeNodes = CollectionFactory.newSet(CompareStrategy.IDENTITY);
+        EconomicSet<Node> unsafeNodes = CollectionFactory.newSet(Equivalence.IDENTITY);
         for (Node n : graph.getNodes()) {
             for (Position pos : n.inputPositions()) {
                 Node input = pos.get(n);

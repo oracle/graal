@@ -92,7 +92,7 @@ import org.graalvm.compiler.lir.sparc.SPARCTailDelayedLIRInstruction;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 
@@ -507,7 +507,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters) {
-        EconomicSet<Register> callerRegisters = CollectionFactory.newSet(CompareStrategy.IDENTITY, calleeRegisters.size());
+        EconomicSet<Register> callerRegisters = CollectionFactory.newSet(Equivalence.IDENTITY, calleeRegisters.size());
         for (Register register : calleeRegisters) {
             if (l0.number <= register.number && register.number <= l7.number) {
                 // do nothing

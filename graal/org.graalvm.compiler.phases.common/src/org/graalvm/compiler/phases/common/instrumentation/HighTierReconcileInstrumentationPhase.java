@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 /**
@@ -139,7 +139,7 @@ public class HighTierReconcileInstrumentationPhase extends Phase {
 
     }
 
-    private final EconomicMap<FixedWithNextNode, NodeFlood> cachedNodeFloods = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+    private final EconomicMap<FixedWithNextNode, NodeFlood> cachedNodeFloods = CollectionFactory.newMap(Equivalence.IDENTITY);
 
     /**
      * @return true if there is a control flow path between {@code from} and {@code to}.

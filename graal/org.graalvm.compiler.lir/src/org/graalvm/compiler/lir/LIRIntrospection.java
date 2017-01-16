@@ -39,7 +39,7 @@ import org.graalvm.compiler.core.common.FieldsScanner;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.MapCursor;
 
@@ -157,7 +157,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
         public LIRFieldsScanner(FieldsScanner.CalcOffset calc) {
             super(calc);
-            valueAnnotations = CollectionFactory.newMap(CompareStrategy.EQUALS);
+            valueAnnotations = CollectionFactory.newMap(Equivalence.DEFAULT);
         }
 
         protected OperandModeAnnotation getOperandModeAnnotation(Field field) {

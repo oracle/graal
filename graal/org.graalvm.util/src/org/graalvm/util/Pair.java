@@ -25,17 +25,20 @@ package org.graalvm.util;
 import java.util.Objects;
 
 /**
- * Utility class repres4enting a pair of values.
+ * Utility class representing a pair of values.
  */
 public class Pair<L, R> {
-    private L left;
-    private R right;
+    private final L left;
+    private final R right;
 
     public Pair() {
+        this.left = null;
+        this.right = null;
     }
 
     public Pair(L left) {
         this.left = left;
+        this.right = null;
     }
 
     public Pair(L left, R right) {
@@ -49,14 +52,6 @@ public class Pair<L, R> {
 
     public R getRight() {
         return right;
-    }
-
-    public void setLeft(L value) {
-        this.left = value;
-    }
-
-    public void setRight(R value) {
-        this.right = value;
     }
 
     @Override

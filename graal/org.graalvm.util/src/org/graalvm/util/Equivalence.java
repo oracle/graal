@@ -23,12 +23,17 @@
 package org.graalvm.util;
 
 /**
- * Strategy for comparing two objects. Default predefined strategies are {@link #EQUALS},
+ * Strategy for comparing two objects. Default predefined strategies are {@link #DEFAULT},
  * {@link #IDENTITY}, and {@link #IDENTITY_WITH_SYSTEM_HASHCODE}.
  */
-public abstract class CompareStrategy {
+public abstract class Equivalence {
 
-    public static final CompareStrategy EQUALS = new CompareStrategy() {
+    /**
+     * Default equivalence calling {@link #equals(Object)} to check equality and {@link #hashCode()}
+     * for obtaining hash values. Do not change the logic of this class as it may be inlined in
+     * other places.
+     */
+    public static final Equivalence DEFAULT = new Equivalence() {
 
         @Override
         public boolean equals(Object a, Object b) {
@@ -41,7 +46,11 @@ public abstract class CompareStrategy {
         }
     };
 
-    public static final CompareStrategy IDENTITY = new CompareStrategy() {
+    /**
+     * Identity equivalence using {@code ==} to check equality and {@link #hashCode()} for obtaining
+     * hash values. Do not change the logic of this class as it may be inlined in other places.
+     */
+    public static final Equivalence IDENTITY = new Equivalence() {
 
         @Override
         public boolean equals(Object a, Object b) {
@@ -54,7 +63,12 @@ public abstract class CompareStrategy {
         }
     };
 
-    public static final CompareStrategy IDENTITY_WITH_SYSTEM_HASHCODE = new CompareStrategy() {
+    /**
+     * Identity equivalence using {@code ==} to check equality and
+     * {@link System#identityHashCode(Object)} for obtaining hash values. Do not change the logic of
+     * this class as it may be inlined in other places.
+     */
+    public static final Equivalence IDENTITY_WITH_SYSTEM_HASHCODE = new Equivalence() {
 
         @Override
         public boolean equals(Object a, Object b) {

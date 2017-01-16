@@ -50,7 +50,7 @@ import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Architecture;
@@ -83,7 +83,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final HotSpotBackend hostBackend;
     private DebugValuesPrinter debugValuesPrinter;
 
-    private final EconomicMap<Class<? extends Architecture>, HotSpotBackend> backends = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+    private final EconomicMap<Class<? extends Architecture>, HotSpotBackend> backends = CollectionFactory.newMap(Equivalence.IDENTITY);
 
     private final GraalHotSpotVMConfig config;
 

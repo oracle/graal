@@ -35,7 +35,7 @@ import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.meta.AllocatableValue;
@@ -131,7 +131,7 @@ public class PhiResolver {
     /**
      * Maps operands to nodes.
      */
-    private final EconomicMap<Value, PhiResolverNode> operandToNodeMap = CollectionFactory.newMap(CompareStrategy.EQUALS);
+    private final EconomicMap<Value, PhiResolverNode> operandToNodeMap = CollectionFactory.newMap(Equivalence.DEFAULT);
 
     public static PhiResolver create(LIRGeneratorTool gen) {
         AbstractBlockBase<?> block = gen.getCurrentBlock();

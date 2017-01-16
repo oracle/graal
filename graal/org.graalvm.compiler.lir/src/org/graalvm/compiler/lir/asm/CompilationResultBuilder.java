@@ -54,7 +54,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -150,7 +150,7 @@ public class CompilationResultBuilder {
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult) {
-        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, CollectionFactory.newMap(CompareStrategy.EQUALS));
+        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, CollectionFactory.newMap(Equivalence.DEFAULT));
     }
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,

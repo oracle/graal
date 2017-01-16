@@ -38,13 +38,13 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 public class LoopsData {
 
-    private EconomicMap<Loop<?>, LoopEx> loopToEx = CollectionFactory.newMap(CompareStrategy.IDENTITY);
-    private EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+    private EconomicMap<Loop<?>, LoopEx> loopToEx = CollectionFactory.newMap(Equivalence.IDENTITY);
+    private EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx = CollectionFactory.newMap(Equivalence.IDENTITY);
     private ControlFlowGraph cfg;
 
     @SuppressWarnings("try")

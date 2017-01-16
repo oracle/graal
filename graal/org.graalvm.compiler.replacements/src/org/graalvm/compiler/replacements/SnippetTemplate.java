@@ -122,7 +122,7 @@ import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import org.graalvm.compiler.word.WordBase;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.ImmutableEconomicMap;
@@ -685,7 +685,7 @@ public class SnippetTemplate {
                 snippetCopy.disableUnsafeAccessTracking();
             }
 
-            EconomicMap<Node, Node> nodeReplacements = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+            EconomicMap<Node, Node> nodeReplacements = CollectionFactory.newMap(Equivalence.IDENTITY);
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
             MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -1046,7 +1046,7 @@ public class SnippetTemplate {
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
     private EconomicMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
-        EconomicMap<Node, Node> replacements = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<Node, Node> replacements = CollectionFactory.newMap(Equivalence.IDENTITY);
         assert args.info.getParameterCount() == parameters.length : "number of args (" + args.info.getParameterCount() + ") != number of parameters (" + parameters.length + ")";
         for (int i = 0; i < parameters.length; i++) {
             Object parameter = parameters[i];
@@ -1155,7 +1155,7 @@ public class SnippetTemplate {
             return true;
         }
 
-        EconomicSet<LocationIdentity> kills = CollectionFactory.newSet(CompareStrategy.EQUALS);
+        EconomicSet<LocationIdentity> kills = CollectionFactory.newSet(Equivalence.DEFAULT);
         kills.addAll(memoryMap.getLocations());
 
         if (replacee instanceof MemoryCheckpoint.Single) {

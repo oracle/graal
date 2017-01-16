@@ -31,7 +31,7 @@ import jdk.vm.ci.meta.PlatformKind;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 /**
@@ -95,7 +95,7 @@ public class RegisterAllocationConfig {
     }
 
     protected final RegisterConfig registerConfig;
-    private final EconomicMap<PlatformKind.Key, AllocatableRegisters> categorized = CollectionFactory.newMap(CompareStrategy.EQUALS);
+    private final EconomicMap<PlatformKind.Key, AllocatableRegisters> categorized = CollectionFactory.newMap(Equivalence.DEFAULT);
     private RegisterArray cachedRegisters;
 
     public RegisterAllocationConfig(RegisterConfig registerConfig) {

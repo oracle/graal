@@ -43,7 +43,7 @@ import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.MapCursor;
 
@@ -110,7 +110,7 @@ public final class MemoryMapNode extends FloatingNode implements MemoryMap, Memo
     }
 
     public EconomicMap<LocationIdentity, MemoryNode> toMap() {
-        EconomicMap<LocationIdentity, MemoryNode> res = CollectionFactory.newMap(CompareStrategy.EQUALS, locationIdentities.size());
+        EconomicMap<LocationIdentity, MemoryNode> res = CollectionFactory.newMap(Equivalence.DEFAULT, locationIdentities.size());
         for (int i = 0; i < nodes.size(); i++) {
             res.put(locationIdentities.get(i), (MemoryNode) nodes.get(i));
         }

@@ -33,7 +33,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Move.AMD64PushPopStackMove;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -70,7 +70,7 @@ public abstract class AMD64MoveFactoryBase implements MoveFactory {
         protected RegisterBackupPair getScratchRegister(PlatformKind kind) {
             PlatformKind.Key key = kind.getKey();
             if (categorized == null) {
-                categorized = CollectionFactory.newMap(CompareStrategy.EQUALS);
+                categorized = CollectionFactory.newMap(Equivalence.DEFAULT);
             } else if (categorized.containsKey(key)) {
                 return categorized.get(key);
             }

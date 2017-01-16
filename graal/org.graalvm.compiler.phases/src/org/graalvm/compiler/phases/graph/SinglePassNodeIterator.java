@@ -43,7 +43,7 @@ import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 /**
@@ -156,7 +156,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         StructuredGraph graph = start.graph();
         visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
-        nodeStates = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+        nodeStates = CollectionFactory.newMap(Equivalence.IDENTITY);
         this.start = start;
         this.state = initialState;
     }

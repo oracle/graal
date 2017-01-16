@@ -39,7 +39,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.ImmutableEconomicMap;
 
@@ -112,7 +112,7 @@ public class Graph {
      */
     private EconomicMap<Node, Node>[] cachedLeafNodes;
 
-    private static final CompareStrategy NODE_VALUE_COMPARE = new CompareStrategy() {
+    private static final Equivalence NODE_VALUE_COMPARE = new Equivalence() {
 
         @Override
         public boolean equals(Object a, Object b) {

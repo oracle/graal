@@ -31,104 +31,107 @@ import org.graalvm.util.impl.EconomicMapImpl;
 /**
  * Factory for creating map and set collection objects.
  */
-public class CollectionFactory {
+public final class CollectionFactory {
+
+    private CollectionFactory() {
+    }
 
     /**
      * Creates a new map that guarantees insertion order on the key set with the the default
-     * {@link CompareStrategy#EQUALS} comparison strategy for keys.
+     * {@link Equivalence#DEFAULT} comparison strategy for keys.
      */
     public static <K, V> EconomicMap<K, V> newMap() {
-        return newMap(CompareStrategy.EQUALS);
+        return newMap(Equivalence.DEFAULT);
     }
 
     /**
      * Creates a new map that guarantees insertion order on the key set with the given comparison
      * strategy for keys.
      */
-    public static <K, V> EconomicMap<K, V> newMap(CompareStrategy strategy) {
+    public static <K, V> EconomicMap<K, V> newMap(Equivalence strategy) {
         return EconomicMapImpl.create(strategy);
     }
 
     /**
      * Creates a new map that guarantees insertion order on the key set with the the default
-     * {@link CompareStrategy#EQUALS} comparison strategy for keys and initializes with a specified
+     * {@link Equivalence#DEFAULT} comparison strategy for keys and initializes with a specified
      * capacity.
      */
     public static <K, V> EconomicMap<K, V> newMap(int initialCapacity) {
-        return newMap(CompareStrategy.EQUALS, initialCapacity);
+        return newMap(Equivalence.DEFAULT, initialCapacity);
     }
 
     /**
      * Creates a new map that guarantees insertion order on the key set and initializes with a
      * specified capacity.
      */
-    public static <K, V> EconomicMap<K, V> newMap(CompareStrategy strategy, int initialCapacity) {
+    public static <K, V> EconomicMap<K, V> newMap(Equivalence strategy, int initialCapacity) {
         return EconomicMapImpl.create(strategy, initialCapacity);
     }
 
     /**
      * Creates a new map that guarantees insertion order on the key set with the the default
-     * {@link CompareStrategy#EQUALS} comparison strategy for keys and copies all elements from the
+     * {@link Equivalence#DEFAULT} comparison strategy for keys and copies all elements from the
      * specified existing map.
      */
     public static <K, V> EconomicMap<K, V> newMap(ImmutableEconomicMap<K, V> m) {
-        return newMap(CompareStrategy.EQUALS, m);
+        return newMap(Equivalence.DEFAULT, m);
     }
 
     /**
      * Creates a new map that guarantees insertion order on the key set and copies all elements from
      * the specified existing map.
      */
-    public static <K, V> EconomicMap<K, V> newMap(CompareStrategy strategy, ImmutableEconomicMap<K, V> m) {
+    public static <K, V> EconomicMap<K, V> newMap(Equivalence strategy, ImmutableEconomicMap<K, V> m) {
         return EconomicMapImpl.create(strategy, m);
     }
 
     /**
      * Creates a new set guaranteeing insertion order when iterating over its elements with the
-     * default {@link CompareStrategy#EQUALS} comparison strategy.
+     * default {@link Equivalence#DEFAULT} comparison strategy.
      */
     public static <E> EconomicSet<E> newSet() {
-        return newSet(CompareStrategy.EQUALS);
+        return newSet(Equivalence.DEFAULT);
     }
 
     /**
      * Creates a new set guaranteeing insertion order when iterating over its elements.
      */
-    public static <E> EconomicSet<E> newSet(CompareStrategy strategy) {
+    public static <E> EconomicSet<E> newSet(Equivalence strategy) {
         return EconomicMapImpl.create(strategy);
     }
 
     /**
      * Creates a new set guaranteeing insertion order when iterating over its elements with the
-     * default {@link CompareStrategy#EQUALS} comparison strategy and inserts all elements of the
+     * default {@link Equivalence#DEFAULT} comparison strategy and inserts all elements of the
      * specified collection.
      */
     public static <E> EconomicSet<E> newSet(ImmutableEconomicSet<E> c) {
-        return newSet(CompareStrategy.EQUALS, c);
+        return newSet(Equivalence.DEFAULT, c);
     }
 
     /**
      * Creates a new set guaranteeing insertion order when iterating over its elements and inserts
      * all elements of the specified collection.
      */
-    public static <E> EconomicSet<E> newSet(CompareStrategy strategy, ImmutableEconomicSet<E> c) {
+    public static <E> EconomicSet<E> newSet(Equivalence strategy, ImmutableEconomicSet<E> c) {
         return EconomicMapImpl.create(strategy, c);
     }
 
     /**
      * Creates a new set guaranteeing insertion order when iterating over its elements with the
-     * default {@link CompareStrategy#EQUALS} comparison strategy and inserts all elements of the
+     * default {@link Equivalence#DEFAULT} comparison strategy and inserts all elements of the
      * specified collection.
      */
     public static <E> EconomicSet<E> newSet(int initialCapacity) {
-        return newSet(CompareStrategy.EQUALS, initialCapacity);
+        return newSet(Equivalence.DEFAULT, initialCapacity);
     }
 
     /**
      * Creates a new set guaranteeing insertion order when iterating over its elements and
      * initializes with the given capacity.
      */
-    public static <E> EconomicSet<E> newSet(CompareStrategy strategy, int initialCapacity) {
+    public static <E> EconomicSet<E> newSet(Equivalence strategy, int initialCapacity) {
         return EconomicMapImpl.create(strategy, initialCapacity);
     }
 

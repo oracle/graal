@@ -62,7 +62,7 @@ import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Architecture;
@@ -535,7 +535,7 @@ public class GraphDecoder {
                     resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId,
                                     Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length), loopScope.createdNodes, //
                                     methodScope.loopExplosion != LoopExplosionKind.NONE ? new ArrayDeque<>() : null, //
-                                    methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE ? CollectionFactory.newMap(CompareStrategy.EQUALS) : null);
+                                    methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE ? CollectionFactory.newMap(Equivalence.DEFAULT) : null);
                     phiInputScope = resultScope;
                     phiNodeScope = resultScope;
 
@@ -1333,7 +1333,7 @@ class LoopDetector implements Runnable {
 
     private List<Loop> findLoops() {
         /* Mapping from the loop header node to additional loop information. */
-        EconomicMap<MergeNode, Loop> unorderedLoops = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<MergeNode, Loop> unorderedLoops = CollectionFactory.newMap(Equivalence.IDENTITY);
         /* Loops in reverse order of, i.e., inner loops before outer loops. */
         List<Loop> orderedLoops = new ArrayList<>();
 

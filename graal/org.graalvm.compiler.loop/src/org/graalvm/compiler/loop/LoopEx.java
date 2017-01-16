@@ -70,7 +70,7 @@ import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -334,7 +334,7 @@ public class LoopEx {
      * @return a map from node to induction variable
      */
     private static EconomicMap<Node, InductionVariable> findInductionVariables(LoopEx loop) {
-        EconomicMap<Node, InductionVariable> ivs = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<Node, InductionVariable> ivs = CollectionFactory.newMap(Equivalence.IDENTITY);
 
         Queue<InductionVariable> scanQueue = new LinkedList<>();
         LoopBeginNode loopBegin = loop.loopBegin();

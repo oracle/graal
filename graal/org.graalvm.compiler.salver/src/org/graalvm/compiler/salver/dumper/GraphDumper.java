@@ -59,7 +59,7 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.salver.data.DataDict;
 import org.graalvm.compiler.salver.data.DataList;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.ImmutableMapCursor;
 
@@ -70,7 +70,7 @@ public class GraphDumper extends AbstractMethodScopeDumper {
     private static final EconomicMap<Class<?>, String> nodeClassCategoryMap;
 
     static {
-        nodeClassCategoryMap = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+        nodeClassCategoryMap = CollectionFactory.newMap(Equivalence.IDENTITY);
         nodeClassCategoryMap.put(ControlSinkNode.class, "ControlSink");
         nodeClassCategoryMap.put(ControlSplitNode.class, "ControlSplit");
         nodeClassCategoryMap.put(AbstractMergeNode.class, "Merge");

@@ -44,7 +44,7 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.ImmutableEconomicMap;
@@ -372,7 +372,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
-        EconomicMap<Node, Node> replacements = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+        EconomicMap<Node, Node> replacements = CollectionFactory.newMap(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
         ImmutableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
         if (duplicationMapCallback != null) {
@@ -710,7 +710,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     public void recordField(ResolvedJavaField field) {
         assert GraalOptions.GeneratePIC.getValue();
         if (this.fields == null) {
-            this.fields = CollectionFactory.newSet(CompareStrategy.IDENTITY);
+            this.fields = CollectionFactory.newSet(Equivalence.IDENTITY);
         }
         fields.add(field);
     }
@@ -723,7 +723,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         assert this != other;
         assert GraalOptions.GeneratePIC.getValue();
         if (this.fields == null) {
-            this.fields = CollectionFactory.newSet(CompareStrategy.IDENTITY);
+            this.fields = CollectionFactory.newSet(Equivalence.IDENTITY);
         }
         this.fields.addAll(other.fields);
     }

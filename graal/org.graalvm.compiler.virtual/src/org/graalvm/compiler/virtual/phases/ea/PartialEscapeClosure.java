@@ -72,7 +72,7 @@ import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClo
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.LoopInfo;
 import org.graalvm.compiler.virtual.phases.ea.EffectList.Effect;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -540,7 +540,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     @Override
     protected void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects) {
         if (exitNode.graph().hasValueProxies()) {
-            EconomicMap<Integer, ProxyNode> proxies = CollectionFactory.newMap(CompareStrategy.EQUALS);
+            EconomicMap<Integer, ProxyNode> proxies = CollectionFactory.newMap(Equivalence.DEFAULT);
             for (ProxyNode proxy : exitNode.proxies()) {
                 ValueNode alias = getAlias(proxy.value());
                 if (alias instanceof VirtualObjectNode) {
@@ -623,7 +623,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private <T> PhiNode getPhiCached(T virtual, Stamp stamp) {
             if (materializedPhis == null) {
-                materializedPhis = CollectionFactory.newMap(CompareStrategy.EQUALS);
+                materializedPhis = CollectionFactory.newMap(Equivalence.DEFAULT);
             }
             ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
@@ -643,7 +643,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private PhiNode[] getValuePhisCached(ValueNode key, int entryCount) {
             if (valuePhis == null) {
-                valuePhis = CollectionFactory.newMap(CompareStrategy.IDENTITY_WITH_SYSTEM_HASHCODE);
+                valuePhis = CollectionFactory.newMap(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             }
             ValuePhiNode[] result = valuePhis.get(key);
             if (result == null) {
@@ -664,7 +664,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
         private VirtualObjectNode getValueObjectVirtualCached(ValuePhiNode phi, VirtualObjectNode virtual) {
             if (valueObjectVirtuals == null) {
-                valueObjectVirtuals = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+                valueObjectVirtuals = CollectionFactory.newMap(Equivalence.IDENTITY);
             }
             VirtualObjectNode result = valueObjectVirtuals.get(phi);
             if (result == null) {

@@ -40,7 +40,6 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -64,7 +63,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     protected final HotSpotJVMCIRuntimeProvider jvmciRuntime;
     protected final HotSpotGraalRuntimeProvider runtime;
 
-    protected final EconomicMap<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = CollectionFactory.newMap(CompareStrategy.EQUALS);
+    protected final EconomicMap<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = CollectionFactory.newMap();
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
     protected final WordTypes wordTypes;

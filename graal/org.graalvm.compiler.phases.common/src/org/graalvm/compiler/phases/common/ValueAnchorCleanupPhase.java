@@ -35,7 +35,7 @@ import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.SinglePassNodeIterator;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
 
 /**
@@ -50,11 +50,11 @@ public class ValueAnchorCleanupPhase extends Phase {
         private final EconomicSet<Node> anchoredValues;
 
         State() {
-            anchoredValues = CollectionFactory.newSet(CompareStrategy.IDENTITY);
+            anchoredValues = CollectionFactory.newSet(Equivalence.IDENTITY);
         }
 
         State(State other) {
-            anchoredValues = CollectionFactory.newSet(CompareStrategy.IDENTITY, other.anchoredValues);
+            anchoredValues = CollectionFactory.newSet(Equivalence.IDENTITY, other.anchoredValues);
         }
 
         @Override

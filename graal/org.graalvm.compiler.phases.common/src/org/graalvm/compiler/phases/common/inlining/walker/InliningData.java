@@ -63,7 +63,7 @@ import org.graalvm.compiler.phases.common.inlining.policy.InliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.BailoutException;
@@ -391,7 +391,7 @@ public class InliningData {
         InlineInfo calleeInfo = calleeInvocation.callee();
         try {
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph); Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(), false)) {
-                EconomicSet<Node> canonicalizedNodes = CollectionFactory.newSet(CompareStrategy.IDENTITY);
+                EconomicSet<Node> canonicalizedNodes = CollectionFactory.newSet(Equivalence.IDENTITY);
                 canonicalizedNodes.addAll(calleeInfo.invoke().asNode().usages());
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context));
                 canonicalizedNodes.addAll(parameterUsages);

@@ -54,7 +54,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.CompareStrategy;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.ImmutableEconomicMap;
 
@@ -164,7 +164,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
         StructuredGraph genInstrumentationGraph(StructuredGraph oldGraph, InstrumentationNode instrumentationNode) {
 
             StructuredGraph instrumentationGraph = new StructuredGraph(AllowAssumptions.YES, INVALID_COMPILATION_ID);
-            EconomicMap<Node, Node> replacements = CollectionFactory.newMap(CompareStrategy.IDENTITY);
+            EconomicMap<Node, Node> replacements = CollectionFactory.newMap(Equivalence.IDENTITY);
             int index = 0; // for ParameterNode index
             for (Node current : nodes) {
                 // mark any input that is not included in the instrumentation a weak dependency
