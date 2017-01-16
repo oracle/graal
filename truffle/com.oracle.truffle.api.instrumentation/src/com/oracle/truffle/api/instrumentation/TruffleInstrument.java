@@ -69,49 +69,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * <li>The {@link Instrumenter} instance available in the provided {@linkplain Env environment} may
  * not be used after disposal.</li>
  * </ul>
- * <h4>Example</h4>
- * <p>
- * <b> Example for a simple expression coverage instrument: </b>
- *
- * <pre>
- * &#064;Registration(name = Coverage.NAME, version = Coverage.VERSION, instrumentType = Coverage.TYPE)
- * &#064;RequiredTags(&quot;EXPRESSION&quot;)
- * public final class Coverage extends TruffleInstrument {
- *
- *     public static final String NAME = &quot;sample-coverage&quot;;
- *     public static final String TYPE = &quot;coverage&quot;;
- *     public static final String VERSION = &quot;coverage&quot;;
- *
- *     private final Set&lt;SourceSection&gt; coverage = new HashSet&lt;&gt;();
- *
- *     &#064;Override
- *     protected void onCreate(Env env, Instrumenter instrumenter) {
- *         instrumenter.attachFactory(SourceSectionFilter.newBuilder() //
- *                         .tagIs(&quot;EXPRESSION&quot;).build(), new ExecutionEventNodeFactory() {
- *                             public ExecutionEventNode create(final EventContext context) {
- *                                 return new ExecutionEventNode() {
- *                                     &#064;CompilationFinal private boolean visited;
- *
- *                                     &#064;Override
- *                                     public void onReturnValue(VirtualFrame vFrame, Object result) {
- *                                         if (!visited) {
- *                                             CompilerDirectives.transferToInterpreterAndInvalidate();
- *                                             visited = true;
- *                                             coverage.add(context.getInstrumentedSourceSection());
- *                                         }
- *                                     }
- *                                 };
- *                             }
- *                         });
- *     }
- *
- *     &#064;Override
- *     protected void onDispose(Env env) {
- *         // print result
- *     }
- *
- * }
- * </pre>
+ * <h4>Example for a simple expression coverage instrument:</h4>
+ * {@codesnippet com.oracle.truffle.api.instrumentation.test.examples.CoverageExample}
  *
  * @since 0.12
  */
@@ -311,7 +270,7 @@ public abstract class TruffleInstrument {
         public String toString(Node node, Object value) {
             final TruffleLanguage.Env env = getLangEnv(node);
             final TruffleLanguage<?> language = AccessorInstrumentHandler.langAccess().findLanguage(env);
-            return AccessorInstrumentHandler.langAccess().toString(language, env, value);
+            return AccessorInstrumentHandler.langAccess().toStringIfVisible(language, env, value, null);
         }
 
         /**

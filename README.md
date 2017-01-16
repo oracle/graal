@@ -4,7 +4,7 @@
 ## Introduction
 
 Truffle is a framework for implementing languages as simple interpreters.
-Together with the [Graal compiler](https://wiki.openjdk.java.net/display/Graal/Instructions),
+Together with the [Graal compiler](https://github.com/graalvm/graal-core/),
 Truffle interpreters are automatically just-in-time compiled and programs
 running on top of them can reach performance of normal Java.
 
@@ -33,26 +33,26 @@ Truffle bits are uploaded to Maven central. You can use them from your
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.13</version> <!-- or any later version -->
+    <version>0.18</version> <!-- or any later version -->
 </dependency>
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.13</version>
+    <version>0.18</version>
     <scope>provided</scope>
 </dependency>
 ```
 
-Our typicial sample language is called the SimpleLanguage. A good entry point for
-exploring SimpleLanguage is the [SLLanguage class](https://github.com/graalvm/Truffle/blob/master/truffle/com.oracle.truffle.sl/src/com/oracle/truffle/sl/SLLanguage.java).
-In addition to that here are links to presentations, FAQs and papers about
-Graal and Truffle:
+If you want to implement your own Truffle guest language, a good way to start is to fork the [SimpleLanguage](https://github.com/graalvm/simplelanguage) project and start hacking.
+SimpleLanguage is well documented and designed to demonstrate most of the Truffle features.
 
-  - [Truffle Tutorials and Presentations](https://wiki.openjdk.java.net/display/Graal/Publications+and+Presentations)
-  - [Truffle FAQ and Guidelines](https://wiki.openjdk.java.net/display/Graal/Truffle+FAQ+and+Guidelines)
-  - [Graal VM and Truffle/JS](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html) on the Oracle Technology Network
-  - [Papers on Truffle](http://ssw.jku.at/Research/Projects/JVM/Truffle.html)
-  - [Papers on Graal](http://ssw.jku.at/Research/Projects/JVM/Graal.html)
+Important links to resources that are available:
+  - [Truffle javadoc overview](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/)
+  - [SimpleLanguage example](https://github.com/graalvm/simplelanguage)
+  - [Tutorials and publications on Truffle](https://github.com/graalvm/truffle/blob/master/docs/Publications.md)
+  - [Tutorials and publications on Graal](https://github.com/graalvm/graal-core/blob/master/docs/Publications.md)
+  - [Graal VM download](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index-2301583.html) on the Oracle Technology Network
+
 
 ## Hacking Truffle
 
@@ -103,12 +103,12 @@ and then it is possible to include the artifacts as dependencies to a `pom.xml`:
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.12-SNAPSHOT</version> <!-- or whether version got installed by mx maven-install -->
+    <version>0.18-SNAPSHOT</version> <!-- or whether version got installed by mx maven-install -->
 </dependency>
 <dependency>
     <groupId>com.oracle.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.12-SNAPSHOT</version>
+    <version>0.18-SNAPSHOT</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -125,5 +125,5 @@ Detailed info can be found in the [contributing document](CONTRIBUTING.md).
 
 ## License
 
-The Truffle framework is licensed under the [GPL 2 with Classpath exception](http://openjdk.java.net/legal/gplv2+ce.html).
+The Truffle framework is licensed under the [GPL 2 with Classpath exception](https://github.com/graalvm/truffle/blob/master/LICENSE.GPL.md).
 The SimpleLanguage is licensed under the [Universal Permissive License (UPL)](http://opensource.org/licenses/UPL).
