@@ -25,14 +25,9 @@ package org.graalvm.compiler.virtual.phases.ea;
 import static org.graalvm.compiler.core.common.GraalOptions.ReadEliminationMaxLoopVisits;
 import static org.graalvm.compiler.core.common.LocationIdentity.any;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -64,6 +59,11 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.UnsafeLoadCacheEntry;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -203,11 +203,12 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     @Override
     protected void processLoopExit(LoopExitNode exitNode, ReadEliminationBlockState initialState, ReadEliminationBlockState exitState, GraphEffectList effects) {
         if (exitNode.graph().hasValueProxies()) {
-            for (Map.Entry<CacheEntry<?>, ValueNode> entry : exitState.getReadCache().entrySet()) {
+            MapCursor<CacheEntry<?>, ValueNode> entry = exitState.getReadCache().getEntries();
+            while (entry.advance()) {
                 if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
                     ProxyNode proxy = new ValueProxyNode(exitState.getCacheEntry(entry.getKey()), exitNode);
                     effects.addFloatingNode(proxy, "readCacheProxy");
-                    entry.setValue(proxy);
+                    exitState.getReadCache().put(entry.getKey(), proxy);
                 }
             }
         }
@@ -225,13 +226,13 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
     private class ReadEliminationMergeProcessor extends EffectsClosure<ReadEliminationBlockState>.MergeProcessor {
 
-        private final HashMap<Object, ValuePhiNode> materializedPhis = CollectionsFactory.newMap();
+        private final EconomicMap<Object, ValuePhiNode> materializedPhis = CollectionFactory.newMap(Equivalence.DEFAULT);
 
         ReadEliminationMergeProcessor(Block mergeBlock) {
             super(mergeBlock);
         }
 
-        protected <T> PhiNode getCachedPhi(T virtual, Stamp stamp) {
+        protected ValuePhiNode getCachedPhi(CacheEntry<?> virtual, Stamp stamp) {
             ValuePhiNode result = materializedPhis.get(virtual);
             if (result == null) {
                 result = createValuePhi(stamp);
@@ -248,9 +249,10 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         }
 
         private void mergeReadCache(List<ReadEliminationBlockState> states) {
-            for (Map.Entry<CacheEntry<?>, ValueNode> entry : states.get(0).readCache.entrySet()) {
-                CacheEntry<?> key = entry.getKey();
-                ValueNode value = entry.getValue();
+            MapCursor<CacheEntry<?>, ValueNode> cursor = states.get(0).readCache.getEntries();
+            while (cursor.advance()) {
+                CacheEntry<?> key = cursor.getKey();
+                ValueNode value = cursor.getValue();
                 boolean phi = false;
                 for (int i = 1; i < states.size(); i++) {
                     ValueNode otherValue = states.get(i).readCache.get(key);
@@ -267,7 +269,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     }
                 }
                 if (phi) {
-                    PhiNode phiNode = getCachedPhi(entry, value.stamp().unrestricted());
+                    PhiNode phiNode = getCachedPhi(key, value.stamp().unrestricted());
                     mergeEffects.addFloatingNode(phiNode, "mergeReadCache");
                     for (int i = 0; i < states.size(); i++) {
                         ValueNode v = states.get(i).getCacheEntry(key);
@@ -282,9 +284,9 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
             }
             for (PhiNode phi : getPhis()) {
                 if (phi.getStackKind() == JavaKind.Object) {
-                    for (Map.Entry<CacheEntry<?>, ValueNode> entry : states.get(0).readCache.entrySet()) {
-                        if (entry.getKey().object == getPhiValueAt(phi, 0)) {
-                            mergeReadCachePhi(phi, entry.getKey(), states);
+                    for (CacheEntry<?> entry : states.get(0).readCache.getKeys()) {
+                        if (entry.object == getPhiValueAt(phi, 0)) {
+                            mergeReadCachePhi(phi, entry, states);
                         }
                     }
 
@@ -335,11 +337,11 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     loopKilledLocations.setKillsAll();
                 } else {
                     // we have fully processed this loop >1 times, update the killed locations
-                    Set<LocationIdentity> forwardEndLiveLocations = new HashSet<>();
-                    for (CacheEntry<?> entry : initialState.readCache.keySet()) {
+                    EconomicSet<LocationIdentity> forwardEndLiveLocations = CollectionFactory.newSet(Equivalence.DEFAULT);
+                    for (CacheEntry<?> entry : initialState.readCache.getKeys()) {
                         forwardEndLiveLocations.add(entry.getIdentity());
                     }
-                    for (CacheEntry<?> entry : mergedStates.readCache.keySet()) {
+                    for (CacheEntry<?> entry : mergedStates.readCache.getKeys()) {
                         forwardEndLiveLocations.remove(entry.getIdentity());
                     }
                     // every location that is alive before the loop but not after is killed by the
@@ -363,8 +365,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         ReadEliminationBlockState initialState = super.stripKilledLoopLocations(loop, originalInitialState);
         LoopKillCache loopKilledLocations = loopLocationKillCache.get(loop);
         if (loopKilledLocations != null && loopKilledLocations.loopKillsLocations()) {
-            Set<CacheEntry<?>> forwardEndLiveLocations = initialState.readCache.keySet();
-            Iterator<CacheEntry<?>> it = forwardEndLiveLocations.iterator();
+            Iterator<CacheEntry<?>> it = initialState.readCache.getKeys().iterator();
             while (it.hasNext()) {
                 CacheEntry<?> entry = it.next();
                 if (loopKilledLocations.containsLocation(entry.getIdentity())) {

@@ -25,6 +25,9 @@ package org.graalvm.compiler.virtual.phases.ea;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.ImmutableMapCursor;
+
 public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
 
     /*
@@ -55,20 +58,14 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
         this.dead = true;
     }
 
-    protected static <K, V> boolean compareMaps(Map<K, V> left, Map<K, V> right) {
-        if (left.size() != right.size()) {
-            return false;
-        }
-        return compareMapsNoSize(left, right);
-    }
-
-    protected static <K, V> boolean compareMapsNoSize(Map<K, V> left, Map<K, V> right) {
+    protected static <K, V> boolean isSubMapOf(EconomicMap<K, V> left, EconomicMap<K, V> right) {
         if (left == right) {
             return true;
         }
-        for (Map.Entry<K, V> entry : right.entrySet()) {
-            K key = entry.getKey();
-            V value = entry.getValue();
+        ImmutableMapCursor<K, V> cursor = right.getEntries();
+        while (cursor.advance()) {
+            K key = cursor.getKey();
+            V value = cursor.getValue();
             assert value != null;
             V otherValue = left.get(key);
             if (otherValue != value && !value.equals(otherValue)) {

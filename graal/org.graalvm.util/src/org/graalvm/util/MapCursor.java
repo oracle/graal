@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.api.collections;
-
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Set;
+package org.graalvm.util;
 
 /**
- * A default implementation of {@link CollectionsProvider} that creates standard JDK collection
- * class objects.
+ * Cursor to iterate over a mutable map.
  */
-public class DefaultCollectionsProvider implements CollectionsProvider {
-
-    @Override
-    public <E> Set<E> newIdentitySet() {
-        return Collections.newSetFromMap(newIdentityMap());
-    }
-
-    @Override
-    public <K, V> Map<K, V> newIdentityMap() {
-        return new IdentityHashMap<>();
-    }
-
-    @Override
-    public <K, V> Map<K, V> newIdentityMap(int expectedMaxSize) {
-        return new IdentityHashMap<>(expectedMaxSize);
-    }
-
-    @Override
-    public <K, V> Map<K, V> newIdentityMap(Map<K, V> initFrom) {
-        return new IdentityHashMap<>(initFrom);
-    }
+public interface MapCursor<K, V> extends ImmutableMapCursor<K, V> {
+    /**
+     * Remove the current entry from the map. May only be called once. After calling
+     * {@link #remove()}, it is no longer valid to call {@link #getKey()} or {@link #getValue()} on
+     * the current entry.
+     */
+    void remove();
 }

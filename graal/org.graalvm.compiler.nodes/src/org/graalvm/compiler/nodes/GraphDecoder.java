@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +61,9 @@ import org.graalvm.compiler.nodes.GraphDecoder.ProxyPlaceholder;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin.LoopExplosionKind;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -161,7 +163,7 @@ public class GraphDecoder {
          * explosion. Only used when {@link MethodScope#loopExplosion} is
          * {@link LoopExplosionKind#MERGE_EXPLODE}.
          */
-        public final Map<LoopExplosionState, LoopExplosionState> iterationStates;
+        public final EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates;
         public final int loopBeginOrderId;
         /**
          * The worklist of fixed nodes to process. Since we already the correct processing order
@@ -193,7 +195,7 @@ public class GraphDecoder {
         }
 
         protected LoopScope(MethodScope methodScope, LoopScope outer, int loopDepth, int loopIteration, int loopBeginOrderId, Node[] initialCreatedNodes, Node[] createdNodes,
-                        Deque<LoopScope> nextIterations, Map<LoopExplosionState, LoopExplosionState> iterationStates) {
+                        Deque<LoopScope> nextIterations, EconomicMap<LoopExplosionState, LoopExplosionState> iterationStates) {
             this.methodScope = methodScope;
             this.outer = outer;
             this.loopDepth = loopDepth;
@@ -533,7 +535,7 @@ public class GraphDecoder {
                     resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId,
                                     Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length), loopScope.createdNodes, //
                                     methodScope.loopExplosion != LoopExplosionKind.NONE ? new ArrayDeque<>() : null, //
-                                    methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE ? new HashMap<>() : null);
+                                    methodScope.loopExplosion == LoopExplosionKind.MERGE_EXPLODE ? CollectionFactory.newMap(Equivalence.DEFAULT) : null);
                     phiInputScope = resultScope;
                     phiNodeScope = resultScope;
 
@@ -1331,7 +1333,7 @@ class LoopDetector implements Runnable {
 
     private List<Loop> findLoops() {
         /* Mapping from the loop header node to additional loop information. */
-        Map<MergeNode, Loop> unorderedLoops = new HashMap<>();
+        EconomicMap<MergeNode, Loop> unorderedLoops = CollectionFactory.newMap(Equivalence.IDENTITY);
         /* Loops in reverse order of, i.e., inner loops before outer loops. */
         List<Loop> orderedLoops = new ArrayList<>();
 
@@ -1356,14 +1358,16 @@ class LoopDetector implements Runnable {
                 stack.pop();
                 active.clear(current);
 
-                Loop loop = unorderedLoops.get(current);
-                if (loop != null) {
-                    /*
-                     * Since nodes are popped in reverse order that they were pushed, we add inner
-                     * loops before outer loops here.
-                     */
-                    assert !orderedLoops.contains(loop);
-                    orderedLoops.add(loop);
+                if (current instanceof MergeNode) {
+                    Loop loop = unorderedLoops.get((MergeNode) current);
+                    if (loop != null) {
+                        /*
+                         * Since nodes are popped in reverse order that they were pushed, we add
+                         * inner loops before outer loops here.
+                         */
+                        assert !orderedLoops.contains(loop);
+                        orderedLoops.add(loop);
+                    }
                 }
 
             } else {
@@ -1394,7 +1398,7 @@ class LoopDetector implements Runnable {
         return orderedLoops;
     }
 
-    private Loop findOrCreateLoop(Map<MergeNode, Loop> unorderedLoops, MergeNode loopHeader) {
+    private Loop findOrCreateLoop(EconomicMap<MergeNode, Loop> unorderedLoops, MergeNode loopHeader) {
         assert methodScope.loopExplosionMerges.isMarkedAndGrow(loopHeader) : loopHeader;
         Loop loop = unorderedLoops.get(loopHeader);
         if (loop == null) {

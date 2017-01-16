@@ -65,8 +65,6 @@ import static jdk.vm.ci.sparc.SPARC.g5;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
-import java.util.Map;
-
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -101,6 +99,7 @@ import org.graalvm.compiler.lir.sparc.SPARCImmediateAddressValue;
 import org.graalvm.compiler.lir.sparc.SPARCMove.CompareAndSwapOp;
 import org.graalvm.compiler.lir.sparc.SPARCMove.NullCheckOp;
 import org.graalvm.compiler.lir.sparc.SPARCMove.StoreOp;
+import org.graalvm.util.EconomicMap;
 import org.graalvm.compiler.lir.sparc.SPARCPrefetchOp;
 import org.graalvm.compiler.lir.sparc.SPARCSaveRegistersOp;
 
@@ -472,7 +471,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(target().arch.getWordKind())), trapRequest, mode);
         append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister, threadTemp));
 
-        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
+        EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
         assert currentRuntimeCallInfo != null;
         assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
         calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
@@ -492,7 +491,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(target().arch.getWordKind())), mode);
         append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister, threadTemp));
 
-        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
+        EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
         assert currentRuntimeCallInfo != null;
         assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
         calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);

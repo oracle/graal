@@ -29,9 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.Map;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.Debug;
@@ -44,6 +42,9 @@ import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -103,7 +104,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
     private static final class Optimization {
 
-        Map<AbstractBlockBase<?>, BlockData> blockData = CollectionsFactory.newMap();
+        EconomicMap<AbstractBlockBase<?>, BlockData> blockData = CollectionFactory.newMap(Equivalence.IDENTITY);
 
         RegisterArray callerSaveRegs;
 
@@ -116,7 +117,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          * A map from the {@link StackSlot} {@link #getOffset offset} to an index into the state.
          * StackSlots of different kinds that map to the same location will map to the same index.
          */
-        Map<Integer, Integer> stackIndices = CollectionsFactory.newMap();
+        EconomicMap<Integer, Integer> stackIndices = CollectionFactory.newMap(Equivalence.DEFAULT);
 
         int numRegs;
 

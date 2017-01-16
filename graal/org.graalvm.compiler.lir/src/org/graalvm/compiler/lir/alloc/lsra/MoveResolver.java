@@ -27,7 +27,6 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.Debug;
@@ -37,6 +36,9 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRValueUtil;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -145,7 +147,7 @@ public class MoveResolver {
             }
         }
 
-        HashSet<Value> usedRegs = new HashSet<>();
+        EconomicSet<Value> usedRegs = CollectionFactory.newSet(Equivalence.DEFAULT);
         if (!areMultipleReadsAllowed()) {
             for (i = 0; i < mappingFrom.size(); i++) {
                 Interval interval = mappingFrom.get(i);
@@ -174,7 +176,7 @@ public class MoveResolver {
     }
 
     protected void verifyStackSlotMapping() {
-        HashSet<Value> usedRegs = new HashSet<>();
+        EconomicSet<Value> usedRegs = CollectionFactory.newSet(Equivalence.DEFAULT);
         for (int i = 0; i < mappingFrom.size(); i++) {
             Interval interval = mappingFrom.get(i);
             if (interval != null && !isRegister(interval.location())) {

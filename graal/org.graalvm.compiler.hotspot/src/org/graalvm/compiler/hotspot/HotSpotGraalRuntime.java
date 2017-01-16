@@ -32,11 +32,6 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.graalvm.compiler.api.collections.CollectionsProvider;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -47,8 +42,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.internal.DebugValuesPrinter;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsPrinter;
-import org.graalvm.compiler.graph.DefaultNodeCollectionsProvider;
-import org.graalvm.compiler.graph.NodeCollectionsProvider;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory.BackendMap;
 import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -56,6 +49,9 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -87,7 +83,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final HotSpotBackend hostBackend;
     private DebugValuesPrinter debugValuesPrinter;
 
-    private final Map<Class<? extends Architecture>, HotSpotBackend> backends = new HashMap<>();
+    private final EconomicMap<Class<? extends Architecture>, HotSpotBackend> backends = CollectionFactory.newMap(Equivalence.IDENTITY);
 
     private final GraalHotSpotVMConfig config;
 
@@ -189,7 +185,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         try (InitTimer st = timer(hostBackend.getTarget().arch.getName(), ".completeInitialization")) {
             hostBackend.completeInitialization(jvmciRuntime);
         }
-        for (HotSpotBackend backend : backends.values()) {
+        for (HotSpotBackend backend : backends.getValues()) {
             if (backend != hostBackend) {
                 try (InitTimer st = timer(backend.getTarget().arch.getName(), ".completeInitialization")) {
                     backend.completeInitialization(jvmciRuntime);
@@ -227,15 +223,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return getClass().getSimpleName();
     }
 
-    private final NodeCollectionsProvider nodeCollectionsProvider = new DefaultNodeCollectionsProvider();
-
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
-        } else if (clazz == CollectionsProvider.class || clazz == NodeCollectionsProvider.class) {
-            return (T) nodeCollectionsProvider;
         } else if (clazz == StackIntrospection.class) {
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {
@@ -255,10 +247,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     public <T extends Architecture> Backend getBackend(Class<T> arch) {
         assert arch != Architecture.class;
         return backends.get(arch);
-    }
-
-    public Map<Class<? extends Architecture>, HotSpotBackend> getBackends() {
-        return Collections.unmodifiableMap(backends);
     }
 
     private long runtimeStartTime;

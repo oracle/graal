@@ -24,13 +24,11 @@ package org.graalvm.compiler.core.gen;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Queue;
 
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LabelRef;
@@ -44,6 +42,9 @@ import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.VirtualObject;
@@ -68,8 +69,8 @@ public class DebugInfoBuilder {
     private static final JavaValue[] NO_JAVA_VALUES = {};
     private static final JavaKind[] NO_JAVA_KINDS = {};
 
-    protected final Map<VirtualObjectNode, VirtualObject> virtualObjects = NodeCollectionsFactory.newMap();
-    protected final Map<VirtualObjectNode, EscapeObjectState> objectStates = NodeCollectionsFactory.newIdentityMap();
+    protected final EconomicMap<VirtualObjectNode, VirtualObject> virtualObjects = CollectionFactory.newMap(Equivalence.IDENTITY);
+    protected final EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = CollectionFactory.newMap(Equivalence.IDENTITY);
 
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 
@@ -137,7 +138,11 @@ public class DebugInfoBuilder {
                 vobjValue.setValues(values, slotKinds);
             }
 
-            virtualObjectsArray = virtualObjects.values().toArray(new VirtualObject[virtualObjects.size()]);
+            virtualObjectsArray = new VirtualObject[virtualObjects.size()];
+            int index = 0;
+            for (VirtualObject value : virtualObjects.getValues()) {
+                virtualObjectsArray[index++] = value;
+            }
             virtualObjects.clear();
         }
         objectStates.clear();

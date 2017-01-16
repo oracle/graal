@@ -76,10 +76,7 @@ import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Assembler.LabelHint;
 import org.graalvm.compiler.asm.Label;
@@ -101,6 +98,9 @@ import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.SwitchStrategy.BaseSwitchClosure;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -426,7 +426,7 @@ public class SPARCControlFlow {
         @Alive({REG, ILLEGAL}) protected Value constantTableBase;
         @Temp({REG}) protected Value scratch;
         protected final SwitchStrategy strategy;
-        private final Map<Label, LabelHint> labelHints;
+        private final EconomicMap<Label, LabelHint> labelHints;
         private final List<Label> conditionalLabels = new ArrayList<>();
 
         public StrategySwitchOp(Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
@@ -443,7 +443,7 @@ public class SPARCControlFlow {
             this.constantTableBase = constantTableBase;
             this.key = key;
             this.scratch = scratch;
-            this.labelHints = new HashMap<>();
+            this.labelHints = CollectionFactory.newMap(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             assert keyConstants.length == keyTargets.length;
             assert keyConstants.length == strategy.keyProbabilities.length;
         }

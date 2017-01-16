@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,6 +93,10 @@ import org.graalvm.compiler.truffle.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.compiler.truffle.substitutions.TruffleInvocationPluginProvider;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -491,15 +494,19 @@ public class PartialEvaluator {
             }
         }
 
-        HashMap<String, ArrayList<ValueNode>> groupedByType = new HashMap<>();
+        EconomicMap<String, ArrayList<ValueNode>> groupedByType = CollectionFactory.newMap(Equivalence.DEFAULT);
         for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
             if (!instanceOf.type().isExact()) {
                 warnings.add(instanceOf);
-                groupedByType.putIfAbsent(instanceOf.type().getType().getName(), new ArrayList<>());
-                groupedByType.get(instanceOf.type().getType().getName()).add(instanceOf);
+                String name = instanceOf.type().getType().getName();
+                if (!groupedByType.containsKey(name)) {
+                    groupedByType.put(name, new ArrayList<>());
+                }
+                groupedByType.get(name).add(instanceOf);
             }
         }
-        for (Map.Entry<String, ArrayList<ValueNode>> entry : groupedByType.entrySet()) {
+        MapCursor<String, ArrayList<ValueNode>> entry = groupedByType.getEntries();
+        while (entry.advance()) {
             logPerformanceInfo(target, entry.getValue(), String.format("non-leaf type check: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
         }
 

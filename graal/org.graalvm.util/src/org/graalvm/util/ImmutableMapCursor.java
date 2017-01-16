@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,38 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.api.collections;
-
-import java.util.Map;
-import java.util.Set;
+package org.graalvm.util;
 
 /**
- * A factory for creating collections.
+ * Cursor to iterate over an immutable map.
  */
-public interface CollectionsProvider {
-
+public interface ImmutableMapCursor<K, V> {
     /**
-     * Creates a set that uses reference-equality in place of object-equality when comparing
-     * entries.
-     */
-    <E> Set<E> newIdentitySet();
-
-    /**
-     * Creates a map that uses reference-equality in place of object-equality when comparing keys.
-     */
-    <K, V> Map<K, V> newIdentityMap();
-
-    /**
-     * Creates a map that uses reference-equality in place of object-equality when comparing keys.
+     * Advances to the next entry.
      *
-     * @param expectedMaxSize the expected maximum size of the map
+     * @return {@code true} if a next entry exists, {@code false} if there is no next entry.
      */
-    <K, V> Map<K, V> newIdentityMap(int expectedMaxSize);
+    boolean advance();
 
     /**
-     * Creates a map that uses reference-equality in place of object-equality when comparing keys.
-     *
-     * @param initFrom the returned map is populated with the entries in this map
+     * The key of the current entry.
      */
-    <K, V> Map<K, V> newIdentityMap(Map<K, V> initFrom);
+    K getKey();
+
+    /**
+     * The value of the current entry.
+     */
+    V getValue();
 }

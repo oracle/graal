@@ -27,9 +27,6 @@ import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -42,6 +39,8 @@ import org.graalvm.compiler.hotspot.stubs.ForeignCallStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -64,7 +63,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
     protected final HotSpotJVMCIRuntimeProvider jvmciRuntime;
     protected final HotSpotGraalRuntimeProvider runtime;
 
-    protected final Map<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = new HashMap<>();
+    protected final EconomicMap<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = CollectionFactory.newMap();
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
     protected final WordTypes wordTypes;

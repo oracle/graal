@@ -60,6 +60,7 @@ import org.graalvm.compiler.options.NestedBooleanOptionValue;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.util.Pair;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -515,7 +516,7 @@ public class LinearScan {
         return newFirst;
     }
 
-    Interval.Pair createUnhandledLists(IntervalPredicate isList1, IntervalPredicate isList2) {
+    Pair<Interval, Interval> createUnhandledLists(IntervalPredicate isList1, IntervalPredicate isList2) {
         assert isSorted(sortedIntervals) : "interval list is not sorted";
 
         Interval list1 = intervalEndMarker;
@@ -551,7 +552,7 @@ public class LinearScan {
         assert list1Prev == null || list1Prev.next.isEndMarker() : "linear list ends not with sentinel";
         assert list2Prev == null || list2Prev.next.isEndMarker() : "linear list ends not with sentinel";
 
-        return new Interval.Pair(list1, list2);
+        return new Pair<>(list1, list2);
     }
 
     protected void sortIntervalsBeforeAllocation() {
@@ -863,7 +864,7 @@ public class LinearScan {
 
             Interval fixedIntervals;
             Interval otherIntervals;
-            fixedIntervals = createUnhandledLists(IS_PRECOLORED_INTERVAL, null).first;
+            fixedIntervals = createUnhandledLists(IS_PRECOLORED_INTERVAL, null).getLeft();
             // to ensure a walking until the last instruction id, add a dummy interval
             // with a high operation id
             otherIntervals = new Interval(Value.ILLEGAL, -1, intervalEndMarker, rangeEndMarker);

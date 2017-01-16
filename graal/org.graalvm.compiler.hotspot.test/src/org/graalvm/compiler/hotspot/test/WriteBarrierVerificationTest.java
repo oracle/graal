@@ -23,8 +23,6 @@
 package org.graalvm.compiler.hotspot.test;
 
 import java.util.List;
-import java.util.Map;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -66,6 +64,7 @@ import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -712,7 +711,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
                 }
 
                 @Override
-                protected Map<LoopExitNode, Boolean> processLoop(LoopBeginNode loop, Boolean initialState) {
+                protected EconomicMap<LoopExitNode, Boolean> processLoop(LoopBeginNode loop, Boolean initialState) {
                     return ReentrantNodeIterator.processLoop(this, loop, initialState).exitStates;
                 }
 

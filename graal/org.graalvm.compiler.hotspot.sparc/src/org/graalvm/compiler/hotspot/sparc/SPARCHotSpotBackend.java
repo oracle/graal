@@ -43,7 +43,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntr
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -92,6 +91,10 @@ import org.graalvm.compiler.lir.sparc.SPARCLIRInstructionMixin.SizeEstimate;
 import org.graalvm.compiler.lir.sparc.SPARCTailDelayedLIRInstruction;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -245,8 +248,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
         if (stub != null) {
             // Even on sparc we need to save floating point registers
-            Set<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
-            Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = gen.getCalleeSaveInfo();
+            EconomicSet<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
+            EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = gen.getCalleeSaveInfo();
             updateStub(stub, destroyedCallerRegisters, calleeSaveInfo, frameMap);
         }
         assert registerSizePredictionValidator(crb);
@@ -503,8 +506,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public Set<Register> translateToCallerRegisters(Set<Register> calleeRegisters) {
-        HashSet<Register> callerRegisters = new HashSet<>(calleeRegisters.size());
+    public EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters) {
+        EconomicSet<Register> callerRegisters = CollectionFactory.newSet(Equivalence.IDENTITY, calleeRegisters.size());
         for (Register register : calleeRegisters) {
             if (l0.number <= register.number && register.number <= l7.number) {
                 // do nothing

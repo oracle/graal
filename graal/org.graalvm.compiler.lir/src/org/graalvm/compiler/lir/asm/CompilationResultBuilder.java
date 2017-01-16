@@ -29,9 +29,7 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.asm.AbstractAddress;
@@ -55,6 +53,9 @@ import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
@@ -142,19 +143,18 @@ public class CompilationResultBuilder {
 
     private List<ExceptionInfo> exceptionInfoList;
 
-    private final Map<Constant, Data> dataCache;
+    private final EconomicMap<Constant, Data> dataCache;
 
     private Consumer<LIRInstruction> beforeOp;
     private Consumer<LIRInstruction> afterOp;
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult) {
-        // constants are already GVNed in the high level graph, so we can use an IdentityHashMap
-        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, new IdentityHashMap<>());
+        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, CollectionFactory.newMap(Equivalence.DEFAULT));
     }
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    CompilationResult compilationResult, Map<Constant, Data> dataCache) {
+                    CompilationResult compilationResult, EconomicMap<Constant, Data> dataCache) {
         this.target = codeCache.getTarget();
         this.codeCache = codeCache;
         this.foreignCalls = foreignCalls;

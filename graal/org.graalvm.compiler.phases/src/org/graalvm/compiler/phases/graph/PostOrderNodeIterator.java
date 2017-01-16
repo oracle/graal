@@ -25,12 +25,10 @@ package org.graalvm.compiler.phases.graph;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
@@ -43,6 +41,9 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 /**
  * A PostOrderNodeIterator iterates the fixed nodes of the graph in post order starting from a
@@ -61,7 +62,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
 
     private final NodeBitMap visitedEnds;
     private final Deque<AbstractBeginNode> nodeQueue;
-    private final Map<FixedNode, T> nodeStates;
+    private final EconomicMap<FixedNode, T> nodeStates;
     private final FixedNode start;
 
     protected T state;
@@ -70,7 +71,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         StructuredGraph graph = start.graph();
         visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
-        nodeStates = NodeCollectionsFactory.newIdentityMap();
+        nodeStates = CollectionFactory.newMap(Equivalence.IDENTITY);
         this.start = start;
         this.state = initialState;
     }
@@ -160,7 +161,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
                 }
             } else {
                 assert node.predecessor() != null;
-                state = nodeStates.get(node.predecessor()).clone();
+                state = nodeStates.get((FixedNode) node.predecessor()).clone();
                 state.afterSplit(node);
                 return node;
             }

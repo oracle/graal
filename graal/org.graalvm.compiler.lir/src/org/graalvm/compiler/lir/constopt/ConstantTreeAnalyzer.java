@@ -26,7 +26,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -138,7 +137,6 @@ public final class ConstantTreeAnalyzer {
             // stick with the current solution
         }
 
-        assert (new HashSet<>(usages)).size() == usages.size() : "doulbe entries? " + usages;
         NodeCost nodeCost = new NodeCost(bestCost, usages, numMat);
         tree.setCost(block, nodeCost);
     }

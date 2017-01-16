@@ -30,14 +30,13 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.Set;
-
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
@@ -329,13 +328,13 @@ public class StandardOp {
 
     /**
      * An operation that saves registers to the stack. The set of saved registers can be
-     * {@linkplain #remove(Set) pruned} and a mapping from registers to the frame slots in which
-     * they are saved can be {@linkplain #getMap(FrameMap) retrieved}.
+     * {@linkplain #remove(EconomicSet) pruned} and a mapping from registers to the frame slots in
+     * which they are saved can be {@linkplain #getMap(FrameMap) retrieved}.
      */
     public interface SaveRegistersOp {
 
         /**
-         * Determines if the {@link #remove(Set)} operation is supported for this object.
+         * Determines if the {@link #remove(EconomicSet)} operation is supported for this object.
          */
         boolean supportsRemove();
 
@@ -347,7 +346,7 @@ public class StandardOp {
          * @throws UnsupportedOperationException if removal is not {@linkplain #supportsRemove()
          *             supported}
          */
-        int remove(Set<Register> doNotSave);
+        int remove(EconomicSet<Register> doNotSave);
 
         /**
          * Gets a map from the saved registers saved by this operation to the frame slots in which

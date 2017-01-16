@@ -256,10 +256,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.bytecode.BytecodeLookupSwitch;
@@ -403,6 +400,9 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -3749,12 +3749,10 @@ public class BytecodeParser implements GraphBuilderContext {
         int nofCases = bs.numberOfCases();
         double[] keyProbabilities = switchProbability(nofCases + 1, bci);
 
-        Map<Integer, SuccessorInfo> bciToBlockSuccessorIndex = new HashMap<>();
+        EconomicMap<Integer, SuccessorInfo> bciToBlockSuccessorIndex = CollectionFactory.newMap(Equivalence.DEFAULT);
         for (int i = 0; i < currentBlock.getSuccessorCount(); i++) {
             assert !bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci);
-            if (!bciToBlockSuccessorIndex.containsKey(currentBlock.getSuccessor(i).startBci)) {
-                bciToBlockSuccessorIndex.put(currentBlock.getSuccessor(i).startBci, new SuccessorInfo(i));
-            }
+            bciToBlockSuccessorIndex.put(currentBlock.getSuccessor(i).startBci, new SuccessorInfo(i));
         }
 
         ArrayList<BciBlock> actualSuccessors = new ArrayList<>();

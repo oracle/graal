@@ -25,8 +25,6 @@ package org.graalvm.compiler.virtual.phases.ea;
 import static org.graalvm.compiler.debug.Debug.isEnabled;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
-import java.util.Set;
-
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
@@ -43,6 +41,7 @@ import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.graalvm.util.EconomicSet;
 
 public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends BasePhase<PhaseContextT> {
 
@@ -113,7 +112,7 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
 
                         new DeadCodeEliminationPhase(Required).apply(graph);
 
-                        Set<Node> changedNodes = listener.getNodes();
+                        EconomicSet<Node> changedNodes = listener.getNodes();
                         for (Node node : graph.getNodes()) {
                             if (node instanceof Simplifiable) {
                                 changedNodes.add(node);
@@ -129,7 +128,7 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
         return changed;
     }
 
-    protected void postIteration(final StructuredGraph graph, final PhaseContextT context, Set<Node> changedNodes) {
+    protected void postIteration(final StructuredGraph graph, final PhaseContextT context, EconomicSet<Node> changedNodes) {
         if (canonicalizer != null) {
             canonicalizer.applyIncremental(graph, context, changedNodes);
         }
