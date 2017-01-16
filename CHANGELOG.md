@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 0.23
+1-Feb-2017
+* Incompatible: Removed most of deprecated APIs from the [com.oracle.truffle.api.source package](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/source/package-summary.html).
+
+
 ## Version 0.22
 13-Jan-2017
 * [TruffleLanguage.isVisible](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.html#isVisible-C-java.lang.Object-) allows languages to control printing of values in interactive environments
@@ -15,7 +20,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated the @[Specialization](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/Specialization.html) contains attribute and renamed it to replaces.
 * Deprecated @[ShortCircuit](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/ShortCircuit.html) DSL annotation without replacement. It is recommended to implement short circuit nodes manually without using the DSL.
 * Added Truffle DSL [introspection API](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/Introspection.html) that provides runtime information for specialization activation and cached data.
-* Breaking: Removed most deprecated API from the com.oracle.truffle.api.source package.
 
 ## Version 0.21
 6-Dec-2016
