@@ -442,7 +442,7 @@ public class FallbackTest {
     @TypeSystemReference(ExampleTypes.class)
     @Introspectable
     @SuppressWarnings("unused")
-    public static abstract class Fallback10 extends Node {
+    public abstract static class Fallback10 extends Node {
 
         public abstract String execute(Object left, Object right);
 
