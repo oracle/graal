@@ -153,6 +153,79 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                 }
             }
         }
+
+        if (forX instanceof ShortCircuitOrNode) {
+            ShortCircuitOrNode inner = (ShortCircuitOrNode) forX;
+            if (forY == inner.getX()) {
+                return optimizeShortCircuit(inner, this.xNegated, this.yNegated, true);
+            } else if (forY == inner.getY()) {
+                return optimizeShortCircuit(inner, this.xNegated, this.yNegated, false);
+            }
+        } else if (forY instanceof ShortCircuitOrNode) {
+            ShortCircuitOrNode inner = (ShortCircuitOrNode) forY;
+            if (inner.getX() == forX) {
+                return optimizeShortCircuit(inner, this.yNegated, this.xNegated, true);
+            } else if (inner.getY() == forX) {
+                return optimizeShortCircuit(inner, this.yNegated, this.xNegated, false);
+            }
+        }
         return this;
+    }
+
+    private static LogicNode optimizeShortCircuit(ShortCircuitOrNode inner, boolean innerNegated, boolean matchNegated, boolean matchIsInnerX) {
+        boolean innerMatchNegated;
+        if (matchIsInnerX) {
+            innerMatchNegated = inner.isXNegated();
+        } else {
+            innerMatchNegated = inner.isYNegated();
+        }
+        if (!innerNegated) {
+            // a 1100
+            // b 1010
+            if (innerMatchNegated == matchNegated) {
+                // ( (!a ||!b) ||!a) => 0111 (!a ||!b)
+                // ( (!a || b) ||!a) => 1011 (!a || b)
+                // ( ( a ||!b) || a) => 1101 ( a ||!b)
+                // ( ( a || b) || a) => 1110 ( a || b)
+                return inner;
+            } else {
+                // ( ( a || b) ||!a) => 1111 (true)
+                // ( (!a ||!b) || a) => 1111 (true)
+                // ( (!a || b) || a) => 1111 (true)
+                // ( ( a ||!b) ||!a) => 1111 (true)
+                return LogicConstantNode.tautology();
+            }
+        } else {
+            if (innerMatchNegated == matchNegated) {
+                // (!(!a ||!b) ||!a) => 1011 (!a || b)
+                // (!(!a || b) ||!a) => 0111 (!a ||!b)
+                // (!( a ||!b) || a) => 1110 ( a || b)
+                // (!( a || b) || a) => 1101 ( a ||!b)
+                boolean newInnerXNegated = inner.isXNegated();
+                boolean newInnerYNegated = !inner.isYNegated();
+                double newProbability = inner.getShortCircuitProbability();
+                if (matchIsInnerX) {
+                    newInnerYNegated = !newInnerYNegated;
+                } else {
+                    newInnerXNegated = !newInnerXNegated;
+                    newProbability = 1.0 - newProbability;
+                }
+                return new ShortCircuitOrNode(inner.getX(), newInnerXNegated, inner.getY(), newInnerYNegated, newProbability);
+            } else {
+                // (!(!a ||!b) || a) => 1100 (a)
+                // (!(!a || b) || a) => 1100 (a)
+                // (!( a ||!b) ||!a) => 0011 (!a)
+                // (!( a || b) ||!a) => 0011 (!a)
+                LogicNode result = inner.getY();
+                if (matchIsInnerX) {
+                    result = inner.getY();
+                }
+                if (matchNegated) {
+                    return LogicNegationNode.create(result);
+                } else {
+                    return result;
+                }
+            }
+        }
     }
 }
