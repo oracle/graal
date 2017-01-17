@@ -486,8 +486,6 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
                 if (attributes(reg).isAllocatable()) {
                     evacuateRegisterAndSpill(reg);
                     assert checkRegisterUsage(reg);
-                    evacuateRegisterAndSpill(reg);
-                    // setCurrentValue(reg, reg.asValue());
                     setLastRegisterUsage(reg, currentOpId);
                 }
             }
