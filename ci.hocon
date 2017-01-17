@@ -1,7 +1,7 @@
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
 java8 : {name : oraclejdk, version : "8u66", platformspecific: true}
 #java9 : {name : oraclejdk, version : "9",    platformspecific: true}
-java9 : {name : labsjdk, version : "9-HSCOMPSNAPSHOT",    platformspecific: true}
+java9 : {name : labsjdk, version : "9-SNAPSHOT",    platformspecific: true}
 ecj : {name: ecj, version: "4.5.1", platformspecific: false}
 eclipse : {name: eclipse, version: "4.5.2.1", platformspecific: true}
 
@@ -106,7 +106,7 @@ builds = [
   ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},
   ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-9"},
   ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64], targets : [gate], name: "gate-sigtest"},
-  ${common} ${java9Downloads} {run : [["mx", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal"},
+  ${common} ${java9Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal"},
   ${common} ${java8Downloads} {run : [["mx", "testrubytruffle"]], capabilities : [linux, amd64], targets : [post-merge], name: "gate-rubytruffle"},
   ${maven-deploy-dry-run}
   ${deploy-binary}

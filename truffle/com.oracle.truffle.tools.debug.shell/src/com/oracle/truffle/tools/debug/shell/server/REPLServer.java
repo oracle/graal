@@ -700,7 +700,7 @@ public final class REPLServer {
             if (section == null) {
                 return "<error: source location>";
             }
-            return section.getShortDescription() + (estimated ? "~" : "");
+            return InstrumentationUtils.getShortDescription(section) + (estimated ? "~" : "");
         }
 
         /**

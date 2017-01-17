@@ -412,11 +412,6 @@ public final class Profiler {
 
     // custom version of SourceSection#getShortDescription
     private static String getShortDescription(SourceSection sourceSection) {
-        if (sourceSection.getSource() == null) {
-            // TODO the source == null branch can be removed if the deprecated
-            // SourceSection#createUnavailable has be removed.
-            return "<Unknown>";
-        }
         StringBuilder b = new StringBuilder();
         b.append(sourceSection.getSource().getName());
         b.append(":");

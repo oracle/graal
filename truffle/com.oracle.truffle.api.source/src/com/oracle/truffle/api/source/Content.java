@@ -46,8 +46,6 @@ abstract class Content {
 
     abstract String getName();
 
-    abstract String getShortName();
-
     abstract Object getHashKey();
 
     abstract String getPath();

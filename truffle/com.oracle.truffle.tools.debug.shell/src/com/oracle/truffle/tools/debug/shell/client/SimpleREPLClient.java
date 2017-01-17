@@ -340,13 +340,13 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
                 if (selectedSource == null) {
                     currentPrompt = showLang + " ";
                 } else {
-                    currentPrompt = "(" + selectedSource.getShortName() + ") " + showLang + " ";
+                    currentPrompt = "(" + selectedSource.getName() + ") " + showLang + " ";
                 }
             } else if (selectedSource != null && selectedSource != haltedSource) {
                 // User is focusing somewhere else than the current locn; show no line number.
                 final StringBuilder sb = new StringBuilder();
                 sb.append("(<" + Integer.toString(level) + "> ");
-                sb.append(selectedSource.getShortName());
+                sb.append(selectedSource.getName());
                 sb.append(")");
                 sb.append(showLang);
                 sb.append(" ");
@@ -355,7 +355,7 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
                 // Prompt reveals where currently halted.
                 final StringBuilder sb = new StringBuilder();
                 sb.append("(<" + Integer.toString(level) + "> ");
-                sb.append(haltedSource == null ? "??" : haltedSource.getShortName());
+                sb.append(haltedSource == null ? "??" : haltedSource.getName());
                 if (haltedLineNumber > 0) {
                     sb.append(":" + Integer.toString(haltedLineNumber));
                 }
@@ -470,7 +470,7 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
             final int fileLineCount = whereSource.getLineCount();
             final String code = whereSource.getCode();
 
-            writer.println("Frame " + selectedFrameNumber + " in " + whereSource.getShortName());
+            writer.println("Frame " + selectedFrameNumber + " in " + whereSource.getName());
             final int halfListSize = listSize / 2;
             final int startLineNumber = Math.max(1, whereLineNumber - halfListSize);
             final int lastLineNumber = Math.min(startLineNumber + listSize - 1, fileLineCount);
@@ -1109,7 +1109,7 @@ public class SimpleREPLClient implements com.oracle.truffle.tools.debug.shell.RE
 
         private int printLines(Source printSource, int start, int listSize) {
 
-            clientContext.displayReply(printSource.getShortName() + ":");
+            clientContext.displayReply(printSource.getName() + ":");
             final int lastLineNumber = Math.min(start + listSize - 1, printSource.getLineCount());
             for (int line = start; line <= lastLineNumber; line++) {
                 writer.format(CODE_LINE_FORMAT, line, printSource.getCode(line));

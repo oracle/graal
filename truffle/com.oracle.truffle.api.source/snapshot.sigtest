@@ -29,21 +29,9 @@ meth public boolean isInternal()
 meth public com.oracle.truffle.api.source.Source subSource(int,int)
 meth public final com.oracle.truffle.api.source.LineLocation createLineLocation(int)
  anno 0 java.lang.Deprecated()
-meth public final com.oracle.truffle.api.source.Source withMimeType(java.lang.String)
- anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int)
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int)
 meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int,int)
-meth public final com.oracle.truffle.api.source.SourceSection createSection(int,int,int,int)
- anno 0 java.lang.Deprecated()
-meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int)
- anno 0 java.lang.Deprecated()
-meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int,int)
- anno 0 java.lang.Deprecated()
-meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int,int,int)
- anno 0 java.lang.Deprecated()
-meth public final com.oracle.truffle.api.source.SourceSection createSection(java.lang.String,int,int,int,int)
- anno 0 java.lang.Deprecated()
 meth public final com.oracle.truffle.api.source.SourceSection createUnavailableSection()
 meth public final int getColumnNumber(int)
 meth public final int getLength()
@@ -59,48 +47,14 @@ meth public java.lang.String getCode(int,int)
 meth public java.lang.String getMimeType()
 meth public java.lang.String getName()
 meth public java.lang.String getPath()
-meth public java.lang.String getShortName()
- anno 0 java.lang.Deprecated()
 meth public java.net.URI getURI()
 meth public java.net.URL getURL()
-meth public static com.oracle.truffle.api.source.Source find(java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromAppendableText(java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromBytes(byte[],int,int,java.lang.String,java.nio.charset.Charset)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromBytes(byte[],java.lang.String,java.nio.charset.Charset)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromFileName(java.lang.CharSequence,java.lang.String) throws java.io.IOException
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromFileName(java.lang.String) throws java.io.IOException
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromFileName(java.lang.String,boolean) throws java.io.IOException
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromNamedAppendableText(java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromNamedText(java.lang.CharSequence,java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromReader(java.io.Reader,java.lang.String) throws java.io.IOException
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromText(java.lang.CharSequence,java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source fromURL(java.net.URL,java.lang.String) throws java.io.IOException
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source subSource(com.oracle.truffle.api.source.Source,int)
- anno 0 java.lang.Deprecated()
-meth public static com.oracle.truffle.api.source.Source subSource(com.oracle.truffle.api.source.Source,int,int)
- anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.source.Source$Builder<java.io.IOException,com.oracle.truffle.api.source.MissingMIMETypeException,com.oracle.truffle.api.source.MissingNameException> newBuilder(java.io.Reader)
 meth public static com.oracle.truffle.api.source.Source$Builder<java.io.IOException,java.lang.RuntimeException,java.lang.RuntimeException> newBuilder(java.io.File)
 meth public static com.oracle.truffle.api.source.Source$Builder<java.io.IOException,java.lang.RuntimeException,java.lang.RuntimeException> newBuilder(java.net.URL)
 meth public static com.oracle.truffle.api.source.Source$Builder<java.lang.RuntimeException,com.oracle.truffle.api.source.MissingMIMETypeException,com.oracle.truffle.api.source.MissingNameException> newBuilder(java.lang.String)
-meth public static void setFileCaching(boolean)
- anno 0 java.lang.Deprecated()
-meth public void appendCode(java.lang.CharSequence)
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds EMPTY,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,content,fileCacheEnabled,interactive,internal,mimeType,name,textMap,uri
+hfds EMPTY,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,content,interactive,internal,mimeType,name,textMap,uri
 
 CLSS public final com.oracle.truffle.api.source.Source$Builder<%0 extends java.lang.Exception, %1 extends java.lang.Exception, %2 extends java.lang.Exception>
  outer com.oracle.truffle.api.source.Source
@@ -129,15 +83,9 @@ meth public int getStartColumn()
 meth public int getStartLine()
 meth public int hashCode()
 meth public java.lang.String getCode()
-meth public java.lang.String getIdentifier()
- anno 0 java.lang.Deprecated()
-meth public java.lang.String getShortDescription()
- anno 0 java.lang.Deprecated()
 meth public java.lang.String toString()
-meth public static com.oracle.truffle.api.source.SourceSection createUnavailable(java.lang.String,java.lang.String)
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
-hfds UNKNOWN,charIndex,charLength,identifier,kind,source,startColumn,startLine
+hfds charIndex,charLength,source
 
 CLSS public abstract interface java.io.Serializable
 

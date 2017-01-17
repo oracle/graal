@@ -56,11 +56,6 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
     }
 
     @Override
-    public String getShortName() {
-        return file.getName();
-    }
-
-    @Override
     Object getHashKey() {
         return path;
     }
