@@ -35,7 +35,6 @@ import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -51,6 +50,9 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -61,7 +63,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
 
     private final boolean tryToSchedule;
-    private final SnippetReflectionProvider snippetReflection;
+    private SnippetReflectionProvider snippetReflection;
 
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.
@@ -69,10 +71,14 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
      * @param tryToSchedule If false, no scheduling is done, which avoids exceptions for
      *            non-schedulable graphs.
      */
-    public IdealGraphPrinter(OutputStream stream, boolean tryToSchedule, SnippetReflectionProvider snippetReflection) {
+    public IdealGraphPrinter(OutputStream stream, boolean tryToSchedule) {
         super(stream);
         this.begin();
         this.tryToSchedule = tryToSchedule;
+    }
+
+    @Override
+    public void setSnippetReflectionProvider(SnippetReflectionProvider snippetReflection) {
         this.snippetReflection = snippetReflection;
     }
 
@@ -110,7 +116,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
     @Override
     public void print(Graph graph, String title, Map<Object, Object> properties) {
         beginGraph(title);
-        Set<Node> noBlockNodes = NodeCollectionsFactory.newSet();
+        EconomicSet<Node> noBlockNodes = CollectionFactory.newSet(Equivalence.IDENTITY);
         ScheduleResult schedule = null;
         if (graph instanceof StructuredGraph) {
             StructuredGraph structuredGraph = (StructuredGraph) graph;
@@ -159,7 +165,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         flush();
     }
 
-    private List<Edge> printNodes(Graph graph, NodeMap<Block> nodeToBlock, Set<Node> noBlockNodes) {
+    private List<Edge> printNodes(Graph graph, NodeMap<Block> nodeToBlock, EconomicSet<Node> noBlockNodes) {
         ArrayList<Edge> edges = new ArrayList<>();
 
         NodeMap<Set<Entry<String, Integer>>> colors = graph.createNodeMap();
@@ -288,7 +294,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         endSuccessors();
         beginBlockNodes();
 
-        Set<Node> nodes = NodeCollectionsFactory.newSet();
+        EconomicSet<Node> nodes = CollectionFactory.newSet(Equivalence.IDENTITY);
 
         if (nodeToBlock != null) {
             for (Node n : graph.getNodes()) {
@@ -309,7 +315,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
                 }
             }
 
-            Set<Node> snapshot = NodeCollectionsFactory.newSet(nodes);
+            EconomicSet<Node> snapshot = CollectionFactory.newSet(Equivalence.IDENTITY, nodes);
             // add all framestates and phis to their blocks
             for (Node node : snapshot) {
                 if (node instanceof StateSplit && ((StateSplit) node).stateAfter() != null) {
@@ -330,7 +336,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
         endBlock();
     }
 
-    private void printNoBlock(Set<Node> noBlockNodes) {
+    private void printNoBlock(EconomicSet<Node> noBlockNodes) {
         if (!noBlockNodes.isEmpty()) {
             beginBlock("noBlock");
             beginBlockNodes();

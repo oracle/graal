@@ -24,19 +24,21 @@ package org.graalvm.compiler.nodes.test;
 
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.junit.Assert.assertEquals;
-import jdk.vm.ci.meta.JavaConstant;
-
-import org.junit.Before;
-import org.junit.Test;
 
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.test.AddExports;
+import org.junit.Before;
+import org.junit.Test;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * This class tests that the canonicalization for constant negate nodes cover all cases.
  */
+@AddExports("jdk.vm.ci/jdk.vm.ci.meta")
 public class NegateNodeCanonicalizationTest {
 
     private StructuredGraph graph;

@@ -22,13 +22,15 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.junit.Test;
-
+import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ReadOnlyArrayListConstantNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Test;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 
+@AddExports("com.oracle.truffle.truffle_api/com.oracle.truffle.api.interop.impl")
 public class ReadOnlyArrayListPartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {

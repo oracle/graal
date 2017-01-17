@@ -36,7 +36,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
+import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -312,7 +312,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
         Map<ResolvedJavaMethod, CompilationData> threadLocalMap = null;
         for (Field f : MethodMetricsImpl.class.getDeclaredFields()) {
             if (f.getName().equals("threadEntries")) {
-                f.setAccessible(true);
+                Util.setAccessible(f, true);
                 Object map;
                 try {
                     map = ((ThreadLocal<?>) f.get(null)).get();

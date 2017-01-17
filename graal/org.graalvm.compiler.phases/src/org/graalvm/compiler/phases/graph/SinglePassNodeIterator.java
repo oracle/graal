@@ -26,11 +26,9 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
@@ -44,6 +42,9 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 /**
  * A SinglePassNodeIterator iterates the fixed nodes of the graph in post order starting from its
@@ -103,7 +104,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
      * left behind inadvertently, asserts in {@link #finished()} are in place.
      * </p>
      */
-    private final Map<FixedNode, T> nodeStates;
+    private final EconomicMap<FixedNode, T> nodeStates;
 
     private final StartNode start;
 
@@ -155,7 +156,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
         StructuredGraph graph = start.graph();
         visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
-        nodeStates = NodeCollectionsFactory.newIdentityMap();
+        nodeStates = CollectionFactory.newMap(Equivalence.IDENTITY);
         this.start = start;
         this.state = initialState;
     }
@@ -389,7 +390,7 @@ public abstract class SinglePassNodeIterator<T extends MergeableState<T>> {
     }
 
     private T pruneEntry(FixedNode x) {
-        T result = nodeStates.remove(x);
+        T result = nodeStates.removeKey(x);
         assert result != null;
         return result;
     }

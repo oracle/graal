@@ -68,11 +68,15 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
     private static final Pattern IDENTITY_PATTERN = Pattern.compile("([A-Za-z0-9$_]+)@[0-9a-f]+");
     private Path currentDirectory;
     private Path root;
-    private final SnippetReflectionProvider snippetReflection;
+    private SnippetReflectionProvider snippetReflection;
 
-    public CanonicalStringGraphPrinter(Path directory, SnippetReflectionProvider snippetReflection) {
+    public CanonicalStringGraphPrinter(Path directory) {
         this.currentDirectory = directory;
         this.root = directory;
+    }
+
+    @Override
+    public void setSnippetReflectionProvider(SnippetReflectionProvider snippetReflection) {
         this.snippetReflection = snippetReflection;
     }
 

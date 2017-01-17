@@ -231,21 +231,15 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (!node.isAlive()) {
                 return false;
             }
-            if (node instanceof FloatingNode && node.hasNoUsages()) {
-                // Dead but on the worklist so simply kill it
-                GraphUtil.killWithUnusedFloatingInputs(node);
-                return false;
-            }
             COUNTER_PROCESSED_NODES.increment();
-
+            if (GraphUtil.tryKillUnused(node)) {
+                return true;
+            }
             NodeClass<?> nodeClass = node.getNodeClass();
             if (tryGlobalValueNumbering(node, nodeClass)) {
                 return true;
             }
             StructuredGraph graph = (StructuredGraph) node.graph();
-            if (GraphUtil.tryKillUnused(node)) {
-                return true;
-            }
             if (tryCanonicalize(node, nodeClass)) {
                 return true;
             }
@@ -444,8 +438,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
             @Override
             public void deleteBranch(Node branch) {
-                branch.predecessor().replaceFirstSuccessor(branch, null);
-                GraphUtil.killCFG(branch, this);
+                FixedNode fixedBranch = (FixedNode) branch;
+                fixedBranch.predecessor().replaceFirstSuccessor(fixedBranch, null);
+                GraphUtil.killCFG(fixedBranch, this);
             }
 
             @Override

@@ -33,8 +33,6 @@ import static jdk.vm.ci.amd64.AMD64.rbp;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
@@ -81,6 +79,7 @@ import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -421,8 +420,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (stub != null) {
                 if (stub.preservesRegisters()) {
                     HotSpotLIRGenerationResult generationResult = getResult();
-                    assert !generationResult.getCalleeSaveInfo().containsKey(currentRuntimeCallInfo);
-                    generationResult.getCalleeSaveInfo().put(currentRuntimeCallInfo, save);
+                    LIRFrameState key = currentRuntimeCallInfo;
+                    if (key == null) {
+                        key = LIRFrameState.NO_STATE;
+                    }
+                    assert !generationResult.getCalleeSaveInfo().containsKey(key);
+                    generationResult.getCalleeSaveInfo().put(key, save);
                     emitRestoreRegisters(save);
                 }
             }
@@ -520,7 +523,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Variable result = super.emitForeignCall(linkage, null, thread.asValue(LIRKind.value(AMD64Kind.QWORD)), trapRequest, mode);
         append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), config.threadLastJavaPcOffset(), thread));
 
-        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
+        EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
         assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
         calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
 
@@ -536,7 +539,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Variable result = super.emitForeignCall(linkage, null, thread.asValue(LIRKind.value(AMD64Kind.QWORD)), mode);
         append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), config.threadLastJavaPcOffset(), thread));
 
-        Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
+        EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
         assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
         calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
 
@@ -622,7 +625,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             LIRInstruction op = getOrInitRescueSlotOp();
             // insert dummy instruction into the start block
             LIR lir = getResult().getLIR();
-            List<LIRInstruction> instructions = lir.getLIRforBlock(lir.getControlFlowGraph().getStartBlock());
+            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(lir.getControlFlowGraph().getStartBlock());
             instructions.add(1, op);
             Debug.dump(Debug.INFO_LOG_LEVEL, lir, "created rescue dummy op");
         }

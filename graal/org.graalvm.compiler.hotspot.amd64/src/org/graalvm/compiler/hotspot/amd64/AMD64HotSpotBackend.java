@@ -30,8 +30,6 @@ import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-import java.util.Set;
-
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -66,6 +64,7 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -223,7 +222,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         }
 
         if (stub != null) {
-            Set<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
+            EconomicSet<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
             updateStub(stub, destroyedCallerRegisters, gen.getCalleeSaveInfo(), frameMap);
         }
 
@@ -267,10 +266,15 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
             if (config.useCompressedClassPointers) {
                 Register register = r10;
-                AMD64HotSpotMove.decodeKlassPointer(asm, register, providers.getRegisters().getHeapBaseRegister(), src, config.getKlassEncoding());
-                if (config.narrowKlassBase != 0) {
-                    // The heap base register was destroyed above, so restore it
-                    asm.movq(providers.getRegisters().getHeapBaseRegister(), config.narrowOopBase);
+                AMD64HotSpotMove.decodeKlassPointer(crb, asm, register, providers.getRegisters().getHeapBaseRegister(), src, config);
+                if (GeneratePIC.getValue()) {
+                    asm.movq(providers.getRegisters().getHeapBaseRegister(), asm.getPlaceholder(-1));
+                    crb.recordMark(config.MARKID_NARROW_OOP_BASE_ADDRESS);
+                } else {
+                    if (config.narrowKlassBase != 0) {
+                        // The heap base register was destroyed above, so restore it
+                        asm.movq(providers.getRegisters().getHeapBaseRegister(), config.narrowOopBase);
+                    }
                 }
                 asm.cmpq(inlineCacheKlass, register);
             } else {
@@ -335,7 +339,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public Set<Register> translateToCallerRegisters(Set<Register> calleeRegisters) {
+    public EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters) {
         return calleeRegisters;
     }
 }

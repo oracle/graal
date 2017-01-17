@@ -22,10 +22,10 @@
  */
 package org.graalvm.compiler.debug;
 
-import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
-import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.LOG_METHOD;
 import static java.util.FormattableFlags.LEFT_JUSTIFY;
 import static java.util.FormattableFlags.UPPERCASE;
+import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
+import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.LOG_METHOD;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -116,6 +116,7 @@ public class Debug {
     public static final int INFO_LOG_LEVEL = 2;
     public static final int VERBOSE_LOG_LEVEL = 3;
     public static final int DETAILED_LOG_LEVEL = 4;
+    public static final int VERY_DETAILED_LOG_LEVEL = 5;
 
     public static boolean isDumpEnabled(int dumpLevel) {
         return ENABLED && DebugScope.getInstance().isDumpEnabled(dumpLevel);

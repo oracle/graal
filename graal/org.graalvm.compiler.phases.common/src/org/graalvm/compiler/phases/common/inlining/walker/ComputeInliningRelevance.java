@@ -23,12 +23,10 @@
 package org.graalvm.compiler.phases.common.inlining.walker;
 
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.function.ToDoubleFunction;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeWorkList;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -45,6 +43,9 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 public class ComputeInliningRelevance {
 
@@ -62,7 +63,7 @@ public class ComputeInliningRelevance {
      * Node relevances are pre-computed for all invokes if the graph contains loops. If there are no
      * loops, the computation happens lazily based on {@link #rootScope}.
      */
-    private Map<FixedNode, Double> nodeRelevances;
+    private EconomicMap<FixedNode, Double> nodeRelevances;
     /**
      * This scope is non-null if (and only if) there are no loops in the graph. In this case, the
      * root scope is used to compute invoke relevances on the fly.
@@ -85,17 +86,18 @@ public class ComputeInliningRelevance {
             rootScope = new Scope(graph.start(), null);
         } else {
             if (nodeRelevances == null) {
-                nodeRelevances = NodeCollectionsFactory.newIdentityMap(EXPECTED_MIN_INVOKE_COUNT + InliningUtil.getNodeCount(graph) / EXPECTED_INVOKE_RATIO);
+                nodeRelevances = CollectionFactory.newMap(Equivalence.IDENTITY, EXPECTED_MIN_INVOKE_COUNT + InliningUtil.getNodeCount(graph) / EXPECTED_INVOKE_RATIO);
             }
             NodeWorkList workList = graph.createNodeWorkList();
-            Map<LoopBeginNode, Scope> loops = NodeCollectionsFactory.newIdentityMap(EXPECTED_LOOP_COUNT);
+            EconomicMap<LoopBeginNode, Scope> loops = CollectionFactory.newMap(Equivalence.IDENTITY, EXPECTED_LOOP_COUNT);
 
-            loops.put(null, new Scope(graph.start(), null));
+            Scope topScope = new Scope(graph.start(), null);
             for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {
-                createLoopScope(loopBegin, loops);
+                createLoopScope(loopBegin, loops, topScope);
             }
 
-            for (Scope scope : loops.values()) {
+            topScope.process(workList);
+            for (Scope scope : loops.getValues()) {
                 scope.process(workList);
             }
         }
@@ -106,14 +108,14 @@ public class ComputeInliningRelevance {
             return rootScope.computeInvokeRelevance(invoke);
         }
         assert nodeRelevances != null : "uninitialized relevance";
-        return nodeRelevances.get(invoke);
+        return nodeRelevances.get(invoke.asNode());
     }
 
     /**
      * Determines the parent of the given loop and creates a {@link Scope} object for each one. This
      * method will call itself recursively if no {@link Scope} for the parent loop exists.
      */
-    private Scope createLoopScope(LoopBeginNode loopBegin, Map<LoopBeginNode, Scope> loops) {
+    private Scope createLoopScope(LoopBeginNode loopBegin, EconomicMap<LoopBeginNode, Scope> loops, Scope topScope) {
         Scope scope = loops.get(loopBegin);
         if (scope == null) {
             final Scope parent;
@@ -123,11 +125,11 @@ public class ComputeInliningRelevance {
                 if (current.predecessor() == null) {
                     if (current instanceof LoopBeginNode) {
                         // if we reach a LoopBeginNode then we're within this loop
-                        parent = createLoopScope((LoopBeginNode) current, loops);
+                        parent = createLoopScope((LoopBeginNode) current, loops, topScope);
                         break;
                     } else if (current instanceof StartNode) {
                         // we're within the outermost scope
-                        parent = loops.get(null);
+                        parent = topScope;
                         break;
                     } else {
                         assert current instanceof MergeNode : current;
@@ -136,7 +138,7 @@ public class ComputeInliningRelevance {
                     }
                 } else if (current instanceof LoopExitNode) {
                     // if we reach a loop exit then we follow this loop and have the same parent
-                    parent = createLoopScope(((LoopExitNode) current).loopBegin(), loops).parent;
+                    parent = createLoopScope(((LoopExitNode) current).loopBegin(), loops, topScope).parent;
                     break;
                 } else {
                     current = (FixedNode) current.predecessor();

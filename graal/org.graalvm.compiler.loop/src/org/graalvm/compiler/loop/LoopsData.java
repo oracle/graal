@@ -26,22 +26,22 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
 
 public class LoopsData {
-    private final Map<LoopBeginNode, LoopEx> loopBeginToEx = NodeCollectionsFactory.newIdentityMap();
+    private final EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx = CollectionFactory.newMap(Equivalence.IDENTITY);
     private final ControlFlowGraph cfg;
     private final List<LoopEx> loops;
 
@@ -65,7 +65,7 @@ public class LoopsData {
      * Checks that loops are ordered such that outer loops appear first.
      */
     private static boolean checkLoopOrder(Iterable<Loop<Block>> loops) {
-        Set<Loop<Block>> seen = CollectionsFactory.newSet();
+        EconomicSet<Loop<Block>> seen = CollectionFactory.newSet(Equivalence.IDENTITY);
         for (Loop<Block> loop : loops) {
             if (loop.getParent() != null && !seen.contains(loop.getParent())) {
                 return false;
@@ -76,7 +76,7 @@ public class LoopsData {
     }
 
     public LoopEx loop(Loop<Block> loop) {
-        return loopBeginToEx.get(loop.getHeader().getBeginNode());
+        return loopBeginToEx.get((LoopBeginNode) loop.getHeader().getBeginNode());
     }
 
     public LoopEx loop(LoopBeginNode loopBegin) {

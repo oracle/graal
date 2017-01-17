@@ -22,14 +22,14 @@
  */
 package org.graalvm.compiler.lir.alloc.trace.lsra;
 
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 
-import java.util.List;
+import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
@@ -76,7 +76,7 @@ final class TraceLinearScanResolveDataFlowPhase extends TraceLinearScanAllocatio
                     Debug.log("inserting moves at end of fromBlock B%d", fromBlock.getId());
                 }
 
-                List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(fromBlock);
+                ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(fromBlock);
                 LIRInstruction instr = instructions.get(instructions.size() - 1);
                 if (instr instanceof StandardOp.JumpOp) {
                     // insert moves before branch

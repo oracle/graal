@@ -102,8 +102,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 
 import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -127,6 +125,8 @@ import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -183,7 +183,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    private void registerArraycopyDescriptor(Map<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
+    private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
         ForeignCallDescriptor desc = descMap.get(routine);
         if (desc == null) {
             desc = buildDescriptor(kind, aligned, disjoint, uninit, killAny, routine);
@@ -231,7 +231,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
          * but only within the same Kind. For instance short and char are the same copy routines but
          * they kill different memory so they still have to be distinct.
          */
-        Map<Long, ForeignCallDescriptor> descMap = new HashMap<>();
+        EconomicMap<Long, ForeignCallDescriptor> descMap = CollectionFactory.newMap();
         registerArraycopyDescriptor(descMap, kind, false, false, uninit, false, routine);
         registerArraycopyDescriptor(descMap, kind, true, false, uninit, false, alignedRoutine);
         registerArraycopyDescriptor(descMap, kind, false, true, uninit, false, disjointRoutine);

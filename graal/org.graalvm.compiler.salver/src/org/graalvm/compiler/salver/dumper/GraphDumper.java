@@ -25,7 +25,6 @@ package org.graalvm.compiler.salver.dumper;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,15 +58,19 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.salver.data.DataDict;
 import org.graalvm.compiler.salver.data.DataList;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.ImmutableMapCursor;
 
 public class GraphDumper extends AbstractMethodScopeDumper {
 
     public static final String EVENT_NAMESPACE = "graal/graph";
 
-    private static final Map<Class<?>, String> nodeClassCategoryMap;
+    private static final EconomicMap<Class<?>, String> nodeClassCategoryMap;
 
     static {
-        nodeClassCategoryMap = new LinkedHashMap<>();
+        nodeClassCategoryMap = CollectionFactory.newMap(Equivalence.IDENTITY);
         nodeClassCategoryMap.put(ControlSinkNode.class, "ControlSink");
         nodeClassCategoryMap.put(ControlSplitNode.class, "ControlSplit");
         nodeClassCategoryMap.put(AbstractMergeNode.class, "Merge");
@@ -77,7 +80,6 @@ public class GraphDumper extends AbstractMethodScopeDumper {
         nodeClassCategoryMap.put(VirtualState.class, "State");
         nodeClassCategoryMap.put(PhiNode.class, "Phi");
         nodeClassCategoryMap.put(ProxyNode.class, "Proxy");
-        // nodeClassCategoryMap.put(Node.class, "Floating");
     }
 
     @Override
@@ -355,9 +357,10 @@ public class GraphDumper extends AbstractMethodScopeDumper {
     }
 
     private static String getNodeClassCategory(Class<?> clazz) {
-        for (Map.Entry<Class<?>, String> entry : nodeClassCategoryMap.entrySet()) {
-            if (entry.getKey().isAssignableFrom(clazz)) {
-                return entry.getValue();
+        ImmutableMapCursor<Class<?>, String> cursor = nodeClassCategoryMap.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getKey().isAssignableFrom(clazz)) {
+                return cursor.getValue();
             }
         }
         return null;

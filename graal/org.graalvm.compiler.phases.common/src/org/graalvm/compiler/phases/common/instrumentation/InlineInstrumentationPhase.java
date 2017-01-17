@@ -24,7 +24,6 @@ package org.graalvm.compiler.phases.common.instrumentation;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
@@ -56,6 +55,7 @@ import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.util.ImmutableEconomicMap;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -145,7 +145,7 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
                 }
             };
             // clone instrumentation nodes into the graph and replace the InstrumentationNode
-            Map<Node, Node> duplicates = graph.addDuplicates(nodes, instrumentationGraph, instrumentationGraph.getNodeCount(), localReplacement);
+            ImmutableEconomicMap<Node, Node> duplicates = graph.addDuplicates(nodes, instrumentationGraph, instrumentationGraph.getNodeCount(), localReplacement);
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
             instrumentationNode.replaceAtPredecessor(firstCFGNodeDuplicate);
 
@@ -175,7 +175,7 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
             FrameState currentState = instrumentationNode.stateBefore();
             FrameState outerFrameState = currentState.outerFrameState();
             if (outerFrameState != null) {
-                for (Node replacee : duplicates.values()) {
+                for (Node replacee : duplicates.getValues()) {
                     if (replacee instanceof FrameState) {
                         FrameState innerFrameState = (FrameState) replacee;
                         if (innerFrameState.outerFrameState() == null) {
@@ -186,7 +186,7 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
             }
 
             // assign FrameStates for DeoptimizingNodes
-            for (Node replacee : duplicates.values()) {
+            for (Node replacee : duplicates.getValues()) {
                 if (replacee instanceof DeoptimizingNode && !(replacee instanceof Invoke)) {
                     DeoptimizingNode deoptDup = (DeoptimizingNode) replacee;
                     if (deoptDup.canDeoptimize()) {
@@ -208,7 +208,7 @@ public class InlineInstrumentationPhase extends BasePhase<LowTierContext> {
             }
 
             // notify instrumentation nodes of the postInlineInstrumentation event
-            for (Node replacee : duplicates.values()) {
+            for (Node replacee : duplicates.getValues()) {
                 if (replacee instanceof InstrumentationInliningCallback) {
                     ((InstrumentationInliningCallback) replacee).postInlineInstrumentation(instrumentationNode);
                 }

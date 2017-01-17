@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.core.common;
 
-import java.util.IdentityHashMap;
-
 // JaCoCo Exclude
 
 /**
@@ -32,7 +30,7 @@ import java.util.IdentityHashMap;
  *
  * Clients of {@link LocationIdentity} must use {@link #equals(Object)}, not {@code ==}, when
  * comparing two {@link LocationIdentity} values for equality. Likewise, they must not use
- * {@link IdentityHashMap}s with {@link LocationIdentity} values as keys.
+ * {@link java.util.IdentityHashMap}s with {@link LocationIdentity} values as keys.
  */
 public abstract class LocationIdentity {
 

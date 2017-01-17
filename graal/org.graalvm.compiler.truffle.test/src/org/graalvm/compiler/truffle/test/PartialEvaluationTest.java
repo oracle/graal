@@ -59,7 +59,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
         this.truffleCompiler = DefaultTruffleCompiler.create(runtime);
 
-        DebugEnvironment.initialize(System.out, runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
+        DebugEnvironment.ensureInitialized(runtime.getRequiredGraalCapability(SnippetReflectionProvider.class));
     }
 
     /**

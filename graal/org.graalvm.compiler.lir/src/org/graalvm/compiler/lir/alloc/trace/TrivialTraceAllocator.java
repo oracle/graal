@@ -27,7 +27,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
-import java.util.List;
+import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
 import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
@@ -78,7 +78,7 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
             return value;
         };
 
-        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+        ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         for (LIRInstruction op : instructions) {
 
             op.forEachOutput(outputConsumer);

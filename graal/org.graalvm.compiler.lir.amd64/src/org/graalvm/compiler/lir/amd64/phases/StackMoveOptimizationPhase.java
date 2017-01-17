@@ -68,7 +68,7 @@ public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase 
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
         for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
-            List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+            ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
             new Closure().process(instructions);
         }
     }

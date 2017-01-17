@@ -114,7 +114,7 @@ public class CheckGraalInvariants extends GraalTest {
     private static boolean shouldProcess(String classpathEntry) {
         if (classpathEntry.endsWith(".jar")) {
             String name = new File(classpathEntry).getName();
-            return name.contains("jvmci") || name.contains("graal");
+            return name.contains("jvmci") || name.contains("graal") || name.contains("jdk.vm.compiler");
         }
         return false;
     }
@@ -134,9 +134,13 @@ public class CheckGraalInvariants extends GraalTest {
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
 
-        String propertyName = Java8OrEarlier ? "sun.boot.class.path" : "jdk.module.path";
-        String bootclasspath = System.getProperty(propertyName);
-        Assert.assertNotNull("Cannot find value of " + propertyName, bootclasspath);
+        String bootclasspath;
+        if (Java8OrEarlier) {
+            bootclasspath = System.getProperty("sun.boot.class.path");
+        } else {
+            bootclasspath = System.getProperty("jdk.module.path") + File.pathSeparatorChar + System.getProperty("jdk.module.upgrade.path");
+        }
+        Assert.assertNotNull("Cannot find boot class path", bootclasspath);
 
         final List<String> classNames = new ArrayList<>();
         for (String path : bootclasspath.split(File.pathSeparator)) {
@@ -165,7 +169,7 @@ public class CheckGraalInvariants extends GraalTest {
         CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread", new DebugConfigAccess() {
             @Override
             public GraalDebugConfig getDebugConfig() {
-                return DebugEnvironment.initialize(System.out);
+                return DebugEnvironment.ensureInitialized();
             }
         });
         int availableProcessors = Runtime.getRuntime().availableProcessors();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.api.collections;
+package org.graalvm.compiler.nodes.memory;
 
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Set;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
 
-/**
- * A default implementation of {@link CollectionsProvider} that creates standard JDK collection
- * class objects.
- */
-public class DefaultCollectionsProvider implements CollectionsProvider {
-
-    @Override
-    public <E> Set<E> newIdentitySet() {
-        return Collections.newSetFromMap(newIdentityMap());
-    }
-
-    @Override
-    public <K, V> Map<K, V> newIdentityMap() {
-        return new IdentityHashMap<>();
-    }
-
-    @Override
-    public <K, V> Map<K, V> newIdentityMap(int expectedMaxSize) {
-        return new IdentityHashMap<>(expectedMaxSize);
-    }
-
-    @Override
-    public <K, V> Map<K, V> newIdentityMap(Map<K, V> initFrom) {
-        return new IdentityHashMap<>(initFrom);
-    }
+public interface LIRLowerableAccess extends LIRLowerable, Access {
+    Stamp getAccessStamp();
 }

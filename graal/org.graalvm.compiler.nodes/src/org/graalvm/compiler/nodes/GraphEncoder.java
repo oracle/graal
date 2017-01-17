@@ -27,7 +27,6 @@ import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COM
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Objects;
 
 import org.graalvm.compiler.core.common.Fields;
@@ -45,6 +44,8 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.Pair;
 
 import jdk.vm.ci.code.Architecture;
 
@@ -213,9 +214,10 @@ public class GraphEncoder {
         assert nodeCount == graph.getNodeCount() + 1;
 
         long[] nodeStartOffsets = new long[nodeCount];
-        for (Map.Entry<Node, Integer> entry : nodeOrder.orderIds.entries()) {
-            Node node = entry.getKey();
-            Integer orderId = entry.getValue();
+        ImmutableMapCursor<Node, Integer> cursor = nodeOrder.orderIds.getEntries();
+        while (cursor.advance()) {
+            Node node = cursor.getKey();
+            Integer orderId = cursor.getValue();
 
             assert !(node instanceof AbstractBeginNode) || nodeOrder.orderIds.get(((AbstractBeginNode) node).next()) == orderId + BEGIN_NEXT_ORDER_ID_OFFSET;
             nodeStartOffsets[orderId] = writer.getBytesWritten();
@@ -338,7 +340,7 @@ public class GraphEncoder {
             } while (current != null);
 
             for (Node node : graph.getNodes()) {
-                assert (node instanceof FixedNode) == (orderIds.get(node) != null) : "all fixed nodes must be ordered";
+                assert (node instanceof FixedNode) == (orderIds.get(node) != null) : "all fixed nodes must be ordered: " + node;
                 add(node);
             }
         }
@@ -430,8 +432,8 @@ class GraphComparison {
         pushToWorklist(expectedGraph.start(), actualGraph.start(), nodeMapping, workList);
         while (!workList.isEmpty()) {
             Pair<Node, Node> pair = workList.removeFirst();
-            Node expectedNode = pair.first;
-            Node actualNode = pair.second;
+            Node expectedNode = pair.getLeft();
+            Node actualNode = pair.getRight();
             assert expectedNode.getClass() == actualNode.getClass();
 
             NodeClass<?> nodeClass = expectedNode.getNodeClass();
@@ -534,15 +536,5 @@ class GraphComparison {
         } else {
             workList.addFirst(new Pair<>(expectedNode, actualNode));
         }
-    }
-}
-
-class Pair<F, S> {
-    public final F first;
-    public final S second;
-
-    Pair(F first, S second) {
-        this.first = first;
-        this.second = second;
     }
 }

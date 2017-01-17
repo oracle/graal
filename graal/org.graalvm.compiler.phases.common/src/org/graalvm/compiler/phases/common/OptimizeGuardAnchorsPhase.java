@@ -23,7 +23,6 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -40,6 +39,9 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.phases.Phase;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicSet;
 
 public class OptimizeGuardAnchorsPhase extends Phase {
     private static final DebugCounter counterGuardsAnchorOptimized = Debug.counter("GuardsAnchorOptimized");
@@ -101,15 +103,17 @@ public class OptimizeGuardAnchorsPhase extends Phase {
                 continue;
             }
             List<GuardNode> otherGuards = new ArrayList<>(successorCount - 1);
-            HashSet<Node> successorsWithoutGuards = new HashSet<>(controlSplit.successors().count());
-            controlSplit.successors().snapshotTo(successorsWithoutGuards);
-            successorsWithoutGuards.remove(guard.getAnchor());
+            EconomicSet<Node> successorsWithoutGuards = CollectionFactory.newSet(Equivalence.IDENTITY, controlSplit.successors().count());
+            for (Node n : controlSplit.successors()) {
+                successorsWithoutGuards.add(n);
+            }
+            successorsWithoutGuards.remove(guard.getAnchor().asNode());
             for (GuardNode conditonGuard : guard.getCondition().usages().filter(GuardNode.class)) {
                 if (conditonGuard != guard) {
                     AnchoringNode conditionGuardAnchor = conditonGuard.getAnchor();
                     if (conditionGuardAnchor.asNode().predecessor() == controlSplit && compatibleGuards(guard, conditonGuard)) {
                         otherGuards.add(conditonGuard);
-                        successorsWithoutGuards.remove(conditionGuardAnchor);
+                        successorsWithoutGuards.remove(conditionGuardAnchor.asNode());
                     }
                 }
             }

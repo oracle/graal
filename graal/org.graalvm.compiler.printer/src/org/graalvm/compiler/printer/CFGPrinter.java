@@ -64,6 +64,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.util.ImmutableMapCursor;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.TargetDescription;
@@ -309,9 +310,10 @@ class CFGPrinter extends CompilationPrinter {
             printNode(cur, false);
 
             if (cur == block.getEndNode()) {
-                for (Map.Entry<Node, Block> entry : latestScheduling.entries()) {
-                    if (entry.getValue() == block && !inFixedSchedule(entry.getKey()) && !printedNodes.isMarked(entry.getKey())) {
-                        printNode(entry.getKey(), true);
+                ImmutableMapCursor<Node, Block> cursor = latestScheduling.getEntries();
+                while (cursor.advance()) {
+                    if (cursor.getValue() == block && !inFixedSchedule(cursor.getKey()) && !printedNodes.isMarked(cursor.getKey())) {
+                        printNode(cursor.getKey(), true);
                     }
                 }
                 break;
@@ -471,7 +473,7 @@ class CFGPrinter extends CompilationPrinter {
         if (lir == null) {
             return;
         }
-        List<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
+        ArrayList<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
         if (lirInstructions == null) {
             return;
         }
@@ -698,7 +700,7 @@ class CFGPrinter extends CompilationPrinter {
         out.println("LIR");
 
         for (AbstractBlockBase<?> block : trace.getBlocks()) {
-            List<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
+            ArrayList<LIRInstruction> lirInstructions = lir.getLIRforBlock(block);
             if (lirInstructions == null) {
                 continue;
             }

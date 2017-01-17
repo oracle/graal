@@ -78,12 +78,10 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.CompilerThreadFactory.DebugConfigAccess;
 import org.graalvm.compiler.core.common.util.Util;
-import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.GraalDebugConfig;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.debug.internal.MemUseTrackerImpl;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
@@ -516,10 +514,7 @@ public final class CompileTheWorld {
         CompilerThreadFactory factory = new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
             @Override
             public GraalDebugConfig getDebugConfig() {
-                if (Debug.isEnabled() && DebugScope.getConfig() == null) {
-                    return DebugEnvironment.initialize(System.out, compiler.getGraalRuntime().getHostProviders().getSnippetReflection());
-                }
-                return null;
+                return DebugEnvironment.ensureInitialized(compiler.getGraalRuntime().getHostProviders().getSnippetReflection());
             }
         });
 

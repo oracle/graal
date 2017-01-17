@@ -25,14 +25,13 @@ package org.graalvm.compiler.hotspot;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
-import java.util.Set;
-
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
@@ -234,7 +233,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
             assert stub != null : "linkage without an address must be a stub - forgot to register a Stub associated with " + descriptor + "?";
             InstalledCode code = stub.getCode(backend);
 
-            Set<Register> destroyedRegisters = stub.getDestroyedCallerRegisters();
+            EconomicSet<Register> destroyedRegisters = stub.getDestroyedCallerRegisters();
             if (!destroyedRegisters.isEmpty()) {
                 AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
                 int i = 0;

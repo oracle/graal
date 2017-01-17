@@ -87,6 +87,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.LoweringPhase.Frame;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.TriState;
@@ -372,16 +373,16 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                         pair = recursiveFoldStamp(object, info);
                     }
                     if (pair != null) {
-                        Stamp s = pair.second;
+                        Stamp s = pair.getRight();
                         if (s instanceof GuardedConstantStamp) {
-                            ConstantNode c = tryFoldFromLoadField(loadFieldNode, pair.second);
+                            ConstantNode c = tryFoldFromLoadField(loadFieldNode, pair.getRight());
                             if (c != null) {
                                 counterLFFolded.increment();
                                 if (c.stamp() instanceof ObjectStamp) {
                                     GuardedConstantStamp cos = new GuardedConstantStamp(c.asJavaConstant(), (ObjectStamp) c.stamp());
-                                    return new Pair<>(pair.first, cos);
+                                    return new Pair<>(pair.getLeft(), cos);
                                 }
-                                return new Pair<>(pair.first, c.stamp());
+                                return new Pair<>(pair.getLeft(), c.stamp());
                             }
                         }
                     }
@@ -422,9 +423,9 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                     }
                     Pair<InfoElement, Stamp> foldResult = recursiveFoldStamp(value, info);
                     if (foldResult != null) {
-                        Stamp result = unary.foldStamp(foldResult.second);
+                        Stamp result = unary.foldStamp(foldResult.getRight());
                         if (result != null) {
-                            return new Pair<>(foldResult.first, result);
+                            return new Pair<>(foldResult.getLeft(), result);
                         }
                     }
                 } else if (node instanceof BinaryNode) {
@@ -440,18 +441,18 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                         }
                         Pair<InfoElement, Stamp> foldResult = recursiveFoldStamp(x, info);
                         if (foldResult != null) {
-                            Stamp result = binary.foldStamp(foldResult.second, y.stamp());
+                            Stamp result = binary.foldStamp(foldResult.getRight(), y.stamp());
                             if (result != null) {
-                                return new Pair<>(foldResult.first, result);
+                                return new Pair<>(foldResult.getLeft(), result);
                             }
                         }
                     } else if (x instanceof LoadFieldNode || y instanceof LoadFieldNode) {
                         boolean useX = x instanceof LoadFieldNode;
                         Pair<InfoElement, Stamp> foldResult = recursiveFoldStamp(useX ? x : y, info);
                         if (foldResult != null) {
-                            Stamp result = binary.foldStamp(useX ? foldResult.second : x.stamp(), useX ? y.stamp() : foldResult.second);
+                            Stamp result = binary.foldStamp(useX ? foldResult.getRight() : x.stamp(), useX ? y.stamp() : foldResult.getRight());
                             if (result != null) {
-                                return new Pair<>(foldResult.first, result);
+                                return new Pair<>(foldResult.getLeft(), result);
                             }
                         }
                     }
@@ -488,7 +489,7 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                 InfoElement element = new InfoElement(newStamp, original);
                 Pair<InfoElement, Stamp> result = recursiveFoldStamp(node, (value) -> value == original ? Collections.singleton(element) : Collections.EMPTY_LIST);
                 if (result != null) {
-                    return result.second;
+                    return result.getRight();
                 }
                 return null;
             }
@@ -630,9 +631,9 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                     }
                     Pair<InfoElement, Stamp> foldResult = recursiveFoldStampFromInfo(value);
                     if (foldResult != null) {
-                        TriState result = unaryLogicNode.tryFold(foldResult.second);
+                        TriState result = unaryLogicNode.tryFold(foldResult.getRight());
                         if (result.isKnown()) {
-                            return rewireGuards(foldResult.first.getGuard(), result.toBoolean(), rewireGuardFunction);
+                            return rewireGuards(foldResult.getLeft().getGuard(), result.toBoolean(), rewireGuardFunction);
                         }
                     }
                     if (thisGuard != null) {
@@ -664,9 +665,9 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                     if (y.isConstant()) {
                         Pair<InfoElement, Stamp> foldResult = recursiveFoldStampFromInfo(x);
                         if (foldResult != null) {
-                            TriState result = binaryOpLogicNode.tryFold(foldResult.second, y.stamp());
+                            TriState result = binaryOpLogicNode.tryFold(foldResult.getRight(), y.stamp());
                             if (result.isKnown()) {
-                                return rewireGuards(foldResult.first.getGuard(), result.toBoolean(), rewireGuardFunction);
+                                return rewireGuards(foldResult.getLeft().getGuard(), result.toBoolean(), rewireGuardFunction);
                             }
                         }
                     } else {
@@ -820,30 +821,6 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
                     }
                 }
             }
-        }
-    }
-
-    protected static class Pair<F, S> {
-        public final F first;
-        public final S second;
-
-        Pair(F first, S second) {
-            this.first = first;
-            this.second = second;
-        }
-
-        @Override
-        public int hashCode() {
-            return first.hashCode() * 31 ^ second.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof Pair<?, ?>) {
-                Pair<?, ?> other = (Pair<?, ?>) obj;
-                return this.first.equals(other.first) && this.second.equals(other.second);
-            }
-            return false;
         }
     }
 

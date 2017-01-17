@@ -31,8 +31,6 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 
-import java.util.Set;
-
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
@@ -66,6 +64,7 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -236,7 +235,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         }
 
         if (stub != null) {
-            Set<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
+            EconomicSet<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
             updateStub(stub, destroyedCallerRegisters, gen.getCalleeSaveInfo(), frameMap);
         }
         return crb;
@@ -330,7 +329,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public Set<Register> translateToCallerRegisters(Set<Register> calleeRegisters) {
+    public EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters) {
         return calleeRegisters;
     }
 }
