@@ -180,6 +180,10 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
             innerMatchNegated = inner.isYNegated();
         }
         if (!innerNegated) {
+            // The four digit results of the expression used in the 16 subsequent formula comments
+            // correspond to results when using the following truth table for inputs a and b
+            // and testing all 4 possible input combinations:
+            // _ 1234
             // a 1100
             // b 1010
             if (innerMatchNegated == matchNegated) {
@@ -187,12 +191,14 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                 // ( (!a || b) ||!a) => 1011 (!a || b)
                 // ( ( a ||!b) || a) => 1101 ( a ||!b)
                 // ( ( a || b) || a) => 1110 ( a || b)
+                // Only the inner or is relevant, the outer or never adds information.
                 return inner;
             } else {
                 // ( ( a || b) ||!a) => 1111 (true)
                 // ( (!a ||!b) || a) => 1111 (true)
                 // ( (!a || b) || a) => 1111 (true)
                 // ( ( a ||!b) ||!a) => 1111 (true)
+                // The result of the expression is always true.
                 return LogicConstantNode.tautology();
             }
         } else {
@@ -210,6 +216,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                     newInnerXNegated = !newInnerXNegated;
                     newProbability = 1.0 - newProbability;
                 }
+                // The expression can be transformed into a single or.
                 return new ShortCircuitOrNode(inner.getX(), newInnerXNegated, inner.getY(), newInnerYNegated, newProbability);
             } else {
                 // (!(!a ||!b) || a) => 1100 (a)
@@ -220,6 +227,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                 if (matchIsInnerX) {
                     result = inner.getY();
                 }
+                // Only the second part of the outer or is relevant.
                 if (matchNegated) {
                     return LogicNegationNode.create(result);
                 } else {
