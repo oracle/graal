@@ -3643,10 +3643,6 @@ public class FlatNodeGenFactory {
                 LocalVariable var = getValue(execution);
                 if (var != null) {
                     builder.startGroup();
-                    if (executions.size() == 1 && ElementUtils.typeEquals(var.getTypeMirror(), factory.getType(Object[].class))) {
-                        // if the current type is Object[] do not use varargs for a single argument
-                        builder.string("(Object) ");
-                    }
                     builder.tree(var.createReference());
                     builder.end();
                 }
