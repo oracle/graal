@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@ package org.graalvm.compiler.loop;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -40,12 +38,12 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
 
 public class LoopsData {
-
-    private EconomicMap<Loop<?>, LoopEx> loopToEx = CollectionFactory.newMap(Equivalence.IDENTITY);
-    private EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx = CollectionFactory.newMap(Equivalence.IDENTITY);
-    private ControlFlowGraph cfg;
+    private final EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx = CollectionFactory.newMap(Equivalence.IDENTITY);
+    private final ControlFlowGraph cfg;
+    private final List<LoopEx> loops;
 
     @SuppressWarnings("try")
     public LoopsData(final StructuredGraph graph) {
@@ -54,53 +52,42 @@ public class LoopsData {
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
-
+        assert checkLoopOrder(cfg.getLoops());
+        loops = new ArrayList<>(cfg.getLoops().size());
         for (Loop<Block> loop : cfg.getLoops()) {
             LoopEx ex = new LoopEx(loop, this);
-            loopToEx.put(loop, ex);
+            loops.add(ex);
             loopBeginToEx.put(ex.loopBegin(), ex);
         }
     }
 
-    public LoopEx loop(Loop<?> loop) {
-        return loopToEx.get(loop);
+    /**
+     * Checks that loops are ordered such that outer loops appear first.
+     */
+    private static boolean checkLoopOrder(Iterable<Loop<Block>> loops) {
+        EconomicSet<Loop<Block>> seen = CollectionFactory.newSet(Equivalence.IDENTITY);
+        for (Loop<Block> loop : loops) {
+            if (loop.getParent() != null && !seen.contains(loop.getParent())) {
+                return false;
+            }
+            seen.add(loop);
+        }
+        return true;
+    }
+
+    public LoopEx loop(Loop<Block> loop) {
+        return loopBeginToEx.get((LoopBeginNode) loop.getHeader().getBeginNode());
     }
 
     public LoopEx loop(LoopBeginNode loopBegin) {
         return loopBeginToEx.get(loopBegin);
     }
 
-    public Iterable<LoopEx> loops() {
-        return loopToEx.getValues();
-    }
-
-    public List<LoopEx> outerFirst() {
-        ArrayList<LoopEx> loops = new ArrayList<>();
-        for (LoopEx l : loops()) {
-            loops.add(l);
-        }
-        Collections.sort(loops, new Comparator<LoopEx>() {
-
-            @Override
-            public int compare(LoopEx o1, LoopEx o2) {
-                return o1.loop().getDepth() - o2.loop().getDepth();
-            }
-        });
+    public List<LoopEx> loops() {
         return loops;
     }
 
-    public List<LoopEx> innerFirst() {
-        ArrayList<LoopEx> loops = new ArrayList<>();
-        for (LoopEx l : loops()) {
-            loops.add(l);
-        }
-        Collections.sort(loops, new Comparator<LoopEx>() {
-
-            @Override
-            public int compare(LoopEx o1, LoopEx o2) {
-                return o2.loop().getDepth() - o1.loop().getDepth();
-            }
-        });
+    public List<LoopEx> outerFirst() {
         return loops;
     }
 

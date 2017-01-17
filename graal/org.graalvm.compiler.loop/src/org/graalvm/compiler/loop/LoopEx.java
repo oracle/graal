@@ -76,7 +76,6 @@ import org.graalvm.util.EconomicMap;
 import jdk.vm.ci.code.BytecodeFrame;
 
 public class LoopEx {
-
     private final Loop<Block> loop;
     private LoopFragmentInside inside;
     private LoopFragmentWhole whole;

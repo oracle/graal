@@ -871,6 +871,18 @@ suite = {
       "workingSets" : "Graal",
     },
 
+    "org.graalvm.compiler.loop.test" : {
+      "subDir" : "graal",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.loop",
+        "org.graalvm.compiler.core.test"
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,Test",
+    },
+
     "org.graalvm.compiler.loop.phases" : {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
@@ -1373,6 +1385,7 @@ suite = {
         "org.graalvm.compiler.truffle.test",
         "org.graalvm.compiler.truffle.hotspot.test",
         "com.oracle.nfi.test",
+        "org.graalvm.compiler.loop.test",
       ],
       "distDependencies" : [
         "GRAAL_HOTSPOT",
