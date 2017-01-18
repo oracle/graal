@@ -27,6 +27,7 @@ import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArgumen
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
@@ -45,6 +46,7 @@ import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast2Node
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast3NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast4NodeFactory;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCast5NodeFactory;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ImplicitCastExecuteNodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals1NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals2NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals3NodeGen;
@@ -432,6 +434,55 @@ public class ImplicitCastTest {
         @Specialization
         public long sleep(long duration) {
             return duration;
+        }
+
+    }
+
+    @Test
+    public void testImplicitCastExecute() {
+        CallTarget target = ExampleNode.createTarget(ImplicitCastExecuteNodeGen.create(ExampleNode.createArguments(2)));
+        Assert.assertEquals("s1", target.call(1, 2D));
+        Assert.assertEquals("s0", target.call(1, 1));
+
+        target = ExampleNode.createTarget(ImplicitCastExecuteNodeGen.create(ExampleNode.createArguments(2)));
+        Assert.assertEquals("s0", target.call(1, 1));
+        Assert.assertEquals("s1", target.call(1, 2D));
+
+        target = ExampleNode.createTarget(ImplicitCastExecuteNodeGen.create(ExampleNode.createArguments(2)));
+        Assert.assertEquals("s0", target.call(1, 1));
+        Assert.assertEquals("s2", target.call(1, 2L));
+
+        target = ExampleNode.createTarget(ImplicitCastExecuteNodeGen.create(ExampleNode.createArguments(2)));
+        Assert.assertEquals("s2", target.call(1, 2L));
+        Assert.assertEquals("s0", target.call(1, 1));
+    }
+
+    @TypeSystem
+    @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
+    public static class TS {
+        @ImplicitCast
+        static long upcast(int value) {
+            return value;
+        }
+    }
+
+    @TypeSystemReference(TS.class)
+    @SuppressWarnings("unused")
+    public abstract static class ImplicitCastExecuteNode extends ExampleNode {
+
+        @Specialization
+        public String s0(int a, int b) {
+            return "s0";
+        }
+
+        @Specialization
+        public String s1(long a, double b) {
+            return "s1";
+        }
+
+        @Specialization
+        public String s2(long a, long b) {
+            return "s2";
         }
 
     }

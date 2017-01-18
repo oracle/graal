@@ -1237,9 +1237,11 @@ public class FlatNodeGenFactory {
                 // we want to create the check tree in reverse order
                 Collections.reverse(sourceTypes);
                 CodeTree access = var.createReference();
-                int sourceTypeIndex = 0;
+                int sourceTypeIndex = sourceTypes.size() - 1;
+                boolean first = true;
                 for (TypeMirror sType : sourceTypes) {
                     if (ElementUtils.typeEquals(sType, targetType)) {
+                        sourceTypeIndex--;
                         continue;
                     }
                     String localName = createSourceTypeLocalName(var, sType);
@@ -1249,12 +1251,19 @@ public class FlatNodeGenFactory {
                     accessBuilder.startParantheses();
                     accessBuilder.tree(state.createContainsOnly(frameState, sourceTypeIndex, 1, new Object[]{typeGuard}, new Object[]{typeGuard, node.getUninitializedSpecialization()}));
                     accessBuilder.string(" ? ");
+                    if (ElementUtils.isPrimitive(sType)) {
+                        accessBuilder.string("(").type(generic).string(") ");
+                    }
                     accessBuilder.string(localName);
                     accessBuilder.string(" : ");
+                    if (first && ElementUtils.isPrimitive(targetType)) {
+                        accessBuilder.string("(").type(generic).string(") ");
+                    }
                     accessBuilder.tree(access);
                     accessBuilder.end();
                     access = accessBuilder.build();
-                    sourceTypeIndex++;
+                    first = false;
+                    sourceTypeIndex--;
                 }
                 fallbackVar = fallbackVar.accessWith(access);
             } else {
