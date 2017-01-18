@@ -585,45 +585,8 @@ public class ReplacesTest {
             return value;
         }
 
+        @SuppressWarnings("contains_deprecation")
         @Specialization(contains = "f0")
-        Object f1(Object value) {
-            return value;
-        }
-
-    }
-
-    @TypeSystemReference(ExampleTypes.class)
-    @Introspectable
-    abstract static class ContainsTestError1 extends Node {
-
-        abstract Object execute(Object value);
-
-        @Specialization
-        Object f0(int value) {
-            return value;
-        }
-
-        @ExpectError("Duplicate replace declaration 'f0'.")
-        @Specialization(replaces = "f0", contains = "f0")
-        Object f1(Object value) {
-            return value;
-        }
-
-    }
-
-    @TypeSystemReference(ExampleTypes.class)
-    @Introspectable
-    abstract static class ContainsTestError2 extends Node {
-
-        abstract Object execute(Object value);
-
-        @Specialization
-        Object f0(int value) {
-            return value;
-        }
-
-        @ExpectError("Circular replaced specialization 'f1(Object)' found.")
-        @Specialization(contains = "f1")
         Object f1(Object value) {
             return value;
         }

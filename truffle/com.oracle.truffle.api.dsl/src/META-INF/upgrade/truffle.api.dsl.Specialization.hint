@@ -1,3 +1,4 @@
+<!suppress-warnings="contains_deprecation">
 <? 
   import com.oracle.truffle.api.dsl.Specialization
 ?>
