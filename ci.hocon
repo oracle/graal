@@ -106,7 +106,8 @@ builds = [
   ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},
   ${common} ${java9Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-9"},
   ${common} ${java8Downloads} {run : [["sh", ".travis.sigtest.sh"]], capabilities : [linux, amd64], targets : [gate], name: "gate-sigtest"},
-  ${common} ${java9Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal"},
+# ${common} ${java9Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal9"},
+  ${common} ${java8Downloads} {run : [["mx", "-v", "testgraal"]], capabilities : [linux, amd64], targets : [gate], name: "gate-testgraal8"},
   ${common} ${java8Downloads} {run : [["mx", "testrubytruffle"]], capabilities : [linux, amd64], targets : [post-merge], name: "gate-rubytruffle"},
   ${maven-deploy-dry-run}
   ${deploy-binary}
@@ -115,19 +116,19 @@ builds = [
     targets : [ gate ],
     name: "gate-solaris-lite-8"
   }
-  ${solaris} ${java9Downloads} ${gateLite} {
-    capabilities : [solaris, sparcv9],
-    targets : [ gate ],
-    name: "gate-solaris-lite-9"
-  }
+#  ${solaris} ${java9Downloads} ${gateLite} {
+#    capabilities : [solaris, sparcv9],
+#    targets : [ gate ],
+#    name: "gate-solaris-lite-9"
+#  }
   ${darwin} ${java8Downloads} ${gateLite} {
     capabilities : [darwin],
     targets : [ gate ],
     name: "gate-mac-lite-8"
   }
-  ${darwin} ${java9Downloads} ${gateLite} {
-    capabilities : [darwin],
-    targets : [ gate ],
-    name: "gate-mac-lite-9"
-  }
+#  ${darwin} ${java9Downloads} ${gateLite} {
+#    capabilities : [darwin],
+#    targets : [ gate ],
+#    name: "gate-mac-lite-9"
+#  }
 ]
