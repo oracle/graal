@@ -208,7 +208,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                 // (!( a ||!b) || a) => 1110 ( a || b)
                 // (!( a || b) || a) => 1101 ( a ||!b)
                 boolean newInnerXNegated = inner.isXNegated();
-                boolean newInnerYNegated = !inner.isYNegated();
+                boolean newInnerYNegated = inner.isYNegated();
                 double newProbability = inner.getShortCircuitProbability();
                 if (matchIsInnerX) {
                     newInnerYNegated = !newInnerYNegated;
@@ -225,7 +225,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                 // (!( a || b) ||!a) => 0011 (!a)
                 LogicNode result = inner.getY();
                 if (matchIsInnerX) {
-                    result = inner.getY();
+                    result = inner.getX();
                 }
                 // Only the second part of the outer or is relevant.
                 if (matchNegated) {
