@@ -103,7 +103,7 @@ public final class LegacyBreakpointCreationTest {
 
         final String condExpr = "a + b";
         b1.setCondition(condExpr);
-        assertEquals("same code", condExpr, b1.getCondition().getCode());
+        assertEquals("same code", condExpr, b1.getCondition());
 
         // Create breakpoint at line 2
         final com.oracle.truffle.api.source.LineLocation line2 = testSource.createLineLocation(2);

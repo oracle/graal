@@ -647,7 +647,12 @@ public final class REPLServer {
         }
 
         String getCondition() {
-            final Source source = breakpoint == null ? conditionSource : breakpoint.getCondition();
+            Source source = null;
+            if (breakpoint == null) {
+                source = conditionSource;
+            } else if (breakpoint.getCondition() != null) {
+                return breakpoint.getCondition();
+            }
             return source == null ? null : source.getCode();
         }
 
