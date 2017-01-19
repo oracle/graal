@@ -50,6 +50,9 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     }
 
     private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
+        if (!TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
+            return new ArrayList<>();
+        }
         int nodeCount = sourceTarget.getNonTrivialNodeCount();
         List<TruffleInliningDecision> exploredCallSites = exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), nodeCount, policy);
         return decideInlining(exploredCallSites, policy, nodeCount, options);
