@@ -52,7 +52,7 @@ public final class TraceInliningListener extends AbstractDebugCompilationListene
             log(0, "inline start", target.toString(), target.getDebugProperties(null));
             logInliningDecisionRecursive(target, inliningDecision, 1);
             log(0, "inline done", target.toString(), target.getDebugProperties(inliningDecision));
-        }else {
+        } else {
             log(0, "TruffleFunctionInlining is set to false", "", null);
             return;
         }
