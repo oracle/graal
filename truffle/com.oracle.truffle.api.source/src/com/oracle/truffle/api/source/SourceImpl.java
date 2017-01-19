@@ -24,14 +24,11 @@
  */
 package com.oracle.truffle.api.source;
 
-import java.lang.ref.WeakReference;
-import java.util.Objects;
-
-import com.oracle.truffle.api.source.impl.SourceAccessor;
 import java.net.URI;
 
+import com.oracle.truffle.api.source.impl.SourceAccessor;
+
 final class SourceImpl extends Source implements Cloneable {
-    private static Ref SOURCES = null;
 
     SourceImpl(Content content) {
         this(content, null, null, null, false, false);
@@ -39,47 +36,11 @@ final class SourceImpl extends Source implements Cloneable {
 
     SourceImpl(Content content, String mimeType, URI uri, String name, boolean internal, boolean interactive) {
         super(content, mimeType, uri, name, internal, interactive);
-        registerSource(this);
     }
 
     @Override
     protected SourceImpl clone() throws CloneNotSupportedException {
-        SourceImpl clone = (SourceImpl) super.clone();
-        registerSource(clone);
-        return clone;
-    }
-
-    private static long nextCheck;
-
-    static synchronized void registerSource(SourceImpl source) {
-        long now = System.currentTimeMillis();
-        if (nextCheck < now) {
-            findSource(null);
-            nextCheck = now + 1000;
-        }
-        SOURCES = new Ref(source, SOURCES);
-    }
-
-    static synchronized Source findSource(String name) {
-        Ref prev = null;
-        Ref now = SOURCES;
-        while (now != null) {
-            SourceImpl source = now.get();
-            if (source == null) {
-                if (prev == null) {
-                    SOURCES = now.next;
-                } else {
-                    prev.next = now.next;
-                }
-            } else {
-                prev = now;
-                if (Objects.equals(source.getName(), name)) {
-                    return source;
-                }
-            }
-            now = now.next;
-        }
-        return null;
+        return (SourceImpl) super.clone();
     }
 
     @Override
@@ -95,15 +56,6 @@ final class SourceImpl extends Source implements Cloneable {
     @Override
     public int hashCode() {
         return content().hashCode();
-    }
-
-    private static final class Ref extends WeakReference<SourceImpl> {
-        Ref next;
-
-        Ref(SourceImpl source, Ref next) {
-            super(source);
-            this.next = next;
-        }
     }
 
 }

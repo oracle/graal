@@ -466,7 +466,6 @@ public abstract class REPLRemoteCommand extends REPLCommand {
                 if (!code.isEmpty()) {
                     // Create a fake entry in the file maps and cache, based on this unique name
                     final String fakeFileName = "<eval" + ++evalCounter + ">";
-                    Source.fromNamedText(fakeFileName, code);
                     final com.oracle.truffle.tools.debug.shell.REPLMessage request = new com.oracle.truffle.tools.debug.shell.REPLMessage();
                     request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.OP, com.oracle.truffle.tools.debug.shell.REPLMessage.EVAL);
                     request.put(com.oracle.truffle.tools.debug.shell.REPLMessage.CODE, code);

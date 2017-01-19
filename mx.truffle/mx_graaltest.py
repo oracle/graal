@@ -64,4 +64,4 @@ def testgraal(args):
         git.clone(cloneFrom, sanityDir)
 
     sanitySuiteDir = sanityDir if graalSuiteSubDir is None else join(sanityDir, graalSuiteSubDir)
-    return mx.run_mx(['--java-home=' + mx.get_jdk().home, 'gate', '-B--force-deprecation-as-warning', '--tags', 'build,test'], sanitySuiteDir)
+    return mx.run_mx(['-v', '--java-home=' + mx.get_jdk().home, 'gate', '-B--force-deprecation-as-warning', '--tags', 'build,test'], sanitySuiteDir)

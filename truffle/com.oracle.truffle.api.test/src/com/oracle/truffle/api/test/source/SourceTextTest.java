@@ -29,7 +29,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 
-@SuppressWarnings("deprecation")
 public class SourceTextTest {
 
     private final Source emptySource = Source.newBuilder("").name("emptySource").mimeType("content/unknown").build();
@@ -48,11 +47,6 @@ public class SourceTextTest {
     @Test
     public void nameName() {
         assertEquals("emptySource", emptySource.getName());
-    }
-
-    @Test
-    public void noShortName() {
-        assertNull(emptySource.getShortName());
     }
 
     @Test

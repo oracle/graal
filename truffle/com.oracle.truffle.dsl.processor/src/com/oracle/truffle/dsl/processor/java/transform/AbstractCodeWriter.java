@@ -103,8 +103,10 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
     private void writeRootClass(CodeTypeElement e) {
         writeHeader();
-        write("package ").write(e.getPackageName()).write(";").writeLn();
-        writeEmptyLn();
+        if (e.getPackageName() != null && e.getPackageName().length() > 0) {
+            write("package ").write(e.getPackageName()).write(";").writeLn();
+            writeEmptyLn();
+        }
 
         Set<CodeImport> generateImports = imports.generateImports();
         List<CodeImport> typeImports = new ArrayList<>();

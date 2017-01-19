@@ -207,7 +207,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
                         error("missing closing bracket");
                     }
                     next();
-                    skipWhiteSpace();
                 }
 
             }

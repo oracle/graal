@@ -61,23 +61,6 @@ public class SourceBuilderTest {
         assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
-    @SuppressWarnings("deprecation")
-    @Test
-    public void assignMimeTypeAndIdentityForApppendable() {
-        Source s1 = Source.fromAppendableText("<stdio>");
-        assertEquals("<stdio>", s1.getName());
-        assertEquals("Appendable path is based on name", "<stdio>", s1.getPath());
-        assertNull("No mime type assigned", s1.getMimeType());
-        s1.appendCode("// Hello");
-        Source s2 = s1.withMimeType("text/x-c");
-        assertEquals("They have the same content", s1.getCode(), s2.getCode());
-        assertEquals("// Hello", s1.getCode());
-        assertNotEquals("But different type", s1.getMimeType(), s2.getMimeType());
-        assertNotEquals("So they are different", s1, s2);
-        assertNotNull("Every source must have URI", s1.getURI());
-        assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
-    }
-
     @Test
     public void assignMimeTypeAndIdentityForReader() throws IOException {
         String text = "// Hello";

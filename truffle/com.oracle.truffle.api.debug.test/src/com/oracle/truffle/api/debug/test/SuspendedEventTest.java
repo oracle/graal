@@ -67,7 +67,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
             });
 
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 6, true, "STATEMENT(CALL(foo))\n", "root0", "43").prepareStepInto(1);
+                checkState(event, 6, true, "STATEMENT(CALL(foo))", "root0", "43").prepareStepInto(1);
                 Iterator<DebugStackFrame> frameIterator = event.getStackFrames().iterator();
                 checkStack(frameIterator.next(), "root0", "43");
                 Assert.assertFalse(frameIterator.hasNext());
@@ -107,7 +107,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
             startEval(source);
 
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 4, true, "STATEMENT(CALL(foo))\n").prepareStepInto(1);
+                checkState(event, 4, true, "STATEMENT(CALL(foo))").prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 2, true, "STATEMENT(CONSTANT(42))").prepareStepInto(1);

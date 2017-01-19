@@ -80,7 +80,7 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         Assert.assertFalse(profiler.isTiming());
         Assert.assertTrue(profiler.hasData());
 
-        final SourceSection rootSection = source.createSection(0, 140);
+        final SourceSection rootSection = source.createSection(0, 139);
         final SourceSection leafSection = source.createSection(17, 16);
         final SourceSection callfooSection = source.createSection(47, 27);
         final SourceSection callbarSection = source.createSection(88, 27);
@@ -200,7 +200,7 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         Assert.assertFalse(profiler.isTiming());
         Assert.assertTrue(profiler.hasData());
 
-        final SourceSection rootSection = source.createSection(0, 140);
+        final SourceSection rootSection = source.createSection(0, 139);
         final SourceSection leafSection = source.createSection(17, 16);
         final SourceSection callfooSection = source.createSection(47, 27);
         final SourceSection callbarSection = source.createSection(88, 27);
@@ -313,7 +313,7 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         run(source);
 
         counters = profiler.getCounters();
-        final SourceSection rootSection = source.createSection(0, 140);
+        final SourceSection rootSection = source.createSection(0, 139);
         final SourceSection leafSection = source.createSection(17, 16);
         final SourceSection callfooSection = source.createSection(47, 27);
         final SourceSection callbarSection = source.createSection(88, 27);

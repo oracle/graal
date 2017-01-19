@@ -37,6 +37,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -61,8 +62,8 @@ public abstract class RootNode extends Node {
      * <p>
      * <strong>Note:</strong> Although the {@link SourceSection} <em>can</em> be {@code null}, this
      * is strongly discouraged for the purposes of testing/tracing/tooling. Please use
-     * {@link SourceSection#createUnavailable(String, String)} to create a descriptive instance with
-     * a language-specific <em>kind</em> such as "SL Builtin" and a <em>name</em> if possible.
+     * {@link Source#createUnavailableSection()} to create a descriptive instance with a
+     * language-specific <em>kind</em> such as "SL Builtin" and a <em>name</em> if possible.
      *
      * @param language the language of the node, <b>cannot be</b> <code>null</code>
      * @param sourceSection a part of source associated with this node, can be <code>null</code>

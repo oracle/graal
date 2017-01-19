@@ -166,9 +166,11 @@ CLSS public final static com.oracle.truffle.api.instrumentation.TruffleInstrumen
 meth public !varargs com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.source.Source,java.lang.String[]) throws java.io.IOException
 meth public boolean isEngineRoot(com.oracle.truffle.api.nodes.RootNode)
 meth public com.oracle.truffle.api.instrumentation.Instrumenter getInstrumenter()
+meth public com.oracle.truffle.api.source.SourceSection findSourceLocation(com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
+meth public java.lang.Object findMetaObject(com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public void registerService(java.lang.Object)
 supr java.lang.Object

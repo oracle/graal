@@ -53,9 +53,11 @@ meth protected java.lang.String plus(java.lang.Class<?>,java.lang.Class<?>)
 meth protected java.lang.String plusInt()
 meth protected java.lang.String readElementFromForeign()
 meth protected java.lang.String readValueFromForeign()
+meth protected java.lang.String valueWithSource()
 meth protected java.lang.String valuesObject()
 meth protected java.lang.String writeElementToForeign()
 meth protected java.lang.String writeValueToForeign()
+meth protected java.lang.String[] metaObjects()
 meth protected void assertDouble(java.lang.String,double,double)
 meth public static void disposePreviousVM()
 meth public void addOneToAnArrayElement() throws java.lang.Exception
@@ -91,6 +93,7 @@ meth public void testIsNotNull() throws java.lang.Exception
 meth public void testIsNullOfForeign() throws java.lang.Exception
 meth public void testMaxOrMinValue() throws java.lang.Exception
 meth public void testMaxOrMinValue2() throws java.lang.Exception
+meth public void testMetaObject() throws java.lang.Exception
 meth public void testNull() throws java.lang.Exception
 meth public void testNullCanBeCastToAnything() throws java.lang.Exception
 meth public void testNullInCompoundObject() throws java.lang.Exception
@@ -147,6 +150,7 @@ meth public void testSumRealOfComplexNumbersA() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersAsStructuredDataColumnBased() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersAsStructuredDataRowBased() throws java.lang.Exception
 meth public void testSumRealOfComplexNumbersB() throws java.lang.Exception
+meth public void testValueWithSource() throws java.lang.Exception
 meth public void testWriteElementOfForeign() throws java.lang.Exception
 meth public void testWriteToObjectWithElement() throws java.lang.Exception
 meth public void testWriteToObjectWithValueProperty() throws java.lang.Exception

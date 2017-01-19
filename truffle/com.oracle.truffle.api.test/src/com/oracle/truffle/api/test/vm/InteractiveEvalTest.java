@@ -37,34 +37,51 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.Assert;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class InteractiveEvalTest {
-
-    private static final String DEFAULT_INTERACT_MT = "application/x-test-definteract";
-    private static final String SPECIAL_INTERACT_MT = "application/x-test-specinteract";
 
     @Test
     public void testDefaultInteractiveLanguage() throws UnsupportedEncodingException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(out).build();
-        PolyglotEngine.Language language = engine.getLanguages().get(DEFAULT_INTERACT_MT);
-        Assert.assertFalse(language.isInteractive());
-        Source s = Source.newBuilder("").mimeType(DEFAULT_INTERACT_MT).name("definteract").interactive().build();
+        Source s = Source.newBuilder("").mimeType("application/x-test-definteract").name("definteract").interactive().build();
         PolyglotEngine.Value value = engine.eval(s);
         Assert.assertEquals("42", value.get());
         String strOutput = out.toString(StandardCharsets.UTF_8.name());
-        Assert.assertTrue(strOutput.isEmpty());
+        Assert.assertEquals("42" + System.getProperty("line.separator"), strOutput);
+    }
+
+    @Test
+    public void testDefaultInteractiveLanguageDirectly() throws UnsupportedEncodingException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(out).build();
+        Source s = Source.newBuilder("").mimeType("application/x-test-definteract").name("definteract").interactive().build();
+        PolyglotEngine.Value value = engine.getLanguages().get("application/x-test-definteract").eval(s);
+        Assert.assertEquals("42", value.get());
+        String strOutput = out.toString(StandardCharsets.UTF_8.name());
+        Assert.assertEquals("42" + System.getProperty("line.separator"), strOutput);
     }
 
     @Test
     public void testSpecialInteractiveLanguage() throws UnsupportedEncodingException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(out).build();
-        Source s = Source.newBuilder("").mimeType(SPECIAL_INTERACT_MT).name("specinteract").interactive().build();
-        PolyglotEngine.Language language = engine.getLanguages().get(SPECIAL_INTERACT_MT);
-        Assert.assertTrue(language.isInteractive());
+        Source s = Source.newBuilder("").mimeType("application/x-test-specinteract").name("specinteract").interactive().build();
         PolyglotEngine.Value value = engine.eval(s);
+        Assert.assertEquals("42", value.get());
+        String strOutput = out.toString(StandardCharsets.UTF_8.name());
+        Assert.assertEquals("\"42\"", strOutput);
+    }
+
+    @Test
+    public void testSpecialInteractiveLanguageDirectly() throws UnsupportedEncodingException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(out).build();
+        Source s = Source.newBuilder("").mimeType("application/x-test-specinteract").name("specinteract").interactive().build();
+        PolyglotEngine.Value value = engine.getLanguages().get("application/x-test-specinteract").eval(s);
         Assert.assertEquals("42", value.get());
         String strOutput = out.toString(StandardCharsets.UTF_8.name());
         Assert.assertEquals("\"42\"", strOutput);
@@ -74,7 +91,7 @@ public class InteractiveEvalTest {
     public void testDefaultNoninteractiveLanguage() throws UnsupportedEncodingException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(out).build();
-        Source s = Source.newBuilder("").mimeType(DEFAULT_INTERACT_MT).name("defnoninteract").build();
+        Source s = Source.newBuilder("").mimeType("application/x-test-definteract").name("defnoninteract").build();
         PolyglotEngine.Value value = engine.eval(s);
         Assert.assertEquals("42", value.get());
         String strOutput = out.toString(StandardCharsets.UTF_8.name());
@@ -85,11 +102,32 @@ public class InteractiveEvalTest {
     public void testSpecialNoninteractiveLanguage() throws UnsupportedEncodingException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(out).build();
-        Source s = Source.newBuilder("").mimeType(SPECIAL_INTERACT_MT).name("specnoninteract").build();
+        Source s = Source.newBuilder("").mimeType("application/x-test-specinteract").name("specnoninteract").build();
         PolyglotEngine.Value value = engine.eval(s);
         Assert.assertEquals("42", value.get());
         String strOutput = out.toString(StandardCharsets.UTF_8.name());
         Assert.assertTrue(strOutput.isEmpty());
+    }
+
+    @Test
+    public void isInteractive1() {
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        PolyglotEngine.Language language = engine.getLanguages().get("application/x-test-specinteract");
+        assertFalse("SpecialInteractive language isn't interactive", language.isInteractive());
+    }
+
+    @Test
+    public void isInteractive2() {
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        PolyglotEngine.Language language = engine.getLanguages().get("application/x-test-definteract");
+        assertTrue("DefaultInteractive language is interactive", language.isInteractive());
+    }
+
+    @Test
+    public void isInteractive3() {
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        PolyglotEngine.Language language = engine.getLanguages().get("application/x-test-async");
+        assertTrue("By default a language is interactive", language.isInteractive());
     }
 
     private static class InteractiveContext {
@@ -105,7 +143,7 @@ public class InteractiveEvalTest {
         }
     }
 
-    @TruffleLanguage.Registration(name = "DefaultInteractive", mimeType = DEFAULT_INTERACT_MT, version = "1.0")
+    @TruffleLanguage.Registration(name = "DefaultInteractive", mimeType = "application/x-test-definteract", version = "1.0")
     public static class DefaultInteractiveLanguage extends TruffleLanguage<InteractiveContext> {
         public static final DefaultInteractiveLanguage INSTANCE = new DefaultInteractiveLanguage();
 
@@ -143,7 +181,7 @@ public class InteractiveEvalTest {
         }
     }
 
-    @TruffleLanguage.Registration(name = "SpecialInteractive", mimeType = SPECIAL_INTERACT_MT, version = "1.0", interactive = true)
+    @TruffleLanguage.Registration(name = "SpecialInteractive", mimeType = "application/x-test-specinteract", version = "1.0", interactive = false)
     public static class SpecialInteractiveLanguage extends TruffleLanguage<InteractiveContext> {
         public static final SpecialInteractiveLanguage INSTANCE = new SpecialInteractiveLanguage();
 
@@ -173,6 +211,11 @@ public class InteractiveEvalTest {
                     return value;
                 }
             });
+        }
+
+        @Override
+        protected boolean isVisible(InteractiveContext context, Object value) {
+            return false;
         }
 
         @Override

@@ -97,7 +97,7 @@ public class LegacyDoubleHaltTest extends LegacyAbstractDebugTest {
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepInto(1);
-        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
+        expectSuspendedEvent().checkState(6, false, "CALL(foo)").resume();
         getEngine().eval(loop);
         assertExecutedOK();
         for (Breakpoint breakpoint : shouldBreak) {
@@ -118,7 +118,7 @@ public class LegacyDoubleHaltTest extends LegacyAbstractDebugTest {
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOver(1);
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOver(1);
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOver(1);
-        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
+        expectSuspendedEvent().checkState(6, false, "CALL(foo)").resume();
         getEngine().eval(loop);
         assertExecutedOK();
         for (Breakpoint breakpoint : shouldBreak) {
@@ -144,7 +144,7 @@ public class LegacyDoubleHaltTest extends LegacyAbstractDebugTest {
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOut();
         expectSuspendedEvent().checkState(4, true, "STATEMENT").stepOut();
 
-        expectSuspendedEvent().checkState(6, false, "CALL(foo)\n").resume(); // FIXME-SourceSection
+        expectSuspendedEvent().checkState(6, false, "CALL(foo)").resume();
         getEngine().eval(loop);
         assertExecutedOK();
         for (Breakpoint breakpoint : shouldBreak) {

@@ -139,14 +139,6 @@ public class SourceSectionTest {
         assertEquals("9", longSource.createSection(9, 1).getCode());
     }
 
-    @SuppressWarnings("deprecation")
-    @Test
-    public void testGetShortDescription() {
-        assertEquals("long:1", longSource.createSection(0, 5).getShortDescription());
-        assertEquals("long:2", longSource.createSection(6, 2).getShortDescription());
-        assertEquals("long:3", longSource.createSection(9, 1).getShortDescription());
-    }
-
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange1() {
         longSource.createSection(9, 5);
@@ -160,24 +152,6 @@ public class SourceSectionTest {
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange3() {
         longSource.createSection(1, -1);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Test(expected = IllegalArgumentException.class)
-    public void testOutOfRange4() {
-        longSource.createSection(3, 1, 9, 5);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Test(expected = IllegalArgumentException.class)
-    public void testOutOfRange5() {
-        longSource.createSection(1, 1, -1, 1);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Test(expected = IllegalArgumentException.class)
-    public void testOutOfRange6() {
-        longSource.createSection(1, 1, 1, -1);
     }
 
     @Test(expected = IllegalArgumentException.class)

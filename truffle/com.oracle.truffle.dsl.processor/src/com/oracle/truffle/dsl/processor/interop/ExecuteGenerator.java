@@ -149,7 +149,7 @@ public final class ExecuteGenerator extends MessageGenerator {
         if (!Utils.isObjectArray(variableElement.asType())) {
             return "The last argument must be the arguments array. Required type: java.lang.Object[]";
         }
-        return null;
+        return super.checkSignature(method);
     }
 
 }

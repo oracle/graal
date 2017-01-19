@@ -206,13 +206,25 @@ final class InstrumentationUtils {
             final SourceSection src = node.getSourceSection();
             if (src != null) {
                 if (src.getSource() == null) {
-                    return src.getShortDescription();
+                    return getShortDescription(src);
                 } else {
                     return src.getSource().getName() + ":" + src.getStartLine();
                 }
             }
             return "";
         }
+    }
+
+    static String getShortDescription(SourceSection sourceSection) {
+        StringBuilder b = new StringBuilder();
+        b.append(sourceSection.getSource().getName());
+        b.append(":");
+        if (sourceSection.getStartLine() == sourceSection.getEndLine()) {
+            b.append(sourceSection.getStartLine());
+        } else {
+            b.append(sourceSection.getStartLine()).append("-").append(sourceSection.getEndLine());
+        }
+        return b.toString();
     }
 
     /**
@@ -234,7 +246,7 @@ final class InstrumentationUtils {
             if (section == null) {
                 return "<unknown source location>";
             }
-            return section.getShortDescription() + (estimated ? "~" : "");
+            return getShortDescription(section) + (estimated ? "~" : "");
         }
     }
 }
