@@ -24,16 +24,13 @@ package org.graalvm.compiler.core.test;
 
 import java.lang.reflect.Field;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
-
-import sun.misc.Unsafe;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class ConditionalEliminationLoadFieldConstantFoldTest extends GraalCompilerTest {
     public static int intSideEffect;
@@ -213,21 +210,6 @@ public class ConditionalEliminationLoadFieldConstantFoldTest extends GraalCompil
     private static final C2 C2_CONST = new C2(C1_CONST);
     private static final C1 C1_AFTER_READ_CONST = new C1(10);
 
-    private static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
-    }
-
-    private static final sun.misc.Unsafe UNSAFE = getUnsafe();
     private static final long C2_C1_OFFSET;
 
     static {
