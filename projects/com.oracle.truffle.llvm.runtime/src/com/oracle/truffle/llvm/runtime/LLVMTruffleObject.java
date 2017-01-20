@@ -29,9 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
+@ValueType
 public final class LLVMTruffleObject {
     private final TruffleObject object;
     private final long offset;
