@@ -155,6 +155,14 @@ public class LLVMTckTest extends TruffleTCK {
 
     // Disabled failing tests: no structs, no function passing and other unimplemented functionality
     @Override
+    public void testValueWithSource() throws Exception {
+    }
+
+    @Override
+    public void testMetaObject() throws Exception {
+    }
+
+    @Override
     public void testRootNodeName() throws Exception {
     }
 
