@@ -86,7 +86,7 @@ public class OptimizedCallTargetTest {
     private static void assertCompiled(OptimizedCallTarget target) {
         assertNotNull(target);
         try {
-            runtime.waitForCompilation(target, 10000);
+            runtime.waitForCompilation(target, 30_000);
         } catch (ExecutionException | TimeoutException e) {
             fail("timeout");
         }
