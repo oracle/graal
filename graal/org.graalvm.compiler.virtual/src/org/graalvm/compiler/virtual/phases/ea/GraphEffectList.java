@@ -71,8 +71,9 @@ public class GraphEffectList extends EffectList {
     public void ensureAdded(ValueNode node, FixedNode position) {
         add("ensure added", graph -> {
             assert position.isAlive();
+            assert node instanceof FixedNode;
             if (!node.isAlive()) {
-                graph.addWithoutUniqueWithInputs(node);
+                graph.addOrUniqueWithInputs(node);
                 if (node instanceof FixedWithNextNode) {
                     graph.addBeforeFixed(position, (FixedWithNextNode) node);
                 }
@@ -99,8 +100,8 @@ public class GraphEffectList extends EffectList {
      */
     public void initializePhiInput(PhiNode node, int index, ValueNode value) {
         add("set phi input", (graph, obsoleteNodes) -> {
-            assert node.isAlive() && value.isAlive() && index >= 0;
-            node.initializeValueAt(index, value);
+            assert node.isAlive() && index >= 0;
+            node.initializeValueAt(index, graph.addOrUniqueWithInputs(value));
         });
     }
 
@@ -123,7 +124,7 @@ public class GraphEffectList extends EffectList {
                             stateAfter.virtualObjectMappings().remove(i);
                         }
                     }
-                    stateAfter.addVirtualObjectMapping(state.isAlive() ? state : graph.unique(state));
+                    stateAfter.addVirtualObjectMapping(graph.addOrUniqueWithInputs(state));
                 }
             }
 
@@ -166,6 +167,7 @@ public class GraphEffectList extends EffectList {
         add("kill if branch", new Effect() {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                graph.addWithoutUnique(sink);
                 node.replaceAtPredecessor(sink);
                 GraphUtil.killCFG(node);
             }
@@ -185,17 +187,20 @@ public class GraphEffectList extends EffectList {
      * @param node The node to be replaced.
      * @param replacement The node that should replace the original value. If the replacement is a
      *            non-connected {@link FixedWithNextNode} it will be added to the control flow.
+     * @param insertBefore
      *
      */
-    public void replaceAtUsages(ValueNode node, ValueNode replacement) {
+    public void replaceAtUsages(ValueNode node, ValueNode replacement, FixedNode insertBefore) {
         assert node != null && replacement != null : node + " " + replacement;
         add("replace at usages", (graph, obsoleteNodes) -> {
-            assert node.isAlive() && replacement.isAlive() : node + " " + replacement;
-            if (replacement instanceof FixedWithNextNode && ((FixedWithNextNode) replacement).next() == null) {
-                assert node instanceof FixedNode;
-                graph.addBeforeFixed((FixedNode) node, (FixedWithNextNode) replacement);
+            assert node.isAlive();
+            ValueNode replacementNode = graph.addOrUniqueWithInputs(replacement);
+            assert replacementNode.isAlive();
+            assert insertBefore != null;
+            if (replacementNode instanceof FixedWithNextNode && ((FixedWithNextNode) replacementNode).next() == null) {
+                graph.addBeforeFixed(insertBefore, (FixedWithNextNode) replacementNode);
             }
-            node.replaceAtUsages(replacement);
+            node.replaceAtUsages(replacementNode);
             if (node instanceof FixedWithNextNode) {
                 GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
             }

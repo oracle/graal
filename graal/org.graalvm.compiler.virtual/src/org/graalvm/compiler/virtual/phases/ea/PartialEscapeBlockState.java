@@ -163,8 +163,8 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
 
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                for (ValueNode otherAllocation : otherAllocations) {
-                    graph.addWithoutUnique(otherAllocation);
+                for (ValueNode alloc : otherAllocations) {
+                    ValueNode otherAllocation = graph.addOrUniqueWithInputs(alloc);
                     if (otherAllocation instanceof FixedWithNextNode) {
                         graph.addBeforeFixed(fixed, (FixedWithNextNode) otherAllocation);
                     } else {
@@ -184,7 +184,9 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                         commit.getVirtualObjects().add(obj.getVirtualObject());
                         obj.setCommit(commit);
                     }
-                    commit.getValues().addAll(values);
+                    for (ValueNode value : values) {
+                        commit.getValues().add(graph.addOrUniqueWithInputs(value));
+                    }
                     for (List<MonitorIdNode> monitorIds : locks) {
                         commit.addLocks(monitorIds);
                     }

@@ -303,7 +303,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     addAndMarkAlias((VirtualObjectNode) alias, node);
                     effects.deleteNode(node);
                 } else {
-                    effects.replaceAtUsages(node, alias);
+                    effects.replaceAtUsages(node, alias, insertBefore);
                     addScalarAlias(node, alias);
                 }
             } else {
@@ -311,12 +311,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     VirtualUtil.trace("replacement via canonicalization too complex: %s -> %s", node, canonicalizedValue);
                     return false;
                 }
-                effects.ensureAdded(canonicalizedValue, insertBefore);
                 if (canonicalizedValue instanceof ControlSinkNode) {
                     effects.replaceWithSink((FixedWithNextNode) node, (ControlSinkNode) canonicalizedValue);
                     state.markAsDead();
                 } else {
-                    effects.replaceAtUsages(node, canonicalizedValue);
+                    effects.replaceAtUsages(node, canonicalizedValue, insertBefore);
                     addScalarAlias(node, canonicalizedValue);
                 }
             }

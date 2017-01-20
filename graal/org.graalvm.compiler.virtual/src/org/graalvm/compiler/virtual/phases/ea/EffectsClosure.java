@@ -153,7 +153,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After applying effects");
         assert VirtualUtil.assertNonReachable(graph, obsoleteNodes);
         for (Node node : obsoleteNodes) {
-            if (node.isAlive()) {
+            if (node.isAlive() && node.hasNoUsages()) {
+                if (node instanceof FixedWithNextNode) {
+                    assert ((FixedWithNextNode) node).next() == null;
+                }
                 node.replaceAtUsages(null);
                 GraphUtil.killWithUnusedFloatingInputs(node);
             }

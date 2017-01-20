@@ -149,7 +149,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
         ValueNode unproxiedObject = GraphUtil.unproxify(object);
         ValueNode cachedValue = state.getReadCache(unproxiedObject, identity, index, this);
         if (cachedValue != null) {
-            effects.replaceAtUsages(load, cachedValue);
+            effects.replaceAtUsages(load, cachedValue, load);
             addScalarAlias(load, cachedValue);
             return true;
         } else {
@@ -168,7 +168,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 LocationIdentity location = NamedLocationIdentity.getArrayLocation(type.getComponentType().getJavaKind());
                 ValueNode cachedValue = state.getReadCache(object, location, index, this);
                 if (cachedValue != null && load.stamp().isCompatible(cachedValue.stamp())) {
-                    effects.replaceAtUsages(load, cachedValue);
+                    effects.replaceAtUsages(load, cachedValue, load);
                     addScalarAlias(load, cachedValue);
                     return true;
                 } else {
