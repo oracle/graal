@@ -72,13 +72,13 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
             return doRead(receiver, cachedType, cachedIndex);
         }
 
-        @Specialization(guards = {"typeGuard(receiver, cachedType)"}, contains = "doCachedTypeCachedOffset")
+        @Specialization(guards = {"typeGuard(receiver, cachedType)"}, replaces = "doCachedTypeCachedOffset")
         public static Object doCachedType(LLVMTruffleAddress receiver, int index,
                         @Cached("getType(receiver)") LLVMRuntimeType cachedType) {
             return doRead(receiver, cachedType, index);
         }
 
-        @Specialization(contains = {"doCachedTypeCachedOffset", "doCachedType"})
+        @Specialization(replaces = {"doCachedTypeCachedOffset", "doCachedType"})
         public static Object doRegular(LLVMTruffleAddress receiver, int index) {
             return doRead(receiver, receiver.getType(), index);
         }
@@ -121,7 +121,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
             return doFastWrite(frame, receiver, cachedType, cachedIndex, value, toLLVM);
         }
 
-        @Specialization(guards = {"typeGuard(receiver, cachedType)"}, contains = "doCachedTypeCachedOffset")
+        @Specialization(guards = {"typeGuard(receiver, cachedType)"}, replaces = "doCachedTypeCachedOffset")
         public static Object doCachedType(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value,
                         @Cached("getType(receiver)") LLVMRuntimeType cachedType,
                         @Cached("getToLLVMNode(cachedType)") ToLLVMNode toLLVM) {
@@ -130,7 +130,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
 
         @Child private ToLLVMNode slowConvert;
 
-        @Specialization(contains = {"doCachedTypeCachedOffset", "doCachedType"})
+        @Specialization(replaces = {"doCachedTypeCachedOffset", "doCachedType"})
         public Object doRegular(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value) {
             if (slowConvert == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

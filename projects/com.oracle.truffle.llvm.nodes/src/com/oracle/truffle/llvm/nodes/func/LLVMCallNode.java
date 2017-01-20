@@ -416,7 +416,7 @@ public abstract class LLVMCallNode {
             return callNode.call(frame, arguments);
         }
 
-        @Specialization(contains = "doDirect")
+        @Specialization(replaces = "doDirect")
         protected Object doIndirect(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
             if (CompilerDirectives.inInterpreter() && !printedExceedInlineCacheWarning) {

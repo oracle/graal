@@ -52,7 +52,7 @@ public abstract class LLVMTruffleAddressToFunction extends LLVMIntrinsic {
         return cachedDescriptor;
     }
 
-    @Specialization(contains = "cached")
+    @Specialization(replaces = "cached")
     public Object uncached(LLVMAddress value) {
         return getDescriptor(value.getVal());
     }

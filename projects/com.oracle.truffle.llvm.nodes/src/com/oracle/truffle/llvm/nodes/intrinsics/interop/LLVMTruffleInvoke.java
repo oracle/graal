@@ -99,7 +99,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)", contains = "doIntrinsicReceiverCachedTruffleObjectCached")
+    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)", replaces = "doIntrinsicReceiverCachedTruffleObjectCached")
     public Object doIntrinsicTruffleObjectCached(VirtualFrame frame, TruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
                     @Cached("readString(id)") String cachedId) {
         return doInvoke(frame, value, cachedId);
@@ -121,7 +121,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)", contains = "doIntrinsicReceiverCachedLLVMTruffleObjectCached")
+    @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)", replaces = "doIntrinsicReceiverCachedLLVMTruffleObjectCached")
     public Object doIntrinsicLLVMTruffleObjectCached(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, @Cached("pointerOf(id)") long cachedPtr,
                     @Cached("readString(id)") String cachedId) {
         checkLLVMTruffleObject(value);
