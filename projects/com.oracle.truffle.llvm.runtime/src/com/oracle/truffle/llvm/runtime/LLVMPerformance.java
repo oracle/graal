@@ -50,7 +50,7 @@ public final class LLVMPerformance {
         }
     }
 
-    private final static class LLVMNopPerformanceNode extends LLVMPerformanceNode {
+    private static final class LLVMNopPerformanceNode extends LLVMPerformanceNode {
 
         @Override
         public void warn() {
@@ -58,7 +58,7 @@ public final class LLVMPerformance {
         }
     }
 
-    private final static class LLVMInvocationCountPerformanceNode extends LLVMPerformanceNode {
+    private static final class LLVMInvocationCountPerformanceNode extends LLVMPerformanceNode {
 
         private int counter = 0;
 
@@ -69,7 +69,7 @@ public final class LLVMPerformance {
         }
     }
 
-    private final static class LLVMPerformanceWarningNode extends LLVMPerformanceNode {
+    private static final class LLVMPerformanceWarningNode extends LLVMPerformanceNode {
 
         @Override
         public void warn() {
@@ -95,6 +95,7 @@ public final class LLVMPerformance {
 
     @TruffleBoundary
     private static void printWarning(Node node, String info, int invocationCount) {
+        // Checkstyle: stop
         System.out.print("[perf] " + (node != null ? node.getClass() : "unwanted code") + " on hot path.");
         if (info != null) {
             System.out.println("  Info: " + info);
@@ -111,6 +112,7 @@ public final class LLVMPerformance {
         if (LLVMOptions.DEBUG.performanceWarningsAreFatal()) {
             throw new AssertionError("Fatal Performance Warning");
         }
+        // Checkstyle: resume
     }
 
 }
