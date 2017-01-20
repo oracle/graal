@@ -22,16 +22,14 @@
  */
 package org.graalvm.compiler.lir.gen;
 
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -219,7 +217,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Value emitConstant(LIRKind kind, Constant constant) {
-        if (constant instanceof JavaConstant && moveFactory.canInlineConstant((JavaConstant) constant)) {
+        if (moveFactory.canInlineConstant(constant)) {
             return new ConstantValue(toRegisterKind(kind), constant);
         } else {
             return emitLoadConstant(kind, constant);
@@ -259,7 +257,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Value loadNonConst(Value value) {
-        if (isJavaConstant(value) && !moveFactory.canInlineConstant(asJavaConstant(value))) {
+        if (isConstantValue(value) && !moveFactory.canInlineConstant(asConstant(value))) {
             return emitMove(value);
         }
         return value;

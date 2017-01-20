@@ -66,7 +66,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
          * @return True if the constant can be used directly, false if the constant needs to be in a
          *         register.
          */
-        boolean canInlineConstant(JavaConstant c);
+        boolean canInlineConstant(Constant c);
 
         /**
          * @param constant The constant that might be moved to a stack slot.

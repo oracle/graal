@@ -52,6 +52,7 @@ import org.graalvm.compiler.core.match.MatchRule;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
@@ -129,22 +130,33 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     protected ComplexMatchResult emitCompareBranchMemory(IfNode ifNode, CompareNode compare, ValueNode value, LIRLowerableAccess access) {
         Condition cond = compare.condition();
         AMD64Kind kind = getMemoryKind(access);
+        boolean matchedAsConstant = false; // For assertion checking
 
         if (value.isConstant()) {
             JavaConstant constant = value.asJavaConstant();
-            if (constant != null && kind == AMD64Kind.QWORD && !constant.getJavaKind().isObject() && !NumUtil.isInt(constant.asLong())) {
-                // Only imm32 as long
-                return null;
+            if (constant != null) {
+                if (kind == AMD64Kind.QWORD && !constant.getJavaKind().isObject() && !NumUtil.isInt(constant.asLong())) {
+                    // Only imm32 as long
+                    return null;
+                }
+                // A QWORD that can be encoded as int can be embedded as a constant
+                matchedAsConstant = kind == AMD64Kind.QWORD && !constant.getJavaKind().isObject() && NumUtil.isInt(constant.asLong());
+            }
+            if (kind == AMD64Kind.DWORD) {
+                // Any DWORD value should be embeddable as a constant
+                matchedAsConstant = true;
             }
             if (kind.isXMM()) {
                 Debug.log("Skipping constant compares for float kinds");
                 return null;
             }
         }
+        boolean matchedAsConstantFinal = matchedAsConstant;
 
-        // emitCompareBranchMemory expects the memory on the right, so mirror the condition if
-        // that's not true. It might be mirrored again the actual compare is emitted but that's
-        // ok.
+        /*
+         * emitCompareBranchMemory expects the memory on the right, so mirror the condition if
+         * that's not true. It might be mirrored again the actual compare is emitted but that's ok.
+         */
         Condition finalCondition = GraphUtil.unproxify(compare.getX()) == access ? cond.mirror() : cond;
         return new ComplexMatchResult() {
             @Override
@@ -154,6 +166,11 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 boolean unorderedIsTrue = compare.unorderedIsTrue();
                 double trueLabelProbability = ifNode.probability(ifNode.trueSuccessor());
                 Value other = operand(value);
+                /*
+                 * Check that patterns which were matched as a constant actually end up seeing a
+                 * constant in the LIR.
+                 */
+                assert !matchedAsConstantFinal || !LIRValueUtil.isVariable(other) : "expected constant value " + value;
                 AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
                 getLIRGeneratorTool().emitCompareBranchMemory(kind, other, address, getState(access), finalCondition, unorderedIsTrue, trueLabel, falseLabel, trueLabelProbability);
                 return null;

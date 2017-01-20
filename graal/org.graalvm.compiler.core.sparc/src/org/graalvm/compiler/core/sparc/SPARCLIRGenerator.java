@@ -368,7 +368,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         AllocatableValue scratchValue = newVariable(key.getValueKind());
         AllocatableValue base = AllocatableValue.ILLEGAL;
         for (Constant c : strategy.getKeyConstants()) {
-            if (!(c instanceof JavaConstant) || !getMoveFactory().canInlineConstant((JavaConstant) c)) {
+            if (!getMoveFactory().canInlineConstant(c)) {
                 base = constantTableBaseProvider.getConstantTableBase();
                 break;
             }
