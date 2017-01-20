@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -42,6 +43,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
 
     @Specialization
     public Object executeIntrinsic(LLVMAddress value, int n) {
+        LLVMPerformance.warn(this);
         LLVMAddress adr = value;
         int count = n < 0 ? 0 : n;
         byte[] bytes = new byte[count];

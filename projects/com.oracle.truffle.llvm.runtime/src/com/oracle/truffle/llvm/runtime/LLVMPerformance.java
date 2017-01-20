@@ -43,7 +43,7 @@ public final class LLVMPerformance {
     }
 
     public static LLVMPerformanceNode getPerformanceNode(boolean countInvocations) {
-        if (LLVMOptions.ENGINE.tracePerformanceWarnings()) {
+        if (LLVMOptions.DEBUG.tracePerformanceWarnings()) {
             return countInvocations ? new LLVMInvocationCountPerformanceNode() : new LLVMPerformanceWarningNode();
         } else {
             return new LLVMNopPerformanceNode();
@@ -82,20 +82,20 @@ public final class LLVMPerformance {
     }
 
     public static void warn(Node node, String info) {
-        if (LLVMOptions.ENGINE.tracePerformanceWarnings() && CompilerDirectives.inCompiledCode()) {
+        if (LLVMOptions.DEBUG.tracePerformanceWarnings() && CompilerDirectives.inCompiledCode()) {
             printWarning(node, info, -1);
         }
     }
 
     private static void warn(Node node, String info, int invocationCount) {
-        if (LLVMOptions.ENGINE.tracePerformanceWarnings() && CompilerDirectives.inCompiledCode()) {
+        if (LLVMOptions.DEBUG.tracePerformanceWarnings() && CompilerDirectives.inCompiledCode()) {
             printWarning(node, info, invocationCount);
         }
     }
 
     @TruffleBoundary
     private static void printWarning(Node node, String info, int invocationCount) {
-        System.out.print("[perf] " + node.getClass() + " on hot path.");
+        System.out.print("[perf] " + (node != null ? node.getClass() : "unwanted code") + " on hot path.");
         if (info != null) {
             System.out.println("  Info: " + info);
         } else {
@@ -107,6 +107,9 @@ public final class LLVMPerformance {
         StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
         for (int i = 0; i < STACK_TRACE_SIZE && i < stackTrace.length; i++) {
             System.out.println("  " + stackTrace[i].toString());
+        }
+        if (LLVMOptions.DEBUG.performanceWarningsAreFatal()) {
+            throw new AssertionError("Fatal Performance Warning");
         }
     }
 

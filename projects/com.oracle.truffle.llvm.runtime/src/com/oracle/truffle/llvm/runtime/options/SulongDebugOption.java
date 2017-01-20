@@ -41,11 +41,11 @@ abstract class SulongDebugOption {
     @Option(commandLineName = "Verbose", help = "Enables verbose printing of debugging information. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "verbose") //
     protected static final String VERBOSE = String.valueOf(false);
 
-    @Option(commandLineName = "PrintPerformanceWarnings", help = "Prints performance warnings. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "printPerformanceWarnings") //
-    protected static final String PRINT_PERFORMANCE_WARNINGS = String.valueOf(false);
-
     @Option(commandLineName = "PerformanceWarningsAreFatal", help = "Terminates the program after a performance issue is encountered.", name = "performanceWarningsAreFatal") //
     protected static final Boolean PERFORMANCE_WARNING_ARE_FATAL = false;
+
+    @Option(commandLineName = "TracePerformanceWarnings", help = "Reports all LLVMPerformance.warn() invokations in compiled code.", name = "tracePerformanceWarnings") //
+    protected static final Boolean PERFORMANCE_WARNINGS = false;
 
     @Option(commandLineName = "PrintASTs", help = "Prints the Truffle ASTs for the parsed functions. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.", name = "printFunctionASTs") //
     protected static final String PRINT_FUNCTION_ASTS = String.valueOf(false);

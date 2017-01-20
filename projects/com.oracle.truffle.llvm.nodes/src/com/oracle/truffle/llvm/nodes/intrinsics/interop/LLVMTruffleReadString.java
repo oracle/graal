@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReadString extends LLVMIntrinsic {
@@ -53,6 +54,7 @@ public abstract class LLVMTruffleReadString extends LLVMIntrinsic {
 
     @Specialization
     public Object executeIntrinsic(LLVMAddress value) {
+        LLVMPerformance.warn(this);
         return LLVMTruffleIntrinsicUtil.readString(value);
     }
 

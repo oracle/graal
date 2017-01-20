@@ -45,6 +45,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
 public final class LLVMTruffleWrite {
@@ -93,6 +94,7 @@ public final class LLVMTruffleWrite {
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, Object v) {
+            LLVMPerformance.warn(this);
             checkLLVMTruffleObject(value);
             doWrite(frame, foreignWrite, value.getObject(), id, v);
             return null;
@@ -108,6 +110,7 @@ public final class LLVMTruffleWrite {
 
         @Specialization
         public Object executeIntrinsicTruffleObject(VirtualFrame frame, TruffleObject value, LLVMAddress id, Object v) {
+            LLVMPerformance.warn(this);
             doWrite(frame, foreignWrite, value, id, v);
             return null;
         }
