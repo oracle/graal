@@ -76,20 +76,6 @@ public abstract class LLVMCallNode {
 
     public static final int ARG_START_INDEX = 1;
 
-    private static Object doExecute(VirtualFrame frame, Node foreignExecute, TruffleObject value, Object[] rawArgs, ToLLVMNode toLLVM) {
-        int argsLength = rawArgs.length - ARG_START_INDEX;
-        Object[] args = new Object[argsLength];
-        for (int i = ARG_START_INDEX, j = 0; i < rawArgs.length; i++, j++) {
-            args[j] = rawArgs[i];
-        }
-        try {
-            Object rawValue = ForeignAccess.sendExecute(foreignExecute, frame, value, args);
-            return toLLVM.executeWithTarget(frame, rawValue);
-        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
     private static int getFunctionArgumentLength(VirtualFrame frame) {
         return frame.getArguments().length - ARG_START_INDEX;
     }
@@ -333,18 +319,22 @@ public abstract class LLVMCallNode {
             }
         }
 
-    }
-
-    public static Object[] convertToPrimitiveArgs(Object[] arguments) {
-        Object[] newArguments = new Object[arguments.length - LLVMCallNode.ARG_START_INDEX];
-        System.arraycopy(arguments, LLVMCallNode.ARG_START_INDEX, newArguments, 0, newArguments.length);
-        CompilerAsserts.compilationConstant(arguments.length);
-        for (int i = 0; i < newArguments.length; i++) {
-            if (newArguments[i] instanceof LLVMAddress) {
-                newArguments[i] = ((LLVMAddress) newArguments[i]).getVal();
+        @ExplodeLoop
+        private static Object doExecute(VirtualFrame frame, Node foreignExecute, TruffleObject value, Object[] rawArgs, ToLLVMNode toLLVM) {
+            int argsLength = rawArgs.length - ARG_START_INDEX;
+            Object[] args = new Object[argsLength];
+            CompilerAsserts.partialEvaluationConstant(rawArgs.length);
+            for (int i = ARG_START_INDEX, j = 0; i < rawArgs.length; i++, j++) {
+                args[j] = rawArgs[i];
+            }
+            try {
+                Object rawValue = ForeignAccess.sendExecute(foreignExecute, frame, value, args);
+                return toLLVM.executeWithTarget(frame, rawValue);
+            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                throw new IllegalStateException(e);
             }
         }
-        return newArguments;
+
     }
 
     public abstract static class LLVMFunctionCallChain extends Node {
@@ -396,13 +386,27 @@ public abstract class LLVMCallNode {
                 return Truffle.getRuntime().createCallTarget(new RootNode(LLVMLanguage.class, null, null) {
 
                     @Override
-                    @ExplodeLoop
                     public Object execute(VirtualFrame frame) {
                         Object[] arguments = frame.getArguments();
                         return nativeHandle.call(convertToPrimitiveArgs(arguments));
                     }
                 });
             }
+        }
+
+        @ExplodeLoop
+        private static Object[] convertToPrimitiveArgs(Object[] arguments) {
+            CompilerAsserts.compilationConstant(arguments.length);
+            Object[] newArguments = new Object[arguments.length - LLVMCallNode.ARG_START_INDEX];
+            for (int i = LLVMCallNode.ARG_START_INDEX; i < arguments.length; i++) {
+                newArguments[i - LLVMCallNode.ARG_START_INDEX] = arguments[i];
+            }
+            for (int i = 0; i < newArguments.length; i++) {
+                if (newArguments[i] instanceof LLVMAddress) {
+                    newArguments[i] = ((LLVMAddress) newArguments[i]).getVal();
+                }
+            }
+            return newArguments;
         }
 
         @Specialization(limit = "INLINE_CACHE_SIZE", guards = "function.getFunctionIndex() == cachedFunction.getFunctionIndex()")
