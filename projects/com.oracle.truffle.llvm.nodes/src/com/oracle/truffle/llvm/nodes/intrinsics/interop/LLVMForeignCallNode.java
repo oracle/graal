@@ -43,6 +43,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 
@@ -75,6 +76,7 @@ public abstract class LLVMForeignCallNode extends LLVMExpressionNode {
     public Object callIndirect(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode, @Cached("arguments.length") int cachedLength) {
         assert function.getReturnType() != LLVMRuntimeType.STRUCT;
+        LLVMPerformance.warn(this);
         return callNode.call(frame, getCallTarget(function), packArguments(frame, function, arguments, cachedLength));
     }
 

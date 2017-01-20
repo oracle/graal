@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
+import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
@@ -72,14 +73,15 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
             return doRead(receiver, cachedType, cachedIndex);
         }
 
-        @Specialization(guards = {"typeGuard(receiver, cachedType)"}, contains = "doCachedTypeCachedOffset")
+        @Specialization(guards = {"typeGuard(receiver, cachedType)"}, replaces = "doCachedTypeCachedOffset")
         public static Object doCachedType(LLVMTruffleAddress receiver, int index,
                         @Cached("getType(receiver)") LLVMRuntimeType cachedType) {
             return doRead(receiver, cachedType, index);
         }
 
-        @Specialization(contains = {"doCachedTypeCachedOffset", "doCachedType"})
-        public static Object doRegular(LLVMTruffleAddress receiver, int index) {
+        @Specialization(replaces = {"doCachedTypeCachedOffset", "doCachedType"})
+        public Object doRegular(LLVMTruffleAddress receiver, int index) {
+            LLVMPerformance.warn(this);
             return doRead(receiver, receiver.getType(), index);
         }
 
@@ -121,7 +123,7 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
             return doFastWrite(frame, receiver, cachedType, cachedIndex, value, toLLVM);
         }
 
-        @Specialization(guards = {"typeGuard(receiver, cachedType)"}, contains = "doCachedTypeCachedOffset")
+        @Specialization(guards = {"typeGuard(receiver, cachedType)"}, replaces = "doCachedTypeCachedOffset")
         public static Object doCachedType(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value,
                         @Cached("getType(receiver)") LLVMRuntimeType cachedType,
                         @Cached("getToLLVMNode(cachedType)") ToLLVMNode toLLVM) {
@@ -130,8 +132,9 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
 
         @Child private ToLLVMNode slowConvert;
 
-        @Specialization(contains = {"doCachedTypeCachedOffset", "doCachedType"})
+        @Specialization(replaces = {"doCachedTypeCachedOffset", "doCachedType"})
         public Object doRegular(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value) {
+            LLVMPerformance.warn(this);
             if (slowConvert == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.slowConvert = insert(ToLLVMNode.createNode(null));

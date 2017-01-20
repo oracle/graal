@@ -39,14 +39,6 @@ import java.util.function.Consumer;
 
 public final class LLVMLogger {
 
-    public static void performanceWarning(String warning) {
-        CompilerAsserts.neverPartOfCompilation();
-        print(LLVMOptions.DEBUG.printPerformanceWarnings()).accept(warning);
-        if (LLVMOptions.DEBUG.performanceWarningsAreFatal()) {
-            throw new AssertionError(warning);
-        }
-    }
-
     public static void error(String error) {
         CompilerAsserts.neverPartOfCompilation();
         // Checkstyle: stop

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
 public abstract class LLVMTruffleRead extends LLVMIntrinsic {
@@ -99,6 +100,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id) {
             checkLLVMTruffleObject(value);
+            LLVMPerformance.warn(this);
             return doRead(frame, value.getObject(), id, foreignRead, toLLVM);
         }
 
@@ -111,6 +113,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
 
         @Specialization
         public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, LLVMAddress id) {
+            LLVMPerformance.warn(this);
             return doRead(frame, value, id, foreignRead, toLLVM);
         }
     }

@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleAddressToFunction extends LLVMIntrinsic {
@@ -52,8 +53,9 @@ public abstract class LLVMTruffleAddressToFunction extends LLVMIntrinsic {
         return cachedDescriptor;
     }
 
-    @Specialization(contains = "cached")
+    @Specialization(replaces = "cached")
     public Object uncached(LLVMAddress value) {
+        LLVMPerformance.warn(this);
         return getDescriptor(value.getVal());
     }
 
