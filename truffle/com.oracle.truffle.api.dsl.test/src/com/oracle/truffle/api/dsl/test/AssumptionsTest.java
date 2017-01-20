@@ -176,6 +176,9 @@ public class AssumptionsTest {
         node.assumptions.get(44).invalidate();
         assertEquals("do1", root.call(42)); // recreates 42
         assertEquals("do2", root.call(43)); // invalid 43 -> remove -> insert do2
+        // here is an unfixed bug in the old dsl layout. the new layout gets rid
+        // of invalid cached entries earlier, therefore lines are available again.
+        assertEquals("do1", root.call(45)); // 43 got removed, so there is space for 45
         assertEquals("do2", root.call(46)); // no more lines can be created.
     }
 
