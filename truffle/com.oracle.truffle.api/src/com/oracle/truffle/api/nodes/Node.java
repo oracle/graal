@@ -55,7 +55,7 @@ import com.oracle.truffle.api.utilities.JSONHelper;
 public abstract class Node implements NodeInterface, Cloneable {
 
     private final NodeClass nodeClass;
-    @CompilationFinal private Node parent;
+    @CompilationFinal private volatile Node parent;
 
     /**
      * Marks array fields that are children of this node.
