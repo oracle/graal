@@ -91,7 +91,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 ValueNode cachedValue = state.getCacheEntry(identifier);
                 if (node instanceof LoadFieldNode) {
                     if (cachedValue != null && access.stamp().isCompatible(cachedValue.stamp())) {
-                        effects.replaceAtUsages(access, cachedValue);
+                        effects.replaceAtUsages(access, cachedValue, access);
                         addScalarAlias(access, cachedValue);
                         deleted = true;
                     } else {
@@ -123,7 +123,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             effects.addFixedNodeBefore(new ValueAnchorNode((ValueNode) read.getGuard()), read);
                         }
                     }
-                    effects.replaceAtUsages(read, cachedValue);
+                    effects.replaceAtUsages(read, cachedValue, read);
                     addScalarAlias(read, cachedValue);
                     deleted = true;
                 } else {
@@ -155,7 +155,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
                     if (cachedValue != null && load.stamp().isCompatible(cachedValue.stamp())) {
-                        effects.replaceAtUsages(load, cachedValue);
+                        effects.replaceAtUsages(load, cachedValue, load);
                         addScalarAlias(load, cachedValue);
                         deleted = true;
                     } else {

@@ -47,7 +47,9 @@ public final class VirtualUtil {
     }
 
     public static boolean assertNonReachable(StructuredGraph graph, List<Node> obsoleteNodes) {
-        // helper code that determines the paths that keep obsolete nodes alive:
+        // Helper code that determines the paths that keep obsolete nodes alive.
+        // Nodes with support for GVN can be kept alive by GVN and are therefore not part of the
+        // assertion.
 
         NodeFlood flood = graph.createNodeFlood();
         EconomicMap<Node, Node> path = CollectionFactory.newMap(Equivalence.IDENTITY);
@@ -95,7 +97,7 @@ public final class VirtualUtil {
         }
         boolean success = true;
         for (Node node : obsoleteNodes) {
-            if (!node.isDeleted() && flood.isMarked(node)) {
+            if (!node.isDeleted() && flood.isMarked(node) && !node.getNodeClass().valueNumberable()) {
                 TTY.println("offending node path:");
                 Node current = node;
                 TTY.print(current.toString());
