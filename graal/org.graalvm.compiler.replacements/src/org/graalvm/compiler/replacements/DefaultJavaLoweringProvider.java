@@ -82,7 +82,6 @@ import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
 import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
-import org.graalvm.compiler.nodes.java.AbstractNewArrayNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.AccessIndexedNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -943,9 +942,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             readArrayLength.setGuard(nullCheck);
             arrayLength = readArrayLength;
         } else {
-            if (array instanceof AbstractNewArrayNode) {
-                arrayLength = n.graph().addOrUnique(new PiNode(arrayLength, StampFactory.positiveInt()));
-            }
             arrayLength = arrayLength.isAlive() ? arrayLength : graph.addOrUniqueWithInputs(arrayLength);
         }
 
