@@ -782,8 +782,6 @@ public class Graph {
 
     }
 
-    static final Node PLACE_HOLDER = new PlaceHolderNode();
-
     public static final int COMPRESSION_THRESHOLD = Options.GraphCompressionThreshold.getValue();
 
     private static final DebugCounter GraphCompressions = Debug.counter("GraphCompressions");
