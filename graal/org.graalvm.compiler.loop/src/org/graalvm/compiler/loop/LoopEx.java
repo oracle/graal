@@ -339,8 +339,8 @@ public class LoopEx {
         LoopBeginNode loopBegin = loop.loopBegin();
         AbstractEndNode forwardEnd = loopBegin.forwardEnd();
         for (PhiNode phi : loopBegin.valuePhis()) {
-            ValueNode backValue = phi.singleBackValue();
-            if (backValue == PhiNode.MULTIPLE_VALUES) {
+            ValueNode backValue = phi.singleBackValueOrThis();
+            if (backValue == phi) {
                 continue;
             }
             ValueNode stride = addSub(loop, backValue, phi);
