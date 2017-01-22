@@ -97,6 +97,9 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         this.domDepth = dominator.domDepth + 1;
     }
 
+    /**
+     * Level in the dominator tree starting with 0 for the start block.
+     */
     public int getDominatorDepth() {
         return domDepth;
     }

@@ -104,6 +104,10 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
     private static final DebugCounter counterLFFolded = Debug.counter("ConstantLFFolded");
     private final boolean fullSchedule;
 
+    public static BasePhase<PhaseContext> create(boolean fullSchedule) {
+        return new NewConditionalEliminationPhase(fullSchedule);
+    }
+
     public DominatorConditionalEliminationPhase(boolean fullSchedule) {
         this.fullSchedule = fullSchedule;
     }
