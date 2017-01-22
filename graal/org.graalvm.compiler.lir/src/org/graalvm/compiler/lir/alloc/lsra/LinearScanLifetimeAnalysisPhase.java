@@ -32,11 +32,9 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.debug.LIRGenerationDebugContext.getSourceForOperandFromDebugContext;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Deque;
 import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
 
 import org.graalvm.compiler.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -60,6 +58,9 @@ import org.graalvm.compiler.lir.alloc.lsra.LinearScan.BlockData;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -128,7 +129,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
         for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
             allocator.initBlockData(block);
 
-            List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
+            ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
 
             int numInst = instructions.size();
             for (int j = 0; j < numInst; j++) {
@@ -166,7 +167,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 final BitSet liveGen = new BitSet(liveSize);
                 final BitSet liveKill = new BitSet(liveSize);
 
-                List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                 int numInst = instructions.size();
 
                 ValueConsumer useConsumer = (operand, mode, flags) -> {
@@ -409,8 +410,8 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                     }
                     try (Indent indent2 = Debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, valueForOperandFromDebugContext)) {
 
-                        Deque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
-                        HashSet<AbstractBlockBase<?>> usedIn = new HashSet<>();
+                        ArrayDeque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
+                        EconomicSet<AbstractBlockBase<?>> usedIn = CollectionFactory.newSet(Equivalence.IDENTITY);
                         for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
                             if (allocator.getBlockData(block).liveGen.get(operandNum)) {
                                 usedIn.add(block);
@@ -738,7 +739,7 @@ public class LinearScanLifetimeAnalysisPhase extends AllocationPhase {
                 AbstractBlockBase<?> block = allocator.blockAt(i);
                 try (Indent indent2 = Debug.logAndIndent("handle block %d", block.getId())) {
 
-                    List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
+                    ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                     final int blockFrom = allocator.getFirstLirInstructionId(block);
                     int blockTo = allocator.getLastLirInstructionId(block);
 

@@ -31,9 +31,9 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
@@ -283,7 +283,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
         }
 
         public int getLastLirInstructionId(AbstractBlockBase<?> block) {
-            List<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
+            ArrayList<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
             int result = instructions.get(instructions.size() - 1).id();
             assert result >= 0;
             return result;
@@ -761,7 +761,7 @@ public final class TraceLinearScanPhase extends TraceAllocationPhase<TraceAlloca
                 TraceIntervalWalker iw = new TraceIntervalWalker(this, fixedInts, otherIntervals);
 
                 for (AbstractBlockBase<?> block : sortedBlocks()) {
-                    List<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
+                    ArrayList<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
 
                     for (int j = 0; j < instructions.size(); j++) {
                         LIRInstruction op = instructions.get(j);

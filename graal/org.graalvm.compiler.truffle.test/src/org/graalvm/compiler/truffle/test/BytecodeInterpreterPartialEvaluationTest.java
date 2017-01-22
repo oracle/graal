@@ -543,6 +543,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
     @Test(timeout = 2000)
     public void manyIfsProgram() {
+        initializeForTimeout();
         byte[] bytecodes = new byte[]{
                         /* 0: */Bytecode.CONST,
                         /* 1: */40,

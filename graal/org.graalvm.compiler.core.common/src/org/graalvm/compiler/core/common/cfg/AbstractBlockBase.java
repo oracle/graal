@@ -158,4 +158,9 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public abstract double probability();
 
     public abstract T getDominator(int distance);
+
+    @Override
+    public int hashCode() {
+        return id;
+    }
 }

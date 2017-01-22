@@ -253,6 +253,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
+        public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
+            throw unimplemented();
+        }
+
+        @Override
         public boolean intrinsify(BytecodeProvider bytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
             return false;
         }
@@ -296,6 +301,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     protected class PEAppendGraphBuilderContext extends PENonAppendGraphBuilderContext {
         protected FixedWithNextNode lastInstr;
         protected ValueNode pushedNode;
+        protected boolean invokeConsumed;
 
         public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr) {
             super(inlineScope, inlineScope.invokeData.invoke);
@@ -358,7 +364,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         private <T extends ValueNode> void updateLastInstruction(T v) {
             if (v instanceof FixedNode) {
                 FixedNode fixedNode = (FixedNode) v;
-                lastInstr.setNext(fixedNode);
+                if (lastInstr != null) {
+                    lastInstr.setNext(fixedNode);
+                }
                 if (fixedNode instanceof FixedWithNextNode) {
                     FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) fixedNode;
                     assert fixedWithNextNode.next() == null : "cannot append instruction to instruction which isn't end";
@@ -367,6 +375,17 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     lastInstr = null;
                 }
             }
+        }
+
+        @Override
+        public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
+            if (invokeConsumed) {
+                throw unimplemented("handleReplacedInvoke can be called only once");
+            }
+            invokeConsumed = true;
+
+            appendInvoke(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData, callTarget);
+            updateLastInstruction(invoke.asNode());
         }
     }
 
@@ -533,16 +552,18 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
 
-            if (graphBuilderContext.lastInstr != null) {
+            if (graphBuilderContext.invokeConsumed) {
+                /* Nothing to do. */
+            } else if (graphBuilderContext.lastInstr != null) {
                 registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
                 invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
                 graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(graphBuilderContext.lastInstr)));
+                deleteInvoke(invoke);
             } else {
                 assert graphBuilderContext.pushedNode == null : "Why push a node when the invoke does not return anyway?";
                 invoke.asNode().replaceAtUsages(null);
+                deleteInvoke(invoke);
             }
-
-            deleteInvoke(invoke);
             return true;
 
         } else {

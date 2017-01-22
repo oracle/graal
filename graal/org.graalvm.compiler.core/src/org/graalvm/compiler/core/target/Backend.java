@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.core.target;
 
-import java.util.Set;
-
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -45,6 +43,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.tiers.TargetProvider;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -226,7 +225,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * is needed for architectures where input/output registers are renamed during a call (e.g.
      * register windows on SPARC). Registers which are not visible by the caller are removed.
      */
-    public abstract Set<Register> translateToCallerRegisters(Set<Register> calleeRegisters);
+    public abstract EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters);
 
     /**
      * Gets the compilation id for a given {@link ResolvedJavaMethod}. Returns

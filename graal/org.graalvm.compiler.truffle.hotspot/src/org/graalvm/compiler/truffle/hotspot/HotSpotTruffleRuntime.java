@@ -47,7 +47,6 @@ import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.GraalDebugConfig;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
@@ -58,6 +57,7 @@ import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -80,6 +80,7 @@ import org.graalvm.compiler.truffle.TruffleCompiler;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.hotspot.nfi.HotSpotNativeFunctionInterface;
 import org.graalvm.compiler.truffle.hotspot.nfi.RawNativeCallNodeFactory;
+
 import com.oracle.nfi.api.NativeFunctionInterface;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -123,7 +124,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         public GraalDebugConfig getDebugConfig() {
             if (Debug.isEnabled()) {
                 SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
-                return DebugEnvironment.initialize(TTY.out().out(), snippetReflection);
+                return DebugEnvironment.ensureInitialized(snippetReflection);
             } else {
                 return null;
             }
@@ -244,7 +245,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         Suites suites = suitesProvider.getDefaultSuites(opts).copy();
         LIRSuites lirSuites = suitesProvider.getDefaultLIRSuites(opts);
         removeInliningPhase(suites);
-        StructuredGraph graph = new StructuredGraph.Builder().method(javaMethod).compilationId(compilationId).build();
+        StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));

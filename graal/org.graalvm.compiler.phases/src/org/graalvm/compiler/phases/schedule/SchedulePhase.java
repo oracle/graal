@@ -31,6 +31,7 @@ import java.util.BitSet;
 import java.util.Formatter;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -161,7 +162,7 @@ public final class SchedulePhase extends Phase {
                 sortNodesLatestWithinBlock(cfg, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited);
 
                 assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
-                assert MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
+                assert (!GraalOptions.DetailedAsserts.getValue()) || MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
 
                 this.blockToNodesMap = latestBlockToNodesMap;
 
@@ -627,7 +628,7 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            assert MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
+            assert (!GraalOptions.DetailedAsserts.getValue()) || MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
         }
 
         private static boolean isFixedEnd(FixedNode endNode) {

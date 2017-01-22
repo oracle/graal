@@ -32,9 +32,6 @@ import static org.graalvm.compiler.lir.LIR.verifyBlock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -100,6 +97,8 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.ImmutableMapCursor;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
@@ -125,7 +124,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     private ValueNode lastInstructionPrinted; // Debugging only
 
     private final NodeMatchRules nodeMatchRules;
-    private Map<Class<? extends Node>, List<MatchStatement>> matchRules;
+    private EconomicMap<Class<? extends Node>, List<MatchStatement>> matchRules;
 
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, NodeMatchRules nodeMatchRules) {
         this.gen = (LIRGenerator) gen;
@@ -178,9 +177,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     @Override
     public ValueNode valueForOperand(Value value) {
         assert nodeOperands != null;
-        for (Entry<Node, Value> entry : nodeOperands.entries()) {
-            if (entry.getValue().equals(value)) {
-                return (ValueNode) entry.getKey();
+        ImmutableMapCursor<Node, Value> cursor = nodeOperands.getEntries();
+        while (cursor.advance()) {
+            if (cursor.getValue().equals(value)) {
+                return (ValueNode) cursor.getKey();
             }
         }
         return null;

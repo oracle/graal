@@ -77,11 +77,11 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         if (Options.Inline.getValue(options)) {
             appendPhase(new InliningPhase(canonicalizer));
             appendPhase(new DeadCodeEliminationPhase(Optional));
+        }
 
-            if (ConditionalElimination.getValue(options)) {
-                appendPhase(canonicalizer);
-                appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
-            }
+        if (ConditionalElimination.getValue(options)) {
+            appendPhase(canonicalizer);
+            appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
         if (OptConvertDeoptsToGuards.getValue(options)) {

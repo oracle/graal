@@ -130,6 +130,9 @@ public class GraalDebugConfig implements DebugConfig {
         @Option(help = "Enable dumping Truffle ASTs to the IdealGraphVisualizer.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintTruffleTrees = new OptionKey<>(true);
 
+        @Option(help = "Treat any exceptions during dumping as fatal.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> DumpingErrorsAreFatal = new OptionKey<>(false);
+
         @Option(help = "Enable dumping canonical text from for graphs.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintCanonicalGraphStrings = new OptionKey<>(false);
         @Option(help = "Base directory when dumping graphs strings to files.", type = OptionType.Debug)

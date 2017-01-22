@@ -1,0 +1,25 @@
+
+builds += [
+  # Darwin AMD64
+  ${gateBootstrapLite8}        ${gateDarwinAMD64Bootstrap}  {name: "gate-bootstraplite-8-darwin-amd64"}
+#GR-2368  ${gateBootstrapLite9}        ${gateDarwinAMD64Bootstrap}  {name: "gate-bootstraplite-9-darwin-amd64"}
+
+  # Linux AMD64
+  ${gateBootstrap8}            ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrap-8-linux-amd64"}
+  ${gateBootstrap8FullVerify}  ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrapfullverify-8-linux-amd64"}
+#GR-2368  ${gateBootstrap9}            ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrap-9-linux-amd64"}
+#GR-2368  ${gateBootstrap9EA}          ${gateLinuxAMD64Bootstrap}   {name: "gate-bootstrap-9EA-linux-amd64"}
+
+  # Solaris SPARC
+  ${gateBootstrap8}            ${gateSolarisSPARCBootstrap} {name: "gate-bootstrap-8-solaris-sparcv9",               timelimit: "1:00:00"}
+#GR-2368  ${gateBootstrap9}            ${gateSolarisSPARCBootstrap} {name: "gate-bootstrap-9-solaris-sparcv9",               timelimit: "1:00:00"}
+#GR-2368  ${gateBootstrap9EA}          ${gateSolarisSPARCBootstrap} {name: "gate-bootstrap-9EA-solaris-sparcv9",             timelimit: "1:00:00"}
+
+  # Linux AMD64 TraceRA
+  ${gateBootstrap8}            ${gateLinuxAMD64TraceRABootstrap} {name: "gate-bootstrap-8-linux-amd64-tracera"}
+  ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABootstrap} {name: "gate-bootstrapfullverify-8-linux-amd64-tracera"}
+
+  # Linux AMD64 TraceRA-BU
+  ${gateBootstrap8}            ${gateLinuxAMD64TraceRABUBootstrap} {name: "gate-bootstrap-8-linux-amd64-tracera-bu"}
+  ${gateBootstrap8FullVerify}  ${gateLinuxAMD64TraceRABUBootstrap} {name: "gate-bootstrapfullverify-8-linux-amd64-tracera-bu"}
+]

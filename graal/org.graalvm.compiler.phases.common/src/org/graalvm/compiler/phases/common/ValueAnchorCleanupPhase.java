@@ -23,10 +23,8 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.List;
-import java.util.Set;
 
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StartNode;
@@ -36,6 +34,9 @@ import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.SinglePassNodeIterator;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicSet;
 
 /**
  * This phase performs a bit of hygiene on {@link ValueAnchorNode} by removing inputs that have
@@ -46,14 +47,14 @@ public class ValueAnchorCleanupPhase extends Phase {
 
     private static class State extends MergeableState<State> implements Cloneable {
 
-        private final Set<Node> anchoredValues;
+        private final EconomicSet<Node> anchoredValues;
 
         State() {
-            anchoredValues = NodeCollectionsFactory.newSet();
+            anchoredValues = CollectionFactory.newSet(Equivalence.IDENTITY);
         }
 
         State(State other) {
-            anchoredValues = NodeCollectionsFactory.newSet(other.anchoredValues);
+            anchoredValues = CollectionFactory.newSet(Equivalence.IDENTITY, other.anchoredValues);
         }
 
         @Override

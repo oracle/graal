@@ -42,9 +42,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.junit.Ignore;
-import org.junit.Test;
-
+import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.OptimizedOSRLoopNode;
@@ -53,6 +51,9 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrid
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -73,7 +74,7 @@ public class OptimizedCallTargetTest {
     static {
         try {
             nodeRewritingAssumptionField = OptimizedCallTarget.class.getDeclaredField("nodeRewritingAssumption");
-            nodeRewritingAssumptionField.setAccessible(true);
+            Util.setAccessible(nodeRewritingAssumptionField, true);
         } catch (NoSuchFieldException | SecurityException e) {
             throw new AssertionError(e);
         }
@@ -90,7 +91,7 @@ public class OptimizedCallTargetTest {
     private static void assertCompiled(OptimizedCallTarget target) {
         assertNotNull(target);
         try {
-            runtime.waitForCompilation(target, 10000);
+            runtime.waitForCompilation(target, 30_000);
         } catch (ExecutionException | TimeoutException e) {
             fail("timeout");
         }

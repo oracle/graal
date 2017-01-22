@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -151,7 +152,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     @Override
     public void replaceWithValue(ValueNode replacement) {
-        effects.replaceAtUsages(current, closure.getScalarAlias(replacement));
+        effects.replaceAtUsages(current, closure.getScalarAlias(replacement), position);
         closure.addScalarAlias(current, replacement);
         deleted = true;
     }
@@ -195,6 +196,17 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         state.addObject(id, new ObjectState(entryState, locks, ensureVirtualized));
         closure.addAndMarkAlias(virtualObject, virtualObject);
         PartialEscapeClosure.COUNTER_ALLOCATION_REMOVED.increment();
+        effects.add("createVirtual", new EffectList.SimpleEffect() {
+            @Override
+            public void apply(StructuredGraph graph) {
+                // nothing to do
+            }
+
+            @Override
+            public int virtualObjects() {
+                return 1;
+            }
+        });
     }
 
     @Override

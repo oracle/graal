@@ -54,15 +54,19 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
     }
 
     @Override
-    public boolean canInlineConstant(JavaConstant c) {
-        switch (c.getJavaKind()) {
-            case Long:
-                return NumUtil.isInt(c.asLong());
-            case Object:
-                return c.isNull();
-            default:
-                return true;
+    public boolean canInlineConstant(Constant con) {
+        if (con instanceof JavaConstant) {
+            JavaConstant c = (JavaConstant) con;
+            switch (c.getJavaKind()) {
+                case Long:
+                    return NumUtil.isInt(c.asLong());
+                case Object:
+                    return c.isNull();
+                default:
+                    return true;
+            }
         }
+        return false;
     }
 
     @Override

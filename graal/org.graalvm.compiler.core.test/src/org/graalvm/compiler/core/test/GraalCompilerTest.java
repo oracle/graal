@@ -53,10 +53,12 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.GraalCompiler.Request;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
@@ -107,6 +109,7 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.TargetProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.After;
 import org.junit.Assert;
@@ -115,6 +118,7 @@ import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.TargetDescription;
@@ -128,6 +132,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.Assumptions.Assumption;
+import jdk.vm.ci.services.Services;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -148,10 +153,36 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
+@AddExports({"jdk.vm.ci/jdk.vm.ci.meta",
+                "jdk.vm.ci/jdk.vm.ci.code",
+                "java.base/jdk.internal.org.objectweb.asm",
+                "java.base/jdk.internal.org.objectweb.asm.tree"})
 public abstract class GraalCompilerTest extends GraalTest {
 
+    private static final int BAILOUT_RETRY_LIMIT = 1;
     private final Providers providers;
     private final Backend backend;
+
+    /**
+     * Representative class for the {@code java.base} module.
+     */
+    public static final Class<?> JAVA_BASE = Class.class;
+
+    /**
+     * Representative class for the {@code jdk.vm.ci} module.
+     */
+    public static final Class<?> JDK_VM_CI = Services.class;
+
+    /**
+     * Exports the package named {@code packageName} declared in {@code moduleMember}'s module to
+     * this object's module. This must be called before accessing packages that are no longer public
+     * as of JDK 9.
+     */
+    protected final void exportPackage(Class<?> moduleMember, String packageName) {
+        if (!Java8OrEarlier) {
+            ModuleAPI.exportPackageTo(moduleMember, packageName, getClass());
+        }
+    }
 
     /**
      * Denotes a test method that must be inlined by the {@link BytecodeParser}.
@@ -711,14 +742,15 @@ public abstract class GraalCompilerTest extends GraalTest {
         test(GLOBAL, name, args);
     }
 
-    protected final void test(OptionValues options, String name, Object... args) {
+    protected final Result test(OptionValues options, String name, Object... args) {
         try {
             ResolvedJavaMethod method = getResolvedJavaMethod(name);
             Object receiver = method.isStatic() ? null : this;
-            test(options, method, receiver, args);
+            return test(options, method, receiver, args);
         } catch (AssumptionViolatedException e) {
             // Suppress so that subsequent calls to this method within the
             // same Junit @Test annotated method can proceed.
+            return null;
         }
     }
 
@@ -738,16 +770,16 @@ public abstract class GraalCompilerTest extends GraalTest {
         return supplier;
     }
 
-    protected final void test(ResolvedJavaMethod method, Object receiver, Object... args) {
-        test(GLOBAL, method, receiver, args);
+    protected Result test(ResolvedJavaMethod method, Object receiver, Object... args) {
+        return test(GLOBAL, method, receiver, args);
     }
 
-    protected void test(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
+    protected Result test(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
-        if (getCodeCache() == null) {
-            return;
+        if (getCodeCache() != null) {
+            testAgainstExpected(options, method, expect, receiver, args);
         }
-        testAgainstExpected(options, method, expect, receiver, args);
+        return expect;
     }
 
     /**
@@ -870,40 +902,54 @@ public abstract class GraalCompilerTest extends GraalTest {
                 }
             }
         }
-        final CompilationIdentifier id = getOrCreateCompilationId(installedCodeOwner, graph);
+        // loop for retrying compilation
+        for (int retry = 0; retry <= BAILOUT_RETRY_LIMIT; retry++) {
+            final CompilationIdentifier id = getOrCreateCompilationId(installedCodeOwner, graph);
 
-        InstalledCode installedCode = null;
-        try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(id.toString(CompilationIdentifier.Verbosity.ID), true))) {
-            final boolean printCompilation = PrintCompilation.getValue(options) && !TTY.isSuppressed();
-            if (printCompilation) {
-                TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(), installedCodeOwner.getSignature()));
-            }
-            long start = System.currentTimeMillis();
-            CompilationResult compResult = compile(installedCodeOwner, graph, new CompilationResult(), id, options);
-            if (printCompilation) {
-                TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
-            }
-
-            try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult)) {
-                if (installAsDefault) {
-                    installedCode = addDefaultMethod(installedCodeOwner, compResult);
-                } else {
-                    installedCode = addMethod(installedCodeOwner, compResult);
+            InstalledCode installedCode = null;
+            try (AllocSpy spy = AllocSpy.open(installedCodeOwner); Scope ds = Debug.scope("Compiling", new DebugDumpScope(id.toString(CompilationIdentifier.Verbosity.ID), true))) {
+                final boolean printCompilation = PrintCompilation.getValue(options) && !TTY.isSuppressed();
+                if (printCompilation) {
+                    TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s ...", id, installedCodeOwner.getDeclaringClass().getName(), installedCodeOwner.getName(),
+                                    installedCodeOwner.getSignature()));
                 }
-                if (installedCode == null) {
-                    throw new GraalError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
+                long start = System.currentTimeMillis();
+                CompilationResult compResult = compile(installedCodeOwner, graph, new CompilationResult(), id, options);
+                if (printCompilation) {
+                    TTY.println(String.format("@%-6s Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
+                }
+
+                try (Scope s = Debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult)) {
+                    try {
+                        if (installAsDefault) {
+                            installedCode = addDefaultMethod(installedCodeOwner, compResult);
+                        } else {
+                            installedCode = addMethod(installedCodeOwner, compResult);
+                        }
+                        if (installedCode == null) {
+                            throw new GraalError("Could not install code for " + installedCodeOwner.format("%H.%n(%p)"));
+                        }
+                    } catch (BailoutException e) {
+                        if (retry <= BAILOUT_RETRY_LIMIT && graph == null && !e.isPermanent()) {
+                            // retry (if there is no predefined graph)
+                            TTY.println(String.format("Restart compilation %s (%s) due to a non-permanent bailout!", installedCodeOwner, id));
+                            continue;
+                        }
+                        throw e;
+                    }
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
                 }
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
 
-        if (!forceCompile) {
-            cache.put(installedCodeOwner, installedCode);
+            if (!forceCompile) {
+                cache.put(installedCodeOwner, installedCode);
+            }
+            return installedCode;
         }
-        return installedCode;
+        throw GraalError.shouldNotReachHere();
     }
 
     /**
@@ -1249,5 +1295,14 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     protected boolean isArchitecture(String name) {
         return name.equals(backend.getTarget().arch.getName());
+    }
+
+    /**
+     * This method should be called in "timeout" tests which JUnit runs in a different thread.
+     */
+    public static void initializeForTimeout() {
+        // timeout tests run in a separate thread which needs the DebugEnvironment to be
+        // initialized
+        DebugEnvironment.ensureInitialized();
     }
 }

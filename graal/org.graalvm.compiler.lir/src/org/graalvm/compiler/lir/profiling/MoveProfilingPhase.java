@@ -121,7 +121,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
             int size = names.size();
             if (size > 0) { // Don't pollute LIR when nothing has to be done
                 assert size > 0 && size == groups.size() && size == increments.size();
-                List<LIRInstruction> instructions = lirGenRes.getLIR().getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = lirGenRes.getLIR().getLIRforBlock(block);
                 LIRInstruction inst = diagnosticLirGenTool.createMultiBenchmarkCounter(names.toArray(new String[size]), groups.toArray(new String[size]),
                                 increments.toArray(new Value[size]));
                 assert inst != null;

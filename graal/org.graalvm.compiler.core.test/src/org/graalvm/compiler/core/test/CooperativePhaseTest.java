@@ -102,6 +102,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @Test(timeout = 60_000)
     @SuppressWarnings("try")
     public void test01() {
+        initializeForTimeout();
         OptionValues options = new OptionValues(GLOBAL, CompilationExpirationPeriod, 1/* sec */);
         try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(GLOBAL)) {
             StructuredGraph g = parseEager("snippet", AllowAssumptions.NO, options);
@@ -112,6 +113,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @Test(expected = RetryableBailoutException.class, timeout = 60_000)
     @SuppressWarnings("try")
     public void test02() {
+        initializeForTimeout();
         OptionValues options = new OptionValues(GLOBAL, CompilationExpirationPeriod, 1/* sec */);
         try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(GLOBAL)) {
             StructuredGraph g = parseEager("snippet", AllowAssumptions.NO, options);
@@ -122,6 +124,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @Test(timeout = 60_000)
     @SuppressWarnings("try")
     public void test03() {
+        initializeForTimeout();
         // 0 disables alarm utility
         OptionValues options = new OptionValues(GLOBAL, CompilationExpirationPeriod, 0);
         try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(GLOBAL)) {
@@ -133,6 +136,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @Test(timeout = 60_000)
     @SuppressWarnings("try")
     public void test04() {
+        initializeForTimeout();
         StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
         new CooperativePhaseWithoutAlarm().apply(g);
     }

@@ -209,7 +209,7 @@ public class GuardedIntrinsicTest extends GraalCompilerTest {
         @Override
         public int hashCode() {
             int result = ((identity == null) ? 0 : identity.hashCode());
-            return result + object.hashCode();
+            return result + System.identityHashCode(object);
         }
     }
 

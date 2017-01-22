@@ -1,6 +1,6 @@
-This page describes various presentations and publications related to Graal.
+This page describes various presentations and publications related to Graal and Truffle that were published by Oracle Labs and its academic colaborators.
 
-### Graal Tutorial
+## Graal Tutorial
 
 This tutorial presents Graal, a high-performance dynamic compiler for Java written in Java. It covers the following topics:
 
@@ -18,75 +18,193 @@ CGO 2015, February 7-11, San Francisco, CA<br>
 Video recording: [Part 1](https://youtu.be/Af9T9kFk1lM), [Part 2](https://youtu.be/WyU7KctlhzE)<br>
 [Download Slides](http://lafo.ssw.uni-linz.ac.at/papers/2015_CGO_Graal.pdf)
 
-### Graal Papers
-*   Josef Eisl, Matthias Grimmer, Doug Simon, Thomas Würthinger, Hanspeter Mössenböck:<br>
-    __Trace-based Register Allocation in a JIT Compiler__<br>
-    In _Proceedings of the 13th International Conference on Principles and Practices of Programming on the Java Platform: Virtual Machines, Languages, and Tools (PPPJ)_, 2016.<br>
-    [Download Paper](http://dl.acm.org/citation.cfm?id=2972206.2972211)
+## Graal Papers
 
-*   Josef Eisl:<br>
-    __Trace register allocation__<br>
-    In _Companion Proceedings of the 2015 ACM SIGPLAN International Conference on Systems, Programming, Languages and Applications: Software for Humanity (SPLASH Companion)_, 2015.<br>
-    [Download Paper](http://dl.acm.org/citation.cfm?doid=2814189.2814199)
+### 2016
 
-*   Doug Simon, Christian Wimmer, Bernhard Urban, Gilles Duboscq, Lukas Stadler, Thomas Würthinger:<br>
-    __Snippets: Taking the High Road to a Low Level__<br>
-    In _Transactions on Architecture and Code Optimization (TACO)_, 2015<br>
-    [Download paper](http://dx.doi.org/10.1145/2764907)<br>
-    Describes Graal Snippets.
+- Josef Eisl, Matthias Grimmer, Doug Simon, Thomas Würthinger, Hanspeter Mössenböck  
+[**Trace-based Register Allocation in a JIT Compiler**](http://dx.doi.org/10.1145/2972206.2972211)  
+In Proceedings of the 13th International Conference on Principles and Practices of Programming on the Java Platform: Virtual Machines, Languages, and Tools (PPPJ '16)
 
-*   David Leopoldseder, Lukas Stadler, Christian Wimmer, Hanspeter Mössenböck:<br>
-    __Java-to-JavaScript Translation via Structured Control Flow Reconstruction of Compiler IR__<br>
-    In _Proceedings of the 11th Dynamic Language Symposium (DLS)_, 2015.<br>
-    [Download Paper](http://dx.doi.org/10.1145/2816707.2816715)
+- Stefan Marr, Benoit Daloze, Hanspeter Mössenböck  
+[**Cross-language compiler benchmarking: are we fast yet?**](https://doi.org/10.1145/2989225.2989232)  
+In Proceedings of the 12th Symposium on Dynamic Languages (DLS 2016)
 
-*   Gilles Duboscq, Thomas Würthinger, Hanspeter Mössenböck:<br>
-    __Speculation Without Regret: Reducing Deoptimization Meta-data in the Graal compiler__<br>
-    In _Proceedings of the Intl. Conf. on Principles and Practice of Programming in Java (PPPJ'14)_, 2014<br>
-    [Download paper](http://ssw.jku.at/General/Staff/GD/PPPJ-2014-duboscq-29.pdf)<br>
-    Describes techniques used in Graal to reduce the memory footprint of speculative optimizations.
+- Manuel Rigger, Matthias Grimmer, Christian Wimmer, Thomas Würthinger, Hanspeter Mössenböck  
+[**Bringing low-level languages to the JVM: efficient execution of LLVM IR on Truffle**](https://doi.org/10.1145/2998415.2998416)  
+In Proceedings of the 8th International Workshop on Virtual Machines and Intermediate Languages (VMIL 2016)
 
-*   Lukas Stadler:<br>
-    __Partial Escape Analysis and Scalar Replacement for Java__<br>
-    PhD thesis, Johannes Kepler University Linz, 2014.<br>
-    [Download](http://ssw.jku.at/Research/Papers/Stadler14PhD/Thesis_Stadler_14.pdf)
+- Manuel Rigger  
+[**Sulong: Memory Safe and Efficient Execution of LLVM-Based Languages**](http://ssw.jku.at/General/Staff/ManuelRigger/ECOOP16-DS.pdf)  
+ECOOP 2016 Doctoral Symposium
 
-*   Lukas Stadler, Thomas Würthinger, Hanspeter Mössenböck:<br>
-    __Partial Escape Analysis and Scalar Replacement for Java__<br>
-    In _Proceedings of the Symposium on Code Generation and Optimization (CGO)_, 2014.<br>
-    [Download paper](http://ssw.jku.at/Research/Papers/Stadler14/Stadler2014-CGO-PEA.pdf)<br>
-    Describes Graal's advanced escape analysis algorithm.
+- Manuel Rigger, Matthias Grimmer, Hanspeter Mössenböck  
+[**Sulong - Execution of LLVM-Based Languages on the JVM**](http://2016.ecoop.org/event/icooolps-2016-sulong-execution-of-llvm-based-languages-on-the-jvm)  
+Int. Workshop on Implementation, Compilation, Optimization of Object-Oriented Languages, Programs and Systems (ICOOOLPS'16)
 
-*   Gilles Duboscq, Thomas Würthinger, Lukas Stadler, Christian Wimmer, Doug Simon, Hanspeter Mössenböck:<br>
-    __An Intermediate Representation for Speculative Optimizations in a Dynamic Compiler__<br>
-    In _Proceedings of the Workshop on Virtual Machines and Intermediate Languages_, 2013.<br>
-    [Download paper](http://lafo.ssw.uni-linz.ac.at/papers/2013_VMIL_GraalIR.pdf)<br>
-    Describes the speculative optimizations that Graal's graph-base intermediate representation allows.
 
-*   Lukas Stadler, Gilles Duboscq, Hanspeter Mössenböck, Thomas Würthinger, Doug Simon:<br>
-    __An Experimental Study of the Influence of Dynamic Compiler Optimizations on Scala Performance__<br>
-    In _Proceedings of the 4th Workshop on Scala_ (SCALA '13), 2013.<br>
-    [Download paper](http://lampwww.epfl.ch/~hmiller/scala2013/resources/pdfs/paper9.pdf)
+- Luca Salucci, Daniele Bonetta, Walter Binder  
+[**Efficient Embedding of Dynamic Languages in Big-Data Analytics**](http://ieeexplore.ieee.org/document/7756203/)  
+International Conference on Distributed Computing Systems Workshops (ICDCSW 2016)
 
-*   Gilles Duboscq, Lukas Stadler, Thomas Würthinger, Doug Simon, Christian Wimmer, Hanspeter Mössenböck:<br>
-    __Graal IR: An Extensible Declarative Intermediate Representation__<br>
-    In _Proceedings of the Asia-Pacific Programming Languages and Compilers Workshop_, 2013.<br>
-    [Download paper](http://lafo.ssw.uni-linz.ac.at/papers/2013_APPLC_GraalIR.pdf)<br>
-    Describes the basic architecture of Graal's graph-based intermediate representation.
+- Lukas Stadler, Adam Welc, Christian Humer, Mick Jordan  
+[**Optimizing R language execution via aggressive speculation**](https://doi.org/10.1145/2989225.2989236)  
+In Proceedings of the 12th Symposium on Dynamic Languages (DLS 2016)
 
-*   Lukas Stadler, Gilles Duboscq, Hanspeter Mössenböck, Thomas Würthinger:<br>
-    __Compilation Queueing and Graph Caching for Dynamic Compilers__<br>
-    In _Proceedings of the sixth ACM workshop on Virtual machines and intermediate languages_, 2012.<br>
-    [Download paper](http://lafo.ssw.uni-linz.ac.at/papers/2012_VMIL_Graal.pdf)
+- Daniele Bonetta, Luca Salucci, Stefan Marr, Walter Binder  
+[**GEMs: shared-memory parallel programming for Node.js**](https://doi.org/10.1145/2983990.2984039)  
+In Proceedings of the 2016 ACM SIGPLAN International Conference on Object-Oriented Programming, Systems, Languages, and Applications (OOPSLA 2016)
 
-*   Thomas Würthinger, Christian Wimmer, Andreas Wöß, Lukas Stadler, Gilles Duboscq, Christian Humer, Gregor Richards, Doug Simon, Mario Wolczko:<br>
-    __One VM to Rule Them All__<br>
-    In _Proceedings of Onward!_, 2013.<br>
-    [Download paper](http://lafo.ssw.uni-linz.ac.at/papers/2013_Onward_OneVMToRuleThemAll.pdf)<br>
-    Describes the vision of the Truffle approach, and the full system stack including the interpreter and dynamic compiler.
+- Benoit Daloze, Stefan Marr, Daniele Bonetta, Hanspeter Mössenböck  
+[**Efficient and thread-safe objects for dynamically-typed languages**](https://doi.org/10.1145/3022671.2984001)  
+In Proceedings of the 2016 ACM SIGPLAN International Conference on Object-Oriented Programming, Systems, Languages, and Applications (OOPSLA 2016)
 
-*   Thomas Würthinger, Andreas Wöß, Lukas Stadler, Gilles Duboscq, Doug Simon, Christian Wimmer:<br>
-    __Self-Optimizing AST Interpreters__<br>
-    In _Proceedings of the Dynamic Languages Symposium (DLS)_, 2012.<br>
-    [Download paper](http://lafo.ssw.uni-linz.ac.at/papers/2012_DLS_SelfOptimizingASTInterpreters.pdf)<br>
-    Describes the design of self-optimizing and self-specializing interpreter, and the application to JavaScript.
+- Luca Salucci, Daniele Bonetta, Walter Binder  
+[**Lightweight Multi-language Bindings for Apache Spark**](http://link.springer.com/chapter/10.1007/978-3-319-43659-3_21)  
+European Conference on Parallel Processing (Euro-Par 2016)
+
+- Luca Salucci, Daniele Bonetta, Stefan Marr, Walter Binder  
+[**Generic messages: capability-based shared memory parallelism for event-loop systems**](https://doi.org/10.1145/3016078.2851184)  
+Proceedings of the 21st ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming (PPoPP 2016)
+
+### 2015
+
+- Josef Eisl  
+[**Trace register allocation**](https://doi.org/10.1145/2814189.2814199)    
+In Companion Proceedings of the 2015 ACM SIGPLAN International Conference on Systems, Programming, Languages and Applications: Software for Humanity (SPLASH Companion 2015)
+
+- Matthias Grimmer, Chris Seaton, Roland Schatz, Thomas Würthinger, Hanspeter Mössenböck  
+[**High-performance cross-language interoperability in a multi-language runtime**](http://dx.doi.org/10.1145/2936313.2816714)  
+In Proceedings of the 11th Symposium on Dynamic Languages (DLS 2015)
+
+- Matthias Grimmer, Roland Schatz, Chris Seaton, Thomas Würthinger, Hanspeter Mössenböck  
+[**Memory-safe Execution of C on a Java VM**](http://dx.doi.org/10.1145/2786558.2786565)  
+In Proceedings of the 10th ACM Workshop on Programming Languages and Analysis for Security (PLAS'15)
+
+- Matthias Grimmer, Chris Seaton, Thomas Würthinger, Hanspeter Mössenböck  
+[**Dynamically composing languages in a modular way: supporting C extensions for dynamic languages**](http://dx.doi.org/10.1145/2724525.2728790)  
+In Proceedings of the 14th International Conference on Modularity (MODULARITY 2015)
+
+- Doug Simon, Christian Wimmer, Bernhard Urban, Gilles Duboscq, Lukas Stadler, Thomas Würthinger  
+[**Snippets: Taking the High Road to a Low Level**](http://dx.doi.org/10.1145/2764907)  
+ACM Transactions on Architecture and Code Optimization (TACO)
+
+- David Leopoldseder, Lukas Stadler, Christian Wimmer, Hanspeter Mössenböck  
+[**Java-to-JavaScript translation via structured control flow reconstruction of compiler IR**](http://dx.doi.org/10.1145/2816707.2816715)  
+In Proceedings of the 11th Symposium on Dynamic Languages (DLS 2015)
+
+- Stefan Marr, Chris Seaton, Stéphane Ducasse  
+[**Zero-overhead metaprogramming: reflection and metaobject protocols fast and without compromises**](http://dx.doi.org/10.1145/2813885.2737963)  
+In Proceedings of the 36th ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI 2016)
+
+- Codruţ Stancu, Christian Wimmer, Stefan Brunthaler, Per Larsen, Michael Franz  
+[**Safe and efficient hybrid memory management for Java**](http://dx.doi.org/10.1145/2887746.2754185)  
+Proceedings of the 2015 International Symposium on Memory Management (ISMM 2015)
+
+- Gülfem Savrun-Yeniçeri, Michael L. Van de Vanter, Per Larsen, Stefan Brunthaler, Michael Franz  
+[**An Efficient and Generic Event-based Profiler Framework for Dynamic Languages**](http://dx.doi.org/10.1145/2807426.2807435)  
+In Proceedings of the Principles and Practices of Programming on The Java Platform (PPPJ '15)
+
+- Michael L. Van De Vanter  
+[**Building debuggers and other tools: we can "have it all"**](http://dx.doi.org/10.1145/2843915.2843917)  
+In Proceedings of the 10th Workshop on Implementation, Compilation, Optimization of Object-Oriented Languages, Programs and Systems (ICOOOLPS '15)
+
+- Benoit Daloze, Chris Seaton, Daniele Bonetta, Hanspeter Mössenböck  
+[**Techniques and applications for guest-language safepoints**](http://dx.doi.org/10.1145/2843915.2843921)  
+In Proceedings of the 10th Workshop on Implementation, Compilation, Optimization of Object-Oriented Languages, Programs and Systems (ICOOOLPS '15)
+
+### 2014
+
+- Matthias Grimmer  
+[**High-performance language interoperability in multi-language runtimes**](http://dx.doi.org/10.1145/2660252.2660256)  
+ In Proceedings of the companion publication of the 2014 ACM SIGPLAN conference on Systems, Programming, and Applications: Software for Humanity (SPLASH '14)
+
+- Matthias Grimmer, Manuel Rigger, Roland Schatz, Lukas Stadler, Hanspeter Mössenböck  
+ [**TruffleC: dynamic execution of C on a Java virtual machine**](http://dx.doi.org/10.1145/2647508.2647528)  
+ In Proceedings of the 2014 International Conference on Principles and Practices of Programming on the Java platform: Virtual machines, Languages, and Tools (PPPJ '14) 
+
+- Matthias Grimmer, Thomas Würthinger, Andreas Wöß, Hanspeter Mössenböck  
+[**An efficient approach for accessing C data structures from JavaScript**](http://dx.doi.org/10.1145/2633301.2633302)  
+In Proceedings of the 9th International Workshop on Implementation, Compilation, Optimization of Object-Oriented Languages, Programs and Systems PLE (ICOOOLPS '14)
+
+- Christian Humer, Christian Wimmer, Christian Wirth, Andreas Wöß, Thomas Würthinger  
+[**A domain-specific language for building self-optimizing AST interpreters**](http://dx.doi.org/10.1145/2658761.2658776)  
+In Proceedings of the 2014 International Conference on Generative Programming: Concepts and Experiences (GPCE 2014)
+
+- Gilles Duboscq, Thomas Würthinger, Hanspeter Mössenböck  
+[**Speculation without regret: reducing deoptimization meta-data in the Graal compiler**](http://dx.doi.org/10.1145/2647508.2647521)  
+In Proceedings of the 2014 International Conference on Principles and Practices of Programming on the Java platform: Virtual machines, Languages, and Tools (PPPJ '14)
+
+- Thomas Würthinger  
+[**Graal and truffle: modularity and separation of concerns as cornerstones for building a multipurpose runtime**](http://dx.doi.org/10.1145/2584469.2584663)  
+In Proceedings of the companion publication of the 13th international conference on Modularity (MODULARITY '14)
+
+- Lukas Stadler, Thomas Würthinger, Hanspeter Mössenböck
+[**Partial Escape Analysis and Scalar Replacement for Java**](http://dx.doi.org/10.1145/2544137.2544157)  
+In Proceedings of Annual IEEE/ACM International Symposium on Code Generation and Optimization (CGO '14)
+
+- Christian Häubl, Christian Wimmer, Hanspeter Mössenböck  
+[**Trace transitioning and exception handling in a trace-based JIT compiler for java**](http://dx.doi.org/10.1145/2579673)  
+ACM Transactions on Architecture and Code Optimization (TACO)
+
+- Chris Seaton, Michael L. Van De Vanter, Michael Haupt  
+[**Debugging at Full Speed**](http://dx.doi.org/10.1145/2617548.2617550)  
+In Proceedings of the Workshop on Dynamic Languages and Applications (Dyla'14)
+
+- Andreas Wöß, Christian Wirth, Daniele Bonetta, Chris Seaton, Christian Humer, Hanspeter Mössenböck  
+[**An object storage model for the truffle language implementation framework**](http://dx.doi.org/10.1145/2647508.2647517)  
+In Proceedings of the 2014 International Conference on Principles and Practices of Programming on the Java platform: Virtual machines, Languages, and Tools (PPPJ '14)
+
+- Codruţ Stancu, Christian Wimmer, Stefan Brunthaler, Per Larsen, Michael Franz  
+[**Comparing points-to static analysis with runtime recorded profiling data**](http://dx.doi.org/10.1145/2647508.2647524)  
+In Proceedings of the 2014 International Conference on Principles and Practices of Programming on the Java platform: Virtual machines, Languages, and Tools (PPPJ '14)
+
+### 2013
+
+- Matthias Grimmer, Manuel Rigger, Lukas Stadler, Roland Schatz, Hanspeter Mössenböck  
+[**An efficient native function interface for Java**](http://dx.doi.org/10.1145/2500828.2500832)  
+In Proceedings of the 2013 International Conference on Principles and Practices of Programming on the Java Platform: Virtual Machines, Languages, and Tools (PPPJ '13)
+
+- Thomas Würthinger, Christian Wimmer, Andreas Wöß, Lukas Stadler, Gilles Duboscq, Christian Humer, Gregor Richards, Doug Simon, Mario Wolczko  
+[**One VM to rule them all**](http://dx.doi.org/10.1145/2509578.2509581)  
+In Proceedings of the 2013 ACM international symposium on New ideas, new paradigms, and reflections on programming & software (Onward! 2013)
+
+- Gilles Duboscq, Thomas Würthinger, Lukas Stadler, Christian Wimmer, Doug Simon, Hanspeter Mössenböck  
+[**An intermediate representation for speculative optimizations in a dynamic compiler**](ttp://dx.doi.org/10.1145/2542142.2542143)  
+In Proceedings of the 7th ACM workshop on Virtual machines and intermediate languages (VMIL '13)
+
+- Lukas Stadler, Gilles Duboscq, Hanspeter Mössenböck, Thomas Würthinger, Doug Simon  
+[**An experimental study of the influence of dynamic compiler optimizations on Scala performance**](http://dx.doi.org/10.1145/2489837.2489846)  
+In Proceedings of the 4th Workshop on Scala (SCALA '13)
+
+- Gilles Duboscq, Lukas Stadler, Thomas Würthinger, Doug Simon, Christian Wimmer, Hanspeter Mössenböck  
+[**Graal IR: An Extensible Declarative Intermediate Representation**](http://ssw.jku.at/General/Staff/GD/APPLC-2013-paper_12.pdf)  
+In Proceedings of the Asia-Pacific Programming Languages and Compilers Workshop, 2013.
+
+- Christian Häubl, Christian Wimmer, Hanspeter Mössenböck
+[**Context-sensitive trace inlining for Java**](http://dx.doi.org/10.1016/j.cl.2013.04.002)  
+Special issue on the Programming Languages track at the 27th ACM Symposium on Applied Computing
+Computer Languages, Systems & Structures
+
+- Christian Wimmer, Stefan Brunthaler  
+[**ZipPy on truffle: a fast and simple implementation of python**](http://dx.doi.org/10.1145/2508075.2514572)  
+In Proceedings of the 2013 companion publication for conference on Systems, programming, & applications: software for humanity (SPLASH '13)
+
+- Christian Häubl, Christian Wimmer, Hanspeter Mössenböck  
+[**Deriving code coverage information from profiling data recorded for a trace-based just-in-time compiler**](http://dx.doi.org/10.1145/2500828.2500829)  
+In Proceedings of the 2013 International Conference on Principles and Practices of Programming on the Java Platform: Virtual Machines, Languages, and Tools (PPPJ '13)
+
+### 2012
+
+- Thomas Würthinger, Andreas Wöß, Lukas Stadler, Gilles Duboscq, Doug Simon, Christian Wimmer  
+[**Self-optimizing AST interpreters**](http://dl.acm.org/citation.cfm?doid=2384577.2384587)  
+Proceedings of the 8th symposium on Dynamic languages (DLS '12)
+
+- Christian Wimmer, Thomas Würthinger  
+[**Truffle: a self-optimizing runtime system**](http://dx.doi.org/10.1145/2384716.2384723)  
+In Proceedings of the 3rd annual conference on Systems, programming, and applications: software for humanity (SPLASH '12)
+
+- Christian Häubl, Christian Wimmer, Hanspeter Mössenböck  
+[**Evaluation of trace inlining heuristics for Java**](http://dx.doi.org/10.1145/2245276.2232084)  
+In Proceedings of the 27th Annual ACM Symposium on Applied Computing (SAC '12)
+

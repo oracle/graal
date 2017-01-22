@@ -123,48 +123,58 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
 
     @Override
     protected ValueNode canonicalizeSymmetricConstant(CanonicalizerTool tool, Constant constant, ValueNode nonConstant, boolean mirrored) {
-        if (constant instanceof PrimitiveConstant && ((PrimitiveConstant) constant).asLong() == 0) {
-            if (nonConstant instanceof AndNode) {
-                AndNode andNode = (AndNode) nonConstant;
-                return new IntegerTestNode(andNode.getX(), andNode.getY());
-            } else if (nonConstant instanceof SubNode) {
-                SubNode subNode = (SubNode) nonConstant;
-                return IntegerEqualsNode.create(subNode.getX(), subNode.getY(), tool.getConstantReflection());
-            } else if (nonConstant instanceof ShiftNode && nonConstant.stamp() instanceof IntegerStamp) {
-                if (nonConstant instanceof LeftShiftNode) {
-                    LeftShiftNode shift = (LeftShiftNode) nonConstant;
-                    if (shift.getY().isConstant()) {
-                        int mask = shift.getShiftAmountMask();
-                        int amount = shift.getY().asJavaConstant().asInt() & mask;
-                        if (shift.getX().getStackKind() == JavaKind.Int) {
-                            return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 >>> amount));
-                        } else {
-                            assert shift.getX().getStackKind() == JavaKind.Long;
-                            return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L >>> amount));
+        if (constant instanceof PrimitiveConstant) {
+            PrimitiveConstant primitiveConstant = (PrimitiveConstant) constant;
+            IntegerStamp nonConstantStamp = ((IntegerStamp) nonConstant.stamp());
+            if ((primitiveConstant.asLong() == 1 && nonConstantStamp.upperBound() == 1 && nonConstantStamp.lowerBound() == 0) ||
+                            (primitiveConstant.asLong() == -1 && nonConstantStamp.upperBound() == 0 && nonConstantStamp.lowerBound() == -1)) {
+                // nonConstant can only be 0 or 1 (respective -1), test against 0 instead of 1
+                // (respective -1) for a more canonical graph and also to allow for faster execution
+                // on specific platforms.
+                return LogicNegationNode.create(IntegerEqualsNode.create(nonConstant, ConstantNode.forIntegerKind(nonConstant.getStackKind(), 0), null));
+            } else if (primitiveConstant.asLong() == 0) {
+                if (nonConstant instanceof AndNode) {
+                    AndNode andNode = (AndNode) nonConstant;
+                    return new IntegerTestNode(andNode.getX(), andNode.getY());
+                } else if (nonConstant instanceof SubNode) {
+                    SubNode subNode = (SubNode) nonConstant;
+                    return IntegerEqualsNode.create(subNode.getX(), subNode.getY(), tool.getConstantReflection());
+                } else if (nonConstant instanceof ShiftNode && nonConstant.stamp() instanceof IntegerStamp) {
+                    if (nonConstant instanceof LeftShiftNode) {
+                        LeftShiftNode shift = (LeftShiftNode) nonConstant;
+                        if (shift.getY().isConstant()) {
+                            int mask = shift.getShiftAmountMask();
+                            int amount = shift.getY().asJavaConstant().asInt() & mask;
+                            if (shift.getX().getStackKind() == JavaKind.Int) {
+                                return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 >>> amount));
+                            } else {
+                                assert shift.getX().getStackKind() == JavaKind.Long;
+                                return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L >>> amount));
+                            }
                         }
-                    }
-                } else if (nonConstant instanceof RightShiftNode) {
-                    RightShiftNode shift = (RightShiftNode) nonConstant;
-                    if (shift.getY().isConstant() && ((IntegerStamp) shift.getX().stamp()).isPositive()) {
-                        int mask = shift.getShiftAmountMask();
-                        int amount = shift.getY().asJavaConstant().asInt() & mask;
-                        if (shift.getX().getStackKind() == JavaKind.Int) {
-                            return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
-                        } else {
-                            assert shift.getX().getStackKind() == JavaKind.Long;
-                            return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
+                    } else if (nonConstant instanceof RightShiftNode) {
+                        RightShiftNode shift = (RightShiftNode) nonConstant;
+                        if (shift.getY().isConstant() && ((IntegerStamp) shift.getX().stamp()).isPositive()) {
+                            int mask = shift.getShiftAmountMask();
+                            int amount = shift.getY().asJavaConstant().asInt() & mask;
+                            if (shift.getX().getStackKind() == JavaKind.Int) {
+                                return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
+                            } else {
+                                assert shift.getX().getStackKind() == JavaKind.Long;
+                                return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
+                            }
                         }
-                    }
-                } else if (nonConstant instanceof UnsignedRightShiftNode) {
-                    UnsignedRightShiftNode shift = (UnsignedRightShiftNode) nonConstant;
-                    if (shift.getY().isConstant()) {
-                        int mask = shift.getShiftAmountMask();
-                        int amount = shift.getY().asJavaConstant().asInt() & mask;
-                        if (shift.getX().getStackKind() == JavaKind.Int) {
-                            return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
-                        } else {
-                            assert shift.getX().getStackKind() == JavaKind.Long;
-                            return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
+                    } else if (nonConstant instanceof UnsignedRightShiftNode) {
+                        UnsignedRightShiftNode shift = (UnsignedRightShiftNode) nonConstant;
+                        if (shift.getY().isConstant()) {
+                            int mask = shift.getShiftAmountMask();
+                            int amount = shift.getY().asJavaConstant().asInt() & mask;
+                            if (shift.getX().getStackKind() == JavaKind.Int) {
+                                return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
+                            } else {
+                                assert shift.getX().getStackKind() == JavaKind.Long;
+                                return new IntegerTestNode(shift.getX(), ConstantNode.forLong(-1L << amount));
+                            }
                         }
                     }
                 }

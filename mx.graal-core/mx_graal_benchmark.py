@@ -36,8 +36,10 @@ import mx_graal_core
 from mx_benchmark import ParserEntry
 from argparse import ArgumentParser
 
+_suite = mx.suite('graal-core')
+
 # Short-hand commands used to quickly run common benchmarks.
-mx.update_commands(mx.suite('graal-core'), {
+mx.update_commands(_suite, {
     'dacapo': [
       lambda args: createBenchmarkShortcut("dacapo", args),
       '[<benchmarks>|*] [-- [VM options] [-- [DaCapo options]]]'
@@ -104,14 +106,6 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def config_name(self):
         return self.raw_config_name
 
-    def dimensions(self, cwd, args, code, out):
-        return {
-            "host-vm": self.name(),
-            "host-vm-config": self.config_name(),
-            "guest-vm": "none",
-            "guest-vm-config": "none"
-        }
-
     def post_process_command_line_args(self, args):
         return self.extra_args + args
 
@@ -124,26 +118,32 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
             args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
 
 
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']))
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']))
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
-def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True):
+
+def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0):
     if include_default:
-        mx_benchmark.add_java_vm(JvmciJdkVm(raw_name, raw_config_name, extra_args))
-    for (var_name, var_args) in variants:
-        mx_benchmark.add_java_vm(JvmciJdkVm(raw_name, raw_config_name + '-' + var_name, extra_args + var_args))
+        mx_benchmark.add_java_vm(JvmciJdkVm(raw_name, raw_config_name, extra_args), suite, priority)
+    for variant in variants:
+        if len(variant) == 2:
+            var_name, var_args = variant
+            var_priority = priority
+        else:
+            var_name, var_args, var_priority = variant
+        mx_benchmark.add_java_vm(JvmciJdkVm(raw_name, raw_config_name + '-' + var_name, extra_args + var_args), suite, var_priority)
 
 _graal_variants = [
-    ('tracera', ['-Dgraal.TraceRA=true']),
-    ('tracera-bu', ['-Dgraal.TraceRA=true', '-Dgraal.TraceRAPolicy=BottomUpOnly']),
+    ('tracera', ['-Dgraal.TraceRA=true'], 11),
+    ('tracera-bu', ['-Dgraal.TraceRA=true', '-Dgraal.TraceRAPolicy=BottomUpOnly'], 10),
 ]
-build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler', '-Djvmci.Compiler=graal'], _graal_variants)
+build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-XX:+UseJVMCICompiler', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
 # On 64 bit systems -client is not supported. Nevertheless, when running with -server, we can
 # force the VM to just compile code with C1 but not with C2 by adding option -XX:TieredStopAtLevel=1.
 # This behavior is the closest we can get to the -client vm configuration.
-mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:TieredStopAtLevel=1']))
-mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+EnableJVMCI', '-XX:TieredStopAtLevel=1']))
+mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
+mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+EnableJVMCI', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
 
 
 class TimingBenchmarkMixin(object):

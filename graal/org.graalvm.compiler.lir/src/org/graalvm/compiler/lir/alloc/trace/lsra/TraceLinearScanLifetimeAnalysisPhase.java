@@ -22,6 +22,10 @@
  */
 package org.graalvm.compiler.lir.alloc.trace.lsra;
 
+import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
@@ -30,14 +34,9 @@ import static org.graalvm.compiler.lir.alloc.trace.TraceRegisterAllocationPhase.
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.asShadowedRegisterValue;
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isShadowedRegisterValue;
 import static org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase.isVariableOrRegister;
-import static jdk.vm.ci.code.ValueUtil.asRegisterValue;
-import static jdk.vm.ci.code.ValueUtil.asStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
-import java.util.ListIterator;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.Trace;
@@ -481,8 +480,8 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
 
                 // iterate all blocks in reverse order
                 AbstractBlockBase<?>[] blocks = sortedBlocks();
-                for (int i = blocks.length - 1; i >= 0; i--) {
-                    final AbstractBlockBase<?> block = blocks[i];
+                for (int blockId = blocks.length - 1; blockId >= 0; blockId--) {
+                    final AbstractBlockBase<?> block = blocks[blockId];
 
                     try (Indent indent2 = Debug.logAndIndent("handle block %d", block.getId())) {
 
@@ -490,10 +489,9 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                          * Iterate all instructions of the block in reverse order. definitions of
                          * intervals are processed before uses.
                          */
-                        List<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
-                        ListIterator<LIRInstruction> instIt = instructions.listIterator(instructions.size());
-                        while (instIt.hasPrevious()) {
-                            final LIRInstruction op = instIt.previous();
+                        ArrayList<LIRInstruction> instructions = getLIR().getLIRforBlock(block);
+                        for (int instIdx = instructions.size() - 1; instIdx >= 0; instIdx--) {
+                            final LIRInstruction op = instructions.get(instIdx);
                             // number instruction
                             instructionIndex--;
                             final int opId = instructionIndex << 1;

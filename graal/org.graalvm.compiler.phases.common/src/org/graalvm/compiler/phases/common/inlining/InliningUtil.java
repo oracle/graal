@@ -29,13 +29,11 @@ import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -96,6 +94,11 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.ImmutableMapCursor;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
@@ -275,7 +278,7 @@ public class InliningUtil {
      * @param inlineeMethod the actual method being inlined. Maybe be null for snippets.
      */
     @SuppressWarnings("try")
-    public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, List<Node> canonicalizedNodes, ResolvedJavaMethod inlineeMethod) {
+    public static ImmutableEconomicMap<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, List<Node> canonicalizedNodes, ResolvedJavaMethod inlineeMethod) {
         FixedNode invokeNode = invoke.asNode();
         StructuredGraph graph = invokeNode.graph();
         MethodMetricsInlineeScopeInfo m = MethodMetricsInlineeScopeInfo.create(graph.getOptions());
@@ -331,7 +334,7 @@ public class InliningUtil {
             assert invokeNode.successors().first() != null : invoke;
             assert invokeNode.predecessor() != null;
 
-            Map<Node, Node> duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
+            ImmutableEconomicMap<Node, Node> duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
 
             FrameState stateAfter = invoke.stateAfter();
             assert stateAfter == null || stateAfter.isAlive();
@@ -472,7 +475,9 @@ public class InliningUtil {
         graph.updateMethods(inlineGraph);
 
         // Update the set of accessed fields
-        graph.updateFields(inlineGraph);
+        if (GraalOptions.GeneratePIC.getValue(graph.getOptions())) {
+            graph.updateFields(inlineGraph);
+        }
 
         if (inlineGraph.hasUnsafeAccess()) {
             graph.markUnsafeAccess();
@@ -490,7 +495,7 @@ public class InliningUtil {
     }
 
     @SuppressWarnings("try")
-    private static void updateSourcePositions(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates) {
+    private static void updateSourcePositions(Invoke invoke, StructuredGraph inlineGraph, ImmutableEconomicMap<Node, Node> duplicates) {
         if (inlineGraph.mayHaveNodeSourcePosition() && invoke.stateAfter() != null) {
             if (invoke.asNode().getNodeSourcePosition() == null) {
                 // Temporarily ignore the assert below.
@@ -501,13 +506,16 @@ public class InliningUtil {
             NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
             assert invokePos != null : "missing source information";
 
-            Map<NodeSourcePosition, NodeSourcePosition> posMap = new HashMap<>();
-            for (Entry<Node, Node> entry : duplicates.entrySet()) {
-                NodeSourcePosition pos = entry.getKey().getNodeSourcePosition();
+            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = CollectionFactory.newMap(Equivalence.DEFAULT);
+            ImmutableMapCursor<Node, Node> cursor = duplicates.getEntries();
+            while (cursor.advance()) {
+                NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
                 if (pos != null) {
                     NodeSourcePosition callerPos = pos.addCaller(constantReceiver, invokePos);
-                    posMap.putIfAbsent(callerPos, callerPos);
-                    entry.getValue().setNodeSourcePosition(posMap.get(callerPos));
+                    if (!posMap.containsKey(callerPos)) {
+                        posMap.put(callerPos, callerPos);
+                    }
+                    cursor.getValue().setNodeSourcePosition(posMap.get(callerPos));
                 }
             }
         }
@@ -520,7 +528,8 @@ public class InliningUtil {
         }
     }
 
-    protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, Map<Node, Node> duplicates, FrameState stateAtExceptionEdge, boolean alwaysDuplicateStateAfter) {
+    protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, ImmutableEconomicMap<Node, Node> duplicates, FrameState stateAtExceptionEdge,
+                    boolean alwaysDuplicateStateAfter) {
         FrameState stateAtReturn = invoke.stateAfter();
         FrameState outerFrameState = null;
         JavaKind invokeReturnKind = invoke.asNode().getStackKind();
@@ -719,8 +728,8 @@ public class InliningUtil {
         }
     }
 
-    private static boolean checkContainsOnlyInvalidOrAfterFrameState(Map<Node, Node> duplicates) {
-        for (Node node : duplicates.values()) {
+    private static boolean checkContainsOnlyInvalidOrAfterFrameState(ImmutableEconomicMap<Node, Node> duplicates) {
+        for (Node node : duplicates.getValues()) {
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
                 assert frameState.bci == BytecodeFrame.AFTER_BCI || frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI : node.toString(Verbosity.Debugger);

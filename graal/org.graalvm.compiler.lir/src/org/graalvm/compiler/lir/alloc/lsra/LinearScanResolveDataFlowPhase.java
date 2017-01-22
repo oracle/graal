@@ -24,8 +24,8 @@ package org.graalvm.compiler.lir.alloc.lsra;
 
 import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
 
+import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.Debug;
@@ -88,7 +88,7 @@ public class LinearScanResolveDataFlowPhase extends AllocationPhase {
                 Debug.log("inserting moves at end of fromBlock B%d", fromBlock.getId());
             }
 
-            List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(fromBlock);
+            ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(fromBlock);
             LIRInstruction instr = instructions.get(instructions.size() - 1);
             if (instr instanceof StandardOp.JumpOp) {
                 // insert moves before branch
@@ -142,7 +142,7 @@ public class LinearScanResolveDataFlowPhase extends AllocationPhase {
 
             // check if block has only one predecessor and only one successor
             if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
-                List<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
+                ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                 assert instructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
                 assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block with successor must end with unconditional jump";
 

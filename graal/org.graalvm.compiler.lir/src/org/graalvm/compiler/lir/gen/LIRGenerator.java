@@ -27,9 +27,7 @@ import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
@@ -221,7 +219,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Value emitConstant(LIRKind kind, Constant constant) {
-        if (constant instanceof JavaConstant && moveFactory.canInlineConstant((JavaConstant) constant)) {
+        if (moveFactory.canInlineConstant(constant)) {
             return new ConstantValue(toRegisterKind(kind), constant);
         } else {
             return emitLoadConstant(kind, constant);
@@ -261,7 +259,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Value loadNonConst(Value value) {
-        if (isJavaConstant(value) && !moveFactory.canInlineConstant(asJavaConstant(value))) {
+        if (isConstantValue(value) && !moveFactory.canInlineConstant(asConstant(value))) {
             return emitMove(value);
         }
         return value;
@@ -305,7 +303,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             TTY.println();
         }
         assert LIRVerifier.verify(op);
-        List<LIRInstruction> lirForBlock = lir.getLIRforBlock(getCurrentBlock());
+        ArrayList<LIRInstruction> lirForBlock = res.getLIR().getLIRforBlock(getCurrentBlock());
         op.setPosition(currentPosition);
         lirForBlock.add(op);
         return op;
@@ -313,7 +311,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public boolean hasBlockEnd(AbstractBlockBase<?> block) {
-        List<LIRInstruction> ops = getResult().getLIR().getLIRforBlock(block);
+        ArrayList<LIRInstruction> ops = getResult().getLIR().getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
         }

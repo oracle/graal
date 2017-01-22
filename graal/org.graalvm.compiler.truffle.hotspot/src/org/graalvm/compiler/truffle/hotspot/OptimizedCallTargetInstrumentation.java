@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
@@ -67,8 +68,8 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
 
     protected static int getFieldOffset(String name, Class<?> declaringClass) {
         try {
-            declaringClass.getDeclaredField(name).setAccessible(true);
             Field field = declaringClass.getDeclaredField(name);
+            Util.setAccessible(field, true);
             return (int) UNSAFE.objectFieldOffset(field);
         } catch (NoSuchFieldException | SecurityException e) {
             throw GraalError.shouldNotReachHere();

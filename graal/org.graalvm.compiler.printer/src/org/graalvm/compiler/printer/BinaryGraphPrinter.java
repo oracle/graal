@@ -149,16 +149,20 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private final ConstantPool constantPool;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
-    private final SnippetReflectionProvider snippetReflection;
+    private SnippetReflectionProvider snippetReflection;
 
     private static final Charset utf8 = Charset.forName("UTF-8");
 
-    public BinaryGraphPrinter(WritableByteChannel channel, SnippetReflectionProvider snippetReflection) throws IOException {
+    public BinaryGraphPrinter(WritableByteChannel channel) throws IOException {
         constantPool = new ConstantPool();
         buffer = ByteBuffer.allocateDirect(256 * 1024);
-        this.snippetReflection = snippetReflection;
         this.channel = channel;
         writeVersion();
+    }
+
+    @Override
+    public void setSnippetReflectionProvider(SnippetReflectionProvider snippetReflection) {
+        this.snippetReflection = snippetReflection;
     }
 
     @Override
@@ -205,7 +209,18 @@ public class BinaryGraphPrinter implements GraphPrinter {
 
     private void flush() throws IOException {
         buffer.flip();
-        channel.write(buffer);
+        /*
+         * Try not to let interrupted threads aborting the write. There's still a race here but an
+         * interrupt that's been pending for a long time shouldn't stop this writing.
+         */
+        boolean interrupted = Thread.interrupted();
+        try {
+            channel.write(buffer);
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
         buffer.compact();
     }
 

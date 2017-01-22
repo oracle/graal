@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,8 @@
 package org.graalvm.compiler.virtual.phases.ea;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -38,7 +34,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -64,6 +59,10 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.LoopInfo;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
 
 public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> extends EffectsPhase.Closure<BlockT> {
 
@@ -72,10 +71,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
-    private final Map<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionsFactory.newIdentityMap();
+    protected final EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionFactory.newMap(Equivalence.IDENTITY);
     // Intended to be used by read-eliminating phases based on the effects phase.
-    protected final Map<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionsFactory.newIdentityMap();
-    private final Map<LoopBeginNode, BlockT> loopEntryStates = NodeCollectionsFactory.newIdentityMap();
+    protected final EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionFactory.newMap(Equivalence.IDENTITY);
+    private final EconomicMap<LoopBeginNode, BlockT> loopEntryStates = CollectionFactory.newMap(Equivalence.IDENTITY);
     private final NodeBitMap hasScalarReplacedInputs;
 
     protected boolean changed;
@@ -94,6 +93,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     @Override
     public boolean hasChanged() {
         return changed;
+    }
+
+    @Override
+    public boolean needsApplyEffects() {
+        return true;
     }
 
     @Override
@@ -149,7 +153,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         Debug.dump(Debug.VERBOSE_LOG_LEVEL, graph, "After applying effects");
         assert VirtualUtil.assertNonReachable(graph, obsoleteNodes);
         for (Node node : obsoleteNodes) {
-            if (node.isAlive()) {
+            if (node.isAlive() && node.hasNoUsages()) {
+                if (node instanceof FixedWithNextNode) {
+                    assert ((FixedWithNextNode) node).next() == null;
+                }
                 node.replaceAtUsages(null);
                 GraphUtil.killWithUnusedFloatingInputs(node);
             }
@@ -448,7 +455,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected static class LoopKillCache {
         private int visits;
         private LocationIdentity firstLocation;
-        private Set<LocationIdentity> killedLocations;
+        private EconomicSet<LocationIdentity> killedLocations;
         private boolean killsAll;
 
         protected LoopKillCache(int visits) {
@@ -490,7 +497,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 firstLocation = locationIdentity;
             } else {
                 if (killedLocations == null) {
-                    killedLocations = new HashSet<>();
+                    killedLocations = CollectionFactory.newSet(Equivalence.IDENTITY);
                 }
                 killedLocations.add(locationIdentity);
             }

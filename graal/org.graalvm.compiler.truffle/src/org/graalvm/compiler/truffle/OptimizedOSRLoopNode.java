@@ -246,16 +246,21 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     }
 
     private void invalidateOSRTarget(Object source, CharSequence reason) {
-        OptimizedCallTarget target = this.compiledOSRLoop;
-        if (target != null) {
-            int invalidationBackoff = getInvalidationBackoff();
-            if (invalidationBackoff < 0) {
-                throw new IllegalArgumentException("Invalid OSR invalidation backoff.");
+        atomic(new Runnable() {
+            @Override
+            public void run() {
+                OptimizedCallTarget target = compiledOSRLoop;
+                if (target != null) {
+                    int invalidationBackoff = getInvalidationBackoff();
+                    if (invalidationBackoff < 0) {
+                        throw new IllegalArgumentException("Invalid OSR invalidation backoff.");
+                    }
+                    baseLoopCount = Math.min(getThreshold() - invalidationBackoff, baseLoopCount);
+                    compiledOSRLoop = null;
+                    target.invalidate(source, reason);
+                }
             }
-            baseLoopCount = Math.min(getThreshold() - invalidationBackoff, baseLoopCount);
-            compiledOSRLoop = null;
-            target.invalidate(source, reason);
-        }
+        });
     }
 
     /**

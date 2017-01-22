@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
@@ -48,7 +47,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
  * relative location. This node does not null check the object.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public final class FloatingReadNode extends FloatingAccessNode implements LIRLowerable, Canonicalizable {
+public final class FloatingReadNode extends FloatingAccessNode implements LIRLowerableAccess, Canonicalizable {
     public static final NodeClass<FloatingReadNode> TYPE = NodeClass.create(FloatingReadNode.class);
 
     @OptionalInput(Memory) MemoryNode lastLocationAccess;
@@ -116,5 +115,10 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
         MemoryNode lla = getLastLocationAccess();
         assert lla != null || getLocationIdentity().isImmutable() : "lastLocationAccess of " + this + " shouldn't be null for mutable location identity " + getLocationIdentity();
         return super.verify();
+    }
+
+    @Override
+    public Stamp getAccessStamp() {
+        return stamp();
     }
 }

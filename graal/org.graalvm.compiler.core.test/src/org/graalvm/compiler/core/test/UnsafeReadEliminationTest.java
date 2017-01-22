@@ -22,11 +22,6 @@
  */
 package org.graalvm.compiler.core.test;
 
-import java.lang.reflect.Field;
-
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -40,21 +35,12 @@ import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.junit.Assert;
+import org.junit.Test;
 
 import sun.misc.Unsafe;
 
 public class UnsafeReadEliminationTest extends GraalCompilerTest {
-
-    public static final Unsafe UNSAFE;
-    static {
-        try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            UNSAFE = (Unsafe) theUnsafe.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("Exception while trying to get Unsafe", e);
-        }
-    }
 
     public static long[] Memory = new long[]{1, 2};
     public static double SideEffectD;

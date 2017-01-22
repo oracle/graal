@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,25 @@
  */
 package org.graalvm.compiler.core.test.ea;
 
-import jdk.vm.ci.meta.JavaConstant;
-
-import org.junit.Assert;
-import org.junit.Test;
+import java.util.List;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.junit.Assert;
+import org.junit.Test;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * The PartialEscapeAnalysisPhase is expected to remove all allocations and return the correct
@@ -259,9 +263,73 @@ public class EscapeAnalysisTest extends EATestBase {
         return obj.value <= 3 ? 1 : 0;
     }
 
+    /**
+     * Tests that a graph with allocations that does not make progress during PEA will not be
+     * changed.
+     */
+    @Test
+    public void testChangeHandling() {
+        prepareGraph("testChangeHandlingSnippet", false);
+        Assert.assertEquals(2, graph.getNodes().filter(CommitAllocationNode.class).count());
+        Assert.assertEquals(1, graph.getNodes().filter(BoxNode.class).count());
+        List<Node> nodes = graph.getNodes().snapshot();
+        // verify that an additional run doesn't add or remove nodes
+        new PartialEscapePhase(false, false, new CanonicalizerPhase(), null).apply(graph, context);
+        Assert.assertEquals(nodes.size(), graph.getNodeCount());
+        for (Node node : nodes) {
+            Assert.assertTrue(node.isAlive());
+        }
+    }
+
+    public volatile Object field;
+
+    public int testChangeHandlingSnippet(int a) {
+        Object obj;
+        Integer one = 1;
+        obj = new MyException(one);
+        if (a < 0) {
+            notInlineable();
+        } else {
+            obj = new Integer(1);
+            notInlineable();
+        }
+        field = obj;
+        return 1;
+    }
+
+    /**
+     * Test the case where allocations before and during a loop that have no usages other than their
+     * phi need to be recognized as an important change. This needs a loop so that the allocation is
+     * not trivially removed by dead code elimination.
+     */
+    @Test
+    public void testRemovalSpecialCase() {
+        prepareGraph("testRemovalSpecialCaseSnippet", false);
+        Assert.assertEquals(2, graph.getNodes().filter(CommitAllocationNode.class).count());
+        // create the situation by removing the if
+        graph.replaceFixedWithFloating(graph.getNodes().filter(LoadFieldNode.class).first(), graph.unique(ConstantNode.forInt(0)));
+        new CanonicalizerPhase().apply(graph, context);
+        // verify that an additional run removes all allocations
+        new PartialEscapePhase(false, false, new CanonicalizerPhase(), null).apply(graph, context);
+        Assert.assertEquals(0, graph.getNodes().filter(CommitAllocationNode.class).count());
+    }
+
+    public volatile int field2;
+
+    public int testRemovalSpecialCaseSnippet(int a) {
+        Object phi = new Object();
+        for (int i = 0; i < a; i++) {
+            field = null;
+            if (field2 == 1) {
+                phi = new Object();
+            }
+        }
+        return phi == null ? 1 : 0;
+    }
+
     @Test
     public void testCheckCast() {
-        testEscapeAnalysis("testCheckCastSnippet", getSnippetReflection().forObject(TestClassObject.class), false);
+        testEscapeAnalysis("testCheckCastSnippet", getSnippetReflection().forObject(TestClassObject.class), true);
     }
 
     public Object testCheckCastSnippet() {

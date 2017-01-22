@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,9 @@ package org.graalvm.compiler.graph;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugCounter;
@@ -42,6 +39,10 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.ImmutableEconomicMap;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
@@ -110,10 +111,28 @@ public class Graph {
      * Used to global value number {@link ValueNumberable} {@linkplain NodeClass#isLeafNode() leaf}
      * nodes.
      */
-    private final HashMap<CacheEntry, Node> cachedLeafNodes = CollectionsFactory.newMap();
+    private EconomicMap<Node, Node>[] cachedLeafNodes;
+
+    private static final Equivalence NODE_VALUE_COMPARE = new Equivalence() {
+
+        @Override
+        public boolean equals(Object a, Object b) {
+            if (a == b) {
+                return true;
+            }
+
+            assert a.getClass() == b.getClass();
+            return ((Node) a).valueEquals((Node) b);
+        }
+
+        @Override
+        public int hashCode(Object k) {
+            return ((Node) k).getNodeClass().valueNumber((Node) k);
+        }
+    };
 
     /**
-     * Indicates that the graph should no longer be modified. Frozen graphs can be used my multiple
+     * Indicates that the graph should no longer be modified. Frozen graphs can be used by multiple
      * threads so it's only safe to read them.
      */
     private boolean isFrozen = false;
@@ -122,44 +141,6 @@ public class Graph {
      * The option values used while compiling this graph.
      */
     private final OptionValues options;
-
-    /**
-     * Entry in {@link Graph#cachedLeafNodes}.
-     */
-    private static final class CacheEntry {
-
-        private final Node node;
-
-        CacheEntry(Node node) {
-            assert node.getNodeClass().valueNumberable();
-            assert node.getNodeClass().isLeafNode();
-            this.node = node;
-        }
-
-        @Override
-        public int hashCode() {
-            return node.getNodeClass().valueNumber(node);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) {
-                return true;
-            }
-            if (obj instanceof CacheEntry) {
-                CacheEntry other = (CacheEntry) obj;
-                if (other.node.getClass() == node.getClass()) {
-                    return node.valueEquals(other.node);
-                }
-            }
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            return node.toString();
-        }
-    }
 
     private class NodeSourcePositionScope implements DebugCloseable {
         private final NodeSourcePosition previous;
@@ -326,7 +307,7 @@ public class Graph {
      *
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
-    public final Graph copy(Consumer<Map<Node, Node>> duplicationMapCallback) {
+    public final Graph copy(Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback) {
         return copy(name, duplicationMapCallback);
     }
 
@@ -345,9 +326,9 @@ public class Graph {
      * @param newName the name of the copy, used for debugging purposes (can be null)
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
-    protected Graph copy(String newName, Consumer<Map<Node, Node>> duplicationMapCallback) {
+    protected Graph copy(String newName, Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback) {
         Graph copy = new Graph(newName, options);
-        Map<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (Map<Node, Node>) null);
+        ImmutableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (EconomicMap<Node, Node>) null);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
@@ -416,22 +397,23 @@ public class Graph {
 
     public <T extends Node> T addOrUnique(T node) {
         if (node.getNodeClass().valueNumberable()) {
-            return uniqueHelper(node, true);
+            return uniqueHelper(node);
         }
         return add(node);
-    }
-
-    public <T extends Node> T addWithoutUniqueWithInputs(T node) {
-        addInputs(node);
-        return addHelper(node);
     }
 
     public <T extends Node> T addOrUniqueWithInputs(T node) {
-        addInputs(node);
-        if (node.getNodeClass().valueNumberable()) {
-            return uniqueHelper(node, true);
+        if (node.isAlive()) {
+            assert node.graph() == this;
+            return node;
+        } else {
+            assert node.isUnregistered();
+            addInputs(node);
+            if (node.getNodeClass().valueNumberable()) {
+                return uniqueHelper(node);
+            }
+            return add(node);
         }
-        return add(node);
     }
 
     private final class AddInputsFilter extends Node.EdgeVisitor {
@@ -595,16 +577,16 @@ public class Graph {
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
     public <T extends Node & ValueNumberable> T unique(T node) {
-        return uniqueHelper(node, true);
+        return uniqueHelper(node);
     }
 
-    <T extends Node> T uniqueHelper(T node, boolean addIfMissing) {
+    <T extends Node> T uniqueHelper(T node) {
         assert node.getNodeClass().valueNumberable();
         T other = this.findDuplicate(node);
         if (other != null) {
             return other;
         } else {
-            T result = addIfMissing ? addHelper(node) : node;
+            T result = addHelper(node);
             if (node.getNodeClass().isLeafNode()) {
                 putNodeIntoCache(result);
             }
@@ -612,21 +594,47 @@ public class Graph {
         }
     }
 
+    void removeNodeFromCache(Node node) {
+        assert node.graph() == this || node.graph() == null;
+        assert node.getNodeClass().valueNumberable();
+        assert node.getNodeClass().isLeafNode() : node.getClass();
+
+        int leafId = node.getNodeClass().getLeafId();
+        if (cachedLeafNodes != null && cachedLeafNodes.length > leafId && cachedLeafNodes[leafId] != null) {
+            cachedLeafNodes[leafId].removeKey(node);
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
     void putNodeIntoCache(Node node) {
         assert node.graph() == this || node.graph() == null;
         assert node.getNodeClass().valueNumberable();
         assert node.getNodeClass().isLeafNode() : node.getClass();
-        CacheEntry entry = new CacheEntry(node);
-        cachedLeafNodes.put(entry, node);
+
+        int leafId = node.getNodeClass().getLeafId();
+        if (cachedLeafNodes == null || cachedLeafNodes.length <= leafId) {
+            EconomicMap[] newLeafNodes = new EconomicMap[leafId + 1];
+            if (cachedLeafNodes != null) {
+                System.arraycopy(cachedLeafNodes, 0, newLeafNodes, 0, cachedLeafNodes.length);
+            }
+            cachedLeafNodes = newLeafNodes;
+        }
+
+        if (cachedLeafNodes[leafId] == null) {
+            cachedLeafNodes[leafId] = CollectionFactory.newMap(NODE_VALUE_COMPARE);
+        }
+
+        cachedLeafNodes[leafId].put(node, node);
     }
 
     Node findNodeInCache(Node node) {
-        CacheEntry key = new CacheEntry(node);
-        Node result = cachedLeafNodes.get(key);
-        if (result != null && result.isDeleted()) {
-            cachedLeafNodes.remove(key);
+        int leafId = node.getNodeClass().getLeafId();
+        if (cachedLeafNodes == null || cachedLeafNodes.length <= leafId || cachedLeafNodes[leafId] == null) {
             return null;
         }
+
+        Node result = cachedLeafNodes[leafId].get(node);
+        assert result == null || result.isAlive() : result;
         return result;
     }
 
@@ -785,8 +793,6 @@ public class Graph {
         }
 
     }
-
-    static final Node PLACE_HOLDER = new PlaceHolderNode();
 
     private static final DebugCounter GraphCompressions = Debug.counter("GraphCompressions");
 
@@ -1014,7 +1020,10 @@ public class Graph {
 
     void unregister(Node node) {
         assert !isFrozen();
-        assert !node.isDeleted() : "cannot delete a node twice! node=" + node;
+        assert !node.isDeleted() : node;
+        if (node.getNodeClass().isLeafNode() && node.getNodeClass().valueNumberable()) {
+            removeNodeFromCache(node);
+        }
         nodes[node.id] = null;
         nodesDeletedSinceLastCompression++;
 
@@ -1064,7 +1073,7 @@ public class Graph {
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
-    public Map<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, Map<Node, Node> replacementsMap) {
+    public ImmutableEconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, EconomicMap<Node, Node> replacementsMap) {
         DuplicationReplacement replacements;
         if (replacementsMap == null) {
             replacements = null;
@@ -1081,9 +1090,9 @@ public class Graph {
 
     private static final class MapReplacement implements DuplicationReplacement {
 
-        private final Map<Node, Node> map;
+        private final EconomicMap<Node, Node> map;
 
-        MapReplacement(Map<Node, Node> map) {
+        MapReplacement(EconomicMap<Node, Node> map) {
             this.map = map;
         }
 
@@ -1098,7 +1107,7 @@ public class Graph {
     private static final DebugTimer DuplicateGraph = Debug.timer("DuplicateGraph");
 
     @SuppressWarnings({"all", "try"})
-    public Map<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
+    public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
         try (DebugCloseable s = DuplicateGraph.start()) {
             return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);
         }

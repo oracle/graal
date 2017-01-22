@@ -22,8 +22,8 @@
  */
 package org.graalvm.compiler.lir.ssi;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.LIR;
@@ -121,7 +121,7 @@ public final class SSIUtil {
     }
 
     public static LIRInstruction outgoingInst(LIR lir, AbstractBlockBase<?> block) {
-        List<LIRInstruction> instructions = lir.getLIRforBlock(block);
+        ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         int index = instructions.size() - 1;
         LIRInstruction op = instructions.get(index);
         return op;

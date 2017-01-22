@@ -22,6 +22,9 @@
  */
 package org.graalvm.compiler.core.common.util;
 
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.List;
 
@@ -207,5 +210,27 @@ public class Util {
 
     private static String methodName(ResolvedJavaMethod method) {
         return method.format("%H.%n(%p):%r") + " (" + method.getCodeSize() + " bytes)";
+    }
+
+    /**
+     * Calls {@link AccessibleObject#setAccessible(boolean)} on {@code field} with the value
+     * {@code flag}.
+     */
+    public static void setAccessible(Field field, boolean flag) {
+        if (!Java8OrEarlier) {
+            ModuleAPI.openForReflectionTo(field.getDeclaringClass(), Util.class);
+        }
+        field.setAccessible(flag);
+    }
+
+    /**
+     * Calls {@link AccessibleObject#setAccessible(boolean)} on {@code executable} with the value
+     * {@code flag}.
+     */
+    public static void setAccessible(Executable executable, boolean flag) {
+        if (!Java8OrEarlier) {
+            ModuleAPI.openForReflectionTo(executable.getDeclaringClass(), Util.class);
+        }
+        executable.setAccessible(flag);
     }
 }

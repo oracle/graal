@@ -22,10 +22,10 @@
  */
 package org.graalvm.compiler.core.common.alloc;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -92,7 +92,7 @@ public class RegisterAllocationConfig {
     }
 
     protected final RegisterConfig registerConfig;
-    private final Map<PlatformKind.Key, AllocatableRegisters> categorized = new HashMap<>();
+    private final EconomicMap<PlatformKind.Key, AllocatableRegisters> categorized = CollectionFactory.newMap(Equivalence.DEFAULT);
     private final String[] allocationRestrictedTo;
     private RegisterArray cachedRegisters;
 

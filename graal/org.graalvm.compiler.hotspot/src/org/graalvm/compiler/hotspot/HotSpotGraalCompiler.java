@@ -42,7 +42,6 @@ import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.GraalDebugConfig;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TopLevelDebugConfig;
-import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsRootScopeInfo;
 import org.graalvm.compiler.hotspot.CompilationCounters.Options;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -121,9 +120,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                 compilationCounters.countCompilation(method);
             }
             // Ensure a debug configuration for this thread is initialized
-            if (Debug.isEnabled() && DebugScope.getConfig() == null) {
-                DebugEnvironment.initialize(TTY.out, graalRuntime.getHostProviders().getSnippetReflection());
-            }
+            DebugEnvironment.ensureInitialized(graalRuntime.getHostProviders().getSnippetReflection());
             CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, true, options);
             CompilationRequestResult r = null;
             try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig());

@@ -24,13 +24,10 @@ package org.graalvm.compiler.loop;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -53,6 +50,9 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.VirtualState.NodeClosure;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 public class LoopFragmentInside extends LoopFragment {
 
@@ -63,7 +63,7 @@ public class LoopFragmentInside extends LoopFragment {
      * peeling case. In the unrolling case they will be used as the value that replace the loop-phis
      * of the duplicated inside fragment
      */
-    private Map<ValuePhiNode, ValueNode> mergedInitializers;
+    private EconomicMap<PhiNode, ValueNode> mergedInitializers;
     private final DuplicationReplacement dataFixBefore = new DuplicationReplacement() {
 
         @Override
@@ -165,7 +165,7 @@ public class LoopFragmentInside extends LoopFragment {
         final StructuredGraph graph = graph();
         return new DuplicationReplacement() {
 
-            private Map<Node, Node> seenNode = NodeCollectionsFactory.newMap();
+            private EconomicMap<Node, Node> seenNode = CollectionFactory.newMap(Equivalence.IDENTITY);
 
             @Override
             public Node replacement(Node original) {
@@ -342,7 +342,7 @@ public class LoopFragmentInside extends LoopFragment {
         assert isDuplicate();
         List<EndNode> endsToMerge = new LinkedList<>();
         // map peel exits to the corresponding loop exits
-        Map<AbstractEndNode, LoopEndNode> reverseEnds = CollectionsFactory.newMap();
+        EconomicMap<AbstractEndNode, LoopEndNode> reverseEnds = CollectionFactory.newMap(Equivalence.IDENTITY);
         LoopBeginNode loopBegin = original().loop().loopBegin();
         for (LoopEndNode le : loopBegin.loopEnds()) {
             AbstractEndNode duplicate = getDuplicatedNode(le);
@@ -351,7 +351,7 @@ public class LoopFragmentInside extends LoopFragment {
                 reverseEnds.put(duplicate, le);
             }
         }
-        mergedInitializers = NodeCollectionsFactory.newIdentityMap();
+        mergedInitializers = CollectionFactory.newMap(Equivalence.IDENTITY);
         AbstractBeginNode newExit;
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {
@@ -398,7 +398,7 @@ public class LoopFragmentInside extends LoopFragment {
                         }
                     });
                 }
-                mergedInitializers.put((ValuePhiNode) phi, initializer);
+                mergedInitializers.put(phi, initializer);
             }
         }
         return newExit;

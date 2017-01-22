@@ -25,10 +25,6 @@ package org.graalvm.compiler.hotspot;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
 
 import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -53,6 +49,7 @@ import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.hotspot.word.MethodCountersPointer;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -71,10 +68,14 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
-import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.code.StackSlot;
@@ -316,8 +317,8 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * Tiered support.
      */
-    public static final ForeignCallDescriptor INVOCATION_EVENT = new ForeignCallDescriptor("invocation_event", void.class, Word.class);
-    public static final ForeignCallDescriptor BACKEDGE_EVENT = new ForeignCallDescriptor("backedge_event", void.class, Word.class, int.class, int.class);
+    public static final ForeignCallDescriptor INVOCATION_EVENT = new ForeignCallDescriptor("invocation_event", void.class, MethodCountersPointer.class);
+    public static final ForeignCallDescriptor BACKEDGE_EVENT = new ForeignCallDescriptor("backedge_event", void.class, MethodCountersPointer.class, int.class, int.class);
 
     /**
      * @see UncommonTrapCallNode
@@ -348,8 +349,8 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @param lir the LIR to examine
      * @return the registers that are defined by or used as temps for any instruction in {@code lir}
      */
-    protected final Set<Register> gatherDestroyedCallerRegisters(LIR lir) {
-        final Set<Register> destroyedRegisters = new HashSet<>();
+    protected final EconomicSet<Register> gatherDestroyedCallerRegisters(LIR lir) {
+        final EconomicSet<Register> destroyedRegisters = CollectionFactory.newSet(Equivalence.IDENTITY);
         ValueConsumer defConsumer = new ValueConsumer() {
 
             @Override
@@ -381,7 +382,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * <p>
      * Any entry in {@code calleeSaveInfo} that {@linkplain SaveRegistersOp#supportsRemove()
      * supports} pruning will have {@code destroyedRegisters}
-     * {@linkplain SaveRegistersOp#remove(Set) removed} as these registers are declared as
+     * {@linkplain SaveRegistersOp#remove(EconomicSet) removed} as these registers are declared as
      * temporaries in the stub's {@linkplain ForeignCallLinkage linkage} (and thus will be saved by
      * the stub's caller).
      *
@@ -392,17 +393,17 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @param frameMap used to {@linkplain FrameMap#offsetForStackSlot(StackSlot) convert} a virtual
      *            slot to a frame slot index
      */
-    protected void updateStub(Stub stub, Set<Register> destroyedRegisters, Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo, FrameMap frameMap) {
+    protected void updateStub(Stub stub, EconomicSet<Register> destroyedRegisters, EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo, FrameMap frameMap) {
         stub.initDestroyedCallerRegisters(destroyedRegisters);
 
-        for (Map.Entry<LIRFrameState, SaveRegistersOp> e : calleeSaveInfo.entrySet()) {
-            SaveRegistersOp save = e.getValue();
+        MapCursor<LIRFrameState, SaveRegistersOp> cursor = calleeSaveInfo.getEntries();
+        while (cursor.advance()) {
+            SaveRegistersOp save = cursor.getValue();
             if (save.supportsRemove()) {
                 save.remove(destroyedRegisters);
             }
-            DebugInfo info = e.getKey() == null ? null : e.getKey().debugInfo();
-            if (info != null) {
-                info.setCalleeSaveInfo(save.getMap(frameMap));
+            if (cursor.getKey() != LIRFrameState.NO_STATE) {
+                cursor.getKey().debugInfo().setCalleeSaveInfo(save.getMap(frameMap));
             }
         }
     }

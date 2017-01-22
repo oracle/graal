@@ -23,7 +23,6 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static org.graalvm.compiler.hotspot.nodes.DirectCompareAndSwapNode.compareAndSwap;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HEAP_END_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HEAP_TOP_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
@@ -80,7 +79,6 @@ import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.NewObjectSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.memory.address.RawAddressNode;
 import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.Register;
@@ -292,8 +290,7 @@ public class NewInstanceStub extends SnippetStub {
             if (newHeapTop.aboveThan(heapEnd)) {
                 return Word.zero();
             }
-
-            if (compareAndSwap(RawAddressNode.address(heapTopAddress), heapTop, newHeapTop, HEAP_TOP_LOCATION).equal(heapTop)) {
+            if (heapTopAddress.logicCompareAndSwapWord(0, heapTop, newHeapTop, HEAP_TOP_LOCATION)) {
                 return heapTop;
             }
         }

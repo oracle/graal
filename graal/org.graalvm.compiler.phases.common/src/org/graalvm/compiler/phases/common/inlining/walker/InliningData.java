@@ -32,7 +32,6 @@ import java.util.BitSet;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.debug.Debug;
@@ -41,7 +40,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -65,6 +63,9 @@ import org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph;
 import org.graalvm.compiler.phases.common.inlining.policy.InliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -396,8 +397,8 @@ public class InliningData {
         try {
             OptionValues options = rootGraph.getOptions();
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph); Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(options), false)) {
-                Set<Node> canonicalizedNodes = NodeCollectionsFactory.newSet();
-                calleeInfo.invoke().asNode().usages().snapshotTo(canonicalizedNodes);
+                EconomicSet<Node> canonicalizedNodes = CollectionFactory.newSet(Equivalence.IDENTITY);
+                canonicalizedNodes.addAll(calleeInfo.invoke().asNode().usages());
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context));
                 canonicalizedNodes.addAll(parameterUsages);
                 counterInliningRuns.increment();
@@ -511,14 +512,14 @@ public class InliningData {
      * @return the positions of freshly instantiated arguments in the argument list of the
      *         <code>invoke</code>, or null if no such positions exist.
      */
-    public static BitSet freshlyInstantiatedArguments(Invoke invoke, Set<ParameterNode> fixedParams) {
+    public static BitSet freshlyInstantiatedArguments(Invoke invoke, EconomicSet<ParameterNode> fixedParams) {
         assert fixedParams != null;
         assert paramsAndInvokeAreInSameGraph(invoke, fixedParams);
         BitSet result = null;
         int argIdx = 0;
         for (ValueNode arg : invoke.callTarget().arguments()) {
             assert arg != null;
-            if (isFreshInstantiation(arg) || fixedParams.contains(arg)) {
+            if (isFreshInstantiation(arg) || (arg instanceof ParameterNode && fixedParams.contains((ParameterNode) arg))) {
                 if (result == null) {
                     result = new BitSet();
                 }
@@ -529,7 +530,7 @@ public class InliningData {
         return result;
     }
 
-    private static boolean paramsAndInvokeAreInSameGraph(Invoke invoke, Set<ParameterNode> fixedParams) {
+    private static boolean paramsAndInvokeAreInSameGraph(Invoke invoke, EconomicSet<ParameterNode> fixedParams) {
         if (fixedParams.isEmpty()) {
             return true;
         }

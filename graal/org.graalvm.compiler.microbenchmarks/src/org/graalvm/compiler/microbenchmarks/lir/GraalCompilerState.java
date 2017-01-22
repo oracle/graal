@@ -120,7 +120,7 @@ public abstract class GraalCompilerState {
 
         // Ensure a debug configuration for this thread is initialized
         if (Debug.isEnabled() && DebugScope.getConfig() == null) {
-            DebugEnvironment.initialize(System.out);
+            DebugEnvironment.ensureInitialized();
         }
 
     }

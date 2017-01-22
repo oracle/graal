@@ -1,10 +1,10 @@
 # overlay version
-overlay = 8ad01ebdcda908859e873577531c7483193d6663
+overlay = bce351e92fe50af9f7a3f9557005dc76b9acb5f3
 
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
 java8 : {name : labsjdk, version : "8u111-jvmci-0.24-dev", platformspecific: true}
 java9 : {name : labsjdk, version : "9-SNAPSHOT", platformspecific: true}
-java9EA : {name : labsjdk, version : "9-ea+143", platformspecific: true}
+java9EA : {name : labsjdk, version : "9-ea+152", platformspecific: true}
 java8Debug : {name : labsjdk, version : "8u111-jvmci-0.24-dev-fastdebug", platformspecific: true}
 
 chdirToSuite : ["cd", ${suite-root}]

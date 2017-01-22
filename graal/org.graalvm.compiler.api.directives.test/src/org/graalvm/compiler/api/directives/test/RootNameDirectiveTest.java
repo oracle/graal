@@ -130,7 +130,8 @@ public class RootNameDirectiveTest extends GraalCompilerTest {
             try (Scope s = Debug.sandbox("PrintingGraph", null)) {
                 Map<Object, Object> properties = new HashMap<>();
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                IdealGraphPrinter printer = new IdealGraphPrinter(baos, true, getSnippetReflection());
+                IdealGraphPrinter printer = new IdealGraphPrinter(baos, true);
+                printer.setSnippetReflectionProvider(getSnippetReflection());
                 printer.beginGroup("RootNameDirectiveTest", "RootNameDirectiveTest", graph.method(), -1, null);
                 properties.put("graph", graph.toString());
                 properties.put("scope", Debug.currentScope());

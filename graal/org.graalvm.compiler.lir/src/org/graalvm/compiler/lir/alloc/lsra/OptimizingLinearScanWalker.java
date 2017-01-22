@@ -73,7 +73,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
 
     @SuppressWarnings("unused")
     private static void printRegisterBindingList(RegisterBindingLists list, RegisterBinding binding) {
-        for (Interval interval = list.get(binding); interval != Interval.EndMarker; interval = interval.next) {
+        for (Interval interval = list.get(binding); !interval.isEndMarker(); interval = interval.next) {
             Debug.log("%s", interval);
         }
     }
@@ -105,14 +105,14 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
                     loop: while (changed) {
                         changed = false;
                         try (Indent indent1 = Debug.logAndIndent("Active intervals: (block %s [%d])", block, nextBlock)) {
-                            for (Interval active = activeLists.get(RegisterBinding.Any); active != Interval.EndMarker; active = active.next) {
+                            for (Interval active = activeLists.get(RegisterBinding.Any); !active.isEndMarker(); active = active.next) {
                                 Debug.log("active   (any): %s", active);
                                 if (optimize(nextBlock, block, active, RegisterBinding.Any)) {
                                     changed = true;
                                     break loop;
                                 }
                             }
-                            for (Interval active = activeLists.get(RegisterBinding.Stack); active != Interval.EndMarker; active = active.next) {
+                            for (Interval active = activeLists.get(RegisterBinding.Stack); !active.isEndMarker(); active = active.next) {
                                 Debug.log("active (stack): %s", active);
                                 if (optimize(nextBlock, block, active, RegisterBinding.Stack)) {
                                     changed = true;
@@ -219,7 +219,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         initUseLists(false);
         spillExcludeActiveFixed();
         // spillBlockUnhandledFixed(cur);
-        assert unhandledLists.get(RegisterBinding.Fixed) == Interval.EndMarker : "must not have unhandled fixed intervals because all fixed intervals have a use at position 0";
+        assert unhandledLists.get(RegisterBinding.Fixed).isEndMarker() : "must not have unhandled fixed intervals because all fixed intervals have a use at position 0";
         spillBlockInactiveFixed(interval);
         spillCollectActiveAny(RegisterPriority.LiveAtLoopEnd);
         spillCollectInactiveAny(interval);

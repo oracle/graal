@@ -34,7 +34,7 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 public class SalverDebugConfigCustomizer implements DebugConfigCustomizer {
 
     @Override
-    public void customize(DebugConfig config, Object... extraArgs) {
+    public void customize(DebugConfig config) {
         if (Salver.getValue(GLOBAL)) {
             config.dumpHandlers().add(new GraphDumpHandler());
         }

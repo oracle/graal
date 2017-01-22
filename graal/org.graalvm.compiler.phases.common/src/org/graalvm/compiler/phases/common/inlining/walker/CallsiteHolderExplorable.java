@@ -23,12 +23,9 @@
 package org.graalvm.compiler.phases.common.inlining.walker;
 
 import java.util.BitSet;
-import java.util.Collections;
 import java.util.LinkedList;
-import java.util.Set;
 import java.util.function.ToDoubleFunction;
 
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -36,6 +33,9 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.phases.common.inlining.policy.AbstractInliningPolicy;
 import org.graalvm.compiler.phases.graph.FixedNodeProbabilityCache;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -70,7 +70,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
     /**
      * @see #getFixedParams()
      */
-    private final Set<ParameterNode> fixedParams;
+    private final EconomicSet<ParameterNode> fixedParams;
 
     private final ToDoubleFunction<FixedNode> probabilities;
     private final ComputeInliningRelevance computeInliningRelevance;
@@ -96,12 +96,11 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
     /**
      * @see #getFixedParams()
      */
-    @SuppressWarnings("unchecked")
-    private Set<ParameterNode> fixedParamsAt(BitSet freshlyInstantiatedArguments) {
+    private EconomicSet<ParameterNode> fixedParamsAt(BitSet freshlyInstantiatedArguments) {
         if (freshlyInstantiatedArguments == null || freshlyInstantiatedArguments.isEmpty()) {
-            return Collections.EMPTY_SET;
+            return CollectionFactory.newSet(Equivalence.IDENTITY);
         }
-        Set<ParameterNode> result = NodeCollectionsFactory.newSet();
+        EconomicSet<ParameterNode> result = CollectionFactory.newSet(Equivalence.IDENTITY);
         for (ParameterNode p : graph.getNodes(ParameterNode.TYPE)) {
             if (freshlyInstantiatedArguments.get(p.index())) {
                 result.add(p);
@@ -127,7 +126,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
      * instantiated several levels up in the call-hierarchy)
      * </p>
      */
-    public Set<ParameterNode> getFixedParams() {
+    public EconomicSet<ParameterNode> getFixedParams() {
         return fixedParams;
     }
 

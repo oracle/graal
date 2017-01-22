@@ -30,7 +30,6 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.Compi
 import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -41,7 +40,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.core.common.CollectionsFactory;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.Debug;
@@ -76,6 +74,9 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -170,14 +171,14 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     // This map is key'ed by a class name instead of a Class object so that
     // it is stable across VM executions (in support of replay compilation).
-    private final Map<String, SnippetTemplateCache> snippetTemplateCache;
+    private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
 
     public ReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
         this.providers = providers.copyWith(this);
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.graphs = new ConcurrentHashMap<>();
-        this.snippetTemplateCache = CollectionsFactory.newMap();
+        this.snippetTemplateCache = CollectionFactory.newMap(Equivalence.DEFAULT);
         this.bytecodeProvider = bytecodeProvider;
     }
 

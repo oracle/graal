@@ -76,7 +76,7 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
                     log(depth, "opt call tree", callNode.getCurrentCallTarget().toString() + dispatched, properties);
                 } else if (node instanceof OptimizedIndirectCallNode) {
                     int depth = decisionStack == null ? 0 : decisionStack.size() - 1;
-                    log(depth, "opt call tree", "<indirect>", new LinkedHashMap<String, Object>());
+                    log(depth, "opt call tree", "<indirect>", new LinkedHashMap<>());
                 }
                 return true;
             }

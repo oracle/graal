@@ -26,17 +26,18 @@ import static org.graalvm.compiler.core.common.GraalOptions.TraceEscapeAnalysis;
 import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeCollectionsFactory;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -47,10 +48,12 @@ public final class VirtualUtil {
     }
 
     public static boolean assertNonReachable(StructuredGraph graph, List<Node> obsoleteNodes) {
-        // helper code that determines the paths that keep obsolete nodes alive:
+        // Helper code that determines the paths that keep obsolete nodes alive.
+        // Nodes with support for GVN can be kept alive by GVN and are therefore not part of the
+        // assertion.
 
         NodeFlood flood = graph.createNodeFlood();
-        Map<Node, Node> path = NodeCollectionsFactory.newIdentityMap();
+        EconomicMap<Node, Node> path = CollectionFactory.newMap(Equivalence.IDENTITY);
         flood.add(graph.start());
         for (Node current : flood) {
             if (current instanceof AbstractEndNode) {
@@ -95,7 +98,7 @@ public final class VirtualUtil {
         }
         boolean success = true;
         for (Node node : obsoleteNodes) {
-            if (!node.isDeleted() && flood.isMarked(node)) {
+            if (!node.isDeleted() && flood.isMarked(node) && !node.getNodeClass().valueNumberable()) {
                 TTY.println("offending node path:");
                 Node current = node;
                 TTY.print(current.toString());

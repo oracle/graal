@@ -24,6 +24,7 @@ package org.graalvm.compiler.options;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -33,16 +34,36 @@ public class UniquePathUtilities {
     /**
      * This generates a per thread persistent id to aid mapping related dump files with each other.
      */
-    private static final ThreadLocal<Integer> threadDumpId = new ThreadLocal<>();
+    private static final ThreadLocal<PerThreadSequence> threadDumpId = new ThreadLocal<>();
     private static final AtomicInteger dumpId = new AtomicInteger();
 
-    private static int getThreadDumpId() {
-        Integer id = threadDumpId.get();
+    static class PerThreadSequence {
+        final int threadID;
+        HashMap<String, Integer> sequences = new HashMap<>(2);
+
+        PerThreadSequence(int threadID) {
+            this.threadID = threadID;
+        }
+
+        String generateID(String extension) {
+            Integer box = sequences.get(extension);
+            if (box == null) {
+                sequences.put(extension, 1);
+                return Integer.toString(threadID);
+            } else {
+                sequences.put(extension, box + 1);
+                return Integer.toString(threadID) + '-' + box;
+            }
+        }
+    }
+
+    private static String getThreadDumpId(String extension) {
+        PerThreadSequence id = threadDumpId.get();
         if (id == null) {
-            id = dumpId.incrementAndGet();
+            id = new PerThreadSequence(dumpId.incrementAndGet());
             threadDumpId.set(id);
         }
-        return id;
+        return id.generateID(extension);
     }
 
     private static String formatExtension(String ext) {
@@ -84,9 +105,10 @@ public class UniquePathUtilities {
         if (option.getValue(options) == null) {
             return null;
         }
+        String ext = formatExtension(extension);
         final String name = includeThreadId
-                        ? String.format("%s-%d_%d%s", option.getValue(options), getGlobalTimeStamp(), getThreadDumpId(), formatExtension(extension))
-                        : String.format("%s-%d%s", option.getValue(options), getGlobalTimeStamp(), formatExtension(extension));
+                        ? String.format("%s-%d_%s%s", option.getValue(options), getGlobalTimeStamp(), getThreadDumpId(ext), ext)
+                        : String.format("%s-%d%s", option.getValue(options), getGlobalTimeStamp(), ext);
         Path result = Paths.get(name);
         if (result.isAbsolute() || defaultDirectory == null) {
             return result;

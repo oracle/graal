@@ -27,6 +27,7 @@ import static org.graalvm.compiler.nodes.ConstantNode.forInt;
 import static org.graalvm.compiler.nodes.ConstantNode.forIntegerKind;
 
 import java.lang.reflect.Constructor;
+import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BridgeMethodUtils;
@@ -56,9 +57,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.TypePlugin;
+import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -350,6 +354,16 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 b.push(returnKind, wordToObject);
                 break;
 
+            case CAS_POINTER:
+                assert args.length == 5;
+                AddressNode address = makeAddress(b, args[0], args[1]);
+                JavaKind valueKind = wordTypes.asKind(wordMethod.getSignature().getParameterType(1, wordMethod.getDeclaringClass()));
+                assert valueKind.equals(wordTypes.asKind(wordMethod.getSignature().getParameterType(2, wordMethod.getDeclaringClass()))) : wordMethod.getSignature();
+                assert args[4].isConstant() : Arrays.toString(args);
+                LocationIdentity location = snippetReflection.asObject(LocationIdentity.class, args[4].asJavaConstant());
+                JavaType returnType = wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass());
+                b.addPush(returnKind, casOp(valueKind, wordTypes.asKind(returnType), address, location, args[2], args[3]));
+                break;
             default:
                 throw new GraalError("Unknown opcode: %s", operation.opcode());
         }
@@ -423,6 +437,18 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         final boolean compressible = (op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED);
         final boolean initialize = (op == Opcode.INITIALIZE);
         b.add(new JavaWriteNode(writeKind, address, location, value, barrier, compressible, initialize));
+    }
+
+    protected AbstractCompareAndSwapNode casOp(JavaKind writeKind, JavaKind returnKind, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue) {
+        boolean isLogic = returnKind == JavaKind.Boolean;
+        assert isLogic || writeKind == returnKind : writeKind + " != " + returnKind;
+        AbstractCompareAndSwapNode cas;
+        if (isLogic) {
+            cas = new LogicCompareAndSwapNode(address, expectedValue, newValue, location);
+        } else {
+            cas = new ValueCompareAndSwapNode(address, expectedValue, newValue, location);
+        }
+        return cas;
     }
 
     public AddressNode makeAddress(GraphBuilderContext b, ValueNode base, ValueNode offset) {

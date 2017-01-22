@@ -22,16 +22,16 @@
  */
 package org.graalvm.compiler.lir.alloc.lsra;
 
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isIllegal;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.Debug;
@@ -162,7 +162,7 @@ public class LinearScanAssignLocationsPhase extends AllocationPhase {
         info.forEachState(op, this::debugInfoProcedure);
     }
 
-    private void assignLocations(List<LIRInstruction> instructions) {
+    private void assignLocations(ArrayList<LIRInstruction> instructions) {
         int numInst = instructions.size();
         boolean hasDead = false;
 

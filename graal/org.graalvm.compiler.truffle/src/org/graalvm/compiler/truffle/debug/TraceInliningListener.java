@@ -31,6 +31,7 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.graalvm.compiler.truffle.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.TruffleInliningProfile;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
 public final class TraceInliningListener extends AbstractDebugCompilationListener {
 
@@ -48,10 +49,14 @@ public final class TraceInliningListener extends AbstractDebugCompilationListene
         if (inliningDecision == null) {
             return;
         }
-
-        log(0, "inline start", target.toString(), target.getDebugProperties(null));
-        logInliningDecisionRecursive(target, inliningDecision, 1);
-        log(0, "inline done", target.toString(), target.getDebugProperties(inliningDecision));
+        if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
+            log(0, "inline start", target.toString(), target.getDebugProperties(null));
+            logInliningDecisionRecursive(target, inliningDecision, 1);
+            log(0, "inline done", target.toString(), target.getDebugProperties(inliningDecision));
+        } else {
+            log(0, "TruffleFunctionInlining is set to false", "", null);
+            return;
+        }
     }
 
     private void logInliningDecisionRecursive(OptimizedCallTarget target, TruffleInlining inliningDecision, int depth) {

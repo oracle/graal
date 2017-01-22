@@ -8,6 +8,7 @@ jvm-config.default = "graal-core"
 include "ci_common/common.hocon"
 include "ci_common/gate.hocon"
 include "ci_common/gate_tasks.hocon"
+include "ci_common/gate_tasks_bootstrap.hocon"
 
 include "ci_common/bench.hocon"
 include "ci_common/bench-hwloc.hocon"
