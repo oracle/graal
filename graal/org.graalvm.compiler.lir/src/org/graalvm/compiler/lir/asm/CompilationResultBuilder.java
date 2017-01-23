@@ -53,7 +53,6 @@ import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -150,7 +149,7 @@ public class CompilationResultBuilder {
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     CompilationResult compilationResult) {
-        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, CollectionFactory.newMap(Equivalence.DEFAULT));
+        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, EconomicMap.create(Equivalence.DEFAULT));
     }
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,

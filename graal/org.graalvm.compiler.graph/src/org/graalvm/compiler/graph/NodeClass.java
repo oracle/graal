@@ -69,7 +69,6 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.options.StableOptionValue;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -827,7 +826,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             newNodes = new NodeMap<>(oldGraph);
         } else {
             // Use sparse map
-            newNodes = CollectionFactory.newMap(Equivalence.IDENTITY);
+            newNodes = EconomicMap.create(Equivalence.IDENTITY);
         }
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 

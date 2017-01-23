@@ -59,7 +59,6 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.UnsafeLoadCacheEntry;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
@@ -226,7 +225,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
     private class ReadEliminationMergeProcessor extends EffectsClosure<ReadEliminationBlockState>.MergeProcessor {
 
-        private final EconomicMap<Object, ValuePhiNode> materializedPhis = CollectionFactory.newMap(Equivalence.DEFAULT);
+        private final EconomicMap<Object, ValuePhiNode> materializedPhis = EconomicMap.create(Equivalence.DEFAULT);
 
         ReadEliminationMergeProcessor(Block mergeBlock) {
             super(mergeBlock);
@@ -337,7 +336,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     loopKilledLocations.setKillsAll();
                 } else {
                     // we have fully processed this loop >1 times, update the killed locations
-                    EconomicSet<LocationIdentity> forwardEndLiveLocations = CollectionFactory.newSet(Equivalence.DEFAULT);
+                    EconomicSet<LocationIdentity> forwardEndLiveLocations = EconomicSet.create(Equivalence.DEFAULT);
                     for (CacheEntry<?> entry : initialState.readCache.getKeys()) {
                         forwardEndLiveLocations.add(entry.getIdentity());
                     }

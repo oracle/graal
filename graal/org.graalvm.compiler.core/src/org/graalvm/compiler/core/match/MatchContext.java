@@ -35,7 +35,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -86,7 +85,7 @@ public class MatchContext {
 
     public Result captureNamedValue(String name, Class<? extends Node> type, Node value) {
         if (namedNodes == null) {
-            namedNodes = CollectionFactory.newMap(Equivalence.DEFAULT);
+            namedNodes = EconomicMap.create(Equivalence.DEFAULT);
         }
         NamedNode current = namedNodes.get(name);
         if (current == null) {

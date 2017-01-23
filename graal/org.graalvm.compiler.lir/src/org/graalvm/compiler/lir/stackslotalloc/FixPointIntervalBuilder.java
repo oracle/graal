@@ -42,7 +42,6 @@ import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.compiler.lir.VirtualStackSlot;
@@ -71,7 +70,7 @@ final class FixPointIntervalBuilder {
         this.maxOpId = maxOpId;
         liveInMap = new BlockMap<>(lir.getControlFlowGraph());
         liveOutMap = new BlockMap<>(lir.getControlFlowGraph());
-        this.usePos = CollectionFactory.newSet(Equivalence.IDENTITY);
+        this.usePos = EconomicSet.create(Equivalence.IDENTITY);
     }
 
     /**

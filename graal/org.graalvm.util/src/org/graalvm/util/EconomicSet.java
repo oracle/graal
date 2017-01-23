@@ -24,12 +24,12 @@ package org.graalvm.util;
 
 import java.util.Iterator;
 
-/**
- * Memory efficient set data structure. Use methods in {@link CollectionFactory} to create.
- */
-public interface EconomicSet<E> extends ImmutableEconomicSet<E> {
+import org.graalvm.util.impl.EconomicMapImpl;
 
-    void addAll(Iterable<E> values);
+/**
+ * Memory efficient set data structure.
+ */
+public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
 
     boolean add(E element);
 
@@ -37,9 +37,31 @@ public interface EconomicSet<E> extends ImmutableEconomicSet<E> {
 
     void clear();
 
+    default void addAll(EconomicSet<E> values) {
+        addAll(values.iterator());
+    }
+
+    default void addAll(Iterable<E> values) {
+        addAll(values.iterator());
+    }
+
+    default void addAll(Iterator<E> values) {
+        while (values.hasNext()) {
+            add(values.next());
+        }
+    }
+
     default void removeAll(EconomicSet<E> values) {
-        for (E element : values) {
-            remove(element);
+        removeAll(values.iterator());
+    }
+
+    default void removeAll(Iterable<E> values) {
+        removeAll(values.iterator());
+    }
+
+    default void removeAll(Iterator<E> values) {
+        while (values.hasNext()) {
+            remove(values.next());
         }
     }
 
@@ -51,5 +73,54 @@ public interface EconomicSet<E> extends ImmutableEconomicSet<E> {
                 iterator.remove();
             }
         }
+    }
+
+    /**
+     * Creates a new set guaranteeing insertion order when iterating over its elements with the
+     * default {@link Equivalence#DEFAULT} comparison strategy.
+     */
+    static <E> EconomicSet<E> create() {
+        return EconomicSet.create(Equivalence.DEFAULT);
+    }
+
+    /**
+     * Creates a new set guaranteeing insertion order when iterating over its elements.
+     */
+    static <E> EconomicSet<E> create(Equivalence strategy) {
+        return EconomicMapImpl.create(strategy);
+    }
+
+    /**
+     * Creates a new set guaranteeing insertion order when iterating over its elements with the
+     * default {@link Equivalence#DEFAULT} comparison strategy and inserts all elements of the
+     * specified collection.
+     */
+    static <E> EconomicSet<E> create(int initialCapacity) {
+        return EconomicSet.create(Equivalence.DEFAULT, initialCapacity);
+    }
+
+    /**
+     * Creates a new set guaranteeing insertion order when iterating over its elements with the
+     * default {@link Equivalence#DEFAULT} comparison strategy and inserts all elements of the
+     * specified collection.
+     */
+    static <E> EconomicSet<E> create(UnmodifiableEconomicSet<E> c) {
+        return EconomicSet.create(Equivalence.DEFAULT, c);
+    }
+
+    /**
+     * Creates a new set guaranteeing insertion order when iterating over its elements and
+     * initializes with the given capacity.
+     */
+    static <E> EconomicSet<E> create(Equivalence strategy, int initialCapacity) {
+        return EconomicMapImpl.create(strategy, initialCapacity);
+    }
+
+    /**
+     * Creates a new set guaranteeing insertion order when iterating over its elements and inserts
+     * all elements of the specified collection.
+     */
+    static <E> EconomicSet<E> create(Equivalence strategy, UnmodifiableEconomicSet<E> c) {
+        return EconomicMapImpl.create(strategy, c);
     }
 }

@@ -71,7 +71,7 @@ import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.compiler.replacements.nodes.DirectObjectStoreNode;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.UnmodifiableEconomicMap;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
@@ -596,7 +596,7 @@ public class ArrayCopySnippets implements Snippets {
         private void instantiate(Arguments args, BasicArrayCopyNode arraycopy) {
             StructuredGraph graph = arraycopy.graph();
             SnippetTemplate template = template(args);
-            ImmutableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args);
+            UnmodifiableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args);
             for (Node originalNode : replacements.getKeys()) {
                 if (originalNode instanceof Invoke) {
                     Invoke invoke = (Invoke) replacements.get(originalNode);

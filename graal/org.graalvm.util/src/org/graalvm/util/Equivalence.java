@@ -81,6 +81,12 @@ public abstract class Equivalence {
         }
     };
 
+    /**
+     * Subclass for creating custom equivalence definitions.
+     */
+    protected Equivalence() {
+    }
+
     public abstract boolean equals(Object a, Object b);
 
     public abstract int hashCode(Object o);

@@ -23,22 +23,23 @@
 package org.graalvm.util;
 
 /**
- * Immutable memory efficient map data structure. Use methods in {@link CollectionFactory} to
- * create.
+ * Cursor to iterate over a map without changing its contents.
  */
-public interface ImmutableEconomicMap<K, V> {
+public interface UnmodifiableMapCursor<K, V> {
+    /**
+     * Advances to the next entry.
+     *
+     * @return {@code true} if a next entry exists, {@code false} if there is no next entry.
+     */
+    boolean advance();
 
-    V get(K key);
+    /**
+     * The key of the current entry.
+     */
+    K getKey();
 
-    boolean containsKey(K key);
-
-    int size();
-
-    boolean isEmpty();
-
-    Iterable<V> getValues();
-
-    Iterable<K> getKeys();
-
-    ImmutableMapCursor<K, V> getEntries();
+    /**
+     * The value of the current entry.
+     */
+    V getValue();
 }

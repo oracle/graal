@@ -27,21 +27,42 @@ import java.util.Objects;
 /**
  * Utility class representing a pair of values.
  */
-public class Pair<L, R> {
+public final class Pair<L, R> {
+    private static final Pair<Object, Object> EMPTY = new Pair<>(null, null);
+
     private final L left;
     private final R right;
 
-    public Pair() {
-        this.left = null;
-        this.right = null;
+    @SuppressWarnings("unchecked")
+    public static <L, R> Pair<L, R> empty() {
+        return (Pair<L, R>) EMPTY;
     }
 
-    public Pair(L left) {
-        this.left = left;
-        this.right = null;
+    public static <L, R> Pair<L, R> createLeft(L left) {
+        if (left == null) {
+            return empty();
+        } else {
+            return new Pair<>(left, null);
+        }
     }
 
-    public Pair(L left, R right) {
+    public static <L, R> Pair<L, R> createRight(R right) {
+        if (right == null) {
+            return empty();
+        } else {
+            return new Pair<>(null, right);
+        }
+    }
+
+    public static <L, R> Pair<L, R> create(L left, R right) {
+        if (right == null && left == null) {
+            return empty();
+        } else {
+            return new Pair<>(left, right);
+        }
+    }
+
+    private Pair(L left, R right) {
         this.left = left;
         this.right = right;
     }

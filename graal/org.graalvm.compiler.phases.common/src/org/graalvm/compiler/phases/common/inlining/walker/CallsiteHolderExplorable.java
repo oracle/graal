@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.phases.common.inlining.policy.AbstractInliningPolicy;
 import org.graalvm.compiler.phases.graph.FixedNodeProbabilityCache;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
 
@@ -98,9 +97,9 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
      */
     private EconomicSet<ParameterNode> fixedParamsAt(BitSet freshlyInstantiatedArguments) {
         if (freshlyInstantiatedArguments == null || freshlyInstantiatedArguments.isEmpty()) {
-            return CollectionFactory.newSet(Equivalence.IDENTITY);
+            return EconomicSet.create(Equivalence.IDENTITY);
         }
-        EconomicSet<ParameterNode> result = CollectionFactory.newSet(Equivalence.IDENTITY);
+        EconomicSet<ParameterNode> result = EconomicSet.create(Equivalence.IDENTITY);
         for (ParameterNode p : graph.getNodes(ParameterNode.TYPE)) {
             if (freshlyInstantiatedArguments.get(p.index())) {
                 result.add(p);

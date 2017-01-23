@@ -552,7 +552,7 @@ public class LinearScan {
         assert list1Prev == null || list1Prev.next.isEndMarker() : "linear list ends not with sentinel";
         assert list2Prev == null || list2Prev.next.isEndMarker() : "linear list ends not with sentinel";
 
-        return new Pair<>(list1, list2);
+        return Pair.create(list1, list2);
     }
 
     protected void sortIntervalsBeforeAllocation() {
