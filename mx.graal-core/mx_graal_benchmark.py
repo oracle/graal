@@ -297,8 +297,40 @@ class DaCapoMoveProfilingBenchmarkMixin(MoveProfilingBenchmarkMixin):
         return self.currentBenchname
 
 
+class AveragingBenchmarkMixin(object):
+    """Provides utilities for computing the average time of the latest warmup runs.
 
-class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    Note that this mixin expects that the main benchmark class produces a sequence of
+    datapoints that have the metric.name dimension set to "warmup".
+    To add the average, this mixin appends a new datapoint whose metric.name dimension
+    is set to "time".
+
+    Benchmarks that mix in this class must manually invoke methods for computing extra
+    iteration counts and averaging, usually in their run method.
+    """
+
+    def getExtraIterationCount(self, iterations):
+        # Uses the number of warmup iterations to calculate the number of extra
+        # iterations needed by the benchmark to compute a more stable average result.
+        return min(10, iterations, max(5, int(iterations * 0.2)))
+
+    def addAverageAcrossLatestResults(self, results):
+        # Postprocess results to compute the resulting time by taking the average of last N runs,
+        # where N is 20% of the maximum number of iterations, at least 5 and at most 10.
+        warmupResults = [result for result in results if result["metric.name"] == "warmup"]
+        lastIteration = max((result["metric.iteration"] for result in warmupResults))
+        resultIterations = self.getExtraIterationCount(lastIteration + 1)
+        totalTimeForAverage = 0.0
+        for i in range(lastIteration - resultIterations + 1, lastIteration + 1):
+            result = next(result for result in warmupResults if result["metric.iteration"] == i)
+            totalTimeForAverage += result["metric.value"]
+        averageResult = next(result for result in warmupResults if result["metric.iteration"] == 0).copy()
+        averageResult["metric.value"] = totalTimeForAverage / resultIterations
+        averageResult["metric.name"] = "time"
+        results.append(averageResult)
+
+
+class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin):
     """Base benchmark suite for DaCapo-based benchmarks.
 
     This suite can only run a single benchmark in one VM invocation.
@@ -469,26 +501,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
           )
         ]
 
-    def getExtraIterationCount(self, iterations):
-        # Uses the number of warmup iterations to calculate the number of extra
-        # iterations needed by the benchmark to compute a more stable average result.
-        return min(10, iterations, max(5, int(iterations * 0.2)))
-
     def run(self, benchmarks, bmSuiteArgs):
-        # Postprocess results to compute the resulting time by taking the average of last N runs,
-        # where N is 20% of the maximum number of iterations, at least 5 and at most 10.
         results = super(BaseDaCapoBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
-        warmupResults = [result for result in results if result["metric.name"] == "warmup"]
-        lastIteration = max((result["metric.iteration"] for result in warmupResults))
-        resultIterations = self.getExtraIterationCount(lastIteration + 1)
-        totalTimeForAverage = 0.0
-        for i in range(lastIteration - resultIterations + 1, lastIteration + 1):
-            result = next(result for result in warmupResults if result["metric.iteration"] == i)
-            totalTimeForAverage += result["metric.value"]
-        averageResult = next(result for result in warmupResults if result["metric.iteration"] == 0).copy()
-        averageResult["metric.value"] = totalTimeForAverage / resultIterations
-        averageResult["metric.name"] = "time"
-        results.append(averageResult)
+        self.addAverageAcrossLatestResults(results)
         return results
 
 
@@ -1083,7 +1098,7 @@ class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
 
 
-class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin):
     """Renaissance benchmark suite implementation.
     """
     def name(self):
@@ -1184,6 +1199,11 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             }
           )
         ]
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(RenaissanceBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        self.addAverageAcrossLatestResults(results)
+        return results
 
 
 mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
