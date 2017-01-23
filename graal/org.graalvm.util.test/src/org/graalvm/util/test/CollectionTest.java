@@ -31,10 +31,9 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.function.BiFunction;
 
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
-import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.UnmodifiableMapCursor;
 import org.graalvm.util.MapCursor;
 import org.graalvm.util.ObjectSizeEstimate;
 import org.junit.Assert;
@@ -47,7 +46,7 @@ public class CollectionTest {
      */
     @Test
     public void testSize() {
-        EconomicMap<Object, Object> map = CollectionFactory.newMap(Equivalence.IDENTITY);
+        EconomicMap<Object, Object> map = EconomicMap.create(Equivalence.IDENTITY);
         assertEquals(48, ObjectSizeEstimate.forObject(map).getTotalBytes());
 
         Integer value = 1;
@@ -65,7 +64,7 @@ public class CollectionTest {
      */
     @Test
     public void testCompress() {
-        EconomicMap<Object, Object> map = CollectionFactory.newMap();
+        EconomicMap<Object, Object> map = EconomicMap.create();
 
         // Measuring size of map with one entry.
         Object firstValue = 0;
@@ -171,7 +170,7 @@ public class CollectionTest {
 
     @Test
     public void testVeryLarge() {
-        EconomicMap<Object, Object> map = CollectionFactory.newMap();
+        EconomicMap<Object, Object> map = EconomicMap.create();
         EconomicMap<Object, Object> referenceMap = createDebugMap();
 
         Random random = new Random(0);
@@ -191,7 +190,7 @@ public class CollectionTest {
      */
     @Test
     public void testAddRemove() {
-        EconomicMap<Object, Object> map = CollectionFactory.newMap();
+        EconomicMap<Object, Object> map = EconomicMap.create();
         EconomicMap<Object, Object> referenceMap = createDebugMap();
 
         for (int seed = 0; seed < 10; ++seed) {
@@ -242,8 +241,8 @@ public class CollectionTest {
         Assert.assertEquals(referenceMap.size(), map.size());
 
         // Check entries.
-        ImmutableMapCursor<?, ?> cursor = map.getEntries();
-        ImmutableMapCursor<?, ?> referenceCursor = referenceMap.getEntries();
+        UnmodifiableMapCursor<?, ?> cursor = map.getEntries();
+        UnmodifiableMapCursor<?, ?> referenceCursor = referenceMap.getEntries();
         while (cursor.advance()) {
             Assert.assertTrue(referenceCursor.advance());
             Assert.assertEquals(referenceCursor.getKey(), cursor.getKey());
@@ -270,7 +269,7 @@ public class CollectionTest {
 
     public static <K, V> EconomicMap<K, V> createDebugMap() {
         final LinkedHashMap<K, V> linkedMap = new LinkedHashMap<>();
-        final EconomicMap<K, V> sparseMap = CollectionFactory.newMap();
+        final EconomicMap<K, V> sparseMap = EconomicMap.create();
         return new EconomicMap<K, V>() {
 
             @Override

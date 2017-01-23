@@ -29,7 +29,6 @@ import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -52,7 +51,7 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
      */
-    private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = CollectionFactory.newMap(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+    private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
     public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, Object stub) {
         super(compilationId, lir, frameMapBuilder, callingConvention);

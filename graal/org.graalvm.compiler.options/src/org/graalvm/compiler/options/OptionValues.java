@@ -39,12 +39,11 @@ import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
-import org.graalvm.util.ImmutableEconomicMap;
-import org.graalvm.util.ImmutableMapCursor;
 import org.graalvm.util.MapCursor;
+import org.graalvm.util.UnmodifiableEconomicMap;
+import org.graalvm.util.UnmodifiableMapCursor;
 
 import jdk.vm.ci.common.InitTimer;
 
@@ -111,7 +110,7 @@ public class OptionValues {
                     try (FileReader fr = new FileReader(graalOptions)) {
                         Properties props = new Properties();
                         props.load(fr);
-                        EconomicMap<String, String> optionSettings = CollectionFactory.newMap();
+                        EconomicMap<String, String> optionSettings = EconomicMap.create();
                         MapCursor<String, String> cursor = optionSettings.getEntries();
                         while (cursor.advance()) {
                             optionSettings.put(cursor.getKey(), cursor.getValue());
@@ -127,7 +126,7 @@ public class OptionValues {
                 }
             }
 
-            EconomicMap<String, String> optionSettings = CollectionFactory.newMap();
+            EconomicMap<String, String> optionSettings = EconomicMap.create();
             for (Map.Entry<Object, Object> e : savedProps.entrySet()) {
                 String name = (String) e.getKey();
                 if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
@@ -183,11 +182,11 @@ public class OptionValues {
         return values.containsKey(key);
     }
 
-    public OptionValues(OptionValues initialValues, ImmutableEconomicMap<OptionKey<?>, Object> extraPairs) {
+    public OptionValues(OptionValues initialValues, UnmodifiableEconomicMap<OptionKey<?>, Object> extraPairs) {
         if (initialValues != null) {
             values.putAll(initialValues.values);
         }
-        ImmutableMapCursor<OptionKey<?>, Object> cursor = extraPairs.getEntries();
+        UnmodifiableMapCursor<OptionKey<?>, Object> cursor = extraPairs.getEntries();
         while (cursor.advance()) {
             values.put(cursor.getKey(), encodeNull(cursor.getValue()));
         }
@@ -201,13 +200,13 @@ public class OptionValues {
      * Creates a new map suitable for using {@link OptionKey}s as keys.
      */
     public static EconomicMap<OptionKey<?>, Object> newOptionMap() {
-        return CollectionFactory.newMap(Equivalence.IDENTITY);
+        return EconomicMap.create(Equivalence.IDENTITY);
     }
 
     /**
      * Gets an immutable view of the key/value pairs in this object.
      */
-    public ImmutableEconomicMap<OptionKey<?>, Object> getMap() {
+    public UnmodifiableEconomicMap<OptionKey<?>, Object> getMap() {
         return values;
     }
 

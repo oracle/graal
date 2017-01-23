@@ -59,7 +59,6 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.LoopInfo;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
@@ -71,10 +70,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
-    protected final EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffects = CollectionFactory.newMap(Equivalence.IDENTITY);
+    protected final EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffects = EconomicMap.create(Equivalence.IDENTITY);
     // Intended to be used by read-eliminating phases based on the effects phase.
-    protected final EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCache = CollectionFactory.newMap(Equivalence.IDENTITY);
-    private final EconomicMap<LoopBeginNode, BlockT> loopEntryStates = CollectionFactory.newMap(Equivalence.IDENTITY);
+    protected final EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCache = EconomicMap.create(Equivalence.IDENTITY);
+    private final EconomicMap<LoopBeginNode, BlockT> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
     private final NodeBitMap hasScalarReplacedInputs;
 
     protected boolean changed;
@@ -497,7 +496,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 firstLocation = locationIdentity;
             } else {
                 if (killedLocations == null) {
-                    killedLocations = CollectionFactory.newSet(Equivalence.IDENTITY);
+                    killedLocations = EconomicSet.create(Equivalence.IDENTITY);
                 }
                 killedLocations.add(locationIdentity);
             }

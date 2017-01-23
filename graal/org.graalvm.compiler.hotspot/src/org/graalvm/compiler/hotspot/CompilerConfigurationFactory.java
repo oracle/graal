@@ -36,7 +36,6 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.Architecture;
@@ -93,7 +92,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     public static class DefaultBackendMap implements BackendMap {
 
-        private final EconomicMap<Class<? extends Architecture>, HotSpotBackendFactory> backends = CollectionFactory.newMap();
+        private final EconomicMap<Class<? extends Architecture>, HotSpotBackendFactory> backends = EconomicMap.create();
 
         @SuppressWarnings("try")
         public DefaultBackendMap(String backendName) {

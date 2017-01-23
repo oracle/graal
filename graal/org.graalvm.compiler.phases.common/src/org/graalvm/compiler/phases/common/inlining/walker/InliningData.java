@@ -63,7 +63,6 @@ import org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph;
 import org.graalvm.compiler.phases.common.inlining.policy.InliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Equivalence;
 
@@ -397,7 +396,7 @@ public class InliningData {
         try {
             OptionValues options = rootGraph.getOptions();
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph); Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(options), false)) {
-                EconomicSet<Node> canonicalizedNodes = CollectionFactory.newSet(Equivalence.IDENTITY);
+                EconomicSet<Node> canonicalizedNodes = EconomicSet.create(Equivalence.IDENTITY);
                 canonicalizedNodes.addAll(calleeInfo.invoke().asNode().usages());
                 Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context));
                 canonicalizedNodes.addAll(parameterUsages);

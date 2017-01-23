@@ -42,7 +42,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.UnmodifiableMapCursor;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.code.Architecture;
@@ -212,7 +212,7 @@ public class GraphEncoder {
         assert nodeCount == graph.getNodeCount() + 1;
 
         long[] nodeStartOffsets = new long[nodeCount];
-        ImmutableMapCursor<Node, Integer> cursor = nodeOrder.orderIds.getEntries();
+        UnmodifiableMapCursor<Node, Integer> cursor = nodeOrder.orderIds.getEntries();
         while (cursor.advance()) {
             Node node = cursor.getKey();
             Integer orderId = cursor.getValue();
@@ -530,9 +530,9 @@ class GraphComparison {
         nodeMapping.set(expectedNode, actualNode);
         if (expectedNode instanceof AbstractEndNode) {
             /* To ensure phi nodes have been added, we handle everything before block ends. */
-            workList.addLast(new Pair<>(expectedNode, actualNode));
+            workList.addLast(Pair.create(expectedNode, actualNode));
         } else {
-            workList.addFirst(new Pair<>(expectedNode, actualNode));
+            workList.addFirst(Pair.create(expectedNode, actualNode));
         }
     }
 }

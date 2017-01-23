@@ -126,7 +126,6 @@ import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -232,7 +231,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
          * but only within the same Kind. For instance short and char are the same copy routines but
          * they kill different memory so they still have to be distinct.
          */
-        EconomicMap<Long, ForeignCallDescriptor> descMap = CollectionFactory.newMap();
+        EconomicMap<Long, ForeignCallDescriptor> descMap = EconomicMap.create();
         registerArraycopyDescriptor(descMap, kind, false, false, uninit, false, routine);
         registerArraycopyDescriptor(descMap, kind, true, false, uninit, false, alignedRoutine);
         registerArraycopyDescriptor(descMap, kind, false, true, uninit, false, disjointRoutine);

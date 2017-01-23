@@ -39,10 +39,9 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.Equivalence;
-import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.UnmodifiableEconomicMap;
 
 /**
  * This class is a graph container, it contains the set of nodes that belong to this graph.
@@ -307,7 +306,7 @@ public class Graph {
      *
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
-    public final Graph copy(Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback) {
+    public final Graph copy(Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback) {
         return copy(name, duplicationMapCallback);
     }
 
@@ -326,9 +325,9 @@ public class Graph {
      * @param newName the name of the copy, used for debugging purposes (can be null)
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
-    protected Graph copy(String newName, Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback) {
+    protected Graph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback) {
         Graph copy = new Graph(newName, options);
-        ImmutableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (EconomicMap<Node, Node>) null);
+        UnmodifiableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (EconomicMap<Node, Node>) null);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
@@ -621,7 +620,7 @@ public class Graph {
         }
 
         if (cachedLeafNodes[leafId] == null) {
-            cachedLeafNodes[leafId] = CollectionFactory.newMap(NODE_VALUE_COMPARE);
+            cachedLeafNodes[leafId] = EconomicMap.create(NODE_VALUE_COMPARE);
         }
 
         cachedLeafNodes[leafId].put(node, node);
@@ -1073,7 +1072,7 @@ public class Graph {
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
-    public ImmutableEconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, EconomicMap<Node, Node> replacementsMap) {
+    public UnmodifiableEconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, EconomicMap<Node, Node> replacementsMap) {
         DuplicationReplacement replacements;
         if (replacementsMap == null) {
             replacements = null;

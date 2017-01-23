@@ -44,11 +44,10 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Equivalence;
-import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.UnmodifiableEconomicMap;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
@@ -390,11 +389,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
     @Override
-    protected Graph copy(String newName, Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback) {
+    protected Graph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback) {
         return copy(newName, duplicationMapCallback, compilationId);
     }
 
-    private StructuredGraph copy(String newName, Consumer<ImmutableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId) {
+    private StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId) {
         AllowAssumptions allowAssumptions = AllowAssumptions.ifNonNull(assumptions);
         StructuredGraph copy = new StructuredGraph(newName,
                         method(),
@@ -411,9 +410,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.setGuardsStage(getGuardsStage());
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
-        EconomicMap<Node, Node> replacements = CollectionFactory.newMap(Equivalence.IDENTITY);
+        EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
-        ImmutableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
+        UnmodifiableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
@@ -758,7 +757,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public void recordField(ResolvedJavaField field) {
         assert GraalOptions.GeneratePIC.getValue(getOptions());
         if (this.fields == null) {
-            this.fields = CollectionFactory.newSet(Equivalence.IDENTITY);
+            this.fields = EconomicSet.create(Equivalence.IDENTITY);
         }
         fields.add(field);
     }
@@ -771,7 +770,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert this != other;
         assert GraalOptions.GeneratePIC.getValue(getOptions());
         if (this.fields == null) {
-            this.fields = CollectionFactory.newSet(Equivalence.IDENTITY);
+            this.fields = EconomicSet.create(Equivalence.IDENTITY);
         }
         this.fields.addAll(other.fields);
     }

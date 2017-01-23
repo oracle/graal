@@ -61,7 +61,6 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheEntry;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
@@ -261,9 +260,9 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 if (firstValue != null && phi.getStackKind().isObject()) {
                     ValueNode unproxified = GraphUtil.unproxify(firstValue);
                     if (firstValueSet == null) {
-                        firstValueSet = CollectionFactory.newMap(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+                        firstValueSet = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
                     }
-                    Pair<ValueNode, Object> pair = new Pair<>(unproxified, firstValueSet.get(unproxified));
+                    Pair<ValueNode, Object> pair = Pair.create(unproxified, firstValueSet.get(unproxified));
                     firstValueSet.put(unproxified, pair);
                 }
             }
@@ -419,7 +418,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                     loopKilledLocations.setKillsAll();
                 } else {
                     // we have fully processed this loop >1 times, update the killed locations
-                    EconomicSet<LocationIdentity> forwardEndLiveLocations = CollectionFactory.newSet(Equivalence.DEFAULT);
+                    EconomicSet<LocationIdentity> forwardEndLiveLocations = EconomicSet.create(Equivalence.DEFAULT);
                     for (ReadCacheEntry entry : initialState.readCache.getKeys()) {
                         forwardEndLiveLocations.add(entry.identity);
                     }

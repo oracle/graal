@@ -28,7 +28,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.UnmodifiableEconomicMap;
 
 /**
  * Options for the Truffle compiler.
@@ -62,7 +62,7 @@ public class TruffleCompilerOptions {
         private final TruffleOptionsOverrideScope outer;
         private final OptionValues options;
 
-        TruffleOptionsOverrideScope(ImmutableEconomicMap<OptionKey<?>, Object> overrides) {
+        TruffleOptionsOverrideScope(UnmodifiableEconomicMap<OptionKey<?>, Object> overrides) {
             outer = Lazy.overrideScope.get();
             options = new OptionValues(outer == null ? GLOBAL : outer.options, overrides);
             Lazy.overrideScope.set(this);
@@ -97,7 +97,7 @@ public class TruffleCompilerOptions {
         return new TruffleOptionsOverrideScope(OptionValues.asMap(key1, value1, extraOverrides));
     }
 
-    public static TruffleOptionsOverrideScope overrideOptions(ImmutableEconomicMap<OptionKey<?>, Object> overrides) {
+    public static TruffleOptionsOverrideScope overrideOptions(UnmodifiableEconomicMap<OptionKey<?>, Object> overrides) {
         return new TruffleOptionsOverrideScope(overrides);
     }
 

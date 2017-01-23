@@ -74,7 +74,6 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -178,7 +177,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         this.snippetReflection = snippetReflection;
         this.target = target;
         this.graphs = new ConcurrentHashMap<>();
-        this.snippetTemplateCache = CollectionFactory.newMap(Equivalence.DEFAULT);
+        this.snippetTemplateCache = EconomicMap.create(Equivalence.DEFAULT);
         this.bytecodeProvider = bytecodeProvider;
     }
 

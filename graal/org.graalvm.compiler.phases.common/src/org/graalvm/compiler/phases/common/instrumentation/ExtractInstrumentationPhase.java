@@ -52,10 +52,9 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
-import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.UnmodifiableEconomicMap;
 
 /**
  * The {@code ExtractInstrumentationPhase} extracts the instrumentation (whose boundary are
@@ -164,7 +163,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
             String name = "Instrumentation:" + oldGraph.method().format("%H.%n(%p)");
             OptionValues options = oldGraph.getOptions();
             StructuredGraph instrumentationGraph = new StructuredGraph.Builder(AllowAssumptions.YES).name(name).options(options).build();
-            EconomicMap<Node, Node> replacements = CollectionFactory.newMap(Equivalence.IDENTITY);
+            EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
             int index = 0; // for ParameterNode index
             for (Node current : nodes) {
                 // mark any input that is not included in the instrumentation a weak dependency
@@ -182,7 +181,7 @@ public class ExtractInstrumentationPhase extends BasePhase<HighTierContext> {
                     }
                 }
             }
-            ImmutableEconomicMap<Node, Node> duplicates = instrumentationGraph.addDuplicates(nodes, oldGraph, nodes.count(), replacements);
+            UnmodifiableEconomicMap<Node, Node> duplicates = instrumentationGraph.addDuplicates(nodes, oldGraph, nodes.count(), replacements);
             instrumentationGraph.start().setNext((FixedNode) duplicates.get(begin.next()));
             instrumentationGraph.start().setStateAfter((FrameState) duplicates.get(begin.stateAfter()));
             duplicates.get(end).replaceAtPredecessor(instrumentationGraph.addWithoutUnique(new ReturnNode(null)));

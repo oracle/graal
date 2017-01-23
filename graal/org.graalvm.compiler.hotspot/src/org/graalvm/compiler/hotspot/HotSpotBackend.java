@@ -68,7 +68,6 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
@@ -350,7 +349,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @return the registers that are defined by or used as temps for any instruction in {@code lir}
      */
     protected final EconomicSet<Register> gatherDestroyedCallerRegisters(LIR lir) {
-        final EconomicSet<Register> destroyedRegisters = CollectionFactory.newSet(Equivalence.IDENTITY);
+        final EconomicSet<Register> destroyedRegisters = EconomicSet.create(Equivalence.IDENTITY);
         ValueConsumer defConsumer = new ValueConsumer() {
 
             @Override

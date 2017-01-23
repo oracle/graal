@@ -85,7 +85,6 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -119,7 +118,7 @@ public final class CompileTheWorld {
      */
     public static EconomicMap<OptionKey<?>, Object> parseOptions(String options) {
         if (options != null) {
-            EconomicMap<String, String> optionSettings = CollectionFactory.newMap();
+            EconomicMap<String, String> optionSettings = EconomicMap.create();
             for (String optionSetting : options.split("\\s+|#")) {
                 OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
             }
@@ -128,7 +127,7 @@ public final class CompileTheWorld {
             OptionsParser.parseOptions(optionSettings, values, loader);
             return values;
         }
-        return CollectionFactory.newMap();
+        return EconomicMap.create();
     }
 
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
@@ -199,7 +198,7 @@ public final class CompileTheWorld {
         this.methodFilters = methodFilters == null || methodFilters.isEmpty() ? null : MethodFilter.parse(methodFilters);
         this.excludeMethodFilters = excludeMethodFilters == null || excludeMethodFilters.isEmpty() ? null : MethodFilter.parse(excludeMethodFilters);
         this.verbose = verbose;
-        EconomicMap<OptionKey<?>, Object> compilationOptionsCopy = CollectionFactory.newMap(compilationOptions);
+        EconomicMap<OptionKey<?>, Object> compilationOptionsCopy = EconomicMap.create(compilationOptions);
         this.currentOptions = initialOptions;
 
         // We don't want the VM to exit when a method fails to compile...
@@ -213,7 +212,7 @@ public final class CompileTheWorld {
         if (!GraalDebugConfig.Options.DebugValueThreadFilter.hasBeenSet(initialOptions)) {
             GraalDebugConfig.Options.DebugValueThreadFilter.update(compilationOptionsCopy, "^CompileTheWorld");
         }
-        this.compilationOptions = CollectionFactory.newMap(compilationOptionsCopy);
+        this.compilationOptions = EconomicMap.create(compilationOptionsCopy);
     }
 
     public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, OptionValues options) {

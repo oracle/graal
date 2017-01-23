@@ -57,7 +57,6 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.common.inlining.info.elem.Inlineable;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
 
@@ -101,7 +100,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private static boolean assertUniqueTypes(ArrayList<ProfiledType> ptypes) {
-        EconomicSet<ResolvedJavaType> set = CollectionFactory.newSet(Equivalence.DEFAULT);
+        EconomicSet<ResolvedJavaType> set = EconomicSet.create(Equivalence.DEFAULT);
         for (ProfiledType ptype : ptypes) {
             set.add(ptype.getType());
         }
