@@ -179,6 +179,11 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return object;
     }
 
+    public void setOriginalNode(ValueNode newNode) {
+        this.updateUsages(object, newNode);
+        this.object = newNode;
+    }
+
     /**
      * Casts an object to have an exact, non-null stamp representing {@link Class}.
      */

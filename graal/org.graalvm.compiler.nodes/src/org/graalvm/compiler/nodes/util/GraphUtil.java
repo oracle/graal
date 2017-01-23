@@ -655,15 +655,33 @@ public class GraphUtil {
     /**
      * Gets the original value by iterating through all {@link ValueProxy ValueProxies}.
      *
-     * @param value The start value.
-     * @return The first non-proxy value encountered.
+     * @param value the start value.
+     * @return the first non-proxy value encountered
      */
     public static ValueNode unproxify(ValueNode value) {
-        ValueNode result = value;
-        while (result instanceof ValueProxy) {
-            result = ((ValueProxy) result).getOriginalNode();
+        if (value instanceof ValueProxy) {
+            return unproxify((ValueProxy) value);
+        } else {
+            return value;
         }
-        return result;
+    }
+
+    /**
+     * Gets the original value by iterating through all {@link ValueProxy ValueProxies}.
+     *
+     * @param value the start value proxy.
+     * @return the first non-proxy value encountered
+     */
+    public static ValueNode unproxify(ValueProxy value) {
+        if (value != null) {
+            ValueNode result = value.getOriginalNode();
+            while (result instanceof ValueProxy) {
+                result = ((ValueProxy) result).getOriginalNode();
+            }
+            return result;
+        } else {
+            return null;
+        }
     }
 
     /**
