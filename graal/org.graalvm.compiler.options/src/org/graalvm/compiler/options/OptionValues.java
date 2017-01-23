@@ -32,13 +32,19 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
+
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
+import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.common.InitTimer;
 
@@ -92,7 +98,7 @@ public class OptionValues {
 
     @SuppressWarnings("try")
     private static OptionValues initialize() {
-        Map<OptionKey<?>, Object> values = new HashMap<>();
+        EconomicMap<OptionKey<?>, Object> values = newOptionMap();
         try (InitTimer t = timer("InitializeOptions")) {
 
             ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
@@ -105,9 +111,10 @@ public class OptionValues {
                     try (FileReader fr = new FileReader(graalOptions)) {
                         Properties props = new Properties();
                         props.load(fr);
-                        Map<String, String> optionSettings = new HashMap<>();
-                        for (Map.Entry<Object, Object> e : props.entrySet()) {
-                            optionSettings.put((String) e.getKey(), (String) e.getValue());
+                        EconomicMap<String, String> optionSettings = CollectionFactory.newMap();
+                        MapCursor<String, String> cursor = optionSettings.getEntries();
+                        while (cursor.advance()) {
+                            optionSettings.put(cursor.getKey(), cursor.getValue());
                         }
                         try {
                             OptionsParser.parseOptions(optionSettings, values, loader);
@@ -120,7 +127,7 @@ public class OptionValues {
                 }
             }
 
-            Map<String, String> optionSettings = new HashMap<>();
+            EconomicMap<String, String> optionSettings = CollectionFactory.newMap();
             for (Map.Entry<Object, Object> e : savedProps.entrySet()) {
                 String name = (String) e.getKey();
                 if (name.startsWith(GRAAL_OPTION_PROPERTY_PREFIX)) {
@@ -150,12 +157,12 @@ public class OptionValues {
      */
     public static final OptionValues GLOBAL = initialize();
 
-    private final Map<OptionKey<?>, Object> values = new HashMap<>();
+    private final EconomicMap<OptionKey<?>, Object> values = newOptionMap();
 
     /**
      * Used to assert the invariant of stability for {@link StableOptionKey}s.
      */
-    private final Map<StableOptionKey<?>, Object> stabilized = new HashMap<>();
+    private final EconomicMap<OptionKey<?>, Object> stabilized = newOptionMap();
 
     OptionValues set(OptionKey<?> key, Object value) {
         decodeNull(values.put(key, encodeNull(value)));
@@ -186,12 +193,13 @@ public class OptionValues {
         return key.getDescriptor() != null && values.containsKey(key);
     }
 
-    public OptionValues(OptionValues initialValues, Map<OptionKey<?>, Object> extraPairs) {
+    public OptionValues(OptionValues initialValues, ImmutableEconomicMap<OptionKey<?>, Object> extraPairs) {
         if (initialValues != null) {
             values.putAll(initialValues.values);
         }
-        for (Map.Entry<OptionKey<?>, Object> e : extraPairs.entrySet()) {
-            values.put(e.getKey(), encodeNull(e.getValue()));
+        ImmutableMapCursor<OptionKey<?>, Object> cursor = extraPairs.getEntries();
+        while (cursor.advance()) {
+            values.put(cursor.getKey(), encodeNull(cursor.getValue()));
         }
     }
 
@@ -200,10 +208,17 @@ public class OptionValues {
     }
 
     /**
+     * Creates a new map suitable for using {@link OptionKey}s as keys.
+     */
+    public static EconomicMap<OptionKey<?>, Object> newOptionMap() {
+        return CollectionFactory.newMap(Equivalence.IDENTITY);
+    }
+
+    /**
      * Gets an immutable view of the key/value pairs in this object.
      */
-    public Map<OptionKey<?>, Object> getMap() {
-        return Collections.unmodifiableMap(values);
+    public ImmutableEconomicMap<OptionKey<?>, Object> getMap() {
+        return values;
     }
 
     /**
@@ -212,8 +227,8 @@ public class OptionValues {
      * @param extraPairs key/value pairs of the form {@code [key1, value1, key2, value2, ...]}
      * @return a map containing the key/value pairs as entries
      */
-    public static Map<OptionKey<?>, Object> asMap(OptionKey<?> key1, Object value1, Object... extraPairs) {
-        Map<OptionKey<?>, Object> map = new HashMap<>();
+    public static EconomicMap<OptionKey<?>, Object> asMap(OptionKey<?> key1, Object value1, Object... extraPairs) {
+        EconomicMap<OptionKey<?>, Object> map = newOptionMap();
         map.put(key1, value1);
         for (int i = 0; i < extraPairs.length; i += 2) {
             OptionKey<?> key = (OptionKey<?>) extraPairs[i];
@@ -226,9 +241,10 @@ public class OptionValues {
     /**
      * Constructor only for initializing {@link #GLOBAL}.
      */
-    OptionValues(Map<OptionKey<?>, Object> values) {
-        for (Map.Entry<OptionKey<?>, Object> e : values.entrySet()) {
-            this.values.put(e.getKey(), encodeNull(e.getValue()));
+    OptionValues(EconomicMap<OptionKey<?>, Object> values) {
+        MapCursor<OptionKey<?>, Object> cursor = values.getEntries();
+        while (cursor.advance()) {
+            this.values.put(cursor.getKey(), encodeNull(cursor.getValue()));
         }
     }
 
@@ -268,7 +284,10 @@ public class OptionValues {
             }
         };
         SortedMap<OptionKey<?>, Object> sorted = new TreeMap<>(comparator);
-        sorted.putAll(values);
+        MapCursor<OptionKey<?>, Object> cursor = values.getEntries();
+        while (cursor.advance()) {
+            sorted.put(cursor.getKey(), cursor.getValue());
+        }
         return sorted.toString();
     }
 

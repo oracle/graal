@@ -26,12 +26,11 @@ import java.io.ByteArrayOutputStream;
 
 import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
 import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -98,7 +97,7 @@ public class PerformanceWarningTest {
         // Compile and capture output to TTY.
         ByteArrayOutputStream outContent = new ByteArrayOutputStream();
         try (TTY.Filter filter = new TTY.Filter(new LogStream(outContent))) {
-            try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TraceTrufflePerformanceWarnings, Boolean.TRUE)) {
+            try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TraceTrufflePerformanceWarnings, Boolean.TRUE)) {
                 DefaultTruffleCompiler.create(GraalTruffleRuntime.getRuntime()).compileMethod(target, GraalTruffleRuntime.getRuntime());
             }
         }

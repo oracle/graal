@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.options;
 
-import java.util.Map;
+import org.graalvm.util.EconomicMap;
 
 /**
  * An option that always returns the same {@linkplain #getValue(OptionValues) value}.
@@ -59,7 +59,7 @@ public class StableOptionKey<T> extends OptionKey<T> {
     }
 
     @Override
-    protected void onValueUpdate(Map<OptionKey<?>, Object> values, T oldValue, T newValue) {
+    protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
         // assert !values.isStabilized(this);
     }
 }

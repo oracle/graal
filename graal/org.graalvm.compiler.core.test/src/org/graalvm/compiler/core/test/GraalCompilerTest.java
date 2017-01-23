@@ -738,8 +738,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         return applyArgSuppliers(executeArgs);
     }
 
-    protected final void test(String name, Object... args) {
-        test(GLOBAL, name, args);
+    protected final Result test(String name, Object... args) {
+        return test(GLOBAL, name, args);
     }
 
     protected final Result test(OptionValues options, String name, Object... args) {

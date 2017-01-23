@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.debug;
 
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleInlining;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleFunctionInlining;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
@@ -31,7 +32,6 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.graalvm.compiler.truffle.TruffleInliningDecision;
 import org.graalvm.compiler.truffle.TruffleInliningProfile;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
 public final class TraceInliningListener extends AbstractDebugCompilationListener {
 
@@ -49,7 +49,7 @@ public final class TraceInliningListener extends AbstractDebugCompilationListene
         if (inliningDecision == null) {
             return;
         }
-        if (TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
+        if (TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
             log(0, "inline start", target.toString(), target.getDebugProperties(null));
             logInliningDecisionRecursive(target, inliningDecision, 1);
             log(0, "inline done", target.toString(), target.getDebugProperties(inliningDecision));

@@ -25,8 +25,10 @@ package org.graalvm.compiler.options;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.List;
-import java.util.Map;
 import java.util.ServiceLoader;
+
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
 
 /**
  * This class contains methods for parsing Graal options and matching them against a set of
@@ -43,10 +45,11 @@ public class OptionsParser {
      *            {@link OptionDescriptor}s
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    public static void parseOptions(Map<String, String> optionSettings, Map<OptionKey<?>, Object> values, ServiceLoader<OptionDescriptors> loader) {
+    public static void parseOptions(EconomicMap<String, String> optionSettings, EconomicMap<OptionKey<?>, Object> values, ServiceLoader<OptionDescriptors> loader) {
         if (optionSettings != null && !optionSettings.isEmpty()) {
-            for (Map.Entry<String, String> e : optionSettings.entrySet()) {
-                parseOption(e.getKey(), e.getValue(), values, loader);
+            MapCursor<String, String> cursor = optionSettings.getEntries();
+            while (cursor.advance()) {
+                parseOption(cursor.getKey(), cursor.getValue(), values, loader);
             }
         }
     }
@@ -56,7 +59,7 @@ public class OptionsParser {
      *
      * @param optionSetting a string matching the pattern {@code <name>=<value>}
      */
-    public static void parseOptionSettingTo(String optionSetting, Map<String, String> dst) {
+    public static void parseOptionSettingTo(String optionSetting, EconomicMap<String, String> dst) {
         int eqIndex = optionSetting.indexOf('=');
         if (eqIndex == -1) {
             throw new InternalError("Option setting has does not match the pattern <name>=<value>: " + optionSetting);
@@ -92,7 +95,7 @@ public class OptionsParser {
      *            {@link OptionDescriptor}s
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    static void parseOption(String name, Object uncheckedValue, Map<OptionKey<?>, Object> values, ServiceLoader<OptionDescriptors> loader) {
+    static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, ServiceLoader<OptionDescriptors> loader) {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {

@@ -451,15 +451,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         CompilerAsserts.neverPartOfCompilation();
 
         OptimizedCallTarget target = createOptimizedCallTarget(source, rootNode);
-        setCallTarget(rootNode, target);
+        rootNode.setCallTarget(target);
         tvmci.onLoad(target.getRootNode());
         callTargets.put(target, null);
         return target;
-    }
-
-    @SuppressWarnings("all")
-    private static void setCallTarget(RootNode rootNode, OptimizedCallTarget target) {
-        rootNode.setCallTarget(target);
     }
 
     protected abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);

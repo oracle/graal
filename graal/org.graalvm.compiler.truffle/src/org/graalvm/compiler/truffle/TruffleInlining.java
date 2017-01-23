@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle;
 
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleFunctionInlining;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleMaximumRecursiveInlining;
 
 import java.util.ArrayList;
@@ -52,7 +53,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     }
 
     private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
-        if (!TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
+        if (!TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
             return Collections.emptyList();
         }
         int nodeCount = sourceTarget.getNonTrivialNodeCount();

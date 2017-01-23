@@ -32,9 +32,7 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.PrintStackTraceOnEx
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.Debug;
@@ -49,6 +47,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimeSource;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -121,7 +120,7 @@ public class CompilationTask {
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
         OptionValues newOptions = options;
         if (!config.inline) {
-            Map<OptionKey<?>, Object> m = new HashMap<>();
+            EconomicMap<OptionKey<?>, Object> m = OptionValues.newOptionMap();
             if (Inline.getValue(options) && !Inline.hasBeenSet(options)) {
                 m.put(Inline, false);
             }

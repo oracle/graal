@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.core.test.inlining;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 import java.util.ArrayList;
@@ -109,7 +108,7 @@ public class NestedLoopEffectsPhaseComplexityTest extends GraalCompilerTest {
             StructuredGraph g2 = (StructuredGraph) g1.copy();
             ResolvedJavaMethod method = g1.method();
             long elapsedRE = runAndTimePhase(g1, new EarlyReadEliminationPhase(new CanonicalizerPhase()));
-            long elapsedPEA = runAndTimePhase(g2, new PartialEscapePhase(true, new CanonicalizerPhase()));
+            long elapsedPEA = runAndTimePhase(g2, new PartialEscapePhase(true, new CanonicalizerPhase(), g1.getOptions()));
             if (LOG_PHASE_TIMINGS) {
                 TTY.printf("Needed %dms to run early partial escape analysis on a graph with %d nested loops compiling method %s\n", elapsedPEA, i, method);
             }
@@ -148,7 +147,7 @@ public class NestedLoopEffectsPhaseComplexityTest extends GraalCompilerTest {
     }
 
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph newGraph = new StructuredGraph(method, AllowAssumptions.NO, INVALID_COMPILATION_ID);
+        StructuredGraph newGraph = new StructuredGraph.Builder(AllowAssumptions.NO).method(method).build();
         context.getGraphBuilderSuite().apply(newGraph, context);
         new DeadCodeEliminationPhase(Optional).apply(newGraph);
         canonicalizer.apply(newGraph, context);

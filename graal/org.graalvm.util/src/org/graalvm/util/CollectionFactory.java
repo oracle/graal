@@ -37,7 +37,7 @@ public final class CollectionFactory {
     }
 
     /**
-     * Creates a new map that guarantees insertion order on the key set with the the default
+     * Creates a new map that guarantees insertion order on the key set with the default
      * {@link Equivalence#DEFAULT} comparison strategy for keys.
      */
     public static <K, V> EconomicMap<K, V> newMap() {
@@ -53,7 +53,7 @@ public final class CollectionFactory {
     }
 
     /**
-     * Creates a new map that guarantees insertion order on the key set with the the default
+     * Creates a new map that guarantees insertion order on the key set with the default
      * {@link Equivalence#DEFAULT} comparison strategy for keys and initializes with a specified
      * capacity.
      */
@@ -70,7 +70,7 @@ public final class CollectionFactory {
     }
 
     /**
-     * Creates a new map that guarantees insertion order on the key set with the the default
+     * Creates a new map that guarantees insertion order on the key set with the default
      * {@link Equivalence#DEFAULT} comparison strategy for keys and copies all elements from the
      * specified existing map.
      */

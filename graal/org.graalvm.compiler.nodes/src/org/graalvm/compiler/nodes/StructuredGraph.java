@@ -399,7 +399,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         StructuredGraph copy = new StructuredGraph(newName,
                         method(),
                         entryBCI,
-                        assumptions,
+                        assumptions == null ? null : new Assumptions(),
                         speculationLog,
                         useProfilingInfo,
                         newCompilationId,

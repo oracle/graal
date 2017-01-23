@@ -162,7 +162,7 @@ public final class SchedulePhase extends Phase {
                 sortNodesLatestWithinBlock(cfg, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited);
 
                 assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
-                assert (!GraalOptions.DetailedAsserts.getValue()) || MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
+                assert (!GraalOptions.DetailedAsserts.getValue(graph.getOptions())) || MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
 
                 this.blockToNodesMap = latestBlockToNodesMap;
 
@@ -628,7 +628,7 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            assert (!GraalOptions.DetailedAsserts.getValue()) || MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
+            assert (!GraalOptions.DetailedAsserts.getValue(cfg.graph.getOptions())) || MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
         }
 
         private static boolean isFixedEnd(FixedNode endNode) {

@@ -56,12 +56,9 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -88,6 +85,8 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.util.CollectionFactory;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
@@ -118,18 +117,18 @@ public final class CompileTheWorld {
      *            {@code -Dgraal.<name>=<value>} format but without the leading {@code -Dgraal.}.
      *            Ignored if null.
      */
-    public static Map<OptionKey<?>, Object> parseOptions(String options) {
+    public static EconomicMap<OptionKey<?>, Object> parseOptions(String options) {
         if (options != null) {
-            Map<String, String> optionSettings = new HashMap<>();
+            EconomicMap<String, String> optionSettings = CollectionFactory.newMap();
             for (String optionSetting : options.split("\\s+|#")) {
                 OptionsParser.parseOptionSettingTo(optionSetting, optionSettings);
             }
-            Map<OptionKey<?>, Object> values = new HashMap<>();
+            EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
             ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
             OptionsParser.parseOptions(optionSettings, values, loader);
             return values;
         }
-        return Collections.emptyMap();
+        return CollectionFactory.newMap();
     }
 
     private final HotSpotJVMCIRuntimeProvider jvmciRuntime;
@@ -179,7 +178,7 @@ public final class CompileTheWorld {
     private ThreadPoolExecutor threadPool;
 
     private OptionValues currentOptions;
-    private final Map<OptionKey<?>, Object> compilationOptions;
+    private final EconomicMap<OptionKey<?>, Object> compilationOptions;
 
     /**
      * Creates a compile-the-world instance.
@@ -191,7 +190,7 @@ public final class CompileTheWorld {
      * @param excludeMethodFilters
      */
     public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, String files, int startAt, int stopAt, String methodFilters, String excludeMethodFilters,
-                    boolean verbose, OptionValues initialOptions, Map<OptionKey<?>, Object> compilationOptions) {
+                    boolean verbose, OptionValues initialOptions, EconomicMap<OptionKey<?>, Object> compilationOptions) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.inputClassPath = files;
@@ -200,7 +199,7 @@ public final class CompileTheWorld {
         this.methodFilters = methodFilters == null || methodFilters.isEmpty() ? null : MethodFilter.parse(methodFilters);
         this.excludeMethodFilters = excludeMethodFilters == null || excludeMethodFilters.isEmpty() ? null : MethodFilter.parse(excludeMethodFilters);
         this.verbose = verbose;
-        Map<OptionKey<?>, Object> compilationOptionsCopy = new HashMap<>(compilationOptions);
+        EconomicMap<OptionKey<?>, Object> compilationOptionsCopy = CollectionFactory.newMap(compilationOptions);
         this.currentOptions = initialOptions;
 
         // We don't want the VM to exit when a method fails to compile...
@@ -214,7 +213,7 @@ public final class CompileTheWorld {
         if (!GraalDebugConfig.Options.DebugValueThreadFilter.hasBeenSet(initialOptions)) {
             GraalDebugConfig.Options.DebugValueThreadFilter.update(compilationOptionsCopy, "^CompileTheWorld");
         }
-        this.compilationOptions = Collections.unmodifiableMap(compilationOptionsCopy);
+        this.compilationOptions = CollectionFactory.newMap(compilationOptionsCopy);
     }
 
     public CompileTheWorld(HotSpotJVMCIRuntimeProvider jvmciRuntime, HotSpotGraalCompiler compiler, OptionValues options) {

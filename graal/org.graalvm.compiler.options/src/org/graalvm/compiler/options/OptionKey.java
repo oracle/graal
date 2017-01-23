@@ -24,8 +24,9 @@ package org.graalvm.compiler.options;
 
 import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
-import java.util.Map;
 import java.util.ServiceLoader;
+
+import org.graalvm.util.EconomicMap;
 
 /**
  * A key for an option. The value for an option is obtained from an {@link OptionValues} object.
@@ -157,14 +158,14 @@ public class OptionKey<T> {
     }
 
     /**
-     * Sets the value of this option in a given map. The {@link #onValueUpdate(Map, Object, Object)}
-     * method is called once the value is set.
+     * Sets the value of this option in a given map. The
+     * {@link #onValueUpdate(EconomicMap, Object, Object)} method is called once the value is set.
      *
      * @param values map of option values
      * @param v the value to set for this key in {@code map}
      */
     @SuppressWarnings("unchecked")
-    public void update(Map<OptionKey<?>, Object> values, Object v) {
+    public void update(EconomicMap<OptionKey<?>, Object> values, Object v) {
         T oldValue = (T) values.put(this, v);
         onValueUpdate(values, oldValue, (T) v);
     }
@@ -184,6 +185,6 @@ public class OptionKey<T> {
      * @param oldValue
      * @param newValue
      */
-    protected void onValueUpdate(Map<OptionKey<?>, Object> values, T oldValue, T newValue) {
+    protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
     }
 }
