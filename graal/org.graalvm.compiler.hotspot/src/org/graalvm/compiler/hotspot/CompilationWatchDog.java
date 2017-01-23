@@ -53,12 +53,12 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
     public static class Options {
         // @formatter:off
         @Option(help = "Delay in seconds before watch dog monitoring a compilation (0 disables monitoring).", type = OptionType.Debug)
-        public static final OptionValue<Double> CompilationWatchDogStartDelay = new OptionValue<>(30.0D);
+        public static final OptionValue<Double> CompilationWatchDogStartDelay = new OptionValue<>(0.0D);
         @Option(help = "Interval in seconds between a watch dog reporting stack traces for long running compilations.", type = OptionType.Debug)
-        public static final OptionValue<Double> CompilationWatchDogStackTraceInterval = new OptionValue<>(30.0D);
+        public static final OptionValue<Double> CompilationWatchDogStackTraceInterval = new OptionValue<>(60.0D);
         @Option(help = "Number of contiguous identical compiler thread stack traces allowed before the VM exits " +
                        "on the basis of a stuck compilation.", type = OptionType.Debug)
-         public static final OptionValue<Integer> NonFatalIdenticalCompilationSnapshots = new OptionValue<>(10);
+         public static final OptionValue<Integer> NonFatalIdenticalCompilationSnapshots = new OptionValue<>(20);
         // @formatter:on
     }
 
