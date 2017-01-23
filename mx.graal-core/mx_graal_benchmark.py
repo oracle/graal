@@ -372,6 +372,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             if iterations == -1:
                 return None
             else:
+                iterations = iterations + self.getExtraIterationCount(iterations)
                 return ["-n", str(iterations)] + remaining
 
     def vmArgs(self, bmSuiteArgs):
@@ -427,7 +428,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
               "config.name": "default",
-              "metric.name": "time",
+              "metric.name": "final-time",
               "metric.value": ("<time>", int),
               "metric.unit": "ms",
               "metric.type": "numeric",
@@ -468,6 +469,28 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
           )
         ]
 
+    def getExtraIterationCount(self, iterations):
+        # Uses the number of warmup iterations to calculate the number of extra
+        # iterations needed by the benchmark to compute a more stable average result.
+        return min(10, iterations, max(5, int(iterations * 0.2)))
+
+    def run(self, benchmarks, bmSuiteArgs):
+        # Postprocess results to compute the resulting time by taking the average of last N runs,
+        # where N is 20% of the maximum number of iterations, at least 5 and at most 10.
+        results = super(BaseDaCapoBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        warmupResults = [result for result in results if result["metric.name"] == "warmup"]
+        lastIteration = max((result["metric.iteration"] for result in warmupResults))
+        resultIterations = self.getExtraIterationCount(lastIteration + 1)
+        totalTimeForAverage = 0.0
+        for i in range(lastIteration - resultIterations + 1, lastIteration + 1):
+            result = next(result for result in warmupResults if result["metric.iteration"] == i)
+            totalTimeForAverage += result["metric.value"]
+        averageResult = next(result for result in warmupResults if result["metric.iteration"] == 0).copy()
+        averageResult["metric.value"] = totalTimeForAverage / resultIterations
+        averageResult["metric.name"] = "time"
+        results.append(averageResult)
+        return results
+
 
 _daCapoIterations = {
     "avrora"     : 20,
@@ -483,7 +506,7 @@ _daCapoIterations = {
     "tomcat"     : -1, # Stopped working as of 8u92
     "tradebeans" : -1,
     "tradesoap"  : -1,
-    "xalan"      : 20,
+    "xalan"      : 25,
 }
 
 
@@ -544,12 +567,12 @@ _daCapoScalaConfig = {
     "apparat"     : 5,
     "factorie"    : 5,
     "kiama"       : 40,
-    "scalac"      : 20,
+    "scalac"      : 27,
     "scaladoc"    : 15,
     "scalap"      : 120,
     "scalariform" : 30,
     "scalatest"   : 50,
-    "scalaxb"     : 35,
+    "scalaxb"     : 60,
     "specs"       : 20,
     "tmt"         : 12
 }
@@ -1151,7 +1174,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
               "benchmark": ("<benchmark>", str),
               "vm": "jvmci",
               "config.name": "default",
-              "metric.name": "time",
+              "metric.name": "final-time",
               "metric.value": ("<value>", float),
               "metric.unit": "ms",
               "metric.type": "numeric",
