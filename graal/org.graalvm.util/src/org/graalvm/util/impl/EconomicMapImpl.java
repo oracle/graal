@@ -30,7 +30,6 @@ import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.UnmodifiableEconomicMap;
 import org.graalvm.util.UnmodifiableEconomicSet;
-import org.graalvm.util.ImmutableMapCursor;
 import org.graalvm.util.MapCursor;
 
 /**
@@ -168,7 +167,7 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
         this(strategy);
         if (!initFrom(other)) {
             init(other.size());
-            addAll(other);
+            putAll(other);
         }
     }
 
@@ -177,13 +176,6 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
         if (!initFrom(other)) {
             init(other.size());
             addAll(other);
-        }
-    }
-
-    private void addAll(UnmodifiableEconomicMap<K, V> other) {
-        ImmutableMapCursor<K, V> entry = other.getEntries();
-        while (entry.advance()) {
-            put(entry.getKey(), entry.getValue());
         }
     }
 

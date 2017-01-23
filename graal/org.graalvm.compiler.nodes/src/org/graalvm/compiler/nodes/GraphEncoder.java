@@ -44,7 +44,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.UnmodifiableMapCursor;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.code.Architecture;
@@ -214,7 +214,7 @@ public class GraphEncoder {
         assert nodeCount == graph.getNodeCount() + 1;
 
         long[] nodeStartOffsets = new long[nodeCount];
-        ImmutableMapCursor<Node, Integer> cursor = nodeOrder.orderIds.getEntries();
+        UnmodifiableMapCursor<Node, Integer> cursor = nodeOrder.orderIds.getEntries();
         while (cursor.advance()) {
             Node node = cursor.getKey();
             Integer orderId = cursor.getValue();

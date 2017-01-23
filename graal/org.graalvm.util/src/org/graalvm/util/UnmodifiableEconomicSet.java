@@ -23,7 +23,7 @@
 package org.graalvm.util;
 
 /**
- * Immutable memory efficient set data structure.
+ * Unmodifiable memory efficient set data structure.
  */
 public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
 

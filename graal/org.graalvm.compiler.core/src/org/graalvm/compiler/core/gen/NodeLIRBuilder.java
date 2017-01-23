@@ -97,7 +97,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.util.EconomicMap;
-import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.UnmodifiableMapCursor;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
@@ -176,7 +176,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     @Override
     public ValueNode valueForOperand(Value value) {
         assert nodeOperands != null;
-        ImmutableMapCursor<Node, Value> cursor = nodeOperands.getEntries();
+        UnmodifiableMapCursor<Node, Value> cursor = nodeOperands.getEntries();
         while (cursor.advance()) {
             if (cursor.getValue().equals(value)) {
                 return (ValueNode) cursor.getKey();

@@ -33,7 +33,7 @@ import java.util.function.BiFunction;
 
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
-import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.UnmodifiableMapCursor;
 import org.graalvm.util.MapCursor;
 import org.graalvm.util.ObjectSizeEstimate;
 import org.junit.Assert;
@@ -241,8 +241,8 @@ public class CollectionTest {
         Assert.assertEquals(referenceMap.size(), map.size());
 
         // Check entries.
-        ImmutableMapCursor<?, ?> cursor = map.getEntries();
-        ImmutableMapCursor<?, ?> referenceCursor = referenceMap.getEntries();
+        UnmodifiableMapCursor<?, ?> cursor = map.getEntries();
+        UnmodifiableMapCursor<?, ?> referenceCursor = referenceMap.getEntries();
         while (cursor.advance()) {
             Assert.assertTrue(referenceCursor.advance());
             Assert.assertEquals(referenceCursor.getKey(), cursor.getKey());

@@ -43,7 +43,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
-import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.UnmodifiableMapCursor;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MetaUtil;
@@ -792,7 +792,7 @@ public class InvocationPlugins {
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder();
-        ImmutableMapCursor<String, ClassPlugins> entries = registrations.getEntries();
+        UnmodifiableMapCursor<String, ClassPlugins> entries = registrations.getEntries();
         while (entries.advance()) {
             buf.append(entries.getKey()).append('.').append(entries.getValue()).append(", ");
         }

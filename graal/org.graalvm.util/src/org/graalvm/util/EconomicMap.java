@@ -39,10 +39,17 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
 
     V removeKey(K key);
 
-    void replaceAll(BiFunction<? super K, ? super V, ? extends V> function);
-
     @Override
     MapCursor<K, V> getEntries();
+
+    void replaceAll(BiFunction<? super K, ? super V, ? extends V> function);
+
+    default void putAll(UnmodifiableEconomicMap<? extends K, ? extends V> other) {
+        UnmodifiableMapCursor<? extends K, ? extends V> entry = other.getEntries();
+        while (entry.advance()) {
+            put(entry.getKey(), entry.getValue());
+        }
+    }
 
     /**
      * Creates a new map that guarantees insertion order on the key set with the the default

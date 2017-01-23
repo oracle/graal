@@ -23,9 +23,9 @@
 package org.graalvm.util;
 
 /**
- * Cursor to iterate over an immutable map.
+ * Cursor to iterate over a map without changing its contents.
  */
-public interface ImmutableMapCursor<K, V> {
+public interface UnmodifiableMapCursor<K, V> {
     /**
      * Advances to the next entry.
      *

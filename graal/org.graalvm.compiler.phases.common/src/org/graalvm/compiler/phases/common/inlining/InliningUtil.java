@@ -96,7 +96,7 @@ import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.UnmodifiableEconomicMap;
-import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.UnmodifiableMapCursor;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
@@ -503,7 +503,7 @@ public class InliningUtil {
             assert invokePos != null : "missing source information";
 
             EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = EconomicMap.create(Equivalence.DEFAULT);
-            ImmutableMapCursor<Node, Node> cursor = duplicates.getEntries();
+            UnmodifiableMapCursor<Node, Node> cursor = duplicates.getEntries();
             while (cursor.advance()) {
                 NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
                 if (pos != null) {

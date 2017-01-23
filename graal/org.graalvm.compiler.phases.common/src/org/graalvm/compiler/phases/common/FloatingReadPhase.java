@@ -73,7 +73,7 @@ import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosu
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
-import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.UnmodifiableMapCursor;
 
 public class FloatingReadPhase extends Phase {
 
@@ -418,17 +418,14 @@ public class FloatingReadPhase extends Phase {
             for (LocationIdentity location : modifiedLocations) {
                 createMemoryPhi(loop, initialState, phis, location);
             }
-            ImmutableMapCursor<LocationIdentity, MemoryPhiNode> cursor = phis.getEntries();
-            while (cursor.advance()) {
-                initialState.lastMemorySnapshot.put(cursor.getKey(), cursor.getValue());
-            }
+            initialState.lastMemorySnapshot.putAll(phis);
 
             LoopInfo<MemoryMapImpl> loopInfo = ReentrantNodeIterator.processLoop(this, loop, initialState);
 
-            ImmutableMapCursor<LoopEndNode, MemoryMapImpl> endStateCursor = loopInfo.endStates.getEntries();
+            UnmodifiableMapCursor<LoopEndNode, MemoryMapImpl> endStateCursor = loopInfo.endStates.getEntries();
             while (endStateCursor.advance()) {
                 int endIndex = loop.phiPredecessorIndex(endStateCursor.getKey());
-                ImmutableMapCursor<LocationIdentity, MemoryPhiNode> phiCursor = phis.getEntries();
+                UnmodifiableMapCursor<LocationIdentity, MemoryPhiNode> phiCursor = phis.getEntries();
                 while (phiCursor.advance()) {
                     LocationIdentity key = phiCursor.getKey();
                     PhiNode phi = phiCursor.getValue();

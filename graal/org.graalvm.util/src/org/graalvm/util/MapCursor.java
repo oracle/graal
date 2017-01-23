@@ -25,7 +25,7 @@ package org.graalvm.util;
 /**
  * Cursor to iterate over a mutable map.
  */
-public interface MapCursor<K, V> extends ImmutableMapCursor<K, V> {
+public interface MapCursor<K, V> extends UnmodifiableMapCursor<K, V> {
     /**
      * Remove the current entry from the map. May only be called once. After calling
      * {@link #remove()}, it is no longer valid to call {@link #getKey()} or {@link #getValue()} on
