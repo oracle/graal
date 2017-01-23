@@ -38,7 +38,6 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.MapCursor;
@@ -51,8 +50,8 @@ public final class ReentrantNodeIterator {
         public final EconomicMap<LoopExitNode, StateT> exitStates;
 
         public LoopInfo(int endCount, int exitCount) {
-            endStates = CollectionFactory.newMap(Equivalence.IDENTITY, endCount);
-            exitStates = CollectionFactory.newMap(Equivalence.IDENTITY, exitCount);
+            endStates = EconomicMap.create(Equivalence.IDENTITY, endCount);
+            exitStates = EconomicMap.create(Equivalence.IDENTITY, exitCount);
         }
     }
 
@@ -104,7 +103,7 @@ public final class ReentrantNodeIterator {
     private static <StateT> EconomicMap<FixedNode, StateT> apply(NodeIteratorClosure<StateT> closure, FixedNode start, StateT initialState, LoopBeginNode boundary) {
         assert start != null;
         Deque<AbstractBeginNode> nodeQueue = new ArrayDeque<>();
-        EconomicMap<FixedNode, StateT> blockEndStates = CollectionFactory.newMap(Equivalence.IDENTITY);
+        EconomicMap<FixedNode, StateT> blockEndStates = EconomicMap.create(Equivalence.IDENTITY);
 
         StateT state = initialState;
         FixedNode current = start;

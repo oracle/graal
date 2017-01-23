@@ -28,11 +28,36 @@ import java.util.function.BiFunction;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
-import org.graalvm.util.ImmutableEconomicMap;
-import org.graalvm.util.ImmutableEconomicSet;
+import org.graalvm.util.UnmodifiableEconomicMap;
+import org.graalvm.util.UnmodifiableEconomicSet;
 import org.graalvm.util.ImmutableMapCursor;
 import org.graalvm.util.MapCursor;
 
+/**
+ * Implementation of a map with a memory-efficient structure that always preserves insertion order
+ * when iterating over keys. Particularly efficient when number of entries is 0 or smaller equal
+ * {@link #INITIAL_CAPACITY} or smaller 256.
+ *
+ * The key/value pairs are kept in an expanding flat object array with keys at even indices and
+ * values at odd indices. If the map has smaller or equal to {@link #HASH_THRESHOLD} entries, there
+ * is no additional hash data structure and comparisons are done via linear checking of the
+ * key/value pairs. For the case where the equality check is particularly cheap (e.g., just an
+ * object identity comparison), this limit below which the map is without an actual hash table is
+ * higher and configured at {@link #HASH_THRESHOLD_IDENTITY_COMPARE}.
+ *
+ * When the hash table needs to be constructed, the field {@link #hashArray} becomes a new hash
+ * array where an entry of 0 means no hit and otherwise denotes the entry number in the
+ * {@link #entries} array. The hash array is interpreted as an actual byte array if the indices fit
+ * within 8 bit, or as an array of short values if the indices fit within 16 bit, or as an array of
+ * integer values in other cases.
+ *
+ * Hash collisions are handled by chaining a linked list of {@link CollisionLink} objects that take
+ * the place of the values in the {@link #entries} array.
+ *
+ * Removing entries will put {@code null} into the {@link #entries} array. If the occupation of the
+ * map falls below a specific threshold, the map will be compressed via the
+ * {@link #maybeCompress(int)} method.
+ */
 public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     /**
@@ -118,11 +143,11 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
         return intercept(new EconomicMapImpl<>(strategy, initialCapacity));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, ImmutableEconomicMap<K, V> other) {
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicMap<K, V> other) {
         return intercept(new EconomicMapImpl<>(strategy, other));
     }
 
-    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, ImmutableEconomicSet<K> other) {
+    public static <K, V> EconomicMapImpl<K, V> create(Equivalence strategy, UnmodifiableEconomicSet<K> other) {
         return intercept(new EconomicMapImpl<>(strategy, other));
     }
 
@@ -139,7 +164,7 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
         init(initialCapacity);
     }
 
-    private EconomicMapImpl(Equivalence strategy, ImmutableEconomicMap<K, V> other) {
+    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicMap<K, V> other) {
         this(strategy);
         if (!initFrom(other)) {
             init(other.size());
@@ -147,7 +172,7 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
         }
     }
 
-    private EconomicMapImpl(Equivalence strategy, ImmutableEconomicSet<K> other) {
+    private EconomicMapImpl(Equivalence strategy, UnmodifiableEconomicSet<K> other) {
         this(strategy);
         if (!initFrom(other)) {
             init(other.size());
@@ -155,7 +180,7 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
         }
     }
 
-    private void addAll(ImmutableEconomicMap<K, V> other) {
+    private void addAll(UnmodifiableEconomicMap<K, V> other) {
         ImmutableMapCursor<K, V> entry = other.getEntries();
         while (entry.advance()) {
             put(entry.getKey(), entry.getValue());
@@ -820,13 +845,6 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
     @Override
     public boolean contains(K element) {
         return containsKey(element);
-    }
-
-    @Override
-    public void addAll(Iterable<K> values) {
-        for (K k : values) {
-            add(k);
-        }
     }
 
     @SuppressWarnings("unchecked")

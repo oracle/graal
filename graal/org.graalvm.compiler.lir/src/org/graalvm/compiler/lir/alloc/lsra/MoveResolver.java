@@ -36,7 +36,6 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRValueUtil;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
 
@@ -147,7 +146,7 @@ public class MoveResolver {
             }
         }
 
-        EconomicSet<Value> usedRegs = CollectionFactory.newSet(Equivalence.DEFAULT);
+        EconomicSet<Value> usedRegs = EconomicSet.create(Equivalence.DEFAULT);
         if (!areMultipleReadsAllowed()) {
             for (i = 0; i < mappingFrom.size(); i++) {
                 Interval interval = mappingFrom.get(i);
@@ -176,7 +175,7 @@ public class MoveResolver {
     }
 
     protected void verifyStackSlotMapping() {
-        EconomicSet<Value> usedRegs = CollectionFactory.newSet(Equivalence.DEFAULT);
+        EconomicSet<Value> usedRegs = EconomicSet.create(Equivalence.DEFAULT);
         for (int i = 0; i < mappingFrom.size(); i++) {
             Interval interval = mappingFrom.get(i);
             if (interval != null && !isRegister(interval.location())) {

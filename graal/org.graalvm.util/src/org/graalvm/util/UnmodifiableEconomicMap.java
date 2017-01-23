@@ -23,27 +23,21 @@
 package org.graalvm.util;
 
 /**
- * Immutable memory efficient set data structure. Use methods in {@link CollectionFactory} to
- * create.
+ * Immutable memory efficient map data structure.
  */
-public interface ImmutableEconomicSet<E> extends Iterable<E> {
+public interface UnmodifiableEconomicMap<K, V> {
 
-    boolean contains(E element);
+    V get(K key);
+
+    boolean containsKey(K key);
 
     int size();
 
     boolean isEmpty();
 
-    default E[] toArray(E[] target) {
-        if (target.length != size()) {
-            throw new UnsupportedOperationException("Length of target array must equal the size of the set.");
-        }
+    Iterable<V> getValues();
 
-        int index = 0;
-        for (E element : this) {
-            target[index++] = element;
-        }
+    Iterable<K> getKeys();
 
-        return target;
-    }
+    ImmutableMapCursor<K, V> getEntries();
 }

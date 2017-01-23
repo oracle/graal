@@ -70,7 +70,6 @@ import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
@@ -86,7 +85,7 @@ public class FloatingReadPhase extends Phase {
         private final EconomicMap<LocationIdentity, MemoryNode> lastMemorySnapshot;
 
         public MemoryMapImpl(MemoryMapImpl memoryMap) {
-            lastMemorySnapshot = CollectionFactory.newMap(Equivalence.DEFAULT, memoryMap.lastMemorySnapshot);
+            lastMemorySnapshot = EconomicMap.create(Equivalence.DEFAULT, memoryMap.lastMemorySnapshot);
         }
 
         public MemoryMapImpl(StartNode start) {
@@ -95,7 +94,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         public MemoryMapImpl() {
-            lastMemorySnapshot = CollectionFactory.newMap(Equivalence.DEFAULT);
+            lastMemorySnapshot = EconomicMap.create(Equivalence.DEFAULT);
         }
 
         @Override
@@ -188,7 +187,7 @@ public class FloatingReadPhase extends Phase {
             return result;
         }
 
-        result = CollectionFactory.newSet(Equivalence.DEFAULT);
+        result = EconomicSet.create(Equivalence.DEFAULT);
         for (Loop<Block> inner : loop.getChildren()) {
             result.addAll(processLoop((HIRLoop) inner, modifiedInLoops));
         }
@@ -208,7 +207,7 @@ public class FloatingReadPhase extends Phase {
     protected void run(StructuredGraph graph) {
         EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops = null;
         if (graph.hasLoops()) {
-            modifiedInLoops = CollectionFactory.newMap(Equivalence.IDENTITY);
+            modifiedInLoops = EconomicMap.create(Equivalence.IDENTITY);
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
             for (Loop<?> l : cfg.getLoops()) {
                 HIRLoop loop = (HIRLoop) l;
@@ -236,7 +235,7 @@ public class FloatingReadPhase extends Phase {
     public static MemoryMapImpl mergeMemoryMaps(AbstractMergeNode merge, List<? extends MemoryMap> states) {
         MemoryMapImpl newState = new MemoryMapImpl();
 
-        EconomicSet<LocationIdentity> keys = CollectionFactory.newSet(Equivalence.DEFAULT);
+        EconomicSet<LocationIdentity> keys = EconomicSet.create(Equivalence.DEFAULT);
         for (MemoryMap other : states) {
             keys.addAll(other.getLocations());
         }
@@ -409,10 +408,10 @@ public class FloatingReadPhase extends Phase {
         @Override
         protected EconomicMap<LoopExitNode, MemoryMapImpl> processLoop(LoopBeginNode loop, MemoryMapImpl initialState) {
             EconomicSet<LocationIdentity> modifiedLocations = modifiedInLoops.get(loop);
-            EconomicMap<LocationIdentity, MemoryPhiNode> phis = CollectionFactory.newMap(Equivalence.DEFAULT);
+            EconomicMap<LocationIdentity, MemoryPhiNode> phis = EconomicMap.create(Equivalence.DEFAULT);
             if (modifiedLocations.contains(LocationIdentity.any())) {
                 // create phis for all locations if ANY is modified in the loop
-                modifiedLocations = CollectionFactory.newSet(Equivalence.DEFAULT, modifiedLocations);
+                modifiedLocations = EconomicSet.create(Equivalence.DEFAULT, modifiedLocations);
                 modifiedLocations.addAll(initialState.lastMemorySnapshot.getKeys());
             }
 

@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -69,8 +68,8 @@ public class DebugInfoBuilder {
     private static final JavaValue[] NO_JAVA_VALUES = {};
     private static final JavaKind[] NO_JAVA_KINDS = {};
 
-    protected final EconomicMap<VirtualObjectNode, VirtualObject> virtualObjects = CollectionFactory.newMap(Equivalence.IDENTITY);
-    protected final EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = CollectionFactory.newMap(Equivalence.IDENTITY);
+    protected final EconomicMap<VirtualObjectNode, VirtualObject> virtualObjects = EconomicMap.create(Equivalence.IDENTITY);
+    protected final EconomicMap<VirtualObjectNode, EscapeObjectState> objectStates = EconomicMap.create(Equivalence.IDENTITY);
 
     protected final Queue<VirtualObjectNode> pendingVirtualObjects = new ArrayDeque<>();
 

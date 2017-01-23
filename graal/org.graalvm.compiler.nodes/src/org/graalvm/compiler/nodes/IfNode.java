@@ -54,7 +54,6 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -973,7 +972,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
         List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
-        EconomicMap<AbstractEndNode, ValueNode> phiValues = CollectionFactory.newMap(Equivalence.IDENTITY, mergePredecessors.size());
+        EconomicMap<AbstractEndNode, ValueNode> phiValues = EconomicMap.create(Equivalence.IDENTITY, mergePredecessors.size());
 
         AbstractBeginNode oldFalseSuccessor = falseSuccessor();
         AbstractBeginNode oldTrueSuccessor = trueSuccessor();

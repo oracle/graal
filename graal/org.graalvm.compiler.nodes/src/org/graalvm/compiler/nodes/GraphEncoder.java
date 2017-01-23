@@ -532,9 +532,9 @@ class GraphComparison {
         nodeMapping.set(expectedNode, actualNode);
         if (expectedNode instanceof AbstractEndNode) {
             /* To ensure phi nodes have been added, we handle everything before block ends. */
-            workList.addLast(new Pair<>(expectedNode, actualNode));
+            workList.addLast(Pair.create(expectedNode, actualNode));
         } else {
-            workList.addFirst(new Pair<>(expectedNode, actualNode));
+            workList.addFirst(Pair.create(expectedNode, actualNode));
         }
     }
 }

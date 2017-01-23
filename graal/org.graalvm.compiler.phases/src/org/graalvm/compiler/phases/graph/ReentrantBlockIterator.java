@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.cfg.Block;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -99,7 +98,7 @@ public final class ReentrantBlockIterator {
         /*
          * States are stored on EndNodes before merges, and on BeginNodes after ControlSplitNodes.
          */
-        EconomicMap<FixedNode, StateT> states = CollectionFactory.newMap(Equivalence.IDENTITY);
+        EconomicMap<FixedNode, StateT> states = EconomicMap.create(Equivalence.IDENTITY);
 
         StateT state = initialState;
         Block current = start;

@@ -41,7 +41,6 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -71,7 +70,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         StructuredGraph graph = start.graph();
         visitedEnds = graph.createNodeBitMap();
         nodeQueue = new ArrayDeque<>();
-        nodeStates = CollectionFactory.newMap(Equivalence.IDENTITY);
+        nodeStates = EconomicMap.create(Equivalence.IDENTITY);
         this.start = start;
         this.state = initialState;
     }
