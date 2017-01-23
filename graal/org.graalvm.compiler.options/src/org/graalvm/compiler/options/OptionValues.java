@@ -179,18 +179,8 @@ public class OptionValues {
         return true;
     }
 
-    /**
-     * Determines if the value of {@code key} is {@linkplain #stabilize(StableOptionKey, Object)
-     * stable} in this map.
-     *
-     * Note: Should only be used in an assertion.
-     */
-    synchronized boolean isStabilized(StableOptionKey<?> key) {
-        return key.getDescriptor() == null;
-    }
-
     boolean containsKey(OptionKey<?> key) {
-        return key.getDescriptor() != null && values.containsKey(key);
+        return values.containsKey(key);
     }
 
     public OptionValues(OptionValues initialValues, ImmutableEconomicMap<OptionKey<?>, Object> extraPairs) {
@@ -250,19 +240,11 @@ public class OptionValues {
 
     @SuppressWarnings("unchecked")
     <T> T get(OptionKey<T> key) {
-        if (key.getDescriptor() != null) {
-            Object value = values.get(key);
-            if (value == null) {
-                return key.getDefaultValue();
-            }
-            return (T) decodeNull(value);
-        } else {
-            // If a key has no descriptor, it cannot be in the map
-            // since OptionKey.hashCode() will ensure the key has a
-            // descriptor as a result of using OptionKey.getName().
+        Object value = values.get(key);
+        if (value == null) {
             return key.getDefaultValue();
         }
-
+        return (T) decodeNull(value);
     }
 
     private static final Object NULL = new Object();

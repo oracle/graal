@@ -529,7 +529,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
                 if (callTarget != null) {
                     try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                        TruffleCompilerOptions.getOptions();
                         doCompile(callTarget);
                     }
                 }
