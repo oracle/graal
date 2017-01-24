@@ -868,8 +868,9 @@ public abstract class TruffleLanguage<C> {
                 throw ex;
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
+            } finally {
+                request.dispose();
             }
-            request.dispose();
             return target;
         }
 
