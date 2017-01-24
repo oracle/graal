@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 import java.util.List;
 
-public class ConstantsV32 extends ConstantsV38 {
+public class ConstantsV32 extends Constants {
 
     public ConstantsV32(Types types, List<Type> symbols, ConstantGenerator generator) {
         super(types, symbols, generator);
