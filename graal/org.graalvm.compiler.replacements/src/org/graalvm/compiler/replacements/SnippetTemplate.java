@@ -910,7 +910,7 @@ public class SnippetTemplate {
                     }
                 }
 
-                ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
+                ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes);
                 this.returnNode = snippet.add(new ReturnNode(returnValue));
                 if (!memMaps.isEmpty()) {
                     MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
