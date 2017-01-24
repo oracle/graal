@@ -33,7 +33,6 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
 
@@ -78,7 +77,7 @@ public class GraphChangeMonitoringPhase<C extends PhaseContext> extends PhaseSui
             }
         }
 
-        EconomicSet<Node> filteredNodes = CollectionFactory.newSet(Equivalence.IDENTITY);
+        EconomicSet<Node> filteredNodes = EconomicSet.create(Equivalence.IDENTITY);
         for (Node n : listener.getNodes()) {
             if (n instanceof LogicConstantNode) {
                 // Ignore LogicConstantNode since those are sometimes created and deleted as part of

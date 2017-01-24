@@ -23,23 +23,21 @@
 package org.graalvm.util;
 
 /**
- * Cursor to iterate over an immutable map.
+ * Unmodifiable memory efficient map data structure.
  */
-public interface ImmutableMapCursor<K, V> {
-    /**
-     * Advances to the next entry.
-     *
-     * @return {@code true} if a next entry exists, {@code false} if there is no next entry.
-     */
-    boolean advance();
+public interface UnmodifiableEconomicMap<K, V> {
 
-    /**
-     * The key of the current entry.
-     */
-    K getKey();
+    V get(K key);
 
-    /**
-     * The value of the current entry.
-     */
-    V getValue();
+    boolean containsKey(K key);
+
+    int size();
+
+    boolean isEmpty();
+
+    Iterable<V> getValues();
+
+    Iterable<K> getKeys();
+
+    UnmodifiableMapCursor<K, V> getEntries();
 }

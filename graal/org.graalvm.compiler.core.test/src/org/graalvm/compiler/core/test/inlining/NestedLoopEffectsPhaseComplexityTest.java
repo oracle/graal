@@ -25,9 +25,6 @@ package org.graalvm.compiler.core.test.inlining;
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.TTY;
@@ -46,6 +43,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.util.EconomicSet;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -139,8 +137,7 @@ public class NestedLoopEffectsPhaseComplexityTest extends GraalCompilerTest {
         ResolvedJavaMethod calleeMethod = next.callTarget().targetMethod();
         for (int i = 0; i < inliningCount; i++) {
             next = callerGraph.getNodes(MethodCallTargetNode.TYPE).first().invoke();
-            List<Node> canonicalizeNodes = new ArrayList<>();
-            InliningUtil.inline(next, calleeGraph, false, canonicalizeNodes, calleeMethod);
+            EconomicSet<Node> canonicalizeNodes = InliningUtil.inlineForCanonicalization(next, calleeGraph, false, calleeMethod);
             canonicalizer.applyIncremental(callerGraph, context, canonicalizeNodes);
             Debug.dump(Debug.DETAILED_LOG_LEVEL, callerGraph, "After inlining %s into %s iteration %d", calleeMethod, callerMethod, i);
         }

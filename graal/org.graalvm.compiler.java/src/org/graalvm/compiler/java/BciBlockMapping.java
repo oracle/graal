@@ -94,7 +94,6 @@ import org.graalvm.compiler.bytecode.BytecodeTableSwitch;
 import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.Debug;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -373,7 +372,7 @@ public final class BciBlockMapping {
         public void initJsrAlternatives() {
             JSRData data = this.getOrCreateJSRData();
             if (data.jsrAlternatives == null) {
-                data.jsrAlternatives = CollectionFactory.newMap(Equivalence.DEFAULT);
+                data.jsrAlternatives = EconomicMap.create(Equivalence.DEFAULT);
             }
         }
 
@@ -416,7 +415,7 @@ public final class BciBlockMapping {
 
     public static class ExceptionDispatchBlock extends BciBlock {
 
-        private EconomicMap<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = CollectionFactory.newMap(Equivalence.DEFAULT);
+        private EconomicMap<ExceptionHandler, ExceptionDispatchBlock> exceptionDispatch = EconomicMap.create(Equivalence.DEFAULT);
 
         public ExceptionHandler handler;
         public int deoptBci;
@@ -758,7 +757,7 @@ public final class BciBlockMapping {
 
     private EconomicMap<ExceptionHandler, ExceptionDispatchBlock> getInitialExceptionDispatch() {
         if (initialExceptionDispatch == null) {
-            initialExceptionDispatch = CollectionFactory.newMap(Equivalence.DEFAULT);
+            initialExceptionDispatch = EconomicMap.create(Equivalence.DEFAULT);
         }
         return initialExceptionDispatch;
     }

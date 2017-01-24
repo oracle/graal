@@ -25,7 +25,6 @@ package org.graalvm.compiler.phases.common.inlining.info;
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -57,9 +56,8 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.common.inlining.info.elem.Inlineable;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.util.CollectionFactory;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -101,7 +99,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     private static boolean assertUniqueTypes(ArrayList<ProfiledType> ptypes) {
-        EconomicSet<ResolvedJavaType> set = CollectionFactory.newSet(Equivalence.DEFAULT);
+        EconomicSet<ResolvedJavaType> set = EconomicSet.create(Equivalence.DEFAULT);
         for (ProfiledType ptype : ptypes) {
             set.add(ptype.getType());
         }
@@ -160,7 +158,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public Collection<Node> inline(Providers providers) {
+    public EconomicSet<Node> inline(Providers providers) {
         if (hasSingleMethod()) {
             return inlineSingleMethod(graph(), providers.getStampProvider(), providers.getConstantReflection());
         } else {
@@ -186,7 +184,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return notRecordedTypeProbability > 0;
     }
 
-    private Collection<Node> inlineMultipleMethods(StructuredGraph graph, Providers providers) {
+    private EconomicSet<Node> inlineMultipleMethods(StructuredGraph graph, Providers providers) {
         int numberOfMethods = concretes.size();
         FixedNode continuation = invoke.next();
 
@@ -280,7 +278,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             replacementNodes.add(null);
         }
 
-        Collection<Node> canonicalizeNodes = new ArrayList<>();
+        EconomicSet<Node> canonicalizeNodes = EconomicSet.create(Equivalence.DEFAULT);
         // do the actual inlining for every invoke
         for (int i = 0; i < numberOfMethods; i++) {
             Invoke invokeForInlining = (Invoke) successors[i].next();
@@ -325,7 +323,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return result;
     }
 
-    private Collection<Node> inlineSingleMethod(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection) {
+    private EconomicSet<Node> inlineSingleMethod(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection) {
         assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
         AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());

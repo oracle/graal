@@ -35,13 +35,12 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 
 public class LoopsData {
-    private final EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx = CollectionFactory.newMap(Equivalence.IDENTITY);
+    private final EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx = EconomicMap.create(Equivalence.IDENTITY);
     private final ControlFlowGraph cfg;
     private final List<LoopEx> loops;
 
@@ -65,7 +64,7 @@ public class LoopsData {
      * Checks that loops are ordered such that outer loops appear first.
      */
     private static boolean checkLoopOrder(Iterable<Loop<Block>> loops) {
-        EconomicSet<Loop<Block>> seen = CollectionFactory.newSet(Equivalence.IDENTITY);
+        EconomicSet<Loop<Block>> seen = EconomicSet.create(Equivalence.IDENTITY);
         for (Loop<Block> loop : loops) {
             if (loop.getParent() != null && !seen.contains(loop.getParent())) {
                 return false;

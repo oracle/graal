@@ -23,10 +23,9 @@
 package org.graalvm.util;
 
 /**
- * Immutable memory efficient set data structure. Use methods in {@link CollectionFactory} to
- * create.
+ * Unmodifiable memory efficient set data structure.
  */
-public interface ImmutableEconomicSet<E> extends Iterable<E> {
+public interface UnmodifiableEconomicSet<E> extends Iterable<E> {
 
     boolean contains(E element);
 

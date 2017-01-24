@@ -57,7 +57,7 @@ public class TraceGlobalMoveResolutionMappingTest {
 
         @Override
         public void addMapping(Value src, AllocatableValue dst, Value srcStack) {
-            mapping.add(new Pair<>(src, dst));
+            mapping.add(Pair.create(src, dst));
         }
 
         public int size() {
@@ -65,7 +65,7 @@ public class TraceGlobalMoveResolutionMappingTest {
         }
 
         public boolean contains(Value src, AllocatableValue dst) {
-            return mapping.contains(new Pair<>(src, dst));
+            return mapping.contains(Pair.create(src, dst));
         }
 
         @Override

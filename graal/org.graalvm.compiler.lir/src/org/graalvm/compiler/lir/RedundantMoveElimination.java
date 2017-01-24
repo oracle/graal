@@ -42,7 +42,6 @@ import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -104,7 +103,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
     private static final class Optimization {
 
-        EconomicMap<AbstractBlockBase<?>, BlockData> blockData = CollectionFactory.newMap(Equivalence.IDENTITY);
+        EconomicMap<AbstractBlockBase<?>, BlockData> blockData = EconomicMap.create(Equivalence.IDENTITY);
 
         RegisterArray callerSaveRegs;
 
@@ -117,7 +116,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
          * A map from the {@link StackSlot} {@link #getOffset offset} to an index into the state.
          * StackSlots of different kinds that map to the same location will map to the same index.
          */
-        EconomicMap<Integer, Integer> stackIndices = CollectionFactory.newMap(Equivalence.DEFAULT);
+        EconomicMap<Integer, Integer> stackIndices = EconomicMap.create(Equivalence.DEFAULT);
 
         int numRegs;
 

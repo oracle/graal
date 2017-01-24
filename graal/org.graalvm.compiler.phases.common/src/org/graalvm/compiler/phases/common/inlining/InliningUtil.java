@@ -22,9 +22,9 @@
  */
 package org.graalvm.compiler.phases.common.inlining;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -46,6 +46,7 @@ import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
+import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -93,11 +94,12 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
-import org.graalvm.util.CollectionFactory;
+import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
-import org.graalvm.util.ImmutableEconomicMap;
-import org.graalvm.util.ImmutableMapCursor;
+import org.graalvm.util.EconomicSet;
+import org.graalvm.util.UnmodifiableEconomicMap;
+import org.graalvm.util.UnmodifiableMapCursor;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
@@ -270,12 +272,10 @@ public class InliningUtil {
      * @param inlineGraph the graph that the invoke will be replaced with
      * @param receiverNullCheck true if a null check needs to be generated for non-static inlinings,
      *            false if no such check is required
-     * @param canonicalizedNodes if non-null then append to this list any nodes which should be
-     *            canonicalized after inlining
      * @param inlineeMethod the actual method being inlined. Maybe be null for snippets.
      */
     @SuppressWarnings("try")
-    public static ImmutableEconomicMap<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, List<Node> canonicalizedNodes, ResolvedJavaMethod inlineeMethod) {
+    public static UnmodifiableEconomicMap<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod) {
         MethodMetricsInlineeScopeInfo m = MethodMetricsInlineeScopeInfo.create();
         try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", m, false)) {
             FixedNode invokeNode = invoke.asNode();
@@ -331,7 +331,7 @@ public class InliningUtil {
             assert invokeNode.successors().first() != null : invoke;
             assert invokeNode.predecessor() != null;
 
-            ImmutableEconomicMap<Node, Node> duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
+            UnmodifiableEconomicMap<Node, Node> duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
 
             FrameState stateAfter = invoke.stateAfter();
             assert stateAfter == null || stateAfter.isAlive();
@@ -370,23 +370,7 @@ public class InliningUtil {
             if (UseGraalInstrumentation.getValue()) {
                 detachInstrumentation(invoke);
             }
-            ValueNode returnValue = finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph, canonicalizedNodes);
-            if (canonicalizedNodes != null) {
-                if (returnValue != null) {
-                    for (Node usage : returnValue.usages()) {
-                        canonicalizedNodes.add(usage);
-                    }
-                }
-                for (ParameterNode parameter : inlineGraph.getNodes(ParameterNode.TYPE)) {
-                    for (Node usage : parameter.usages()) {
-                        Node duplicate = duplicates.get(usage);
-                        if (duplicate != null && duplicate.isAlive()) {
-                            canonicalizedNodes.add(duplicate);
-                        }
-                    }
-                }
-            }
-
+            finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph);
             GraphUtil.killCFG(invokeNode);
 
             if (Debug.isMethodMeterEnabled() && m != null) {
@@ -396,8 +380,34 @@ public class InliningUtil {
         }
     }
 
-    public static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode, Assumptions inlinedAssumptions,
-                    StructuredGraph inlineGraph, List<Node> canonicalizedNodes) {
+    /**
+     * Inline {@code inlineGraph} into the current replacoing the node {@code Invoke} and return the
+     * set of nodes which should be canonicalized. The set should only contain nodes which modified
+     * by the inlining since the current graph and {@code inlineGraph} are expected to already be
+     * canonical.
+     *
+     * @param invoke
+     * @param inlineGraph
+     * @param receiverNullCheck
+     * @param inlineeMethod
+     * @return the set of nodes to canonicalize
+     */
+    @SuppressWarnings("try")
+    public static EconomicSet<Node> inlineForCanonicalization(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod) {
+        HashSetNodeEventListener listener = new HashSetNodeEventListener();
+        /*
+         * This code relies on the fact that Graph.addDuplicates doesn't trigger the
+         * NodeEventListener to track only nodes which were modified into the process of inlining
+         * the graph into the current graph.
+         */
+        try (NodeEventScope nes = invoke.asNode().graph().trackNodeEvents(listener)) {
+            InliningUtil.inline(invoke, inlineGraph, receiverNullCheck, inlineeMethod);
+        }
+        return listener.getNodes();
+    }
+
+    private static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode, Assumptions inlinedAssumptions,
+                    StructuredGraph inlineGraph) {
         FixedNode invokeNode = invoke.asNode();
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter == null || stateAfter.isAlive();
@@ -448,7 +458,7 @@ public class InliningUtil {
             } else {
                 AbstractMergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
-                returnValue = mergeReturns(merge, returnNodes, canonicalizedNodes);
+                returnValue = mergeReturns(merge, returnNodes);
                 invokeNode.replaceAtUsages(returnValue);
                 merge.setNext(n);
             }
@@ -492,7 +502,7 @@ public class InliningUtil {
     }
 
     @SuppressWarnings("try")
-    private static void updateSourcePositions(Invoke invoke, StructuredGraph inlineGraph, ImmutableEconomicMap<Node, Node> duplicates) {
+    private static void updateSourcePositions(Invoke invoke, StructuredGraph inlineGraph, UnmodifiableEconomicMap<Node, Node> duplicates) {
         if (inlineGraph.mayHaveNodeSourcePosition() && invoke.stateAfter() != null) {
             if (invoke.asNode().getNodeSourcePosition() == null) {
                 // Temporarily ignore the assert below.
@@ -503,8 +513,8 @@ public class InliningUtil {
             NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
             assert invokePos != null : "missing source information";
 
-            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = CollectionFactory.newMap(Equivalence.DEFAULT);
-            ImmutableMapCursor<Node, Node> cursor = duplicates.getEntries();
+            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = EconomicMap.create(Equivalence.DEFAULT);
+            UnmodifiableMapCursor<Node, Node> cursor = duplicates.getEntries();
             while (cursor.advance()) {
                 NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
                 if (pos != null) {
@@ -525,7 +535,7 @@ public class InliningUtil {
         }
     }
 
-    protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, ImmutableEconomicMap<Node, Node> duplicates, FrameState stateAtExceptionEdge,
+    protected static void processFrameStates(Invoke invoke, StructuredGraph inlineGraph, UnmodifiableEconomicMap<Node, Node> duplicates, FrameState stateAtExceptionEdge,
                     boolean alwaysDuplicateStateAfter) {
         FrameState stateAtReturn = invoke.stateAfter();
         FrameState outerFrameState = null;
@@ -679,12 +689,11 @@ public class InliningUtil {
         return nonReplaceableFrameState;
     }
 
-    public static ValueNode mergeReturns(AbstractMergeNode merge, List<? extends ReturnNode> returnNodes, List<Node> canonicalizedNodes) {
-        return mergeValueProducers(merge, returnNodes, canonicalizedNodes, returnNode -> returnNode.result());
+    public static ValueNode mergeReturns(AbstractMergeNode merge, List<? extends ReturnNode> returnNodes) {
+        return mergeValueProducers(merge, returnNodes, returnNode -> returnNode.result());
     }
 
-    public static <T extends ControlSinkNode> ValueNode mergeValueProducers(AbstractMergeNode merge, List<? extends T> valueProducers, List<Node> canonicalizedNodes,
-                    Function<T, ValueNode> valueFunction) {
+    public static <T extends ControlSinkNode> ValueNode mergeValueProducers(AbstractMergeNode merge, List<? extends T> valueProducers, Function<T, ValueNode> valueFunction) {
         ValueNode singleResult = null;
         PhiNode phiResult = null;
         for (T valueProducer : valueProducers) {
@@ -696,9 +705,6 @@ public class InliningUtil {
                 } else if (phiResult == null) {
                     /* Found a second result value, so create phi node. */
                     phiResult = merge.graph().addWithoutUnique(new ValuePhiNode(result.stamp().unrestricted(), merge));
-                    if (canonicalizedNodes != null) {
-                        canonicalizedNodes.add(phiResult);
-                    }
                     for (int i = 0; i < merge.forwardEndCount(); i++) {
                         phiResult.addInput(singleResult);
                     }
@@ -725,7 +731,7 @@ public class InliningUtil {
         }
     }
 
-    private static boolean checkContainsOnlyInvalidOrAfterFrameState(ImmutableEconomicMap<Node, Node> duplicates) {
+    private static boolean checkContainsOnlyInvalidOrAfterFrameState(UnmodifiableEconomicMap<Node, Node> duplicates) {
         for (Node node : duplicates.getValues()) {
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;

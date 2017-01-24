@@ -121,11 +121,10 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import org.graalvm.compiler.word.WordBase;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
-import org.graalvm.util.ImmutableEconomicMap;
+import org.graalvm.util.UnmodifiableEconomicMap;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;
@@ -694,7 +693,7 @@ public class SnippetTemplate {
                 snippetCopy.disableUnsafeAccessTracking();
             }
 
-            EconomicMap<Node, Node> nodeReplacements = CollectionFactory.newMap(Equivalence.IDENTITY);
+            EconomicMap<Node, Node> nodeReplacements = EconomicMap.create(Equivalence.IDENTITY);
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
             MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -911,7 +910,7 @@ public class SnippetTemplate {
                     }
                 }
 
-                ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
+                ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes);
                 this.returnNode = snippet.add(new ReturnNode(returnValue));
                 if (!memMaps.isEmpty()) {
                     MemoryMapImpl mmap = FloatingReadPhase.mergeMemoryMaps(merge, memMaps);
@@ -1055,7 +1054,7 @@ public class SnippetTemplate {
      * @return the map that will be used to bind arguments to parameters when inlining this template
      */
     private EconomicMap<Node, Node> bind(StructuredGraph replaceeGraph, MetaAccessProvider metaAccess, Arguments args) {
-        EconomicMap<Node, Node> replacements = CollectionFactory.newMap(Equivalence.IDENTITY);
+        EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         assert args.info.getParameterCount() == parameters.length : "number of args (" + args.info.getParameterCount() + ") != number of parameters (" + parameters.length + ")";
         for (int i = 0; i < parameters.length; i++) {
             Object parameter = parameters[i];
@@ -1164,7 +1163,7 @@ public class SnippetTemplate {
             return true;
         }
 
-        EconomicSet<LocationIdentity> kills = CollectionFactory.newSet(Equivalence.DEFAULT);
+        EconomicSet<LocationIdentity> kills = EconomicSet.create(Equivalence.DEFAULT);
         kills.addAll(memoryMap.getLocations());
 
         if (replacee instanceof MemoryCheckpoint.Single) {
@@ -1240,9 +1239,9 @@ public class SnippetTemplate {
 
     private class MemoryOutputMap extends MemoryInputMap {
 
-        private final ImmutableEconomicMap<Node, Node> duplicates;
+        private final UnmodifiableEconomicMap<Node, Node> duplicates;
 
-        MemoryOutputMap(ValueNode replacee, ImmutableEconomicMap<Node, Node> duplicates) {
+        MemoryOutputMap(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
             super(replacee);
             this.duplicates = duplicates;
         }
@@ -1266,7 +1265,7 @@ public class SnippetTemplate {
         }
     }
 
-    private void rewireMemoryGraph(ValueNode replacee, ImmutableEconomicMap<Node, Node> duplicates) {
+    private void rewireMemoryGraph(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
         if (replacee.graph().isAfterFloatingReadPhase()) {
             // rewire outgoing memory edges
             replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, duplicates));
@@ -1345,7 +1344,7 @@ public class SnippetTemplate {
      * @return the map of duplicated nodes (original -&gt; duplicate)
      */
     @SuppressWarnings("try")
-    public ImmutableEconomicMap<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args) {
+    public UnmodifiableEconomicMap<Node, Node> instantiate(MetaAccessProvider metaAccess, FixedNode replacee, UsageReplacer replacer, Arguments args) {
         assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start(); DebugCloseable b = instantiationTimer.start()) {
             args.info.instantiationCounter.increment();
@@ -1356,7 +1355,7 @@ public class SnippetTemplate {
             StructuredGraph replaceeGraph = replacee.graph();
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, AbstractBeginNode.prevBegin(replacee));
-            ImmutableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+            UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(Debug.INFO_LOG_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
             // Re-wire the control flow graph around the replacee
@@ -1467,7 +1466,7 @@ public class SnippetTemplate {
         }
     }
 
-    private void updateStamps(ValueNode replacee, ImmutableEconomicMap<Node, Node> duplicates) {
+    private void updateStamps(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
         for (ValueNode stampNode : stampNodes) {
             Node stampDup = duplicates.get(stampNode);
             ((ValueNode) stampDup).setStamp(replacee.stamp());
@@ -1509,7 +1508,7 @@ public class SnippetTemplate {
             StructuredGraph replaceeGraph = replacee.graph();
             EconomicMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
             replacements.put(entryPointNode, tool.getCurrentGuardAnchor().asNode());
-            ImmutableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
+            UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(Debug.INFO_LOG_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
             FixedWithNextNode lastFixedNode = tool.lastFixedNode();
@@ -1571,7 +1570,7 @@ public class SnippetTemplate {
                     floatingNodes.add(n);
                 }
             }
-            ImmutableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(floatingNodes, snippet, floatingNodes.size(), replacements);
+            UnmodifiableEconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(floatingNodes, snippet, floatingNodes.size(), replacements);
             Debug.dump(Debug.INFO_LOG_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
 
             rewireFrameStates(replacee, duplicates);
@@ -1588,7 +1587,7 @@ public class SnippetTemplate {
         }
     }
 
-    protected void rewireFrameStates(ValueNode replacee, ImmutableEconomicMap<Node, Node> duplicates) {
+    protected void rewireFrameStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
         if (replacee instanceof StateSplit) {
             for (StateSplit sideEffectNode : sideEffectNodes) {
                 assert ((StateSplit) replacee).hasSideEffect();

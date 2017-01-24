@@ -93,7 +93,6 @@ import org.graalvm.compiler.truffle.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.compiler.truffle.substitutions.TruffleInvocationPluginProvider;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.MapCursor;
@@ -449,12 +448,12 @@ public class PartialEvaluator {
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
             StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci());
             if (inlineGraph != null) {
-                InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, null, methodCallTargetNode.targetMethod());
+                InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
             }
         }
 
         // Perform conditional elimination.
-        new DominatorConditionalEliminationPhase(false).apply(graph, tierContext);
+        DominatorConditionalEliminationPhase.create(false).apply(graph, tierContext);
 
         canonicalizer.apply(graph, tierContext);
 
@@ -494,7 +493,7 @@ public class PartialEvaluator {
             }
         }
 
-        EconomicMap<String, ArrayList<ValueNode>> groupedByType = CollectionFactory.newMap(Equivalence.DEFAULT);
+        EconomicMap<String, ArrayList<ValueNode>> groupedByType = EconomicMap.create(Equivalence.DEFAULT);
         for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
             if (!instanceOf.type().isExact()) {
                 warnings.add(instanceOf);

@@ -669,7 +669,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                  * return values.
                  */
                 MergeNode unwindMergeNode = methodScope.graph.add(new MergeNode());
-                exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, unwindNodes, null, unwindNode -> unwindNode.exception());
+                exceptionValue = InliningUtil.mergeValueProducers(unwindMergeNode, unwindNodes, unwindNode -> unwindNode.exception());
                 unwindMergeNode.setNext(unwindReplacement);
 
                 ensureExceptionStateDecoded(inlineScope);
@@ -691,7 +691,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             } else {
                 AbstractMergeNode merge = methodScope.graph.add(new MergeNode());
                 merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
-                returnValue = InliningUtil.mergeReturns(merge, returnNodes, null);
+                returnValue = InliningUtil.mergeReturns(merge, returnNodes);
                 FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, merge);
                 merge.setNext(n);
             }

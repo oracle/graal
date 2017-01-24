@@ -124,7 +124,7 @@ public final class ObjectSizeEstimate {
     }
 
     private static ObjectSizeEstimate forObjectHelper(Object object, int maxDepth) {
-        EconomicMap<Object, Object> identityHashMap = CollectionFactory.newMap(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        EconomicMap<Object, Object> identityHashMap = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         ObjectSizeEstimate size = new ObjectSizeEstimate();
 
         ArrayList<Object> stack = new ArrayList<>();

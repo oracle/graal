@@ -34,7 +34,6 @@ import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -52,7 +51,7 @@ public final class VirtualUtil {
         // assertion.
 
         NodeFlood flood = graph.createNodeFlood();
-        EconomicMap<Node, Node> path = CollectionFactory.newMap(Equivalence.IDENTITY);
+        EconomicMap<Node, Node> path = EconomicMap.create(Equivalence.IDENTITY);
         flood.add(graph.start());
         for (Node current : flood) {
             if (current instanceof AbstractEndNode) {

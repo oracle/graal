@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.lir.util;
 
-import org.graalvm.util.CollectionFactory;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
@@ -33,7 +32,7 @@ public final class GenericValueMap<T> extends ValueMap<Value, T> {
     private final EconomicMap<Value, T> data;
 
     public GenericValueMap() {
-        data = CollectionFactory.newMap(Equivalence.DEFAULT);
+        data = EconomicMap.create(Equivalence.DEFAULT);
     }
 
     @Override
