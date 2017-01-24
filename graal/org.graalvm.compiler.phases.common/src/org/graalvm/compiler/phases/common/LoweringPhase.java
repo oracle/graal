@@ -33,7 +33,6 @@ import static org.graalvm.compiler.phases.common.LoweringPhase.ProcessBlockState
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -526,11 +525,13 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     nextState = ST_ENTER;
                 }
             } else if (state == ST_ENTER) {
-                if (f.dominated.hasNext()) {
-                    Block n = f.dominated.next();
+                if (f.dominated != null) {
+                    Block n = f.dominated;
+                    f.dominated = n.getDominatedSibling();
                     if (n == f.alwaysReachedBlock) {
-                        if (f.dominated.hasNext()) {
-                            n = f.dominated.next();
+                        if (f.dominated != null) {
+                            n = f.dominated;
+                            f.dominated = n.getDominatedSibling();
                         } else {
                             n = null;
                         }
@@ -580,11 +581,13 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     nextState = ST_ENTER;
                 }
             } else if (state == ST_ENTER) {
-                if (f.dominated.hasNext()) {
-                    Block n = f.dominated.next();
+                if (f.dominated != null) {
+                    Block n = f.dominated;
+                    f.dominated = n.getDominatedSibling();
                     if (n == f.alwaysReachedBlock) {
-                        if (f.dominated.hasNext()) {
-                            n = f.dominated.next();
+                        if (f.dominated != null) {
+                            n = f.dominated;
+                            f.dominated = n.getDominatedSibling();
                         } else {
                             n = null;
                         }
@@ -620,13 +623,13 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
     public abstract static class Frame<T extends Frame<?>> {
         protected final Block block;
         final T parent;
-        Iterator<Block> dominated;
+        Block dominated;
         final Block alwaysReachedBlock;
 
         public Frame(Block block, T parent) {
             this.block = block;
             this.alwaysReachedBlock = block.getPostdominator();
-            this.dominated = block.getDominated().iterator();
+            this.dominated = block.getFirstDominated();
             this.parent = parent;
         }
 

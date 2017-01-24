@@ -760,7 +760,7 @@ public class MonitorSnippets implements Snippets {
                     graph.addAfterFixed(graph.start(), invoke);
 
                     StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null);
-                    InliningUtil.inline(invoke, inlineeGraph, false, null, null);
+                    InliningUtil.inline(invoke, inlineeGraph, false, null);
 
                     List<ReturnNode> rets = graph.getNodes(ReturnNode.TYPE).snapshot();
                     for (ReturnNode ret : rets) {
@@ -778,7 +778,7 @@ public class MonitorSnippets implements Snippets {
                         Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
                         args.addConst("errMsg", msg);
                         inlineeGraph = template(args).copySpecializedGraph();
-                        InliningUtil.inline(invoke, inlineeGraph, false, null, null);
+                        InliningUtil.inline(invoke, inlineeGraph, false, null);
                     }
                 }
             }

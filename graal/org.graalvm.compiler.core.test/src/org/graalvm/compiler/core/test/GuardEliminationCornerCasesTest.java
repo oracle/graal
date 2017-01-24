@@ -111,7 +111,7 @@ public class GuardEliminationCornerCasesTest extends GraalCompilerTest {
 
         Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "after manual modification");
         graph.reverseUsageOrder();
-        new DominatorConditionalEliminationPhase(true).apply(graph, context);
+        DominatorConditionalEliminationPhase.create(true).apply(graph, context);
         new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST).apply(graph);
     }
 }

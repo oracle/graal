@@ -161,7 +161,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
                     ((Lowerable) nonNullReceiver).lower(tool);
                 }
             }
-            InliningUtil.inline(invoke, replacementGraph, false, null, targetMethod);
+            InliningUtil.inline(invoke, replacementGraph, false, targetMethod);
             Debug.dump(Debug.INFO_LOG_LEVEL, graph(), "After inlining replacement %s", replacementGraph);
         } else {
             if (isPlaceholderBci(invoke.bci())) {

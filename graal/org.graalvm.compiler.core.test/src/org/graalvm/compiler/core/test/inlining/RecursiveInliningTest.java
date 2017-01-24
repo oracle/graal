@@ -165,7 +165,7 @@ public class RecursiveInliningTest extends GraalCompilerTest {
                 ResolvedJavaMethod calleeMethod = next.callTarget().targetMethod();
                 StructuredGraph calleeGraph = getInlineeGraph(next, callerGraph, context, canonicalizer);
                 List<Node> canonicalizeNodes = new ArrayList<>();
-                InliningUtil.inline(next, calleeGraph, false, canonicalizeNodes, calleeMethod);
+                InliningUtil.inline(next, calleeGraph, false, calleeMethod);
                 canonicalizer.applyIncremental(callerGraph, context, canonicalizeNodes);
                 Debug.dump(Debug.BASIC_LOG_LEVEL, callerGraph, "After inlining %s into %s iteration %d", calleeMethod, callerMethod, i);
             }

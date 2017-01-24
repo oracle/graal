@@ -151,4 +151,9 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     public Stamp uncheckedStamp() {
         return uncheckedStamp;
     }
+
+    public void setObject(ValueNode newObject) {
+        this.updateUsages(object, newObject);
+        this.object = newObject;
+    }
 }

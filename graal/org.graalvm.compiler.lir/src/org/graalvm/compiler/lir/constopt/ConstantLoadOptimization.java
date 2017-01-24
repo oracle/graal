@@ -304,10 +304,12 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                     // create and insert load
                     insertLoad(tree.getConstant(), tree.getVariable().getValueKind(), block, constTree.getCost(block).getUsages());
                 } else {
-                    for (AbstractBlockBase<?> dominated : block.getDominated()) {
+                    AbstractBlockBase<?> dominated = block.getFirstDominated();
+                    while (dominated != null) {
                         if (constTree.isMarked(dominated)) {
                             worklist.addLast(dominated);
                         }
+                        dominated = dominated.getDominatedSibling();
                     }
                 }
             }

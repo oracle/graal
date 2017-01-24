@@ -398,7 +398,7 @@ public class InliningData {
             try (Debug.Scope scope = Debug.scope("doInline", callerGraph); Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(options), false)) {
                 EconomicSet<Node> canonicalizedNodes = EconomicSet.create(Equivalence.IDENTITY);
                 canonicalizedNodes.addAll(calleeInfo.invoke().asNode().usages());
-                Collection<Node> parameterUsages = calleeInfo.inline(new Providers(context));
+                EconomicSet<Node> parameterUsages = calleeInfo.inline(new Providers(context));
                 canonicalizedNodes.addAll(parameterUsages);
                 counterInliningRuns.increment();
                 Debug.dump(Debug.INFO_LOG_LEVEL, callerGraph, "after %s", calleeInfo);

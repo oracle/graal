@@ -86,8 +86,11 @@ public final class ConstantTreeAnalyzer {
                     // if not yet visited (and not a leaf block) process all children first!
                     Debug.log(Debug.VERBOSE_LOG_LEVEL, "not marked");
                     worklist.offerLast(block);
-                    List<? extends AbstractBlockBase<?>> children = block.getDominated();
-                    children.forEach(child -> filteredPush(worklist, child));
+                    AbstractBlockBase<?> dominated = block.getFirstDominated();
+                    while (dominated != null) {
+                        filteredPush(worklist, dominated);
+                        dominated = dominated.getDominatedSibling();
+                    }
                     visited.set(block.getId());
                 } else {
                     Debug.log(Debug.VERBOSE_LOG_LEVEL, "marked");
@@ -108,11 +111,10 @@ public final class ConstantTreeAnalyzer {
         List<UseEntry> usages = new ArrayList<>();
         double bestCost = 0;
         int numMat = 0;
-        List<? extends AbstractBlockBase<?>> children = block.getDominated();
-        assert children.stream().anyMatch(this::isMarked) : "no children? should have called leafCost(): " + block;
 
         // collect children costs
-        for (AbstractBlockBase<?> child : children) {
+        AbstractBlockBase<?> child = block.getFirstDominated();
+        while (child != null) {
             if (isMarked(child)) {
                 NodeCost childCost = tree.getCost(child);
                 assert childCost != null : "Child with null cost? block: " + child;
@@ -120,6 +122,7 @@ public final class ConstantTreeAnalyzer {
                 numMat += childCost.getNumMaterializations();
                 bestCost += childCost.getBestCost();
             }
+            child = child.getDominatedSibling();
         }
         assert numMat > 0 : "No materialization? " + numMat;
 
