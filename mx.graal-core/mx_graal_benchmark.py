@@ -318,16 +318,17 @@ class AveragingBenchmarkMixin(object):
         # Postprocess results to compute the resulting time by taking the average of last N runs,
         # where N is 20% of the maximum number of iterations, at least 5 and at most 10.
         warmupResults = [result for result in results if result["metric.name"] == "warmup"]
-        lastIteration = max((result["metric.iteration"] for result in warmupResults))
-        resultIterations = self.getExtraIterationCount(lastIteration + 1)
-        totalTimeForAverage = 0.0
-        for i in range(lastIteration - resultIterations + 1, lastIteration + 1):
-            result = next(result for result in warmupResults if result["metric.iteration"] == i)
-            totalTimeForAverage += result["metric.value"]
-        averageResult = next(result for result in warmupResults if result["metric.iteration"] == 0).copy()
-        averageResult["metric.value"] = totalTimeForAverage / resultIterations
-        averageResult["metric.name"] = "time"
-        results.append(averageResult)
+        if warmupResults:
+            lastIteration = max((result["metric.iteration"] for result in warmupResults))
+            resultIterations = self.getExtraIterationCount(lastIteration + 1)
+            totalTimeForAverage = 0.0
+            for i in range(lastIteration - resultIterations + 1, lastIteration + 1):
+                result = next(result for result in warmupResults if result["metric.iteration"] == i)
+                totalTimeForAverage += result["metric.value"]
+            averageResult = next(result for result in warmupResults if result["metric.iteration"] == 0).copy()
+            averageResult["metric.value"] = totalTimeForAverage / resultIterations
+            averageResult["metric.name"] = "time"
+            results.append(averageResult)
 
 
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin):
