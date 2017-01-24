@@ -715,16 +715,16 @@ public abstract class TruffleLanguage<C> {
         }
 
         private static <C> CallTarget parseForLanguage(Object profile, TruffleLanguage<C> language, Source source, String... argumentNames) {
-            ParsingRequest env = new ParsingRequest(profile, language, source, null, null, argumentNames);
+            ParsingRequest request = new ParsingRequest(profile, language, source, null, null, argumentNames);
             CallTarget target;
             try {
-                target = env.parse(language);
+                target = request.parse(language);
             } catch (RuntimeException ex) {
                 throw ex;
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             } finally {
-                env.dispose();
+                request.dispose();
             }
             return target;
         }
@@ -860,16 +860,16 @@ public abstract class TruffleLanguage<C> {
         }
 
         private static <C> CallTarget parseForLanguage(Object profile, TruffleLanguage<C> truffleLanguage, Source code, Node context, String... argumentNames) {
-            ParsingRequest env = new ParsingRequest(profile, truffleLanguage, code, context, null, argumentNames);
+            ParsingRequest request = new ParsingRequest(profile, truffleLanguage, code, context, null, argumentNames);
             CallTarget target;
             try {
-                target = env.parse(truffleLanguage);
+                target = request.parse(truffleLanguage);
             } catch (RuntimeException ex) {
                 throw ex;
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
-            env.dispose();
+            request.dispose();
             return target;
         }
 
