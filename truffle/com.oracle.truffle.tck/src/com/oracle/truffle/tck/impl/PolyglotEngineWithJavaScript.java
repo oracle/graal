@@ -379,5 +379,12 @@ public class PolyglotEngineWithJavaScript {
     }
 
     // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testHelloWorld() {
+        com.oracle.truffle.tutorial.HelloWorld.runTests();
+    }
+
     // Checkstyle: resume
 }

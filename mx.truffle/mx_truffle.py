@@ -46,6 +46,12 @@ _suite = mx.suite('truffle')
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     mx.javadoc(['--unified'] + args)
+    index = os.sep.join([_suite.dir, 'javadoc', 'index.html'])
+    indexContent = open(index, 'r').read()
+    indexContent = indexContent.replace('src="allclasses-frame.html"', 'src="com/oracle/truffle/api/vm/package-frame.html"')
+    indexContent = indexContent.replace('src="overview-summary.html"', 'src="com/oracle/truffle/tutorial/package-summary.html"')
+    new_file = open(index, "w")
+    new_file.write(indexContent)
 
 def build(args, vm=None):
     """build the Java sources"""

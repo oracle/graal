@@ -34,5 +34,6 @@
  * forward runtime information to the compiler.
  *
  * @see com.oracle.truffle.api.profiles.Profile
+ * @since 0.8 or older
  */
 package com.oracle.truffle.api.profiles;

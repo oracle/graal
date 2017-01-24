@@ -210,14 +210,8 @@ public class PolyglotEngine {
      * Creation of new Truffle virtual machine. Use the {@link Builder} methods to configure your
      * virtual machine and then create one using {@link Builder#build()}:
      *
-     * <pre>
-     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#newBuilder() newBuilder()}
-     *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
-     *     .{@link Builder#setErr(java.io.OutputStream) setErr}({@link OutputStream yourOutput})
-     *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
-     *     .{@link Builder#build() build()};
-     * </pre>
-     *
+     * {@link PolyglotEngineSnippets#createPolyglotEngine}
+     * 
      * It searches for {@link Registration languages registered} in the system class loader and
      * makes them available for later evaluation via
      * {@link #eval(com.oracle.truffle.api.source.Source)} method.
@@ -1676,6 +1670,19 @@ public class PolyglotEngine {
 class PolyglotEngineSnippets {
     abstract class YourLang extends TruffleLanguage<Object> {
         public static final String MIME_TYPE = "application/my-test-lang";
+    }
+
+    public static PolyglotEngine createPolyglotEngine(OutputStream yourOutput, InputStream yourInput) {
+        // @formatter:off
+        // BEGIN: PolyglotEngineSnippets#createPolyglotEngine
+        PolyglotEngine engine = PolyglotEngine.newBuilder().
+            setOut(yourOutput).
+            setErr(yourOutput).
+            setIn(yourInput).
+            build();
+        // END: PolyglotEngineSnippets#createPolyglotEngine
+        // @formatter:on
+        return engine;
     }
 
     public static PolyglotEngine initializeWithParameters() {

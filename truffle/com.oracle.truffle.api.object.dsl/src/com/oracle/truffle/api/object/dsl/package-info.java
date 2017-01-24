@@ -48,5 +48,6 @@
  * {@link com.oracle.truffle.api.object.dsl.Layout}.
  *
  * @see com.oracle.truffle.api.object.dsl.Layout
+ * @since 0.8 or older
  */
 package com.oracle.truffle.api.object.dsl;

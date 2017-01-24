@@ -31,6 +31,13 @@
 
 /**
  * Central place to create and control {@link com.oracle.truffle.api.vm.PolyglotEngine polyglot
- * execution engine} and all languages hosted in it.
+ * execution engine} and all languages hosted in it. Construct your own engine as
+ * <p>
+ * {@codesnippet PolyglotEngineSnippets#createPolyglotEngine}
+ * <p>
+ * and use it to {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluate} scripts in any
+ * {@link com.oracle.truffle.api.TruffleLanguage supported language}.
+ * 
+ * @since 0.8 or older
  */
 package com.oracle.truffle.api.vm;
