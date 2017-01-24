@@ -109,7 +109,13 @@ public class SimpleCFGTest extends GraalCompilerTest {
     }
 
     public static void assertDominatedSize(Block block, int size) {
-        Assert.assertEquals("number of dominated blocks of " + block, size, block.getDominated().size());
+        int count = 0;
+        Block domChild = block.getFirstDominated();
+        while (domChild != null) {
+            count++;
+            domChild = domChild.getDominatedSibling();
+        }
+        Assert.assertEquals("number of dominated blocks of " + block, size, count);
     }
 
     public static void assertPostdominator(Block block, Block expectedPostdominator) {

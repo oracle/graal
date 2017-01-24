@@ -453,7 +453,7 @@ public class PartialEvaluator {
         }
 
         // Perform conditional elimination.
-        new DominatorConditionalEliminationPhase(false).apply(graph, tierContext);
+        DominatorConditionalEliminationPhase.create(false).apply(graph, tierContext);
 
         canonicalizer.apply(graph, tierContext);
 

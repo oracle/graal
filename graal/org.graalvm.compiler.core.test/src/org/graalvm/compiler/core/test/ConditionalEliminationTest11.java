@@ -263,6 +263,7 @@ public class ConditionalEliminationTest11 extends ConditionalEliminationTestBase
     }
 
     @Test
+    @Ignore
     public void test10() {
         testConditionalElimination("test10Snippet", "reference10Snippet");
     }
@@ -295,6 +296,7 @@ public class ConditionalEliminationTest11 extends ConditionalEliminationTestBase
     }
 
     @Test
+    @Ignore
     public void test11() {
         testConditionalElimination("test11Snippet", "reference11Snippet");
     }

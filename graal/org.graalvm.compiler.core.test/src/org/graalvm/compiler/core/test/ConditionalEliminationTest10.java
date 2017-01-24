@@ -65,7 +65,7 @@ public class ConditionalEliminationTest10 extends ConditionalEliminationTestBase
         PhaseContext context = new PhaseContext(getProviders());
         new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         Assert.assertEquals(2, graph.getNodes().filter(GuardNode.class).count());
-        new DominatorConditionalEliminationPhase(true).apply(graph, context);
+        DominatorConditionalEliminationPhase.create(true).apply(graph, context);
         Assert.assertEquals(1, graph.getNodes().filter(GuardNode.class).count());
     }
 }
