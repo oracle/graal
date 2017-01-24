@@ -27,44 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.parser.bc;
+package com.oracle.truffle.llvm.parser.bc.parser.listeners.constants;
 
-public enum Primitive {
-    ALIGNMENT(true, Integer.SIZE),
-    DEAFULT_ID(true, 6),
-    CHAR6(true, 6),
+import com.oracle.truffle.llvm.parser.api.model.generators.ConstantGenerator;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
 
-    ABBREVIATED_RECORD_OPERANDS(false, 5),
-    SUBBLOCK_ID(false, 8),
-    SUBBLOCK_ID_SIZE(false, 4),
-    UNABBREVIATED_RECORD_ID(false, 6),
-    UNABBREVIATED_RECORD_OPERAND(false, 6),
-    UNABBREVIATED_RECORD_OPS(false, 6),
+import java.util.List;
 
-    USER_OPERAND_ARRAY_LENGTH(false, 6),
-    USER_OPERAND_BLOB_LENGTH(false, 6),
-    USER_OPERAND_DATA(false, 5),
-    USER_OPERAND_LITERAL(false, 8),
-    USER_OPERAND_TYPE(true, 3);
+public class ConstantsV39 extends Constants {
 
-    private final boolean isFixed;
-
-    private final int bits;
-
-    Primitive(boolean isFixed, int bits) {
-        this.isFixed = isFixed;
-        this.bits = bits;
-    }
-
-    public int getBits() {
-        return bits;
-    }
-
-    public boolean isFixed() {
-        return isFixed;
-    }
-
-    public boolean isVariableBitRate() {
-        return !isFixed();
+    public ConstantsV39(Types types, List<Type> symbols, ConstantGenerator generator) {
+        super(types, symbols, generator);
     }
 }

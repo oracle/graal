@@ -60,21 +60,64 @@ class DataLayoutParser {
 
     }
 
+    private static void addIfMissing(List<DataTypeSpecification> specs, DataTypeSpecification newSpec) {
+        for (DataTypeSpecification spec : specs) {
+            if (spec.type == newSpec.type && spec.values[0] == newSpec.values[0]) {
+                return;
+            }
+        }
+        specs.add(newSpec);
+    }
+
     static List<DataTypeSpecification> parseDataLayout(String layout) {
         String[] layoutSpecs = layout.split("-");
         assertNoNullElement(layoutSpecs);
         List<DataTypeSpecification> specs = new ArrayList<>();
         for (String spec : layoutSpecs) {
-            if (spec.equals("e") || spec.equals("E")) {
+            if (spec.equals("e") || spec.equals("E") || spec.equals("m:e")) {
                 // ignore for the moment
             } else {
                 String type = spec.substring(0, 1);
                 DataLayoutType baseType = getDataType(type);
                 int[] values = getTypeWidths(spec);
                 specs.add(new DataTypeSpecification(baseType, values));
+                if (type.equals("n")) {
+                    for (int value : values) {
+                        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.INTEGER, new int[]{value, value}));
+                    }
+                }
             }
         }
+        // Add specs for 32 bit float and 64 bit double which are supported on all targets
+        // http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
+        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, new int[]{Float.SIZE, Float.SIZE}));
+        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, new int[]{Double.SIZE, Double.SIZE}));
+
+        // FIXME:work around to handle pointer type in LLVM 3.9.0 bitcode format
+        checkPointerType(specs);
         return specs;
+    }
+
+    private static void checkPointerType(List<DataTypeSpecification> specs) {
+        boolean isPointerTypeFound = false;
+        for (DataTypeSpecification spec : specs) {
+            if (spec.type == DataLayoutType.POINTER) {
+                isPointerTypeFound = true;
+                break;
+            }
+        }
+        if (!isPointerTypeFound) {
+            // Add a pointer datatype with size = largest integer size
+            int largestIntegerTypeSize = -1;
+            for (DataTypeSpecification spec : specs) {
+                if (spec.type == DataLayoutType.INTEGER && spec.values[0] > largestIntegerTypeSize) {
+                    largestIntegerTypeSize = spec.values[0];
+                }
+            }
+            if (largestIntegerTypeSize > 0) {
+                specs.add(new DataTypeSpecification(DataLayoutType.POINTER, new int[]{largestIntegerTypeSize, largestIntegerTypeSize}));
+            }
+        }
     }
 
     private static int[] getTypeWidths(String spec) {

@@ -38,15 +38,19 @@ import com.oracle.truffle.llvm.parser.api.model.generators.SymbolGenerator;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.constants.Constants;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.constants.ConstantsV32;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.constants.ConstantsV38;
+import com.oracle.truffle.llvm.parser.bc.parser.listeners.constants.ConstantsV39;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.function.Function;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.function.FunctionV32;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.function.FunctionV38;
+import com.oracle.truffle.llvm.parser.bc.parser.listeners.function.FunctionV39;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.metadata.Metadata;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.metadata.MetadataV32;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.metadata.MetadataV38;
+import com.oracle.truffle.llvm.parser.bc.parser.listeners.metadata.MetadataV39;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.module.Module;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.module.ModuleV32;
 import com.oracle.truffle.llvm.parser.bc.parser.listeners.module.ModuleV38;
+import com.oracle.truffle.llvm.parser.bc.parser.listeners.module.ModuleV39;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -54,6 +58,7 @@ public enum ModuleVersion {
 
     LLVM_3_2(ModuleV32::new, FunctionV32::new, ConstantsV32::new, MetadataV32::new),
     LLVM_3_8(ModuleV38::new, FunctionV38::new, ConstantsV38::new, MetadataV38::new),
+    LLVM_3_9(ModuleV39::new, FunctionV39::new, ConstantsV39::new, MetadataV39::new),
     DEFAULT(Module::new, Function::new, Constants::new, Metadata::new);
 
     @FunctionalInterface
@@ -100,6 +105,8 @@ public enum ModuleVersion {
             return LLVM_3_2;
         } else if (versionStr.contains("3.8")) {
             return LLVM_3_8;
+        } else if (versionStr.contains("3.9")) {
+            return LLVM_3_9;
         } else {
             LLVMLogger.unconditionalInfo("Couldn't parse LLVM Version, use default one");
             return DEFAULT;

@@ -144,6 +144,7 @@ public class Module implements ParserListener {
                 createFunction(args);
                 break;
 
+            case ALIAS:
             case ALIAS_OLD:
                 createAliasOld(args);
                 break;

@@ -45,7 +45,10 @@ public enum ModuleRecord {
     COMDAT,
     VSTOFFSET,
     ALIAS,
-    METADATA_VALUES;
+    METADATA_VALUES,
+    SOURCE_FILENAME,
+    CODE_HASH,
+    CODE_IFUNC;
 
     public static ModuleRecord decode(long id) {
         return values()[(int) id];
