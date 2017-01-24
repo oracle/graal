@@ -649,8 +649,8 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Provide at least one pair of functions that return a value and it's meta-object converted to
-     * a String representation. The value's meta-object is found using
+     * Provide at least one pair of functions that return a value and its meta-object converted to a
+     * String representation. The value's meta-object is found using
      * {@link TruffleLanguage#findMetaObject(java.lang.Object, java.lang.Object)}, converted to a
      * String by {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object)} and compared
      * to the provided String representation. Provide names of an even number of functions, which
