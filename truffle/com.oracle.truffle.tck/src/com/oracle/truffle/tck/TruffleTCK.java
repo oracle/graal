@@ -649,11 +649,13 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Provide at least one pair of functions that return a value and it's meta-object. The value's
-     * meta-object is found using
-     * {@link TruffleLanguage#findMetaObject(java.lang.Object, java.lang.Object)} and compared to
-     * the provided meta-object. Provide names of an even number of functions, which return a value
-     * and value's meta-object, respectively. The code in JavaScript could look like:
+     * Provide at least one pair of functions that return a value and its meta-object converted to a
+     * String representation. The value's meta-object is found using
+     * {@link TruffleLanguage#findMetaObject(java.lang.Object, java.lang.Object)}, converted to a
+     * String by {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object)} and compared
+     * to the provided String representation. Provide names of an even number of functions, which
+     * return a value and value's meta-object converted to a String, respectively. The code in
+     * JavaScript could look like:
      *
      * <pre>
      * function numberValue() {
@@ -2119,7 +2121,7 @@ public abstract class TruffleTCK {
         assert (ids.length % 2 == 0);
         for (int i = 0; i < ids.length; i += 2) {
             PolyglotEngine.Value valueFunction = findGlobalSymbol(ids[i]);
-            Object metaObject;
+            String metaObjectStr;
             PolyglotEngine.Instrument instr = vm().getInstruments().get(TckInstrument.ID);
             instr.setEnabled(true);
             try {
@@ -2131,14 +2133,15 @@ public abstract class TruffleTCK {
                 RootCallTarget rct = (RootCallTarget) targetField.get(valueFunction);
                 TruffleInstrument.Env env = tckInstrument.getEnvironment();
                 assertNotNull(env);
-                metaObject = env.findMetaObject(rct.getRootNode(), value);
+                Object metaObject = env.findMetaObject(rct.getRootNode(), value);
+                metaObjectStr = env.toString(rct.getRootNode(), metaObject);
             } finally {
                 instr.setEnabled(false);
             }
             PolyglotEngine.Value moFunction = findGlobalSymbol(ids[i + 1]);
             Object mo = moFunction.execute(JavaInterop.asTruffleObject(null)).get();
 
-            assertEquals(mo, metaObject);
+            assertEquals(mo, metaObjectStr);
         }
     }
 
