@@ -31,5 +31,7 @@
 
 /**
  * Ignore: Internal API. Don't use, rather copy.
+ * 
+ * @since 0.8 or older
  */
 package com.oracle.truffle.object;

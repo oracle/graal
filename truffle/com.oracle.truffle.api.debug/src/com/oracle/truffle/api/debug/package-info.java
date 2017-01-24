@@ -67,5 +67,7 @@
  * debugger requires the guest language to implement statement and call tags from the set of
  * standard Truffle tags. Please refer to
  * {@link com.oracle.truffle.api.instrumentation.StandardTags} on how to implement them.
+ * 
+ * @since 0.8 or older
  */
 package com.oracle.truffle.api.debug;
