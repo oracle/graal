@@ -66,13 +66,14 @@ import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.LoopInfo;
 import org.graalvm.compiler.virtual.phases.ea.EffectList.Effect;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -1011,12 +1012,18 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 } else {
                     // all inputs are virtual: check if they're compatible and without identity
                     boolean compatible = true;
-                    boolean hasIdentity = false;
                     VirtualObjectNode firstVirtual = virtualObjs[0];
                     for (int i = 0; i < states.length; i++) {
                         VirtualObjectNode virtual = virtualObjs[i];
-                        hasIdentity |= virtual.hasIdentity();
-                        boolean identitySurvives = virtual.hasIdentity() && Arrays.asList(mergedVirtualObjects).contains(virtual.getObjectId());
+
+                        boolean identitySurvives = virtual.hasIdentity() &&
+                                        // check whether we trivially see that this is the only
+                                        // reference to this allocation
+                                        !isSingleUsageAllocation(getPhiValueAt(phi, i)) &&
+                                        // if the object does not survive at all, there can be no
+                                        // identity checks
+                                        Arrays.binarySearch(mergedVirtualObjects, virtual.getObjectId()) >= 0;
+
                         if (identitySurvives || !firstVirtual.type().equals(virtual.type()) || firstVirtual.entryCount() != virtual.entryCount()) {
                             compatible = false;
                             break;
@@ -1026,7 +1033,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             break;
                         }
                     }
-                    if (compatible && !hasIdentity) {
+                    if (compatible) {
                         VirtualObjectNode virtual = getValueObjectVirtual(phi, virtualObjs[0]);
                         mergeEffects.addFloatingNode(virtual, "valueObjectNode");
                         mergeEffects.deleteNode(phi);
@@ -1070,6 +1077,16 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 }
             }
             return materialized;
+        }
+
+        private boolean isSingleUsageAllocation(ValueNode value) {
+            /*
+             * If the phi input is an allocation, we know that it is a "fresh" value, i.e., that
+             * this is a value that will only appear through this source, and cannot appear anywhere
+             * else. If the phi is also the only usage of this input, we know that no other place
+             * can check object identity against it, so it is safe to lose the object identity here.
+             */
+            return value instanceof AllocatedObjectNode && value.getUsageCount() == 1;
         }
     }
 
