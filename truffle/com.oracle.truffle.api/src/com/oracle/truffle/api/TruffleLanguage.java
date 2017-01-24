@@ -131,7 +131,7 @@ public abstract class TruffleLanguage<C> {
          * environments and presented to the user. The default value of this attribute is
          * <code>true</code> assuming majority of the languages is interactive. Change the value to
          * <code>false</code> to opt-out and turn your language into non-interactive one.
-         * 
+         *
          * @return <code>true</code> if the language should be presented to end-user in an
          *         interactive environment
          * @since 0.22
@@ -856,16 +856,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public CallTarget parse(TruffleLanguage<?> truffleLanguage, Source code, Node context, String... argumentNames) {
-            try {
-                return truffleLanguage.parse(code, context, argumentNames);
-            } catch (UnsupportedOperationException ex) {
-                return parseForLanguage(null, truffleLanguage, code, context, argumentNames);
-            } catch (Exception ex) {
-                if (ex instanceof RuntimeException) {
-                    throw (RuntimeException) ex;
-                }
-                throw new RuntimeException(ex);
-            }
+            return parseForLanguage(null, truffleLanguage, code, context, argumentNames);
         }
 
         private static <C> CallTarget parseForLanguage(Object profile, TruffleLanguage<C> truffleLanguage, Source code, Node context, String... argumentNames) {
