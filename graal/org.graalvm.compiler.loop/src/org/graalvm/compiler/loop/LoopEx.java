@@ -307,10 +307,12 @@ public class LoopEx {
                 exits.add((LoopExitNode) b.getBeginNode());
             } else {
                 blocks.add(b.getBeginNode());
-                for (Block d : b.getDominated()) {
+                Block d = b.getDominatedSibling();
+                while (d != null) {
                     if (loop.getBlocks().contains(d)) {
                         work.add(d);
                     }
+                    d = d.getDominatedSibling();
                 }
             }
         }

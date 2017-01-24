@@ -23,7 +23,6 @@
 package org.graalvm.compiler.phases.common;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
@@ -41,6 +40,7 @@ import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -121,32 +121,31 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 nodeToBlock = cfg.getNodeToBlock();
             }
 
-            Instance visitor = new Instance(graph, cfg, blockToNodes, nodeToBlock, context);
+            Instance visitor = new Instance(graph, blockToNodes, nodeToBlock, context);
             cfg.visitDominatorTree(visitor, graph.hasValueProxies());
         }
     }
 
-    public static class Instance implements ControlFlowGraph.RecursiveVisitor {
-        public final NodeMap<InfoElement> map;
+    public static class Instance implements ControlFlowGraph.RecursiveVisitor<Integer> {
+        protected final NodeMap<InfoElement> map;
         protected final BlockMap<List<Node>> blockToNodes;
         protected final NodeMap<Block> nodeToBlock;
         protected final CanonicalizerTool tool;
-        protected BlockMap<ArrayList<Node>> undoOperations;
-        protected Block block;
-        private final StructuredGraph graph;
+        protected final NodeStack undoOperations;
+        protected final StructuredGraph graph;
 
         /**
          * Tests which may be eliminated because post dominating tests to prove a broader condition.
          */
         private Deque<PendingTest> pendingTests;
 
-        public Instance(StructuredGraph graph, ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes,
+        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes,
                         NodeMap<Block> nodeToBlock, PhaseContext context) {
             this.graph = graph;
-            undoOperations = new BlockMap<>(cfg);
-            map = graph.createNodeMap();
             this.blockToNodes = blockToNodes;
             this.nodeToBlock = nodeToBlock;
+            this.undoOperations = new NodeStack();
+            this.map = graph.createNodeMap();
             pendingTests = new ArrayDeque<>();
             tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions(), context.getLowerer());
         }
@@ -232,8 +231,8 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public void enter(Block newBlock) {
-            this.block = newBlock;
+        public Integer enter(Block block) {
+            int mark = undoOperations.size();
             Debug.log("[Pre Processing block %s]", block);
             // For now conservatively collect guards only within the same block.
             pendingTests.clear();
@@ -244,17 +243,24 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     }
                 }
             } else {
-                FixedNode n = block.getBeginNode();
-                FixedNode endNode = block.getEndNode();
-                while (n != endNode) {
-                    if (n.isDeleted() || endNode.isDeleted()) {
-                        // This branch was deleted!
-                        return;
-                    }
-                    FixedNode next = ((FixedWithNextNode) n).next();
-                    processNode(n);
-                    n = next;
+                processBlock(block);
+            }
+            return mark;
+        }
+
+        private void processBlock(Block block) {
+            FixedNode n = block.getBeginNode();
+            FixedNode endNode = block.getEndNode();
+            while (n != endNode) {
+                if (n.isDeleted() || endNode.isDeleted()) {
+                    // This branch was deleted!
+                    return;
                 }
+                FixedNode next = ((FixedWithNextNode) n).next();
+                processNode(n);
+                n = next;
+            }
+            if (endNode.isAlive()) {
                 processNode(endNode);
             }
         }
@@ -648,10 +654,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 counterStampsRegistered.increment();
                 Debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, newStamp, guard == null ? "null" : guard);
                 map.set(value, new InfoElement(newStamp, guard, proxiedValue, map.get(value)));
-                if (undoOperations.get(block) == null) {
-                    undoOperations.put(block, new ArrayList<>());
-                }
-                undoOperations.get(block).add(value);
+                undoOperations.push(value);
             }
         }
 
@@ -723,16 +726,14 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public void exit(Block b) {
-            ArrayList<Node> infos = undoOperations.get(b);
-            if (infos != null) {
-                for (Node info : infos) {
-                    if (info.isAlive()) {
-                        map.set(info, map.get(info).getParent());
-                    }
+        public void exit(Block b, Integer state) {
+            int mark = state;
+            while (undoOperations.size() > mark) {
+                Node node = undoOperations.pop();
+                if (node.isAlive()) {
+                    map.set(node, map.get(node).getParent());
                 }
             }
-            undoOperations.put(b, null);
         }
     }
 
