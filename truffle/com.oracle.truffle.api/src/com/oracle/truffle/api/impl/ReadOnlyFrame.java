@@ -59,7 +59,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setObject(FrameSlot slot, Object value) {
-        throw new AssertionError("Unexpected write access.");
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -71,7 +71,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setByte(FrameSlot slot, byte value) {
-        throw new AssertionError("Unexpected write access.");
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -83,7 +83,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setBoolean(FrameSlot slot, boolean value) {
-        throw new AssertionError("Unexpected write access.");
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -95,7 +95,11 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setInt(FrameSlot slot, int value) {
-        throw new AssertionError("Unexpected write access.");
+        throw newReadonlyAssertionError();
+    }
+
+    private static AssertionError newReadonlyAssertionError() {
+        return new AssertionError("Unexpected write access.");
     }
 
     @Override
@@ -107,7 +111,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setLong(FrameSlot slot, long value) {
-        throw new AssertionError("Unexpected write access.");
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -119,7 +123,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setFloat(FrameSlot slot, float value) {
-        throw new AssertionError("Unexpected write access.");
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -131,7 +135,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setDouble(FrameSlot slot, double value) {
-        throw new AssertionError("Unexpected write access.");
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -143,7 +147,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public MaterializedFrame materialize() {
-        throw new AssertionError("Unexpected write access.");
+        throw newReadonlyAssertionError();
     }
 
     @Override
