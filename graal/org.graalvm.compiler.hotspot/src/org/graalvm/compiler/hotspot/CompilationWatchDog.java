@@ -200,7 +200,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                             tick(WatchDogState.WATCHING_WITHOUT_STACK_INSPECTION);
                             break;
                         case WATCHING_WITHOUT_STACK_INSPECTION:
-                            if (currentlyCompiling == lastWatched) {
+                            if (currentlyCompiling.equals(lastWatched)) {
                                 if (elapsed >= START_DELAY_MS) {
                                     // we looked at the same compilation for a certain time
                                     // so now we start to collect stack traces
@@ -217,7 +217,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                             }
                             break;
                         case WATCHING_WITH_STACK_INSPECTION:
-                            if (currentlyCompiling == lastWatched) {
+                            if (currentlyCompiling.equals(lastWatched)) {
                                 if (elapsed >= START_DELAY_MS + (traceIntervals * STACK_TRACE_INTERVAL_MS)) {
                                     trace("took a stack trace");
                                     boolean newStackTrace = recordStackTrace(compilerThread.getStackTrace());

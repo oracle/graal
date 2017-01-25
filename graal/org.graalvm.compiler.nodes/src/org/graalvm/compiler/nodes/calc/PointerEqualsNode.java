@@ -81,7 +81,7 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
                         ResolvedJavaType declaringClass = lm.getMethod().getDeclaringClass();
                         if (type != null && !type.equals(declaringClass) && declaringClass.isAssignableFrom(type)) {
                             ResolvedJavaMethod override = type.resolveMethod(lm.getMethod(), lm.getCallerType());
-                            if (override != null && override != lm.getMethod()) {
+                            if (override != null && !override.equals(lm.getMethod())) {
                                 assert declaringClass.isAssignableFrom(override.getDeclaringClass());
                                 return true;
                             }
