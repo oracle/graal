@@ -78,14 +78,11 @@ public interface Type {
     }
 
     static int getPadding(int offset, int alignment) {
-        if (alignment == 0) {
-            throw new AssertionError();
-        }
-        return (alignment - (offset % alignment)) % alignment;
+        return alignment == 0 ? 0 : (alignment - (offset % alignment)) % alignment;
     }
 
     static int getPadding(int offset, Type type, DataSpecConverter targetDataLayout) {
         final int alignment = type.getAlignment(targetDataLayout);
-        return alignment == 0 ? 0 : getPadding(offset, alignment);
+        return getPadding(offset, alignment);
     }
 }

@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVM80BitFloat
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMFloatToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI16ToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI16ToDoubleZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI1ToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI32ToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI32ToDoubleUnsignedNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI64ToDoubleBitNodeGen;
@@ -104,16 +105,14 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeFactory.LLVMI1ToI8ZeroExtN
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeFactory.LLVMI32ToI8NodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeFactory.LLVMI64ToI8NodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeFactory.LLVMIVarToI8NodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMToI8VectorNodeFactory.LLVMI32VectorToI8VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI16ToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI32ToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI32ToIVarZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI64ToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI8ToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMIVarToIVarNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMVectorToVectorNodeFactory.LLVMAnyVectorToI8VectorNodeGen;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -192,38 +191,28 @@ public final class LLVMCastsFactory {
             case FUNCTION_ADDRESS:
                 return factory.castFromFunctionPointer(fromNode);
             case FLOAT_VECTOR:
-                return factory.castFromFloatVector(fromNode);
+            case I32_VECTOR:
+            case I8_VECTOR:
+            case I128_VECTOR:
+            case I16_VECTOR:
+            case I1_VECTOR:
+            case I64_VECTOR:
+            case ADDRESS_VECTOR:
+            case DOUBLE_VECTOR:
+                return factory.castVector(fromNode);
             default:
-                throw new AssertionError(fromType);
+                throw new AssertionError(fromType + " ==> " + factory.targetType);
         }
     }
 
-    private LLVMExpressionNode castFromFloatVector(LLVMExpressionNode fromNode) {
+    private LLVMExpressionNode castVector(LLVMExpressionNode fromNode) {
         switch (targetType) {
             case I64:
                 return LLVMAnyToI64NodeGen.create(fromNode);
+            case I8_VECTOR:
+                return LLVMAnyVectorToI8VectorNodeGen.create(fromNode);
             default:
                 throw new AssertionError(targetType + " " + conv);
-        }
-    }
-
-    public static LLVMExpressionNode castVector(LLVMBaseType fromType, LLVMExpressionNode fromNode, LLVMExpressionNode target, LLVMBaseType targetType, LLVMConversionType conv) {
-        if (fromNode == null || targetType == null || fromType == null || conv == null) {
-            throw new AssertionError();
-        }
-        LLVMCastsFactory factory = new LLVMCastsFactory(targetType, conv, 0);
-        switch (fromType) {
-            case I8_VECTOR:
-                return factory.castFromI8Vector(target, fromNode);
-            case I32_VECTOR:
-                return factory.castFromI32Vector(target, fromNode);
-            case I1_VECTOR:
-            case I16_VECTOR:
-            case I64_VECTOR:
-            case FLOAT_VECTOR:
-            case DOUBLE_VECTOR:
-            default:
-                throw new LLVMUnsupportedException(UnsupportedReason.VECTOR_CAST);
         }
     }
 
@@ -270,28 +259,6 @@ public final class LLVMCastsFactory {
                 return LLVM80BitFloatToFloatNodeGen.create(fromNode);
             default:
                 throw new AssertionError(targetType);
-        }
-    }
-
-    private LLVMExpressionNode castFromI8Vector(@SuppressWarnings("unused") LLVMExpressionNode target, LLVMExpressionNode fromNode) {
-        if (targetType == LLVMBaseType.I8_VECTOR) {
-            return fromNode;
-        }
-        switch (targetType) {
-            default:
-                throw new LLVMUnsupportedException(UnsupportedReason.VECTOR_CAST);
-        }
-    }
-
-    private LLVMExpressionNode castFromI32Vector(LLVMExpressionNode target, LLVMExpressionNode fromNode) {
-        if (targetType == LLVMBaseType.I32_VECTOR) {
-            return fromNode;
-        }
-        switch (targetType) {
-            case I8_VECTOR:
-                return LLVMI32VectorToI8VectorNodeGen.create(target, fromNode);
-            default:
-                throw new LLVMUnsupportedException(UnsupportedReason.VECTOR_CAST);
         }
     }
 
@@ -639,6 +606,8 @@ public final class LLVMCastsFactory {
                     return LLVMI1ToI32ZeroExtNodeGen.create(fromNode);
                 case I64:
                     return LLVMToI64ZeroExtNodeGen.create(fromNode);
+                case DOUBLE:
+                    return LLVMI1ToDoubleNodeGen.create(fromNode);
                 default:
                     throw new AssertionError(targetType + " " + conv);
             }

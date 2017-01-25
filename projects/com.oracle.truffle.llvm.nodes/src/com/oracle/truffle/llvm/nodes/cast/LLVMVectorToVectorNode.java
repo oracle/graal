@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,14 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.parser.listeners.module;
+package com.oracle.truffle.llvm.nodes.cast;
 
-import com.oracle.truffle.llvm.parser.api.model.generators.ModuleGenerator;
-import com.oracle.truffle.llvm.parser.bc.parser.listeners.ModuleVersion;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-public class ModuleV38 extends Module {
+@NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
+public abstract class LLVMVectorToVectorNode extends LLVMExpressionNode {
 
-    public ModuleV38(ModuleVersion version, ModuleGenerator generator) {
-        super(version, generator);
+    public abstract static class LLVMAnyVectorToI8VectorNode extends LLVMVectorToVectorNode {
+
+        @Specialization
+        public LLVMI8Vector doI32(LLVMI32Vector from) {
+            LLVMAddress address = from.getAddress();
+            return LLVMI8Vector.create(address, from.getLength() * I32_SIZE_IN_BYTES);
+        }
     }
 }

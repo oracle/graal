@@ -27,17 +27,18 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.parser.listeners.constants;
+package com.oracle.truffle.llvm.parser.bc.parser.listeners.function;
 
-import com.oracle.truffle.llvm.parser.api.model.generators.ConstantGenerator;
-import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
+import com.oracle.truffle.llvm.parser.api.model.generators.FunctionGenerator;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.bc.parser.listeners.ModuleVersion;
+import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
 
 import java.util.List;
 
-public class ConstantsV38 extends Constants {
+public class FunctionV39 extends Function {
 
-    public ConstantsV38(Types types, List<Type> symbols, ConstantGenerator generator) {
-        super(types, symbols, generator);
+    public FunctionV39(ModuleVersion version, Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
+        super(version, types, symbols, generator, mode);
     }
 }

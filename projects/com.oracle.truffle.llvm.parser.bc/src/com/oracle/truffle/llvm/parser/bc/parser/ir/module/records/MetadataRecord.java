@@ -64,7 +64,9 @@ public enum MetadataRecord {
     IMPORTED_ENTITY,
     MODULE,
     MACRO,
-    MACRO_FILE;
+    MACRO_FILE,
+    STRINGS,
+    GLOBAL_DECL_ATTACHMENT;
 
     public static MetadataRecord decode(long id) {
         return values()[(int) id];

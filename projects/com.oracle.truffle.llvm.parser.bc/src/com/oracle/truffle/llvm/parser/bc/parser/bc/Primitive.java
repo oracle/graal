@@ -42,6 +42,7 @@ public enum Primitive {
     UNABBREVIATED_RECORD_OPS(false, 6),
 
     USER_OPERAND_ARRAY_LENGTH(false, 6),
+    USER_OPERAND_BLOB_LENGTH(false, 6),
     USER_OPERAND_DATA(false, 5),
     USER_OPERAND_LITERAL(false, 8),
     USER_OPERAND_TYPE(true, 3);

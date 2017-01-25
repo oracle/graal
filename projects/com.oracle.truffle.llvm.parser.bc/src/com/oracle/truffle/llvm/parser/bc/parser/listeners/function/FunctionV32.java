@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public class FunctionV32 extends FunctionV38 {
+public class FunctionV32 extends Function {
 
     public FunctionV32(ModuleVersion version, Types types, List<Type> symbols, FunctionGenerator generator, int mode) {
         super(version, types, symbols, generator, mode);

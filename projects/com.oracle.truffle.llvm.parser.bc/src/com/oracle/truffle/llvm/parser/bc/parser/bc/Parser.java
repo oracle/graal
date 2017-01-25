@@ -152,7 +152,7 @@ public class Parser {
         return new Parser(argStream, argBlock, argListener, argParent, argOperations, argIdSize, argOffset);
     }
 
-    private Parser alignInt() {
+    public Parser alignInt() {
         long mask = Integer.SIZE - 1;
         if ((offset & mask) != 0) {
             return offset((offset & ~mask) + Integer.SIZE);

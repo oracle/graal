@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
     @ExplodeLoop
-    protected LLVMI1Vector executeI1VectorBody(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
+    protected LLVMI1Vector doCompare(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
         int length = left.getLength();
         boolean[] values = new boolean[length];
 
@@ -62,7 +62,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override
@@ -76,7 +76,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override
@@ -90,7 +90,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override
@@ -104,7 +104,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override
@@ -118,7 +118,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override
@@ -132,7 +132,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override
@@ -146,7 +146,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override
@@ -160,7 +160,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override
@@ -174,7 +174,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override
@@ -188,7 +188,7 @@ public abstract class LLVMI32VectorCompareNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI32Vector left, LLVMI32Vector right) {
-            return executeI1VectorBody(target, left, right);
+            return doCompare(target, left, right);
         }
 
         @Override

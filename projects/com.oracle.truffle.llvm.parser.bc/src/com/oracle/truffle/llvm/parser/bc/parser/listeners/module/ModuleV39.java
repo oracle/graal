@@ -27,16 +27,14 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.parser.listeners.metadata;
+package com.oracle.truffle.llvm.parser.bc.parser.listeners.module;
 
-import com.oracle.truffle.llvm.parser.api.model.generators.SymbolGenerator;
-import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.api.model.generators.ModuleGenerator;
+import com.oracle.truffle.llvm.parser.bc.parser.listeners.ModuleVersion;
 
-import java.util.List;
+public class ModuleV39 extends Module {
 
-public class MetadataV38 extends Metadata {
-    public MetadataV38(Types types, List<Type> symbols, SymbolGenerator generator) {
-        super(types, symbols, generator);
+    public ModuleV39(ModuleVersion version, ModuleGenerator generator) {
+        super(version, generator);
     }
 }

@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.bc.parser.bc.records;
 
 import com.oracle.truffle.llvm.parser.bc.parser.bc.Parser;
 import com.oracle.truffle.llvm.parser.bc.parser.bc.ParserResult;
+import com.oracle.truffle.llvm.parser.bc.parser.bc.Primitive;
 
 public final class UserRecordBinaryOperand extends UserRecordOperand {
 
@@ -40,7 +41,11 @@ public final class UserRecordBinaryOperand extends UserRecordOperand {
 
     @Override
     protected ParserResult get(Parser parser) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        ParserResult result = parser.read(Primitive.USER_OPERAND_BLOB_LENGTH);
+        long value = result.getValue();
+        Parser blobParser = result.getParser().alignInt();
+        result = blobParser.read(Primitive.USER_OPERAND_LITERAL.getBits() * value);
+        return result;
     }
 
     @Override

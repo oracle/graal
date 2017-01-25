@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.api.datalayout;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.api.datalayout.DataLayoutParser.DataTypeSpecification;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
@@ -39,9 +40,9 @@ public class DataLayoutConverter {
 
     public static class DataSpecConverterImpl implements DataSpecConverter {
 
-        private final List<DataLayoutParser.DataTypeSpecification> dataLayout;
+        private final List<DataTypeSpecification> dataLayout;
 
-        DataSpecConverterImpl(List<DataLayoutParser.DataTypeSpecification> dataLayout) {
+        DataSpecConverterImpl(List<DataTypeSpecification> dataLayout) {
             this.dataLayout = dataLayout;
         }
 
@@ -54,7 +55,7 @@ public class DataLayoutConverter {
             }
         }
 
-        DataLayoutParser.DataTypeSpecification getDataTypeSpecification(LLVMBaseType baseType) {
+        DataTypeSpecification getDataTypeSpecification(LLVMBaseType baseType) {
             // Checkstyle: stop magic number name check
             switch (baseType) {
                 case I1:
@@ -85,8 +86,8 @@ public class DataLayoutConverter {
             // Checkstyle: resume magic number name check
         }
 
-        private DataLayoutParser.DataTypeSpecification locateDataTypeSpecification(DataLayoutType dataLayoutType, int... values) {
-            for (DataLayoutParser.DataTypeSpecification spec : dataLayout) {
+        private DataTypeSpecification locateDataTypeSpecification(DataLayoutType dataLayoutType, int... values) {
+            for (DataTypeSpecification spec : dataLayout) {
                 CONT: if (spec.getType().equals(dataLayoutType)) {
                     for (int value : values) {
                         if (value != spec.getValues()[0]) {
@@ -96,13 +97,34 @@ public class DataLayoutConverter {
                     return spec;
                 }
             }
+
+            if (dataLayoutType == DataLayoutType.INTEGER) {
+                /*
+                 * Handling of integer datatypes when the exact match not found
+                 * http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
+                 */
+                int chosenIntTypeSize = 0;
+                DataTypeSpecification biggerIntegerTypeSepc = null;
+                OUT: for (DataTypeSpecification spec : dataLayout) {
+                    if (spec.getType() == DataLayoutType.INTEGER && spec.getValues()[0] > chosenIntTypeSize) {
+                        biggerIntegerTypeSepc = spec;
+                        chosenIntTypeSize = spec.getValues()[0];
+                        for (int value : values) {
+                            if (chosenIntTypeSize > value) {
+                                break OUT;
+                            }
+                        }
+                    }
+                }
+                return biggerIntegerTypeSepc;
+            }
             throw new AssertionError(dataLayoutType + " " + Arrays.toString(values));
         }
 
     }
 
     public static DataSpecConverterImpl getConverter(String layout) {
-        final List<DataLayoutParser.DataTypeSpecification> dataLayout = DataLayoutParser.parseDataLayout(layout);
+        final List<DataTypeSpecification> dataLayout = DataLayoutParser.parseDataLayout(layout);
         return new DataSpecConverterImpl(dataLayout);
     }
 

@@ -27,28 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.bc.parser.listeners.constants;
+package com.oracle.truffle.llvm.parser.bc.parser.listeners.metadata;
 
-import com.oracle.truffle.llvm.parser.api.model.generators.ConstantGenerator;
-import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
+import com.oracle.truffle.llvm.parser.api.model.generators.SymbolGenerator;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.bc.parser.listeners.Types;
 
 import java.util.List;
 
-public class ConstantsV32 extends Constants {
-
-    public ConstantsV32(Types types, List<Type> symbols, ConstantGenerator generator) {
+public class MetadataV39 extends Metadata {
+    public MetadataV39(Types types, List<Type> symbols, SymbolGenerator generator) {
         super(types, symbols, generator);
-    }
-
-    @Override
-    protected void createGetElementPointerExpression(long[] args, boolean isInbounds) {
-        int[] indices = new int[(args.length >> 1) - 1];
-
-        for (int i = 0; i < indices.length; i++) {
-            indices[i] = (int) args[((i + 1) << 1) + 1];
-        }
-
-        generator.createGetElementPointerExpression(type, (int) args[1], indices, isInbounds);
     }
 }
