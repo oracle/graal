@@ -312,7 +312,7 @@ class AveragingBenchmarkMixin(object):
     def getExtraIterationCount(self, iterations):
         # Uses the number of warmup iterations to calculate the number of extra
         # iterations needed by the benchmark to compute a more stable average result.
-        return min(10, iterations, max(5, int(iterations * 0.2)))
+        return min(20, iterations, max(6, int(iterations * 0.4)))
 
     def addAverageAcrossLatestResults(self, results):
         # Postprocess results to compute the resulting time by taking the average of last N runs,
@@ -513,16 +513,16 @@ _daCapoIterations = {
     "batik"      : 40,
     "eclipse"    : -1,
     "fop"        : 40,
-    "h2"         : 20,
+    "h2"         : 25,
     "jython"     : 40,
     "luindex"    : 15,
     "lusearch"   : 40,
     "pmd"        : 30,
-    "sunflow"    : 30,
+    "sunflow"    : 35,
     "tomcat"     : -1, # Stopped working as of 8u92
     "tradebeans" : -1,
     "tradesoap"  : -1,
-    "xalan"      : 25,
+    "xalan"      : 30,
 }
 
 
@@ -581,13 +581,13 @@ mx_benchmark.add_bm_suite(DaCapoMoveProfilingBenchmarkSuite())
 _daCapoScalaConfig = {
     "actors"      : 10,
     "apparat"     : 5,
-    "factorie"    : 5,
+    "factorie"    : 6,
     "kiama"       : 40,
-    "scalac"      : 27,
-    "scaladoc"    : 15,
+    "scalac"      : 30,
+    "scaladoc"    : 20,
     "scalap"      : 120,
     "scalariform" : 30,
-    "scalatest"   : 50,
+    "scalatest"   : 60,
     "scalaxb"     : 60,
     "specs"       : 20,
     "tmt"         : 12
