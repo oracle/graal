@@ -111,7 +111,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI32ToIVarZer
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI64ToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI8ToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMIVarToIVarNodeGen;
-import com.oracle.truffle.llvm.nodes.cast.LLVMVectorToVectorNodeFactory;
+import com.oracle.truffle.llvm.nodes.cast.LLVMVectorToVectorNodeFactory.LLVMAnyVectorToI8VectorNodeGen;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
@@ -207,8 +207,10 @@ public final class LLVMCastsFactory {
 
     private LLVMExpressionNode castVector(LLVMExpressionNode fromNode) {
         switch (targetType) {
+            case I64:
+                return LLVMAnyToI64NodeGen.create(fromNode);
             case I8_VECTOR:
-                return LLVMVectorToVectorNodeFactory.LLVMAnyVectorToI8VectorNodeGen.create(fromNode);
+                return LLVMAnyVectorToI8VectorNodeGen.create(fromNode);
             default:
                 throw new AssertionError(targetType + " " + conv);
         }
