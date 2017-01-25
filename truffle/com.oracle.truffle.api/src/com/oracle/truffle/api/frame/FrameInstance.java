@@ -43,7 +43,7 @@ public interface FrameInstance {
          * @since 0.8 or earlier
          * @deprecated without replacement. This mode always returns <code>null</code>.
          **/
-        @Deprecated
+        @Deprecated //
         NONE,
 
         /**
