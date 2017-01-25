@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,12 @@ import org.graalvm.util.MapCursor;
 
 import jdk.vm.ci.meta.JavaKind;
 
-public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockState> {
+/**
+ * This closure initially handled a set of nodes that is disjunct from
+ * {@link PEReadEliminationClosure}, but over time both have evolved so that there's a significant
+ * overlap.
+ */
+public final class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockState> {
 
     public ReadEliminationClosure(ControlFlowGraph cfg) {
         super(null, cfg);
@@ -242,12 +247,6 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
         @Override
         protected void merge(List<ReadEliminationBlockState> states) {
-            super.merge(states);
-
-            mergeReadCache(states);
-        }
-
-        private void mergeReadCache(List<ReadEliminationBlockState> states) {
             MapCursor<CacheEntry<?>, ValueNode> cursor = states.get(0).readCache.getEntries();
             while (cursor.advance()) {
                 CacheEntry<?> key = cursor.getKey();
@@ -255,9 +254,9 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 boolean phi = false;
                 for (int i = 1; i < states.size(); i++) {
                     ValueNode otherValue = states.get(i).readCache.get(key);
-                    // e.g. unsafe loads / stores with different access kinds have different stamps
-                    // although location, object and offset are the same, in this case we cannot
-                    // create a phi nor can we set a common value
+                    // E.g. unsafe loads / stores with different access kinds have different stamps
+                    // although location, object and offset are the same. In this case we cannot
+                    // create a phi nor can we set a common value.
                     if (otherValue == null || !value.stamp().isCompatible(otherValue.stamp())) {
                         value = null;
                         phi = false;
@@ -281,6 +280,10 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     newState.addCacheEntry(key, value);
                 }
             }
+            /*
+             * For object phis, see if there are known reads on all predecessors, for which we could
+             * create new phis.
+             */
             for (PhiNode phi : getPhis()) {
                 if (phi.getStackKind() == JavaKind.Object) {
                     for (CacheEntry<?> entry : states.get(0).readCache.getKeys()) {
@@ -288,7 +291,6 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             mergeReadCachePhi(phi, entry, states);
                         }
                     }
-
                 }
             }
         }

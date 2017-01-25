@@ -68,13 +68,47 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected final ControlFlowGraph cfg;
     protected final ScheduleResult schedule;
 
+    /**
+     * If a node has an alias, this means that it was replaced with another node during analysis.
+     * Nodes can be replaced by normal ("scalar") nodes, e.g., a LoadIndexedNode with a
+     * ConstantNode, or by virtual nodes, e.g., a NewInstanceNode with a VirtualInstanceNode. A node
+     * was replaced with a virtual value iff the alias is a subclass of VirtualObjectNode.
+     *
+     * This alias map exists only once and is not part of the block state, so that during iterative
+     * loop processing the alias of a node may be changed to another value.
+     */
     protected final NodeMap<ValueNode> aliases;
+
+    /**
+     * This set allows for a quick check whether a node has inputs that were replaced with "scalar"
+     * values.
+     */
+    private final NodeBitMap hasScalarReplacedInputs;
+
+    /*
+     * TODO: if it was possible to introduce your own subclasses of Block and Loop, these maps would
+     * not be necessary. We could merge the GraphEffectsList logic into them.
+     */
+
+    /**
+     * The effects accumulated during analysis of nodes. They may be cleared and re-filled during
+     * iterative loop processing.
+     */
     protected final BlockMap<GraphEffectList> blockEffects;
+
+    /**
+     * Effects that can only be applied after the effects from within the loop have been applied and
+     * that must be applied before any effect from after the loop is applied. E.g., updating phis.
+     */
     protected final EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffects = EconomicMap.create(Equivalence.IDENTITY);
+
+    /**
+     * The entry state of loops is needed when loop proxies are processed.
+     */
+    private final EconomicMap<LoopBeginNode, BlockT> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
+
     // Intended to be used by read-eliminating phases based on the effects phase.
     protected final EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCache = EconomicMap.create(Equivalence.IDENTITY);
-    private final EconomicMap<LoopBeginNode, BlockT> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
-    private final NodeBitMap hasScalarReplacedInputs;
 
     protected boolean changed;
 
@@ -104,6 +138,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         final StructuredGraph graph = cfg.graph;
         final ArrayList<Node> obsoleteNodes = new ArrayList<>(0);
         final ArrayList<GraphEffectList> effectList = new ArrayList<>();
+        /*
+         * Effects are applied during a ordered iteration over the blocks to apply them in the
+         * correct order, e.g., apply the effect that adds a node to the graph before the node is
+         * used.
+         */
         BlockIteratorClosure<Void> closure = new BlockIteratorClosure<Void>() {
 
             @Override
@@ -145,6 +184,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             Debug.log(" ==== effects");
             effects.apply(graph, obsoleteNodes, false);
         }
+        /*
+         * Effects that modify the cfg (e.g., removing a branch for an if that got a constant
+         * condition) need to be performed after all other effects, because they change phi value
+         * indexes.
+         */
         for (GraphEffectList effects : effectList) {
             Debug.log(" ==== cfg kill effects");
             effects.apply(graph, obsoleteNodes, true);
@@ -167,15 +211,19 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         if (!state.isDead()) {
             GraphEffectList effects = blockEffects.get(block);
 
+            /*
+             * If we enter an if branch that is known to be unreachable, we mark it as dead and
+             * cease to do any more analysis on it. At merges, these dead branches will be ignored.
+             */
             if (block.getBeginNode().predecessor() instanceof IfNode) {
                 IfNode ifNode = (IfNode) block.getBeginNode().predecessor();
                 LogicNode condition = ifNode.condition();
                 Node alias = getScalarAlias(condition);
                 if (alias instanceof LogicConstantNode) {
                     LogicConstantNode constant = (LogicConstantNode) alias;
-                    boolean deadBranch = constant.getValue() != (block.getBeginNode() == ifNode.trueSuccessor());
+                    boolean isTrueSuccessor = block.getBeginNode() == ifNode.trueSuccessor();
 
-                    if (deadBranch) {
+                    if (constant.getValue() != isTrueSuccessor) {
                         state.markAsDead();
                         effects.killIfBranch(ifNode, constant.getValue());
                         return state;
@@ -185,9 +233,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
             VirtualUtil.trace("\nBlock: %s, preds: %s, succ: %s (", block, block.getPredecessors(), block.getSuccessors());
 
-            FixedWithNextNode lastFixedNode = block.getBeginNode().predecessor() instanceof FixedWithNextNode ? (FixedWithNextNode) block.getBeginNode().predecessor() : null;
+            // a lastFixedNode is needed in case we want to insert fixed nodes
+            FixedWithNextNode lastFixedNode = null;
             Iterable<? extends Node> nodes = schedule != null ? schedule.getBlockToNodesMap().get(block) : block.getNodes();
             for (Node node : nodes) {
+                // reset the aliases (may be non-null due to iterative loop processing)
                 aliases.set(node, null);
                 if (node instanceof LoopExitNode) {
                     LoopExitNode loopExit = (LoopExitNode) node;
@@ -210,6 +260,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         return state;
     }
 
+    /**
+     * Changes to {@link CommitAllocationNode}s, {@link AllocatedObjectNode}s and {@link BoxNode}s
+     * are not considered to be "important". If only changes to those nodes are discovered during
+     * analysis, the effects need not be applied.
+     */
     private static boolean isSignificantNode(Node node) {
         return !(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode || node instanceof BoxNode);
     }
@@ -226,7 +281,6 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         assert blockEffects.get(merge).isEmpty();
         MergeProcessor processor = createMergeProcessor(merge);
         doMergeWithoutDead(processor, states);
-        processor.commitEnds(states);
         blockEffects.get(merge).addAll(processor.mergeEffects);
         blockEffects.get(merge).addAll(processor.afterMergeEffects);
         return processor.newState;
@@ -263,6 +317,15 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         BlockT lastMergedState = cloneState(initialStateRemovedKilledLocations);
         processInitialLoopState(loop, lastMergedState);
         MergeProcessor mergeProcessor = createMergeProcessor(loop.getHeader());
+        /*
+         * Iterative loop processing: we take the predecessor state as the loop's starting state,
+         * processing the loop contents, merge the states of all loop ends, and check whether the
+         * resulting state is equal to the starting state. If it is, the loop processing has
+         * finished, if not, another iteration is needed.
+         *
+         * This processing converges because the merge processing always makes the starting state
+         * more generic, e.g., adding phis instead of non-phi values.
+         */
         for (int iteration = 0; iteration < 10; iteration++) {
             try (Indent i = Debug.logAndIndent("================== Process Loop Effects Closure: block:%s begin node:%s", loop.getHeader(), loop.getHeader().getBeginNode())) {
                 LoopInfo<BlockT> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(lastMergedState));
@@ -277,8 +340,6 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 Debug.log("Last Merged State: %s", lastMergedState);
 
                 if (mergeProcessor.newState.equivalentTo(lastMergedState)) {
-                    mergeProcessor.commitEnds(states);
-
                     blockEffects.get(loop.getHeader()).insertAll(mergeProcessor.mergeEffects, 0);
                     loopMergeEffects.put(loop, mergeProcessor.afterMergeEffects);
 
@@ -329,6 +390,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 stateIndexes[i] = i;
             }
             mergeProcessor.setStateIndexes(stateIndexes);
+            mergeProcessor.setNewState(getInitialState());
             mergeProcessor.merge(states);
         } else {
             ArrayList<BlockT> aliveStates = new ArrayList<>(alive);
@@ -340,6 +402,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 }
             }
             mergeProcessor.setStateIndexes(stateIndexes);
+            mergeProcessor.setNewState(getInitialState());
             mergeProcessor.merge(aliveStates);
         }
     }
@@ -355,7 +418,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected abstract MergeProcessor createMergeProcessor(Block merge);
 
-    protected class MergeProcessor {
+    /**
+     * The main workhorse for merging states, both for loops and for normal merges.
+     */
+    protected abstract class MergeProcessor {
 
         private final Block mergeBlock;
         private final AbstractMergeNode merge;
@@ -363,6 +429,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         protected final GraphEffectList mergeEffects;
         protected final GraphEffectList afterMergeEffects;
 
+        /**
+         * The indexes are used to map from an index in the list of active (non-dead) predecessors
+         * to an index in the list of all predecessors (the latter may be larger).
+         */
         private int[] stateIndexes;
         protected BlockT newState;
 
@@ -376,9 +446,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         /**
          * @param states the states that should be merged.
          */
-        protected void merge(List<BlockT> states) {
-            setNewState(getInitialState());
-        }
+        protected abstract void merge(List<BlockT> states);
 
         private void setNewState(BlockT state) {
             newState = state;
@@ -388,10 +456,6 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
         private void setStateIndexes(int[] stateIndexes) {
             this.stateIndexes = stateIndexes;
-        }
-
-        @SuppressWarnings("unused")
-        protected void commitEnds(List<BlockT> states) {
         }
 
         protected final Block getPredecessor(int index) {
@@ -412,10 +476,6 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
         protected final void setPhiInput(PhiNode phi, int index, ValueNode value) {
             afterMergeEffects.initializePhiInput(phi, stateIndexes[index], value);
-        }
-
-        protected final int getStateIndex(int i) {
-            return stateIndexes[i];
         }
 
         protected final StructuredGraph graph() {
@@ -451,7 +511,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         return (result == null || result instanceof VirtualObjectNode) ? node : result;
     }
 
-    protected static class LoopKillCache {
+    protected static final class LoopKillCache {
         private int visits;
         private LocationIdentity firstLocation;
         private EconomicSet<LocationIdentity> killedLocations;

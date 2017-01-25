@@ -74,10 +74,9 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
     }
 
     @SuppressWarnings("try")
-    public boolean runAnalysis(final StructuredGraph graph, final PhaseContextT context) {
+    public boolean runAnalysis(StructuredGraph graph, PhaseContextT context) {
         boolean changed = false;
-        boolean stop = false;
-        for (int iteration = 0; !stop && iteration < maxIterations && !CompilationAlarm.hasExpired(); iteration++) {
+        for (int iteration = 0; iteration < maxIterations && !CompilationAlarm.hasExpired(); iteration++) {
             try (Scope s = Debug.scope(isEnabled() ? "iteration " + iteration : null)) {
                 ScheduleResult schedule;
                 ControlFlowGraph cfg;
@@ -92,12 +91,6 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                 try (Scope scheduleScope = Debug.scope("EffectsPhaseWithSchedule", schedule)) {
                     Closure<?> closure = createEffectsClosure(context, schedule, cfg);
                     ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
-
-                    if (closure.hasChanged()) {
-                        changed = true;
-                    } else {
-                        stop = true;
-                    }
 
                     if (closure.needsApplyEffects()) {
                         // apply the effects collected during this iteration
@@ -119,6 +112,12 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                             }
                         }
                         postIteration(graph, context, changedNodes);
+                    }
+
+                    if (closure.hasChanged()) {
+                        changed = true;
+                    } else {
+                        break;
                     }
                 } catch (Throwable t) {
                     throw Debug.handle(t);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,10 @@ public class ObjectState {
 
     private EscapeObjectState cachedState;
 
+    /**
+     * ObjectStates are duplicated lazily, if this field is true then the state needs to be copied
+     * before it is modified.
+     */
     boolean copyOnWrite;
 
     public ObjectState(ValueNode[] entries, List<MonitorIdNode> locks, boolean ensureVirtualized) {

@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
-public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadEliminationBlockState> {
+public final class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadEliminationBlockState> {
 
     final EconomicMap<ReadCacheEntry, ValueNode> readCache;
 
