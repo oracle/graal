@@ -1629,7 +1629,7 @@ public class BytecodeParser implements GraphBuilderContext {
             receiverType = targetMethod.getDeclaringClass();
         }
         ResolvedJavaMethod resolvedMethod = receiverType.resolveMethod(targetMethod, method.getDeclaringClass());
-        if (resolvedMethod == null || resolvedMethod == targetMethod) {
+        if (resolvedMethod == null || resolvedMethod.equals(targetMethod)) {
             assert resolvedMethod == null || targetMethod.getDeclaringClass().isAssignableFrom(resolvedMethod.getDeclaringClass());
             Mark mark = graph.getMark();
             FixedWithNextNode currentLastInstr = lastInstr;
