@@ -85,6 +85,8 @@ mdlCheckExcludeDirectories = [
 # sorted by priority in descending order (highest priority on top)
 supportedLLVMVersions = [
     '3.2',
+    '3.8',
+    '3.9',
 ]
 
 # the clang-format versions that can be used for formatting the test case C and C++ files

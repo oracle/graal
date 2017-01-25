@@ -34,6 +34,21 @@ gateStyle: ${gateCommon} {
     }
 }
 
+gateTest38: ${gateCommon} {
+    packages: {
+        llvm: "==3.8"
+    }
+
+    downloads: {
+        LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
+    }
+
+    environment: {
+        CPPFLAGS: "-I$LIBGMP/include"
+        LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
+    }
+}
+
 gateTest: ${gateCommon} {
     downloads: {
         LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
@@ -178,6 +193,7 @@ builds = [
   ${gateTest} ${requireGCC} { name: gate-suite-gcc, run: [[mx, su-suite, gcc]] }
   ${gateTest} ${requireGCC} { name: gate-travis1, run: [[mx, su-travis1]] }
   ${gateTest} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
+  ${gateTest38} { name: gate-sulong-v38, run: [[mx, su-suite, sulong38]] }
   ${gateTest} { name: gate-travis-argon2, run: [[mx, su-travis-argon2]] }
 
   ${benchSulong} ${requireGCC}    ${graal-core}           {name: sulong-bench-graal-core}

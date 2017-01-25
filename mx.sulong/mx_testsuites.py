@@ -31,6 +31,14 @@ _nwccSuiteDir = os.path.join(_testDir, "nwcc/")
 _nwccSuiteDirRoot2 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/tests/")
 _nwccSuiteDirRoot1 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/test2/")
 
+def compileV38SulongSuite():
+    print("Compiling Sulong Suite reference executables ", end='')
+    mx_tools.printProgress(mx_tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm']))
+    print("Compiling Sulong Suite with clang 3.8 -O0 ", end='')
+    mx_tools.printProgress(mx_tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, optimizers=[mx_tools.Tool.BB_VECTORIZE_V38]))
+    print("Compiling Sulong Suite with clang 3.8 -O1/2/3 ", end='')
+    mx_tools.printProgress(mx_tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm'], [mx_tools.Optimization.O1, mx_tools.Optimization.O2, mx_tools.Optimization.O3], mx_tools.ProgrammingLanguage.LLVMBC))
+
 def compileSulongSuite():
     print("Compiling Sulong Suite reference executables ", end='')
     mx_tools.printProgress(mx_tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm']))
@@ -57,6 +65,11 @@ def runSulongSuite(vmArgs):
     mx_sulong.ensureDragonEggExists()
     compileSuite(['sulong'])
     return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
+
+def runSulongSuite38(vmArgs):
+    """runs the Sulong test suite"""
+    compileSuite(['sulong38'])
+    return run(vmArgs + ['-Dsulong.LLVM=3.8'], "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
 
 def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
@@ -190,6 +203,7 @@ testSuites = {
     'gcc' : (compileGCCSuite, runGCCSuite),
     'llvm' : (compileLLVMSuite, runLLVMSuite),
     'sulong' : (compileSulongSuite, runSulongSuite),
+    'sulong38' : (compileV38SulongSuite, runSulongSuite38),
     'shootout' : (compileShootoutSuite, runShootoutSuite),
     'interop' : (compileInteropTests, runInteropTests),
     'tck' : (compileInteropTests, runTCKTests),
