@@ -84,7 +84,9 @@
 &lt;/dependency&gt;
  * </pre>
  *
- * <h2>Simple Hello World!</h2>
+ * <h2>Getting Started</h2>
+ *
+ * <h3>Simple Hello World!</h3>
  *
  * Integrating Truffle into your Java application starts with building
  * an instance of {@link com.oracle.truffle.api.vm.PolyglotEngine} - a
@@ -96,11 +98,15 @@
  *
  * {@codesnippet com.oracle.truffle.tutorial.HelloWorld#helloWorldInJavaScript}
  *
- * <h2>It's a Polyglot World</h3>
+ * <h3>It's a Polyglot World</h3>
  *
  * How to list all available languages?
  *
- * <h2>Hello World in Ruby and JavaScript</h2>
+ * <h3>Adding additional Language</h3>
+ *
+ * Put its JAR on classpath.
+ *
+ * <h3>Hello World in Ruby and JavaScript</h3>
  *
  * Mixing languages
  *
@@ -142,7 +148,16 @@
  * visible in a global JavaScript scope - the only reference to the system is
  * from Java via the implementation of <code>Times</code> interface.
  *
- * <h2>Accessing JavaScript Classes</h2>
+ * <h2>Accessing Dynamic Structures from Java</h2>
+ * 
+ * <h3>Type-safe View of an Array</h3>
+ *
+ * The following example defines a {@link java.lang.FunctionalInterface} which's method returns a
+ * {@link java.util.List} of points:
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements}
+ *
+ * <h3>Accessing JavaScript Classes</h3>
  *
  * Version six of JavaScript added a concept of typeless
  * classes. With Java interop one can give the classes types. Here is an example
@@ -151,6 +166,54 @@
  *
  * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor}
  *
+ *
+ * <h3>Accessing JSON Structure</h3>
+ *
+ * Imagine a need to safely access complex JSON-like structure. The next example uses one
+ * modeled after JSON response returned by a GitHub API. It contains a list of repository
+ * objects. Each repository has an id, name, list of URLs and a nested structure describing
+ * owner. Let's start by defining the structure with Java interfaces:
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties}
+ *
+ * The example defines a parser that somehow obtains object representing the JSON data and
+ * converts it into {@link java.util.List} of {@code Repository} instances. After calling the method
+ * we can safely use the interfaces ({@link java.util.List}, {@code Repository}, {@code Owner}) and
+ * inspect the JSON structure in a type-safe way.
+ *
+ * <h2>Accessing Java from Dynamic Languages</h2>
+ *
+ * <h3>Access Fields and Methods of Java Objects</h3>
+ *
+ * This method allows one to easily expose <b>public</b> members of Java objects to scripts
+ * written in dynamic languages. For example the next code defines class <code>Moment</code>
+ * and allows dynamic language access its fields:
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObject}
+ *
+ * Of course, the {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class) manual conversion} to {@link java.lang.Number} is
+ * annoying. Should it be performed frequently, it is better to define a
+ * <code>MomentConvertor</code> interface:
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConvertor}
+ *
+ * then one gets completely type-safe view of the dynamic function including its parameters
+ * and return type.
+ *
+ * <h3>Accessing Static Methods</h3>
+ *
+ * Dynamic languages can also access <b>public</b> static methods and <b>public</b>
+ * constructors of Java classes, if they can get reference to them. Luckily
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Value#execute(java.lang.Object...) there is a support}
+ * for wrapping instances of
+ * {@link java.lang.Class} to appropriate objects:
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createNewMoment}
+ *
+ * In the above example the <code>Moment.class</code> is passed into the JavaScript function
+ * as first argument and can be used by the dynamic language as a constructor in
+ * <code>new Moment(h, m, s)</code> - that creates new instances of the Java class. Static
+ * methods of the passed in <code>Moment</code> object could be invoked as well.
  *
  * <h1>Writing Own Language</h1>
  *
