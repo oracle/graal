@@ -52,7 +52,7 @@ public class StableDispatch {
             return callNode.call(arguments);
         }
 
-        @Specialization(contains = "directDispatch")
+        @Specialization(replaces = "directDispatch")
         protected static Object indirectDispatch(SLFunction function, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
             return callNode.call(function.getCallTarget(), arguments);

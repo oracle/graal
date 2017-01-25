@@ -164,8 +164,7 @@ public class RubyCall {
             return RubyObject.NIL;
         }
 
-
-        @Specialization(contains = "directCall", guards = "method != METHOD_MISSING")
+        @Specialization(replaces = "directCall", guards = "method != METHOD_MISSING")
         protected static Object indirectCall(InternalMethod method, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
             return callNode.call(method.getTarget(), arguments);
