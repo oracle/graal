@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVM80BitFloat
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMFloatToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI16ToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI16ToDoubleZeroExtNodeGen;
+import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI1ToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI32ToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI32ToDoubleUnsignedNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeFactory.LLVMI64ToDoubleBitNodeGen;
@@ -603,6 +604,8 @@ public final class LLVMCastsFactory {
                     return LLVMI1ToI32ZeroExtNodeGen.create(fromNode);
                 case I64:
                     return LLVMToI64ZeroExtNodeGen.create(fromNode);
+                case DOUBLE:
+                    return LLVMI1ToDoubleNodeGen.create(fromNode);
                 default:
                     throw new AssertionError(targetType + " " + conv);
             }
