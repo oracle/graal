@@ -56,6 +56,11 @@
  * Truffle is developed and maintained by Oracle Labs and the
  * Institute for System Software of the Johannes Kepler University Linz.
  *
+ * <h1>Contents</h1>
+ * 
+ * <div id="toc"></div>
+ * <div id="contents">
+ *
  * <h1>Embedding Truffle</h1>
  *
  * In case you want to embedded Truffle into your Java application,
@@ -79,7 +84,7 @@
 &lt;/dependency&gt;
  * </pre>
  *
- * <h3>Simple Hello World!</h3>
+ * <h2>Simple Hello World!</h2>
  *
  * Integrating Truffle into your Java application starts with building
  * an instance of {@link com.oracle.truffle.api.vm.PolyglotEngine} - a
@@ -91,25 +96,122 @@
  *
  * {@codesnippet com.oracle.truffle.tutorial.HelloWorld#helloWorldInJavaScript}
  *
+ * <h2>It's a Polyglot World</h3>
+ *
+ * How to list all available languages?
+ *
+ * <h2>Hello World in Ruby and JavaScript</h2>
+ *
+ * Mixing languages
+ *
+ * <h2>Calling Functions</h2>
+ *
+ * <h3>Define and call JavaScript function</h3>
+ *
+ * To use a function written in a dynamic language from Java one needs to give
+ * it a type. The following sample defines {@code Mul} interface with a single
+ * method. Then it evaluates the dynamic code to define the function and
+ * {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class) uses the result as} the {@code Mul}
+ * interface:
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineJavaScriptFunctionAndUseItFromJava}
+ *
+ * In case of JavaScript, it is adviced to wrap the function into parenthesis,
+ * as then the function doesn't polute the global scope - the only reference to
+ * it is via implementation of the {@code Mul} interface.
+ *
+ * <h3>Define and call Ruby function</h3>
+ * <h3>Define and call R function</h3>
+ *
+ * <h2>Multiple functions with a state</h2>
+ *
+ * Often it is necessary to expose multiple dynamic language functions that work
+ * in orchestration - for example when they share some common variables. This
+ * can be done by typing these functions via Java interface as well. Just the
+ * interface needs to have more than a single method:
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineMultipleJavaScriptFunctionsAndUseItFromJava}
+ *
+ * The previous example defines an object with two functions:
+ * <code>addTime</code> and <code>timeInSeconds</code>. The Java interface
+ * <code>Times</code> wraps this dynamic object and gives it a type: for example
+ * the <code>addTime</code> method is known to take three integer arguments.
+ * Both functions in the dynamic language are defined in a single, encapsulating
+ * function - as such they can share variable <code>seconds</code>. Because of
+ * using parenthesis when defining the encapsulating function, nothing is
+ * visible in a global JavaScript scope - the only reference to the system is
+ * from Java via the implementation of <code>Times</code> interface.
+ *
+ * <h2>Accessing JavaScript Classes</h2>
+ *
+ * Version six of JavaScript added a concept of typeless
+ * classes. With Java interop one can give the classes types. Here is an example
+ * that defines <code>class Incrementor</code> with two functions and one field
+ * and "types it" with Java interface:
+ *
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor}
+ *
+ *
+ * <h1>Writing Own Language</h1>
+ *
+ * Expert topic: see {@link com.oracle.truffle.api.TruffleLanguage other tutorial}.
  * 
+ * </div>
 <script>
-function hide(tagname, cnt, clazz) {
-    var elems = document.getElementsByTagName(tagname)
-    for (var i = 0; cnt > 0; i++) {
-        var e = elems[i];
-        if (!e) {
-            break;
-        }
-        if (!clazz || e.getAttribute("class") === clazz) {
-            e.style.display = 'none';
-            cnt--;
+
+window.onload = function () {
+    function hide(tagname, cnt, clazz) {
+        var elems = document.getElementsByTagName(tagname)
+        for (var i = 0; cnt > 0; i++) {
+            var e = elems[i];
+            if (!e) {
+                break;
+            }
+            if (!clazz || e.getAttribute("class") === clazz) {
+                e.style.display = 'none';
+                cnt--;
+            }
         }
     }
-}
-hide("h1", 1);
-hide("h2", 1);
-hide("p", 1);
-hide("div", 1, "docSummary");
+    hide("h1", 1);
+    hide("h2", 1);
+    hide("p", 1);
+    hide("div", 1, "docSummary");
+
+    var toc = "";
+    var level = 0;
+
+    document.getElementById("contents").innerHTML =
+        document.getElementById("contents").innerHTML.replace(
+            /<h([\d])>([^<]+)<\/h([\d])>/gi,
+            function (str, openLevel, titleText, closeLevel) {
+                if (openLevel != closeLevel) {
+                    return str;
+                }
+
+                if (openLevel > level) {
+                    toc += (new Array(openLevel - level + 1)).join("<ul>");
+                } else if (openLevel < level) {
+                    toc += (new Array(level - openLevel + 1)).join("</ul>");
+                }
+
+                level = parseInt(openLevel);
+
+                var anchor = titleText.replace(/ /g, "_");
+                toc += "<li><a href=\"#" + anchor + "\">" + titleText
+                    + "</a></li>";
+
+                return "<h" + openLevel + "><a name=\"" + anchor + "\">"
+                    + titleText + "</a></h" + closeLevel + ">";
+            }
+        );
+
+    if (level) {
+        toc += (new Array(level + 1)).join("</ul>");
+    }
+
+    document.getElementById("toc").innerHTML += toc;
+};
 </script>
  * 
  * @since 0.23
