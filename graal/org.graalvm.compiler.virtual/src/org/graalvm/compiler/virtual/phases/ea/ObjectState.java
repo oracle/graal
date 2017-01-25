@@ -35,6 +35,8 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
+import jdk.vm.ci.meta.JavaConstant;
+
 /**
  * This class describes the state of a virtual object while iterating over the graph. It describes
  * the fields or array elements (called "entries") and the lock count if the object is still
@@ -90,7 +92,23 @@ public class ObjectState {
         GET_ESCAPED_OBJECT_STATE.increment();
         if (cachedState == null) {
             CREATE_ESCAPED_OBJECT_STATE.increment();
-            cachedState = isVirtual() ? new VirtualObjectState(virtual, entries) : new MaterializedObjectState(virtual, materializedValue);
+            if (isVirtual()) {
+                /*
+                 * Clear out entries that are default values anyway.
+                 *
+                 * TODO: this should be propagated into ObjectState.entries, but that will take some
+                 * more refactoring.
+                 */
+                ValueNode[] newEntries = entries.clone();
+                for (int i = 0; i < newEntries.length; i++) {
+                    if (newEntries[i].asJavaConstant() == JavaConstant.defaultForKind(virtual.entryKind(i).getStackKind())) {
+                        newEntries[i] = null;
+                    }
+                }
+                cachedState = new VirtualObjectState(virtual, newEntries);
+            } else {
+                cachedState = new MaterializedObjectState(virtual, materializedValue);
+            }
         }
         return cachedState;
 
