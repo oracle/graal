@@ -41,7 +41,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class ExplodeLoopBlockDuplicationTest {
+public class ExplodeLoopBlockDuplicationTest extends TestWithSynchronousCompiling {
 
     /*
      * Test that polymorphic caches duplicate the cached block and can therefore resolve the
@@ -56,14 +56,11 @@ public class ExplodeLoopBlockDuplicationTest {
         target.call(value2);
 
         target.compile();
-        ((GraalTruffleRuntime) Truffle.getRuntime()).waitForCompilation(target, Integer.MAX_VALUE);
-
-        Assert.assertTrue(target.isValid());
-
+        assertCompiled(target);
         target.call(value1);
         target.call(value2);
 
-        Assert.assertTrue(target.isValid());
+        assertCompiled(target);
     }
 
     final class ObjectCacheTestRootNode extends RootNode {
