@@ -29,18 +29,19 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
+import org.graalvm.compiler.truffle.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.OptimizedOSRLoopNode;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
 import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
-import org.graalvm.compiler.truffle.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.OptimizedOSRLoopNode;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -60,7 +61,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Theories.class)
-public class OptimizedOSRLoopNodeTest {
+public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
 
@@ -113,6 +114,7 @@ public class OptimizedOSRLoopNodeTest {
      * Test frame slot changes in the loop cause deoptimization and reoptimization.
      */
     @Test
+    @Ignore("Needs mayor revision - GR-2515")
     public void testOSRFrameSlotChangeDuringOSR() {
         OSRLoopFactory factory = CONFIGURED;
         TestRootNode rootNode = new TestRootNode(factory, new TestRepeatingNode() {
@@ -542,16 +544,6 @@ public class OptimizedOSRLoopNodeTest {
         OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, FrameSlot[] readFrameSlots, FrameSlot[] writtenframeSlots);
     }
 
-    private static void assertCompiled(OptimizedCallTarget target) {
-        Assert.assertNotNull(target);
-        try {
-            runtime.waitForCompilation(target, 10000);
-        } catch (ExecutionException | TimeoutException e) {
-            Assert.fail("timeout");
-        }
-        Assert.assertTrue(target.isValid());
-    }
-
     private static void waitForCompiled(OptimizedCallTarget target) {
         if (target != null) {
             try {
@@ -559,13 +551,6 @@ public class OptimizedOSRLoopNodeTest {
             } catch (ExecutionException | TimeoutException e) {
                 Assert.fail("timeout");
             }
-        }
-    }
-
-    private static void assertNotCompiled(OptimizedCallTarget target) {
-        if (target != null) {
-            Assert.assertFalse(target.isValid());
-            Assert.assertFalse(target.isCompiling());
         }
     }
 
