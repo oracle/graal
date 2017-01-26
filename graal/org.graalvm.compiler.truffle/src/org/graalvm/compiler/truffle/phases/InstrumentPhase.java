@@ -54,11 +54,11 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 
 public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
-            "org.graalvm.compiler.truffle.OptimizedCallTarget.callProxy",
-            "org.graalvm.compiler.truffle.OptimizedCallTarget.callRoot",
-            "org.graalvm.compiler.truffle.OptimizedCallTarget.callInlined",
-            "org.graalvm.compiler.truffle.OptimizedDirectCallNode.callProxy",
-            "org.graalvm.compiler.truffle.OptimizedDirectCallNode.call"
+                    "org.graalvm.compiler.truffle.OptimizedCallTarget.callProxy",
+                    "org.graalvm.compiler.truffle.OptimizedCallTarget.callRoot",
+                    "org.graalvm.compiler.truffle.OptimizedCallTarget.callInlined",
+                    "org.graalvm.compiler.truffle.OptimizedDirectCallNode.callProxy",
+                    "org.graalvm.compiler.truffle.OptimizedDirectCallNode.call"
     };
     public static Instrumentation instrumentation = new Instrumentation();
     private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
@@ -76,7 +76,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
     }
 
     protected static void insertCounter(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant,
-                                        FixedWithNextNode targetNode, int slotIndex) {
+                    FixedWithNextNode targetNode, int slotIndex) {
         assert (tableConstant != null);
         TypeReference typeRef = TypeReference.createExactTrusted(context.getMetaAccess().lookupJavaType(tableConstant));
         ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.object(typeRef, true)));
@@ -115,9 +115,9 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
 
     protected abstract Instrumentation.Point createPoint(int id, int startIndex, Node n);
 
-    public Instrumentation.Point getOrCreatePoint(MethodFilter[] methodFilter, Node n) {
+    public Instrumentation.Point getOrCreatePoint(Node n) {
         Instrumentation.Point point = instrumentation.getOrCreatePoint(methodFilter, n, this);
-        assert point.slotCount() == instrumentationPointSlotCount() : "Slot count mismatch between instrumentation point and expected value.";
+        assert point == null || point.slotCount() == instrumentationPointSlotCount() : "Slot count mismatch between instrumentation point and expected value.";
         return point;
     }
 
@@ -294,13 +294,11 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
             protected int id;
             protected int rawIndex;
             protected NodeSourcePosition position;
-            protected boolean prettify;
 
-            public Point(int id, int rawIndex, NodeSourcePosition position, boolean prettify) {
+            public Point(int id, int rawIndex, NodeSourcePosition position) {
                 this.id = id;
                 this.rawIndex = rawIndex;
                 this.position = position;
-                this.prettify = prettify;
             }
 
             public int slotIndex(int offset) {
@@ -312,10 +310,6 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
                 return id;
             }
 
-            public boolean isPrettified() {
-                return prettify;
-            }
-
             public NodeSourcePosition getPosition() {
                 return position;
             }
@@ -323,6 +317,8 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
             public abstract int slotCount();
 
             public abstract long getHotness();
+
+            public abstract boolean isPrettified();
         }
     }
 }

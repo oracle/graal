@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.truffle.phases;
 
-import com.oracle.truffle.api.TruffleOptions;
 import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -59,13 +58,11 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions;
  * of an {@link IfNode}.
  */
 public class InstrumentBranchesPhase extends InstrumentPhase {
-    public InstrumentBranchesPhase() {
-    }
 
     @Override
     protected void instrumentGraph(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant) {
         for (IfNode n : graph.getNodes().filter(IfNode.class)) {
-            Instrumentation.Point p = getOrCreatePoint(methodFilter, n);
+            Instrumentation.Point p = getOrCreatePoint(n);
             if (p != null) {
                 insertCounter(graph, context, tableConstant, n.trueSuccessor(), p.slotIndex(0));
                 insertCounter(graph, context, tableConstant, n.falseSuccessor(), p.slotIndex(1));
@@ -90,7 +87,7 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
 
     @Override
     protected Instrumentation.Point createPoint(int id, int startIndex, Node n) {
-        return new IfPoint(id, startIndex, n.getNodeSourcePosition(), TruffleCompilerOptions.TruffleInstrumentBranchesPretty.getValue() && TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue());
+        return new IfPoint(id, startIndex, n.getNodeSourcePosition());
     }
 
     public enum BranchState {
@@ -113,13 +110,18 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
     }
 
     public static class IfPoint extends InstrumentPhase.Instrumentation.Point {
-        IfPoint(int id, int rawIndex, NodeSourcePosition position, boolean prettify) {
-            super(id, rawIndex, position, prettify);
+        IfPoint(int id, int rawIndex, NodeSourcePosition position) {
+            super(id, rawIndex, position);
         }
 
         @Override
         public int slotCount() {
             return 2;
+        }
+
+        @Override
+        public boolean isPrettified() {
+            return TruffleCompilerOptions.TruffleInstrumentBranchesPretty.getValue() && TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue();
         }
 
         public long ifVisits() {
