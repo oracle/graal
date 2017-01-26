@@ -2125,7 +2125,7 @@ public abstract class TruffleTCK {
             PolyglotEngine.Instrument instr = vm().getInstruments().get(TckInstrument.ID);
             instr.setEnabled(true);
             try {
-                Object value = valueFunction.execute(JavaInterop.asTruffleObject(null)).get();
+                Object value = valueFunction.execute().get();
                 TckInstrument tckInstrument = instr.lookup(TckInstrument.class);
                 assertNotNull(tckInstrument);
                 Field targetField = PolyglotEngine.Value.class.getDeclaredField("target");
@@ -2139,7 +2139,7 @@ public abstract class TruffleTCK {
                 instr.setEnabled(false);
             }
             PolyglotEngine.Value moFunction = findGlobalSymbol(ids[i + 1]);
-            Object mo = moFunction.execute(JavaInterop.asTruffleObject(null)).get();
+            Object mo = moFunction.execute().get();
 
             assertEquals(mo, metaObjectStr);
         }
@@ -2157,7 +2157,7 @@ public abstract class TruffleTCK {
         PolyglotEngine.Instrument instr = vm().getInstruments().get(TckInstrument.ID);
         instr.setEnabled(true);
         try {
-            Object value = valueFunction.execute(JavaInterop.asTruffleObject(null)).get();
+            Object value = valueFunction.execute().get();
             TckInstrument tckInstrument = instr.lookup(TckInstrument.class);
             assertNotNull(tckInstrument);
             Field targetField = PolyglotEngine.Value.class.getDeclaredField("target");
