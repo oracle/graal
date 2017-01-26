@@ -97,8 +97,8 @@ public class FunctionCall {
         private int indirectCall;
 
         @Specialization(limit = "CACHE_SIZE", guards = {"function == cachedFunction", "cacheFunctionTarget(cachedFunction)"})
-        public Object directCallFunctionGuard(Function function, Object argument,  //
-                        @Cached("function") Function cachedFunction, //
+        public Object directCallFunctionGuard(Function function, Object argument,
+                        @Cached("function") Function cachedFunction,
                         @Cached("create(cachedFunction.getTarget())") DirectCallNode callNode) {
             directCallFunctionGuard++;
             return callNode.call(new Object[]{argument});
@@ -124,15 +124,15 @@ public class FunctionCall {
         }
 
         @Specialization(limit = "CACHE_SIZE", replaces = "directCallFunctionGuard", guards = {"function.getTarget() == cachedTarget"})
-        protected Object directCall(Function function, Object argument,  //
-                        @Cached("function.getTarget()") CallTarget cachedTarget, //
+        protected Object directCall(Function function, Object argument,
+                        @Cached("function.getTarget()") CallTarget cachedTarget,
                         @Cached("create(cachedTarget)") DirectCallNode callNode) {
             directCall++;
             return callNode.call(new Object[]{argument});
         }
 
         @Specialization(replaces = "directCall")
-        protected Object indirectCall(Function function, Object argument, //
+        protected Object indirectCall(Function function, Object argument,
                         @Cached("create()") IndirectCallNode callNode) {
             indirectCall++;
             return callNode.call(function.getTarget(), new Object[]{argument});
