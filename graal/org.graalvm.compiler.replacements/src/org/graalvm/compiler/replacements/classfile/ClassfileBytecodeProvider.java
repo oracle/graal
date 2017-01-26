@@ -30,12 +30,12 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.Instrumentation;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -63,8 +63,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class ClassfileBytecodeProvider implements BytecodeProvider {
 
     private final ClassLoader loader;
-    private final Map<Class<?>, Classfile> classfiles = new HashMap<>();
-    private final Map<String, Class<?>> classes = new HashMap<>();
+    private final EconomicMap<Class<?>, Classfile> classfiles = EconomicMap.create(Equivalence.IDENTITY);
+    private final EconomicMap<String, Class<?>> classes = EconomicMap.create();
+    private final EconomicMap<ResolvedJavaType, FieldsCache> fields = EconomicMap.create();
     final MetaAccessProvider metaAccess;
     final SnippetReflectionProvider snippetReflection;
 
@@ -174,13 +175,87 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
         return null;
     }
 
-    static ResolvedJavaField findField(ResolvedJavaType type, String name, String fieldType, boolean isStatic) {
-        ResolvedJavaField[] fields = isStatic ? type.getStaticFields() : type.getInstanceFields(false);
-        for (ResolvedJavaField field : fields) {
-            if (field.getName().equals(name) && field.getType().getName().equals(fieldType)) {
-                return field;
+    /**
+     * Name and type of a field.
+     */
+    static final class FieldKey {
+        final String name;
+        final String type;
+
+        FieldKey(String name, String type) {
+            this.name = name;
+            this.type = type;
+        }
+
+        @Override
+        public String toString() {
+            return name + ":" + type;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof FieldKey) {
+                FieldKey that = (FieldKey) obj;
+                return that.name.equals(this.name) && that.type.equals(this.type);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return name.hashCode() ^ type.hashCode();
+        }
+    }
+
+    /**
+     * Field cache for a {@link ResolvedJavaType}.
+     */
+    static final class FieldsCache {
+
+        volatile EconomicMap<FieldKey, ResolvedJavaField> instanceFields;
+        volatile EconomicMap<FieldKey, ResolvedJavaField> staticFields;
+
+        ResolvedJavaField lookup(ResolvedJavaType type, String name, String fieldType, boolean isStatic) {
+            FieldKey key = new FieldKey(name, fieldType);
+            if (isStatic) {
+                if (staticFields == null) {
+                    // Racy initialization is safe since staticFields is volatile
+                    staticFields = createFieldMap(type.getStaticFields());
+                }
+                return staticFields.get(key);
+            } else {
+                if (instanceFields == null) {
+                    // Racy initialization is safe since instanceFields is volatile
+                    instanceFields = createFieldMap(type.getInstanceFields(false));
+                }
+                return instanceFields.get(key);
             }
         }
-        return null;
+
+        private static EconomicMap<FieldKey, ResolvedJavaField> createFieldMap(ResolvedJavaField[] fieldArray) {
+            EconomicMap<FieldKey, ResolvedJavaField> m = EconomicMap.create();
+            for (ResolvedJavaField f : fieldArray) {
+                m.put(new FieldKey(f.getName(), f.getType().getName()), f);
+            }
+            return m;
+        }
+    }
+
+    /**
+     * Gets the fields cache for {@code type}.
+     *
+     * Synchronized since the cache is lazily created.
+     */
+    private synchronized FieldsCache getFields(ResolvedJavaType type) {
+        FieldsCache f = fields.get(type);
+        if (f == null) {
+            f = new FieldsCache();
+            fields.put(type, f);
+        }
+        return f;
+    }
+
+    ResolvedJavaField findField(ResolvedJavaType type, String name, String fieldType, boolean isStatic) {
+        return getFields(type).lookup(type, name, fieldType, isStatic);
     }
 }
