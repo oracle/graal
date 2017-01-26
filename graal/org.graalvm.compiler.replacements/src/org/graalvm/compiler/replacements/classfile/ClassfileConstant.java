@@ -186,7 +186,7 @@ abstract class ClassfileConstant {
                 String name = nameAndType.getName(cp);
                 String type = nameAndType.getType(cp);
                 assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC : opcode;
-                field = resolveField(cls, name, type, opcode == GETSTATIC || opcode == PUTSTATIC);
+                field = resolveField(cp.context, cls, name, type, opcode == GETSTATIC || opcode == PUTSTATIC);
                 if (field == null) {
                     throw new NoSuchFieldError(cls.toJavaName() + "." + name + " " + type);
                 }
@@ -293,19 +293,19 @@ abstract class ClassfileConstant {
         return null;
     }
 
-    static ResolvedJavaField resolveField(ResolvedJavaType c, String name, String fieldType, boolean isStatic) {
-        ResolvedJavaField field = ClassfileBytecodeProvider.findField(c, name, fieldType, isStatic);
+    static ResolvedJavaField resolveField(ClassfileBytecodeProvider context, ResolvedJavaType c, String name, String fieldType, boolean isStatic) {
+        ResolvedJavaField field = context.findField(c, name, fieldType, isStatic);
         if (field != null) {
             return field;
         }
         if (!c.isJavaLangObject() && !c.isInterface()) {
-            field = resolveField(c.getSuperclass(), name, fieldType, isStatic);
+            field = resolveField(context, c.getSuperclass(), name, fieldType, isStatic);
             if (field != null) {
                 return field;
             }
         }
         for (ResolvedJavaType i : c.getInterfaces()) {
-            field = resolveField(i, name, fieldType, isStatic);
+            field = resolveField(context, i, name, fieldType, isStatic);
             if (field != null) {
                 return field;
             }
