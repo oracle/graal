@@ -194,7 +194,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public void emitCompareBranch(PlatformKind cmpKind, Value x, Value y, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination,
                     double trueDestinationProbability) {
-        Value left;
+        AllocatableValue left;
         Value right;
         Condition actualCondition;
         if (isJavaConstant(x)) {
@@ -304,7 +304,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     private boolean emitIntegerCompare(SPARCKind cmpKind, Value a, Value b) {
         boolean mirrored;
         assert cmpKind.isInteger();
-        Value left;
+        AllocatableValue left;
         Value right;
         if (LIRValueUtil.isVariable(b)) {
             left = load(b);
@@ -318,10 +318,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         int compareBytes = cmpKind.getSizeInBytes();
         // SPARC compares 32 or 64 bits
         if (compareBytes < left.getPlatformKind().getSizeInBytes()) {
-            left = arithmeticLIRGen.emitSignExtend(left, compareBytes * 8, XWORD.getSizeInBytes() * 8);
+            left = asAllocatable(arithmeticLIRGen.emitSignExtend(left, cmpKind.getSizeInBits(), XWORD.getSizeInBits()));
         }
         if (compareBytes < right.getPlatformKind().getSizeInBytes()) {
-            right = arithmeticLIRGen.emitSignExtend(right, compareBytes * 8, XWORD.getSizeInBytes() * 8);
+            right = arithmeticLIRGen.emitSignExtend(right, cmpKind.getSizeInBits(), XWORD.getSizeInBits());
         }
         append(SPARCOP3Op.newBinaryVoid(Subcc, left, right));
         return mirrored;
@@ -365,7 +365,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
-        AllocatableValue scratchValue = newVariable(key.getValueKind());
+        Variable scratchValue = newVariable(key.getValueKind());
         AllocatableValue base = AllocatableValue.ILLEGAL;
         for (Constant c : strategy.getKeyConstants()) {
             if (!getMoveFactory().canInlineConstant(c)) {
@@ -376,7 +376,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         append(createStrategySwitchOp(base, strategy, keyTargets, defaultTarget, key, scratchValue));
     }
 
-    protected StrategySwitchOp createStrategySwitchOp(AllocatableValue base, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue scratchValue) {
+    protected StrategySwitchOp createStrategySwitchOp(AllocatableValue base, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, Variable scratchValue) {
         return new StrategySwitchOp(base, strategy, keyTargets, defaultTarget, key, scratchValue);
     }
 
@@ -396,7 +396,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public Variable emitByteSwap(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
-        append(new SPARCByteSwapOp(this, result, input));
+        append(new SPARCByteSwapOp(this, result, asAllocatable(input)));
         return result;
     }
 
