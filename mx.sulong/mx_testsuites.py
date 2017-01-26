@@ -57,49 +57,60 @@ def compileSulongSuite():
     print("Compiling Sulong Suite with gcc -O0 ", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.GCC], ['-Iinclude', '-lm'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC))
 
-def run(vmArgs, unittest, extraOption=None):
+def run(vmArgs, unittest, versionFolder, extraOption=None):
     if extraOption is None:
         extraOption = []
     if mx.get_opts().verbose:
-        command = mx_sulong.getCommonUnitTestOptions() + extraOption + vmArgs + ['--very-verbose', unittest]
+        command = mx_sulong.getCommonUnitTestOptions(versionFolder) + extraOption + vmArgs + ['--very-verbose', unittest]
         print ('Running mx unittest ' + ' '.join(command))
         return mx_unittest.unittest(command)
     else:
-        command = mx_sulong.getCommonUnitTestOptions() + extraOption + vmArgs + [unittest]
+        command = mx_sulong.getCommonUnitTestOptions(versionFolder) + extraOption + vmArgs + [unittest]
         return mx_unittest.unittest(command)
+
+def run32(vmArgs, unittest, extraOption=None):
+    run(vmArgs + ['-Dsulong.LLVM=3.2'], unittest, 'v32', extraOption)
+
+def run38(vmArgs, unittest, extraOption=None):
+    run(vmArgs + ['-Dsulong.LLVM=3.8'], unittest, 'v38', extraOption)
 
 def runSulongSuite(vmArgs):
     """runs the Sulong test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['sulong'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
 
 def runSulongSuite38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['sulong38'])
-    return run(vmArgs + ['-Dsulong.LLVM=3.8'], "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
 
 def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['shootout'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.ShootoutsSuite")
 
 def runLLVMSuite(vmArgs):
     """runs the LLVM test suite"""
     compileSuite(['llvm'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.LLVMSuite")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.LLVMSuite")
 
 def runNWCCSuite(vmArgs):
     """runs the NWCC test suite"""
     compileSuite(['nwcc'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.NWCCSuite")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.NWCCSuite")
+
+# def runNWCCSuite38(vmArgs):
+#     """runs the NWCC test suite"""
+#     compileSuite(['nwcc38'])
+#     return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.NWCCSuite")
 
 def runGCCSuite(vmArgs):
     """runs the LLVM test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.GCCSuite")
 
 def compileInteropTests():
     print("Compiling Interop with clang -O0 and mem2reg", end='')
@@ -112,47 +123,47 @@ def compileOtherTests():
 def runArgsTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['args'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.MainArgsTest")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.MainArgsTest")
 
 def runInteropTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['interop'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMInteropTest")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMInteropTest")
 
 def runTCKTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['interop'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMTckTest")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.interop.LLVMTckTest")
 
 def runInlineAssemblySuite(vmArgs):
     """runs the InlineAssembly test suite"""
     compileSuite(['assembly'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.InlineAssemblyTest")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.InlineAssemblyTest")
 
 def runLifetimeAnalysisTests(vmArgs):
     """runs the LTA test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['gcc'])
     ensureLifetimeAnalysisReferenceExists()
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.LifetimeAnalysisSuite")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.LifetimeAnalysisSuite")
 
 def runParserTortureSuite(vmArgs):
     """runs the ParserTorture test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['parserTorture'])
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.ParserTortureSuite")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.ParserTortureSuite")
 
 def runPolyglotTests(vmArgs):
     """runs the Polyglot test suite"""
-    return run(vmArgs, "com.oracle.truffle.llvm.test.TestPolyglotEngine")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.TestPolyglotEngine")
 
 def runTypeTests(vmArgs):
     """runs the Type test suite"""
-    return run(vmArgs, "com.oracle.truffle.llvm.types.floating.test")
+    return run32(vmArgs, "com.oracle.truffle.llvm.types.floating.test")
 
 def runPipeTests(vmArgs):
     """runs the Pipe test suite"""
-    return run(vmArgs, "com.oracle.truffle.llvm.test.alpha.CaptureOutputTest")
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.CaptureOutputTest")
 
 def compileLLVMSuite():
     ensureLLVMSuiteExists()
@@ -198,15 +209,26 @@ def compileShootoutSuite():
 
 def compileNWCCSuite():
     ensureNWCCSuiteExists()
+    deleteCachedTests('nwcc')
     excludes = mx_tools.collectExcludePattern(os.path.join(_nwccSuiteDir, "configs/"))
     print("Compiling NWCC Suite reference executables ", end='')
     mx_tools.printProgress(mx_tools.multicompileRefFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], excludes=excludes))
     print("Compiling NWCC Suite with -O0 ", end='')
     mx_tools.printProgress(mx_tools.multicompileFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
 
+# def compileV38NWCCSuite():
+#     ensureNWCCSuiteExists()
+#     deleteCachedTests('nwcc')
+#     excludes = mx_tools.collectExcludePattern(os.path.join(_nwccSuiteDir, "configs/"))
+#     print("Compiling NWCC Suite reference executables with clang 3.8 ", end='')
+#     mx_tools.printProgress(mx_tools.multicompileRefFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude'], excludes=excludes))
+#     print("Compiling NWCC Suite with clang clang 3.8 -O0 ", end='')
+#     mx_tools.printProgress(mx_tools.multicompileFolder(_nwccSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude'], [mx_tools.Optimization.O0], mx_tools.ProgrammingLanguage.LLVMBC, excludes=excludes))
+
 testSuites = {
     'args' : (compileOtherTests, runArgsTests),
     'nwcc' : (compileNWCCSuite, runNWCCSuite),
+    # 'nwcc38' : (compileV38NWCCSuite, runNWCCSuite38),
     'assembly' : (compileInlineAssemblySuite, runInlineAssemblySuite),
     'gcc' : (compileGCCSuite, runGCCSuite),
     'llvm' : (compileLLVMSuite, runLLVMSuite),

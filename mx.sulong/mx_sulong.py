@@ -474,12 +474,12 @@ def runTestArgon2(args=None, optimize=False):
     compileArgon2('test', optimize)
     return runLLVM(args + ['test.su'])
 
-def getCommonOptions(lib_args=None):
+def getCommonOptions(lib_args=None, versionFolder=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true',
         getSearchPathOption(lib_args)
-    ] + getBitcodeLibrariesOption()
+    ] + getBitcodeLibrariesOption(versionFolder)
 
 def getSearchPathOption(lib_args=None):
     if lib_args is None:
@@ -508,8 +508,8 @@ def getSearchPathOption(lib_args=None):
 
     return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 
-def getCommonUnitTestOptions():
-    return getCommonOptions() + ['-Xss56m', '-Xms2g', '-Xmx2g', getLLVMRootOption(), '-ea', '-esa']
+def getCommonUnitTestOptions(versionFolder=None):
+    return getCommonOptions(versionFolder=versionFolder) + ['-Xss56m', '-Xms2g', '-Xmx2g', getLLVMRootOption(), '-ea', '-esa']
 
 # PE does not work yet for all test cases
 def compilationSucceedsOption():
@@ -630,14 +630,41 @@ class SulongNativeProject(mx.NativeProject):
 
     def getBuildEnv(self, replaceVar=mx._replacePathVar):
         ret = super(SulongNativeProject, self).getBuildEnv(replaceVar=replaceVar)
-        ret['MX_CLANG'] = findLLVMProgram('clang')
-        ret['MX_OPT'] = findLLVMProgram('opt')
+        print 'SULONG_VERSION=' + os.environ.get('SULONG_VERSION')
+        if os.environ.get('SULONG_VERSION') == '3.2':
+            exportMxClang32(ret)
+        elif os.environ.get('SULONG_VERSION') == '3.8':
+            exportMxClang38(ret)
+        else:
+            exportMxClang32(ret)
+            exportMxClang38(ret)
         return ret
 
+def exportMxClang32(ret):
+    exp = findLLVMProgram('clang', ['3.2'])
+    if not exp is None:
+        print 'Exporting MX_CLANG_V32' + exp
+        ret['MX_CLANG_V32'] = exp
+    exp = findLLVMProgram('opt', ['3.2'])
+    if not exp is None:
+        print 'Exporting MX_OPT_V32' + exp
+        ret['MX_OPT_V32'] = exp
 
-def findLLVMProgram(llvmProgram):
+def exportMxClang38(ret):
+    exp = findLLVMProgram('clang', ['3.8', '3.9'])
+    if not exp is None:
+        print 'Exporting MX_CLANG_V38' + exp
+        ret['MX_CLANG_V38'] = exp
+
+    exp = findLLVMProgram('opt', ['3.8', '3.9'])
+    if not exp is None:
+        print 'Exporting MX_OPT_V38' + exp
+        ret['MX_OPT_V38'] = exp
+
+def findLLVMProgram(llvmProgram, version=None):
     """tries to find a supported version of an installed LLVM program; if the program is not found it downloads the LLVM binaries and checks there"""
-    installedProgram = findInstalledLLVMProgram(llvmProgram)
+    installedProgram = findInstalledLLVMProgram(llvmProgram, version)
+
     if installedProgram is None:
         if not os.path.exists(_clangPath):
             pullLLVMBinaries()
@@ -824,10 +851,12 @@ def mdlCheck(args=None):
     if error:
         exit(-1)
 
-def getBitcodeLibrariesOption(*args):
+def getBitcodeLibrariesOption(versionFolder=None):
     libraries = []
     if 'SULONG_NO_LIBRARY' not in os.environ:
         libpath = join(mx.project('com.oracle.truffle.llvm.libraries').getOutput(), 'bin')
+        if not versionFolder is None:
+            libpath = join(libpath, versionFolder)
         for path, _, files in os.walk(libpath):
             for f in files:
                 if f.endswith('.bc'):

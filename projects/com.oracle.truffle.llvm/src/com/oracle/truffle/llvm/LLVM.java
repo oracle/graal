@@ -54,6 +54,7 @@ import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacadeProvider;
 import com.oracle.truffle.llvm.parser.bc.LLVMBitcodeVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
+import java.nio.file.Paths;
 
 /**
  * This is the main LLVM execution class.
@@ -146,11 +147,15 @@ public class LLVM {
                 String[] dynamicLibraryPaths = LLVMOptions.ENGINE.dynamicBitcodeLibraries();
                 if (dynamicLibraryPaths != null && dynamicLibraryPaths.length != 0) {
                     for (String s : dynamicLibraryPaths) {
-                        Source source;
-                        source = Source.newBuilder(new File(s)).build();
-                        sharedLibraryConsumer.accept(source);
+                        addLibrary(s, sharedLibraryConsumer);
                     }
                 }
+            }
+
+            private void addLibrary(String s, Consumer<Source> sharedLibraryConsumer) throws IOException {
+                File lib = Paths.get(s).toFile();
+                Source source = Source.newBuilder(lib).build();
+                sharedLibraryConsumer.accept(source);
             }
 
             private void parseDynamicBitcodeLibraries(LLVMContext context) throws IOException {

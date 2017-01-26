@@ -102,11 +102,11 @@ class ClangCompiler(Tool):
 
     def run(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        return self.runTool([mx_sulong.findLLVMProgram(tool), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+        return self.runTool([mx_sulong.findLLVMProgram(tool, ['3.2']), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        return self.runTool([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+        return self.runTool([mx_sulong.findLLVMProgram(tool, ['3.2']), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class ClangV38Compiler(Tool):
     def __init__(self, name=None, supportedLanguages=None):
@@ -131,11 +131,11 @@ class ClangV38Compiler(Tool):
 
     def run(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        return self.runTool([mx_sulong.findInstalledLLVMProgram(tool, "3.8"), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+        return self.runTool([mx_sulong.findLLVMProgram(tool, ['3.8', '3.9']), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
         tool = self.getTool(inputFile)
-        return self.runTool([mx_sulong.findInstalledLLVMProgram(tool, "3.8"), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+        return self.runTool([mx_sulong.findLLVMProgram(tool, ['3.8', '3.9']), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
 class GCCCompiler(Tool):
     def __init__(self, name=None, supportedLanguages=None):
@@ -174,7 +174,7 @@ class GCCCompiler(Tool):
         tool, toolFlags = self.getTool(inputFile, outputFile)
         ret = self.runTool([tool, '-S', '-fplugin=' + mx_sulong.dragonEggPath(), '-fplugin-arg-dragonegg-emit-ir', '-o', '%s.tmp.ll' % outputFile] + toolFlags + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, os.path.basename(tool)))
         if ret == 0:
-            ret = self.runTool([mx_sulong.findLLVMProgram('llvm-as'), '-o', outputFile, '%s.tmp.ll' % outputFile], errorMsg='Cannot assemble %s with llvm-as' % inputFile)
+            ret = self.runTool([mx_sulong.findLLVMProgram('llvm-as', ['3.2']), '-o', outputFile, '%s.tmp.ll' % outputFile], errorMsg='Cannot assemble %s with llvm-as' % inputFile)
         return ret
 
     def compileReferenceFile(self, inputFile, outputFile, flags):
@@ -188,7 +188,7 @@ class Opt(Tool):
         self.passes = passes
 
     def run(self, inputFile, outputFile, flags):
-        return mx.run([mx_sulong.findLLVMProgram('opt'), '-o', outputFile] + self.passes + [inputFile])
+        return mx.run([mx_sulong.findLLVMProgram('opt', ['3.2']), '-o', outputFile] + self.passes + [inputFile])
 
 class OptV38(Tool):
     def __init__(self, name, passes):
@@ -197,7 +197,7 @@ class OptV38(Tool):
         self.passes = passes
 
     def run(self, inputFile, outputFile, flags):
-        return mx.run([mx_sulong.findInstalledLLVMProgram('opt', "3.8"), '-o', outputFile] + self.passes + [inputFile])
+        return mx.run([mx_sulong.findLLVMProgram('opt', ['3.8', '3.9']), '-o', outputFile] + self.passes + [inputFile])
 
 Tool.CLANG = ClangCompiler()
 Tool.CLANG_C = ClangCompiler('clangc', [ProgrammingLanguage.C])
