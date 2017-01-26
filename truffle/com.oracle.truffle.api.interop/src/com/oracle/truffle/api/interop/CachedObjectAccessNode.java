@@ -27,7 +27,7 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 
 final class CachedObjectAccessNode extends ObjectAccessNode {
-    @Child private DirectCallNode callTarget;
+    @Child private DirectCallNode callNode;
     @Child private ObjectAccessNode next;
 
     @Child private DirectCallNode languageCheckAsNode;
@@ -35,21 +35,21 @@ final class CachedObjectAccessNode extends ObjectAccessNode {
 
     @Child private ForeignAccessArguments accessArguments = new ForeignAccessArguments();
 
-    protected CachedObjectAccessNode(DirectCallNode callTarget, ObjectAccessNode next, ForeignAccess languageCheck, DirectCallNode languageCheckAsNode) {
-        this.callTarget = callTarget;
+    protected CachedObjectAccessNode(DirectCallNode callNode, ObjectAccessNode next, ForeignAccess languageCheck, DirectCallNode languageCheckAsNode) {
+        this.callNode = callNode;
         this.next = next;
         this.languageCheck = languageCheck;
         this.languageCheckAsNode = languageCheckAsNode;
         if (this.languageCheckAsNode != null) {
             this.languageCheckAsNode.forceInlining();
         }
-        this.callTarget.forceInlining();
+        this.callNode.forceInlining();
     }
 
     @Override
     public Object executeWith(TruffleObject receiver, Object[] arguments) {
         if (accept(receiver)) {
-            return callTarget.call(accessArguments.executeCreate(receiver, arguments));
+            return callNode.call(accessArguments.executeCreate(receiver, arguments));
         } else {
             return next.executeWith(receiver, arguments);
         }
