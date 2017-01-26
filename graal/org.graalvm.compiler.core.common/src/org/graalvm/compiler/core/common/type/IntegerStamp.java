@@ -54,41 +54,100 @@ import jdk.vm.ci.meta.SerializableConstant;
  * The description consists of (inclusive) lower and upper bounds and up (may be set) and down
  * (always set) bit-masks.
  */
-public class IntegerStamp extends PrimitiveStamp {
+public final class IntegerStamp extends PrimitiveStamp {
 
     private final long lowerBound;
     private final long upperBound;
     private final long downMask;
     private final long upMask;
 
-    public IntegerStamp(int bits, long lowerBound, long upperBound, long downMask, long upMask) {
+    private IntegerStamp(int bits, long lowerBound, long upperBound, long downMask, long upMask) {
         super(bits, OPS);
+
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
         this.downMask = downMask;
         this.upMask = upMask;
+
         assert lowerBound >= CodeUtil.minValue(bits) : this;
         assert upperBound <= CodeUtil.maxValue(bits) : this;
         assert (downMask & CodeUtil.mask(bits)) == downMask : this;
         assert (upMask & CodeUtil.mask(bits)) == upMask : this;
     }
 
-    public static IntegerStamp stampForMask(int bits, long downMask, long upMask) {
-        long lowerBound;
-        long upperBound;
-        if (((upMask >>> (bits - 1)) & 1) == 0) {
-            lowerBound = downMask;
-            upperBound = upMask;
-        } else if (((downMask >>> (bits - 1)) & 1) == 1) {
-            lowerBound = downMask;
-            upperBound = upMask;
+    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
+        return create(bits, lowerBoundInput, upperBoundInput, 0, CodeUtil.mask(bits));
+    }
+
+    public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask) {
+
+        // Set lower bound, use masks to make it more precise
+        long minValue = minValueForMasks(bits, downMask, upMask);
+        long lowerBoundTmp = Math.max(lowerBoundInput, minValue);
+
+        // Set upper bound, use masks to make it more precise
+        long maxValue = maxValueForMasks(bits, downMask, upMask);
+        long upperBoundTmp = Math.min(upperBoundInput, maxValue);
+
+        // Assign masks now with the bounds in mind.
+        final long boundedDownMask;
+        final long boundedUpMask;
+        long defaultMask = CodeUtil.mask(bits);
+        if (lowerBoundTmp == upperBoundTmp) {
+            boundedDownMask = lowerBoundTmp;
+            boundedUpMask = lowerBoundTmp;
+        } else if (lowerBoundTmp >= 0) {
+            int upperBoundLeadingZeros = Long.numberOfLeadingZeros(upperBoundTmp);
+            long differentBits = lowerBoundTmp ^ upperBoundTmp;
+            int sameBitCount = Long.numberOfLeadingZeros(differentBits << upperBoundLeadingZeros);
+
+            boundedUpMask = upperBoundTmp | -1L >>> (upperBoundLeadingZeros + sameBitCount);
+            boundedDownMask = upperBoundTmp & ~(-1L >>> (upperBoundLeadingZeros + sameBitCount));
         } else {
-            lowerBound = downMask | (-1L << (bits - 1));
-            upperBound = CodeUtil.maxValue(bits) & upMask;
+            if (upperBoundTmp >= 0) {
+                boundedUpMask = defaultMask;
+                boundedDownMask = 0;
+            } else {
+                int lowerBoundLeadingOnes = Long.numberOfLeadingZeros(~lowerBoundTmp);
+                long differentBits = lowerBoundTmp ^ upperBoundTmp;
+                int sameBitCount = Long.numberOfLeadingZeros(differentBits << lowerBoundLeadingOnes);
+
+                boundedUpMask = lowerBoundTmp | -1L >>> (lowerBoundLeadingOnes + sameBitCount) | ~(-1L >>> lowerBoundLeadingOnes);
+                boundedDownMask = lowerBoundTmp & ~(-1L >>> (lowerBoundLeadingOnes + sameBitCount)) | ~(-1L >>> lowerBoundLeadingOnes);
+            }
         }
-        lowerBound = CodeUtil.convert(lowerBound, bits, false);
-        upperBound = CodeUtil.convert(upperBound, bits, false);
-        return new IntegerStamp(bits, lowerBound, upperBound, downMask, upMask);
+
+        return new IntegerStamp(bits, lowerBoundTmp, upperBoundTmp, defaultMask & (downMask | boundedDownMask), defaultMask & upMask & boundedUpMask);
+    }
+
+    static long significantBit(long bits, long value) {
+        return (value >>> (bits - 1)) & 1;
+    }
+
+    static long minValueForMasks(int bits, long downMask, long upMask) {
+        if (significantBit(bits, upMask) == 0) {
+            // Value is always positive. Minimum value always positive.
+            assert significantBit(bits, downMask) == 0;
+            return downMask;
+        } else {
+            // Value can be positive or negative. Minimum value always negative.
+            return downMask | (-1L << (bits - 1));
+        }
+    }
+
+    static long maxValueForMasks(int bits, long downMask, long upMask) {
+        if (significantBit(bits, downMask) == 1) {
+            // Value is always negative. Maximum value always negative.
+            assert significantBit(bits, upMask) == 1;
+            return CodeUtil.signExtend(upMask, bits);
+        } else {
+            // Value can be positive or negative. Maximum value always positive.
+            return upMask & (CodeUtil.mask(bits) >>> 1);
+        }
+    }
+
+    public static IntegerStamp stampForMask(int bits, long downMask, long upMask) {
+        return new IntegerStamp(bits, minValueForMasks(bits, downMask, upMask), maxValueForMasks(bits, downMask, upMask), downMask, upMask);
     }
 
     @Override
@@ -275,7 +334,7 @@ public class IntegerStamp extends PrimitiveStamp {
         }
         IntegerStamp other = (IntegerStamp) otherStamp;
         long newDownMask = downMask | other.downMask;
-        long newLowerBound = Math.max(lowerBound, other.lowerBound) | newDownMask;
+        long newLowerBound = Math.max(lowerBound, other.lowerBound);
         long newUpperBound = Math.min(upperBound, other.upperBound);
         long newUpMask = upMask & other.upMask;
         IntegerStamp limit = StampFactory.forInteger(getBits(), newLowerBound, newUpperBound);
