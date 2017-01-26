@@ -75,7 +75,8 @@ public abstract class IndirectCallNode extends Node {
      * @return the return value of the call
      * @since 0.23
      */
-    public Object call(CallTarget target, Object... arguments) {
+    public Object call(CallTarget target, Object[] arguments) {
+        // TODO change to varargs as soon as #call(VirtualFrame, Object[] will removed.
         /*
          * TODO the frame is for legacy support only. an up-to-date graal runtime will override this
          * method and implement it more efficiently. As soon as the deprecated call(VirtualFrame,

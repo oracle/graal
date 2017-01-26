@@ -101,7 +101,7 @@ public class FunctionCall {
                         @Cached("function") Function cachedFunction, //
                         @Cached("create(cachedFunction.getTarget())") DirectCallNode callNode) {
             directCallFunctionGuard++;
-            return callNode.call(argument);
+            return callNode.call(new Object[]{argument});
         }
 
         protected final boolean cacheFunctionTarget(Function function) {

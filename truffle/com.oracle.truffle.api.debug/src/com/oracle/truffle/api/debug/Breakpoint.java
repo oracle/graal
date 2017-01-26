@@ -801,6 +801,8 @@ public final class Breakpoint {
 
     private static class ConditionalBreakNode extends Node {
 
+        private static final Object[] EMPTY_ARRAY = new Object[0];
+
         private final EventContext context;
         private final Breakpoint breakpoint;
         @Child private DirectCallNode conditionCallNode;
@@ -817,7 +819,7 @@ public final class Breakpoint {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeConditional();
             }
-            Object result = conditionCallNode.call();
+            Object result = conditionCallNode.call(EMPTY_ARRAY);
             if (!(result instanceof Boolean)) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalArgumentException("Unsupported return type " + result + " in condition.");
