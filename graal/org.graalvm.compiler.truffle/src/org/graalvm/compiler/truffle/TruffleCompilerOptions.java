@@ -190,7 +190,7 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleInstrumentBranchesPretty = new OptionValue<>(true);
 
     @Option(help = "Maximum number of instrumentation counters available.")
-    public static final OptionValue<Integer> TruffleInstrumentBranchesCount = new OptionValue<>(10000);
+    public static final OptionValue<Integer> TruffleInstrumentationTableSize = new OptionValue<>(10000);
 
     // @formatter:on
 }
