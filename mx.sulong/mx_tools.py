@@ -108,6 +108,35 @@ class ClangCompiler(Tool):
         tool = self.getTool(inputFile)
         return self.runTool([mx_sulong.findLLVMProgram(tool), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
 
+class ClangV38Compiler(Tool):
+    def __init__(self, name=None, supportedLanguages=None):
+        if name is None:
+            self.name = 'clang_v38'
+        else:
+            self.name = name
+
+        if supportedLanguages is None:
+            self.supportedLanguages = [ProgrammingLanguage.C, ProgrammingLanguage.C_PLUS_PLUS, ProgrammingLanguage.OBJECTIVE_C]
+        else:
+            self.supportedLanguages = supportedLanguages
+
+    def getTool(self, inputFile):
+        inputLanguage = ProgrammingLanguage.lookupFile(inputFile)
+        if inputLanguage == ProgrammingLanguage.C or inputLanguage == ProgrammingLanguage.OBJECTIVE_C:
+            return 'clang'
+        elif inputLanguage == ProgrammingLanguage.C_PLUS_PLUS:
+            return 'clang++'
+        else:
+            raise Exception('Unsupported input language')
+
+    def run(self, inputFile, outputFile, flags):
+        tool = self.getTool(inputFile)
+        return self.runTool([mx_sulong.findInstalledLLVMProgram(tool, "3.8"), '-c', '-emit-llvm', '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+
+    def compileReferenceFile(self, inputFile, outputFile, flags):
+        tool = self.getTool(inputFile)
+        return self.runTool([mx_sulong.findInstalledLLVMProgram(tool, "3.8"), '-o', outputFile] + flags + [inputFile], errorMsg='Cannot compile %s with %s' % (inputFile, tool))
+
 class GCCCompiler(Tool):
     def __init__(self, name=None, supportedLanguages=None):
         if name is None:
@@ -161,6 +190,15 @@ class Opt(Tool):
     def run(self, inputFile, outputFile, flags):
         return mx.run([mx_sulong.findLLVMProgram('opt'), '-o', outputFile] + self.passes + [inputFile])
 
+class OptV38(Tool):
+    def __init__(self, name, passes):
+        self.name = name
+        self.supportedLanguages = [ProgrammingLanguage.LLVMBC]
+        self.passes = passes
+
+    def run(self, inputFile, outputFile, flags):
+        return mx.run([mx_sulong.findInstalledLLVMProgram('opt', "3.8"), '-o', outputFile] + self.passes + [inputFile])
+
 Tool.CLANG = ClangCompiler()
 Tool.CLANG_C = ClangCompiler('clangc', [ProgrammingLanguage.C])
 Tool.CLANG_CPP = ClangCompiler('clangcpp', [ProgrammingLanguage.C_PLUS_PLUS])
@@ -173,6 +211,17 @@ Tool.MEM2REG = Opt('MEM2REG', ['-mem2reg'])
 
 Tool.CPP_OPT = Opt('CPP_OPT', ['-lowerinvoke', '-prune-eh', '-simplifycfg'])
 Tool.C_OPT = Opt('C_OPT', ['-mem2reg', '-always-inline', '-jump-threading', '-simplifycfg'])
+
+
+Tool.CLANG_V38 = ClangV38Compiler('clang_v38')
+Tool.CLANG_C_V38 = ClangV38Compiler('clangc_v38', [ProgrammingLanguage.C])
+Tool.CLANG_CPP_V38 = ClangV38Compiler('clangcpp_v38', [ProgrammingLanguage.C_PLUS_PLUS])
+
+Tool.BB_VECTORIZE_V38 = OptV38('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
+Tool.MEM2REG_V38 = OptV38('MEM2REG', ['-mem2reg'])
+
+Tool.CPP_OPT_V38 = OptV38('CPP_OPT_v38', ['-lowerinvoke', '-prune-eh', '-simplifycfg'])
+Tool.C_OPT_V38 = OptV38('C_OPT_v38', ['-mem2reg', '-always-inline', '-jump-threading', '-simplifycfg'])
 
 def createOutputPath(path, inputFile, outputDir):
     base, _ = os.path.splitext(inputFile)

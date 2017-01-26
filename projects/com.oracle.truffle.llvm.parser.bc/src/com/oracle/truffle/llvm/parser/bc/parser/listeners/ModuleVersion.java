@@ -53,8 +53,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public enum ModuleVersion {
 
     LLVM_3_2(ModuleV32::new, FunctionV32::new, ConstantsV32::new, MetadataV32::new),
-    LLVM_3_9(ModuleV39::new, FunctionV39::new, ConstantsV39::new, MetadataV39::new),
-    DEFAULT(Module::new, Function::new, Constants::new, Metadata::new);
+    LLVM_3_9(ModuleV39::new, FunctionV39::new, ConstantsV39::new, MetadataV39::new);
 
     @FunctionalInterface
     private interface MetadataParser {
@@ -102,7 +101,7 @@ public enum ModuleVersion {
             return LLVM_3_9;
         } else {
             LLVMLogger.unconditionalInfo("Couldn't parse LLVM Version, use default one");
-            return DEFAULT;
+            return LLVM_3_2;
         }
     }
 

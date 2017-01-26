@@ -36,7 +36,7 @@ import com.oracle.truffle.llvm.option.OptionCategory;
 @OptionCategory(name = "Base Options")
 abstract class SulongEngineOption {
 
-    @Option(commandLineName = "LLVM", help = "Version of the used LLVM File Format 3.2/3.8.", name = "llvmVersion") //
+    @Option(commandLineName = "LLVM", help = "Version of the used LLVM File Format, e.g., 3.2 (default) or 3.8.", name = "llvmVersion") //
     protected static final String LLVM_VERSION = "3.2";
 
     @Option(commandLineName = "NodeConfiguration", help = "The node configuration (node factory) to be used in Sulong.", name = "nodeConfiguration") //
