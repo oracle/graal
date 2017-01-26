@@ -59,11 +59,11 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
     @OptionalInput(State) FrameState stateAfter;
 
     public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity) {
-        this(object, offset, value, accessKind, locationIdentity, null);
+        this(object, offset, value, accessKind, locationIdentity, null, false);
     }
 
-    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, FrameState stateAfter) {
-        super(TYPE, StampFactory.forVoid(), object, offset, accessKind, locationIdentity);
+    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, FrameState stateAfter, boolean forceAnyLocation) {
+        super(TYPE, StampFactory.forVoid(), object, offset, accessKind, locationIdentity, forceAnyLocation);
         this.value = value;
         this.stateAfter = stateAfter;
         assert accessKind != JavaKind.Void && accessKind != JavaKind.Illegal;
@@ -135,7 +135,7 @@ public final class UnsafeStoreNode extends UnsafeAccessNode implements StateSpli
 
     @Override
     protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
-        return new UnsafeStoreNode(object(), location, value, accessKind(), identity, stateAfter());
+        return new UnsafeStoreNode(object(), location, value, accessKind(), identity, stateAfter(), isAnyLocationForced());
     }
 
     public FrameState getState() {
