@@ -183,8 +183,8 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
 
     @Override
     public void run() {
-        trace("Started%n", this);
         try {
+            trace("Started%n", this);
             while (true) {
                 // get a copy of the last set method
                 final ResolvedJavaMethod currentlyCompiling = currentMethod;
@@ -207,12 +207,14 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                                     tick(WatchDogState.WATCHING_WITH_STACK_INSPECTION);
                                     trace("changes mode to watching with stack traces");
                                 } else {
-                                    // we still compile the same method but won't collect traces yet
+                                    // we still compile the same method but won't collect traces
+                                    // yet
                                     trace("watching without stack traces [%.2f seconds]", secs(elapsed));
                                 }
                                 elapsed += SPIN_TIMEOUT_MS;
                             } else {
-                                // compilation finished before we exceeded initial watching period
+                                // compilation finished before we exceeded initial watching
+                                // period
                                 reset();
                             }
                             break;
@@ -247,7 +249,8 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                                 }
                                 elapsed += SPIN_TIMEOUT_MS;
                             } else {
-                                // compilation finished before we are able to collect stack traces
+                                // compilation finished before we are able to collect stack
+                                // traces
                                 reset();
                             }
                             break;
@@ -255,12 +258,25 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                             break;
                     }
                 }
-                Thread.sleep(SPIN_TIMEOUT_MS);
+                try {
+                    Thread.sleep(SPIN_TIMEOUT_MS);
+                } catch (InterruptedException e) {
+                    // Silently swallow
+                }
             }
+        } catch (VirtualMachineError vmError) {
+            /*
+             * We encounter a VM error. This includes for example OutOfMemoryExceptions. In such a
+             * case we silently swallow the error. If it happens again the application thread will
+             * most likely encounter the same problem. If not the watchdog thread will no longer
+             * monitor the compilation and thus the error cannot happen again.
+             */
         } catch (Throwable t) {
-            synchronized (CompilationWatchDog.class) {
-                TTY.printf("%s encountered an exception%n%s%n", this, fmt(t));
-            }
+            /*
+             * A real exception happened on the compilation watchdog. This is unintended behavior
+             * and must not happen in any case.
+             */
+            throw new InternalError(String.format("%s encountered an exception%n%s%n", this, fmt(t)), t);
         }
     }
 
