@@ -24,11 +24,10 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 
 final class CachedObjectAccessNode extends ObjectAccessNode {
-    @Child private DirectCallNode callTarget;
+    @Child private DirectCallNode callNode;
     @Child private ObjectAccessNode next;
 
     @Child private DirectCallNode languageCheckAsNode;
@@ -36,42 +35,34 @@ final class CachedObjectAccessNode extends ObjectAccessNode {
 
     @Child private ForeignAccessArguments accessArguments = new ForeignAccessArguments();
 
-    protected CachedObjectAccessNode(DirectCallNode callTarget, ObjectAccessNode next, ForeignAccess languageCheck, DirectCallNode languageCheckAsNode) {
-        this.callTarget = callTarget;
+    protected CachedObjectAccessNode(DirectCallNode callNode, ObjectAccessNode next, ForeignAccess languageCheck, DirectCallNode languageCheckAsNode) {
+        this.callNode = callNode;
         this.next = next;
         this.languageCheck = languageCheck;
         this.languageCheckAsNode = languageCheckAsNode;
         if (this.languageCheckAsNode != null) {
             this.languageCheckAsNode.forceInlining();
         }
-        this.callTarget.forceInlining();
+        this.callNode.forceInlining();
     }
 
     @Override
-    public Object executeWith(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        return doAccess(frame, receiver, arguments);
-    }
-
-    private Object doAccess(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        if (accept(frame, receiver)) {
-            return callTarget.call(frame, accessArguments.executeCreate(receiver, arguments));
+    public Object executeWith(TruffleObject receiver, Object[] arguments) {
+        if (accept(receiver)) {
+            return callNode.call(accessArguments.executeCreate(receiver, arguments));
         } else {
-            return doNext(frame, receiver, arguments);
+            return next.executeWith(receiver, arguments);
         }
     }
 
-    private boolean accept(VirtualFrame frame, TruffleObject receiver) {
-        if ((languageCheckAsNode != null && (boolean) languageCheckAsNode.call(frame, new Object[]{receiver}))) {
+    private boolean accept(TruffleObject receiver) {
+        if ((languageCheckAsNode != null && (boolean) languageCheckAsNode.call(new Object[]{receiver}))) {
             return true;
         } else if (languageCheckAsNode == null && languageCheck.canHandle(receiver)) {
             return true;
         } else {
             return false;
         }
-    }
-
-    private Object doNext(VirtualFrame frame, TruffleObject receiver, Object[] arguments) {
-        return next.executeWith(frame, receiver, arguments);
     }
 
 }

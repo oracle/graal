@@ -24,11 +24,10 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ObjectAccessNode extends Node {
 
-    public abstract Object executeWith(VirtualFrame frame, TruffleObject receiver, Object[] arguments);
+    public abstract Object executeWith(TruffleObject receiver, Object[] arguments);
 
 }

@@ -148,10 +148,10 @@ public class RubyCall {
          * instantiation. It is never executed on the fast path.
          */
         @Specialization(guards = {"method == cachedMethod", "cachedMethod != METHOD_MISSING"})
-        protected static Object directCall(VirtualFrame frame, InternalMethod method, Object[] arguments, //
+        protected static Object directCall(InternalMethod method, Object[] arguments, //
                         @Cached("method") InternalMethod cachedMethod, //
                         @Cached("create(cachedMethod.getTarget())") DirectCallNode callNode) {
-            return callNode.call(frame, arguments);
+            return callNode.call(arguments);
         }
 
         /*
@@ -159,15 +159,15 @@ public class RubyCall {
          * returning the constant METHOD_MISSING.
          */
         @Specialization(guards = "method == METHOD_MISSING")
-        protected static Object methodMissing(VirtualFrame frame, InternalMethod method, Object[] arguments) {
+        protected static Object methodMissing(InternalMethod method, Object[] arguments) {
             // a real implementation would do a call to a method named method_missing here
             return RubyObject.NIL;
         }
 
         @Specialization(replaces = "directCall", guards = "method != METHOD_MISSING")
-        protected static Object indirectCall(VirtualFrame frame, InternalMethod method, Object[] arguments, //
+        protected static Object indirectCall(InternalMethod method, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
-            return callNode.call(frame, method.getTarget(), arguments);
+            return callNode.call(method.getTarget(), arguments);
         }
 
         @Override

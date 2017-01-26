@@ -25,7 +25,6 @@
 
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 final class ForeignObjectAccessHeadNode extends Node {
@@ -48,14 +47,14 @@ final class ForeignObjectAccessHeadNode extends Node {
     }
 
     @Deprecated
-    Object executeForeign(VirtualFrame frame, TruffleObject receiver, Object... arguments) {
-        Object ret = first.executeWith(frame, receiver, arguments);
+    Object executeForeign(TruffleObject receiver, Object... arguments) {
+        Object ret = first.executeWith(receiver, arguments);
         return ret;
     }
 
     @SuppressWarnings("unused")
-    Object executeForeignImpl(VirtualFrame frame, TruffleObject receiver, Object... arguments) throws InteropException {
-        Object ret = first.executeWith(frame, receiver, arguments);
+    Object executeForeignImpl(TruffleObject receiver, Object... arguments) throws InteropException {
+        Object ret = first.executeWith(receiver, arguments);
         return ret;
     }
 

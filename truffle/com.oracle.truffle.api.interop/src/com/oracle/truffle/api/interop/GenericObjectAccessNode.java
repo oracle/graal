@@ -28,7 +28,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 
 final class GenericObjectAccessNode extends ObjectAccessNode {
@@ -47,9 +46,9 @@ final class GenericObjectAccessNode extends ObjectAccessNode {
     }
 
     @Override
-    public Object executeWith(VirtualFrame frame, TruffleObject truffleObject, Object[] arguments) {
+    public Object executeWith(TruffleObject truffleObject, Object[] arguments) {
         final CallTarget ct = findCallTarget(truffleObject);
-        return indirectCallNode.call(frame, ct, accessArguments.executeCreate(truffleObject, arguments));
+        return indirectCallNode.call(ct, accessArguments.executeCreate(truffleObject, arguments));
     }
 
     @TruffleBoundary

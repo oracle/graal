@@ -109,12 +109,12 @@ public abstract class SLDispatchNode extends Node {
     @Specialization(limit = "INLINE_CACHE_SIZE", //
                     guards = "function == cachedFunction", //
                     assumptions = "cachedFunction.getCallTargetStable()")
-    protected static Object doDirect(VirtualFrame frame, SLFunction function, Object[] arguments,
+    protected static Object doDirect(SLFunction function, Object[] arguments,
                     @Cached("function") SLFunction cachedFunction,
                     @Cached("create(cachedFunction.getCallTarget())") DirectCallNode callNode) {
 
         /* Inline cache hit, we are safe to execute the cached call target. */
-        return callNode.call(frame, arguments);
+        return callNode.call(arguments);
     }
 
     /**
@@ -123,13 +123,13 @@ public abstract class SLDispatchNode extends Node {
      * no method inlining is performed.
      */
     @Specialization(replaces = "doDirect")
-    protected static Object doIndirect(VirtualFrame frame, SLFunction function, Object[] arguments,
+    protected static Object doIndirect(SLFunction function, Object[] arguments,
                     @Cached("create()") IndirectCallNode callNode) {
         /*
          * SL has a quite simple call lookup: just ask the function for the current call target, and
          * call it.
          */
-        return callNode.call(frame, function.getCallTarget(), arguments);
+        return callNode.call(function.getCallTarget(), arguments);
     }
 
     /**
