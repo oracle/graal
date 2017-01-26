@@ -30,13 +30,12 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.Instrumentation;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -64,8 +63,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class ClassfileBytecodeProvider implements BytecodeProvider {
 
     private final ClassLoader loader;
-    private final Map<Class<?>, Classfile> classfiles = new HashMap<>();
-    private final Map<String, Class<?>> classes = new HashMap<>();
+    private final EconomicMap<Class<?>, Classfile> classfiles = EconomicMap.create(Equivalence.IDENTITY);
+    private final EconomicMap<String, Class<?>> classes = EconomicMap.create();
     private final EconomicMap<ResolvedJavaType, FieldsCache> fields = EconomicMap.create();
     final MetaAccessProvider metaAccess;
     final SnippetReflectionProvider snippetReflection;
