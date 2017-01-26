@@ -79,8 +79,8 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         assert getShape() == oldShape : "wrong old shape";
         assert !oldShape.isShared();
         if (oldShape != newShape) {
-            setShape(newShape);
             resizeStore(oldShape, newShape);
+            setShape(newShape);
 
             assert checkExtensionArrayInvariants(newShape);
         }
@@ -100,8 +100,8 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         if (oldShape != newShape) {
             assert checkSetShape(oldShape, newShape);
 
-            setShape(newShape);
             growStore(oldShape, newShape);
+            setShape(newShape);
 
             assert checkExtensionArrayInvariants(newShape);
         }
