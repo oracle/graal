@@ -6,6 +6,7 @@ import mx_gate
 import mx_unittest
 import os
 import mx_tools
+import shutil
 
 import mx_sulong
 
@@ -31,7 +32,13 @@ _nwccSuiteDir = os.path.join(_testDir, "nwcc/")
 _nwccSuiteDirRoot2 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/tests/")
 _nwccSuiteDirRoot1 = os.path.join(_nwccSuiteDir, "nwcc_0.8.3/test2/")
 
+def deleteCachedTests(folderInCache):
+    p = os.path.join(_cacheDir, folderInCache)
+    if os.path.exists(p):
+        shutil.rmtree(p)
+
 def compileV38SulongSuite():
+    deleteCachedTests('sulong')
     print("Compiling Sulong Suite reference executables ", end='')
     mx_tools.printProgress(mx_tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm']))
     print("Compiling Sulong Suite with clang 3.8 -O0 ", end='')
@@ -40,6 +47,7 @@ def compileV38SulongSuite():
     mx_tools.printProgress(mx_tools.multicompileFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG_V38], ['-Iinclude', '-lm'], [mx_tools.Optimization.O1, mx_tools.Optimization.O2, mx_tools.Optimization.O3], mx_tools.ProgrammingLanguage.LLVMBC))
 
 def compileSulongSuite():
+    deleteCachedTests('sulong')
     print("Compiling Sulong Suite reference executables ", end='')
     mx_tools.printProgress(mx_tools.multicompileRefFolder(_sulongSuiteDir, _cacheDir, [mx_tools.Tool.CLANG], ['-Iinclude', '-lm']))
     print("Compiling Sulong Suite with clang -O0 ", end='')
