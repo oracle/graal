@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,19 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 
-public class GraphEffectList extends EffectList {
+public final class GraphEffectList extends EffectList {
+
+    /**
+     * Determines how many objects are virtualized (positive) or materialized (negative) by this
+     * effect.
+     */
+    private int virtualizationDelta;
+
+    @Override
+    public void clear() {
+        super.clear();
+        virtualizationDelta = 0;
+    }
 
     public void addCounterBefore(String group, String name, int increment, boolean addContext, FixedNode position) {
         add("add counter", graph -> DynamicCounterNode.addCounterBefore(group, name, increment, addContext, position));
@@ -79,6 +91,14 @@ public class GraphEffectList extends EffectList {
                 }
             }
         });
+    }
+
+    public void addVirtualizationDelta(int delta) {
+        virtualizationDelta += delta;
+    }
+
+    public int getVirtualizationDelta() {
+        return virtualizationDelta;
     }
 
     /**

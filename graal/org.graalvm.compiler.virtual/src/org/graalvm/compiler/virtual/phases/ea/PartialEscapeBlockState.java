@@ -45,12 +45,20 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
 
     private static final ObjectState[] EMPTY_ARRAY = new ObjectState[0];
 
+    /**
+     * This array contains the state of all virtual objects, indexed by
+     * {@link VirtualObjectNode#getObjectId()}. Entries in this array may be null if the
+     * corresponding virtual object is not alive or reachable currently.
+     */
     private ObjectState[] objectStates;
 
     private static class RefCount {
         private int refCount = 1;
     }
 
+    /**
+     * Usage count for the objectStates array, to avoid unneessary copying.
+     */
     private RefCount arrayRefCount;
 
     /**
@@ -87,6 +95,9 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         return object >= objectStates.length ? null : objectStates[object];
     }
 
+    /**
+     * Asserts that the given virtual object is available/reachable in the current state.
+     */
     public ObjectState getObjectState(VirtualObjectNode object) {
         ObjectState state = objectStates[object.getObjectId()];
         assert state != null;
@@ -145,22 +156,23 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         }
     }
 
+    /**
+     * Materializes the given virtual object and produces the necessary effects in the effects list.
+     * This transitively also materializes all other virtual objects that are reachable from the
+     * entries.
+     */
     public void materializeBefore(FixedNode fixed, VirtualObjectNode virtual, GraphEffectList materializeEffects) {
         PartialEscapeClosure.COUNTER_MATERIALIZATIONS.increment();
         List<AllocatedObjectNode> objects = new ArrayList<>(2);
         List<ValueNode> values = new ArrayList<>(8);
-        List<List<MonitorIdNode>> locks = new ArrayList<>(2);
+        List<List<MonitorIdNode>> locks = new ArrayList<>();
         List<ValueNode> otherAllocations = new ArrayList<>(2);
         List<Boolean> ensureVirtual = new ArrayList<>(2);
         materializeWithCommit(fixed, virtual, objects, locks, values, ensureVirtual, otherAllocations);
         assert fixed != null;
 
+        materializeEffects.addVirtualizationDelta(-(objects.size() + otherAllocations.size()));
         materializeEffects.add("materializeBefore", new Effect() {
-            @Override
-            public int virtualObjects() {
-                return -(objects.size() + otherAllocations.size());
-            }
-
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 for (ValueNode alloc : otherAllocations) {
