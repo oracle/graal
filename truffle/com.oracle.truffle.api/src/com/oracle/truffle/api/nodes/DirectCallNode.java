@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -52,11 +51,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * @since 0.8 or earlier
  */
 public abstract class DirectCallNode extends Node {
+    static final VirtualFrame LEGACY_FRAME = Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor());
+
     /** @since 0.8 or earlier */
     protected final CallTarget callTarget;
     @Deprecated @CompilationFinal private VirtualFrame legacyFrame;
-
-    private static final Object[] EMPTY_ARGS = new Object[0];
 
     /** @since 0.8 or earlier */
     protected DirectCallNode(CallTarget callTarget) {
@@ -85,27 +84,7 @@ public abstract class DirectCallNode extends Node {
      */
     public Object call(Object[] arguments) {
         // TODO change to varargs as soon as #call(VirtualFrame, Object[] will removed.
-        /*
-         * TODO the frame is for legacy support only. an up-to-date graal runtime will override this
-         * method and implement it more efficiently. As soon as the deprecated call(VirtualFrame,
-         * Object[]) is removed, then we should remove the dummyFrame as well.
-         */
-        if (legacyFrame == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            legacyFrame = createDummyFrame(this);
-        }
-        return call(legacyFrame, arguments);
-    }
-
-    static VirtualFrame createDummyFrame(Node node) {
-        FrameDescriptor descriptor;
-        RootNode root = node.getRootNode();
-        if (root == null) {
-            descriptor = new FrameDescriptor();
-        } else {
-            descriptor = root.getFrameDescriptor();
-        }
-        return Truffle.getRuntime().createVirtualFrame(EMPTY_ARGS, descriptor);
+        return call(LEGACY_FRAME, arguments);
     }
 
     /**

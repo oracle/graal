@@ -77,16 +77,7 @@ public abstract class IndirectCallNode extends Node {
      */
     public Object call(CallTarget target, Object[] arguments) {
         // TODO change to varargs as soon as #call(VirtualFrame, Object[] will removed.
-        /*
-         * TODO the frame is for legacy support only. an up-to-date graal runtime will override this
-         * method and implement it more efficiently. As soon as the deprecated call(VirtualFrame,
-         * Object[]) is removed, then we should remove the dummyFrame as well.
-         */
-        if (dummyFrame == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            dummyFrame = DirectCallNode.createDummyFrame(this);
-        }
-        return call(dummyFrame, target, arguments);
+        return call(DirectCallNode.LEGACY_FRAME, target, arguments);
     }
 
     /** @since 0.8 or earlier */
