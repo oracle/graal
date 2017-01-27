@@ -25,11 +25,9 @@ package org.graalvm.compiler.truffle.test;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import org.junit.Assert;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.junit.Test;
 
-import org.graalvm.compiler.truffle.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;

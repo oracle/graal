@@ -22,23 +22,21 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
-import static org.junit.Assert.*;
-import static org.junit.Assert.assertFalse;
-
 /**
  * Base class for Truffle unit tests that require that there be no background compilation.
  *
- * Please note that this applies only to single threaded tests, if you need parallel execution, you need to
- * make sure each thread has the OptionValue overridden.
+ * Please note that this applies only to single threaded tests, if you need parallel execution, you
+ * need to make sure each thread has the OptionValue overridden.
  *
  * This class also provides helper methods for asserting if a target has or has not been compiled.
  *
