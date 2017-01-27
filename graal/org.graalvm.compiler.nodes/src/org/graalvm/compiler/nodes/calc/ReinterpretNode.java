@@ -124,7 +124,7 @@ public final class ReinterpretNode extends UnaryNode implements ArithmeticLIRLow
 
         if (stamp.isNaN()) {
             // special case: in addition to the range, we know NaN has all exponent bits set
-            return new IntegerStamp(bits, negativeInfinity + 1, CodeUtil.maxValue(bits), exponentMask, CodeUtil.mask(bits));
+            return IntegerStamp.create(bits, negativeInfinity + 1, CodeUtil.maxValue(bits), exponentMask, CodeUtil.mask(bits));
         }
 
         long upperBound;
