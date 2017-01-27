@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.core.common.type;
 
+import static jdk.vm.ci.code.CodeUtil.signExtend;
+
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -191,6 +193,21 @@ public class StampFactory {
 
     public static IntegerStamp forInteger(int bits) {
         return IntegerStamp.create(bits, CodeUtil.minValue(bits), CodeUtil.maxValue(bits), 0, CodeUtil.mask(bits));
+    }
+
+    public static IntegerStamp forUnsignedInteger(int bits, long unsignedLowerBound, long unsignedUpperBound) {
+        return forUnsignedInteger(bits, unsignedLowerBound, unsignedUpperBound, 0, CodeUtil.mask(bits));
+    }
+
+    public static IntegerStamp forUnsignedInteger(int bits, long unsignedLowerBound, long unsignedUpperBound, long downMask, long upMask) {
+        long lowerBound = signExtend(unsignedLowerBound, bits);
+        long upperBound = signExtend(unsignedUpperBound, bits);
+        if (lowerBound >= 0 != upperBound >= 0) {
+            lowerBound = CodeUtil.minValue(bits);
+            upperBound = CodeUtil.maxValue(bits);
+        }
+        long mask = CodeUtil.mask(bits);
+        return IntegerStamp.create(bits, lowerBound, upperBound, downMask & mask, upMask & mask);
     }
 
     public static IntegerStamp forInteger(int bits, long lowerBound, long upperBound) {

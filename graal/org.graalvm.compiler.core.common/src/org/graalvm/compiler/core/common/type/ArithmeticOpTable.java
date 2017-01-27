@@ -736,6 +736,11 @@ public final class ArithmeticOpTable {
             protected Narrow() {
                 super("Narrow");
             }
+
+            @Override
+            public Stamp invertStamp(int inputBits, int resultBits, Stamp outStamp) {
+                return null;
+            }
         }
 
         protected IntegerConvertOp(String op) {
@@ -749,5 +754,10 @@ public final class ArithmeticOpTable {
         public IntegerConvertOp<T> unwrap() {
             return this;
         }
+
+        /**
+         * Computes the stamp of the input for the given output stamp.
+         */
+        public abstract Stamp invertStamp(int inputBits, int resultBits, Stamp outStamp);
     }
 }
