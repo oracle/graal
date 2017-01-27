@@ -185,6 +185,31 @@ public class IntegerStampTest {
     }
 
     @Test
+    public void testJoinWeirdMasks() {
+        IntegerStamp minusOneOrThree = IntegerStamp.create(32, -1, 3, 0x3, 0xFFFFFFFFL);
+        IntegerStamp twoOrThree = IntegerStamp.create(32, 2, 3, 0x2, 0x3);
+        IntegerStamp three = IntegerStamp.create(32, 3, 3, 0x3, 0x3);
+        assertEquals(three, minusOneOrThree.join(twoOrThree));
+
+        IntegerStamp minusOneOrThreeOrOne = IntegerStamp.create(32, -1, 3, 0x1, 0xFFFFFFFFL);
+        assertEquals(three, minusOneOrThreeOrOne.join(twoOrThree));
+
+        IntegerStamp a = IntegerStamp.create(32, 0b101, 0b110, 0b100, 0b111);
+        IntegerStamp b = IntegerStamp.create(32, 0b011, 0b110, 0b010, 0b111);
+
+        // This exercises a special case:
+        // The new lowest bound is max(0b101, 0b011) = 0b101
+        // The new down mask is (0b100 | 0b010) = 0b110
+        // Now based on lowest bound and down mask, we know that the new lowest bound is 0b110
+        // Just making an or with the new down mask would give however (0b110 | 0b101) = 0b111 and
+        // would therefore be wrong.
+        // New upper bound is 0b110.
+
+        IntegerStamp result = IntegerStamp.create(32, 0b110, 0b110, 0b110, 0b110);
+        assertEquals(result, a.join(b));
+    }
+
+    @Test
     public void testXor() {
         assertEquals(IntegerStamp.create(32, 0, 0xff, 0, 0xff), IntegerStamp.OPS.getXor().foldStamp(IntegerStamp.create(32, 0, 0, 0, 0), IntegerStamp.create(32, 0, 0xff, 0, 0xff)));
         assertEquals(IntegerStamp.create(32, 0x10, 0x1f, 0x10, 0x1f), IntegerStamp.OPS.getXor().foldStamp(IntegerStamp.create(32, 0, 0, 0, 0), IntegerStamp.create(32, 0x10, 0x1f, 0x10, 0x1f)));
