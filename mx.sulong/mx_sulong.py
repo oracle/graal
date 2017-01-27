@@ -630,7 +630,6 @@ class SulongNativeProject(mx.NativeProject):
 
     def getBuildEnv(self, replaceVar=mx._replacePathVar):
         ret = super(SulongNativeProject, self).getBuildEnv(replaceVar=replaceVar)
-        print 'SULONG_VERSION=' + os.environ.get('SULONG_VERSION')
         if os.environ.get('SULONG_VERSION') == '3.2':
             exportMxClang32(ret)
         elif os.environ.get('SULONG_VERSION') == '3.8':
@@ -643,22 +642,18 @@ class SulongNativeProject(mx.NativeProject):
 def exportMxClang32(ret):
     exp = findLLVMProgram('clang', ['3.2'])
     if not exp is None:
-        print 'Exporting MX_CLANG_V32' + exp
         ret['MX_CLANG_V32'] = exp
     exp = findLLVMProgram('opt', ['3.2'])
     if not exp is None:
-        print 'Exporting MX_OPT_V32' + exp
         ret['MX_OPT_V32'] = exp
 
 def exportMxClang38(ret):
     exp = findLLVMProgram('clang', ['3.8', '3.9'])
     if not exp is None:
-        print 'Exporting MX_CLANG_V38' + exp
         ret['MX_CLANG_V38'] = exp
 
     exp = findLLVMProgram('opt', ['3.8', '3.9'])
     if not exp is None:
-        print 'Exporting MX_OPT_V38' + exp
         ret['MX_OPT_V38'] = exp
 
 def findLLVMProgram(llvmProgram, version=None):
