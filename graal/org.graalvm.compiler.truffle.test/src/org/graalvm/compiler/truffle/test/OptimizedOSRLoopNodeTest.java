@@ -260,8 +260,11 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
         // after invalidating the outer method the osr target should still be valid and used
         target.call(15);
+        // even though target is compiled it is invoked in interpreter
+        target.invalidate();
         assertCompiled(rootNode.getOSRTarget());
         assertSame(rootNode.getOSRTarget(), osrTarget);
+        // assertNotCompiled(target);
 
         // now externally invalidate the osr target and see if we compile again
         rootNode.getOSRTarget().invalidate();
