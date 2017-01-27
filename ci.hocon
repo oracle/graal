@@ -46,6 +46,7 @@ gateTest38: ${gateCommon} {
     environment: {
         CPPFLAGS: "-I$LIBGMP/include"
         LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
+        SULONG_VERSION: "3.8"
     }
 }
 
@@ -59,6 +60,7 @@ gateTest: ${gateCommon} {
         CPPFLAGS: "-I$LIBGMP/include"
         LD_LIBRARY_PATH: "$LIBGMP/lib:$LLVM/lib:$LD_LIBRARY_PATH"
         PATH: "$LLVM/bin:$PATH"
+        SULONG_VERSION: "3.2"
     }
 }
 
