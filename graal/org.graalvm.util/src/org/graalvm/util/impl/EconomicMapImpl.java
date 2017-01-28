@@ -23,6 +23,7 @@
 package org.graalvm.util.impl;
 
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 import org.graalvm.util.Equivalence;
@@ -227,9 +228,8 @@ public final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicS
     @SuppressWarnings("unchecked")
     @Override
     public V get(K key) {
-        if (key == null) {
-            throw new UnsupportedOperationException("null not supported as key!");
-        }
+        Objects.requireNonNull(key);
+
         int index = find(key);
         if (index != -1) {
             return (V) getValue(index);
