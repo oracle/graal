@@ -28,7 +28,6 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCallTar
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -48,6 +47,7 @@ import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.debug.AbstractDebugCompilationListener;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -431,7 +431,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     /** Intrinsified in {@link TruffleGraphBuilderPlugins}. */
     public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
-        if (TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing)) {
+        if (GraalTruffleRuntime.getRuntime().useFrameWithoutBoxing()) {
             return new FrameWithoutBoxing(descriptor, args);
         } else {
             return new FrameWithBoxing(descriptor, args);
