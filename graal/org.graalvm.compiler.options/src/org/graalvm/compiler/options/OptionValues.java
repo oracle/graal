@@ -158,24 +158,9 @@ public class OptionValues {
 
     private final EconomicMap<OptionKey<?>, Object> values = newOptionMap();
 
-    /**
-     * Used to assert the invariant of stability for {@link StableOptionKey}s.
-     */
-    private final EconomicMap<OptionKey<?>, Object> stabilized = newOptionMap();
-
-    OptionValues set(OptionKey<?> key, Object value) {
-        decodeNull(values.put(key, encodeNull(value)));
+    protected OptionValues set(OptionKey<?> key, Object value) {
+        values.put(key, encodeNull(value));
         return this;
-    }
-
-    /**
-     * Registers {@code key} as stable in this map. It should not be updated after this call.
-     *
-     * Note: Should only be used in an assertion.
-     */
-    synchronized boolean stabilize(StableOptionKey<?> key, Object value) {
-        stabilized.put(key, encodeNull(value));
-        return true;
     }
 
     boolean containsKey(OptionKey<?> key) {
@@ -230,7 +215,7 @@ public class OptionValues {
     /**
      * Constructor only for initializing {@link #GLOBAL}.
      */
-    OptionValues(EconomicMap<OptionKey<?>, Object> values) {
+    public OptionValues(EconomicMap<OptionKey<?>, Object> values) {
         MapCursor<OptionKey<?>, Object> cursor = values.getEntries();
         while (cursor.advance()) {
             this.values.put(cursor.getKey(), encodeNull(cursor.getValue()));

@@ -33,7 +33,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.StableOptionKey;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -61,12 +60,6 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         assert !ImmutableCode.getValue(tool.getOptions()) || isCalledForSnippets(metaAccess) || SnippetGraphUnderConstruction.get() != null ||
                         FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : tool.getReceiver();
-        if (!field.isStatic() && field.getName().equals("value")) {
-            if (getStableOptionKeyType().isInstance(tool.getReceiver())) {
-                JavaConstant ret = tool.readValue();
-                return tool.foldConstant(ret);
-            }
-        }
 
         return super.readConstantField(field, tool);
     }
@@ -113,17 +106,9 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
 
     private final MetaAccessProvider metaAccess;
 
-    private ResolvedJavaType cachedStableOptionKeyType;
     private ResolvedJavaType cachedHotSpotVMConfigType;
     private ResolvedJavaType cachedSnippetCounterType;
     private ResolvedJavaType cachedNodeClassType;
-
-    private ResolvedJavaType getStableOptionKeyType() {
-        if (cachedStableOptionKeyType == null) {
-            cachedStableOptionKeyType = metaAccess.lookupJavaType(StableOptionKey.class);
-        }
-        return cachedStableOptionKeyType;
-    }
 
     private ResolvedJavaType getHotSpotVMConfigType() {
         if (cachedHotSpotVMConfigType == null) {
