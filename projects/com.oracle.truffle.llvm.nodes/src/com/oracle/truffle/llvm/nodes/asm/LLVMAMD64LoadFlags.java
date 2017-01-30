@@ -30,15 +30,31 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild("valueNode")
-public abstract class LLVMAMD64DeclNode extends LLVMExpressionNode {
-
-    @Specialization
-    protected int executeI32(int value) {
-        return (value - 1);
+public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
+    @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "zf", type = LLVMExpressionNode.class),
+                    @NodeChild(value = "sf", type = LLVMExpressionNode.class)})
+    public abstract static class LLVMAMD64LahfNode extends LLVMAMD64LoadFlags {
+        @Specialization
+        protected byte executeI8(boolean cf, boolean pf, boolean zf, boolean sf) {
+            byte flags = 0;
+            if (cf) {
+                flags |= (byte) (1 << LLVMAMD64Flags.CF);
+            }
+            if (pf) {
+                flags |= (byte) (1 << LLVMAMD64Flags.PF);
+            }
+            if (zf) {
+                flags |= (byte) (1 << LLVMAMD64Flags.ZF);
+            }
+            if (sf) {
+                flags |= (byte) (1 << LLVMAMD64Flags.SF);
+            }
+            return flags;
+        }
     }
-
 }

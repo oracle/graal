@@ -37,6 +37,10 @@ import java.util.Set;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcbNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdclNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcqNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AdcNodeFactory.LLVMAMD64AdcwNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddbNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddlNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64AddNodeFactory.LLVMAMD64AddqNodeGen;
@@ -65,6 +69,7 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncbNo
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64InclNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IncNodeFactory.LLVMAMD64IncwNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64LoadFlagsFactory.LLVMAMD64LahfNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulbNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MullNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64MulNodeFactory.LLVMAMD64MulqNodeGen;
@@ -114,6 +119,9 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVM
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToI8NodeFactory.LLVMAMD64I64ToI8NodeGen;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNodeFactory.LLVMPrimitiveStructWriteNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI16NodeFactory.LLVMToI16NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeGen.LLVMToI32NoZeroExtNodeGen;
@@ -136,6 +144,7 @@ import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.L
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMDoubleReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMFloatReadNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI16ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI32ReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI64ReadNodeGen;
@@ -352,7 +361,14 @@ class AsmFactory {
             case "cld":
             case "cli":
             case "cmc":
-            case "lahf":
+                statements.add(new LLVMI32UnsupportedInlineAssemblerNode(null));
+                return;
+            case "lahf": {
+                LLVMExpressionNode lahf = LLVMAMD64LahfNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.PF), getFlag(LLVMAMD64Flags.ZF), getFlag(LLVMAMD64Flags.SF));
+                LLVMExpressionNode write = getOperandStore(PrimitiveType.I8, new AsmRegisterOperand("ah"), lahf);
+                statements.add(write);
+                break;
+            }
             case "popfw":
             case "pushfw":
             case "sahf":
@@ -404,40 +420,40 @@ class AsmFactory {
         }
         switch (operation) {
             case "incb":
-                out = LLVMAMD64IncbNodeGen.create(src);
+                out = LLVMAMD64IncbNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "incw":
-                out = LLVMAMD64IncwNodeGen.create(src);
+                out = LLVMAMD64IncwNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "incl":
-                out = LLVMAMD64InclNodeGen.create(src);
+                out = LLVMAMD64InclNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "incq":
-                out = LLVMAMD64IncqNodeGen.create(src);
+                out = LLVMAMD64IncqNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "decb":
-                out = LLVMAMD64DecbNodeGen.create(src);
+                out = LLVMAMD64DecbNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "decw":
-                out = LLVMAMD64DecwNodeGen.create(src);
+                out = LLVMAMD64DecwNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "decl":
-                out = LLVMAMD64DeclNodeGen.create(src);
+                out = LLVMAMD64DeclNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "decq":
-                out = LLVMAMD64DecqNodeGen.create(src);
+                out = LLVMAMD64DecqNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "negb":
-                out = LLVMAMD64NegbNodeGen.create(src);
+                out = LLVMAMD64NegbNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "negw":
-                out = LLVMAMD64NegwNodeGen.create(src);
+                out = LLVMAMD64NegwNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "negl":
-                out = LLVMAMD64NeglNodeGen.create(src);
+                out = LLVMAMD64NeglNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "negq":
-                out = LLVMAMD64NegqNodeGen.create(src);
+                out = LLVMAMD64NegqNodeGen.create(getUpdateFlagsNode(), src);
                 break;
             case "notb":
                 out = LLVMAMD64NotbNodeGen.create(src);
@@ -605,16 +621,28 @@ class AsmFactory {
         }
         switch (operation) {
             case "addb":
-                out = LLVMAMD64AddbNodeGen.create(srcA, srcB);
+                out = LLVMAMD64AddbNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
                 break;
             case "addw":
-                out = LLVMAMD64AddwNodeGen.create(srcA, srcB);
+                out = LLVMAMD64AddwNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
                 break;
             case "addl":
-                out = LLVMAMD64AddlNodeGen.create(srcA, srcB);
+                out = LLVMAMD64AddlNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
                 break;
             case "addq":
-                out = LLVMAMD64AddqNodeGen.create(srcA, srcB);
+                out = LLVMAMD64AddqNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
+                break;
+            case "adcb":
+                out = LLVMAMD64AdcbNodeGen.create(getUpdateFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
+                break;
+            case "adcw":
+                out = LLVMAMD64AdcwNodeGen.create(getUpdateFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
+                break;
+            case "adcl":
+                out = LLVMAMD64AdclNodeGen.create(getUpdateFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
+                break;
+            case "adcq":
+                out = LLVMAMD64AdcqNodeGen.create(getUpdateFlagsNode(), srcA, srcB, getFlag(LLVMAMD64Flags.CF));
                 break;
             case "subb":
                 out = LLVMAMD64SubbNodeGen.create(srcB, srcA);
@@ -732,16 +760,16 @@ class AsmFactory {
                 out = LLVMAMD64ShrqNodeGen.create(srcB, srcA);
                 break;
             case "andb":
-                out = LLVMAMD64AndbNodeGen.create(srcA, srcB);
+                out = LLVMAMD64AndbNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
                 break;
             case "andw":
-                out = LLVMAMD64AndwNodeGen.create(srcA, srcB);
+                out = LLVMAMD64AndwNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
                 break;
             case "andl":
-                out = LLVMAMD64AndlNodeGen.create(srcA, srcB);
+                out = LLVMAMD64AndlNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
                 break;
             case "andq":
-                out = LLVMAMD64AndqNodeGen.create(srcA, srcB);
+                out = LLVMAMD64AndqNodeGen.create(getUpdateFlagsNode(), srcA, srcB);
                 break;
             case "orb":
                 out = LLVMAMD64OrbNodeGen.create(srcA, srcB);
@@ -1002,10 +1030,11 @@ class AsmFactory {
             AsmRegisterOperand op = (AsmRegisterOperand) operand;
             FrameSlot frame = getRegisterSlot(op.getBaseRegister());
             LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
+            int shift = op.getShift();
             assert type == op.getWidth();
             switch (((PrimitiveType) op.getWidth()).getPrimitiveKind()) {
                 case I8:
-                    return LLVMToI8NoZeroExtNodeGen.create(register);
+                    return LLVMAMD64I64ToI8NodeGen.create(shift, register);
                 case I16:
                     return LLVMToI16NoZeroExtNodeGen.create(register);
                 case I32:
@@ -1167,10 +1196,29 @@ class AsmFactory {
 
     private FrameSlot getArgumentSlot(int index, Type type) {
         Argument info = argInfo.get(index);
-        assert info.isMemory() || type == info.getType();
+        assert info.isMemory() || type instanceof StructureType || type == info.getType() : String.format("arg: %s; %s vs %s", info, type, info.getType());
 
         String name = getArgumentName(index);
-        addFrameSlot(name, type);
+        addFrameSlot(name, info.getType());
         return frameDescriptor.findFrameSlot(name);
+    }
+
+    private static String getFlagName(long flag) {
+        return "$flag_" + flag;
+    }
+
+    private FrameSlot getFlagSlot(long flag) {
+        String name = getFlagName(flag);
+        addFrameSlot(name, PrimitiveType.I1);
+        return frameDescriptor.findFrameSlot(name);
+    }
+
+    private LLVMExpressionNode getFlag(long flag) {
+        return LLVMI1ReadNodeGen.create(getFlagSlot(flag));
+    }
+
+    private LLVMAMD64UpdateFlagsNode getUpdateFlagsNode() {
+        return new LLVMAMD64UpdateFlagsNode(getFlagSlot(LLVMAMD64Flags.CF), getFlagSlot(LLVMAMD64Flags.PF), getFlagSlot(LLVMAMD64Flags.ZF), getFlagSlot(LLVMAMD64Flags.SF),
+                        getFlagSlot(LLVMAMD64Flags.OF));
     }
 }
