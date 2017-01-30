@@ -93,7 +93,7 @@ public class LLVMGlobalRootNode extends RootNode {
                 Object[] realArgs = new Object[arguments.length + LLVMCallNode.ARG_START_INDEX];
                 realArgs[0] = LLVMFrameUtil.getAddress(frame, stackPointerSlot);
                 System.arraycopy(arguments, 0, realArgs, LLVMCallNode.ARG_START_INDEX, arguments.length);
-                result = executeIteration(frame, i, realArgs);
+                result = executeIteration(i, realArgs);
 
                 context.awaitThreadTermination();
                 assert LLVMSignal.getNumberOfRegisteredSignals() == 0;
@@ -112,7 +112,7 @@ public class LLVMGlobalRootNode extends RootNode {
         }
     }
 
-    protected Object executeIteration(VirtualFrame frame, int iteration, Object[] args) {
+    protected Object executeIteration(int iteration, Object[] args) {
         Object result;
 
         if (iteration != 0) {
@@ -127,7 +127,7 @@ public class LLVMGlobalRootNode extends RootNode {
         int returnCode = 0;
 
         try {
-            result = main.call(frame, args);
+            result = main.call(args);
         } catch (LLVMExitException e) {
             returnCode = e.getReturnCode();
             throw e;
