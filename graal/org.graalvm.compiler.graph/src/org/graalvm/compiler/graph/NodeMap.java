@@ -34,7 +34,6 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     private static final int MIN_REALLOC_SIZE = 16;
 
     protected Object[] values;
-    private int size;
 
     public NodeMap(Graph graph) {
         super(graph);
@@ -44,7 +43,6 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     public NodeMap(NodeMap<T> copyFrom) {
         super(copyFrom.graph);
         this.values = Arrays.copyOf(copyFrom.values, copyFrom.values.length);
-        this.size = copyFrom.size;
     }
 
     @Override
@@ -69,7 +67,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public boolean isEmpty() {
-        return size == 0;
+        throw new UnsupportedOperationException("isEmpty() is not supported for perfomrance reasons");
     }
 
     @Override
@@ -95,18 +93,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     public void set(Node node, T value) {
         assert check(node);
-        int id = getNodeId(node);
-        if (value == null) {
-            if (values[id] != null) {
-                --size;
-            }
-            values[id] = null;
-        } else {
-            if (values[id] == null) {
-                ++size;
-            }
-            values[id] = value;
-        }
+        values[getNodeId(node)] = value;
     }
 
     public void setAndGrow(Node node, T value) {
@@ -124,7 +111,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public int size() {
-        return size;
+        throw new UnsupportedOperationException("size() is not supported for perfomrance reasons");
     }
 
     public int capacity() {
@@ -216,7 +203,6 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
             public void remove() {
                 assert NodeMap.this.values[current] != null;
                 NodeMap.this.values[current] = null;
-                NodeMap.this.size--;
             }
         };
     }

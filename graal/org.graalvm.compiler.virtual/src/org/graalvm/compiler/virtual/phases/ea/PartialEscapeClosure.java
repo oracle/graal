@@ -22,11 +22,10 @@
  */
 package org.graalvm.compiler.virtual.phases.ea;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.function.IntFunction;
 
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -34,7 +33,6 @@ import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.util.ArraySet;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
@@ -70,6 +68,7 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -131,11 +130,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     private final class CollectVirtualObjectsClosure extends NodeClosure<ValueNode> {
-        private final Set<VirtualObjectNode> virtual;
+        private final EconomicSet<VirtualObjectNode> virtual;
         private final GraphEffectList effects;
         private final BlockT state;
 
-        private CollectVirtualObjectsClosure(Set<VirtualObjectNode> virtual, GraphEffectList effects, BlockT state) {
+        private CollectVirtualObjectsClosure(EconomicSet<VirtualObjectNode> virtual, GraphEffectList effects, BlockT state) {
             this.virtual = virtual;
             this.effects = effects;
             this.state = state;
@@ -369,7 +368,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     private void processNodeWithState(NodeWithState nodeWithState, BlockT state, GraphEffectList effects) {
         for (FrameState fs : nodeWithState.states()) {
             FrameState frameState = getUniqueFramestate(nodeWithState, fs);
-            Set<VirtualObjectNode> virtual = new ArraySet<>();
+            EconomicSet<VirtualObjectNode> virtual = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             frameState.applyToNonVirtual(new CollectVirtualObjectsClosure(virtual, effects, state));
             collectLockedVirtualObjects(state, virtual);
             collectReferencedVirtualObjects(state, virtual);
@@ -387,16 +386,16 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         return frameState;
     }
 
-    private void addVirtualMappings(FrameState frameState, Set<VirtualObjectNode> virtual, BlockT state, GraphEffectList effects) {
+    private void addVirtualMappings(FrameState frameState, EconomicSet<VirtualObjectNode> virtual, BlockT state, GraphEffectList effects) {
         for (VirtualObjectNode obj : virtual) {
             effects.addVirtualMapping(frameState, state.getObjectState(obj).createEscapeObjectState(obj));
         }
     }
 
-    private void collectReferencedVirtualObjects(BlockT state, Set<VirtualObjectNode> virtual) {
-        ArrayDeque<VirtualObjectNode> queue = new ArrayDeque<>(virtual);
-        while (!queue.isEmpty()) {
-            VirtualObjectNode object = queue.removeLast();
+    private void collectReferencedVirtualObjects(BlockT state, EconomicSet<VirtualObjectNode> virtual) {
+        Iterator<VirtualObjectNode> iterator = virtual.iterator();
+        while (iterator.hasNext()) {
+            VirtualObjectNode object = iterator.next();
             int id = object.getObjectId();
             if (id != -1) {
                 ObjectState objState = state.getObjectStateOptional(id);
@@ -406,7 +405,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             VirtualObjectNode entryVirtual = (VirtualObjectNode) entry;
                             if (!virtual.contains(entryVirtual)) {
                                 virtual.add(entryVirtual);
-                                queue.addLast(entryVirtual);
                             }
                         }
                     }
@@ -415,7 +413,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    private void collectLockedVirtualObjects(BlockT state, Set<VirtualObjectNode> virtual) {
+    private void collectLockedVirtualObjects(BlockT state, EconomicSet<VirtualObjectNode> virtual) {
         for (int i = 0; i < state.getStateCount(); i++) {
             ObjectState objState = state.getObjectStateOptional(i);
             if (objState != null && objState.isVirtual() && objState.hasLocks()) {
