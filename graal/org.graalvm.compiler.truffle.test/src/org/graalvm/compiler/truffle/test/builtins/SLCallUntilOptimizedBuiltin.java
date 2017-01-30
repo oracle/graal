@@ -22,11 +22,9 @@
  */
 package org.graalvm.compiler.truffle.test.builtins;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -66,7 +64,6 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
                 indirectCall.call(frame, target, EMPTY_ARGS);
             }
         }
-        waitForCompilation(target);
 
         // call one more in compiled
         indirectCall.call(frame, target, EMPTY_ARGS);
@@ -82,15 +79,6 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
     private static void checkTarget(OptimizedCallTarget target) throws SLAssertionError {
         if (!target.isValid()) {
             throw new SLAssertionError("Function " + target + " invalidated.");
-        }
-    }
-
-    @TruffleBoundary
-    private static void waitForCompilation(OptimizedCallTarget target) {
-        try {
-            ((GraalTruffleRuntime) Truffle.getRuntime()).waitForCompilation(target, 640000);
-        } catch (ExecutionException | TimeoutException e) {
-            throw new RuntimeException(e);
         }
     }
 
