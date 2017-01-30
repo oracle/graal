@@ -85,6 +85,7 @@ mdlCheckExcludeDirectories = [
 # sorted by priority in descending order (highest priority on top)
 supportedLLVMVersions = [
     '3.2',
+    '3.3',
     '3.8',
     '3.9',
 ]
@@ -640,10 +641,10 @@ class SulongNativeProject(mx.NativeProject):
         return ret
 
 def exportMxClang32(ret):
-    exp = findLLVMProgram('clang', ['3.2'])
+    exp = findLLVMProgram('clang', ['3.2', '3.3'])
     if not exp is None:
         ret['MX_CLANG_V32'] = exp
-    exp = findLLVMProgram('opt', ['3.2'])
+    exp = findLLVMProgram('opt', ['3.2', '3.3'])
     if not exp is None:
         ret['MX_OPT_V32'] = exp
 
