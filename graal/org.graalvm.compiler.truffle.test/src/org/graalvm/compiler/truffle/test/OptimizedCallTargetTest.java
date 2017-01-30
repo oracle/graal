@@ -90,7 +90,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
         @Override
         public int execute(VirtualFrame frame) {
-            return (int) callNode.call(frame, frame.getArguments());
+            return (int) callNode.call(frame.getArguments());
         }
     }
 

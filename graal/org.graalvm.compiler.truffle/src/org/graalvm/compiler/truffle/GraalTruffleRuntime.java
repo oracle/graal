@@ -308,7 +308,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         private final FrameInstanceVisitor<T> visitor;
         private final CallMethods methods;
 
-        private boolean first = true;
         private int skipFrames;
 
         private InspectedFrame callNodeFrame;
@@ -328,13 +327,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             } else if (frame.isMethod(methods.callTargetMethod)) {
                 try {
                     if (skipFrames == 0) {
-                        return visitor.visitFrame(new GraalFrameInstance(first, frame, callNodeFrame));
+                        return visitor.visitFrame(new GraalFrameInstance(frame, callNodeFrame));
                     } else {
                         skipFrames--;
                     }
                 } finally {
                     callNodeFrame = null;
-                    first = false;
                 }
             } else if (frame.isMethod(methods.callNodeMethod)) {
                 callNodeFrame = frame;

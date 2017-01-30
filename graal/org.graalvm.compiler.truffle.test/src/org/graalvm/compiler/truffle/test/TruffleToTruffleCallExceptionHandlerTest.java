@@ -75,7 +75,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            callNode.call(frame, new Object[0]);
+            callNode.call(new Object[0]);
             return null;
         }
 
@@ -109,7 +109,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            callNode.call(frame, new Object[0]);
+            callNode.call(new Object[0]);
             return null;
         }
 

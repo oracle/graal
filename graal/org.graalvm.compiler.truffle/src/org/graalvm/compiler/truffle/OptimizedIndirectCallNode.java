@@ -23,9 +23,6 @@
 package org.graalvm.compiler.truffle;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
@@ -33,23 +30,11 @@ import com.oracle.truffle.api.nodes.NodeInfo;
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
  */
 @NodeInfo
-public final class OptimizedIndirectCallNode extends IndirectCallNode implements MaterializedFrameNotify {
-
-    @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
+public final class OptimizedIndirectCallNode extends IndirectCallNode {
 
     @Override
-    public Object call(VirtualFrame frame, CallTarget target, Object[] arguments) {
-        return OptimizedDirectCallNode.callProxy(this, target, frame, arguments, false);
-    }
-
-    @Override
-    public FrameAccess getOutsideFrameAccess() {
-        return outsideFrameAccess;
-    }
-
-    @Override
-    public void setOutsideFrameAccess(FrameAccess outsideFrameAccess) {
-        this.outsideFrameAccess = outsideFrameAccess;
+    public Object call(CallTarget target, Object[] arguments) {
+        return OptimizedDirectCallNode.callProxy(this, target, arguments, false);
     }
 
 }
