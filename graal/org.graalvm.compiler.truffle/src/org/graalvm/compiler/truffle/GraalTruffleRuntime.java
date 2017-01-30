@@ -22,52 +22,6 @@
  */
 package org.graalvm.compiler.truffle;
 
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceConfigurationError;
-import java.util.ServiceLoader;
-import java.util.WeakHashMap;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
-
-import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.CompilerThreadFactory;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.Debug.Scope;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.truffle.debug.CompilationStatisticsListener;
-import org.graalvm.compiler.truffle.debug.PrintCallTargetProfiling;
-import org.graalvm.compiler.truffle.debug.TraceCompilationASTListener;
-import org.graalvm.compiler.truffle.debug.TraceCompilationCallTreeListener;
-import org.graalvm.compiler.truffle.debug.TraceCompilationFailureListener;
-import org.graalvm.compiler.truffle.debug.TraceCompilationListener;
-import org.graalvm.compiler.truffle.debug.TraceCompilationPolymorphismListener;
-import org.graalvm.compiler.truffle.debug.TraceInliningListener;
-import org.graalvm.compiler.truffle.debug.TraceSplittingListener;
-import org.graalvm.compiler.truffle.phases.InstrumentBranchesPhase;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -90,7 +44,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.LayoutFactory;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
@@ -98,6 +51,51 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.Debug;
+import org.graalvm.compiler.debug.Debug.Scope;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.truffle.debug.CompilationStatisticsListener;
+import org.graalvm.compiler.truffle.debug.PrintCallTargetProfiling;
+import org.graalvm.compiler.truffle.debug.TraceCompilationASTListener;
+import org.graalvm.compiler.truffle.debug.TraceCompilationCallTreeListener;
+import org.graalvm.compiler.truffle.debug.TraceCompilationFailureListener;
+import org.graalvm.compiler.truffle.debug.TraceCompilationListener;
+import org.graalvm.compiler.truffle.debug.TraceCompilationPolymorphismListener;
+import org.graalvm.compiler.truffle.debug.TraceInliningListener;
+import org.graalvm.compiler.truffle.debug.TraceSplittingListener;
+import org.graalvm.compiler.truffle.phases.InstrumentPhase;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
+import java.util.WeakHashMap;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
+
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -464,8 +462,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     private void shutdown() {
         getCompilationNotify().notifyShutdown(this);
-        if (TruffleCompilerOptions.TruffleInstrumentBranches.getValue()) {
-            InstrumentBranchesPhase.instrumentation.dumpAccessTable();
+        if (TruffleCompilerOptions.TruffleInstrumentBranches.getValue() || TruffleCompilerOptions.TruffleInstrumentBoundaries.getValue()) {
+            InstrumentPhase.instrumentation.dumpAccessTable();
         }
     }
 
