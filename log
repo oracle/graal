@@ -1,0 +1,15 @@
+Compiling com.oracle.truffle.api.debug.test with javac-daemon... [/nfs/zebedee/home/graal/aph/truffle/mxbuild/truffle/com.oracle.truffle.api.debug.test/bin/com/oracle/truffle/api/debug/test/LegacyBreakpointTest.class[2017-01-25 17:18:29] is older than /nfs/zebedee/home/graal/aph/truffle/mxbuild/truffle/com.oracle.truffle.api.instrumentation.test/bin/META-INF/services/java.nio.file.spi.FileTypeDetector[2017-01-30 11:48:27]]
+Archiving TRUFFLE_SL_TEST... [/nfs/zebedee/home/graal/aph/truffle/mxbuild/dists/truffle-sl-test.jar[2017-01-25 17:18:07] is older than /nfs/zebedee/home/graal/aph/truffle/mxbuild/truffle/com.oracle.truffle.sl.test/bin/tests/error/TypeError07.output[2017-01-30 11:48:26]]
+Compiling com.oracle.truffle.tools.test with javac-daemon... [/nfs/zebedee/home/graal/aph/truffle/mxbuild/truffle/com.oracle.truffle.tools.test/bin/com/oracle/truffle/tools/test/ProfilerTest.class[2017-01-25 17:18:28] is older than /nfs/zebedee/home/graal/aph/truffle/mxbuild/truffle/com.oracle.truffle.api.instrumentation.test/bin/META-INF/services/java.nio.file.spi.FileTypeDetector[2017-01-30 11:48:27]]
+warning: [options] bootstrap class path not set in conjunction with -source 1.8
+warning: [options] bootstrap class path not set in conjunction with -source 1.8
+Compiling org.graalvm.compiler.truffle.test with javac-daemon... [dependency TRUFFLE_SL_TEST updated]
+Compiling org.graalvm.compiler.truffle.hotspot.aarch64 with javac-daemon... [/nfs/zebedee/home/graal/aph/graal-core/mxbuild/graal/org.graalvm.compiler.truffle.hotspot.aarch64/bin/org/graalvm/compiler/truffle/hotspot/aarch64/AArch64OptimizedCallTargetInstumentationFactory.class does not exist]
+1 warning
+/nfs/zebedee/home/graal/aph/graal-core/graal/org.graalvm.compiler.truffle.hotspot.aarch64/src/org/graalvm/compiler/truffle/hotspot/aarch64/AArch64RawNativeCallNodeFactory.java:28: error: package org.graalvm.compiler.hotspot.aarch64 does not exist
+import org.graalvm.compiler.hotspot.aarch64.AArch64RawNativeCallNode;
+                                           ^
+1 error
+1 warning
+Compiling org.graalvm.compiler.truffle.hotspot.aarch64 with javac-daemon failed
+1 build tasks failed
