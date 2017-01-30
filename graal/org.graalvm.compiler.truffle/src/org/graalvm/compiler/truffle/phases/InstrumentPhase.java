@@ -42,6 +42,9 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -54,11 +57,11 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrum
 
 public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
-                    "org.graalvm.compiler.truffle.OptimizedCallTarget.callProxy",
-                    "org.graalvm.compiler.truffle.OptimizedCallTarget.callRoot",
-                    "org.graalvm.compiler.truffle.OptimizedCallTarget.callInlined",
-                    "org.graalvm.compiler.truffle.OptimizedDirectCallNode.callProxy",
-                    "org.graalvm.compiler.truffle.OptimizedDirectCallNode.call"
+                    OptimizedCallTarget.class.getName() + ".callProxy",
+                    OptimizedCallTarget.class.getName() + ".callRoot",
+                    OptimizedCallTarget.class.getName() + ".callInlined",
+                    OptimizedDirectCallNode.class.getName() + ".callProxy",
+                    OptimizedDirectCallNode.class.getName() + ".call"
     };
     public static Instrumentation instrumentation = new Instrumentation();
     private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
@@ -73,6 +76,10 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
         } else {
             methodFilter = new MethodFilter[0];
         }
+    }
+
+    protected String instrumentationFilter() {
+        return TruffleCompilerOptions.TruffleInstrumentFilter.getValue();
     }
 
     protected static void insertCounter(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant,
@@ -108,8 +115,6 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
     protected abstract void instrumentGraph(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant);
 
     protected abstract int instrumentationPointSlotCount();
-
-    protected abstract String instrumentationFilter();
 
     protected abstract boolean instrumentPerInlineSite();
 
