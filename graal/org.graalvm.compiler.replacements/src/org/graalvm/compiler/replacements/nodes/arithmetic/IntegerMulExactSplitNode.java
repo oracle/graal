@@ -22,7 +22,8 @@
  */
 package org.graalvm.compiler.replacements.nodes.arithmetic;
 
-import org.graalvm.compiler.core.common.type.IntegerStamp;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
+
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
@@ -34,7 +35,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo
+@NodeInfo(cycles = CYCLES_4, cyclesRationale = "mul + cmp")
 public final class IntegerMulExactSplitNode extends IntegerExactArithmeticSplitNode {
     public static final NodeClass<IntegerMulExactSplitNode> TYPE = NodeClass.create(IntegerMulExactSplitNode.class);
 

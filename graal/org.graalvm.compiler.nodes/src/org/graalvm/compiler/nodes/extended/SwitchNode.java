@@ -242,4 +242,33 @@ public abstract class SwitchNode extends ControlSplitNode {
     }
 
     public abstract Stamp getValueStampForSuccessor(AbstractBeginNode beginNode);
+
+    @Override
+    public NodeCycles estimatedNodeCycles() {
+        if (keyCount() == 1) {
+            // if
+            return CYCLES_2;
+        } else if (isSorted()) {
+            // good heuristic
+            return CYCLES_8;
+        } else {
+            // not so good
+            return CYCLES_64;
+        }
+    }
+
+    @Override
+    public NodeSize estimatedNodeSize() {
+        if (keyCount() == 1) {
+            // if
+            return SIZE_2;
+        } else if (isSorted()) {
+            // good heuristic
+            return NodeSize.SIZE_8;
+        } else {
+            // not so good
+            return SIZE_64;
+        }
+    }	
+
 }

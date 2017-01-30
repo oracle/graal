@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
+
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -30,7 +32,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable.BinaryCommutative;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -39,7 +40,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.TriState;
 
-@NodeInfo(shortName = "==", cycles = NodeCycles.CYCLES_3)
+@NodeInfo(shortName = "==", cycles = CYCLES_2)
 public final class FloatEqualsNode extends CompareNode implements BinaryCommutative<ValueNode> {
     public static final NodeClass<FloatEqualsNode> TYPE = NodeClass.create(FloatEqualsNode.class);
 
