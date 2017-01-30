@@ -69,7 +69,7 @@ public abstract class LLVMForeignCallNode extends LLVMExpressionNode {
                     @Cached("create(getCallTarget(function))") DirectCallNode callNode,
                     @Cached("createToLLVMNodes(function)") ToLLVMNode[] toLLVMNodes, @Cached("arguments.length") int cachedLength) {
         assert function.getReturnType() != LLVMRuntimeType.STRUCT;
-        return callNode.call(frame, packArguments(frame, arguments, toLLVMNodes, cachedLength));
+        return callNode.call(packArguments(frame, arguments, toLLVMNodes, cachedLength));
     }
 
     @Specialization
@@ -77,7 +77,7 @@ public abstract class LLVMForeignCallNode extends LLVMExpressionNode {
                     @Cached("create()") IndirectCallNode callNode, @Cached("arguments.length") int cachedLength) {
         assert function.getReturnType() != LLVMRuntimeType.STRUCT;
         LLVMPerformance.warn(this);
-        return callNode.call(frame, getCallTarget(function), packArguments(frame, function, arguments, cachedLength));
+        return callNode.call(getCallTarget(function), packArguments(frame, function, arguments, cachedLength));
     }
 
     @ExplodeLoop
