@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.phases.common.inlining.info;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -244,9 +242,6 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert invoke.next() == continuation;
         invoke.setNext(null);
         returnMerge.setNext(continuation);
-        if (UseGraalInstrumentation.getValue()) {
-            InliningUtil.detachInstrumentation(invoke);
-        }
         if (returnValuePhi != null) {
             invoke.asNode().replaceAtUsages(returnValuePhi);
         }

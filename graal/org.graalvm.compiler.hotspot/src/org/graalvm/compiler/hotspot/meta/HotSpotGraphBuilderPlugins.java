@@ -92,7 +92,6 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.StableOptionValue;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
-import org.graalvm.compiler.replacements.InlineGraalDirectivesPlugin;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
@@ -177,7 +176,6 @@ public class HotSpotGraphBuilderPlugins {
         if (InlineDuringParsing.getValue()) {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
-        plugins.appendInlineInvokePlugin(new InlineGraalDirectivesPlugin());
 
         if (GeneratePIC.getValue()) {
             plugins.setClassInitializationPlugin(new HotSpotClassInitializationPlugin());

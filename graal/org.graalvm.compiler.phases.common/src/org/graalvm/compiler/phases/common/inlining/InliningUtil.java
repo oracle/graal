@@ -24,7 +24,6 @@ package org.graalvm.compiler.phases.common.inlining;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -83,7 +82,6 @@ import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -367,9 +365,6 @@ public class InliningUtil {
                 unwindNode = (UnwindNode) duplicates.get(unwindNode);
             }
 
-            if (UseGraalInstrumentation.getValue()) {
-                detachInstrumentation(invoke);
-            }
             finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph);
             GraphUtil.killCFG(invokeNode);
 
@@ -812,24 +807,7 @@ public class InliningUtil {
      * This method exclude InstrumentationNode from inlining heuristics.
      */
     public static int getNodeCount(StructuredGraph graph) {
-        if (UseGraalInstrumentation.getValue()) {
-            return graph.getNodeCount() - graph.getNodes().filter(InstrumentationNode.class).count();
-        } else {
-            return graph.getNodeCount();
-        }
-    }
-
-    /**
-     * This method detach the instrumentation attached to the given Invoke. It is called when the
-     * given Invoke is inlined.
-     */
-    public static void detachInstrumentation(Invoke invoke) {
-        FixedNode invokeNode = invoke.asNode();
-        for (InstrumentationNode instrumentation : invokeNode.usages().filter(InstrumentationNode.class).snapshot()) {
-            if (instrumentation.getTarget() == invoke) {
-                instrumentation.replaceFirstInput(instrumentation.getTarget(), null);
-            }
-        }
+        return graph.getNodeCount();
     }
 
 }

@@ -75,10 +75,6 @@ import org.graalvm.compiler.nodes.debug.BlackholeNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
 import org.graalvm.compiler.nodes.debug.OpaqueNode;
 import org.graalvm.compiler.nodes.debug.SpillRegistersNode;
-import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationBeginNode;
-import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationEndNode;
-import org.graalvm.compiler.nodes.debug.instrumentation.IsMethodInlinedNode;
-import org.graalvm.compiler.nodes.debug.instrumentation.RootNameNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
@@ -816,41 +812,6 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.add(new EnsureVirtualizedNode(object, true));
-                return true;
-            }
-        });
-        r.register0("isMethodInlined", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, new IsMethodInlinedNode(b.getDepth()));
-                return true;
-            }
-        });
-        r.register0("rawRootName", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new RootNameNode(b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp()));
-                return true;
-            }
-        });
-        r.register0("instrumentationBegin", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new InstrumentationBeginNode(true));
-                return true;
-            }
-        });
-        r.register0("instrumentationBeginForPredecessor", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new InstrumentationBeginNode(false));
-                return true;
-            }
-        });
-        r.register0("instrumentationEnd", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new InstrumentationEndNode());
                 return true;
             }
         });
