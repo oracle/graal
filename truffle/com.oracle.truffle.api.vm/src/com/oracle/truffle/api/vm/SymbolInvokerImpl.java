@@ -66,10 +66,12 @@ abstract class SymbolInvokerImpl {
         return new TemporaryRoot(lang, foreignAccess, function);
     }
 
-    static void unwrapArgs(final Object[] args) {
+    static void unwrapArgs(PolyglotEngine engine, final Object[] args) {
         for (int i = 0; i < args.length; i++) {
             if (args[i] instanceof EngineTruffleObject) {
-                args[i] = ((EngineTruffleObject) args[i]).getDelegate();
+                final EngineTruffleObject engineObject = (EngineTruffleObject) args[i];
+                engineObject.assertEngine(engine);
+                args[i] = engineObject.getDelegate();
             }
             args[i] = JavaInterop.asTruffleValue(args[i]);
         }
@@ -118,7 +120,7 @@ abstract class SymbolInvokerImpl {
         @Override
         protected Object executeImpl(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
-            unwrapArgs(args);
+            unwrapArgs(engine, args);
             try {
                 if (foreignAccess == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
