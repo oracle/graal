@@ -637,6 +637,7 @@ public class PolyglotEngine {
             try {
                 Access.DEBUG.executionStarted(PolyglotEngine.this);
                 final Object[] args = ForeignAccess.getArguments(frame).toArray();
+                SymbolInvokerImpl.unwrapArgs(args);
                 res = ForeignAccess.execute(foreignNode, frame, receiver, args);
             } finally {
                 ExecutionImpl.executionEnded(prev);

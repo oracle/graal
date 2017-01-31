@@ -66,6 +66,15 @@ abstract class SymbolInvokerImpl {
         return new TemporaryRoot(lang, foreignAccess, function);
     }
 
+    static void unwrapArgs(final Object[] args) {
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] instanceof EngineTruffleObject) {
+                args[i] = ((EngineTruffleObject) args[i]).getDelegate();
+            }
+            args[i] = JavaInterop.asTruffleValue(args[i]);
+        }
+    }
+
     static class TemporaryRoot extends RootNode {
         @Child private Node foreignAccess;
         @Child private ConvertNode convert;
@@ -109,9 +118,7 @@ abstract class SymbolInvokerImpl {
         @Override
         protected Object executeImpl(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
-            for (int i = 0; i < args.length; i++) {
-                args[i] = JavaInterop.asTruffleValue(args[i]);
-            }
+            unwrapArgs(args);
             try {
                 if (foreignAccess == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
