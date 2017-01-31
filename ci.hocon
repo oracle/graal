@@ -45,10 +45,6 @@ solaris : ${mx} {
 }
 
 darwin : ${mx} {
-  packages : {
-    "git" : ""
-  }
-
   environment : ${common.environment} {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
   }
