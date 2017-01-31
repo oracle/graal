@@ -287,8 +287,15 @@ public class IntrospectionTest {
 
     }
 
+    @DSLOptions(defaultGenerator = DSLGenerator.DEFAULT)
+    @TypeSystem
+    public static class SomeReflectionTS {
+
+    }
+
     @ExpectError("Reflection is not supported by the used DSL layout. Only the flat DSL layout supports reflection.")
     @Introspectable
+    @TypeSystemReference(SomeReflectionTS.class)
     public abstract static class SomeReflection1Node extends Node {
 
         abstract Object execute(Object o);

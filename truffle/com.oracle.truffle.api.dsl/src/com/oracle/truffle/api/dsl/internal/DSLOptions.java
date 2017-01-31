@@ -45,7 +45,7 @@ public @interface DSLOptions {
     /**
      * Switches the default generator mode.
      */
-    DSLGenerator defaultGenerator() default DSLGenerator.DEFAULT;
+    DSLGenerator defaultGenerator() default DSLGenerator.FLAT;
 
     /**
      * Whether the flat generator layout will perform boxing elimination or not. This flag has no
