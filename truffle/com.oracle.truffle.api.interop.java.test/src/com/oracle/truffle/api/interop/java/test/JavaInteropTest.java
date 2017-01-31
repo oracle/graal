@@ -297,6 +297,17 @@ public class JavaInteropTest {
     }
 
     @Test
+    public void isJavaObject() {
+        // obj == JavaInterop.asJavaObject(new Data())
+        assertFalse(JavaInterop.isJavaObject(XYPlus.class, obj));
+        assertTrue(JavaInterop.isJavaObject(Data.class, obj));
+        assertTrue(JavaInterop.isJavaObject(Object.class, obj));
+        // assert that asJavaObject unwraps the object if isJavaObject returns true
+        assertTrue(JavaInterop.asJavaObject(Data.class, obj) == data);
+        assertTrue(JavaInterop.asJavaObject(Object.class, obj) == data);
+    }
+
+    @Test
     public void truffleValue() {
         Object object = new Object();
         // Test that asTruffleValue() returns the same as asTruffleObject() for non-primitive types:
