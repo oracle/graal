@@ -67,7 +67,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public boolean isEmpty() {
-        throw new UnsupportedOperationException("isEmpty() is not supported for perfomrance reasons");
+        throw new UnsupportedOperationException("isEmpty() is not supported for performance reasons");
     }
 
     @Override
@@ -111,7 +111,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public int size() {
-        throw new UnsupportedOperationException("size() is not supported for perfomrance reasons");
+        throw new UnsupportedOperationException("size() is not supported for performance reasons");
     }
 
     public int capacity() {

@@ -66,4 +66,7 @@ public final class BreakpointNode extends FixedWithNextNode implements LIRLowera
     public NodeInputList<ValueNode> arguments() {
         return arguments;
     }
+
+    @NodeIntrinsic
+    public static native void breakpoint();
 }

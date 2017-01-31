@@ -64,7 +64,6 @@ import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.GuardedValueNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -228,14 +227,14 @@ public class InliningUtil {
         invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
     }
 
-    public static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
+    public static PiNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
         return createAnchoredReceiver(graph, anchor, receiver,
                         exact ? StampFactory.objectNonNull(TypeReference.createExactTrusted(commonType)) : StampFactory.objectNonNull(TypeReference.createTrusted(graph.getAssumptions(), commonType)));
     }
 
-    private static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ValueNode receiver, Stamp stamp) {
+    private static PiNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ValueNode receiver, Stamp stamp) {
         // to avoid that floating reads on receiver fields float above the type check
-        return graph.unique(new GuardedValueNode(receiver, anchor, stamp));
+        return graph.unique(new PiNode(receiver, stamp, (ValueNode) anchor));
     }
 
     /**
