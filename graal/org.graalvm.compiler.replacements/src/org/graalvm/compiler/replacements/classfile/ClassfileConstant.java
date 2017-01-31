@@ -135,7 +135,7 @@ abstract class ClassfileConstant {
                 String type = nameAndType.getType(cp);
 
                 if (opcode == Bytecodes.INVOKEINTERFACE) {
-                    method = resolveMethod(cls, name, type, false);
+                    method = resolveMethod(cp.context, cls, name, type, false);
                     if (method == null) {
                         throw new NoSuchMethodError(cls.toJavaName() + "." + name + type);
                     }
@@ -143,13 +143,13 @@ abstract class ClassfileConstant {
                         throw new IncompatibleClassChangeError("cannot invokeinterface " + method.format("%H.%n(%P)%R"));
                     }
                 } else if (opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKESPECIAL) {
-                    method = resolveMethod(cls, name, type, false);
+                    method = resolveMethod(cp.context, cls, name, type, false);
                     if (method == null) {
                         throw new NoSuchMethodError(cls.toJavaName() + "." + name + type);
                     }
                 } else {
                     assert opcode == Bytecodes.INVOKESTATIC;
-                    method = resolveMethod(cls, name, type, true);
+                    method = resolveMethod(cp.context, cls, name, type, true);
                     if (method == null) {
                         throw new NoSuchMethodError(cls.toJavaName() + "." + name + type);
                     }
@@ -273,19 +273,19 @@ abstract class ClassfileConstant {
         }
     }
 
-    static ResolvedJavaMethod resolveMethod(ResolvedJavaType c, String name, String descriptor, boolean isStatic) {
-        ResolvedJavaMethod method = ClassfileBytecodeProvider.findMethod(c, name, descriptor, isStatic);
+    static ResolvedJavaMethod resolveMethod(ClassfileBytecodeProvider context, ResolvedJavaType c, String name, String descriptor, boolean isStatic) {
+        ResolvedJavaMethod method = context.findMethod(c, name, descriptor, isStatic);
         if (method != null) {
             return method;
         }
         if (!c.isJavaLangObject() && !c.isInterface()) {
-            method = resolveMethod(c.getSuperclass(), name, descriptor, isStatic);
+            method = resolveMethod(context, c.getSuperclass(), name, descriptor, isStatic);
             if (method != null) {
                 return method;
             }
         }
         for (ResolvedJavaType i : c.getInterfaces()) {
-            method = resolveMethod(i, name, descriptor, isStatic);
+            method = resolveMethod(context, i, name, descriptor, isStatic);
             if (method != null) {
                 return method;
             }

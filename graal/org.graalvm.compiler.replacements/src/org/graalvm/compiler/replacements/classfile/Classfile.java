@@ -129,7 +129,7 @@ public class Classfile {
             String attributeName = cp.get(Utf8.class, stream.readUnsignedShort()).value;
             int attributeLength = stream.readInt();
             if (code == null && attributeName.equals("Code")) {
-                ResolvedJavaMethod method = ClassfileBytecodeProvider.findMethod(type, name, descriptor, isStatic);
+                ResolvedJavaMethod method = cp.context.findMethod(type, name, descriptor, isStatic);
                 // Even if we will discard the Code attribute (see below), we still
                 // need to parse it to reach the following class file content.
                 code = new ClassfileBytecode(method, stream, cp);
