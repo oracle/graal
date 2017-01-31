@@ -490,7 +490,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                         @Override
                         public void onEnter(VirtualFrame frame) {
                             onStatement++;
-                            directCall.call(frame, new Object[0]);
+                            directCall.call(new Object[0]);
                         }
 
                     };
@@ -557,7 +557,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                         @Override
                         public void onEnter(VirtualFrame frame) {
                             onStatement++;
-                            directCall.call(frame, new Object[0]);
+                            directCall.call(new Object[0]);
                         }
 
                     };

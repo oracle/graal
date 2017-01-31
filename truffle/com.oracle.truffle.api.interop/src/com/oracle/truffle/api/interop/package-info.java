@@ -45,5 +45,7 @@
  * {@link com.oracle.truffle.api.interop.Message} with
  * {@link com.oracle.truffle.api.interop.Message#createNode}. The message can then be executed with
  * {@link com.oracle.truffle.api.interop.ForeignAccess#execute}.
+ * 
+ * @since 0.8 or older
  */
 package com.oracle.truffle.api.interop;

@@ -171,8 +171,8 @@ public class FrameTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 FrameInstance frameInstance = runtime.getCurrentFrame();
-                Frame readWrite = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE, true);
-                Frame materialized = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE, true);
+                Frame readWrite = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+                Frame materialized = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
 
                 assertTrue("Really materialized: " + materialized, materialized instanceof MaterializedFrame);
                 assertEquals("It's my frame", frame, readWrite);

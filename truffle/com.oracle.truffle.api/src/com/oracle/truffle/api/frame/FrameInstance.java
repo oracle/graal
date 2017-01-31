@@ -32,20 +32,66 @@ import com.oracle.truffle.api.nodes.Node;
  * @since 0.8 or earlier
  */
 public interface FrameInstance {
-    /** @since 0.8 or earlier */
+    /**
+     * Access mode for {@link FrameInstance#getFrame(FrameAccess)}.
+     *
+     * @see FrameInstance#getFrame(FrameAccess)
+     * @since 0.8 or earlier
+     */
     enum FrameAccess {
-        /** @since 0.8 or earlier */
+        /**
+         * @since 0.8 or earlier
+         * @deprecated without replacement. This mode always returns <code>null</code>.
+         **/
+        @Deprecated //
         NONE,
-        /** @since 0.8 or earlier */
+
+        /**
+         * This mode allows to read the frame and provides read only access to its local variables.
+         * The returned frame must not be stored/persisted. Writing local variables in this mode
+         * will result in an {@link AssertionError} only if assertions (-ea) are enabled.
+         *
+         * @since 0.8 or earlier
+         */
         READ_ONLY,
-        /** @since 0.8 or earlier */
+
+        /**
+         * This mode allows to read the frame and provides read and write access to its local
+         * variables. The returned frame must not be stored/persisted.
+         *
+         * @since 0.8 or earlier
+         **/
         READ_WRITE,
-        /** @since 0.8 or earlier */
+        /**
+         * This mode allows to read a materialized version of the frame and provides read and write
+         * access to its local variables. In addition to {@link #READ_WRITE} this mode allows to
+         * store/persist the returned frame.
+         *
+         * @since 0.8 or earlier
+         **/
         MATERIALIZE
     }
 
-    /** @since 0.8 or earlier */
-    Frame getFrame(FrameAccess access, boolean slowPath);
+    /**
+     *
+     * @since 0.8 or earlier
+     * @deprecated use {@link #getFrame(FrameAccess)} instead. It is equivalent to
+     *             <code>FrameInstance.getFrame(access, true)</code>.
+     */
+    @Deprecated
+    default Frame getFrame(FrameAccess access, @SuppressWarnings("unused") boolean slowPath) {
+        return getFrame(access);
+    }
+
+    /**
+     * Accesses the underlying frame using a specified {@link FrameAccess access mode}.
+     *
+     * @see FrameAccess
+     * @since 0.23
+     */
+    default Frame getFrame(FrameAccess access) {
+        return getFrame(access, true);
+    }
 
     /** @since 0.8 or earlier */
     boolean isVirtualFrame();

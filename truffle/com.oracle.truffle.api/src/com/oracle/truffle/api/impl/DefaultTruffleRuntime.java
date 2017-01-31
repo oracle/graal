@@ -26,8 +26,10 @@ package com.oracle.truffle.api.impl;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.Assumption;
@@ -48,9 +50,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.Iterator;
 import java.util.ServiceConfigurationError;
-import java.util.ServiceLoader;
 
 /**
  * Default implementation of the Truffle runtime if the virtual machine does not provide a better
@@ -231,14 +231,24 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
             this.callerFrame = callerFrame;
         }
 
-        public final Frame getFrame(FrameAccess access, boolean slowPath) {
+        @SuppressWarnings("deprecation")
+        public final Frame getFrame(FrameAccess access) {
             if (access == FrameAccess.NONE) {
                 return null;
             }
-            if (access == FrameAccess.MATERIALIZE) {
-                return frame.materialize();
+            Frame localFrame = this.frame;
+            switch (access) {
+                case READ_ONLY: {
+                    // assert that it is really used read only
+                    assert (localFrame = new ReadOnlyFrame(localFrame)) != null;
+                    return localFrame;
+                }
+                case READ_WRITE:
+                    return localFrame;
+                case MATERIALIZE:
+                    return localFrame.materialize();
             }
-            return frame;
+            throw new AssertionError();
         }
 
         public final boolean isVirtualFrame() {
@@ -254,4 +264,5 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         }
 
     }
+
 }

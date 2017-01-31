@@ -918,7 +918,7 @@ public class PolyglotEngine {
 
     private static class PolyglotEvalRootNode extends PolyglotRootNode {
 
-        private static final Object[] DEFAULT_ARGUMENTS = new Object[0];
+        private static final Object[] EMPTY_ARRAY = new Object[0];
 
         @Child private DirectCallNode call;
         private TruffleLanguage<?> fillLanguage;
@@ -945,7 +945,7 @@ public class PolyglotEngine {
                 initialize();
             }
             fillLang[0] = fillLanguage;
-            return call.call(frame, DEFAULT_ARGUMENTS);
+            return call.call(EMPTY_ARRAY);
         }
 
         private void initialize() {
@@ -1040,7 +1040,7 @@ public class PolyglotEngine {
          * owner. Let's start by defining the structure with Java interfaces:
          *
          * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties}
-         * 
+         *
          * The example defines a parser that somehow obtains object representing the JSON data and
          * converts it into {@link List} of {@code Repository} instances. After calling the method
          * we can safely use the interfaces ({@link List}, {@code Repository}, {@code Owner}) and

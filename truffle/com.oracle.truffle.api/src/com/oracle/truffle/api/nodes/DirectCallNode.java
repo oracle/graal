@@ -25,9 +25,11 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
@@ -49,8 +51,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * @since 0.8 or earlier
  */
 public abstract class DirectCallNode extends Node {
+    static final VirtualFrame LEGACY_FRAME = Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor());
+
     /** @since 0.8 or earlier */
     protected final CallTarget callTarget;
+    @Deprecated @CompilationFinal private VirtualFrame legacyFrame;
 
     /** @since 0.8 or earlier */
     protected DirectCallNode(CallTarget callTarget) {
@@ -63,8 +68,24 @@ public abstract class DirectCallNode extends Node {
      * @param arguments the arguments that should be passed to the callee
      * @return the return result of the call
      * @since 0.8 or earlier
+     * @deprecated use call without frame instead
      */
-    public abstract Object call(VirtualFrame frame, Object[] arguments);
+    @Deprecated
+    public Object call(@SuppressWarnings("unused") VirtualFrame frame, Object[] arguments) {
+        return call(arguments);
+    }
+
+    /**
+     * Calls the inner {@link CallTarget} returned by {@link #getCurrentCallTarget()}.
+     *
+     * @param arguments the arguments that should be passed to the callee
+     * @return the return result of the call
+     * @since 0.23
+     */
+    public Object call(Object[] arguments) {
+        // TODO change to varargs as soon as #call(VirtualFrame, Object[] will removed.
+        return call(LEGACY_FRAME, arguments);
+    }
 
     /**
      * Returns the originally supplied {@link CallTarget} when this call node was created. Please
@@ -101,7 +122,7 @@ public abstract class DirectCallNode extends Node {
      * Enforces the runtime system to inline the {@link CallTarget} at this call site. If the
      * runtime system does not support inlining or it is already inlined this method has no effect.
      * The runtime system may decide to not inline calls which were forced to inline.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract void forceInlining();
@@ -121,7 +142,7 @@ public abstract class DirectCallNode extends Node {
      * sensitive profiling information for this {@link DirectCallNode}. If
      * {@link #isCallTargetCloningAllowed()} returns <code>false</code> this method has no effect
      * and returns <code>false</code>.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public abstract boolean cloneCallTarget();

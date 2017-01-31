@@ -104,5 +104,7 @@
  * <li>Set/display options</li>
  * <li>Display Truffle AST structure</li>
  * </ul>
+ *
+ * @since 0.8 or earlier
  */
 package com.oracle.truffle.tools.debug.shell;
