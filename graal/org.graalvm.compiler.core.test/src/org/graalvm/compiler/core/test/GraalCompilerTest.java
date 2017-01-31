@@ -1303,6 +1303,6 @@ public abstract class GraalCompilerTest extends GraalTest {
     public static void initializeForTimeout() {
         // timeout tests run in a separate thread which needs the DebugEnvironment to be
         // initialized
-        DebugEnvironment.ensureInitialized();
+        DebugEnvironment.ensureInitialized(OptionValues.GLOBAL);
     }
 }

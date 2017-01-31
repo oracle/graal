@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.debug.internal.method;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -35,6 +33,7 @@ import java.util.List;
 
 import org.graalvm.compiler.debug.DebugMethodMetrics;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -54,7 +53,8 @@ public interface MethodMetricsPrinter {
     }
 
     static boolean methodMetricsDumpingEnabled() {
-        return MethodMetricsPrinter.Options.MethodMeterPrintAscii.getValue(GLOBAL) || MethodMetricsPrinter.Options.MethodMeterFile.getValue(GLOBAL) != null;
+        return MethodMetricsPrinter.Options.MethodMeterPrintAscii.getValue(DebugScope.getConfig().getOptions()) ||
+                        MethodMetricsPrinter.Options.MethodMeterFile.getValue(DebugScope.getConfig().getOptions()) != null;
     }
 
     /**
@@ -112,9 +112,9 @@ public interface MethodMetricsPrinter {
 
         public MethodMetricsCSVFilePrinter() {
             try {
-                fw = new FileOutputStream(new File(Options.MethodMeterFile.getValue(GLOBAL)));
+                fw = new FileOutputStream(new File(Options.MethodMeterFile.getValue(DebugScope.getConfig().getOptions())));
             } catch (IOException e) {
-                TTY.println("Cannot create file %s for method metrics dumping:%s", Options.MethodMeterFile.getValue(GLOBAL), e);
+                TTY.println("Cannot create file %s for method metrics dumping:%s", Options.MethodMeterFile.getValue(DebugScope.getConfig().getOptions()), e);
                 throw new Error(e);
             }
         }

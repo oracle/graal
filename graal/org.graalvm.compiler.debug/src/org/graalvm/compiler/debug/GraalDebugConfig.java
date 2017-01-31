@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.debug;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
@@ -190,6 +188,8 @@ public class GraalDebugConfig implements DebugConfig {
         return isNotEmpty(Options.Count, options) || isNotEmpty(Options.Time, options) || isNotEmpty(Options.TrackMemUse, options) || isNotEmpty(Options.MethodMeter, options);
     }
 
+    private final OptionValues options;
+
     private final DebugFilter countFilter;
     private final DebugFilter logFilter;
     private final DebugFilter methodMetricsFilter;
@@ -205,8 +205,9 @@ public class GraalDebugConfig implements DebugConfig {
     // Use an identity set to handle context objects that don't support hashCode().
     private final Set<Object> extraFilters = Collections.newSetFromMap(new IdentityHashMap<>());
 
-    public GraalDebugConfig(String logFilter, String countFilter, String trackMemUseFilter, String timerFilter, String dumpFilter, String verifyFilter, String methodFilter,
+    public GraalDebugConfig(OptionValues options, String logFilter, String countFilter, String trackMemUseFilter, String timerFilter, String dumpFilter, String verifyFilter, String methodFilter,
                     String methodMetricsFilter, PrintStream output, List<DebugDumpHandler> dumpHandlers, List<DebugVerifyHandler> verifyHandlers) {
+        this.options = options;
         this.logFilter = DebugFilter.parse(logFilter);
         this.countFilter = DebugFilter.parse(countFilter);
         this.trackMemUseFilter = DebugFilter.parse(trackMemUseFilter);
@@ -227,6 +228,11 @@ public class GraalDebugConfig implements DebugConfig {
         this.dumpHandlers = dumpHandlers;
         this.verifyHandlers = verifyHandlers;
         this.output = output;
+    }
+
+    @Override
+    public OptionValues getOptions() {
+        return options;
     }
 
     @Override
@@ -331,7 +337,7 @@ public class GraalDebugConfig implements DebugConfig {
                 } else if (methodFilter != null) {
                     JavaMethod method = asJavaMethod(o);
                     if (method != null) {
-                        if (!Options.MethodFilterRootOnly.getValue(GLOBAL)) {
+                        if (!Options.MethodFilterRootOnly.getValue(options)) {
                             if (org.graalvm.compiler.debug.MethodFilter.matches(methodFilter, method)) {
                                 return true;
                             }
@@ -381,17 +387,17 @@ public class GraalDebugConfig implements DebugConfig {
 
     @Override
     public RuntimeException interceptException(Throwable e) {
-        if (e instanceof BailoutException && !Options.InterceptBailout.getValue(GLOBAL)) {
+        if (e instanceof BailoutException && !Options.InterceptBailout.getValue(options)) {
             return null;
         }
-        Debug.setConfig(Debug.fixedConfig(Debug.BASIC_LOG_LEVEL, Debug.BASIC_LOG_LEVEL, false, false, false, false, false, dumpHandlers, verifyHandlers, output));
+        Debug.setConfig(Debug.fixedConfig(options, Debug.BASIC_LOG_LEVEL, Debug.BASIC_LOG_LEVEL, false, false, false, false, false, dumpHandlers, verifyHandlers, output));
         Debug.log("Exception occurred in scope: %s", Debug.currentScope());
         Map<Object, Object> firstSeen = new IdentityHashMap<>();
         for (Object o : Debug.context()) {
             // Only dump a context object once.
             if (!firstSeen.containsKey(o)) {
                 firstSeen.put(o, o);
-                if (Options.DumpOnError.getValue(GLOBAL) || Options.Dump.getValue(GLOBAL) != null) {
+                if (Options.DumpOnError.getValue(options) || Options.Dump.getValue(options) != null) {
                     Debug.dump(Debug.BASIC_LOG_LEVEL, o, "Exception: %s", e);
                 } else {
                     Debug.log("Context obj %s", o);

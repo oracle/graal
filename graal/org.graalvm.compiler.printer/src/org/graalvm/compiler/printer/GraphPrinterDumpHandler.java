@@ -23,7 +23,6 @@
 package org.graalvm.compiler.printer;
 
 import static org.graalvm.compiler.debug.GraalDebugConfig.asJavaMethod;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -121,7 +120,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     @Override
     @SuppressWarnings("try")
     public void dump(Object object, final String message) {
-        if (object instanceof Graph && Options.PrintIdealGraph.getValue(GLOBAL)) {
+        if (object instanceof Graph && Options.PrintIdealGraph.getValue(DebugScope.getConfig().getOptions())) {
             ensureInitialized();
             if (printer == null) {
                 return;
@@ -185,7 +184,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     void handleException(IOException e) {
-        if (GraalDebugConfig.Options.DumpingErrorsAreFatal.getValue(GLOBAL)) {
+        if (GraalDebugConfig.Options.DumpingErrorsAreFatal.getValue(DebugScope.getConfig().getOptions())) {
             throw new GraalError(e);
         }
         if (e instanceof ClosedByInterruptException) {

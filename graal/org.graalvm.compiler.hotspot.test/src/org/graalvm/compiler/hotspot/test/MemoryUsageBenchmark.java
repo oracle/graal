@@ -33,6 +33,7 @@ import org.graalvm.compiler.hotspot.CompileTheWorld;
 import org.graalvm.compiler.hotspot.CompileTheWorldOptions;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -124,7 +125,7 @@ public class MemoryUsageBenchmark extends HotSpotGraalCompilerTest {
         Graal.getRuntime();
 
         // Ensure a debug configuration for this thread is initialized
-        DebugEnvironment.ensureInitialized();
+        DebugEnvironment.ensureInitialized(OptionValues.GLOBAL);
         new MemoryUsageBenchmark().run();
     }
 

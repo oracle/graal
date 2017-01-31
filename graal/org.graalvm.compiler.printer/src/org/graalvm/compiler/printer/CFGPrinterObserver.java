@@ -45,6 +45,7 @@ import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.GraalDebugConfig.Options;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.lir.LIR;
@@ -52,7 +53,6 @@ import org.graalvm.compiler.lir.debug.IntervalDumper;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.UniquePathUtilities;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
@@ -242,7 +242,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     }
 
     private static Path getCFGPath() {
-        return UniquePathUtilities.getPath(OptionValues.GLOBAL, Options.PrintCFGFileName, Options.DumpPath, "cfg");
+        return UniquePathUtilities.getPath(DebugScope.getConfig().getOptions(), Options.PrintCFGFileName, Options.DumpPath, "cfg");
     }
 
     /** Lazy initialization to delay service lookup until disassembler is actually needed. */

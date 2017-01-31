@@ -60,6 +60,7 @@ public class MethodMetricsTestInterception01 extends MethodMetricsTest {
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
         OptionValues options = OptionValues.GLOBAL;
         GraalDebugConfig debugConfig = new GraalDebugConfig(
+                        options,
                         GraalDebugConfig.Options.Log.getValue(options),
                         "CountingAddPhase",
                         GraalDebugConfig.Options.TrackMemUse.getValue(options),

@@ -22,14 +22,13 @@
  */
 package org.graalvm.compiler.printer;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.debug.DebugVerifyHandler;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
@@ -65,7 +64,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
 
     @Override
     public void verify(Object object, String message) {
-        OptionValues options = GLOBAL;
+        OptionValues options = DebugScope.getConfig().getOptions();
         if (Options.NDCV.getValue(options) != OFF && object instanceof StructuredGraph) {
             StructuredGraph graph = (StructuredGraph) object;
             List<Node> before = graph.getNodes().snapshot();

@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -166,7 +167,7 @@ public class CheckGraalInvariants extends GraalTest {
         CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread", new DebugConfigAccess() {
             @Override
             public GraalDebugConfig getDebugConfig() {
-                return DebugEnvironment.ensureInitialized();
+                return DebugEnvironment.ensureInitialized(OptionValues.GLOBAL);
             }
         });
         int availableProcessors = Runtime.getRuntime().availableProcessors();

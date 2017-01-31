@@ -48,6 +48,7 @@ import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.debug.internal.MemUseTrackerImpl;
 import org.graalvm.compiler.debug.internal.TimerImpl;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -1240,13 +1241,20 @@ public class Debug {
     }
 
     public static DebugConfig silentConfig() {
-        return fixedConfig(0, 0, false, false, false, false, false, Collections.<DebugDumpHandler> emptyList(), Collections.<DebugVerifyHandler> emptyList(), null);
+        return fixedConfig(new OptionValues(OptionValues.newOptionMap()), 0, 0, false, false, false, false, false, Collections.<DebugDumpHandler> emptyList(),
+                        Collections.<DebugVerifyHandler> emptyList(), null);
     }
 
-    public static DebugConfig fixedConfig(final int logLevel, final int dumpLevel, final boolean isCountEnabled, final boolean isMemUseTrackingEnabled, final boolean isTimerEnabled,
+    public static DebugConfig fixedConfig(OptionValues options, final int logLevel, final int dumpLevel, final boolean isCountEnabled, final boolean isMemUseTrackingEnabled,
+                    final boolean isTimerEnabled,
                     final boolean isVerifyEnabled, final boolean isMMEnabled, final Collection<DebugDumpHandler> dumpHandlers, final Collection<DebugVerifyHandler> verifyHandlers,
                     final PrintStream output) {
         return new DebugConfig() {
+
+            @Override
+            public OptionValues getOptions() {
+                return options;
+            }
 
             @Override
             public int getLogLevel() {

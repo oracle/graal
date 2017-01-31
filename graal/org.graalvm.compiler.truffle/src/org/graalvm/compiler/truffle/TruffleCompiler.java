@@ -47,6 +47,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -112,7 +113,7 @@ public abstract class TruffleCompiler {
         this.partialEvaluator = createPartialEvaluator();
 
         if (Debug.isEnabled()) {
-            DebugEnvironment.ensureInitialized(graalTruffleRuntime.getRequiredGraalCapability(SnippetReflectionProvider.class));
+            DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, graalTruffleRuntime.getRequiredGraalCapability(SnippetReflectionProvider.class));
         }
 
         graalTruffleRuntime.reinstallStubs();
