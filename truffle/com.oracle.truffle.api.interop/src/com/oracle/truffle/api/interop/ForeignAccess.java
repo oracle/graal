@@ -171,8 +171,7 @@ public final class ForeignAccess {
     @SuppressWarnings("deprecation")
     @Deprecated
     public static Object execute(Node foreignNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) {
-        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) foreignNode;
-        return fn.executeForeign(receiver, arguments);
+        return ((InteropAccessNode) foreignNode).executeOld(receiver, arguments);
     }
 
     /**
@@ -192,9 +191,8 @@ public final class ForeignAccess {
      * @since 0.11
      */
     public static Object send(Node foreignNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) throws InteropException {
-        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) foreignNode;
         try {
-            return fn.executeForeignImpl(receiver, arguments);
+            return ((InteropAccessNode) foreignNode).execute(receiver, arguments);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -220,9 +218,8 @@ public final class ForeignAccess {
      * @since 0.11
      */
     public static Object sendRead(Node readNode, VirtualFrame frame, TruffleObject receiver, Object identifier) throws UnknownIdentifierException, UnsupportedMessageException {
-        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) readNode;
         try {
-            return fn.executeForeignImpl(receiver, new Object[]{identifier});
+            return ((InteropAccessNode) readNode).execute(receiver, identifier);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -257,9 +254,8 @@ public final class ForeignAccess {
      */
     public static Object sendWrite(Node writeNode, VirtualFrame frame, TruffleObject receiver, Object identifier, Object value)
                     throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) writeNode;
         try {
-            return fn.executeForeignImpl(receiver, new Object[]{identifier, value});
+            return ((InteropAccessNode) writeNode).execute(receiver, identifier, value);
         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -285,9 +281,8 @@ public final class ForeignAccess {
      * @since 0.11
      */
     public static Object sendUnbox(Node unboxNode, VirtualFrame frame, TruffleObject receiver) throws UnsupportedMessageException {
-        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) unboxNode;
         try {
-            return fn.executeForeignImpl(receiver);
+            return ((InteropAccessNode) unboxNode).execute(receiver);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -318,9 +313,8 @@ public final class ForeignAccess {
      * @since 0.11
      */
     public static Object sendExecute(Node executeNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) executeNode;
         try {
-            return fn.executeForeignImpl(receiver, arguments);
+            return ((InteropAccessNode) executeNode).execute(receiver, arguments);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -376,12 +370,8 @@ public final class ForeignAccess {
      */
     public static Object sendInvoke(Node invokeNode, VirtualFrame frame, TruffleObject receiver, String identifier, Object... arguments)
                     throws UnsupportedTypeException, ArityException, UnknownIdentifierException, UnsupportedMessageException {
-        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) invokeNode;
         try {
-            Object[] args = new Object[arguments.length + 1];
-            System.arraycopy(arguments, 0, args, 1, arguments.length);
-            args[0] = identifier;
-            return fn.executeForeignImpl(receiver, args);
+            return ((InteropAccessNode) invokeNode).execute(receiver, identifier, arguments);
         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -412,9 +402,8 @@ public final class ForeignAccess {
      * @since 0.11
      */
     public static Object sendNew(Node newNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) newNode;
         try {
-            return fn.executeForeignImpl(receiver, arguments);
+            return ((InteropAccessNode) newNode).execute(receiver, arguments);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -484,9 +473,8 @@ public final class ForeignAccess {
      * @since 0.11
      */
     public static Object sendGetSize(Node getSizeNode, VirtualFrame frame, TruffleObject receiver) throws UnsupportedMessageException {
-        ForeignObjectAccessHeadNode fn = (ForeignObjectAccessHeadNode) getSizeNode;
         try {
-            return fn.executeForeignImpl(receiver);
+            return ((InteropAccessNode) getSizeNode).execute(receiver);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -567,7 +555,7 @@ public final class ForeignAccess {
      * @since 0.8 or earlier
      */
     public static TruffleObject getReceiver(Frame frame) {
-        return (TruffleObject) frame.getArguments()[ForeignAccessArguments.RECEIVER_INDEX];
+        return (TruffleObject) frame.getArguments()[InteropAccessNode.ARG0_RECEIVER];
     }
 
     /** @since 0.8 or earlier */
