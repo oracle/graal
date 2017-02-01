@@ -111,8 +111,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
             int selectedProcessors = TruffleCompilerOptions.TruffleCompilerThreads.getValue();
             if (selectedProcessors == 0) {
-                // No manual selection made, default is 2.
-                selectedProcessors = 2;
+                // No manual selection made, check how many processors are available.
+                int availableProcessors = Runtime.getRuntime().availableProcessors();
+                if (availableProcessors >= 4) {
+                    selectedProcessors = 2;
+                }
             }
             selectedProcessors = Math.max(1, selectedProcessors);
             compileQueue = Executors.newFixedThreadPool(selectedProcessors, factory);
