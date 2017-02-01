@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -59,13 +58,11 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
-import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
-@SuppressWarnings("unused")
 public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
 
-    public abstract Object executeRead(VirtualFrame frame, Object receiver, Object name);
+    public abstract Object executeRead(Object receiver, Object name);
 
     /**
      * Polymorphic inline cache for a limited number of distinct property names and shapes.
@@ -78,8 +75,8 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
                     assumptions = {
                                     "shape.getValidAssumption()"
                     })
-    protected static Object readCached(DynamicObject receiver, Object name,
-                    @Cached("name") Object cachedName,
+    protected static Object readCached(DynamicObject receiver, @SuppressWarnings("unused") Object name,
+                    @SuppressWarnings("unused") @Cached("name") Object cachedName,
                     @Cached("lookupShape(receiver)") Shape shape,
                     @Cached("lookupLocation(shape, name)") Location location) {
 
@@ -142,7 +139,7 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
      * API to access the foreign data.
      */
     @Specialization(guards = "isForeignObject(receiver)")
-    protected static Object readForeign(VirtualFrame frame, TruffleObject receiver, Object name,
+    protected static Object readForeign(TruffleObject receiver, Object name,
                     // The child node to access the foreign object
                     @Cached("createForeignReadNode()") Node foreignReadNode,
                     // The child node to convert the result of the foreign read to a SL value

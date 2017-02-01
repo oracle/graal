@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -73,10 +72,10 @@ public class SLObjectMessageResolution {
         @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create();
         @Child private SLForeignToSLTypeNode valueToSLType = SLForeignToSLTypeNodeGen.create();
 
-        public Object access(VirtualFrame frame, DynamicObject receiver, Object name, Object value) {
+        public Object access(DynamicObject receiver, Object name, Object value) {
             Object convertedName = nameToSLType.executeConvert(name);
             Object convertedValue = valueToSLType.executeConvert(value);
-            write.executeWrite(frame, receiver, convertedName, convertedValue);
+            write.executeWrite(receiver, convertedName, convertedValue);
             return convertedValue;
         }
     }
@@ -90,9 +89,9 @@ public class SLObjectMessageResolution {
         @Child private SLReadPropertyCacheNode read = SLReadPropertyCacheNodeGen.create();
         @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create();
 
-        public Object access(VirtualFrame frame, DynamicObject receiver, Object name) {
+        public Object access(DynamicObject receiver, Object name) {
             Object convertedName = nameToSLType.executeConvert(name);
-            return read.executeRead(frame, receiver, convertedName);
+            return read.executeRead(receiver, convertedName);
         }
     }
 
