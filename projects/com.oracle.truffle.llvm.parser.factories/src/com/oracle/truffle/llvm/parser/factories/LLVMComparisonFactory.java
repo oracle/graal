@@ -128,7 +128,6 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMNeqNodeGen;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMFloatComparisonType;
 import com.oracle.truffle.llvm.parser.api.instructions.LLVMIntegerComparisonType;
 import com.oracle.truffle.llvm.parser.api.model.enums.CompareOperator;
-import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -143,10 +142,10 @@ public final class LLVMComparisonFactory {
             throw new AssertionError("We need a LLVMParserRuntime when creating an vector compare node!");
         }
 
-        return toCompareVectorNode(null, operator, type, lhs, rhs);
+        return toCompareVectorNode(operator, type, lhs, rhs);
     }
 
-    public static LLVMExpressionNode toCompareVectorNode(LLVMParserRuntime runtime, CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
+    public static LLVMExpressionNode toCompareVectorNode(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
         final LLVMBaseType llvmtype = type.getLLVMBaseType();
 
         switch (operator) {
@@ -225,8 +224,7 @@ public final class LLVMComparisonFactory {
         }
 
         if (LLVMTypeHelper.isVectorType(llvmtype)) {
-            final LLVMExpressionNode target = runtime.allocateVectorResult(type);
-            return LLVMComparisonFactory.createVectorComparison(target, lhs, rhs, llvmtype, comparison);
+            return LLVMComparisonFactory.createVectorComparison(lhs, rhs, llvmtype, comparison);
         } else {
             return LLVMComparisonFactory.createIntegerComparison(lhs, rhs, llvmtype, comparison);
         }
@@ -255,10 +253,10 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    public static LLVMExpressionNode createVectorComparison(LLVMExpressionNode target, LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
+    public static LLVMExpressionNode createVectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
         switch (llvmType) {
             case I32_VECTOR:
-                return visitI32VectorComparison(target, left, right, condition);
+                return visitI32VectorComparison(left, right, condition);
             default:
                 throw new AssertionError(llvmType);
         }
@@ -555,28 +553,28 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    private static LLVMExpressionNode visitI32VectorComparison(LLVMExpressionNode target, LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode visitI32VectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMIntegerComparisonType condition) {
         switch (condition) {
             case EQUALS:
-                return LLVMI32VectorEqNodeGen.create(target, left, right);
+                return LLVMI32VectorEqNodeGen.create(left, right);
             case NOT_EQUALS:
-                return LLVMI32VectorNeNodeGen.create(target, left, right);
+                return LLVMI32VectorNeNodeGen.create(left, right);
             case UNSIGNED_GREATER_THAN:
-                return LLVMI32VectorUgtNodeGen.create(target, left, right);
+                return LLVMI32VectorUgtNodeGen.create(left, right);
             case UNSIGNED_GREATER_EQUALS:
-                return LLVMI32VectorUgeNodeGen.create(target, left, right);
+                return LLVMI32VectorUgeNodeGen.create(left, right);
             case UNSIGNED_LESS_THAN:
-                return LLVMI32VectorUltNodeGen.create(target, left, right);
+                return LLVMI32VectorUltNodeGen.create(left, right);
             case UNSIGNED_LESS_EQUALS:
-                return LLVMI32VectorUleNodeGen.create(target, left, right);
+                return LLVMI32VectorUleNodeGen.create(left, right);
             case SIGNED_GREATER_THAN:
-                return LLVMI32VectorSgtNodeGen.create(target, left, right);
+                return LLVMI32VectorSgtNodeGen.create(left, right);
             case SIGNED_GREATER_EQUALS:
-                return LLVMI32VectorSgeNodeGen.create(target, left, right);
+                return LLVMI32VectorSgeNodeGen.create(left, right);
             case SIGNED_LESS_THAN:
-                return LLVMI32VectorSltNodeGen.create(target, left, right);
+                return LLVMI32VectorSltNodeGen.create(left, right);
             case SIGNED_LESS_EQUALS:
-                return LLVMI32VectorSleNodeGen.create(target, left, right);
+                return LLVMI32VectorSleNodeGen.create(left, right);
             default:
                 throw new AssertionError(condition);
         }

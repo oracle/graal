@@ -72,10 +72,10 @@ public class LLVMSelectFactory {
         }
     }
 
-    public static LLVMExpressionNode createSelectVector(LLVMBaseType llvmType, LLVMExpressionNode target, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
+    public static LLVMExpressionNode createSelectVector(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
         switch (llvmType) {
             case I32_VECTOR:
-                return LLVMI32VectorSelectNodeGen.create(target, condition, trueValue, falseValue);
+                return LLVMI32VectorSelectNodeGen.create(condition, trueValue, falseValue);
             default:
                 throw new AssertionError(llvmType);
         }

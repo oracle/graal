@@ -98,11 +98,11 @@ public final class LLVMLogicalFactory {
     private LLVMLogicalFactory() {
     }
 
-    public static LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType type, LLVMBaseType llvmType, LLVMExpressionNode target) {
-        return createNode(left, right, llvmType, type, target);
+    public static LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType type, LLVMBaseType llvmType) {
+        return createNode(left, right, llvmType, type);
     }
 
-    private static LLVMExpressionNode createNode(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMLogicalInstructionType type, LLVMExpressionNode target)
+    private static LLVMExpressionNode createNode(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMLogicalInstructionType type)
                     throws AssertionError {
         switch (llvmType) {
             case I1:
@@ -118,15 +118,15 @@ public final class LLVMLogicalFactory {
             case I_VAR_BITWIDTH:
                 return visitLogicalIVarInstruction(type, left, right);
             case I1_VECTOR:
-                return visitLogicalI1VectorInstruction(type, left, right, target);
+                return visitLogicalI1VectorInstruction(type, left, right);
             case I8_VECTOR:
-                return visitLogicalI8VectorInstruction(type, left, right, target);
+                return visitLogicalI8VectorInstruction(type, left, right);
             case I16_VECTOR:
-                return visitLogicalI16VectorInstruction(type, left, right, target);
+                return visitLogicalI16VectorInstruction(type, left, right);
             case I32_VECTOR:
-                return visitLogicalI32VectorInstruction(type, left, right, target);
+                return visitLogicalI32VectorInstruction(type, left, right);
             case I64_VECTOR:
-                return visitLogicalI64VectorInstruction(type, left, right, target);
+                return visitLogicalI64VectorInstruction(type, left, right);
             default:
                 throw new AssertionError(llvmType);
         }
@@ -151,90 +151,90 @@ public final class LLVMLogicalFactory {
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI1VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
+    private static LLVMExpressionNode visitLogicalI1VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case AND:
-                return LLVMI1VectorAndNodeGen.create(target, left, right);
+                return LLVMI1VectorAndNodeGen.create(left, right);
             case OR:
-                return LLVMI1VectorOrNodeGen.create(target, left, right);
+                return LLVMI1VectorOrNodeGen.create(left, right);
             case XOR:
-                return LLVMI1VectorXorNodeGen.create(target, left, right);
+                return LLVMI1VectorXorNodeGen.create(left, right);
             default:
                 throw new AssertionError(type);
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI16VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
+    private static LLVMExpressionNode visitLogicalI16VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case SHIFT_LEFT:
-                return LLVMI16VectorShlNodeGen.create(target, left, right);
+                return LLVMI16VectorShlNodeGen.create(left, right);
             case LOGICAL_SHIFT_RIGHT:
-                return LLVMI16VectorLshrNodeGen.create(target, left, right);
+                return LLVMI16VectorLshrNodeGen.create(left, right);
             case ARITHMETIC_SHIFT_RIGHT:
-                return LLVMI16VectorAshrNodeGen.create(target, left, right);
+                return LLVMI16VectorAshrNodeGen.create(left, right);
             case AND:
-                return LLVMI16VectorAndNodeGen.create(target, left, right);
+                return LLVMI16VectorAndNodeGen.create(left, right);
             case OR:
-                return LLVMI16VectorOrNodeGen.create(target, left, right);
+                return LLVMI16VectorOrNodeGen.create(left, right);
             case XOR:
-                return LLVMI16VectorXorNodeGen.create(target, left, right);
+                return LLVMI16VectorXorNodeGen.create(left, right);
             default:
                 throw new AssertionError(type);
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI8VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
+    private static LLVMExpressionNode visitLogicalI8VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case SHIFT_LEFT:
-                return LLVMI8VectorShlNodeGen.create(target, left, right);
+                return LLVMI8VectorShlNodeGen.create(left, right);
             case LOGICAL_SHIFT_RIGHT:
-                return LLVMI8VectorLshrNodeGen.create(target, left, right);
+                return LLVMI8VectorLshrNodeGen.create(left, right);
             case ARITHMETIC_SHIFT_RIGHT:
-                return LLVMI8VectorAshrNodeGen.create(target, left, right);
+                return LLVMI8VectorAshrNodeGen.create(left, right);
             case AND:
-                return LLVMI8VectorAndNodeGen.create(target, left, right);
+                return LLVMI8VectorAndNodeGen.create(left, right);
             case OR:
-                return LLVMI8VectorOrNodeGen.create(target, left, right);
+                return LLVMI8VectorOrNodeGen.create(left, right);
             case XOR:
-                return LLVMI8VectorXorNodeGen.create(target, left, right);
+                return LLVMI8VectorXorNodeGen.create(left, right);
             default:
                 throw new AssertionError(type);
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI32VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
+    private static LLVMExpressionNode visitLogicalI32VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case SHIFT_LEFT:
-                return LLVMI32VectorShlNodeGen.create(target, left, right);
+                return LLVMI32VectorShlNodeGen.create(left, right);
             case LOGICAL_SHIFT_RIGHT:
-                return LLVMI32VectorLshrNodeGen.create(target, left, right);
+                return LLVMI32VectorLshrNodeGen.create(left, right);
             case ARITHMETIC_SHIFT_RIGHT:
-                return LLVMI32VectorAshrNodeGen.create(target, left, right);
+                return LLVMI32VectorAshrNodeGen.create(left, right);
             case AND:
-                return LLVMI32VectorAndNodeGen.create(target, left, right);
+                return LLVMI32VectorAndNodeGen.create(left, right);
             case OR:
-                return LLVMI32VectorOrNodeGen.create(target, left, right);
+                return LLVMI32VectorOrNodeGen.create(left, right);
             case XOR:
-                return LLVMI32VectorXorNodeGen.create(target, left, right);
+                return LLVMI32VectorXorNodeGen.create(left, right);
             default:
                 throw new AssertionError(type);
         }
     }
 
-    private static LLVMExpressionNode visitLogicalI64VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right, LLVMExpressionNode target) {
+    private static LLVMExpressionNode visitLogicalI64VectorInstruction(LLVMLogicalInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
         switch (type) {
             case SHIFT_LEFT:
-                return LLVMI64VectorShlNodeGen.create(target, left, right);
+                return LLVMI64VectorShlNodeGen.create(left, right);
             case LOGICAL_SHIFT_RIGHT:
-                return LLVMI64VectorLshrNodeGen.create(target, left, right);
+                return LLVMI64VectorLshrNodeGen.create(left, right);
             case ARITHMETIC_SHIFT_RIGHT:
-                return LLVMI64VectorAshrNodeGen.create(target, left, right);
+                return LLVMI64VectorAshrNodeGen.create(left, right);
             case AND:
-                return LLVMI64VectorAndNodeGen.create(target, left, right);
+                return LLVMI64VectorAndNodeGen.create(left, right);
             case OR:
-                return LLVMI64VectorOrNodeGen.create(target, left, right);
+                return LLVMI64VectorOrNodeGen.create(left, right);
             case XOR:
-                return LLVMI64VectorXorNodeGen.create(target, left, right);
+                return LLVMI64VectorXorNodeGen.create(left, right);
             default:
                 throw new AssertionError(type);
         }

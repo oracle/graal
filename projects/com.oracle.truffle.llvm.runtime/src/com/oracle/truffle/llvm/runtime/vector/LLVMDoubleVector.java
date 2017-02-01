@@ -29,116 +29,126 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 @ValueType
 public final class LLVMDoubleVector {
 
+    private final double[] vector;
     private static final int DOUBLE_SIZE = 8;
-    private final LLVMAddress address;
-    private final int nrElements;
 
-    private LLVMDoubleVector(LLVMAddress addr, int nrElements) {
-        this.address = addr;
-        this.nrElements = nrElements;
+    public static LLVMDoubleVector create(double[] vector) {
+        return new LLVMDoubleVector(vector);
     }
 
-    public static LLVMDoubleVector fromDoubleArray(LLVMAddress target, double[] vals) {
-        LLVMAddress currentTarget = target;
-        for (int i = 0; i < vals.length; i++) {
-            LLVMMemory.putDouble(currentTarget, vals[i]);
+    private LLVMDoubleVector(double[] vector) {
+        this.vector = vector;
+    }
+
+    public static LLVMDoubleVector readVectorFromMemory(LLVMAddress address, int size) {
+        double[] vector = new double[size];
+        LLVMAddress currentTarget = address;
+        for (int i = 0; i < size; i++) {
+            vector[i] = LLVMMemory.getDouble(currentTarget);
             currentTarget = currentTarget.increment(DOUBLE_SIZE);
         }
-        return new LLVMDoubleVector(target, vals.length);
+        return create(vector);
     }
 
-    private static LLVMDoubleVector create(LLVMAddress addr, int length) {
-        return new LLVMDoubleVector(addr, length);
+    public static void writeVectorToMemory(LLVMAddress address, LLVMDoubleVector vector) {
+        LLVMAddress currentTarget = address;
+        for (int i = 0; i < vector.getLength(); i++) {
+            LLVMMemory.putDouble(currentTarget, vector.getValue(i));
+            currentTarget = currentTarget.increment(DOUBLE_SIZE);
+        }
     }
 
-    public static LLVMDoubleVector createDoubleVector(LLVMAddress addr, int size) {
-        return new LLVMDoubleVector(addr, size);
+    // We do not want to use lambdas because of bad startup
+    private interface Operation {
+        double eval(double a, double b);
+    }
+
+    private static LLVMDoubleVector doOperation(LLVMDoubleVector lhs, LLVMDoubleVector rhs, Operation op) {
+        double[] left = lhs.vector;
+        double[] right = rhs.vector;
+
+        // not sure if this assert is true for llvm ir in general
+        // this implementation however assumes it
+        assert left.length == right.length;
+
+        double[] result = new double[left.length];
+
+        for (int i = 0; i < left.length; i++) {
+            result[i] = op.eval(left[i], right[i]);
+        }
+        return create(result);
+    }
+
+    public LLVMDoubleVector add(LLVMDoubleVector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public double eval(double a, double b) {
+                return a + b;
+            }
+        });
+    }
+
+    public LLVMDoubleVector mul(LLVMDoubleVector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public double eval(double a, double b) {
+                return a * b;
+            }
+        });
+    }
+
+    public LLVMDoubleVector sub(LLVMDoubleVector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public double eval(double a, double b) {
+                return a - b;
+            }
+        });
+    }
+
+    public LLVMDoubleVector div(LLVMDoubleVector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public double eval(double a, double b) {
+                return a / b;
+            }
+        });
+    }
+
+    public LLVMDoubleVector rem(LLVMDoubleVector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public double eval(double a, double b) {
+                return a % b;
+            }
+        });
     }
 
     public double[] getValues() {
-        double[] values = new double[nrElements];
-        for (int i = 0; i < values.length; i++) {
-            values[i] = getValue(i);
-        }
-        return values;
-    }
-
-    public LLVMDoubleVector add(LLVMAddress addr, LLVMDoubleVector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            double elementResult = getValue(i) + right.getValue(i);
-            LLVMMemory.putDouble(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(DOUBLE_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMDoubleVector mul(LLVMAddress addr, LLVMDoubleVector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            double elementResult = getValue(i) * right.getValue(i);
-            LLVMMemory.putDouble(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(DOUBLE_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMDoubleVector sub(LLVMAddress addr, LLVMDoubleVector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            double elementResult = getValue(i) - right.getValue(i);
-            LLVMMemory.putDouble(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(DOUBLE_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMDoubleVector div(LLVMAddress addr, LLVMDoubleVector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            double elementResult = getValue(i) / right.getValue(i);
-            LLVMMemory.putDouble(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(DOUBLE_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMDoubleVector rem(LLVMAddress addr, LLVMDoubleVector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            double elementResult = getValue(i) % right.getValue(i);
-            LLVMMemory.putDouble(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(DOUBLE_SIZE);
-        }
-        return create(addr, nrElements);
+        return vector;
     }
 
     public double getValue(int index) {
-        int offset = index * DOUBLE_SIZE;
-        LLVMAddress increment = address.increment(offset);
-        return LLVMMemory.getDouble(increment);
+        return vector[index];
     }
 
-    public LLVMDoubleVector insert(LLVMAddress target, double element, int index) {
-        LLVMHeap.memCopy(target, address, nrElements * DOUBLE_SIZE);
-        LLVMAddress elementAddress = target.increment(index * DOUBLE_SIZE);
-        LLVMMemory.putDouble(elementAddress, element);
-        return create(target, nrElements);
+    public LLVMDoubleVector insert(double element, int index) {
+        double[] copyOf = Arrays.copyOf(vector, vector.length);
+        copyOf[index] = element;
+        return create(copyOf);
     }
 
-    public LLVMAddress getAddress() {
-        return address;
+    public int getLength() {
+        return vector.length;
     }
 
-    public int getVectorByteSize() {
-        return DOUBLE_SIZE * nrElements;
-    }
 }

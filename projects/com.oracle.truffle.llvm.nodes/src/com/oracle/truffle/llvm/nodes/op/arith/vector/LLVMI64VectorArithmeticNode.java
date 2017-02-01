@@ -33,24 +33,23 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 
-@NodeChildren({@NodeChild(value = "addressNode", type = LLVMExpressionNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVMI64VectorArithmeticNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64VectorAddNode extends LLVMI64VectorArithmeticNode {
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.add(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.add(right);
         }
     }
 
     public abstract static class LLVMI64VectorMulNode extends LLVMI64VectorArithmeticNode {
 
         @Specialization
-        public LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.mul(target, right);
+        public LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.mul(right);
         }
 
     }
@@ -58,24 +57,24 @@ public abstract class LLVMI64VectorArithmeticNode extends LLVMExpressionNode {
     public abstract static class LLVMI64VectorSubNode extends LLVMI64VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.sub(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.sub(right);
         }
     }
 
     public abstract static class LLVMI64VectorDivNode extends LLVMI64VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.div(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.div(right);
         }
     }
 
     public abstract static class LLVMI64VectorUDivNode extends LLVMI64VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.divUnsigned(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.divUnsigned(right);
 
         }
     }
@@ -83,16 +82,16 @@ public abstract class LLVMI64VectorArithmeticNode extends LLVMExpressionNode {
     public abstract static class LLVMI64VectorRemNode extends LLVMI64VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.rem(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.rem(right);
         }
     }
 
     public abstract static class LLVMI64VectorURemNode extends LLVMI64VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.remUnsigned(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.remUnsigned(right);
         }
     }
 

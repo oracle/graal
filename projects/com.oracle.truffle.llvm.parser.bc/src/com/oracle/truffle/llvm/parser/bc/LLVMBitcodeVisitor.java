@@ -463,14 +463,6 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
     }
 
     @Override
-    public LLVMExpressionNode allocateVectorResult(Object type) {
-        final Type vectorType = (Type) type;
-        final int size = getByteSize(vectorType);
-        final int alignment = getByteAlignment(vectorType);
-        return factoryFacade.createAlloc(this, vectorType, size, alignment, null, null);
-    }
-
-    @Override
     public Object getGlobalAddress(GlobalValueSymbol var) {
         return getGlobalVariable(var);
     }

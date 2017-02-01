@@ -33,51 +33,50 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 
-@NodeChildren({@NodeChild(value = "address", type = LLVMExpressionNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVMI16VectorLogicalNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16VectorAndNode extends LLVMI16VectorLogicalNode {
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.and(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.and(right);
         }
     }
 
     public abstract static class LLVMI16VectorOrNode extends LLVMI16VectorLogicalNode {
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.or(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.or(right);
         }
     }
 
     public abstract static class LLVMI16VectorShlNode extends LLVMI16VectorLogicalNode {
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.leftShift(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.leftShift(right);
         }
     }
 
     public abstract static class LLVMI16VectorLshrNode extends LLVMI16VectorLogicalNode {
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.logicalRightShift(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.logicalRightShift(right);
         }
     }
 
     public abstract static class LLVMI16VectorAshrNode extends LLVMI16VectorLogicalNode {
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.arithmeticRightShift(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.arithmeticRightShift(right);
         }
     }
 
     public abstract static class LLVMI16VectorXorNode extends LLVMI16VectorLogicalNode {
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.xor(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.xor(right);
         }
     }
 }

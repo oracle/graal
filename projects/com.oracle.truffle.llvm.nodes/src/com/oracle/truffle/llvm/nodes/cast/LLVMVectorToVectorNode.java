@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.cast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
@@ -43,8 +42,15 @@ public abstract class LLVMVectorToVectorNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI8Vector doI32(LLVMI32Vector from) {
-            LLVMAddress address = from.getAddress();
-            return LLVMI8Vector.create(address, from.getLength() * I32_SIZE_IN_BYTES);
+            byte[] vector = new byte[from.getLength() * I32_SIZE_IN_BYTES];
+            for (int i = 0; i < from.getLength() * I32_SIZE_IN_BYTES; i = i + I32_SIZE_IN_BYTES) {
+                int value = from.getValue(i);
+                vector[i + 0] = (byte) (value >>> 24);
+                vector[i + 1] = (byte) (value >>> 16);
+                vector[i + 2] = (byte) (value >>> 8);
+                vector[i + 3] = (byte) value;
+            }
+            return LLVMI8Vector.create(vector);
         }
     }
 }
