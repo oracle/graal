@@ -73,7 +73,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
  * A <em>multi-language execution environment</em> for {@linkplain TruffleLanguage
  * Truffle-implemented languages} that supports <em>interoperability</em> with Java and among the
  * <em>guest languages</em>, including cross-language calls, foreign object exchange, and shared
- * global symbols.
+ * <em>global symbols</em>.
  *
  * <h4>Creation</h4>
  *
@@ -82,16 +82,16 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
  *
  * <h4>Global Symbols</h4>
  *
- * Each engine supports a shared collection of named {@linkplain Value values}. Every language
- * implementation active in the engine has both read and write access. Names are unconstrained and
- * duplicates are permitted. Names may be language-specific and values may encapsulate
- * language-specific data.
+ * Each engine supports a shared collection of named {@linkplain Value values} known as
+ * <em>global symbols</em>. Every language implementation active in the engine can both read from
+ * and add to the collection. Names are unconstrained and duplicates are permitted. Names may be
+ * language-specific and values may encapsulate language-specific data.
  *
  * <h4>Isolation</h4>
  *
  * An engine runs as an isolated <a href="https://en.wikipedia.org/wiki/Multitenancy">tenant</a> on
  * a Java Virtual Machine. No aspects of program execution, language environments, or global symbols
- * are shared with other engine instances in the same JVM.
+ * are shared with other engine instances.
  *
  * <h4>Threads</h4>
  * <p>
@@ -125,8 +125,9 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
  *
  * The engine receives guest language source code as builder-created {@link Source} instances. These
  * may wrap a filename or URL reference to the code or may include the code literally. The builder
- * requires that every instance be assigned a {@linkplain Source#getMimeType() MIME type}.
- *
+ * requires that every {@link Source} instance be assigned a {@linkplain Source#getMimeType() MIME
+ * type}.
+ * <p>
  * A call to {@link PolyglotEngine#eval(Source)} evaluates the code at the top level, using the
  * language registered for the code's MIME type, and returns an instance of {@link Value}. The
  * method {@link Value#as(Class)} allows various Java-typed views for access to the result.
@@ -730,15 +731,13 @@ public class PolyglotEngine {
      * {@linkplain PolyglotEngine.Builder#globalSymbol pre-registered} when the engine was built or
      * provided by one of the engine's active languages.
      * <p>
-     * Symbol names are language dependent and not guaranteed unique across languages. In case of
-     * name conflicts the only guarantee is that one of them will be returned. Use
+     * Symbol names can be language dependent, and they are not guaranteed unique. In case of
+     * duplicate symbol names the only guarantee is that one of the symbols will be returned. Use
      * {@link #findGlobalSymbols(String)} to return <em>all</em> matching symbols
-     * <p>
-     * Once an symbol is obtained, it remembers values for fast access and is ready for being
-     * invoked.
      *
      * @param globalName a global symbol name
-     * @return a symbol by that name, <code>null</code> if none available
+     * @return the value of the global symbol, <code>null</code> if no global symbol by that name
+     *         exists
      * @since 0.9
      */
     public Value findGlobalSymbol(final String globalName) {
@@ -760,20 +759,18 @@ public class PolyglotEngine {
     }
 
     /**
-     * Finds by name all <em>global symbol</em>, either
+     * Finds by name all <em>global symbols</em>, either
      * {@linkplain PolyglotEngine.Builder#globalSymbol pre-registered} when the engine was built or
      * provided by one of the engine's active languages.
      * <p>
      * First of all execute your program via {@link #eval(Source)} method and then look expected
      * symbols up using this method. If you want to be sure only one symbol has been exported, you
-     * can use:
+     * can use the following to make sure the <code>iterator</code> contains only one element.
      * <p>
      * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols}
-     * <p>
-     * to make sure the <code>iterator</code> contains only one element.
      *
      * @param globalName a global symbol name
-     * @return iterable to provide access to all symbols exported under requested name
+     * @return iterable access to all values matching the name
      * @since 0.22
      */
     public Iterable<Value> findGlobalSymbols(String globalName) {
