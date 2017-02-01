@@ -110,9 +110,9 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
-    public LLVMExpressionNode createInsertElement(LLVMParserRuntime runtime, LLVMBaseType resultType, LLVMExpressionNode vector, Object type, LLVMExpressionNode element,
+    public LLVMExpressionNode createInsertElement(LLVMParserRuntime runtime, LLVMBaseType resultType, LLVMExpressionNode vector, LLVMExpressionNode element,
                     LLVMExpressionNode index) {
-        return LLVMVectorFactory.createInsertElement(runtime, resultType, type, vector, element, index);
+        return LLVMVectorFactory.createInsertElement(resultType, vector, element, index);
     }
 
     @Override
@@ -121,9 +121,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createShuffleVector(LLVMParserRuntime runtime, LLVMBaseType llvmType, LLVMExpressionNode target, LLVMExpressionNode vector1, LLVMExpressionNode vector2,
+    public LLVMExpressionNode createShuffleVector(LLVMParserRuntime runtime, LLVMBaseType llvmType, LLVMExpressionNode vector1, LLVMExpressionNode vector2,
                     LLVMExpressionNode mask) {
-        return LLVMVectorFactory.createShuffleVector(llvmType, target, vector1, vector2, mask);
+        return LLVMVectorFactory.createShuffleVector(llvmType, vector1, vector2, mask);
     }
 
     @Override
@@ -137,9 +137,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createLogicalOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType type, LLVMBaseType llvmType,
-                    LLVMExpressionNode target) {
-        return LLVMLogicalFactory.createLogicalOperation(left, right, type, llvmType, target);
+    public LLVMExpressionNode createLogicalOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType type, LLVMBaseType llvmType) {
+        return LLVMLogicalFactory.createLogicalOperation(left, right, type, llvmType);
     }
 
     @Override
@@ -153,8 +152,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createVectorLiteralNode(LLVMParserRuntime runtime, List<LLVMExpressionNode> listValues, LLVMExpressionNode target, LLVMBaseType type) {
-        return LLVMLiteralFactory.createVectorLiteralNode(listValues, target, type);
+    public LLVMExpressionNode createVectorLiteralNode(LLVMParserRuntime runtime, List<LLVMExpressionNode> listValues, LLVMBaseType type) {
+        return LLVMLiteralFactory.createVectorLiteralNode(listValues, type);
     }
 
     @Override
@@ -206,7 +205,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMExpressionNode createComparison(LLVMParserRuntime runtime, CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
-        return LLVMComparisonFactory.toCompareVectorNode(runtime, operator, type, lhs, rhs);
+        return LLVMComparisonFactory.toCompareVectorNode(operator, type, lhs, rhs);
     }
 
     @Override
@@ -215,9 +214,8 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createArithmeticOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMArithmeticInstructionType type, LLVMBaseType llvmType,
-                    LLVMExpressionNode target) {
-        return LLVMArithmeticFactory.createArithmeticOperation(left, right, type, llvmType, target);
+    public LLVMExpressionNode createArithmeticOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMArithmeticInstructionType type, LLVMBaseType llvmType) {
+        return LLVMArithmeticFactory.createArithmeticOperation(left, right, type, llvmType);
     }
 
     @Override
@@ -240,16 +238,15 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     public LLVMExpressionNode createSelect(LLVMParserRuntime runtime, Type type, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
         LLVMBaseType llvmType = type.getLLVMBaseType();
         if (type instanceof VectorType) {
-            final LLVMExpressionNode target = runtime.allocateVectorResult(type);
-            return LLVMSelectFactory.createSelectVector(llvmType, target, condition, trueValue, falseValue);
+            return LLVMSelectFactory.createSelectVector(llvmType, condition, trueValue, falseValue);
         } else {
             return LLVMSelectFactory.createSelect(llvmType, condition, trueValue, falseValue);
         }
     }
 
     @Override
-    public LLVMExpressionNode createZeroVectorInitializer(LLVMParserRuntime runtime, int nrElements, LLVMExpressionNode target, LLVMBaseType llvmType) {
-        return LLVMLiteralFactory.createZeroVectorInitializer(nrElements, target, llvmType);
+    public LLVMExpressionNode createZeroVectorInitializer(LLVMParserRuntime runtime, int nrElements, LLVMBaseType llvmType) {
+        return LLVMLiteralFactory.createZeroVectorInitializer(nrElements, llvmType);
     }
 
     @Override

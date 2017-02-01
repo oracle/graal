@@ -31,94 +31,106 @@ package com.oracle.truffle.llvm.runtime.vector;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+
+import java.util.Arrays;
 
 @ValueType
 public final class LLVMI1Vector {
 
     private static final int I1_SIZE = 1;
-    private final LLVMAddress address;
-    private final int nrElements;
+    private final boolean[] vector;
 
-    private LLVMI1Vector(LLVMAddress addr, int nrElements) {
-        this.address = addr;
-        this.nrElements = nrElements;
+    public static LLVMI1Vector create(boolean[] vector) {
+        return new LLVMI1Vector(vector);
     }
 
-    public static LLVMI1Vector fromI1Array(LLVMAddress target, boolean[] vals) {
-        LLVMAddress currentTarget = target;
-        for (int i = 0; i < vals.length; i++) {
-            LLVMMemory.putI1(currentTarget, vals[i]);
+    private LLVMI1Vector(boolean[] vector) {
+        this.vector = vector;
+    }
+
+    public static LLVMI1Vector readVectorFromMemory(LLVMAddress address, int size) {
+        boolean[] vector = new boolean[size];
+        LLVMAddress currentTarget = address;
+        for (int i = 0; i < size; i++) {
+            vector[i] = LLVMMemory.getI1(currentTarget);
             currentTarget = currentTarget.increment(I1_SIZE);
         }
-        return new LLVMI1Vector(target, vals.length);
+        return create(vector);
     }
 
-    public LLVMI1Vector and(LLVMAddress addr, LLVMI1Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            boolean elementResult = (getValue(i) & right.getValue(i));
-            LLVMMemory.putI1(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I1_SIZE);
+    public static void writeVectorToMemory(LLVMAddress address, LLVMI1Vector vector) {
+        LLVMAddress currentTarget = address;
+        for (int i = 0; i < vector.getLength(); i++) {
+            LLVMMemory.putI1(currentTarget, vector.getValue(i));
+            currentTarget = currentTarget.increment(I1_SIZE);
         }
-        return create(addr, nrElements);
     }
 
-    public LLVMI1Vector or(LLVMAddress addr, LLVMI1Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            boolean elementResult = (getValue(i) | right.getValue(i));
-            LLVMMemory.putI1(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I1_SIZE);
+    // We do not want to use lambdas because of bad startup
+    private interface Operation {
+        boolean eval(boolean a, boolean b);
+    }
+
+    private static LLVMI1Vector doOperation(LLVMI1Vector lhs, LLVMI1Vector rhs, Operation op) {
+        boolean[] left = lhs.vector;
+        boolean[] right = rhs.vector;
+
+        // not sure if this assert is true for llvm ir in general
+        // this implementation however assumes it
+        assert left.length == right.length;
+
+        boolean[] result = new boolean[left.length];
+
+        for (int i = 0; i < left.length; i++) {
+            result[i] = op.eval(left[i], right[i]);
         }
-        return create(addr, nrElements);
+        return create(result);
     }
 
-    public LLVMI1Vector xor(LLVMAddress addr, LLVMI1Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            boolean elementResult = (getValue(i) ^ right.getValue(i));
-            LLVMMemory.putI1(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I1_SIZE);
-        }
-        return create(addr, nrElements);
+    public LLVMI1Vector and(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                return a & b;
+            }
+        });
     }
 
-    public static LLVMI1Vector create(LLVMAddress addr, int length) {
-        return new LLVMI1Vector(addr, length);
+    public LLVMI1Vector or(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                return a | b;
+            }
+        });
+    }
+
+    public LLVMI1Vector xor(LLVMI1Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public boolean eval(boolean a, boolean b) {
+                return a ^ b;
+            }
+        });
     }
 
     public boolean[] getValues() {
-        boolean[] values = new boolean[nrElements];
-        for (int i = 0; i < values.length; i++) {
-            values[i] = getValue(i);
-        }
-        return values;
+        return vector;
     }
 
     public boolean getValue(int index) {
-        int offset = index * I1_SIZE;
-        LLVMAddress increment = address.increment(offset);
-        return LLVMMemory.getI1(increment);
+        return vector[index];
     }
 
-    public LLVMI1Vector insert(LLVMAddress target, boolean element, int index) {
-        LLVMHeap.memCopy(target, address, nrElements * I1_SIZE);
-        LLVMAddress elementAddress = target.increment(index * I1_SIZE);
-        LLVMMemory.putI1(elementAddress, element);
-        return create(target, nrElements);
+    public LLVMI1Vector insert(boolean element, int index) {
+        boolean[] copyOf = Arrays.copyOf(vector, vector.length);
+        copyOf[index] = element;
+        return create(copyOf);
     }
 
     public int getLength() {
-        return nrElements;
+        return vector.length;
     }
 
-    public LLVMAddress getAddress() {
-        return address;
-    }
-
-    public int getVectorByteSize() {
-        return I1_SIZE * nrElements;
-    }
 }

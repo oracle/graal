@@ -22,6 +22,7 @@
     </module>
     <module name="MagicNumber">
       <property name="ignoreHashCodeMethod" value="true"/>
+      <property name="ignoreFieldDeclaration" value="true"/>
     </module>
     <module name="MissingSwitchDefault"/>
     <module name="LocalFinalVariableName"/>

@@ -33,51 +33,50 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-@NodeChildren({@NodeChild(value = "address", type = LLVMExpressionNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVMI8VectorLogicalNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI8VectorAndNode extends LLVMI8VectorLogicalNode {
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.and(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.and(right);
         }
     }
 
     public abstract static class LLVMI8VectorOrNode extends LLVMI8VectorLogicalNode {
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.or(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.or(right);
         }
     }
 
     public abstract static class LLVMI8VectorShlNode extends LLVMI8VectorLogicalNode {
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.leftShift(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.leftShift(right);
         }
     }
 
     public abstract static class LLVMI8VectorLshrNode extends LLVMI8VectorLogicalNode {
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.logicalRightShift(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.logicalRightShift(right);
         }
     }
 
     public abstract static class LLVMI8VectorAshrNode extends LLVMI8VectorLogicalNode {
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.arithmeticRightShift(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.arithmeticRightShift(right);
         }
     }
 
     public abstract static class LLVMI8VectorXorNode extends LLVMI8VectorLogicalNode {
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.xor(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.xor(right);
         }
     }
 }

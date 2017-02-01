@@ -33,51 +33,50 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 
-@NodeChildren({@NodeChild(value = "address", type = LLVMExpressionNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVMI64VectorLogicalNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64VectorAndNode extends LLVMI64VectorLogicalNode {
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.and(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.and(right);
         }
     }
 
     public abstract static class LLVMI64VectorOrNode extends LLVMI64VectorLogicalNode {
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.or(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.or(right);
         }
     }
 
     public abstract static class LLVMI64VectorShlNode extends LLVMI64VectorLogicalNode {
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.leftShift(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.leftShift(right);
         }
     }
 
     public abstract static class LLVMI64VectorLshrNode extends LLVMI64VectorLogicalNode {
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.logicalRightShift(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.logicalRightShift(right);
         }
     }
 
     public abstract static class LLVMI64VectorAshrNode extends LLVMI64VectorLogicalNode {
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.arithmeticRightShift(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.arithmeticRightShift(right);
         }
     }
 
     public abstract static class LLVMI64VectorXorNode extends LLVMI64VectorLogicalNode {
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMAddress target, LLVMI64Vector left, LLVMI64Vector right) {
-            return left.xor(target, right);
+        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+            return left.xor(right);
         }
     }
 

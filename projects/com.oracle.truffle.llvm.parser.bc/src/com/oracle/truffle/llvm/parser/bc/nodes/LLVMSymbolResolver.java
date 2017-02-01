@@ -248,8 +248,7 @@ public final class LLVMSymbolResolver {
             values.add(resolve(constant.getElement(i)));
         }
 
-        final LLVMExpressionNode target = runtime.allocateVectorResult(constant.getType());
-        return runtime.getNodeFactoryFacade().createVectorLiteralNode(runtime, values, target, constant.getType().getLLVMBaseType());
+        return runtime.getNodeFactoryFacade().createVectorLiteralNode(runtime, values, constant.getType().getLLVMBaseType());
     }
 
     private LLVMExpressionNode toFunction(FunctionType function) {
@@ -270,32 +269,14 @@ public final class LLVMSymbolResolver {
         final LLVMExpressionNode rhs = resolve(operation.getRHS());
         final LLVMBaseType baseType = operation.getType().getLLVMBaseType();
 
-        final LLVMExpressionNode target;
-        switch (baseType) {
-            case I1_VECTOR:
-            case I8_VECTOR:
-            case I16_VECTOR:
-            case I32_VECTOR:
-            case I64_VECTOR:
-            case I128_VECTOR:
-            case FLOAT_VECTOR:
-            case DOUBLE_VECTOR:
-            case ADDRESS_VECTOR:
-                target = runtime.allocateVectorResult(operation.getType());
-                break;
-            default:
-                target = null;
-                break;
-        }
-
         final LLVMArithmeticInstructionType arithmeticInstructionType = LLVMBitcodeTypeHelper.toArithmeticInstructionType(operation.getOperator());
         if (arithmeticInstructionType != null) {
-            return runtime.getNodeFactoryFacade().createArithmeticOperation(runtime, lhs, rhs, arithmeticInstructionType, baseType, target);
+            return runtime.getNodeFactoryFacade().createArithmeticOperation(runtime, lhs, rhs, arithmeticInstructionType, baseType);
         }
 
         final LLVMLogicalInstructionType logicalInstructionType = LLVMBitcodeTypeHelper.toLogicalInstructionType(operation.getOperator());
         if (logicalInstructionType != null) {
-            return runtime.getNodeFactoryFacade().createLogicalOperation(runtime, lhs, rhs, logicalInstructionType, baseType, target);
+            return runtime.getNodeFactoryFacade().createLogicalOperation(runtime, lhs, rhs, logicalInstructionType, baseType);
         }
 
         throw new UnsupportedOperationException("Unsupported Binary Operator: " + operation.getOperator());
@@ -378,8 +359,7 @@ public final class LLVMSymbolResolver {
             case ADDRESS_VECTOR:
                 final VectorType vectorType = (VectorType) type.getType();
                 final int nrElements = vectorType.getLength();
-                final LLVMExpressionNode target = runtime.allocateVectorResult(vectorType);
-                return runtime.getNodeFactoryFacade().createZeroVectorInitializer(runtime, nrElements, target, baseType);
+                return runtime.getNodeFactoryFacade().createZeroVectorInitializer(runtime, nrElements, baseType);
             default:
                 throw new UnsupportedOperationException("Unsupported Type for Zero Constant: " + type);
         }

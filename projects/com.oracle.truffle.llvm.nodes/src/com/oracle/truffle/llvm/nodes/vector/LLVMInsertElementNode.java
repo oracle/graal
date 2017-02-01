@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -42,75 +41,63 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-public abstract class LLVMInsertElementNode {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
+                @NodeChild(type = LLVMExpressionNode.class, value = "index")})
+public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
-                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
-    public abstract static class LLVMI1InsertElementNode extends LLVMExpressionNode {
+    public abstract static class LLVMI1InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI1Vector executeI1(LLVMAddress address, LLVMI1Vector vector, boolean element, int index) {
-            return vector.insert(address, element, index);
+        public LLVMI1Vector executeI1(LLVMI1Vector vector, boolean element, int index) {
+            return vector.insert(element, index);
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
-                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
-    public abstract static class LLVMI8InsertElementNode extends LLVMExpressionNode {
+    public abstract static class LLVMI8InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI8Vector executeI8(LLVMAddress address, LLVMI8Vector vector, byte element, int index) {
-            return vector.insert(address, element, index);
+        public LLVMI8Vector executeI8(LLVMI8Vector vector, byte element, int index) {
+            return vector.insert(element, index);
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
-                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
-    public abstract static class LLVMI16InsertElementNode extends LLVMExpressionNode {
+    public abstract static class LLVMI16InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI16Vector executeI16(LLVMAddress address, LLVMI16Vector vector, short element, int index) {
-            return vector.insert(address, element, index);
+        public LLVMI16Vector executeI16(LLVMI16Vector vector, short element, int index) {
+            return vector.insert(element, index);
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
-                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
-    public abstract static class LLVMI32InsertElementNode extends LLVMExpressionNode {
+    public abstract static class LLVMI32InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI32Vector executeI32(LLVMAddress address, LLVMI32Vector vector, int element, int index) {
-            return vector.insert(address, element, index);
+        public LLVMI32Vector executeI32(LLVMI32Vector vector, int element, int index) {
+            return vector.insert(element, index);
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
-                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
-    public abstract static class LLVMI64InsertElementNode extends LLVMExpressionNode {
+    public abstract static class LLVMI64InsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMI64Vector executeI64(LLVMAddress address, LLVMI64Vector vector, long element, int index) {
-            return vector.insert(address, element, index);
+        public LLVMI64Vector executeI64(LLVMI64Vector vector, long element, int index) {
+            return vector.insert(element, index);
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
-                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
-    public abstract static class LLVMFloatInsertElementNode extends LLVMExpressionNode {
+    public abstract static class LLVMFloatInsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMFloatVector executeFloat(LLVMAddress address, LLVMFloatVector vector, float element, int index) {
-            return vector.insert(address, element, index);
+        public LLVMFloatVector executeFloat(LLVMFloatVector vector, float element, int index) {
+            return vector.insert(element, index);
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
-                    @NodeChild(type = LLVMExpressionNode.class, value = "index")})
-    public abstract static class LLVMDoubleInsertElementNode extends LLVMExpressionNode {
+    public abstract static class LLVMDoubleInsertElementNode extends LLVMInsertElementNode {
 
         @Specialization
-        public LLVMDoubleVector executeDouble(LLVMAddress address, LLVMDoubleVector vector, double element, int index) {
-            return vector.insert(address, element, index);
+        public LLVMDoubleVector executeDouble(LLVMDoubleVector vector, double element, int index) {
+            return vector.insert(element, index);
         }
     }
 

@@ -84,7 +84,6 @@ import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.LLVMType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
@@ -155,25 +154,17 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         LLVMExpressionNode lhs = symbols.resolve(operation.getLHS());
         LLVMExpressionNode rhs = symbols.resolve(operation.getRHS());
 
-        LLVMExpressionNode target = null;
-        if (operation.getType() instanceof VectorType) {
-            Type operationType = operation.getType();
-            final int size = runtime.getByteSize(operationType);
-            final int alignment = runtime.getByteAlignment(operationType);
-            target = factoryFacade.createAlloc(runtime, operationType, size, alignment, null, null);
-        }
-
         final LLVMBaseType type = operation.getType().getLLVMBaseType();
         final LLVMArithmeticInstructionType opA = LLVMBitcodeTypeHelper.toArithmeticInstructionType(operation.getOperator());
         if (opA != null) {
-            final LLVMExpressionNode result = factoryFacade.createArithmeticOperation(runtime, lhs, rhs, opA, type, target);
+            final LLVMExpressionNode result = factoryFacade.createArithmeticOperation(runtime, lhs, rhs, opA, type);
             createFrameWrite(result, operation);
             return;
         }
 
         final LLVMLogicalInstructionType opL = LLVMBitcodeTypeHelper.toLogicalInstructionType(operation.getOperator());
         if (opL != null) {
-            final LLVMExpressionNode result = factoryFacade.createLogicalOperation(runtime, lhs, rhs, opL, type, target);
+            final LLVMExpressionNode result = factoryFacade.createLogicalOperation(runtime, lhs, rhs, opL, type);
             createFrameWrite(result, operation);
             return;
         }
@@ -361,7 +352,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode element = symbols.resolve(insert.getValue());
         final Type type = insert.getType();
         final LLVMBaseType resultType = type.getLLVMBaseType();
-        final LLVMExpressionNode result = factoryFacade.createInsertElement(runtime, resultType, vector, type, element, index);
+        final LLVMExpressionNode result = factoryFacade.createInsertElement(runtime, resultType, vector, element, index);
         createFrameWrite(result, insert);
     }
 
@@ -431,11 +422,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode mask = symbols.resolve(shuffle.getMask());
 
         final Type type = shuffle.getType();
-        final int size = runtime.getByteSize(type);
-        final int alignment = runtime.getByteAlignment(type);
-        final LLVMExpressionNode destination = factoryFacade.createAlloc(runtime, type, size, alignment, null, null);
-
-        final LLVMExpressionNode result = factoryFacade.createShuffleVector(runtime, type.getLLVMBaseType(), destination, vector1, vector2, mask);
+        final LLVMExpressionNode result = factoryFacade.createShuffleVector(runtime, type.getLLVMBaseType(), vector1, vector2, mask);
 
         createFrameWrite(result, shuffle);
     }

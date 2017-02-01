@@ -33,24 +33,23 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 
-@NodeChildren({@NodeChild(value = "addressNode", type = LLVMExpressionNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVMI16VectorArithmeticNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16VectorAddNode extends LLVMI16VectorArithmeticNode {
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.add(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.add(right);
         }
     }
 
     public abstract static class LLVMI16VectorMulNode extends LLVMI16VectorArithmeticNode {
 
         @Specialization
-        public LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.mul(target, right);
+        public LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.mul(right);
         }
 
     }
@@ -58,40 +57,40 @@ public abstract class LLVMI16VectorArithmeticNode extends LLVMExpressionNode {
     public abstract static class LLVMI16VectorSubNode extends LLVMI16VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.sub(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.sub(right);
         }
     }
 
     public abstract static class LLVMI16VectorDivNode extends LLVMI16VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.div(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.div(right);
         }
     }
 
     public abstract static class LLVMI16VectorUDivNode extends LLVMI16VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.udiv(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.divUnsigned(right);
         }
     }
 
     public abstract static class LLVMI16VectorRemNode extends LLVMI16VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.rem(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.rem(right);
         }
     }
 
     public abstract static class LLVMI16VectorURemNode extends LLVMI16VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMAddress target, LLVMI16Vector left, LLVMI16Vector right) {
-            return left.urem(target, right);
+        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+            return left.remUnsigned(right);
         }
     }
 }

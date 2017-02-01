@@ -31,195 +31,196 @@ package com.oracle.truffle.llvm.runtime.vector;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+
+import java.util.Arrays;
 
 @ValueType
 public final class LLVMI64Vector {
 
     private static final int I64_SIZE = 8;
-    private final LLVMAddress address;
-    private final int nrElements;
+    private final long[] vector;
 
-    protected LLVMI64Vector(LLVMAddress addr, int nrElements) {
-        this.address = addr;
-        this.nrElements = nrElements;
+    public static LLVMI64Vector create(long[] vector) {
+        return new LLVMI64Vector(vector);
     }
 
-    public static LLVMI64Vector fromI64Array(LLVMAddress target, long[] vals) {
-        LLVMAddress currentTarget = target;
-        for (int i = 0; i < vals.length; i++) {
-            LLVMMemory.putI64(currentTarget, vals[i]);
+    public static LLVMI64Vector readVectorFromMemory(LLVMAddress address, int size) {
+        long[] vector = new long[size];
+        LLVMAddress currentTarget = address;
+        for (int i = 0; i < size; i++) {
+            vector[i] = LLVMMemory.getI64(currentTarget);
             currentTarget = currentTarget.increment(I64_SIZE);
         }
-        return new LLVMI64Vector(target, vals.length);
+        return create(vector);
     }
 
-    public static LLVMI64Vector create(LLVMAddress addr, int length) {
-        return new LLVMI64Vector(addr, length);
+    public static void writeVectorToMemory(LLVMAddress address, LLVMI64Vector vector) {
+        LLVMAddress currentTarget = address;
+        for (int i = 0; i < vector.getLength(); i++) {
+            LLVMMemory.putI64(currentTarget, vector.getValue(i));
+            currentTarget = currentTarget.increment(I64_SIZE);
+        }
+    }
+
+    private LLVMI64Vector(long[] vector) {
+        this.vector = vector;
+    }
+
+    // We do not want to use lambdas because of bad startup
+    private interface Operation {
+        long eval(long a, long b);
+    }
+
+    private static LLVMI64Vector doOperation(LLVMI64Vector lhs, LLVMI64Vector rhs, Operation op) {
+        long[] left = lhs.vector;
+        long[] right = rhs.vector;
+
+        // not sure if this assert is true for llvm ir in general
+        // this implementation however assumes it
+        assert left.length == right.length;
+
+        long[] result = new long[left.length];
+
+        for (int i = 0; i < left.length; i++) {
+            result[i] = op.eval(left[i], right[i]);
+        }
+        return create(result);
+    }
+
+    public LLVMI64Vector add(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a + b;
+            }
+        });
+    }
+
+    public LLVMI64Vector mul(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a * b;
+            }
+        });
+    }
+
+    public LLVMI64Vector sub(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a - b;
+            }
+        });
+    }
+
+    public LLVMI64Vector div(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a / b;
+            }
+        });
+    }
+
+    public LLVMI64Vector divUnsigned(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return Long.divideUnsigned(a, b);
+            }
+        });
+    }
+
+    public LLVMI64Vector rem(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a % b;
+            }
+        });
+    }
+
+    public LLVMI64Vector remUnsigned(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return Long.remainderUnsigned(a, b);
+            }
+        });
+    }
+
+    public LLVMI64Vector and(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a & b;
+            }
+        });
+    }
+
+    public LLVMI64Vector or(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a | b;
+            }
+        });
+    }
+
+    public LLVMI64Vector leftShift(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a << b;
+            }
+        });
+    }
+
+    public LLVMI64Vector logicalRightShift(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a >>> b;
+            }
+        });
+    }
+
+    public LLVMI64Vector arithmeticRightShift(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a >> b;
+            }
+        });
+    }
+
+    public LLVMI64Vector xor(LLVMI64Vector rightValue) {
+        return doOperation(this, rightValue, new Operation() {
+            @Override
+            public long eval(long a, long b) {
+                return a ^ b;
+            }
+        });
     }
 
     public long[] getValues() {
-        long[] values = new long[nrElements];
-        for (int i = 0; i < values.length; i++) {
-            values[i] = getValue(i);
-        }
-        return values;
+        return vector;
     }
 
     public long getValue(int index) {
-        int offset = index * I64_SIZE;
-        LLVMAddress increment = address.increment(offset);
-        return LLVMMemory.getI64(increment);
+        return vector[index];
     }
 
-    public LLVMI64Vector insert(LLVMAddress target, long element, int index) {
-        LLVMHeap.memCopy(target, address, nrElements * I64_SIZE);
-        LLVMAddress elementAddress = target.increment(index * I64_SIZE);
-        LLVMMemory.putI64(elementAddress, element);
-        return create(target, nrElements);
+    public LLVMI64Vector insert(long element, int index) {
+        long[] copyOf = Arrays.copyOf(vector, vector.length);
+        copyOf[index] = element;
+        return create(copyOf);
     }
 
     public int getLength() {
-        return nrElements;
-    }
-
-    public LLVMI64Vector add(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) + right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector mul(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) * right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector sub(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) - right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector div(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) / right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector divUnsigned(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = Long.divideUnsigned(getValue(i), right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector rem(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) % right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector remUnsigned(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = Long.remainderUnsigned(getValue(i), right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector and(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) & right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector or(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) | right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector leftShift(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) << right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector logicalRightShift(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) >>> right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector arithmeticRightShift(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) >> right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMI64Vector xor(LLVMAddress addr, LLVMI64Vector right) {
-        LLVMAddress currentAddr = addr;
-        for (int i = 0; i < nrElements; i++) {
-            long elementResult = (getValue(i) ^ right.getValue(i));
-            LLVMMemory.putI64(currentAddr, elementResult);
-            currentAddr = currentAddr.increment(I64_SIZE);
-        }
-        return create(addr, nrElements);
-    }
-
-    public LLVMAddress getAddress() {
-        return address;
-    }
-
-    public int getVectorByteSize() {
-        return I64_SIZE * nrElements;
+        return vector.length;
     }
 
 }

@@ -33,30 +33,29 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 
-@NodeChildren({@NodeChild(value = "address", type = LLVMExpressionNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVMI1VectorLogicalNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1VectorAndNode extends LLVMI1VectorLogicalNode {
         @Specialization
-        protected LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI1Vector left, LLVMI1Vector right) {
-            return left.and(target, right);
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.and(right);
         }
     }
 
     public abstract static class LLVMI1VectorOrNode extends LLVMI1VectorLogicalNode {
         @Specialization
-        protected LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI1Vector left, LLVMI1Vector right) {
-            return left.or(target, right);
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.or(right);
         }
     }
 
     public abstract static class LLVMI1VectorXorNode extends LLVMI1VectorLogicalNode {
         @Specialization
-        protected LLVMI1Vector executeI1Vector(LLVMAddress target, LLVMI1Vector left, LLVMI1Vector right) {
-            return left.xor(target, right);
+        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+            return left.xor(right);
         }
     }
 }

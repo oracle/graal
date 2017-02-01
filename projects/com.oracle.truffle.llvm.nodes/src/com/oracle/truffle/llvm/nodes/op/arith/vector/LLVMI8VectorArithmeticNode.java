@@ -33,24 +33,23 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-@NodeChildren({@NodeChild(value = "addressNode", type = LLVMExpressionNode.class), @NodeChild("leftNode"), @NodeChild("rightNode")})
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class LLVMI8VectorArithmeticNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI8VectorAddNode extends LLVMI8VectorArithmeticNode {
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.add(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.add(right);
         }
     }
 
     public abstract static class LLVMI8VectorMulNode extends LLVMI8VectorArithmeticNode {
 
         @Specialization
-        public LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.mul(target, right);
+        public LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.mul(right);
         }
 
     }
@@ -58,24 +57,24 @@ public abstract class LLVMI8VectorArithmeticNode extends LLVMExpressionNode {
     public abstract static class LLVMI8VectorSubNode extends LLVMI8VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.sub(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.sub(right);
         }
     }
 
     public abstract static class LLVMI8VectorDivNode extends LLVMI8VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.div(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.div(right);
         }
     }
 
     public abstract static class LLVMI8VectorRemNode extends LLVMI8VectorArithmeticNode {
 
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMAddress target, LLVMI8Vector left, LLVMI8Vector right) {
-            return left.rem(target, right);
+        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+            return left.rem(right);
         }
     }
 }

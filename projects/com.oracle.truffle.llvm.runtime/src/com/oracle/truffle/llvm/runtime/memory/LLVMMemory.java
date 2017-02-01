@@ -182,31 +182,31 @@ public abstract class LLVMMemory {
     }
 
     public static LLVMI32Vector getI32Vector(LLVMAddress addr, int size) {
-        return LLVMI32Vector.create(addr, size);
+        return LLVMI32Vector.readVectorFromMemory(addr, size);
     }
 
     public static LLVMI8Vector getI8Vector(LLVMAddress addr, int size) {
-        return LLVMI8Vector.create(addr, size);
+        return LLVMI8Vector.readVectorFromMemory(addr, size);
     }
 
     public static LLVMI1Vector getI1Vector(LLVMAddress addr, int size) {
-        return LLVMI1Vector.create(addr, size);
+        return LLVMI1Vector.readVectorFromMemory(addr, size);
     }
 
     public static LLVMI16Vector getI16Vector(LLVMAddress addr, int size) {
-        return LLVMI16Vector.create(addr, size);
+        return LLVMI16Vector.readVectorFromMemory(addr, size);
     }
 
     public static LLVMI64Vector getI64Vector(LLVMAddress addr, int size) {
-        return LLVMI64Vector.create(addr, size);
+        return LLVMI64Vector.readVectorFromMemory(addr, size);
     }
 
     public static LLVMFloatVector getFloatVector(LLVMAddress addr, int size) {
-        return LLVMFloatVector.createFloatVector(addr, size);
+        return LLVMFloatVector.readVectorFromMemory(addr, size);
     }
 
     public static LLVMDoubleVector getDoubleVector(LLVMAddress addr, int size) {
-        return LLVMDoubleVector.createDoubleVector(addr, size);
+        return LLVMDoubleVector.readVectorFromMemory(addr, size);
     }
 
     public static void putStruct(LLVMAddress address, LLVMAddress value, int structSize) {
@@ -216,31 +216,31 @@ public abstract class LLVMMemory {
     // watch out for casts such as I32* to I32Vector* when changing the way how vectors are
     // implemented
     public static void putVector(LLVMAddress addr, LLVMDoubleVector vector) {
-        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+        LLVMDoubleVector.writeVectorToMemory(addr, vector);
     }
 
     public static void putVector(LLVMAddress addr, LLVMFloatVector vector) {
-        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+        LLVMFloatVector.writeVectorToMemory(addr, vector);
     }
 
     public static void putVector(LLVMAddress addr, LLVMI16Vector vector) {
-        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+        LLVMI16Vector.writeVectorToMemory(addr, vector);
     }
 
     public static void putVector(LLVMAddress addr, LLVMI1Vector vector) {
-        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+        LLVMI1Vector.writeVectorToMemory(addr, vector);
     }
 
     public static void putVector(LLVMAddress addr, LLVMI32Vector vector) {
-        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+        LLVMI32Vector.writeVectorToMemory(addr, vector);
     }
 
     public static void putVector(LLVMAddress addr, LLVMI64Vector vector) {
-        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+        LLVMI64Vector.writeVectorToMemory(addr, vector);
     }
 
     public static void putVector(LLVMAddress addr, LLVMI8Vector vector) {
-        LLVMHeap.memCopy(addr, vector.getAddress(), vector.getVectorByteSize());
+        LLVMI8Vector.writeVectorToMemory(addr, vector);
     }
 
 }

@@ -33,25 +33,24 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public class LLVMShuffleVectorNode {
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask", type = LLVMExpressionNode.class)})
+    @NodeChildren({@NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask", type = LLVMExpressionNode.class)})
     public abstract static class LLVMShuffleI8VectorNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMI8Vector executeI8Vector(LLVMAddress addr, LLVMI8Vector leftVector, LLVMI8Vector rightVector, LLVMI32Vector maskVector) {
+        public LLVMI8Vector executeI8Vector(LLVMI8Vector leftVector, LLVMI8Vector rightVector, LLVMI32Vector maskVector) {
             byte[] joinedValues = concat(leftVector.getValues(), rightVector.getValues());
             byte[] newValues = new byte[maskVector.getLength()];
             for (int i = 0; i < maskVector.getLength(); i++) {
                 int index = maskVector.getValue(i);
                 newValues[i] = joinedValues[index];
             }
-            return LLVMI8Vector.fromI8Array(addr, newValues);
+            return LLVMI8Vector.create(newValues);
         }
 
         private static byte[] concat(byte[] first, byte[] second) {
@@ -67,18 +66,18 @@ public class LLVMShuffleVectorNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
+    @NodeChildren({@NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
     public abstract static class LLVMShuffleI32VectorNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMI32Vector executeI32Vector(LLVMAddress addr, LLVMI32Vector leftVector, LLVMI32Vector rightVector, LLVMI32Vector maskVector) {
+        public LLVMI32Vector executeI32Vector(LLVMI32Vector leftVector, LLVMI32Vector rightVector, LLVMI32Vector maskVector) {
             int[] joinedValues = concat(leftVector.getValues(), rightVector.getValues());
             int[] newValues = new int[maskVector.getLength()];
             for (int i = 0; i < maskVector.getLength(); i++) {
                 int element = maskVector.getValue(i);
                 newValues[i] = joinedValues[element];
             }
-            return LLVMI32Vector.fromI32Array(addr, newValues);
+            return LLVMI32Vector.create(newValues);
         }
 
         private static int[] concat(int[] first, int[] second) {
@@ -94,18 +93,18 @@ public class LLVMShuffleVectorNode {
 
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
+    @NodeChildren({@NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
     public abstract static class LLVMShuffleFloatVectorNode extends LLVMExpressionNode {
 
         @Specialization
-        public LLVMFloatVector execute(LLVMAddress addr, LLVMFloatVector leftVector, LLVMFloatVector rightVector, LLVMI32Vector maskVector) {
+        public LLVMFloatVector execute(LLVMFloatVector leftVector, LLVMFloatVector rightVector, LLVMI32Vector maskVector) {
             float[] joinedValues = concat(leftVector.getValues(), rightVector.getValues());
             float[] newValues = new float[maskVector.getLength()];
             for (int i = 0; i < maskVector.getLength(); i++) {
                 int element = maskVector.getValue(i);
                 newValues[i] = joinedValues[element];
             }
-            return LLVMFloatVector.fromFloatArray(addr, newValues);
+            return LLVMFloatVector.create(newValues);
         }
 
         private static float[] concat(float[] first, float[] second) {
