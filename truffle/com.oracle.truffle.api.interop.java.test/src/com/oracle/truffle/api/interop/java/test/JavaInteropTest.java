@@ -26,11 +26,17 @@ package com.oracle.truffle.api.interop.java.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -38,7 +44,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -49,13 +54,6 @@ import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
-
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 
 public class JavaInteropTest {
     public class Data {
@@ -155,7 +153,7 @@ public class JavaInteropTest {
             public Object execute(VirtualFrame frame) {
                 try {
                     final TruffleObject receiver = (TruffleObject) frame.getArguments()[0];
-                    return ForeignAccess.sendKeys(keysNode, frame, receiver);
+                    return ForeignAccess.sendKeys(keysNode, receiver);
                 } catch (InteropException ex) {
                     throw ex.raise();
                 }
@@ -267,17 +265,17 @@ public class JavaInteropTest {
         int[] a = new int[]{1, 2, 3};
         TruffleObject truffleObject = JavaInterop.asTruffleObject(a);
 
-        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1));
-        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1.0));
-        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1L));
+        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1));
+        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1.0));
+        assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1L));
 
-        ForeignAccess.sendWrite(Message.WRITE.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1, 42);
-        ForeignAccess.sendWrite(Message.WRITE.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1.0, 42);
-        ForeignAccess.sendWrite(Message.WRITE.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1L, 42);
+        ForeignAccess.sendWrite(Message.WRITE.createNode(), truffleObject, 1, 42);
+        ForeignAccess.sendWrite(Message.WRITE.createNode(), truffleObject, 1.0, 42);
+        ForeignAccess.sendWrite(Message.WRITE.createNode(), truffleObject, 1L, 42);
 
-        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1));
-        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1.0));
-        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor()), truffleObject, 1L));
+        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1));
+        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1.0));
+        assertEquals(42, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1L));
 
     }
 
@@ -485,7 +483,7 @@ public class JavaInteropTest {
         @Override
         public Object execute(VirtualFrame frame) {
             try {
-                return ForeignAccess.send(foreignAccess, frame, function, args);
+                return ForeignAccess.send(foreignAccess, function, args);
             } catch (InteropException e) {
                 throw new AssertionError(e);
             }

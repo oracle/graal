@@ -74,8 +74,8 @@ public class SLObjectMessageResolution {
         @Child private SLForeignToSLTypeNode valueToSLType = SLForeignToSLTypeNodeGen.create();
 
         public Object access(VirtualFrame frame, DynamicObject receiver, Object name, Object value) {
-            Object convertedName = nameToSLType.executeConvert(frame, name);
-            Object convertedValue = valueToSLType.executeConvert(frame, value);
+            Object convertedName = nameToSLType.executeConvert(name);
+            Object convertedValue = valueToSLType.executeConvert(value);
             write.executeWrite(frame, receiver, convertedName, convertedValue);
             return convertedValue;
         }
@@ -91,7 +91,7 @@ public class SLObjectMessageResolution {
         @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create();
 
         public Object access(VirtualFrame frame, DynamicObject receiver, Object name) {
-            Object convertedName = nameToSLType.executeConvert(frame, name);
+            Object convertedName = nameToSLType.executeConvert(name);
             return read.executeRead(frame, receiver, convertedName);
         }
     }
@@ -106,7 +106,7 @@ public class SLObjectMessageResolution {
 
         @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
 
-        public Object access(VirtualFrame frame, DynamicObject receiver, String name, Object[] arguments) {
+        public Object access(DynamicObject receiver, String name, Object[] arguments) {
             Object property = receiver.get(name);
             if (property instanceof SLFunction) {
                 SLFunction function = (SLFunction) property;
@@ -117,7 +117,7 @@ public class SLObjectMessageResolution {
                 for (int i = 0; i < arguments.length; i++) {
                     arr[i] = SLContext.fromForeignValue(arguments[i]);
                 }
-                Object result = dispatch.executeDispatch(frame, function, arr);
+                Object result = dispatch.executeDispatch(function, arr);
                 return result;
             } else {
                 throw UnknownIdentifierException.raise(name);

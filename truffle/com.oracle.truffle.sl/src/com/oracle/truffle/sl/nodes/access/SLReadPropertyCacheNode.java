@@ -150,9 +150,9 @@ public abstract class SLReadPropertyCacheNode extends SLPropertyCacheNode {
 
         try {
             /* Perform the foreign object access. */
-            Object result = ForeignAccess.sendRead(foreignReadNode, frame, receiver, name);
+            Object result = ForeignAccess.sendRead(foreignReadNode, receiver, name);
             /* Convert the result to a SL value. */
-            return toSLTypeNode.executeConvert(frame, result);
+            return toSLTypeNode.executeConvert(result);
 
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             /* Foreign access was not successful. */

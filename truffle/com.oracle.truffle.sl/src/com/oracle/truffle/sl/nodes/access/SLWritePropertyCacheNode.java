@@ -214,7 +214,7 @@ public abstract class SLWritePropertyCacheNode extends SLPropertyCacheNode {
 
         try {
             /* Perform the foreign object access. */
-            ForeignAccess.sendWrite(foreignWriteNode, frame, receiver, name, value);
+            ForeignAccess.sendWrite(foreignWriteNode, receiver, name, value);
 
         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
             /* Foreign access was not successful. */

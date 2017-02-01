@@ -36,7 +36,6 @@ import com.oracle.truffle.api.nodes.Node;
 
 abstract class InteropAccessNode extends Node {
 
-    private static final Object[] EMPTY_ARRAY = new Object[0];
     static final int ARG0_RECEIVER = 0;
 
     protected static final int CACHE_SIZE = 8;
@@ -49,7 +48,7 @@ abstract class InteropAccessNode extends Node {
 
     @SuppressWarnings("unused")
     public final Object execute(TruffleObject receiver) throws InteropException {
-        return executeImpl(receiver, EMPTY_ARRAY);
+        return executeImpl(receiver, new Object[]{receiver});
     }
 
     @SuppressWarnings("unused")
