@@ -113,7 +113,7 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
         newUpperBound = CodeUtil.signExtend(newUpperBound & newUpMask, bits);
         newDownMask |= limit.downMask();
         newLowerBound |= newDownMask;
-        return new IntegerStamp(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
+        return IntegerStamp.create(bits, newLowerBound, newUpperBound, newDownMask, newUpMask);
     }
 
     @Override

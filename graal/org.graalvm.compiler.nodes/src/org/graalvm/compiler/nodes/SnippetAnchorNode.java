@@ -20,38 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.nodes;
+package org.graalvm.compiler.nodes;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Anchor;
+import static org.graalvm.compiler.nodeinfo.InputType.Guard;
+import static org.graalvm.compiler.nodeinfo.InputType.Value;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 
-@NodeInfo(allowedUsageTypes = {InputType.Association, InputType.Value}, cycles = CYCLES_0, size = SIZE_0)
-public final class SnippetLocationProxyNode extends FloatingNode implements Canonicalizable, Node.ValueNumberable {
+@NodeInfo(allowedUsageTypes = {Value, Anchor, Guard}, cycles = CYCLES_0, size = SIZE_0)
+public final class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
+    public static final NodeClass<SnippetAnchorNode> TYPE = NodeClass.create(SnippetAnchorNode.class);
 
-    public static final NodeClass<SnippetLocationProxyNode> TYPE = NodeClass.create(SnippetLocationProxyNode.class);
-    @Input(InputType.Unchecked) ValueNode location;
-
-    public SnippetLocationProxyNode(ValueNode location) {
+    public SnippetAnchorNode() {
         super(TYPE, StampFactory.object());
-        this.location = location;
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        return location.isAllowedUsageType(InputType.Association) ? location : this;
+    public void simplify(SimplifierTool tool) {
+        AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(this);
+        replaceAtUsages(Anchor, prevBegin);
+        replaceAtUsages(Guard, prevBegin);
+        if (tool.allUsagesAvailable() && hasNoUsages()) {
+            graph().removeFixed(this);
+        }
     }
 
     @NodeIntrinsic
-    public static native GuardingNode location(Object location);
+    public static native GuardingNode anchor();
 }

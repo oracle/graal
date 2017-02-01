@@ -22,14 +22,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
-import org.junit.Assert;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.junit.Test;
 
-import org.graalvm.compiler.truffle.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
@@ -41,14 +36,14 @@ import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class ExplodeLoopBlockDuplicationTest {
+public class ExplodeLoopBlockDuplicationTest extends TestWithSynchronousCompiling {
 
     /*
      * Test that polymorphic caches duplicate the cached block and can therefore resolve the
      * abstract method call and resolve the result to a constant.
      */
     @Test
-    public void testBlockDuplication() throws TimeoutException, ExecutionException {
+    public void testBlockDuplication() {
         OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new ObjectCacheTestRootNode());
         AbstractType value1 = new ConcreteType1();
         AbstractType value2 = new ConcreteType2();
@@ -56,14 +51,11 @@ public class ExplodeLoopBlockDuplicationTest {
         target.call(value2);
 
         target.compile();
-        ((GraalTruffleRuntime) Truffle.getRuntime()).waitForCompilation(target, Integer.MAX_VALUE);
-
-        Assert.assertTrue(target.isValid());
-
+        assertCompiled(target);
         target.call(value1);
         target.call(value2);
 
-        Assert.assertTrue(target.isValid());
+        assertCompiled(target);
     }
 
     final class ObjectCacheTestRootNode extends RootNode {

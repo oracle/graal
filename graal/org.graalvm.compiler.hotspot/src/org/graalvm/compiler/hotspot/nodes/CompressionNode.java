@@ -216,7 +216,4 @@ public final class CompressionNode extends UnaryNode implements ConvertNode, LIR
         }
         gen.setResult(this, result);
     }
-
-    @NodeIntrinsic
-    public static native Object compression(@ConstantNodeParameter CompressionOp op, Object object, @ConstantNodeParameter CompressEncoding encoding);
 }

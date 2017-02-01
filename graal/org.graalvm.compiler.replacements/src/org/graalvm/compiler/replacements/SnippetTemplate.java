@@ -23,7 +23,6 @@
 package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 import static org.graalvm.compiler.core.common.LocationIdentity.ANY_LOCATION;
 import static org.graalvm.compiler.core.common.LocationIdentity.any;
 import static org.graalvm.compiler.debug.Debug.applyFormattingFlagsAndWidth;
@@ -93,7 +92,6 @@ import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
@@ -1414,14 +1412,6 @@ public class SnippetTemplate {
             }
 
             updateStamps(replacee, duplicates);
-
-            if (UseGraalInstrumentation.getValue()) {
-                for (InstrumentationNode instrumentation : replaceeGraph.getNodes().filter(InstrumentationNode.class)) {
-                    if (instrumentation.getTarget() == replacee) {
-                        instrumentation.replaceFirstInput(replacee, firstCFGNodeDuplicate);
-                    }
-                }
-            }
 
             rewireMemoryGraph(replacee, duplicates);
 

@@ -26,22 +26,20 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
  */
 @NodeInfo
-public final class OptimizedDirectCallNode extends DirectCallNode implements MaterializedFrameNotify {
+public final class OptimizedDirectCallNode extends DirectCallNode {
 
     private int callCount;
     private boolean inliningForced;
 
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
-    @CompilationFinal private FrameAccess outsideFrameAccess = FrameAccess.NONE;
 
     private final TruffleSplittingStrategy splittingStrategy;
     private final GraalTruffleRuntime runtime;
@@ -54,18 +52,15 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     }
 
     @Override
-    public Object call(VirtualFrame frame, Object[] arguments) {
+    public Object call(Object[] arguments) {
         if (CompilerDirectives.inInterpreter()) {
             onInterpreterCall(arguments);
         }
-        return callProxy(this, getCurrentCallTarget(), frame, arguments, true);
+        return callProxy(this, getCurrentCallTarget(), arguments, true);
     }
 
-    public static Object callProxy(MaterializedFrameNotify notify, CallTarget callTarget, VirtualFrame frame, Object[] arguments, boolean direct) {
+    public static Object callProxy(Node callNode, CallTarget callTarget, Object[] arguments, boolean direct) {
         try {
-            if (notify.getOutsideFrameAccess() != FrameAccess.NONE) {
-                CompilerDirectives.materialize(frame);
-            }
             if (direct) {
                 return ((OptimizedCallTarget) callTarget).callDirect(arguments);
             } else {
@@ -73,7 +68,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
             }
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
-            assert notify != null & callTarget != null & frame != null;
+            assert callNode != null & callTarget != null;
         }
     }
 
@@ -90,16 +85,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Mat
     @Override
     public boolean isInliningForced() {
         return inliningForced;
-    }
-
-    @Override
-    public FrameAccess getOutsideFrameAccess() {
-        return outsideFrameAccess;
-    }
-
-    @Override
-    public void setOutsideFrameAccess(FrameAccess outsideFrameAccess) {
-        this.outsideFrameAccess = outsideFrameAccess;
     }
 
     @Override

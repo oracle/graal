@@ -13,7 +13,7 @@ function main() {
         test();
         i = i + 1;
     }
-    assertFalse(isOptimized(waitForOptimization(test)));
+    assertFalse(isOptimized(test));
     test();                         // triggers compilation
-    assertTrue(isOptimized(waitForOptimization(test)));
+    assertTrue(isOptimized(test));
 }  

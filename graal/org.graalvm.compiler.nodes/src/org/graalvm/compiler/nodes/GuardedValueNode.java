@@ -25,7 +25,6 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -53,16 +52,10 @@ public final class GuardedValueNode extends FloatingGuardedNode implements LIRLo
 
     public static final NodeClass<GuardedValueNode> TYPE = NodeClass.create(GuardedValueNode.class);
     @Input ValueNode object;
-    protected final Stamp piStamp;
-
-    public GuardedValueNode(ValueNode object, GuardingNode guard, Stamp stamp) {
-        super(TYPE, computeStamp(stamp, object), guard);
-        this.object = object;
-        this.piStamp = stamp;
-    }
 
     public GuardedValueNode(ValueNode object, GuardingNode guard) {
-        this(object, guard, object.stamp());
+        super(TYPE, object.stamp(), guard);
+        this.object = object;
     }
 
     public ValueNode object() {
@@ -78,11 +71,7 @@ public final class GuardedValueNode extends FloatingGuardedNode implements LIRLo
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(computeStamp(piStamp, object()));
-    }
-
-    static Stamp computeStamp(Stamp piStamp, ValueNode object) {
-        return piStamp.improveWith(object.stamp());
+        return updateStamp(object().stamp());
     }
 
     @Override

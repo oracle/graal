@@ -183,14 +183,17 @@ public class TruffleCompilerOptions {
     @Option(help = "Instrument branches by considering different inlining sites as different branches.")
     public static final OptionValue<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionValue<>(false);
 
-    @Option(help = "Method filter for methods in which to add branch instrumentation.")
-    public static final OptionValue<String> TruffleInstrumentBranchesFilter = new OptionValue<>(null);
+    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.")
+    public static final OptionValue<Boolean> TruffleInstrumentBoundaries = new OptionValue<>(false);
 
-    @Option(help = "Prettify stack traces for branch-instrumented callsites.")
-    public static final OptionValue<Boolean> TruffleInstrumentBranchesPretty = new OptionValue<>(true);
+    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.")
+    public static final OptionValue<Boolean> TruffleInstrumentBoundariesPerInlineSite = new OptionValue<>(false);
+
+    @Option(help = "Method filter for host methods in which to add instrumentation.")
+    public static final OptionValue<String> TruffleInstrumentFilter = new OptionValue<>("*.*.*");
 
     @Option(help = "Maximum number of instrumentation counters available.")
-    public static final OptionValue<Integer> TruffleInstrumentBranchesCount = new OptionValue<>(10000);
+    public static final OptionValue<Integer> TruffleInstrumentationTableSize = new OptionValue<>(10000);
 
     // @formatter:on
 }

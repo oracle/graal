@@ -205,13 +205,13 @@ public class MatchProcessor extends AbstractProcessor {
                     name = next();
                 }
                 originatingElements.addAll(type.originatingElements);
-                requiredPackages.add(type.nodePackage);
             } else if (Character.isLowerCase(peek("name").charAt(0))) {
                 name = next();
                 type = valueType;
             } else {
                 throw new RuleParseError("Unexpected token \"%s\" when looking for name or node type", peek(null));
             }
+            requiredPackages.add(type.nodePackage);
             if (name != null) {
                 if (!capturedNames.contains(name)) {
                     capturedNames.add(name);

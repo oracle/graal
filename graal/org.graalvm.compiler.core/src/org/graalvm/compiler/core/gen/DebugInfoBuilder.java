@@ -47,6 +47,7 @@ import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaValue;
@@ -118,8 +119,13 @@ public class DebugInfoBuilder {
                     assert currentField != null;
                     int pos = 0;
                     for (int i = 0; i < entryCount; i++) {
-                        if (!currentField.values().get(i).isConstant() || currentField.values().get(i).asJavaConstant().getJavaKind() != JavaKind.Illegal) {
-                            ValueNode value = currentField.values().get(i);
+                        ValueNode value = currentField.values().get(i);
+                        if (value == null) {
+                            JavaKind entryKind = vobjNode.entryKind(i);
+                            values[pos] = JavaConstant.defaultForKind(entryKind.getStackKind());
+                            slotKinds[pos] = entryKind.getStackKind();
+                            pos++;
+                        } else if (!value.isConstant() || value.asJavaConstant().getJavaKind() != JavaKind.Illegal) {
                             values[pos] = toJavaValue(value);
                             slotKinds[pos] = toSlotKind(value);
                             pos++;

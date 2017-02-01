@@ -30,7 +30,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
 import static org.graalvm.compiler.core.common.GraalOptions.OptPushThroughPi;
 import static org.graalvm.compiler.core.common.GraalOptions.OptReadElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.ReassociateInvariants;
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
 
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
@@ -52,7 +51,6 @@ import org.graalvm.compiler.phases.common.PushThroughPiPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.ValueAnchorCleanupPhase;
 import org.graalvm.compiler.phases.common.VerifyHeapAtReturnPhase;
-import org.graalvm.compiler.phases.common.instrumentation.MidTierReconcileInstrumentationPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 
@@ -109,9 +107,6 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
-        if (UseGraalInstrumentation.getValue()) {
-            appendPhase(new MidTierReconcileInstrumentationPhase());
-        }
 
         appendPhase(new FrameStateAssignmentPhase());
 
