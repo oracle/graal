@@ -42,6 +42,7 @@ public abstract class LLVMVectorToVectorNode extends LLVMExpressionNode {
 
         @Specialization
         public LLVMI8Vector doI32(LLVMI32Vector from) {
+            // Checkstyle: stop magic number name check
             byte[] vector = new byte[from.getLength() * I32_SIZE_IN_BYTES];
             for (int i = 0; i < from.getLength() * I32_SIZE_IN_BYTES; i = i + I32_SIZE_IN_BYTES) {
                 int value = from.getValue(i);
@@ -51,6 +52,7 @@ public abstract class LLVMVectorToVectorNode extends LLVMExpressionNode {
                 vector[i + 3] = (byte) value;
             }
             return LLVMI8Vector.create(vector);
+            // Checkstyle: resume magic number name check
         }
     }
 }
