@@ -130,11 +130,6 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    public SaveRegistersOp emitSaveAllRegisters() {
-        throw GraalError.unimplemented();
-    }
-
-    @Override
     public VirtualStackSlot getLockSlot(int lockDepth) {
         return getLockStack().makeLockSlot(lockDepth);
     }

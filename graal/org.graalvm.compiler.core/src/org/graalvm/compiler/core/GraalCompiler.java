@@ -23,7 +23,6 @@
 package org.graalvm.compiler.core;
 
 import static org.graalvm.compiler.core.GraalCompilerOptions.EmitLIRRepeatCount;
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 import java.util.Collection;
@@ -62,7 +61,6 @@ import org.graalvm.compiler.options.OptionValue.OverrideScope;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
-import org.graalvm.compiler.phases.common.instrumentation.ExtractInstrumentationPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -197,9 +195,6 @@ public class GraalCompiler {
                 new DeadCodeEliminationPhase(Optional).apply(graph);
             } else {
                 Debug.dump(Debug.INFO_LOG_LEVEL, graph, "initial state");
-            }
-            if (UseGraalInstrumentation.getValue()) {
-                new ExtractInstrumentationPhase().apply(graph, highTierContext);
             }
 
             suites.getHighTier().apply(graph, highTierContext);

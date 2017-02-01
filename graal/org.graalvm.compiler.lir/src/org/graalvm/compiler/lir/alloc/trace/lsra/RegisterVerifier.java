@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.core.common.util.ArrayMap;
+import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.GraalError;
@@ -50,7 +50,7 @@ final class RegisterVerifier {
 
     TraceLinearScan allocator;
     ArrayList<AbstractBlockBase<?>> workList; // all blocks that must be processed
-    ArrayMap<TraceInterval[]> savedStates; // saved information of previous check
+    BlockMap<TraceInterval[]> savedStates; // saved information of previous check
 
     // simplified access to methods of LinearScan
     TraceInterval intervalAt(Value operand) {
@@ -64,11 +64,11 @@ final class RegisterVerifier {
 
     // accessors
     TraceInterval[] stateForBlock(AbstractBlockBase<?> block) {
-        return savedStates.get(block.getId());
+        return savedStates.get(block);
     }
 
     void setStateForBlock(AbstractBlockBase<?> block, TraceInterval[] savedState) {
-        savedStates.put(block.getId(), savedState);
+        savedStates.put(block, savedState);
     }
 
     void addToWorkList(AbstractBlockBase<?> block) {
@@ -80,7 +80,7 @@ final class RegisterVerifier {
     RegisterVerifier(TraceLinearScan allocator) {
         this.allocator = allocator;
         workList = new ArrayList<>(16);
-        this.savedStates = new ArrayMap<>();
+        this.savedStates = new BlockMap<>(allocator.getLIR().getControlFlowGraph());
 
     }
 

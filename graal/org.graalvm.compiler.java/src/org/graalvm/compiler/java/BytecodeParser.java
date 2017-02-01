@@ -242,7 +242,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.PrintProfilingInformation;
 import static org.graalvm.compiler.core.common.GraalOptions.ResolveClassBeforeStaticInvoke;
 import static org.graalvm.compiler.core.common.GraalOptions.StressInvokeWithExceptionNode;
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static org.graalvm.compiler.debug.GraalError.guarantee;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
@@ -361,7 +360,6 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationBeginNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -608,8 +606,6 @@ public class BytecodeParser implements GraphBuilderContext {
     private FixedWithNextNode[] firstInstructionArray;
     private FrameStateBuilder[] entryStateArray;
 
-    private int lastBCI; // BCI of lastInstr. This field is for resolving instrumentation target.
-
     private boolean finalBarrierRequired;
     private ValueNode originalReceiver;
 
@@ -632,7 +628,6 @@ public class BytecodeParser implements GraphBuilderContext {
         this.intrinsicContext = intrinsicContext;
         this.entryBCI = entryBCI;
         this.parent = parent;
-        this.lastBCI = -1;
 
         assert code.getCode() != null : "method must contain bytecodes: " + method;
 
@@ -2231,25 +2226,6 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private <T extends ValueNode> void updateLastInstruction(T v) {
-        if (UseGraalInstrumentation.getValue()) {
-            // resolve instrumentation target
-            if (v instanceof InstrumentationBeginNode) {
-                InstrumentationBeginNode begin = (InstrumentationBeginNode) v;
-                if (!begin.isAnchored() && lastBCI != -1) {
-                    int currentBCI = stream.currentBCI();
-                    // temporarily set the bytecode stream to lastBCI
-                    stream.setBCI(lastBCI);
-                    // The instrumentation should be associated with the predecessor. In case of the
-                    // predecessor being optimized away, e.g., inlining, we should not set the
-                    // target.
-                    if (stream.nextBCI() == currentBCI) {
-                        begin.setTarget(lastInstr);
-                    }
-                    // restore the current BCI
-                    stream.setBCI(currentBCI);
-                }
-            }
-        }
         if (v instanceof FixedNode) {
             FixedNode fixedNode = (FixedNode) v;
             lastInstr.setNext(fixedNode);
@@ -2257,10 +2233,8 @@ public class BytecodeParser implements GraphBuilderContext {
                 FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) fixedNode;
                 assert fixedWithNextNode.next() == null : "cannot append instruction to instruction which isn't end";
                 lastInstr = fixedWithNextNode;
-                lastBCI = stream.currentBCI();
             } else {
                 lastInstr = null;
-                lastBCI = -1;
             }
         }
     }

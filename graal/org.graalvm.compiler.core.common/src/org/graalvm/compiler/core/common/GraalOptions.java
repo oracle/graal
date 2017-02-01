@@ -274,9 +274,6 @@ public final class GraalOptions {
         }
     };
 
-    @Option(help = "Enable Graal instrumentation")
-    public static final OptionValue<Boolean> UseGraalInstrumentation = new OptionValue<>(false);
-
     @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
     public static final OptionValue<Boolean> TraceRA = new OptionValue<>(false);
 

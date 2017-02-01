@@ -49,10 +49,4 @@ public class RawAddressNode extends AddressNode {
         updateUsages(this.address, address);
         this.address = address;
     }
-
-    @NodeIntrinsic
-    public static native Address address(long address);
-
-    @NodeIntrinsic
-    public static native Address address(Object address);
 }
