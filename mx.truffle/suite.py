@@ -174,12 +174,12 @@ suite = {
       ],
       "workingSets" : "Truffle,Codegen",
     },
-                
+
     "com.oracle.truffle.dsl.processor.interop" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.interop", 
+        "com.oracle.truffle.api.interop",
         "com.oracle.truffle.dsl.processor"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
