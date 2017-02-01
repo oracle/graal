@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -86,7 +86,7 @@ public abstract class LLVMNeqNode extends LLVMExpressionNode {
         return !val1.equals(val2);
     }
 
-    @Specialization(guards = {"!isLLVMFunctionDescriptor(val1)", "!isLLVMFunctionDescriptor(val2)"})
+    @Specialization(guards = {"!isLLVMFunction(val1)", "!isLLVMFunction(val2)"})
     public boolean executeI1(TruffleObject val1, TruffleObject val2) {
         return val1 != val2;
     }
@@ -110,12 +110,12 @@ public abstract class LLVMNeqNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    public boolean executeI1(LLVMFunctionDescriptor val1, LLVMFunctionDescriptor val2) {
+    public boolean executeI1(LLVMFunction val1, LLVMFunction val2) {
         return val1.getFunctionIndex() != val2.getFunctionIndex();
     }
 
-    protected static boolean isLLVMFunctionDescriptor(TruffleObject object) {
-        return object instanceof LLVMFunctionDescriptor;
+    protected static boolean isLLVMFunction(TruffleObject object) {
+        return object instanceof LLVMFunction;
     }
 
 }

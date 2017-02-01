@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -45,9 +44,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.LLVMFunctionRegistry;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
-import com.oracle.truffle.llvm.nodes.others.LLVMGlobalVariableDescriptorGuards;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -85,8 +83,8 @@ public abstract class LLVMDirectLoadNode {
         public abstract LLVMFunctionRegistry getFunctionRegistry();
 
         @Specialization
-        public LLVMFunctionDescriptor executeAddress(LLVMAddress addr) {
-            return (LLVMFunctionDescriptor) getFunctionRegistry().createFromIndex(LLVMHeap.getFunctionIndex(addr));
+        public LLVMFunctionHandle executeAddress(LLVMAddress addr) {
+            return new LLVMFunctionHandle(LLVMHeap.getFunctionIndex(addr));
         }
     }
 
@@ -109,18 +107,18 @@ public abstract class LLVMDirectLoadNode {
         }
 
         @Specialization(guards = "!objectIsManagedMalloc(addr)")
-        public Object executeIndirectedForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
+        public Object executeIndirectedForeign(LLVMTruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
             try {
-                return ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), addr.getOffset());
+                return ForeignAccess.sendRead(foreignRead, addr.getObject(), addr.getOffset());
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 throw new UnsupportedOperationException(e);
             }
         }
 
         @Specialization(guards = "!isManagedMalloc(addr)")
-        public Object executeForeign(VirtualFrame frame, TruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
+        public Object executeForeign(TruffleObject addr, @Cached("createForeignReadNode()") Node foreignRead) {
             try {
-                return ForeignAccess.sendRead(foreignRead, frame, addr, 0);
+                return ForeignAccess.sendRead(foreignRead, addr, 0);
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 throw new UnsupportedOperationException(e);
             }
@@ -139,8 +137,7 @@ public abstract class LLVMDirectLoadNode {
         }
     }
 
-    @ImportStatic(LLVMGlobalVariableDescriptorGuards.class)
-    public abstract static class LLVMGlobalVariableDirectLoadNode extends LLVMExpressionNode {
+    public static final class LLVMGlobalVariableDirectLoadNode extends LLVMExpressionNode {
 
         protected final LLVMGlobalVariableDescriptor descriptor;
 
@@ -148,23 +145,20 @@ public abstract class LLVMDirectLoadNode {
             this.descriptor = descriptor;
         }
 
-        @Specialization(guards = "needsTransition(frame, descriptor)")
-        public LLVMAddress executeTransition(VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            descriptor.transition(false, false);
-            return executeNative(frame);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isNative(frame, descriptor)")
-        public LLVMAddress executeNative(VirtualFrame frame) {
-            return LLVMMemory.getAddress(descriptor.getNativeStorage());
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "isManaged(frame, descriptor)")
-        public Object executeManaged(VirtualFrame frame) {
-            return descriptor.getManagedStorage();
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            if (descriptor.needsTransition()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                descriptor.transition(false, false);
+            }
+            if (descriptor.isNative()) {
+                return LLVMMemory.getAddress(descriptor.getNativeStorage());
+            } else if (descriptor.isManaged()) {
+                return descriptor.getManagedStorage();
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(descriptor.toString());
+            }
         }
 
     }

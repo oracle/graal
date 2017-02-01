@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -52,11 +51,11 @@ public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = ToLLVMNode.createNode(long.class);
 
-    protected long doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
+    protected long doForeignAccess(LLVMTruffleObject addr) {
         try {
             int index = (int) addr.getOffset() / LLVMExpressionNode.I64_SIZE_IN_BYTES;
-            Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
-            return (long) toLLVM.executeWithTarget(frame, value);
+            Object value = ForeignAccess.sendRead(foreignRead, addr.getObject(), index);
+            return (long) toLLVM.executeWithTarget(value);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
@@ -70,13 +69,13 @@ public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, LLVMTruffleObject addr) {
-            return doForeignAccess(frame, addr);
+        public long executeI64(LLVMTruffleObject addr) {
+            return doForeignAccess(addr);
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, TruffleObject addr) {
-            return executeI64(frame, new LLVMTruffleObject(addr, IntegerType.LONG));
+        public long executeI64(TruffleObject addr) {
+            return executeI64(new LLVMTruffleObject(addr, IntegerType.LONG));
         }
 
     }
@@ -92,13 +91,13 @@ public abstract class LLVMI64LoadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, LLVMTruffleObject addr) {
-            return doForeignAccess(frame, addr);
+        public long executeI64(LLVMTruffleObject addr) {
+            return doForeignAccess(addr);
         }
 
         @Specialization
-        public long executeI64(VirtualFrame frame, TruffleObject addr) {
-            return executeI64(frame, new LLVMTruffleObject(addr, IntegerType.LONG));
+        public long executeI64(TruffleObject addr) {
+            return executeI64(new LLVMTruffleObject(addr, IntegerType.LONG));
         }
 
     }

@@ -77,8 +77,8 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
             evaluatedArgs[i] = args[i].executeGeneric(frame);
         }
         try {
-            Object rawValue = ForeignAccess.sendInvoke(foreignInvoke, frame, value, id, evaluatedArgs);
-            return toLLVM.executeWithTarget(frame, rawValue);
+            Object rawValue = ForeignAccess.sendInvoke(foreignInvoke, value, id, evaluatedArgs);
+            return toLLVM.executeWithTarget(rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);

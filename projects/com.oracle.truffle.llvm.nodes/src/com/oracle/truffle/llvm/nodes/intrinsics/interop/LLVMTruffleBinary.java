@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -56,14 +55,14 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignIsBoxed = Message.IS_BOXED.createNode();
 
         @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
+        public boolean executeIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
-            return ForeignAccess.sendIsBoxed(foreignIsBoxed, frame, value.getObject());
+            return ForeignAccess.sendIsBoxed(foreignIsBoxed, value.getObject());
         }
 
         @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return ForeignAccess.sendIsBoxed(foreignIsBoxed, frame, value);
+        public boolean executeIntrinsic(TruffleObject value) {
+            return ForeignAccess.sendIsBoxed(foreignIsBoxed, value);
         }
     }
 
@@ -73,14 +72,14 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignIsExecutable = Message.IS_EXECUTABLE.createNode();
 
         @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
+        public boolean executeIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
-            return ForeignAccess.sendIsExecutable(foreignIsExecutable, frame, value.getObject());
+            return ForeignAccess.sendIsExecutable(foreignIsExecutable, value.getObject());
         }
 
         @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return ForeignAccess.sendIsExecutable(foreignIsExecutable, frame, value);
+        public boolean executeIntrinsic(TruffleObject value) {
+            return ForeignAccess.sendIsExecutable(foreignIsExecutable, value);
         }
     }
 
@@ -90,14 +89,14 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignIsNull = Message.IS_NULL.createNode();
 
         @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
+        public boolean executeIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
-            return ForeignAccess.sendIsNull(foreignIsNull, frame, value.getObject());
+            return ForeignAccess.sendIsNull(foreignIsNull, value.getObject());
         }
 
         @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return ForeignAccess.sendIsNull(foreignIsNull, frame, value);
+        public boolean executeIntrinsic(TruffleObject value) {
+            return ForeignAccess.sendIsNull(foreignIsNull, value);
         }
     }
 
@@ -107,14 +106,14 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
 
         @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
+        public boolean executeIntrinsic(LLVMTruffleObject value) {
             checkLLVMTruffleObject(value);
-            return ForeignAccess.sendHasSize(foreignHasSize, frame, value.getObject());
+            return ForeignAccess.sendHasSize(foreignHasSize, value.getObject());
         }
 
         @Specialization
-        public boolean executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-            return ForeignAccess.sendHasSize(foreignHasSize, frame, value);
+        public boolean executeIntrinsic(TruffleObject value) {
+            return ForeignAccess.sendHasSize(foreignHasSize, value);
         }
     }
 }

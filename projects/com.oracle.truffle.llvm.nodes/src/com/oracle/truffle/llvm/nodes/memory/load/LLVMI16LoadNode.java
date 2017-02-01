@@ -53,11 +53,11 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = ToLLVMNode.createNode(short.class);
 
-    protected short doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
+    protected short doForeignAccess(LLVMTruffleObject addr) {
         try {
             int index = (int) (addr.getOffset() / LLVMExpressionNode.I16_SIZE_IN_BYTES);
-            Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
-            return (short) toLLVM.executeWithTarget(frame, value);
+            Object value = ForeignAccess.sendRead(foreignRead, addr.getObject(), index);
+            return (short) toLLVM.executeWithTarget(value);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
@@ -71,13 +71,13 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public short executeI16(VirtualFrame frame, LLVMTruffleObject addr) {
-            return doForeignAccess(frame, addr);
+        public short executeI16(LLVMTruffleObject addr) {
+            return doForeignAccess(addr);
         }
 
         @Specialization
-        public short executeI16(VirtualFrame frame, TruffleObject addr) {
-            return executeI16(frame, new LLVMTruffleObject(addr, IntegerType.SHORT));
+        public short executeI16(TruffleObject addr) {
+            return executeI16(new LLVMTruffleObject(addr, IntegerType.SHORT));
         }
 
     }
@@ -98,9 +98,9 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
             if (addr instanceof LLVMAddress) {
                 val = LLVMMemory.getI16((LLVMAddress) addr);
             } else if (addr instanceof LLVMTruffleObject) {
-                val = doForeignAccess(frame, (LLVMTruffleObject) addr);
+                val = doForeignAccess((LLVMTruffleObject) addr);
             } else {
-                val = doForeignAccess(frame, new LLVMTruffleObject((TruffleObject) addr, IntegerType.SHORT));
+                val = doForeignAccess(new LLVMTruffleObject((TruffleObject) addr, IntegerType.SHORT));
             }
             replace(new LLVMI16ProfilingLoadNode(addressNode, val));
             return val;
@@ -130,9 +130,9 @@ public abstract class LLVMI16LoadNode extends LLVMExpressionNode {
             if (addr instanceof LLVMAddress) {
                 value = LLVMMemory.getI16((LLVMAddress) addr);
             } else if (addr instanceof LLVMTruffleObject) {
-                value = doForeignAccess(frame, (LLVMTruffleObject) addr);
+                value = doForeignAccess((LLVMTruffleObject) addr);
             } else {
-                value = doForeignAccess(frame, new LLVMTruffleObject((TruffleObject) addr, IntegerType.SHORT));
+                value = doForeignAccess(new LLVMTruffleObject((TruffleObject) addr, IntegerType.SHORT));
             }
             if (value == profiledValue) {
                 return profiledValue;

@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -57,22 +56,22 @@ public final class LLVMTruffleWrite {
         }
     }
 
-    private static void doWrite(VirtualFrame frame, Node foreignWrite, TruffleObject value, LLVMAddress id, Object v) {
+    private static void doWrite(Node foreignWrite, TruffleObject value, LLVMAddress id, Object v) {
         String name = LLVMTruffleIntrinsicUtil.readString(id);
-        doWrite(frame, foreignWrite, value, name, v);
+        doWrite(foreignWrite, value, name, v);
     }
 
-    private static void doWrite(VirtualFrame frame, Node foreignWrite, TruffleObject value, String name, Object v) throws IllegalAccessError {
+    private static void doWrite(Node foreignWrite, TruffleObject value, String name, Object v) throws IllegalAccessError {
         try {
-            ForeignAccess.sendWrite(foreignWrite, frame, value, name, v);
+            ForeignAccess.sendWrite(foreignWrite, value, name, v);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new IllegalStateException(e);
         }
     }
 
-    private static void doWriteIdx(VirtualFrame frame, Node foreignWrite, TruffleObject value, int id, Object v) {
+    private static void doWriteIdx(Node foreignWrite, TruffleObject value, int id, Object v) {
         try {
-            ForeignAccess.sendWrite(foreignWrite, frame, value, id, v);
+            ForeignAccess.sendWrite(foreignWrite, value, id, v);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new IllegalStateException(e);
         }
@@ -85,33 +84,33 @@ public final class LLVMTruffleWrite {
 
         @SuppressWarnings("unused")
         @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
-        public Object executeIntrinsicCached(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, Object v, @Cached("pointerOf(id)") long cachedPtr,
+        public Object executeIntrinsicCached(LLVMTruffleObject value, LLVMAddress id, Object v, @Cached("pointerOf(id)") long cachedPtr,
                         @Cached("readString(id)") String cachedId) {
             checkLLVMTruffleObject(value);
-            doWrite(frame, foreignWrite, value.getObject(), cachedId, v);
+            doWrite(foreignWrite, value.getObject(), cachedId, v);
             return null;
         }
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, LLVMAddress id, Object v) {
+        public Object executeIntrinsic(LLVMTruffleObject value, LLVMAddress id, Object v) {
             LLVMPerformance.warn(this);
             checkLLVMTruffleObject(value);
-            doWrite(frame, foreignWrite, value.getObject(), id, v);
+            doWrite(foreignWrite, value.getObject(), id, v);
             return null;
         }
 
         @SuppressWarnings("unused")
         @Specialization(limit = "2", guards = "constantPointer(id, cachedPtr)")
-        public Object executeIntrinsicTruffleObjectCached(VirtualFrame frame, TruffleObject value, LLVMAddress id, Object v, @Cached("pointerOf(id)") long cachedPtr,
+        public Object executeIntrinsicTruffleObjectCached(TruffleObject value, LLVMAddress id, Object v, @Cached("pointerOf(id)") long cachedPtr,
                         @Cached("readString(id)") String cachedId) {
-            doWrite(frame, foreignWrite, value, cachedId, v);
+            doWrite(foreignWrite, value, cachedId, v);
             return null;
         }
 
         @Specialization
-        public Object executeIntrinsicTruffleObject(VirtualFrame frame, TruffleObject value, LLVMAddress id, Object v) {
+        public Object executeIntrinsicTruffleObject(TruffleObject value, LLVMAddress id, Object v) {
             LLVMPerformance.warn(this);
-            doWrite(frame, foreignWrite, value, id, v);
+            doWrite(foreignWrite, value, id, v);
             return null;
         }
     }
@@ -122,15 +121,15 @@ public final class LLVMTruffleWrite {
         @Child private Node foreignWrite = Message.WRITE.createNode();
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id, Object v) {
+        public Object executeIntrinsic(LLVMTruffleObject value, int id, Object v) {
             checkLLVMTruffleObject(value);
-            doWriteIdx(frame, foreignWrite, value.getObject(), id, v);
+            doWriteIdx(foreignWrite, value.getObject(), id, v);
             return null;
         }
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, TruffleObject value, int id, Object v) {
-            doWriteIdx(frame, foreignWrite, value, id, v);
+        public Object executeIntrinsic(TruffleObject value, int id, Object v) {
+            doWriteIdx(foreignWrite, value, id, v);
             return null;
         }
     }

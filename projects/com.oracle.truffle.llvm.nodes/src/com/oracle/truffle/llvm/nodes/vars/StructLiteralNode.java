@@ -40,6 +40,8 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public class StructLiteralNode extends LLVMExpressionNode {
@@ -221,16 +223,19 @@ public class StructLiteralNode extends LLVMExpressionNode {
         @Child private LLVMExpressionNode valueNode;
         private int size;
 
-        public LLVMCompoundStructWriteNode(LLVMExpressionNode valueNode, int size) {
+        @Child private MemCopyNode memCopy;
+
+        public LLVMCompoundStructWriteNode(LLVMHeapFunctions heapFunctions, LLVMExpressionNode valueNode, int size) {
             this.valueNode = valueNode;
             this.size = size;
+            this.memCopy = heapFunctions.createMemCopyNode();
         }
 
         @Override
         public Object executeWrite(VirtualFrame frame, LLVMAddress address) {
             try {
                 LLVMAddress value = valueNode.executeLLVMAddress(frame);
-                LLVMHeap.memCopy(address, value, size);
+                memCopy.execute(address, value, size);
                 return null;
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();

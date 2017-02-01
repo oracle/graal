@@ -30,25 +30,10 @@
 package com.oracle.truffle.llvm.parser.api.util;
 
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.LLVMType;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMTypeHelper {
-
-    public static LLVMType getLLVMType(Type type) {
-        if (type instanceof PointerType) {
-            final Type pointeeType = ((PointerType) type).getPointeeType();
-            if (pointeeType instanceof FunctionType) {
-                return new LLVMType(LLVMBaseType.FUNCTION_ADDRESS);
-            } else {
-                return new LLVMType(LLVMBaseType.ADDRESS, getLLVMType(pointeeType));
-            }
-        }
-        return new LLVMType(type.getLLVMBaseType());
-    }
 
     public static boolean isVectorType(LLVMBaseType llvmType) {
         switch (llvmType) {

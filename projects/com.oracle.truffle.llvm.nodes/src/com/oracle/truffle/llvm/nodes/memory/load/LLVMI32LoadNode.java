@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -51,11 +50,11 @@ public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = ToLLVMNode.createNode(int.class);
 
-    protected int doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
+    protected int doForeignAccess(LLVMTruffleObject addr) {
         try {
             int index = (int) (addr.getOffset() / LLVMExpressionNode.I32_SIZE_IN_BYTES);
-            Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
-            return (int) toLLVM.executeWithTarget(frame, value);
+            Object value = ForeignAccess.sendRead(foreignRead, addr.getObject(), index);
+            return (int) toLLVM.executeWithTarget(value);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
@@ -69,13 +68,13 @@ public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public int executeI32(VirtualFrame frame, LLVMTruffleObject addr) {
-            return doForeignAccess(frame, addr);
+        public int executeI32(LLVMTruffleObject addr) {
+            return doForeignAccess(addr);
         }
 
         @Specialization
-        public int executeI32(VirtualFrame frame, TruffleObject addr) {
-            return executeI32(frame, new LLVMTruffleObject(addr, IntegerType.INTEGER));
+        public int executeI32(TruffleObject addr) {
+            return executeI32(new LLVMTruffleObject(addr, IntegerType.INTEGER));
         }
 
     }
@@ -91,13 +90,13 @@ public abstract class LLVMI32LoadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public int executeI32(VirtualFrame frame, LLVMTruffleObject addr) {
-            return doForeignAccess(frame, addr);
+        public int executeI32(LLVMTruffleObject addr) {
+            return doForeignAccess(addr);
         }
 
         @Specialization
-        public int executeI32(VirtualFrame frame, TruffleObject addr) {
-            return executeI32(frame, new LLVMTruffleObject(addr, IntegerType.INTEGER));
+        public int executeI32(TruffleObject addr) {
+            return executeI32(new LLVMTruffleObject(addr, IntegerType.INTEGER));
         }
 
     }

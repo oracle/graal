@@ -34,15 +34,18 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.FreeNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode target;
+    @Child private FreeNode free;
 
-    public LLVMX86_64BitVAEnd(LLVMExpressionNode target) {
+    public LLVMX86_64BitVAEnd(LLVMHeapFunctions heapFunctions, LLVMExpressionNode target) {
         this.target = target;
+        this.free = heapFunctions.createFreeNode();
     }
 
     @Override
@@ -50,7 +53,7 @@ public class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
         try {
             LLVMAddress address = target.executeLLVMAddress(frame);
             LLVMAddress regSaveArea = LLVMMemory.getAddress(address.increment(X86_64BitVarArgs.REG_SAVE_AREA));
-            LLVMHeap.freeMemory(regSaveArea);
+            free.execute(regSaveArea);
         } catch (UnexpectedResultException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);

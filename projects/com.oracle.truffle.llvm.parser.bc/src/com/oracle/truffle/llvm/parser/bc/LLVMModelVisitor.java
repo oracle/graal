@@ -49,9 +49,9 @@ import com.oracle.truffle.llvm.parser.api.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.api.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.api.util.LLVMBitcodeTypeHelper;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
+import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -114,7 +114,7 @@ public final class LLVMModelVisitor implements ModelVisitor {
             // Checkstyle: resume
 
         } else if (!LLVMLogger.TARGET_NONE.equals(astPrintTarget)) {
-            try (final PrintStream out = new PrintStream(new FileOutputStream(astPrintTarget, true))) {
+            try (PrintStream out = new PrintStream(new FileOutputStream(astPrintTarget, true))) {
                 NodeUtil.printTree(out, rootNode);
                 out.flush();
             } catch (IOException e) {
@@ -124,9 +124,12 @@ public final class LLVMModelVisitor implements ModelVisitor {
 
         LLVMRuntimeType llvmReturnType = method.getReturnType().getRuntimeType();
         LLVMRuntimeType[] llvmParamTypes = LLVMBitcodeTypeHelper.toRuntimeTypes(method.getArgumentTypes());
-        LLVMFunction function = context.getFunctionRegistry().createFunctionDescriptor(method.getName(), llvmReturnType, llvmParamTypes, method.isVarArg());
+
+        LLVMFunctionDescriptor function = context.getFunctionRegistry().lookupFunctionDescriptor(method.getName(), llvmReturnType, llvmParamTypes, method.isVarArg());
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        visitor.getFunctions().put(function, callTarget);
+        function.setCallTarget(callTarget);
+        visitor.addFunction(function);
+
         visitor.exitFunction();
     }
 

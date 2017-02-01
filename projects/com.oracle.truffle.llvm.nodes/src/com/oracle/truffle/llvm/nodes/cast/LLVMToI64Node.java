@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.cast;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -102,20 +101,20 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         }
 
         @Specialization(guards = "!isLLVMFunctionDescriptor(from)")
-        public long executeUnbox(VirtualFrame frame, TruffleObject from,
+        public long executeUnbox(TruffleObject from,
                         @Cached("createUnboxNode()") Node unboxNode) {
             try {
-                return (long) ForeignAccess.sendUnbox(unboxNode, frame, from);
+                return (long) ForeignAccess.sendUnbox(unboxNode, from);
             } catch (UnsupportedMessageException e) {
                 throw new UnsupportedOperationException(e);
             }
         }
 
         @Specialization
-        public long executeUnbox(VirtualFrame frame, LLVMTruffleObject from,
+        public long executeUnbox(LLVMTruffleObject from,
                         @Cached("createUnboxNode()") Node unboxNode) {
             try {
-                long head = (long) ForeignAccess.sendUnbox(unboxNode, frame, from.getObject());
+                long head = (long) ForeignAccess.sendUnbox(unboxNode, from.getObject());
                 return head + from.getOffset();
             } catch (UnsupportedMessageException e) {
                 throw new UnsupportedOperationException(e);

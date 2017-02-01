@@ -103,10 +103,10 @@ public class LLVMRootNodeFactory {
         }
     }
 
-    private static LLVMAddress getArgsAsStringArray(Object... args) {
+    private static LLVMAddress getArgsAsStringArray(Object[] args) {
         String[] stringArgs = getStringArgs(args);
         int argsMemory = stringArgs.length * LLVMAddress.WORD_LENGTH_BIT / Byte.SIZE;
-        LLVMAddress allocatedArgsStartAddress = LLVMHeap.allocateMemory(argsMemory);
+        LLVMAddress allocatedArgsStartAddress = LLVMMemory.allocateMemory(argsMemory);
         LLVMAddress allocatedArgs = allocatedArgsStartAddress;
         for (int i = 0; i < stringArgs.length; i++) {
             String string = stringArgs[i];
@@ -117,7 +117,7 @@ public class LLVMRootNodeFactory {
         return allocatedArgsStartAddress;
     }
 
-    private static String[] getStringArgs(Object... args) {
+    private static String[] getStringArgs(Object[] args) {
         String[] stringArgs = new String[args.length];
         for (int i = 0; i < args.length; i++) {
             stringArgs[i] = args[i].toString();

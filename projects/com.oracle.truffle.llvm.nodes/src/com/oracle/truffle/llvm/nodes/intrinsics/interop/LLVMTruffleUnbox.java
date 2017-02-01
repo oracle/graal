@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -54,14 +53,14 @@ public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
     }
 
     @Specialization
-    public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
+    public Object executeIntrinsic(LLVMTruffleObject value) {
         checkLLVMTruffleObject(value);
-        return doUnbox(frame, value.getObject());
+        return doUnbox(value.getObject());
     }
 
     @Specialization
-    public Object executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-        return doUnbox(frame, value);
+    public Object executeIntrinsic(TruffleObject value) {
+        return doUnbox(value);
     }
 
     private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
@@ -71,10 +70,10 @@ public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
         }
     }
 
-    private Object doUnbox(VirtualFrame frame, TruffleObject value) {
+    private Object doUnbox(TruffleObject value) {
         try {
-            Object rawValue = ForeignAccess.sendUnbox(foreignUnbox, frame, value);
-            return toLLVM.executeWithTarget(frame, rawValue);
+            Object rawValue = ForeignAccess.sendUnbox(foreignUnbox, value);
+            return toLLVM.executeWithTarget(rawValue);
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }

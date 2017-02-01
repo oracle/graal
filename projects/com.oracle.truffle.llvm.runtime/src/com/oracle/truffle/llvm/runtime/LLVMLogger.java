@@ -79,7 +79,7 @@ public final class LLVMLogger {
 
         } else {
             return message -> {
-                try (final PrintStream out = new PrintStream(new FileOutputStream(target, true))) {
+                try (PrintStream out = new PrintStream(new FileOutputStream(target, true))) {
                     out.println(message);
                     out.flush();
                 } catch (IOException e) {

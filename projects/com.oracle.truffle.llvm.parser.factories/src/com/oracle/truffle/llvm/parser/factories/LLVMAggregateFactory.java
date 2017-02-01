@@ -56,7 +56,6 @@ import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtr
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI64ValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI8ValueNodeGen;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -91,13 +90,13 @@ public final class LLVMAggregateFactory {
         }
     }
 
-    public static LLVMExpressionNode createInsertValue(LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
-                    LLVMBaseType llvmType) {
+    public static LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
+                    LLVMExpressionNode valueToInsert, LLVMBaseType llvmType) {
         switch (llvmType) {
             case FLOAT:
-                return new LLVMInsertFloatValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                return new LLVMInsertFloatValueNode(runtime.getHeapFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
             case DOUBLE:
-                return new LLVMInsertDoubleValueNode(sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                return new LLVMInsertDoubleValueNode(runtime.getHeapFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
             default:
                 throw new AssertionError(llvmType);
         }
@@ -125,7 +124,7 @@ public final class LLVMAggregateFactory {
 
     private static LLVMStructWriteNode createStructWriteNode(LLVMParserRuntime runtime, LLVMExpressionNode parsedConstant, Type resolvedType) {
         int byteSize = runtime.getByteSize(resolvedType);
-        LLVMBaseType llvmType = LLVMTypeHelper.getLLVMType(resolvedType).getType();
+        LLVMBaseType llvmType = resolvedType.getLLVMType().getType();
         switch (llvmType) {
             case I1:
                 return new LLVMI1StructWriteNode(parsedConstant);
@@ -148,7 +147,7 @@ public final class LLVMAggregateFactory {
                 if (byteSize == 0) {
                     return new LLVMEmptyStructWriteNode();
                 } else {
-                    return new LLVMCompoundStructWriteNode(parsedConstant, byteSize);
+                    return new LLVMCompoundStructWriteNode(runtime.getHeapFunctions(), parsedConstant, byteSize);
                 }
             case ADDRESS:
                 return new LLVMAddressStructWriteNode(parsedConstant);

@@ -35,7 +35,8 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
 
 public abstract class LLVMMemMove {
 
@@ -45,10 +46,16 @@ public abstract class LLVMMemMove {
                     @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
     public abstract static class LLVMMemMoveI64 extends LLVMExpressionNode {
 
+        @Child private MemCopyNode memMove;
+
+        protected LLVMMemMoveI64(LLVMHeapFunctions heapFunctions) {
+            memMove = heapFunctions.createMemMoveNode();
+        }
+
         @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress dest, LLVMAddress source, long length, int align, boolean isVolatile) {
-            LLVMHeap.memMove(dest, source, length);
+            memMove.execute(dest, source, length);
             return null;
         }
 

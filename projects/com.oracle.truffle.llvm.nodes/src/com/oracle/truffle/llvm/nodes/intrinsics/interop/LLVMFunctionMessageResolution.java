@@ -37,17 +37,17 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 
-@MessageResolution(receiverType = LLVMFunctionDescriptor.class, language = LLVMLanguage.class)
+@MessageResolution(receiverType = LLVMFunction.class, language = LLVMLanguage.class)
 public class LLVMFunctionMessageResolution {
 
     @Resolve(message = "IS_NULL")
     public abstract static class ForeignIsNullNode extends Node {
 
-        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMAddress object) {
-            return LLVMAddress.NULL_POINTER.equals(object);
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunction object) {
+            return object.getFunctionIndex() == 0;
         }
 
     }
@@ -56,7 +56,7 @@ public class LLVMFunctionMessageResolution {
     public abstract static class ForeignIsExecutableNode extends Node {
 
         @SuppressWarnings("unused")
-        protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object) {
+        protected Object access(VirtualFrame frame, LLVMFunction object) {
             return true;
         }
 

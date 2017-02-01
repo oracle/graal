@@ -35,7 +35,8 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
 
 public abstract class LLVMMemCopy {
 
@@ -45,9 +46,16 @@ public abstract class LLVMMemCopy {
                     @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
     public abstract static class LLVMMemI32Copy extends LLVMExpressionNode {
 
+        @Child private MemCopyNode memCopy;
+
+        protected LLVMMemI32Copy(LLVMHeapFunctions heapFunctions) {
+            memCopy = heapFunctions.createMemCopyNode();
+        }
+
+        @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress target, LLVMAddress source, int length, int align, boolean isVolatile) {
-            LLVMHeap.memCopy(target, source, length, align, isVolatile);
+            memCopy.execute(target, source, length);
             return null;
         }
 
@@ -59,12 +67,18 @@ public abstract class LLVMMemCopy {
                     @NodeChild(type = LLVMExpressionNode.class, value = "align"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
     public abstract static class LLVMMemI64Copy extends LLVMExpressionNode {
 
-        @Specialization
-        public Object executeVoid(LLVMAddress target, LLVMAddress source, long length, int align, boolean isVolatile) {
-            LLVMHeap.memCopy(target, source, length, align, isVolatile);
-            return null;
+        @Child private MemCopyNode memCopy;
+
+        protected LLVMMemI64Copy(LLVMHeapFunctions heapFunctions) {
+            memCopy = heapFunctions.createMemCopyNode();
         }
 
+        @SuppressWarnings("unused")
+        @Specialization
+        public Object executeVoid(LLVMAddress target, LLVMAddress source, long length, int align, boolean isVolatile) {
+            memCopy.execute(target, source, length);
+            return null;
+        }
     }
 
 }

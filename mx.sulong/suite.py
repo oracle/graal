@@ -7,23 +7,9 @@ suite = {
     "suites" : [
       {
         "name" : "truffle",
-<<<<<<< HEAD
-        "version" : "16e66aa3231ee95b9dfe2f0cc8a32cfb63d86025",
-        "urls" : [
-          {"url" : "https://github.com/graalvm/truffle", "kind" : "git"},
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-        ]
-      },
-      {
-        "name" : "graal-core",
-        "version" : "ca815239f932dd28e0b8a32fbef8844b2489bc00",
-        "urls" : [
-          {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
-=======
         "version" : "bedd07ffe41330aaf4cb50c2a8a38b0af95545b4",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle", "kind" : "git"},
->>>>>>> f90c6ab... Update Truffle version
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
         ]
       },
@@ -135,10 +121,9 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:TRUFFLE_API",
         "com.oracle.truffle.llvm.option",
         "truffle:TRUFFLE_API",
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
+        "truffle:TRUFFLE_NFI",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes.api",
       "annotationProcessors" : ["SULONG_OPTIONS"],
@@ -246,7 +231,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
+        "truffle:TRUFFLE_NFI",
         "com.oracle.truffle.llvm.parser.api"
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
@@ -336,11 +321,8 @@ suite = {
       "dependencies" : ["com.oracle.truffle.llvm"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "SULONG_OPTIONS",
-        "graal-core:GRAAL_API",
-        "graal-core:GRAAL_COMPILER",
-        "graal-core:GRAAL_HOTSPOT",
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
       ]
     },
 
@@ -367,10 +349,6 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_TCK",
-        "graal-core:GRAAL_API",
-        "graal-core:GRAAL_COMPILER",
-        "graal-core:GRAAL_HOTSPOT",
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
         "sulong:SULONG",
         "SULONG_TEST_NATIVE",
       ]

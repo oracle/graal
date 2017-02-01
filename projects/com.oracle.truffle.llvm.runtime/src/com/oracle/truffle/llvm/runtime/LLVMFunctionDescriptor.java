@@ -29,11 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<LLVMFunctionDescriptor>, LLVMFunction {
+public final class LLVMFunctionDescriptor extends LLVMFunction implements Comparable<LLVMFunctionDescriptor> {
 
     public enum LLVMRuntimeType {
         I1,
@@ -75,12 +74,17 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     private final boolean hasVarArgs;
     private final int functionId;
 
+    private RootCallTarget callTarget;
+    private TruffleObject nativeSymbol;
+
     private LLVMFunctionDescriptor(String name, LLVMRuntimeType llvmReturnType, LLVMRuntimeType[] llvmParamTypes, boolean varArgs, int functionId) {
         this.functionName = name;
         this.returnType = llvmReturnType;
         this.parameterTypes = llvmParamTypes;
         this.hasVarArgs = varArgs;
         this.functionId = functionId;
+        this.callTarget = null;
+        this.nativeSymbol = null;
     }
 
     public static LLVMFunctionDescriptor create(String name, LLVMRuntimeType llvmReturnType, LLVMRuntimeType[] llvmParamTypes, boolean varArgs, int functionId) {
@@ -88,26 +92,36 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         return func;
     }
 
-    public static LLVMFunctionDescriptor create(int index) {
-        return new LLVMFunctionDescriptor(null, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false, index);
+    public RootCallTarget getCallTarget() {
+        return callTarget;
     }
 
-    @Override
+    public void setCallTarget(RootCallTarget callTarget) {
+        assert this.nativeSymbol == null;
+        this.callTarget = callTarget;
+    }
+
+    public TruffleObject getNativeSymbol() {
+        return nativeSymbol;
+    }
+
+    public void setNativeSymbol(TruffleObject nativeSymbol) {
+        assert this.callTarget == null && this.nativeSymbol == null;
+        this.nativeSymbol = nativeSymbol;
+    }
+
     public String getName() {
         return functionName;
     }
 
-    @Override
     public LLVMRuntimeType getReturnType() {
         return returnType;
     }
 
-    @Override
     public LLVMRuntimeType[] getParameterTypes() {
         return parameterTypes;
     }
 
-    @Override
     public boolean isVarArgs() {
         return hasVarArgs;
     }
@@ -154,24 +168,4 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
             return getFunctionIndex() == other.getFunctionIndex();
         }
     }
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMFunctionDescriptor;
-    }
-
-    @CompilationFinal private static ForeignAccess ACCESS;
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        if (ACCESS == null) {
-            try {
-                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMFunctionMessageResolutionAccessor");
-                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
-            } catch (Exception e) {
-                throw new AssertionError(e);
-            }
-        }
-        return ACCESS;
-    }
-
 }

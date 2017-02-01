@@ -37,14 +37,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.parser.api.LLVMParserResult;
@@ -69,11 +72,11 @@ import com.oracle.truffle.llvm.parser.api.model.visitors.ReducedInstructionVisit
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserResultImpl;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.bc.util.LLVMFrameIDs;
 import com.oracle.truffle.llvm.parser.bc.util.Pair;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.LLVMType;
@@ -95,7 +98,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         final LLVMModelVisitor module = new LLVMModelVisitor(visitor, context);
         model.accept(module);
 
-        LLVMFunction mainFunction = visitor.getFunction("@main");
+        LLVMFunctionDescriptor mainFunction = visitor.getFunction("@main");
 
         LLVMExpressionNode[] globals = visitor.getGobalVariables().toArray(new LLVMExpressionNode[0]);
         RootNode globalVarInits = factoryFacade.createStaticInitsRootNode(visitor, globals);
@@ -109,7 +112,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
 
         final RootCallTarget mainFunctionCallTarget;
         if (mainFunction != null) {
-            final RootCallTarget mainCallTarget = visitor.getFunctions().get(mainFunction);
+            final RootCallTarget mainCallTarget = mainFunction.getCallTarget();
             final RootNode globalFunction = factoryFacade.createGlobalRootNode(visitor, mainCallTarget, context.getMainArguments(), source, mainFunction.getParameterTypes());
             final RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
             final RootNode globalRootNode = factoryFacade.createGlobalRootNodeWrapping(visitor, globalFunctionRoot, mainFunction.getReturnType());
@@ -117,7 +120,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         } else {
             mainFunctionCallTarget = null;
         }
-        return new LLVMParserResultImpl(mainFunctionCallTarget, globalVarInitsTarget, globalVarDeallocsTarget, constructorFunctions, destructorFunctions, visitor.getFunctions());
+        return new LLVMParserResultImpl(mainFunctionCallTarget, globalVarInitsTarget, globalVarDeallocsTarget, constructorFunctions, destructorFunctions);
     }
 
     private final LLVMContext context;
@@ -130,7 +133,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
 
     private final Map<GlobalAlias, Symbol> aliases = new HashMap<>();
 
-    private final Map<LLVMFunction, RootCallTarget> functions = new HashMap<>();
+    private final Map<String, LLVMFunctionDescriptor> functions = new HashMap<>();
 
     private final Map<GlobalValueSymbol, LLVMExpressionNode> globals = new HashMap<>();
 
@@ -144,8 +147,6 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
 
     private final LLVMSymbolResolver symbolResolver;
 
-    private final NativeLookup nativeLookup;
-
     private LLVMBitcodeVisitor(Source source, LLVMContext context, StackAllocation stack, LLVMLabelList labels, LLVMPhiManager phis,
                     DataLayoutConverter.DataSpecConverterImpl layout, NodeFactoryFacade factoryFacade) {
         this.source = source;
@@ -156,7 +157,6 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         this.targetDataLayout = layout;
         this.factoryFacade = factoryFacade;
         this.symbolResolver = new LLVMSymbolResolver(labels, this);
-        nativeLookup = new NativeLookup();
     }
 
     LLVMExpressionNode createFunction(FunctionDefinition method, LLVMLifetimeAnalysis lifetimes) {
@@ -283,17 +283,12 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
         return deallocations.toArray(new LLVMExpressionNode[deallocations.size()]);
     }
 
-    private LLVMFunction getFunction(String name) {
-        for (LLVMFunction function : functions.keySet()) {
-            if (function.getName().equals(name)) {
-                return function;
-            }
-        }
-        return null;
+    public LLVMFunctionDescriptor getFunction(String name) {
+        return functions.get(name);
     }
 
-    public Map<LLVMFunction, RootCallTarget> getFunctions() {
-        return functions;
+    void addFunction(LLVMFunctionDescriptor function) {
+        functions.put(function.getName(), function);
     }
 
     private LLVMExpressionNode getGlobalVariable(GlobalValueSymbol global) {
@@ -361,7 +356,7 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
             final LLVMExpressionNode functionLoadTarget = factoryFacade.createTypedElementPointer(this, LLVMBaseType.I32, loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
             final LLVMExpressionNode loadedFunction = factoryFacade.createLoad(this, functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{factoryFacade.createFrameRead(this, LLVMBaseType.ADDRESS, getStackPointerSlot())};
-            final LLVMType[] argTypes = new LLVMType[]{new LLVMType(LLVMBaseType.ADDRESS)};
+            final Type[] argTypes = new Type[]{new PointerType(null)};
             final LLVMExpressionNode functionCall = factoryFacade.createFunctionCall(this, loadedFunction, argNodes, argTypes, LLVMBaseType.VOID);
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
@@ -404,14 +399,11 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
     private static LLVMType findType(FunctionDefinition method, String identifier) {
         final Type methodType = method.getType(identifier);
         if (methodType != null) {
-            return LLVMTypeHelper.getLLVMType(methodType);
-
+            return methodType.getLLVMType();
         } else if (LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID.equals(identifier)) {
-            return LLVMTypeHelper.getLLVMType(method.getReturnType());
-
+            return method.getReturnType().getLLVMType();
         } else if (LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID.equals(identifier)) {
             return new LLVMType(LLVMBaseType.ADDRESS);
-
         } else {
             throw new IllegalStateException("Cannot find Instruction with name: " + identifier);
         }
@@ -509,12 +501,22 @@ public final class LLVMBitcodeVisitor implements LLVMParserRuntime {
 
     @Override
     public long getNativeHandle(String name) {
-        return nativeLookup.getNativeHandle(name);
+        CompilerAsserts.neverPartOfCompilation();
+        try {
+            return (long) ForeignAccess.sendUnbox(Message.UNBOX.createNode(), context.getNativeData(name));
+        } catch (UnsupportedMessageException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Override
     public Map<String, Type> getVariableNameTypesMapping() {
         return Collections.unmodifiableMap(nameToTypeMapping);
+    }
+
+    @Override
+    public LLVMHeapFunctions getHeapFunctions() {
+        return context.getHeapFunctions();
     }
 
     @Override

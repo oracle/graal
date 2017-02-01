@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -56,24 +55,24 @@ public abstract class LLVMTruffleGetSize extends LLVMIntrinsic {
         }
     }
 
-    private int getSize(VirtualFrame frame, TruffleObject value) {
+    private int getSize(TruffleObject value) {
         try {
-            Object rawValue = ForeignAccess.sendGetSize(foreignGetSize, frame, value);
-            return (int) toLLVM.executeWithTarget(frame, rawValue);
+            Object rawValue = ForeignAccess.sendGetSize(foreignGetSize, value);
+            return (int) toLLVM.executeWithTarget(rawValue);
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
     }
 
     @Specialization
-    public int executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
+    public int executeIntrinsic(LLVMTruffleObject value) {
         checkLLVMTruffleObject(value);
-        return getSize(frame, value.getObject());
+        return getSize(value.getObject());
     }
 
     @Specialization
-    public int executeIntrinsic(VirtualFrame frame, TruffleObject value) {
-        return getSize(frame, value);
+    public int executeIntrinsic(TruffleObject value) {
+        return getSize(value);
     }
 
 }

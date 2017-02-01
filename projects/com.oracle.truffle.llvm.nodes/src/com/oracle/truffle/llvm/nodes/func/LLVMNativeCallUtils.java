@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,32 +27,44 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
-public abstract class LLVMFunction implements TruffleObject {
+public final class LLVMNativeCallUtils {
 
-    public abstract int getFunctionIndex();
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMFunction;
+    public static Node getBindNode() {
+        CompilerAsserts.neverPartOfCompilation();
+        return Message.createInvoke(1).createNode();
     }
 
-    @CompilationFinal private static ForeignAccess ACCESS;
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        if (ACCESS == null) {
-            try {
-                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMFunctionMessageResolutionAccessor");
-                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
-            } catch (Exception e) {
-                throw new AssertionError(e);
-            }
+    public static TruffleObject bindNativeSymbol(Node bindNode, TruffleObject symbol, String signature) {
+        try {
+            return (TruffleObject) ForeignAccess.sendInvoke(bindNode, symbol, "bind", signature);
+        } catch (Throwable ex) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(symbol + " " + signature, ex);
         }
-        return ACCESS;
+    }
+
+    public static Object callNativeFunction(Node nativeCall, TruffleObject function, Object[] nativeArgs) {
+        try {
+            return ForeignAccess.sendExecute(nativeCall, function, nativeArgs);
+        } catch (Throwable e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(function + Arrays.toString(nativeArgs), e);
+        }
+    }
+
+    public static TruffleObject bindNativeSymbol(TruffleObject symbol, String signature) {
+        CompilerAsserts.neverPartOfCompilation();
+        return bindNativeSymbol(getBindNode(), symbol, signature);
     }
 }

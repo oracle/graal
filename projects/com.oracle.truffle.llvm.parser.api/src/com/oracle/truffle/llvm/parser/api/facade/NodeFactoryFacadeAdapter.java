@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
@@ -134,7 +134,7 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createFunctionCall(LLVMParserRuntime runtime, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, LLVMType[] argTypes, LLVMBaseType llvmType) {
+    public LLVMExpressionNode createFunctionCall(LLVMParserRuntime runtime, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, Type[] argTypes, LLVMBaseType llvmType) {
         return null;
     }
 
@@ -288,7 +288,7 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] finalArgs, LLVMType[] argTypes,
+    public LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] finalArgs, Type[] argTypes,
                     LLVMBaseType retType) {
         return null;
     }
@@ -334,12 +334,12 @@ public class NodeFactoryFacadeAdapter implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMFunction createFunctionDescriptor(String name, LLVMRuntimeType returnType, boolean varArgs, LLVMRuntimeType[] paramTypes, int functionIndex) {
+    public LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType returnType, boolean varArgs, LLVMRuntimeType[] paramTypes, int functionIndex) {
         return null;
     }
 
     @Override
-    public LLVMFunction createAndRegisterFunctionDescriptor(LLVMParserRuntime runtime, String name, LLVMRuntimeType convertType, boolean varArgs, LLVMRuntimeType[] convertTypes) {
+    public LLVMFunctionDescriptor createAndRegisterFunctionDescriptor(LLVMParserRuntime runtime, String name, LLVMRuntimeType convertType, boolean varArgs, LLVMRuntimeType[] convertTypes) {
         return null;
     }
 

@@ -33,7 +33,8 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 
 public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
 
@@ -41,8 +42,8 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     public abstract static class LLVMI64ToFunctionNode extends LLVMToFunctionNode {
 
         @Specialization
-        public LLVMFunctionDescriptor executeI64(long from) {
-            return LLVMFunctionDescriptor.create((int) from);
+        public LLVMFunction executeI64(long from) {
+            return new LLVMFunctionHandle((int) from);
         }
     }
 
@@ -50,8 +51,8 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     public abstract static class LLVMAddressToFunctionNode extends LLVMToFunctionNode {
 
         @Specialization
-        public LLVMFunctionDescriptor executeI64(LLVMAddress from) {
-            return LLVMFunctionDescriptor.create((int) from.getVal());
+        public LLVMFunction executeI64(LLVMAddress from) {
+            return new LLVMFunctionHandle((int) from.getVal());
         }
     }
 

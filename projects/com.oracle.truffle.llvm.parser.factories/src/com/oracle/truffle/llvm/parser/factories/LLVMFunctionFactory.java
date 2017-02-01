@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMStructRetNod
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMVectorRetNodeGen;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
-import com.oracle.truffle.llvm.nodes.func.LLVMCallNode.LLVMUnresolvedCallNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNode.LLVMVoidCallUnboxNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVM80BitFloatCallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMAddressCallUnboxNodeGen;
@@ -118,7 +118,7 @@ public final class LLVMFunctionFactory {
                     return LLVMFunctionRetNodeGen.create(retValue, retSlot);
                 case STRUCT:
                     int size = runtime.getByteSize(resolvedType);
-                    return LLVMStructRetNodeGen.create(retValue, retSlot, size);
+                    return LLVMStructRetNodeGen.create(runtime.getHeapFunctions(), retValue, retSlot, size);
                 default:
                     throw new AssertionError(type);
             }
@@ -137,9 +137,9 @@ public final class LLVMFunctionFactory {
         return LLVMArgNodeGen.create(argIndex);
     }
 
-    public static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, LLVMType[] argTypes, LLVMBaseType llvmType) {
-        LLVMUnresolvedCallNode unresolvedCallNode = new LLVMUnresolvedCallNode(functionNode, argNodes, argTypes, LLVMTypeHelper.convertType(new LLVMType(llvmType)),
-                        LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()));
+    public static LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, Type[] argTypes, LLVMBaseType llvmType) {
+        LLVMCallNode unresolvedCallNode = new LLVMCallNode(LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
+                        LLVMTypeHelper.convertType(new LLVMType(llvmType)), functionNode, argNodes, argTypes);
         return createUnresolvedNodeWrapping(llvmType, unresolvedCallNode);
 
     }

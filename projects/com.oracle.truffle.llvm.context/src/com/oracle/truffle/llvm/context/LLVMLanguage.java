@@ -35,8 +35,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.context.nativeint.NativeLookup;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 
 @TruffleLanguage.Registration(name = "Sulong", version = "0.01", mimeType = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE,
                 LLVMLanguage.SULONG_LIBRARY_MIME_TYPE})
@@ -48,7 +47,6 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
 
     static {
-        NativeLookup.getNFI();
         try {
             Class.forName("com.oracle.truffle.llvm.LLVM", true, ClassLoader.getSystemClassLoader());
         } catch (ClassNotFoundException e) {
@@ -111,7 +109,7 @@ public final class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
         String atname = "@" + globalName; // for interop
-        for (LLVMFunction descr : context.getFunctionRegistry().getFunctionDescriptors()) {
+        for (LLVMFunctionDescriptor descr : context.getFunctionRegistry().getFunctionDescriptors()) {
             if (descr != null && descr.getName().equals(globalName)) {
                 return descr;
             } else if (descr != null && descr.getName().equals(atname)) {

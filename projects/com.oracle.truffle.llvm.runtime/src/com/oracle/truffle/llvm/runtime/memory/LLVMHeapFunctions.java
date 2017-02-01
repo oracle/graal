@@ -27,32 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.NodeInterface;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public abstract class LLVMFunction implements TruffleObject {
+public interface LLVMHeapFunctions {
 
-    public abstract int getFunctionIndex();
+    MemCopyNode createMemMoveNode();
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMFunction;
+    MemCopyNode createMemCopyNode();
+
+    MemSetNode createMemSetNode();
+
+    FreeNode createFreeNode();
+
+    MallocNode createMallocNode();
+
+    public interface MemCopyNode extends NodeInterface {
+
+        void execute(LLVMAddress target, LLVMAddress source, long length);
     }
 
-    @CompilationFinal private static ForeignAccess ACCESS;
+    public interface MemSetNode extends NodeInterface {
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        if (ACCESS == null) {
-            try {
-                Class<?> accessor = Class.forName("com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMFunctionMessageResolutionAccessor");
-                ACCESS = (ForeignAccess) accessor.getField("ACCESS").get(null);
-            } catch (Exception e) {
-                throw new AssertionError(e);
-            }
-        }
-        return ACCESS;
+        void execute(LLVMAddress target, int value, long length);
     }
+
+    public interface FreeNode extends NodeInterface {
+
+        void execute(LLVMAddress addr);
+    }
+
+    public interface MallocNode extends NodeInterface {
+
+        LLVMAddress execute(long size);
+    }
+
 }

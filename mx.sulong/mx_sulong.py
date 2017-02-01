@@ -12,7 +12,6 @@ import argparse
 import mx_benchmark
 import mx_sulong_benchmarks
 
-from mx_unittest import add_config_participant
 from mx_gate import Task, add_gate_runner
 from mx_gitlogcheck import logCheck
 
@@ -33,21 +32,6 @@ _dragonEggPath = _toolDir + 'dragonegg/dragonegg-3.2.src/dragonegg.so'
 
 _captureSrcDir = join(_root, "projects/com.oracle.truffle.llvm.pipe.native/src")
 
-def _unittest_config_participant(config):
-    """modifies the classpath to use the Sulong distribution jars instead of the classfiles to enable the use of Java's ServiceLoader"""
-    (vmArgs, mainClass, mainClassArgs) = config
-    cpIndex, _ = mx.find_classpath_arg(vmArgs)
-    junitCp = mx.classpath("com.oracle.mxtool.junit")
-    sulongCp = ':'.join([mx.classpath(mx.distribution(distr), jdk=mx.get_jdk(tag='jvmci')) for distr in sulongDistributions])
-    vmArgs[cpIndex] = junitCp + ":" + sulongCp
-    return (vmArgs, mainClass, mainClassArgs)
-
-add_config_participant(_unittest_config_participant)
-
-sulongDistributions = [
-    'SULONG',
-    'SULONG_TEST'
-]
 
 # the supported GCC versions (see dragonegg.llvm.org)
 supportedGCCVersions = [
@@ -379,7 +363,7 @@ def runLLVM(args=None, out=None):
             libNames.append(arg)
         else:
             sulongArgs.append(arg)
-    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + sulongArgs, out=out, jdk=mx.get_jdk(tag='jvmci'))
+    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.LLVM"] + sulongArgs, out=out)
 
 def runTests(args=None):
     mx_testsuites.runSuite(args)
@@ -717,7 +701,7 @@ def compileWithClangPP(args=None, out=None, err=None):
 
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
-    return ['-cp', ':'.join([mx.classpath(mx.distribution(distr), jdk=mx.get_jdk(tag='jvmci')) for distr in sulongDistributions])]
+    return mx.get_runtime_jvm_args('SULONG')
 
 def printOptions(args=None):
     """prints the Sulong Java property options"""
