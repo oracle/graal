@@ -725,11 +725,28 @@ public class InliningUtil {
         }
     }
 
+    /**
+     * Ensure that all states are either {@link BytecodeFrame#INVALID_FRAMESTATE_BCI} or one of
+     * {@link BytecodeFrame#AFTER_BCI} or {@link BytecodeFrame#BEFORE_BCI}. Mixing of before and
+     * after isn't allowed.
+     */
     private static boolean checkContainsOnlyInvalidOrAfterFrameState(UnmodifiableEconomicMap<Node, Node> duplicates) {
+        int okBci = BytecodeFrame.INVALID_FRAMESTATE_BCI;
         for (Node node : duplicates.getValues()) {
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
-                assert frameState.bci == BytecodeFrame.AFTER_BCI || frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI : node.toString(Verbosity.Debugger);
+                if (frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                    continue;
+                }
+                if (frameState.bci == BytecodeFrame.AFTER_BCI || frameState.bci == BytecodeFrame.BEFORE_BCI) {
+                    if (okBci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                        okBci = frameState.bci;
+                    } else {
+                        assert okBci == frameState.bci : node.toString(Verbosity.Debugger);
+                    }
+                } else {
+                    assert false : node.toString(Verbosity.Debugger);
+                }
             }
         }
         return true;
