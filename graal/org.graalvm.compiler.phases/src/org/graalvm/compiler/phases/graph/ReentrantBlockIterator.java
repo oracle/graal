@@ -28,6 +28,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.function.Predicate;
 
+import org.graalvm.compiler.common.PermanentBailoutException;
 import org.graalvm.compiler.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
@@ -105,7 +106,11 @@ public final class ReentrantBlockIterator {
 
         while (true) {
             if (CompilationAlarm.hasExpired()) {
-                throw new RetryableBailoutException("Compilation exceeded %d seconds during CFG traversal", CompilationAlarm.Options.CompilationExpirationPeriod.getValue());
+                if (CompilationAlarm.Options.CompilationExpirationPeriod.getValue() > 120) {
+                    throw new PermanentBailoutException("Compilation exceeded %d seconds during CFG traversal", CompilationAlarm.Options.CompilationExpirationPeriod.getValue());
+                } else {
+                    throw new RetryableBailoutException("Compilation exceeded %d seconds during CFG traversal", CompilationAlarm.Options.CompilationExpirationPeriod.getValue());
+                }
             }
             Block next = null;
             if (stopAtBlock != null && stopAtBlock.test(current)) {
