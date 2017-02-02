@@ -13,7 +13,6 @@ import mx_benchmark
 import mx_sulong_benchmarks
 
 from mx_gate import Task, add_gate_runner
-from mx_gitlogcheck import logCheck
 
 import mx_testsuites
 
@@ -898,7 +897,6 @@ def checkNoHttp(args=None):
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
 checkCases = {
-    'gitlog' : logCheck,
     'mdl' : mdlCheck,
     'ecj' : compileWithEcjStrict,
     'checkstyle' : mx.checkstyle,
@@ -937,7 +935,6 @@ mx.update_commands(_suite, {
     'su-travis2' : [travis2, ''],
     'su-travis-argon2' : [travisArgon2, ''],
     'su-ecj-strict' : [compileWithEcjStrict, ''],
-    'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, ''],
     'su-httpcheck' : [checkNoHttp, ''],
