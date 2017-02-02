@@ -1,4 +1,3 @@
-package org.graalvm.compiler.truffle.hotspot.aarch64;
 /*
  * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -21,6 +20,7 @@ package org.graalvm.compiler.truffle.hotspot.aarch64;
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.compiler.truffle.hotspot.aarch64;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
