@@ -91,6 +91,13 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
+    "com.oracle.truffle.llvm.test.native" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "class" : "SulongNativeProject",
+      "license" : "BSD-new",
+    },
 
     "com.oracle.truffle.llvm.bench" : {
       "subDir" : "projects",

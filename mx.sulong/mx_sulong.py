@@ -120,6 +120,8 @@ def travis1(args=None):
         if t: mx_testsuites.runSuite(['type'])
     with Task('TestMainArgs', tasks) as t:
         if t: mx_testsuites.runSuite(['args'])
+    with Task('TestCallback', tasks) as t:
+        if t: mx_testsuites.runSuite(['callback'])
     with Task('TestPipe', tasks) as t:
         if t: mx_testsuites.runSuite(['pipe'])
     with Task('TestLLVM', tasks) as t:
@@ -490,6 +492,12 @@ def getSearchPathOption(lib_args=None):
         else:
             lib_arg = lib_arg[2:]
         lib_names.append(lib_arg)
+
+    libpath = join(mx.project('com.oracle.truffle.llvm.test.native').getOutput(), 'bin')
+    for path, _, files in os.walk(libpath):
+        for f in files:
+            if f.endswith('.so'):
+                lib_names.append(join(path, f))
 
     return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 

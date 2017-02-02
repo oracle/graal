@@ -125,6 +125,11 @@ def runArgsTests(vmArgs):
     compileSuite(['args'])
     return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.MainArgsTest")
 
+def runCallbackTests(vmArgs):
+    """runs the Sulong test suite"""
+    compileSuite(['callback'])
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.CallbackTest")
+
 def runInteropTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['interop'])
@@ -227,6 +232,7 @@ def compileNWCCSuite():
 
 testSuites = {
     'args' : (compileOtherTests, runArgsTests),
+    'callback' : (compileOtherTests, runCallbackTests),
     'nwcc' : (compileNWCCSuite, runNWCCSuite),
     # 'nwcc38' : (compileV38NWCCSuite, runNWCCSuite38),
     'assembly' : (compileInlineAssemblySuite, runInlineAssemblySuite),
