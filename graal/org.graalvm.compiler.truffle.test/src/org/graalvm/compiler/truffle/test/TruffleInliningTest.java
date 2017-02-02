@@ -246,6 +246,13 @@ public class TruffleInliningTest {
     }
 
     @Test
+    public void testIndirectRecursiveInline() {
+        TruffleInlining decisions = builder.target("callee").calls("recursive").target("recursive").calls("callee").build();
+        assertTrue(countInlines(decisions, "recursive") == TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue());
+        assertTrue(countInlines(decisions, "callee") == TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue() + 1);
+    }
+
+    @Test
     public void testDontInlineBigWithCallSites() {
         // Do not inline a function if it's size * cappedCallSites is too big
         TruffleInlining decisions = builder.target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3).target("caller").calls("callee").calls("callee").calls(
