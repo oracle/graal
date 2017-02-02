@@ -78,12 +78,12 @@ def runSulongSuite(vmArgs):
     """runs the Sulong test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['sulong'])
-    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite")
 
 def runSulongSuite38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['sulong38'])
-    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite")
 
 def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
