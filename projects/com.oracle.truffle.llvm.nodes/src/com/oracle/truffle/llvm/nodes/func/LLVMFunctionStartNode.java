@@ -88,10 +88,6 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public String toString() {
-        return getFunctionName();
-    }
-
-    public String getFunctionName() {
         return getName();
     }
 

@@ -59,9 +59,9 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
         LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(basicBlock, LLVMFunctionStartNode.class);
         assert functionStartNode != null : basicBlock.getParent().getClass();
         if (basicBlock.getBlockId() == 0) {
-            return String.format("assignment of %s in first basic block in function %s", getSlot().getIdentifier(), functionStartNode.getFunctionName());
+            return String.format("assignment of %s in first basic block in function %s", getSlot().getIdentifier(), functionStartNode.getName());
         } else {
-            return String.format("assignment of %s in basic block %s in function %s", getSlot().getIdentifier(), basicBlock.getBlockName(), functionStartNode.getFunctionName());
+            return String.format("assignment of %s in basic block %s in function %s", getSlot().getIdentifier(), basicBlock.getBlockName(), functionStartNode.getName());
         }
     }
 
