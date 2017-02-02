@@ -97,6 +97,18 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable {
         assert !isPlaceholderBci(bci);
     }
 
+    public ValueNode getArgument(int i) {
+        return arguments.get(i);
+    }
+
+    public int getArgumentCount() {
+        return arguments.size();
+    }
+
+    public ValueNode[] toArgumentArray() {
+        return arguments.toArray(new ValueNode[0]);
+    }
+
     public int getBci() {
         return bci;
     }

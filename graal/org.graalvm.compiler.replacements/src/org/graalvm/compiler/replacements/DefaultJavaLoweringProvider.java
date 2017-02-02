@@ -119,6 +119,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.SnippetLowerableMemoryNode.SnippetLowering;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -147,6 +148,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected final TargetDescription target;
 
     private BoxingSnippets.Templates boxingSnippets;
+    private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
 
     public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
         this.metaAccess = metaAccess;
@@ -156,6 +158,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     public void initialize(Providers providers, SnippetReflectionProvider snippetReflection) {
         boxingSnippets = new BoxingSnippets.Templates(providers, snippetReflection, target);
+        indexOfSnippets = new ConstantStringIndexOfSnippets.Templates(providers, snippetReflection, target);
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(providers, snippetReflection, target));
     }
 
@@ -209,8 +212,27 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
         } else if (n instanceof BinaryMathIntrinsicNode) {
             lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
+        } else if (n instanceof StringIndexOfNode) {
+            lowerIndexOf((StringIndexOfNode) n);
         } else {
             throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
+        }
+    }
+
+    private void lowerIndexOf(StringIndexOfNode n) {
+        if (n.getArgument(3).isConstant()) {
+            SnippetLowering lowering = new SnippetLowering() {
+                @Override
+                public void lower(SnippetLowerableMemoryNode node, LoweringTool tool) {
+                    if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                        return;
+                    }
+                    indexOfSnippets.lower(node, tool);
+                }
+            };
+            SnippetLowerableMemoryNode snippetLower = new SnippetLowerableMemoryNode(lowering, NamedLocationIdentity.getArrayLocation(JavaKind.Char), n.stamp(), n.toArgumentArray());
+            n.graph().add(snippetLower);
+            n.graph().replaceFixedWithFixed(n, snippetLower);
         }
     }
 

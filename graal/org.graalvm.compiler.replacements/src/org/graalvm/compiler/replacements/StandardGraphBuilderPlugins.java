@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.replacements;
 
-import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
 import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_READ;
 import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_WRITE;
 import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
@@ -31,6 +30,7 @@ import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
+import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -154,7 +154,7 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider, SnippetReflectionProvider snippetReflection) {
-        Registration r = new Registration(plugins, String.class, bytecodeProvider);
+        final Registration r = new Registration(plugins, String.class, bytecodeProvider);
         r.register1("hashCode", Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -166,11 +166,13 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
         });
+
         if (Java8OrEarlier) {
             r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
+            r.register7("indexOf", char[].class, int.class, int.class, char[].class, int.class, int.class, int.class, new StringIndexOfConstantPlugin());
 
-            r = new Registration(plugins, StringSubstitutions.class);
-            r.register1("getValue", String.class, new InvocationPlugin() {
+            Registration sr = new Registration(plugins, StringSubstitutions.class);
+            sr.register1("getValue", String.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
@@ -419,6 +421,24 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    public static final class StringIndexOfConstantPlugin implements InvocationPlugin {
+        @Override
+        public boolean inlineOnly() {
+            return true;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4,
+                        ValueNode arg5, ValueNode arg6, ValueNode arg7) {
+            if (arg3.isConstant()) {
+                b.addPush(JavaKind.Int,
+                                new StringIndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), arg1, arg2, arg3, arg4, arg5, arg6, arg7));
+                return true;
+            }
+            return false;
+        }
     }
 
     public static class UnsignedMathPlugin implements InvocationPlugin {
