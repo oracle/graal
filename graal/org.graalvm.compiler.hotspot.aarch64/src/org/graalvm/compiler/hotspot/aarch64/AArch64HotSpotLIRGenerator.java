@@ -144,7 +144,6 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         append(new AArch64CCall(nativeCallingConvention.getReturn(), ptr, argLocations));
     }
 
-    @Override
     public SaveRegistersOp emitSaveAllRegisters() {
         throw GraalError.unimplemented();
     }
