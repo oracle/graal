@@ -267,4 +267,34 @@ public class TruffleInliningTest {
         assertInlined(decisions, "d");
         assertInlined(decisions, "e");
     }
+
+    @Test
+    public void testReallyDeepInline() {
+        // Limited to 14 at the moment because of TruffleInlining:97
+        int depth = 14;
+        builder.target("0");
+        for (Integer count = 0; count < depth; count++) {
+            Integer nextCount = count + 1;
+            builder.target(nextCount.toString()).calls(count.toString());
+        }
+        final int[] inlineDepth = {0};
+        TruffleInlining decisions = builder.build();
+        traverseDecisions(decisions.getCallSites(), decision -> {
+            assertTrue(decision.isInline());
+            inlineDepth[0]++;
+        });
+        assertTrue(inlineDepth[0] == depth);
+    }
+
+    @Test
+    public void testReallyWideInline() {
+        int width = 1000;
+        builder.target("leaf").target("main");
+        for (Integer i = 0; i < width; i++) {
+            builder.calls("leaf");
+        }
+        final int[] inlineDepth = {0};
+        TruffleInlining decisions = builder.build();
+        assertTrue(countInlines(decisions, "leaf") == width);
+    }
 }
