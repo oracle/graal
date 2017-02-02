@@ -165,13 +165,13 @@ public class JavaInteropTest {
         return callTarget;
     }
 
-    class POJO {
+    class PrivatePOJO {
         public int x;
     }
 
     @Test
     public void accessAllProperties() {
-        TruffleObject pojo = JavaInterop.asTruffleObject(new POJO());
+        TruffleObject pojo = JavaInterop.asTruffleObject(new PrivatePOJO());
         Map<?, ?> map = JavaInterop.asJavaObject(Map.class, pojo);
         int cnt = 0;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -184,6 +184,32 @@ public class JavaInteropTest {
         }
         assertEquals("No properties", 0, cnt);
         assertEquals("Empty: " + map, 0, map.size());
+    }
+
+    @Test
+    public void accessAllPropertiesDirectly() {
+        TruffleObject pojo = JavaInterop.asTruffleObject(new PrivatePOJO());
+        CallTarget callKeys = sendKeys();
+        TruffleObject result = (TruffleObject) callKeys.call(pojo);
+        List<?> propertyNames = JavaInterop.asJavaObject(List.class, result);
+        assertEquals("No props, class isn't public", 0, propertyNames.size());
+    }
+
+    public class PublicPOJO {
+        PublicPOJO() {
+        }
+
+        public int x;
+    }
+
+    @Test
+    public void accessAllPublicPropertiesDirectly() {
+        TruffleObject pojo = JavaInterop.asTruffleObject(new PublicPOJO());
+        CallTarget callKeys = sendKeys();
+        TruffleObject result = (TruffleObject) callKeys.call(pojo);
+        List<?> propertyNames = JavaInterop.asJavaObject(List.class, result);
+        assertEquals("One field", 1, propertyNames.size());
+        assertEquals("One field x", "x", propertyNames.get(0));
     }
 
     @Test
