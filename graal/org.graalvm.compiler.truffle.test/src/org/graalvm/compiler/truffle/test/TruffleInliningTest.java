@@ -30,12 +30,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.truffle.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.graalvm.compiler.truffle.TruffleInliningDecision;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -235,5 +239,17 @@ public class TruffleInliningTest {
             }
         });
         return count[0];
+    }
+
+    private static OptionValue.OverrideScope scope = null;
+
+    @BeforeClass
+    public static void before() {
+        scope = OptionValue.override(TruffleCompilerOptions.TruffleCompilationThreshold, Integer.MAX_VALUE);
+    }
+
+    @AfterClass
+    public static void after() {
+        scope.close();
     }
 }
