@@ -132,7 +132,7 @@ public class TruffleInliningTest {
         }
 
         TruffleInliningTestScenarioBuilder calls(String name) {
-            return calls(name, 1);
+            return calls(name, 0);
         }
 
         TruffleInliningTestScenarioBuilder calls(String name, int count) {
@@ -289,7 +289,7 @@ public class TruffleInliningTest {
     public void testDontInlineBigWithCallSites() {
         // Do not inline a function if it's size * cappedCallSites is too big
         TruffleInlining decisions = builder.target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3).target("caller").calls("callee").calls("callee").calls(
-                        "callee").build();
+                        "callee").build(true);
         assertNotInlined(decisions, "callee");
         assert (decisions.getCallSites().get(0).getProfile().getFailedReason().startsWith("deepNodeCount * callSites  >"));
     }
