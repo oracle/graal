@@ -58,6 +58,7 @@ import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
+import org.graalvm.compiler.lir.aarch64.AArch64CCall;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
@@ -126,6 +127,24 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public void emitTailcall(Value[] args, Value address) {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args) {
+        Value[] argLocations = new Value[args.length];
+        getResult().getFrameMapBuilder().callsMethod(nativeCallingConvention);
+        for (int i = 0; i < args.length; i++) {
+            Value arg = args[i];
+            AllocatableValue loc = nativeCallingConvention.getArgument(i);
+            emitMove(loc, arg);
+            argLocations[i] = loc;
+        }
+        Value ptr = emitLoadConstant(LIRKind.value(AArch64Kind.QWORD), JavaConstant.forLong(address));
+        append(new AArch64CCall(nativeCallingConvention.getReturn(), ptr, argLocations));
+    }
+
+    public SaveRegistersOp emitSaveAllRegisters() {
         throw GraalError.unimplemented();
     }
 
