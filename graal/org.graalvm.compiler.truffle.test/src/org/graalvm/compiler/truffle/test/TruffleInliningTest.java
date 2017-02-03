@@ -263,17 +263,6 @@ public class TruffleInliningTest {
         // @formatter:on
         assertTrue(countInlines(decisions, "callee") == 2);
 
-        // @formatter:off
-        decisions = builder
-                .target("callee")
-                .target("caller")
-                    .calls("callee")
-                    .calls("callee")
-                    .calls("callee")
-                .build();
-        // @formatter:on
-        assertTrue(countInlines(decisions, "callee") == 3);
-
         builder.target("callee").target("caller", 100);
         for (int i = 0; i < 100; i++) {
             builder.calls("callee");
