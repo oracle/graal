@@ -222,7 +222,6 @@ public class TruffleInliningTest {
     }
 
     void traverseDecisions(List<TruffleInliningDecision> decisions, Consumer<TruffleInliningDecision> f) {
-        int count = 0;
         for (TruffleInliningDecision decision : decisions) {
             f.accept(decision);
             traverseDecisions(decision.getCallSites(), f);
@@ -319,7 +318,6 @@ public class TruffleInliningTest {
         for (Integer i = 0; i < width; i++) {
             builder.calls("leaf");
         }
-        final int[] inlineDepth = {0};
         TruffleInlining decisions = builder.build();
         assertTrue(countInlines(decisions, "leaf") == width);
     }
