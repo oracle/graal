@@ -111,9 +111,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             if (selectedProcessors == 0) {
                 // No manual selection made, check how many processors are available.
                 int availableProcessors = Runtime.getRuntime().availableProcessors();
-                if (availableProcessors >= 12) {
-                    selectedProcessors = 4;
-                } else if (availableProcessors >= 4) {
+                if (availableProcessors >= 4) {
                     selectedProcessors = 2;
                 }
             }
