@@ -198,7 +198,7 @@ public class TruffleInliningTest {
                     }
                 }
                 InlineTestRootNode rootNode = (InlineTestRootNode) caller.getRootNode();
-                rootNode.addCallSites((OptimizedDirectCallNode[]) callSites.toArray(new OptimizedDirectCallNode[0]));
+                rootNode.addCallSites(callSites.toArray(new OptimizedDirectCallNode[0]));
                 rootNode.adoptChildren();
             }
         }
