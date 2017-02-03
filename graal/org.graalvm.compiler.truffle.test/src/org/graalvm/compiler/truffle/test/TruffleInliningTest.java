@@ -103,7 +103,7 @@ public class TruffleInliningTest {
             public String target;
             public int count;
 
-            public CallInstruction(String target, int count) {
+            CallInstruction(String target, int count) {
                 this.target = target;
                 this.count = count;
             }
@@ -232,8 +232,9 @@ public class TruffleInliningTest {
     int countInlines(TruffleInlining decisions, String name) {
         final int[] count = {0};
         traverseDecisions(decisions.getCallSites(), (TruffleInliningDecision d) -> {
-            if (d.isInline() && d.getTarget().toString().equals(name))
+            if (d.isInline() && d.getTarget().toString().equals(name)) {
                 count[0]++;
+            }
         });
         return count[0];
     }
