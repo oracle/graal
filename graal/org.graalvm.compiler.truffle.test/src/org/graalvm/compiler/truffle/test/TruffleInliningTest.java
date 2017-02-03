@@ -241,16 +241,37 @@ public class TruffleInliningTest {
 
     @Test
     public void testSimpleInline() {
-        TruffleInlining decisions = builder.target("callee").target("caller").calls("callee").build();
+        // @formatter:off
+        TruffleInlining decisions = builder
+                .target("callee")
+                .target("caller")
+                    .calls("callee")
+                .build();
+        // @formatter:on
         assertInlined(decisions, "callee");
     }
 
     @Test
     public void testMultipleInline() {
-        TruffleInlining decisions = builder.target("callee").target("caller").calls("callee").calls("callee").build();
+        // @formatter:off
+        TruffleInlining decisions = builder
+                .target("callee")
+                .target("caller")
+                    .calls("callee")
+                    .calls("callee")
+                .build();
+        // @formatter:on
         assertTrue(countInlines(decisions, "callee") == 2);
 
-        decisions = builder.target("callee").target("caller").calls("callee").calls("callee").calls("callee").build();
+        // @formatter:off
+        decisions = builder
+                .target("callee")
+                .target("caller")
+                    .calls("callee")
+                    .calls("callee")
+                    .calls("callee")
+                .build();
+        // @formatter:on
         assertTrue(countInlines(decisions, "callee") == 3);
 
         builder.target("callee").target("caller", 100);
@@ -262,13 +283,25 @@ public class TruffleInliningTest {
 
     @Test
     public void testDontInlineBigFunctions() {
-        TruffleInlining decisions = builder.target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()).target("caller").calls("callee").build();
+        // @formatter:off
+        TruffleInlining decisions = builder
+                .target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue())
+                .target("caller")
+                    .calls("callee")
+                .build();
+        // @formatter:on
         assertNotInlined(decisions, "callee");
     }
 
     @Test
     public void testDontInlineIntoBigFunctions() {
-        TruffleInlining decisions = builder.target("callee").target("caller", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()).calls("callee").build();
+        // @formatter:off
+        TruffleInlining decisions = builder
+                .target("callee")
+                .target("caller", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue())
+                    .calls("callee")
+                .build();
+        // @formatter:on
         assertNotInlined(decisions, "callee");
     }
 
@@ -280,7 +313,14 @@ public class TruffleInliningTest {
 
     @Test
     public void testIndirectRecursiveInline() {
-        TruffleInlining decisions = builder.target("callee").calls("recursive").target("recursive").calls("callee").build();
+        // @formatter:off
+        TruffleInlining decisions = builder
+                .target("callee")
+                    .calls("recursive")
+                .target("recursive")
+                    .calls("callee")
+                .build();
+        // @formatter:on
         assertTrue(countInlines(decisions, "recursive") == TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue());
         assertTrue(countInlines(decisions, "callee") == TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue() + 1);
     }
@@ -288,8 +328,15 @@ public class TruffleInliningTest {
     @Test
     public void testDontInlineBigWithCallSites() {
         // Do not inline a function if it's size * cappedCallSites is too big
-        TruffleInlining decisions = builder.target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3).target("caller").calls("callee").calls("callee").calls(
-                        "callee").build(true);
+        // @formatter:off
+        TruffleInlining decisions = builder
+                .target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3)
+                .target("caller")
+                    .calls("callee")
+                    .calls("callee")
+                    .calls("callee")
+                .build(true);
+        // @formatter:on
         assertNotInlined(decisions, "callee");
         assert (decisions.getCallSites().get(0).getProfile().getFailedReason().startsWith("deepNodeCount * callSites  >"));
     }
@@ -325,7 +372,14 @@ public class TruffleInliningTest {
 
     @Test
     public void testFrequency() {
-        TruffleInlining decisions = builder.target("callee").target("caller").execute(4).calls("callee", 2).build();
+        // @formatter:off
+        TruffleInlining decisions = builder
+                .target("callee")
+                .target("caller")
+                    .execute(4)
+                    .calls("callee", 2)
+                .build();
+        // @formatter:on
         assertInlined(decisions, "callee");
         assert (decisions.getCallSites().get(0).getProfile().getFrequency() == 0.5);
     }
