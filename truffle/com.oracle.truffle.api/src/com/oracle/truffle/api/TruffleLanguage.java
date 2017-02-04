@@ -62,7 +62,20 @@ import java.util.List;
  * file placed on the host Java Virtual Machine's class path.
  * <p>
  * A newly created engine locates all available language implementations and creates a
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Language descriptor} for each.
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Language descriptor} for each. The
+ * descriptor holds the language's registered metadata, but its execution environment is not
+ * initialized until the language is needed to execute code. That execution environment remains
+ * initialized for the lifetime of the engine and is isolated from the environment in any other
+ * engine instance.
+ * <p>
+ * An engine can be configured at creation to provide language-specific data (for example
+ * originating from command line arguments) that can be used to initialize and configure the
+ * language's {@link #createContext(Env) initial execution state}. That data can take the form of
+ * language-specific (specified by MIME type)
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Builder#config(String, String, Object)
+ * key/object pairs} or shared
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Builder#globalSymbol(String, Object) global
+ * symbols}.
  * <p>
  * To ensure that a Truffle language can be used in a language-agnostic way, the implementation
  * should be designed to decouple its configuration and initialization from language specifics as
