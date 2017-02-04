@@ -78,6 +78,20 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
  * <em>Engine</em> instances are created using a {@linkplain #newBuilder() builder} that allows
  * application- and language-specific configuration.
  *
+ * <h4>Languages</h4>
+ * <p>
+ * An engine supports every Truffle language available on the JVM class path.
+ * <p>
+ * Languages are initialized on demand, the first time an engine evaluates code of a matching
+ * {@linkplain Source#getMimeType() MIME type}. The engine throws an {@link IllegalStateException}
+ * if no matching language is available. Languages remains initialized for the lifetime of the
+ * engine.
+ * <p>
+ * Specific language environments can be configured, for example in response to command line
+ * options, by building the engine with combinations of language-specific
+ * {@linkplain Builder#config(String, String, Object) MIME-key-value settings} and pre-registered
+ * {@linkplain PolyglotEngine.Builder#globalSymbol global symbols}.
+ *
  * <h4>Global Symbols</h4>
  *
  * Communication among languages within an engine is supported by shared <em>global symbols</em>.
@@ -108,20 +122,6 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
  * {@link Executor} that performs all executions on a different thread. In this case the engine
  * requires only that all executions are performed on the same thread.</li>
  * </ul>
- *
- * <h4>Languages</h4>
- * <p>
- * An engine supports every Truffle language available on the JVM class path.
- * <p>
- * Languages are initialized on demand, the first time an engine evaluates code of a matching
- * {@linkplain Source#getMimeType() MIME type}. The engine throws an {@link IllegalStateException}
- * if no matching language is available. Languages remains initialized for the lifetime of the
- * engine.
- * <p>
- * Specific language environments can be configured, for example in response to command line
- * options, by building the engine with combinations of language-specific
- * {@linkplain Builder#config(String, String, Object) MIME-key-value settings} and pre-registered
- * {@linkplain PolyglotEngine.Builder#globalSymbol global symbols}.
  *
  * <h4>Use case: run guest language code</h4>
  *
