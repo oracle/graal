@@ -56,13 +56,13 @@ import java.util.List;
 
 /**
  * <p>
- * An entry point for everyone who wants to implement a Truffle-based language. By providing an
- * implementation of this type and registering it using {@link Registration} annotation, your
- * language becomes accessible to users of the {@link com.oracle.truffle.api.vm.PolyglotEngine
- * polyglot execution engine} - all they will need to do is to include your JAR into their
- * application and all the Truffle goodies (multi-language support, multitenant hosting, debugging,
- * etc.) will be made available to them.
- *
+ * A Truffle language implementation for executing guest language code in a
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine polyglot engine}. An implementation becomes
+ * usable by an engine when metadata is added using the {@link Registration} annotation and its JAR
+ * file placed on the host Java Virtual Machine's class path.
+ * <p>
+ * A newly created engine locates all available language implementations and creates a
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Language descriptor} for each.
  * <p>
  * To ensure that a Truffle language can be used in a language-agnostic way, the implementation
  * should be designed to decouple its configuration and initialization from language specifics as

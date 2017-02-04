@@ -69,9 +69,9 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 
 /**
- * A multi-language execution environment for Truffle-implemented languages that supports
- * <em>interoperability</em> among the Truffle languages and with Java, for example cross-language
- * calls, foreign object exchange, and shared <em>global symbols</em>.
+ * A multi-language execution environment for Truffle-implemented {@linkplain Language languages}
+ * that supports <em>interoperability</em> among the Truffle languages and with Java, for example
+ * cross-language calls, foreign object exchange, and shared <em>global symbols</em>.
  *
  * <h4>Creation</h4>
  *
@@ -80,10 +80,15 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
  *
  * <h4>Global Symbols</h4>
  *
- * Each engine supports a shared collection of named {@linkplain Value values} known as
- * <em>global symbols</em>. Any language active in the engine can add to the collection. Names are
- * unconstrained, and duplicates are permitted. Names may be language-specific, and values may
- * encapsulate language-specific data.
+ * Communication among languages within an engine is supported by shared <em>global symbols</em>.
+ * Each active language provides a namespace of global values that have usually (but not always)
+ * been exported explicitly. The engine provides its own namespace of values configured when the
+ * engine is {@linkplain Builder#globalSymbol(String, Object) built}.
+ * <p>
+ * The engine {@linkplain #findGlobalSymbol(String) retrieves} global symbols by name, searching
+ * every namespace uniformly. Name collisions across namespaces are possible and can only be
+ * discovered by explicitly {@linkplain #findGlobalSymbols(String) retrieving} all values exported
+ * with a particular name.
  *
  * <h4>Isolation</h4>
  *
@@ -92,10 +97,17 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
  * are shared with other engine instances.
  *
  * <h4>Threads</h4>
+ *
+ * Guest language code execution is single-threaded, performed on a thread determined by the
+ * engine's configuration.
  * <p>
- * Engines are single-threaded. Each instance records the thread on which it was
- * {@linkplain Builder#build() created} and ensures that all subsequent calls come from the same
- * thread.
+ * <ul>
+ * <li>Execution is by default synchronous (performed on the calling thread) and only permitted by
+ * the thread that created the engine.</li>
+ * <li>An engine can be {@linkplain Builder#executor(Executor) configured} with a custom
+ * {@link Executor} that performs all executions on a different thread. In this case the engine
+ * requires only that all executions are performed on the same thread.</li>
+ * </ul>
  *
  * <h4>Languages</h4>
  * <p>
@@ -397,17 +409,18 @@ public class PolyglotEngine {
         }
 
         /**
-         * Provides an executor for the engine to run scripts. By default the engine executes both
-         * {@link PolyglotEngine#eval(Source)} and {@link Value#invoke(Object, Object[])}
-         * synchronously in the calling thread.
+         * Provides an {@link Executor} for running guest language code asynchronously, on a thread
+         * other than the calling thread.
          * <p>
-         * Sometimes, however it is more beneficial to run them asynchronously, which is most easily
-         * done by providing an alternate {@link Executor}. The executor is expected to execute all
-         * {@link Runnable runnables} passed into its {@link Executor#execute(Runnable)} method in
-         * the order they arrive and in a single (yet arbitrary) thread.
+         * By default engines execute both {@link PolyglotEngine#eval(Source)} and
+         * {@link Value#invoke(Object, Object[])} synchronously in the calling thread.
+         * <p>
+         * A custom {@link Executor} is expected to perform every execution it is given (via
+         * {@link Executor#execute(Runnable)}) in order of arrival. An arbitrary thread may be used,
+         * but the engine requires that there be only one.
          *
-         * @param executor the executor to use for internal execution inside the
-         *            {@link PolyglotEngine engine} being built
+         * @param executor the executor of code to be used by {@link PolyglotEngine engine} being
+         *            built
          * @return this builder
          * @since 0.9
          */
@@ -465,8 +478,8 @@ public class PolyglotEngine {
     }
 
     /**
-     * Evaluates guest language source code, using the installed language that matches the code's
-     * {@link Source#getMimeType() MIME type}. Throws an {@link IllegalStateException} if no
+     * Evaluates guest language source code, using the installed {@link Language} that matches the
+     * code's {@link Source#getMimeType() MIME type}. Throws an {@link IllegalStateException} if no
      * matching language is installed. The engine wraps the result in an instance of {@link Value}.
      * The method {@link Value#as(Class)} creates Java-typed views (i.e. objects) for access to the
      * result.
@@ -711,16 +724,16 @@ public class PolyglotEngine {
     }
 
     /**
-     * Finds a <em>global symbol</em> with a specified name.
+     * Finds a <em>global symbol</em> by name by searching every language's namespace of exported
+     * symbols plus the the engine's namespace of {@linkplain Builder#globalSymbol(String, Object)
+     * preconfigured} symbols.
      * <p>
-     * Symbol names can be language dependent, and they are not guaranteed unique. In case of
-     * duplicate symbol names the only guarantee is that the value of one of them will be returned.
-     * Use {@link #findGlobalSymbols(String)} to return the values from <em>all</em> symbols with
-     * the name.
+     * Symbol names are language dependent. Name collisions across namespaces are possible, in which
+     * case this method only returns one of them (use {@link #findGlobalSymbols(String)} to return
+     * all of them).
      *
      * @param globalName a global symbol name
-     * @return the value of a global symbol, <code>null</code> if no global symbol with the
-     *         specified name exists
+     * @return the value of a global symbol with the specified name, <code>null</code> if none
      * @since 0.9
      */
     public Value findGlobalSymbol(final String globalName) {
@@ -742,12 +755,13 @@ public class PolyglotEngine {
     }
 
     /**
-     * Finds <em>global symbols</em> with a specified name.
+     * Finds all <em>global symbols</em> with a specified name by searching every language's
+     * namespace of exported symbols plus the the engine's namespace of
+     * {@linkplain Builder#globalSymbol(String, Object) preconfigured} symbols.
      * <p>
-     * First of all execute your program via {@link #eval(Source)} method and then look expected
-     * symbols up using this method. If you want to be sure only one symbol has been exported, you
-     * can use the following to make sure the <code>iterator</code> contains only one element.
-     * <p>
+     * The following example shows how this method can be used to retrieve a single global symbol,
+     * while treating name collisions as an error.
+     *
      * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols}
      *
      * @param globalName a global symbol name
@@ -1163,14 +1177,14 @@ public class PolyglotEngine {
          * should set the value to the field; the return value should be the actual value of the
          * field when this method returns.
          * <p>
-         * All languages accept wrappers of Java primitive types (e.g. {@link java.lang.Byte},
-         * {@link java.lang.Short}, {@link java.lang.Integer}, {@link java.lang.Long},
-         * {@link java.lang.Float}, {@link java.lang.Double}, {@link java.lang.Character},
-         * {@link java.lang.Boolean}, and {@link java.lang.String}) or generic {@link TruffleObject
-         * objects created} by one of the languages as parameters of their functions (or other
-         * objects that can be executed). In addition to that the <code>execute</code> method
-         * converts plain Java objects into appropriate wrappers to make them easily accessible from
-         * dynamic languages.
+         * All {@linkplain Language languages} accept wrappers of Java primitive types (e.g.
+         * {@link java.lang.Byte}, {@link java.lang.Short}, {@link java.lang.Integer},
+         * {@link java.lang.Long}, {@link java.lang.Float}, {@link java.lang.Double},
+         * {@link java.lang.Character}, {@link java.lang.Boolean}, and {@link java.lang.String}) or
+         * generic {@link TruffleObject objects created} by one of the languages as parameters of
+         * their functions (or other objects that can be executed). In addition to that the
+         * <code>execute</code> method converts plain Java objects into appropriate wrappers to make
+         * them easily accessible from dynamic languages.
          *
          * <h5>Java interoperation examples</h5>
          * <p>
@@ -1433,8 +1447,11 @@ public class PolyglotEngine {
 
     /**
      * A handle for a Truffle language installed in a {@link PolyglotEngine}. The handle provides
-     * access to the language's metadata, including the language's {@link #getName() name}, version,
-     * and supported {@link #getMimeTypes() MIME types}.
+     * access to the language's metadata, including the language's {@linkplain #getName() name},
+     * {@linkplain #getVersion() version}, and supported {@linkplain #getMimeTypes() MIME types}.
+     * <p>
+     * Documentation about how Truffle languages are implemented begins with the abstract class
+     * {@link TruffleLanguage}.
      *
      * @see PolyglotEngine#getLanguages()
      * @since 0.9
@@ -1481,9 +1498,8 @@ public class PolyglotEngine {
         }
 
         /**
-         * Returns whether this language supports for interactive evaluation of {@link Source
-         * sources}. Such languages should be displayed in interactive environments and presented to
-         * the user.
+         * Returns whether this language supports interactive evaluation of {@link Source sources}.
+         * Such languages should be displayed in interactive environments and presented to the user.
          *
          * @return <code>true</code> if and only if this language implements an interactive response
          *         to evaluation of interactive sources.
@@ -1821,8 +1837,7 @@ class PolyglotEngineSnippets {
     // @formatter:off
     // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols
     static Value findAndReportMultipleExportedSymbols(
-        PolyglotEngine engine, String name
-    ) {
+                      PolyglotEngine engine, String name) {
         Value found = null;
         for (Value value : engine.findGlobalSymbols(name)) {
             if (found != null) {
