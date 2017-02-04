@@ -22,37 +22,40 @@
  */
 package org.graalvm.compiler.truffle.debug;
 
+import static java.util.function.Function.identity;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationStatistics;
-import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.counting;
-import static java.util.stream.Collectors.groupingBy;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.Function;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.OptimizedCompilationProfile;
+import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.graalvm.compiler.truffle.TruffleInlining.CallTreeNodeVisitor;
 import org.graalvm.compiler.truffle.TruffleInliningDecision;
+
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
+
+import jdk.vm.ci.code.site.Infopoint;
 
 public final class CompilationStatisticsListener extends AbstractDebugCompilationListener {
 
@@ -166,7 +169,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     public void notifyCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, StructuredGraph graph) {
         compilationLocal.get().truffleTierFinished = System.nanoTime();
 
-        nodeStatistics.accept(target.nodeStream(inliningDecision).filter(n -> n != null).map(node -> node.getClass()));
+        nodeStatistics.accept(nodeClasses(target, inliningDecision));
 
         CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(target, inliningDecision);
         nodeCount.accept(callTargetStat.getNodeCount());
@@ -187,7 +190,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
 
         truffleTierNodeCount.accept(graph.getNodeCount());
         if (TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
-            truffleTierNodeStatistics.accept(nodeClassStream(graph));
+            truffleTierNodeStatistics.accept(nodeClasses(graph));
         }
     }
 
@@ -197,12 +200,34 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         graalTierNodeCount.accept(graph.getNodeCount());
 
         if (TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
-            graalTierNodeStatistics.accept(nodeClassStream(graph));
+            graalTierNodeStatistics.accept(nodeClasses(graph));
         }
     }
 
-    private static Stream<Class<?>> nodeClassStream(StructuredGraph graph) {
-        return StreamSupport.stream(graph.getNodes().spliterator(), false).map(node -> node.getClass());
+    private static Collection<String> infopoints(CompilationResult result) {
+        Collection<String> infopoints = new ArrayList<>();
+        for (Infopoint infopoint : result.getInfopoints()) {
+            infopoints.add(infopoint.reason.toString());
+        }
+        return infopoints;
+    }
+
+    private static Collection<Class<?>> nodeClasses(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+        Collection<Class<?>> nodeClasses = new ArrayList<>();
+        for (Node node : target.nodeIterable(inliningDecision)) {
+            if (node != null) {
+                nodeClasses.add(node.getClass());
+            }
+        }
+        return nodeClasses;
+    }
+
+    private static Collection<Class<?>> nodeClasses(StructuredGraph graph) {
+        Collection<Class<?>> classes = new ArrayList<>();
+        for (org.graalvm.compiler.graph.Node node : graph.getNodes()) {
+            classes.add(node.getClass());
+        }
+        return classes;
     }
 
     @Override
@@ -221,7 +246,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         compilationResultTotalFrameSize.accept(result.getTotalFrameSize());
         compilationResultExceptionHandlers.accept(result.getExceptionHandlers().size());
         compilationResultInfopoints.accept(result.getInfopoints().size());
-        compilationResultInfopointStatistics.accept(result.getInfopoints().stream().map(e -> e.reason.toString()));
+        compilationResultInfopointStatistics.accept(infopoints(result));
         compilationResultMarks.accept(result.getMarks().size());
         compilationResultDataPatches.accept(result.getDataPatches().size());
     }
@@ -320,17 +345,27 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         final Map<T, IntSummaryStatistics> types = new HashMap<>();
 
         public void printStatistics(GraalTruffleRuntime rt, Function<T, String> toStringFunction) {
-            types.keySet().stream().sorted(Comparator.comparing(c -> -types.get(c).getSum())).//
-                            forEach(c -> {
-                                printStatistic(rt, String.format("    %s", toStringFunction.apply(c)), types.get(c));
-                            });
+
+            SortedSet<T> sortedSet = new TreeSet<>(Comparator.comparing((T c) -> -types.get(c).getSum()));
+            sortedSet.addAll(types.keySet());
+            sortedSet.forEach(c -> {
+                printStatistic(rt, String.format("    %s", toStringFunction.apply(c)), types.get(c));
+            });
         }
 
-        public void accept(Stream<T> classes) {
-            classes.collect(groupingBy(identity(), counting())).//
-                            forEach((clazz, count) -> {
-                                types.computeIfAbsent(clazz, c -> new IntSummaryStatistics()).accept(count.intValue());
-                            });
+        public void accept(Collection<T> elements) {
+            /* First compute the histogram. */
+            HashMap<T, Integer> histogram = new HashMap<>();
+            for (T e : elements) {
+                histogram.compute(e, (key, count) -> (count == null) ? 1 : count + 1);
+            }
+
+            /* Then create the summary statistics. */
+            for (Map.Entry<T, Integer> entry : histogram.entrySet()) {
+                T element = entry.getKey();
+                Integer count = entry.getValue();
+                types.computeIfAbsent(element, key -> new IntSummaryStatistics()).accept(count.intValue());
+            }
         }
     }
 

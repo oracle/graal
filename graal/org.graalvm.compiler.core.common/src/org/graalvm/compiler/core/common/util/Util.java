@@ -25,7 +25,6 @@ package org.graalvm.compiler.core.common.util;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.util.Collection;
 import java.util.List;
 
 import org.graalvm.compiler.debug.TTY;
@@ -73,29 +72,6 @@ public class Util {
     @SuppressWarnings("unchecked")
     public static <T> T uncheckedCast(Object object) {
         return (T) object;
-    }
-
-    public interface Stringify {
-        String apply(Object o);
-    }
-
-    public static String join(Collection<?> c, String sep) {
-        return join(c, sep, "", "", null);
-    }
-
-    public static String join(Collection<?> c, String sep, String prefix, String suffix, Stringify stringify) {
-        StringBuilder buf = new StringBuilder(prefix);
-        boolean first = true;
-        for (Object e : c) {
-            if (!first) {
-                buf.append(sep);
-            } else {
-                first = false;
-            }
-            buf.append(stringify != null ? stringify.apply(e) : String.valueOf(e));
-        }
-        buf.append(suffix);
-        return buf.toString();
     }
 
     /**

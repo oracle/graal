@@ -24,12 +24,13 @@ package org.graalvm.compiler.truffle.phases;
 
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentationTableSize;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -143,6 +144,20 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
 
     public static class Instrumentation {
 
+        private Comparator<Point> pointsComparator = new Comparator<Point>() {
+            @Override
+            public int compare(Point x, Point y) {
+                long diff = y.getHotness() - x.getHotness();
+                if (diff < 0) {
+                    return -1;
+                } else if (diff == 0) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        };
+
         private Comparator<Map.Entry<String, Point>> entriesComparator = new Comparator<Map.Entry<String, Point>>() {
             @Override
             public int compare(Map.Entry<String, Point> x, Map.Entry<String, Point> y) {
@@ -245,17 +260,50 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
         }
 
         public synchronized ArrayList<String> accessTableToList(OptionValues options) {
-            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue(), options) + CodeUtil.NEW_LINE + entry.getValue()).collect(
-                            Collectors.toCollection(ArrayList::new));
+
+            /*
+             * Using sortedEntries.addAll(pointMap.entrySet(), instead of the iteration bellow, is
+             * not safe and is detected by FindBugs. From FindBugs:
+             *
+             * "The entrySet() method is allowed to return a view of the underlying Map in which a
+             * single Entry object is reused and returned during the iteration. As of Java 1.6, both
+             * IdentityHashMap and EnumMap did so. When iterating through such a Map, the Entry
+             * value is only valid until you advance to the next iteration. If, for example, you try
+             * to pass such an entrySet to an addAll method, things will go badly wrong."
+             */
+            List<Map.Entry<String, Point>> sortedEntries = new ArrayList<>();
+            for (Map.Entry<String, Point> entry : pointMap.entrySet()) {
+                Map.Entry<String, Point> immutableEntry = new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), entry.getValue());
+                sortedEntries.add(immutableEntry);
+            }
+
+            Collections.sort(sortedEntries, entriesComparator);
+
+            ArrayList<String> list = new ArrayList<>();
+            for (Map.Entry<String, Point> entry : sortedEntries) {
+                list.add(prettify(entry.getKey(), entry.getValue(), options) + CodeUtil.NEW_LINE + entry.getValue());
+            }
+            return list;
         }
 
         public synchronized ArrayList<String> accessTableToHistogram() {
-            long totalExecutions = pointMap.values().stream().mapToLong(v -> v.getHotness()).sum();
-            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> {
-                int length = (int) ((1.0 * entry.getValue().getHotness() / totalExecutions) * 80);
+            long totalExecutions = 0;
+            for (Point point : pointMap.values()) {
+                totalExecutions += point.getHotness();
+            }
+
+            List<Point> sortedPoints = new ArrayList<>();
+            sortedPoints.addAll(pointMap.values());
+
+            Collections.sort(sortedPoints, pointsComparator);
+
+            ArrayList<String> histogram = new ArrayList<>();
+            for (Point point : sortedPoints) {
+                int length = (int) ((1.0 * point.getHotness() / totalExecutions) * 80);
                 String bar = String.join("", Collections.nCopies(length, "*"));
-                return String.format("%3d: %s", entry.getValue().getId(), bar);
-            }).collect(Collectors.toCollection(ArrayList::new));
+                histogram.add(String.format("%3d: %s", point.getId(), bar));
+            }
+            return histogram;
         }
 
         public synchronized void dumpAccessTable(OptionValues options) {

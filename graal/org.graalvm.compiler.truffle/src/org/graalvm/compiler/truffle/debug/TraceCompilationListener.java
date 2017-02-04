@@ -36,6 +36,7 @@ import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 public final class TraceCompilationListener extends AbstractDebugCompilationListener {
@@ -106,10 +107,16 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
         int nodeCountLowered = graph.getNodeCount();
         LocalCompilation compilation = currentCompilation.get();
 
-        int calls;
+        int calls = 0;
         int inlinedCalls;
         if (inliningDecision == null) {
-            calls = (int) target.nodeStream(null).filter(node -> (node instanceof OptimizedDirectCallNode)).count();
+
+            for (Node node : target.nodeIterable(null)) {
+                if (node instanceof OptimizedDirectCallNode) {
+                    calls++;
+                }
+            }
+
             inlinedCalls = 0;
         } else {
             calls = inliningDecision.countCalls();

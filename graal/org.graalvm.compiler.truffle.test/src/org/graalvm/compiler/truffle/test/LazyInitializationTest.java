@@ -50,6 +50,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.test.SubprocessUtil;
+import org.graalvm.util.CollectionsUtil;
 
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.services.JVMCIServiceLocator;
@@ -143,7 +144,7 @@ public class LazyInitializationTest {
 
         if (VERBOSE) {
             System.out.println("\n=============================================================================");
-            System.out.println(Util.join(args, " "));
+            System.out.println(CollectionsUtil.mapAndJoin(args, e -> String.valueOf(e), " "));
             System.out.println("-----------------------------------------------------------------------------");
         }
         Process process = processBuilder.start();
