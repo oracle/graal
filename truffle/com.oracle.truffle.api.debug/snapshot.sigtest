@@ -10,9 +10,9 @@ meth public boolean isOneShot()
 meth public boolean isResolved()
 meth public com.oracle.truffle.api.debug.Breakpoint$State getState()
  anno 0 java.lang.Deprecated()
-meth public java.lang.String getCondition()
 meth public int getHitCount()
 meth public int getIgnoreCount()
+meth public java.lang.String getCondition()
 meth public java.lang.String getLocationDescription()
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.debug.Breakpoint$Builder newBuilder(com.oracle.truffle.api.source.Source)
@@ -23,7 +23,7 @@ meth public void setCondition(java.lang.String) throws java.io.IOException
 meth public void setEnabled(boolean)
 meth public void setIgnoreCount(int)
 supr java.lang.Object
-hfds BUILDER_INSTANCE,COMPARATOR,breakpointBinding,condition,conditionUnchanged,disposed,enabled,filter,hitCount,ignoreCount,locationKey,oneShot,resolved,resolvedSourceSection,session,sourceBinding
+hfds BUILDER_INSTANCE,COMPARATOR,breakpointBinding,condition,conditionUnchanged,disposed,enabled,filter,hitCount,ignoreCount,locationKey,oneShot,resolved,session,sourceBinding
 hcls BreakpointConditionFailure,BreakpointNode,BreakpointNodeFactory,ConditionalBreakNode
 
 CLSS public final com.oracle.truffle.api.debug.Breakpoint$Builder

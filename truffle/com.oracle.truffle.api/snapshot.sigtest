@@ -266,13 +266,16 @@ CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstance
 innr public final static !enum FrameAccess
 meth public abstract boolean isVirtualFrame()
 meth public abstract com.oracle.truffle.api.CallTarget getCallTarget()
-meth public abstract com.oracle.truffle.api.frame.Frame getFrame(com.oracle.truffle.api.frame.FrameInstance$FrameAccess,boolean)
 meth public abstract com.oracle.truffle.api.nodes.Node getCallNode()
+meth public com.oracle.truffle.api.frame.Frame getFrame(com.oracle.truffle.api.frame.FrameInstance$FrameAccess)
+meth public com.oracle.truffle.api.frame.Frame getFrame(com.oracle.truffle.api.frame.FrameInstance$FrameAccess,boolean)
+ anno 0 java.lang.Deprecated()
 
 CLSS public final static !enum com.oracle.truffle.api.frame.FrameInstance$FrameAccess
  outer com.oracle.truffle.api.frame.FrameInstance
 fld public final static com.oracle.truffle.api.frame.FrameInstance$FrameAccess MATERIALIZE
 fld public final static com.oracle.truffle.api.frame.FrameInstance$FrameAccess NONE
+ anno 0 java.lang.Deprecated()
 fld public final static com.oracle.truffle.api.frame.FrameInstance$FrameAccess READ_ONLY
 fld public final static com.oracle.truffle.api.frame.FrameInstance$FrameAccess READ_WRITE
 meth public static com.oracle.truffle.api.frame.FrameInstance$FrameAccess valueOf(java.lang.String)
@@ -347,15 +350,18 @@ meth public abstract boolean isCallTargetCloningAllowed()
 meth public abstract boolean isInlinable()
 meth public abstract boolean isInliningForced()
 meth public abstract com.oracle.truffle.api.CallTarget getClonedCallTarget()
-meth public abstract java.lang.Object call(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object[])
 meth public abstract void forceInlining()
 meth public com.oracle.truffle.api.CallTarget getCallTarget()
 meth public com.oracle.truffle.api.CallTarget getCurrentCallTarget()
 meth public final boolean isCallTargetCloned()
 meth public final com.oracle.truffle.api.nodes.RootNode getCurrentRootNode()
+meth public java.lang.Object call(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object[])
+ anno 0 java.lang.Deprecated()
+meth public java.lang.Object call(java.lang.Object[])
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.nodes.DirectCallNode create(com.oracle.truffle.api.CallTarget)
 supr com.oracle.truffle.api.nodes.Node
+hfds LEGACY_FRAME,legacyFrame
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.ExplodeLoop
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
@@ -432,9 +438,12 @@ intf java.lang.annotation.Annotation
 
 CLSS public abstract com.oracle.truffle.api.nodes.IndirectCallNode
 cons protected init()
-meth public abstract java.lang.Object call(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.CallTarget,java.lang.Object[])
+meth public java.lang.Object call(com.oracle.truffle.api.CallTarget,java.lang.Object[])
+meth public java.lang.Object call(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.CallTarget,java.lang.Object[])
+ anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.nodes.IndirectCallNode create()
 supr com.oracle.truffle.api.nodes.Node
+hfds dummyFrame
 
 CLSS public final com.oracle.truffle.api.nodes.InvalidAssumptionException
 cons public init()
