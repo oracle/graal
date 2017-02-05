@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
@@ -105,13 +104,6 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             } else {
                 // Read without usages or guard can be safely removed.
                 return null;
-            }
-        }
-        if (getAddress() instanceof OffsetAddressNode) {
-            OffsetAddressNode objAddress = (OffsetAddressNode) getAddress();
-            if (objAddress.getBase() instanceof PiNode && ((PiNode) objAddress.getBase()).getGuard() == getGuard()) {
-                OffsetAddressNode newAddress = new OffsetAddressNode(((PiNode) objAddress.getBase()).getOriginalNode(), objAddress.getOffset());
-                return new ReadNode(newAddress, getLocationIdentity(), stamp(), getGuard(), getBarrierType(), getNullCheck(), stateBefore());
             }
         }
         if (!getNullCheck()) {

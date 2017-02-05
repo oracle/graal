@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,11 +35,9 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
@@ -84,21 +82,6 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (getAddress() instanceof OffsetAddressNode) {
-            OffsetAddressNode objAddress = (OffsetAddressNode) getAddress();
-            if (objAddress.getBase() instanceof PiNode) {
-                PiNode piBase = (PiNode) objAddress.getBase();
-                /*
-                 * If the Pi and the read have the same guard or the read is unguarded, use the
-                 * guard of the Pi along with the original value. This encourages a canonical form
-                 * guarded reads.
-                 */
-                if (piBase.getGuard() == getGuard() || getGuard() == null) {
-                    OffsetAddressNode newAddress = new OffsetAddressNode(piBase.getOriginalNode(), objAddress.getOffset());
-                    return new FloatingReadNode(newAddress, getLocationIdentity(), getLastLocationAccess(), stamp(), getGuard() == null ? piBase.getGuard() : getGuard(), getBarrierType());
-                }
-            }
-        }
         return ReadNode.canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
     }
 

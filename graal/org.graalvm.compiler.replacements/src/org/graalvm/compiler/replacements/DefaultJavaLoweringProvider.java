@@ -53,6 +53,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.GuardedValueNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
@@ -327,6 +328,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = loadField.graph();
         ResolvedJavaField field = loadField.field();
         ValueNode object = loadField.isStatic() ? staticFieldBase(graph, field) : loadField.object();
+        object = createNullCheckedValue(object, loadField, tool);
         Stamp loadStamp = loadStamp(loadField.stamp(), field.getJavaKind());
 
         AddressNode address = createFieldAddress(graph, object, field);
@@ -336,8 +338,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode readValue = implicitLoadConvert(graph, field.getJavaKind(), memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
-
-        memoryRead.setGuard(createNullCheck(object, memoryRead, tool));
 
         if (loadField.isVolatile()) {
             MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
@@ -351,6 +351,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         StructuredGraph graph = storeField.graph();
         ResolvedJavaField field = storeField.field();
         ValueNode object = storeField.isStatic() ? staticFieldBase(graph, field) : storeField.object();
+        object = createNullCheckedValue(object, storeField, tool);
         ValueNode value = implicitStoreConvert(graph, storeField.field().getJavaKind(), storeField.value());
         AddressNode address = createFieldAddress(graph, object, field);
         assert address != null;
@@ -358,7 +359,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         WriteNode memoryWrite = graph.add(new WriteNode(address, fieldLocationIdentity(field), value, fieldStoreBarrierType(storeField.field())));
         memoryWrite.setStateAfter(storeField.stateAfter());
         graph.replaceFixedWithFixed(storeField, memoryWrite);
-        memoryWrite.setGuard(createNullCheck(object, memoryWrite, tool));
 
         if (storeField.isVolatile()) {
             MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_WRITE));
@@ -388,22 +388,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerLoadIndexedNode(LoadIndexedNode loadIndexed, LoweringTool tool) {
         StructuredGraph graph = loadIndexed.graph();
+        ValueNode array = loadIndexed.array();
+        array = createNullCheckedValue(array, loadIndexed, tool);
         JavaKind elementKind = loadIndexed.elementKind();
         Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind);
 
-        PiNode pi = getBoundsCheckedIndex(loadIndexed, tool, null);
-        ValueNode checkedIndex = pi;
-        if (checkedIndex == null) {
-            checkedIndex = loadIndexed.index();
-        }
-
-        AddressNode address = createArrayAddress(graph, loadIndexed.array(), elementKind, checkedIndex);
+        ValueNode checkedIndex = getBoundsCheckedIndex(loadIndexed, array, tool);
+        AddressNode address = createArrayAddress(graph, array, elementKind, checkedIndex);
         ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, BarrierType.NONE));
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
-
-        if (pi != null) {
-            memoryRead.setGuard(pi.getGuard());
-        }
 
         loadIndexed.replaceAtUsages(readValue);
         graph.replaceFixed(loadIndexed, memoryRead);
@@ -412,22 +405,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected void lowerStoreIndexedNode(StoreIndexedNode storeIndexed, LoweringTool tool) {
         StructuredGraph graph = storeIndexed.graph();
 
-        GuardingNode[] nullCheckReturn = new GuardingNode[1];
-        PiNode pi = getBoundsCheckedIndex(storeIndexed, tool, nullCheckReturn);
-        ValueNode checkedIndex;
-        GuardingNode boundsCheck;
-        if (pi == null) {
-            checkedIndex = storeIndexed.index();
-            boundsCheck = null;
-        } else {
-            checkedIndex = pi;
-            boundsCheck = pi.getGuard();
-        }
+        ValueNode value = storeIndexed.value();
+        ValueNode array = storeIndexed.array();
+
+        array = this.createNullCheckedValue(array, storeIndexed, tool);
+
+        ValueNode checkedIndex = getBoundsCheckedIndex(storeIndexed, array, tool);
 
         JavaKind elementKind = storeIndexed.elementKind();
 
-        ValueNode value = storeIndexed.value();
-        ValueNode array = storeIndexed.array();
         LogicNode condition = null;
         if (elementKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
             /* Array store check. */
@@ -444,9 +430,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                  * The guard on the read hub should be the null check of the array that was
                  * introduced earlier.
                  */
-                GuardingNode nullCheck = nullCheckReturn[0];
-                assert nullCheckReturn[0] != null || createNullCheck(array, storeIndexed, tool) == null;
-                ValueNode arrayClass = createReadHub(graph, graph.unique(new PiNode(array, (ValueNode) nullCheck)), tool);
+                ValueNode arrayClass = createReadHub(graph, array, tool);
                 ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
                 condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, GraalDirectives.UNLIKELY_PROBABILITY);
@@ -456,7 +440,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         AddressNode address = createArrayAddress(graph, array, elementKind, checkedIndex);
         WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(elementKind), implicitStoreConvert(graph, elementKind, value),
                         arrayStoreBarrierType(storeIndexed.elementKind())));
-        memoryWrite.setGuard(boundsCheck);
         if (condition != null) {
             GuardingNode storeCheckGuard = tool.createGuard(storeIndexed, condition, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
             memoryWrite.setStoreCheckGuard(storeCheckGuard);
@@ -478,10 +461,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      */
     protected ReadNode createReadArrayLength(ValueNode array, FixedNode before, LoweringTool tool) {
         StructuredGraph graph = array.graph();
-        ValueNode canonicalArray = skipPiWhileNonNull(array);
+        ValueNode canonicalArray = this.createNullCheckedValue(skipPiWhileNonNull(array), before, tool);
         AddressNode address = createOffsetAddress(graph, canonicalArray, arrayLengthOffset());
         ReadNode readArrayLength = graph.add(new ReadNode(address, ARRAY_LENGTH_LOCATION, StampFactory.positiveInt(), BarrierType.NONE));
-        readArrayLength.setGuard(createNullCheck(canonicalArray, before, tool));
         graph.addBeforeFixed(before, readArrayLength);
         return readArrayLength;
     }
@@ -499,11 +481,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected void lowerMonitorEnterNode(MonitorEnterNode monitorEnter, LoweringTool tool, StructuredGraph graph) {
-        ValueNode object = monitorEnter.object();
-        GuardingNode nullCheck = createNullCheck(object, monitorEnter, tool);
-        if (nullCheck != null) {
-            object = graph.unique(new PiNode(object, ((ObjectStamp) object.stamp()).improveWith(StampFactory.objectNonNull()), (ValueNode) nullCheck));
-        }
+        ValueNode object = createNullCheckedValue(monitorEnter.object(), monitorEnter, tool);
         ValueNode hub = graph.addOrUnique(LoadHubNode.create(object, tool.getStampProvider(), tool.getMetaAccess(), tool.getConstantReflection()));
         RawMonitorEnterNode rawMonitorEnter = graph.add(new RawMonitorEnterNode(object, hub, monitorEnter.getMonitorId()));
         rawMonitorEnter.setStateBefore(monitorEnter.stateBefore());
@@ -960,16 +938,11 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
 
-    protected PiNode getBoundsCheckedIndex(AccessIndexedNode n, LoweringTool tool, GuardingNode[] nullCheckReturn) {
+    protected ValueNode getBoundsCheckedIndex(AccessIndexedNode n, ValueNode array, LoweringTool tool) {
         StructuredGraph graph = n.graph();
-        ValueNode array = n.array();
         ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
         if (arrayLength == null) {
-            ReadNode readArrayLength = createReadArrayLength(array, n, tool);
-            if (nullCheckReturn != null) {
-                nullCheckReturn[0] = readArrayLength.getGuard();
-            }
-            arrayLength = readArrayLength;
+            arrayLength = createReadArrayLength(array, n, tool);
         } else {
             arrayLength = arrayLength.isAlive() ? arrayLength : graph.addOrUniqueWithInputs(arrayLength);
         }
@@ -979,14 +952,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             int i = n.index().asJavaConstant().asInt();
             if (i >= 0 && i < l) {
                 // unneeded range check
-                return null;
+                return n.index();
             }
         }
 
         GuardingNode guard = tool.createGuard(n, graph.unique(new IntegerBelowNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
-        IntegerStamp lengthStamp = (IntegerStamp) arrayLength.stamp();
-        IntegerStamp indexStamp = StampFactory.forInteger(32, 0, lengthStamp.upperBound() - 1);
-        return graph.unique(new PiNode(n.index(), indexStamp, guard.asNode()));
+        return graph.unique(new GuardedValueNode(n.index(), guard));
     }
 
     protected GuardingNode createNullCheck(ValueNode object, FixedNode before, LoweringTool tool) {
@@ -994,6 +965,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             return null;
         }
         return tool.createGuard(before, before.graph().unique(IsNullNode.create(object)), NullCheckException, InvalidateReprofile, JavaConstant.NULL_POINTER, true);
+    }
+
+    protected ValueNode createNullCheckedValue(ValueNode object, FixedNode before, LoweringTool tool) {
+        GuardingNode nullCheck = createNullCheck(object, before, tool);
+        if (nullCheck == null) {
+            return object;
+        } else {
+            return before.graph().unique(new PiNode(object, ((ObjectStamp) object.stamp()).join(StampFactory.objectNonNull()), (ValueNode) nullCheck));
+        }
     }
 
     @Override

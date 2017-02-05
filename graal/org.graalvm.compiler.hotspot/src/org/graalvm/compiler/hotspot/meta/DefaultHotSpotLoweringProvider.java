@@ -105,7 +105,6 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoweredCallTargetNode;
 import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -122,7 +121,6 @@ import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.extended.OSRLocalNode;
@@ -435,8 +433,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             NodeInputList<ValueNode> parameters = callTarget.arguments();
             ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
             if (!callTarget.isStatic() && receiver.stamp() instanceof ObjectStamp && !StampTool.isPointerNonNull(receiver)) {
-                GuardingNode receiverNullCheck = createNullCheck(receiver, invoke.asNode(), tool);
-                PiNode nonNullReceiver = graph.unique(new PiNode(receiver, ((ObjectStamp) receiver.stamp()).join(StampFactory.objectNonNull()), (ValueNode) receiverNullCheck));
+                ValueNode nonNullReceiver = createNullCheckedValue(receiver, invoke.asNode(), tool);
                 parameters.set(0, nonNullReceiver);
                 receiver = nonNullReceiver;
             }
