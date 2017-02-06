@@ -354,8 +354,8 @@ public class PolyglotEngine {
         }
 
         /**
-         * Adds language-specific initialization data to the {@link PolyglotEngine engine} being
-         * built. For example:
+         * Adds {@link Language Language}-specific initialization data to the {@link PolyglotEngine
+         * engine} being built. For example:
          *
          * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#initializeWithParameters}
          *
@@ -379,10 +379,10 @@ public class PolyglotEngine {
         }
 
         /**
-         * Adds a global symbol to the {@link PolyglotEngine engine} being built. This symbol will
-         * be accessible to all languages take will take precedence over symbols exported by the
-         * languages. Any number of symbols may be added; later definition of the same name
-         * overrides the previous one.
+         * Adds a global symbol to the {@link PolyglotEngine engine} being built. Any
+         * {@link Language Language} can <em>import</em> this symbol, and it will take precedence
+         * over symbols exported by the languages. Any number of symbols may be added; later
+         * definition of the same name overrides the previous one.
          * <p>
          * In case one wants to interoperate with Java, one can export any Java classes or objects
          * when creating the {@link PolyglotEngine} as shown in the following snippet:
@@ -579,7 +579,7 @@ public class PolyglotEngine {
     }
 
     /**
-     * Disposes this engine instance and releases {@link TruffleLanguage#disposeContext(Object) all
+     * Disposes this engine instance and {@link TruffleLanguage#disposeContext(Object) releases all
      * resources} allocated by languages active in this engine.
      * <p>
      * Calling any other method on this instance after disposal throws an
@@ -725,7 +725,7 @@ public class PolyglotEngine {
 
     /**
      * Finds a <em>global symbol</em> by name by searching every language's namespace of exported
-     * symbols plus the the engine's namespace of {@linkplain Builder#globalSymbol(String, Object)
+     * symbols plus the engine's namespace of {@linkplain Builder#globalSymbol(String, Object)
      * preconfigured} symbols.
      * <p>
      * Symbol names are language dependent. Name collisions across namespaces are possible, in which
@@ -1327,6 +1327,9 @@ public class PolyglotEngine {
      * behavior into language execution. The handle provides access to the instrument's metadata and
      * allows the instrument to be dynamically {@linkplain Instrument#setEnabled(boolean)
      * enabled/disabled} in the engine.
+     *
+     * Documentation about how Truffle instruments are implemented begins with the abstract class
+     * {@link TruffleInstrument}.
      *
      * @see PolyglotEngine#getInstruments()
      * @since 0.9

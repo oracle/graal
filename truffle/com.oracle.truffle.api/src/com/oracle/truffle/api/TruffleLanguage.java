@@ -57,9 +57,11 @@ import java.util.List;
 /**
  * <p>
  * A Truffle language implementation for executing guest language code in a
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine polyglot engine}. An implementation becomes
- * usable by an engine when metadata is added using the {@link Registration} annotation and its JAR
- * file placed on the host Java Virtual Machine's class path.
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine polyglot engine}.
+ * <p>
+ * A language implementation becomes usable by an engine when metadata is added using the
+ * {@link Registration} annotation and its JAR file placed on the host Java Virtual Machine's class
+ * path.
  * <p>
  * A newly created engine locates all available language implementations and creates a
  * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Language descriptor} for each. The
@@ -70,12 +72,20 @@ import java.util.List;
  * <p>
  * An engine can be configured at creation to provide language-specific data (for example
  * originating from command line arguments) that can be used to initialize and configure the
- * language's {@link #createContext(Env) initial execution state}. That data can take the form of
- * language-specific (specified by MIME type)
+ * language's {@link #createContext(Env) initial execution state}. The engine can do this two ways:
+ * <p>
+ * <ul>
+ * <li>by adding language-specific (specified by MIME type)
  * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Builder#config(String, String, Object)
- * key/object pairs} or shared
+ * key/object pairs}, which a language implementation retrieves via {@link Env#getConfig()}; or</li>
+ * <li>by creating shared
  * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Builder#globalSymbol(String, Object) global
- * symbols}.
+ * symbols}, which a language implementation <em>imports</em> via {@link Env#importSymbol(String)}.
+ * </li>
+ * </ul>
+ * Note that a language implementation can also <em>export</em> a global symbol by being prepared to
+ * return the symbol when the SPI method {@link #findExportedSymbol(Object, String, boolean)} is
+ * called.
  * <p>
  * To ensure that a Truffle language can be used in a language-agnostic way, the implementation
  * should be designed to decouple its configuration and initialization from language specifics as
