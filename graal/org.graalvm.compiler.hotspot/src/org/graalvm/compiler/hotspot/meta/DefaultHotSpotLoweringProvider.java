@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static org.graalvm.compiler.core.common.GraalOptions.AlwaysInlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.InlineVTableStubs;
@@ -31,12 +32,12 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_KLASS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_MIRROR_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.COMPRESSED_HUB_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.DISPLACED_MARK_WORD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_LAYOUT_HELPER_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.INIT_LOCATION;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 
 import java.lang.ref.Reference;
 
@@ -53,12 +54,9 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode;
 import org.graalvm.compiler.hotspot.nodes.CompressionNode;
 import org.graalvm.compiler.hotspot.nodes.CompressionNode.CompressionOp;
-import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
-import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
-import org.graalvm.compiler.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
-import org.graalvm.compiler.hotspot.nodes.profiling.ProfileNode;
 import org.graalvm.compiler.hotspot.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.hotspot.nodes.G1ArrayRangePostWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.G1ArrayRangePreWriteBarrier;
@@ -70,6 +68,10 @@ import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.SerialArrayRangeWriteBarrier;
 import org.graalvm.compiler.hotspot.nodes.SerialWriteBarrier;
+import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
+import org.graalvm.compiler.hotspot.nodes.aot.ResolveMethodAndLoadCountersNode;
+import org.graalvm.compiler.hotspot.nodes.profiling.ProfileNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.nodes.type.NarrowOopStamp;
@@ -123,6 +125,8 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.extended.OSRLocalNode;
+import org.graalvm.compiler.nodes.extended.OSRLockNode;
+import org.graalvm.compiler.nodes.extended.OSRMonitorEnterNode;
 import org.graalvm.compiler.nodes.extended.OSRStartNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
 import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
@@ -134,6 +138,7 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
+import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
@@ -559,23 +564,64 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             ParameterNode buffer = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(runtime.getTarget().wordJavaKind))));
             ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(foreignCalls, OSR_MIGRATION_END, buffer));
             migrationEnd.setStateAfter(osrStart.stateAfter());
-
             newStart.setNext(migrationEnd);
             FixedNode next = osrStart.next();
             osrStart.setNext(null);
             migrationEnd.setNext(next);
             graph.setStart(newStart);
 
-            // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
-            int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
+            final int wordSize = target.wordSize;
+
+            // @formatter:off
+            // taken from c2 locals_addr = osr_buf + (max_locals-1)*wordSize)
+            // @formatter:on
+            int localsOffset = (graph.method().getMaxLocals() - 1) * wordSize;
             for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.TYPE)) {
                 int size = osrLocal.getStackKind().getSlotCount();
-                int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
+                int offset = localsOffset - (osrLocal.index() + size - 1) * wordSize;
                 AddressNode address = createOffsetAddress(graph, buffer, offset);
                 ReadNode load = graph.add(new ReadNode(address, any(), osrLocal.stamp(), BarrierType.NONE));
                 osrLocal.replaceAndDelete(load);
                 graph.addBeforeFixed(migrationEnd, load);
             }
+
+            // @formatter:off
+            // taken from c2 monitors_addr = osr_buf + (max_locals+mcnt*2-1)*wordSize);
+            // @formatter:on
+            final int lockCount = osrStart.stateAfter().locksSize();
+            final int locksOffset = (graph.method().getMaxLocals() + lockCount * 2 - 1) * wordSize;
+
+            // first initialize the lock slots for all enters with the displaced marks read from the
+            // buffer
+            for (OSRMonitorEnterNode osrMonitorEnter : graph.getNodes(OSRMonitorEnterNode.TYPE)) {
+                MonitorIdNode monitorID = osrMonitorEnter.getMonitorId();
+                OSRLockNode lock = (OSRLockNode) osrMonitorEnter.object();
+                final int index = lock.index();
+
+                final int offsetDisplacedHeader = locksOffset - ((index * 2) + 1) * wordSize;
+                final int offsetLockObject = locksOffset - index * 2 * wordSize;
+
+                // load the displaced mark from the osr buffer
+                AddressNode addressDisplacedHeader = createOffsetAddress(graph, buffer, offsetDisplacedHeader);
+                ReadNode loadDisplacedHeader = graph.add(new ReadNode(addressDisplacedHeader, any(), lock.stamp(), BarrierType.NONE));
+                graph.addBeforeFixed(migrationEnd, loadDisplacedHeader);
+
+                // we need to initialize the stack slot for the lock
+                BeginLockScopeNode beginLockScope = graph.add(new BeginLockScopeNode(lock.getStackKind(), monitorID.getLockDepth()));
+                graph.addBeforeFixed(migrationEnd, beginLockScope);
+
+                // write the displaced mark to the correct stack slot
+                AddressNode addressDisplacedMark = createOffsetAddress(graph, beginLockScope, runtime.getVMConfig().basicLockDisplacedHeaderOffset);
+                WriteNode writeStackSlot = graph.add(new WriteNode(addressDisplacedMark, DISPLACED_MARK_WORD_LOCATION, loadDisplacedHeader, BarrierType.NONE));
+                graph.addBeforeFixed(migrationEnd, writeStackSlot);
+
+                // load the lock object from the osr buffer
+                AddressNode addressLockObject = createOffsetAddress(graph, buffer, offsetLockObject);
+                ReadNode loadObject = graph.add(new ReadNode(addressLockObject, any(), lock.stamp(), BarrierType.NONE));
+                lock.replaceAndDelete(loadObject);
+                graph.addBeforeFixed(migrationEnd, loadObject);
+            }
+
             osrStart.replaceAtUsagesAndDelete(newStart);
         }
     }
