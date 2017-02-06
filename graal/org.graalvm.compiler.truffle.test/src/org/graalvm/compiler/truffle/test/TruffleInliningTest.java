@@ -45,7 +45,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class TruffleInliningTest {
+public abstract class TruffleInliningTest {
 
     class InlineTestRootNode extends RootNode {
 
