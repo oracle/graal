@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.junit.Assert;
@@ -161,5 +162,19 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         // @formatter:on
         assertInlined(decisions, "callee");
         assert (decisions.getCallSites().get(0).getProfile().getFrequency() == 0.5);
+    }
+
+    @Test
+    public void testTruffleFunctionInliningFlag() {
+        try (OptionValue.OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
+            // @formatter:off
+            TruffleInlining decisions = builder
+                    .target("callee")
+                    .target("caller")
+                        .calls("callee", 2)
+                    .build();
+            // @formatter:on
+            Assert.assertTrue("Decisions where made!", decisions.getCallSites().isEmpty());
+        }
     }
 }
