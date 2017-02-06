@@ -103,7 +103,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 build();
         // @formatter:on
         Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue().intValue(), countInlines(decisions, "recursive"));
-        Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue() + 1, countInlines(decisions, "callee"), );
+        Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue() + 1, countInlines(decisions, "callee"));
     }
 
     @Test
