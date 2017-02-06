@@ -22,10 +22,9 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
+import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -106,13 +105,12 @@ public static class ExampleTruffleObjectMR {
 public static class RethrowExample {
     private Object identifier;
     private TruffleObject receiver;
-    private VirtualFrame frame;
     private Node readNode;
 
     public void foo() {
         // BEGIN: com.oracle.truffle.api.dsl.test.interop.Snippets.RethrowExample
         try {
-            ForeignAccess.sendRead(readNode, frame, receiver, identifier);
+            ForeignAccess.sendRead(readNode, receiver, identifier);
         } catch (InteropException ex) {
             throw ex.raise();
         }

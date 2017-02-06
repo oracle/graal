@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -66,7 +65,7 @@ public abstract class SLDispatchNode extends Node {
 
     protected static final int INLINE_CACHE_SIZE = 2;
 
-    public abstract Object executeDispatch(VirtualFrame frame, Object function, Object[] arguments);
+    public abstract Object executeDispatch(Object function, Object[] arguments);
 
     /**
      * Inline cached specialization of the dispatch.
@@ -145,7 +144,7 @@ public abstract class SLDispatchNode extends Node {
      * Truffle's interop API to execute the foreign function.
      */
     @Specialization(guards = "isForeignFunction(function)")
-    protected static Object doForeign(VirtualFrame frame, TruffleObject function, Object[] arguments,
+    protected static Object doForeign(TruffleObject function, Object[] arguments,
                     // The child node to call the foreign function
                     @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
                     // The child node to convert the result of the foreign call to a SL value
@@ -153,9 +152,9 @@ public abstract class SLDispatchNode extends Node {
 
         try {
             /* Perform the foreign function call. */
-            Object res = ForeignAccess.sendExecute(crossLanguageCallNode, frame, function, arguments);
+            Object res = ForeignAccess.sendExecute(crossLanguageCallNode, function, arguments);
             /* Convert the result to a SL value. */
-            return toSLTypeNode.executeConvert(frame, res);
+            return toSLTypeNode.executeConvert(res);
 
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
             /* Foreign access was not successful. */

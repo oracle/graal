@@ -422,7 +422,7 @@ public final class JavaInterop {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return node.execute(frame, value, new TypeAndClass<>(null, type));
+            return node.execute(value, new TypeAndClass<>(null, type));
         }
     }
 
