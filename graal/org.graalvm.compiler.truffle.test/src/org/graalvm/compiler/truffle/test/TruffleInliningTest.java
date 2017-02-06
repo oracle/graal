@@ -96,10 +96,6 @@ public abstract class TruffleInliningTest {
     }
 
     class TruffleInliningTestScenarioBuilder {
-        private Map<String, OptimizedCallTarget> targets = new HashMap<>();
-        private String lastAddedTargetName = null;
-        private Map<String, Integer> targetInstructions = new HashMap<>();
-        private Map<String, Integer> executeTargetInstructions = new HashMap<>();
 
         class CallInstruction {
             public String target;
@@ -111,7 +107,12 @@ public abstract class TruffleInliningTest {
             }
         }
 
-        private Map<String, List<CallInstruction>> callInstructions = new HashMap<>();
+        private final Map<String, OptimizedCallTarget> targets = new HashMap<>();
+        private final Map<String, Integer> targetInstructions = new HashMap<>();
+        private final Map<String, Integer> executeTargetInstructions = new HashMap<>();
+        private final Map<String, List<CallInstruction>> callInstructions = new HashMap<>();
+
+        private String lastAddedTargetName = null;
 
         TruffleInliningTestScenarioBuilder target(String name) {
             return target(name, 0);
@@ -206,9 +207,11 @@ public abstract class TruffleInliningTest {
         }
 
         private void cleanup() {
-            targets = new HashMap<>();
+            targets.clear();
+            targetInstructions.clear();
+            executeTargetInstructions.clear();
+            callInstructions.clear();
             lastAddedTargetName = null;
-            callInstructions = new HashMap<>();
         }
 
     }
