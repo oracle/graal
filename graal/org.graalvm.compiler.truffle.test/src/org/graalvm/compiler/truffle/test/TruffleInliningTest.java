@@ -107,9 +107,18 @@ public abstract class TruffleInliningTest {
             }
         }
 
+        class TargetInstruction {
+            public int size;
+            public int execCount;
+
+            public TargetInstruction(int size, int execCount) {
+                this.size = size;
+                this.execCount = execCount;
+            }
+        }
+
+        private final Map<String, TargetInstruction> targetInstructions = new HashMap<>();
         private final Map<String, OptimizedCallTarget> targets = new HashMap<>();
-        private final Map<String, Integer> targetInstructions = new HashMap<>();
-        private final Map<String, Integer> executeTargetInstructions = new HashMap<>();
         private final Map<String, List<CallInstruction>> callInstructions = new HashMap<>();
 
         private String lastAddedTargetName = null;
@@ -119,7 +128,7 @@ public abstract class TruffleInliningTest {
         }
 
         TruffleInliningTestScenarioBuilder target(String name, int size) {
-            targetInstructions.put(name, size);
+            targetInstructions.put(name, new TargetInstruction(size, 0));
             lastAddedTargetName = name;
             return this;
         }
@@ -130,7 +139,11 @@ public abstract class TruffleInliningTest {
         }
 
         TruffleInliningTestScenarioBuilder execute(int times) {
-            executeTargetInstructions.put(lastAddedTargetName, times);
+            try {
+                targetInstructions.get(lastAddedTargetName).execCount = times;
+            } catch (NullPointerException e) {
+                throw new IllegalStateException("Call to execute before defining a target!");
+            }
             return this;
         }
 
@@ -140,8 +153,7 @@ public abstract class TruffleInliningTest {
 
         TruffleInliningTestScenarioBuilder calls(String name, int count) {
             // Increment the caller size to make room for the call
-            int targetSize = targetInstructions.get(lastAddedTargetName);
-            targetInstructions.replace(lastAddedTargetName, targetSize, targetSize + 1);
+            targetInstructions.get(lastAddedTargetName).size++;
 
             // Update call Instructions
             List<CallInstruction> existingCalls = callInstructions.get(lastAddedTargetName);
@@ -172,13 +184,10 @@ public abstract class TruffleInliningTest {
 
         private void buildTargets() {
             for (String targetName : targetInstructions.keySet()) {
-                int size = targetInstructions.get(targetName);
-                OptimizedCallTarget newTarget = new OptimizedCallTarget(null, new InlineTestRootNode(size, targetName));
-                Integer calledFromOutside = executeTargetInstructions.get(targetName);
-                if (calledFromOutside != null) {
-                    for (int i = 0; i < calledFromOutside; i++) {
-                        newTarget.call(0);
-                    }
+                TargetInstruction instruction = targetInstructions.get(targetName);
+                OptimizedCallTarget newTarget = new OptimizedCallTarget(null, new InlineTestRootNode(instruction.size, targetName));
+                for (int i = 0; i < instruction.execCount; i++) {
+                    newTarget.call(0);
                 }
                 targets.put(targetName, newTarget);
             }
@@ -209,7 +218,6 @@ public abstract class TruffleInliningTest {
         private void cleanup() {
             targets.clear();
             targetInstructions.clear();
-            executeTargetInstructions.clear();
             callInstructions.clear();
             lastAddedTargetName = null;
         }
