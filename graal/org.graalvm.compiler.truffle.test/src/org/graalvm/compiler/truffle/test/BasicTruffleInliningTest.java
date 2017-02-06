@@ -166,7 +166,8 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
 
     @Test
     public void testTruffleFunctionInliningFlag() {
-        try (OptionValue.OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (@SuppressWarnings("unused")
+        OptionValue.OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
             // @formatter:off
             TruffleInlining decisions = builder
                     .target("callee")
