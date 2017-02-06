@@ -107,6 +107,20 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     }
 
     @Test
+    public void testInlineBigWithCallSites() {
+        // @formatter:off
+        TruffleInlining decisions = builder.
+                target("callee", (TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3)-3). // Minus 3 because of 3 call sites in the caller.
+                target("caller").
+                    calls("callee").
+                    calls("callee").
+                    calls("callee").
+                build(true);
+        // @formatter:on
+        Assert.assertEquals(3, countInlines(decisions, "callee"));
+    }
+
+    @Test
     public void testDontInlineBigWithCallSites() {
         // Do not inline a function if it's size * cappedCallSites is too big
         // @formatter:off
