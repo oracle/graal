@@ -26,6 +26,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import org.graalvm.compiler.debug.Debug;
@@ -72,6 +73,7 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
         return ret;
     }
 
+    @Ignore
     @Test
     @SuppressWarnings("try")
     public void test1() {

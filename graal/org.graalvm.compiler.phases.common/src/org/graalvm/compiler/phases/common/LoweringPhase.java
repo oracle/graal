@@ -380,7 +380,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
             @Override
             public void postprocess() {
-                if (anchor != null && OptEliminateGuards.getValue(activeGuards.graph().getOptions())) {
+                if (anchor == block.getBeginNode() && OptEliminateGuards.getValue(activeGuards.graph().getOptions())) {
                     for (GuardNode guard : anchor.asNode().usages().filter(GuardNode.class)) {
                         if (activeGuards.isMarkedAndGrow(guard)) {
                             activeGuards.clear(guard);
