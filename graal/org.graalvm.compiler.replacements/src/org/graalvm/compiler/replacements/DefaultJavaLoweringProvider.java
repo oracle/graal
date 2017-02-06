@@ -392,7 +392,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind elementKind = loadIndexed.elementKind();
         Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind);
 
-        GuardingNode boundsCheck = getBoundsCheckedIndex(loadIndexed, array, tool);
+        GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
         AddressNode address = createArrayAddress(graph, array, elementKind, loadIndexed.index());
         ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, boundsCheck, BarrierType.NONE));
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
@@ -409,7 +409,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         array = this.createNullCheckedValue(array, storeIndexed, tool);
 
-        GuardingNode checkedIndex = getBoundsCheckedIndex(storeIndexed, array, tool);
+        GuardingNode checkedIndex = getBoundsCheck(storeIndexed, array, tool);
 
         JavaKind elementKind = storeIndexed.elementKind();
 
@@ -937,7 +937,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
 
-    protected GuardingNode getBoundsCheckedIndex(AccessIndexedNode n, ValueNode array, LoweringTool tool) {
+    protected GuardingNode getBoundsCheck(AccessIndexedNode n, ValueNode array, LoweringTool tool) {
         StructuredGraph graph = n.graph();
         ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
         if (arrayLength == null) {
