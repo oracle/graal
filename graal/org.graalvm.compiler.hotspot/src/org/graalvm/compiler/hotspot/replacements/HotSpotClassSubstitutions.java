@@ -39,6 +39,8 @@ import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 // JaCoCo Exclude
 
@@ -92,12 +94,14 @@ public class HotSpotClassSubstitutions {
     public static Class<?> getSuperclass(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
         if (!klass.isNull()) {
-            int accessFlags = klass.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION);
+            GuardingNode guardNonNull = SnippetAnchorNode.anchor();
+            KlassPointer klassNonNull = ClassGetHubNode.piCastNonNull(klass, guardNonNull);
+            int accessFlags = klassNonNull.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION);
             if ((accessFlags & Modifier.INTERFACE) == 0) {
-                if (klassIsArray(klass)) {
+                if (klassIsArray(klassNonNull)) {
                     return Object.class;
                 } else {
-                    KlassPointer superKlass = klass.readKlassPointer(klassSuperKlassOffset(INJECTED_VMCONFIG), KLASS_SUPER_KLASS_LOCATION);
+                    KlassPointer superKlass = klassNonNull.readKlassPointer(klassSuperKlassOffset(INJECTED_VMCONFIG), KLASS_SUPER_KLASS_LOCATION);
                     if (superKlass.isNull()) {
                         return null;
                     } else {

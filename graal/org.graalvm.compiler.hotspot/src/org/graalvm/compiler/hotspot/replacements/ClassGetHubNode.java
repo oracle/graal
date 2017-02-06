@@ -36,6 +36,7 @@ import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FloatingGuardedNode;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConvertNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
@@ -64,11 +65,7 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
     @Input protected ValueNode clazz;
 
     public ClassGetHubNode(ValueNode clazz) {
-        this(clazz, null);
-    }
-
-    public ClassGetHubNode(ValueNode clazz, ValueNode guard) {
-        super(TYPE, KlassPointerStamp.klass(), (GuardingNode) guard);
+        super(TYPE, KlassPointerStamp.klass());
         this.clazz = clazz;
     }
 
@@ -106,10 +103,10 @@ public final class ClassGetHubNode extends FloatingGuardedNode implements Lowera
     }
 
     @NodeIntrinsic
-    public static native KlassPointer readClass(Class<?> clazz);
+    public static native KlassPointer readClass(Class<?> clazzNonNull);
 
-    @NodeIntrinsic
-    public static native KlassPointer readClass(Class<?> clazz, GuardingNode guard);
+    @NodeIntrinsic(PiNode.class)
+    public static native KlassPointer piCastNonNull(Object object, GuardingNode anchor);
 
     @Override
     public ValueNode getValue() {

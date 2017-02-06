@@ -297,7 +297,6 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
 import org.graalvm.compiler.java.BciBlockMapping.ExceptionDispatchBlock;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -365,8 +364,6 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.extended.GuardedNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
@@ -825,44 +822,11 @@ public class BytecodeParser implements GraphBuilderContext {
             Node predecessor = beginNode.predecessor();
             if (predecessor instanceof ControlSplitNode) {
                 // The begin node is necessary.
-            } else {
-                if (beginNode.hasUsages()) {
-                    reanchorGuardedNodes(beginNode);
-                }
+            } else if (!beginNode.hasUsages()) {
                 GraphUtil.unlinkFixedNode(beginNode);
                 beginNode.safeDelete();
             }
         }
-    }
-
-    /**
-     * Removes {@link GuardedNode}s from {@code beginNode}'s usages and re-attaches them to an
-     * appropriate preceeding {@link GuardingNode}.
-     */
-    protected void reanchorGuardedNodes(BeginNode beginNode) {
-        // Find the new guarding node
-        GuardingNode guarding = null;
-        Node pred = beginNode.predecessor();
-        while (pred != null) {
-            if (pred instanceof BeginNode) {
-                if (pred.predecessor() instanceof ControlSplitNode) {
-                    guarding = (GuardingNode) pred;
-                    break;
-                }
-            } else if (pred.getNodeClass().getAllowedUsageTypes().contains(InputType.Guard)) {
-                guarding = (GuardingNode) pred;
-                break;
-            }
-            pred = pred.predecessor();
-        }
-
-        // Reset the guard for all of beginNode's usages
-        for (Node usage : beginNode.usages().snapshot()) {
-            GuardedNode guarded = (GuardedNode) usage;
-            assert guarded.getGuard() == beginNode;
-            guarded.setGuard(guarding);
-        }
-        assert beginNode.hasNoUsages() : beginNode;
     }
 
     /**

@@ -29,7 +29,6 @@ import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCA
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -78,15 +77,6 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
                     FrameState stateBefore) {
         super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
-    }
-
-    public ReadNode(AddressNode address, LocationIdentity location, ValueNode guard, BarrierType barrierType) {
-        /*
-         * Used by node intrinsics. Really, you can trust me on that! Since the initial value for
-         * location is a parameter, i.e., a ParameterNode, the constructor cannot use the declared
-         * type LocationNode.
-         */
-        super(TYPE, address, location, StampFactory.forNodeIntrinsic(), (GuardingNode) guard, barrierType);
     }
 
     @Override
