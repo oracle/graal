@@ -77,6 +77,12 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
         this.loader = cl == null ? ClassLoader.getSystemClassLoader() : cl;
     }
 
+    public ClassfileBytecodeProvider(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ClassLoader loader) {
+        this.metaAccess = metaAccess;
+        this.snippetReflection = snippetReflection;
+        this.loader = loader;
+    }
+
     @Override
     public Bytecode getBytecode(ResolvedJavaMethod method) {
         Classfile classfile = getClassfile(resolveToClass(method.getDeclaringClass().getName()));
