@@ -48,6 +48,7 @@ public class Classfile {
 
     private static final int MAJOR_VERSION_JAVA7 = 51;
     private static final int MAJOR_VERSION_JAVA9 = 53;
+    private static final int MAGIC = 0xcafebabe ;
 
     /**
      * Creates a {@link Classfile} by parsing the class file bytes for {@code type} loadable from
@@ -60,7 +61,7 @@ public class Classfile {
 
         // magic
         int magic = stream.readInt();
-        assert magic == 0xCAFEBABE;
+        assert magic == MAGIC;
 
         int minor = stream.readUnsignedShort();
         int major = stream.readUnsignedShort();
