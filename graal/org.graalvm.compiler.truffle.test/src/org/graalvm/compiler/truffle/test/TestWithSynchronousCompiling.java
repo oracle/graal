@@ -44,11 +44,11 @@ import org.junit.BeforeClass;
  */
 public abstract class TestWithSynchronousCompiling {
 
-    private static TruffleOptionsOverrideScope scope = null;
+    private static TruffleOptionsOverrideScope scope;
 
     @BeforeClass
     public static void before() {
-        TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleBackgroundCompilation, false);
+        scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleBackgroundCompilation, false);
     }
 
     @AfterClass
