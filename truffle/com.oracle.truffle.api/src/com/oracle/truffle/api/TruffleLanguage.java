@@ -55,38 +55,54 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * <p>
  * A Truffle language implementation for executing guest language code in a
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine polyglot engine}.
- * <p>
- * A language implementation becomes usable by an engine when metadata is added using the
- * {@link Registration} annotation and its JAR file placed on the host Java Virtual Machine's class
- * path.
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine PolyglotEngine}.
+ *
+ * <h4>Lifecycle</h4>
+ *
+ * A language implementation becomes available for use by an engine when metadata is added using the
+ * {@link Registration} annotation and the implementation's JAR file placed on the host Java Virtual
+ * Machine's class path.
  * <p>
  * A newly created engine locates all available language implementations and creates a
  * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Language descriptor} for each. The
  * descriptor holds the language's registered metadata, but its execution environment is not
- * initialized until the language is needed to execute code. That execution environment remains
+ * initialized until the language is needed for code execution. That execution environment remains
  * initialized for the lifetime of the engine and is isolated from the environment in any other
  * engine instance.
- * <p>
- * An engine can be configured at creation to provide language-specific data (for example
- * originating from command line arguments) that can be used to initialize and configure the
- * language's {@link #createContext(Env) initial execution state}. The engine can do this two ways:
- * <p>
- * <ul>
- * <li>by adding language-specific (specified by MIME type)
+ *
+ * <h4>Language Configuration</h4>
+ *
+ * Each engine instance can, during its creation, register
  * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Builder#config(String, String, Object)
- * key/object pairs}, which a language implementation retrieves via {@link Env#getConfig()}; or</li>
- * <li>by creating shared
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Builder#globalSymbol(String, Object) global
- * symbols}, which a language implementation <em>imports</em> via {@link Env#importSymbol(String)}.
- * </li>
- * </ul>
- * Note that a language implementation can also <em>export</em> a global symbol by being prepared to
- * return the symbol when the SPI method {@link #findExportedSymbol(Object, String, boolean)} is
- * called.
+ * language-specific configuration data} (for example originating from command line arguments) in
+ * the form of {@code MIME-type/key/object} triples. A Language implementation retrieves the data
+ * via {@link Env#getConfig()} for configuring {@link #createContext(Env) initial execution state}.
+ *
+ * <h4>Global Symbols</h4>
+ *
+ * Language implementations communicate with one another (and with instrumentation-based tools such
+ * as debuggers) by exporting/importing named values known as <em>global symbols</em>. These
+ * typically implement guest language export/import statements used for
+ * <em>language interoperation</em>.
  * <p>
+ * A language manages its namespace of exported global symbols dynamically, by its response to the
+ * query {@link #findExportedSymbol(Object, String, boolean)}. No attempt is made to avoid
+ * cross-language name conflicts.
+ * <p>
+ * A language implementation can also {@linkplain Env#importSymbol(String) import} a global symbol
+ * by name, according to the following rules:
+ * <ul>
+ * <li>A global symbol
+ * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Builder#globalSymbol(String, Object)
+ * registered by the engine} will be returned, if any, ignoring global symbols exported by other
+ * languages.</li>
+ * <li>Otherwise all languages are queried in unspecified order, and the first global symbol found,
+ * if any, is returned.</li>
+ * </ul>
+ *
+ * <h4>Configuration vs. Initialization</h4>
+ *
  * To ensure that a Truffle language can be used in a language-agnostic way, the implementation
  * should be designed to decouple its configuration and initialization from language specifics as
  * much as possible. One aspect of this is the initialization and start of execution via the
