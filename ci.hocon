@@ -5,13 +5,7 @@ java9 : {name : labsjdk, version : "9-SNAPSHOT",    platformspecific: true}
 ecj : {name: ecj, version: "4.5.1", platformspecific: false}
 eclipse : {name: eclipse, version: "4.5.2.1", platformspecific: true}
 
-mx : {
-  packages : {
-    mx : "c01e5393dfe2843e52ef41621bb8067021066f3c"
-  }
-}
-
-common : ${mx} {
+common : {
   packages : {
     git : ">=1.8.3"
     mercurial : ">=2.2"
@@ -32,7 +26,7 @@ common : ${mx} {
   timelimit : "30:00"
 }
 
-solaris : ${mx} {
+solaris : {
   packages : {
     git : ">=1.8.3"
   }
@@ -44,7 +38,7 @@ solaris : ${mx} {
   timelimit : "30:00"
 }
 
-darwin : ${mx} {
+darwin : {
   environment : ${common.environment} {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
   }
@@ -102,7 +96,7 @@ gateLite : {
 }
 
 # overlay version
-overlay = 02c87e4ce16a8aa8e9b4bfd555e7130c943f74f3
+overlay = 33c9b9dc8ff7d105c275d5ec07539dfd36a40947
 
 builds = [
   ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},
