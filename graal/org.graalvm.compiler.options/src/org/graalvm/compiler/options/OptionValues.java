@@ -163,7 +163,7 @@ public class OptionValues {
      */
     private final EconomicMap<OptionKey<?>, Object> stabilized = newOptionMap();
 
-    OptionValues set(OptionKey<?> key, Object value) {
+    protected OptionValues set(OptionKey<?> key, Object value) {
         decodeNull(values.put(key, encodeNull(value)));
         return this;
     }
@@ -230,7 +230,7 @@ public class OptionValues {
     /**
      * Constructor only for initializing {@link #GLOBAL}.
      */
-    OptionValues(EconomicMap<OptionKey<?>, Object> values) {
+    public OptionValues(EconomicMap<OptionKey<?>, Object> values) {
         MapCursor<OptionKey<?>, Object> cursor = values.getEntries();
         while (cursor.advance()) {
             this.values.put(cursor.getKey(), encodeNull(cursor.getValue()));

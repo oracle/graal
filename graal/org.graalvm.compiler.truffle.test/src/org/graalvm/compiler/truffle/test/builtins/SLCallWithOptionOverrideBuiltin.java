@@ -31,7 +31,6 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions_OptionDescriptors;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -48,10 +47,10 @@ public abstract class SLCallWithOptionOverrideBuiltin extends SLGraalRuntimeBuil
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
-    public SLFunction callWithOptionOverride(VirtualFrame frame, SLFunction function, String name, Object value) {
+    public SLFunction callWithOptionOverride(SLFunction function, String name, Object value) {
         TruffleOptionsOverrideScope scope = override(name, value);
         OptimizedCallTarget target = ((OptimizedCallTarget) function.getCallTarget());
-        indirectCall.call(frame, target, EMPTY_ARGS);
+        indirectCall.call(target, EMPTY_ARGS);
         close(scope);
         return function;
     }
