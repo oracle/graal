@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -33,13 +34,29 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 public class GraalOSRTest extends GraalOSRTestBase {
 
     @Test
-    public void testOSR() {
-        testOSR("test");
+    public void testOSR01() {
+        try {
+            testOSR("testReduceLoop");
+        } catch (Throwable t) {
+            Assert.assertEquals("OSR compilation without OSR entry loop.", t.getMessage());
+        }
+    }
+
+    @Test
+    public void testOSR02() {
+        testOSR("testSequentialLoop");
+    }
+
+    @Test
+    public void testOSR03() {
+        testOSR("testNonReduceLoop");
     }
 
     static int limit = 10000;
 
-    public static ReturnValue test() {
+    public static int sideEffect;
+
+    public static ReturnValue testReduceLoop() {
         for (int i = 0; i < limit * limit; i++) {
             GraalDirectives.blackhole(i);
             if (GraalDirectives.inCompiledCode()) {
@@ -47,6 +64,40 @@ public class GraalOSRTest extends GraalOSRTestBase {
             }
         }
         return ReturnValue.FAILURE;
+    }
+
+    public static ReturnValue testSequentialLoop() {
+        ReturnValue ret = ReturnValue.FAILURE;
+        for (int i = 1; i < limit * limit; i++) {
+            GraalDirectives.blackhole(i);
+            if (i % 7 == 0) {
+                ret = ReturnValue.SUCCESS;
+            }
+        }
+        GraalDirectives.controlFlowAnchor();
+        if (sideEffect == 123) {
+            return ReturnValue.SIDE;
+        }
+        for (int i = 1; i < limit * limit; i++) {
+            GraalDirectives.blackhole(i);
+            if (i % 33 == 0) {
+                ret = ReturnValue.SUCCESS;
+            }
+        }
+        GraalDirectives.controlFlowAnchor();
+        return ret;
+    }
+
+    public static ReturnValue testNonReduceLoop() {
+        ReturnValue ret = ReturnValue.FAILURE;
+        for (int i = 0; i < limit * limit; i++) {
+            GraalDirectives.blackhole(i);
+            if (i % 33 == 0) {
+                ret = ReturnValue.SUCCESS;
+            }
+        }
+        GraalDirectives.controlFlowAnchor();
+        return ret;
     }
 
 }

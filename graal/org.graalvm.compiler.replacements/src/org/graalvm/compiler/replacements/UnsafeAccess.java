@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.hotspot.test;
+package org.graalvm.compiler.replacements;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import java.lang.reflect.Field;
 
-import com.oracle.nfi.NativeFunctionInterfaceRuntime;
-import com.oracle.nfi.api.NativeFunctionInterface;
+import sun.misc.Unsafe;
 
-public class NativeFunctionInterfaceUnsatisfiedLinkTest {
+/**
+ * Package private access to the {@link Unsafe} capability.
+ */
+class UnsafeAccess {
 
-    @Before
-    public void setUp() {
-        // Ignore on SPARC
-        Assume.assumeFalse(System.getProperty("os.arch").toUpperCase().contains("SPARC"));
-    }
+    static final Unsafe UNSAFE = initUnsafe();
 
-    @Ignore
-    @Test
-    public void testNotFound() {
-        NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
-
+    private static Unsafe initUnsafe() {
         try {
-            nfi.getLibraryHandle("truffle_test_library_should_not_exist.so");
-            Assert.fail();
-        } catch (UnsatisfiedLinkError e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().indexOf("truffle_test_library_should_not_exist.so") != -1);
+            // Fast path when we are trusted.
+            return Unsafe.getUnsafe();
+        } catch (SecurityException se) {
+            // Slow path when we are not trusted.
+            try {
+                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                return (Unsafe) theUnsafe.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe", e);
+            }
         }
     }
-
 }

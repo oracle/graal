@@ -20,36 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.hotspot.test;
+package org.graalvm.compiler.nodes.extended;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.graph.IterableNodeType;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.AbstractLocalNode;
 
-import com.oracle.nfi.NativeFunctionInterfaceRuntime;
-import com.oracle.nfi.api.NativeFunctionInterface;
+@NodeInfo(nameTemplate = "OSRLock({p#index})")
+public class OSRLockNode extends AbstractLocalNode implements IterableNodeType {
 
-public class NativeFunctionInterfaceUnsatisfiedLinkTest {
+    public static final NodeClass<OSRLockNode> TYPE = NodeClass.create(OSRLockNode.class);
 
-    @Before
-    public void setUp() {
-        // Ignore on SPARC
-        Assume.assumeFalse(System.getProperty("os.arch").toUpperCase().contains("SPARC"));
+    public OSRLockNode(int index, Stamp stamp) {
+        super(TYPE, index, stamp);
     }
-
-    @Ignore
-    @Test
-    public void testNotFound() {
-        NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
-
-        try {
-            nfi.getLibraryHandle("truffle_test_library_should_not_exist.so");
-            Assert.fail();
-        } catch (UnsatisfiedLinkError e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().indexOf("truffle_test_library_should_not_exist.so") != -1);
-        }
-    }
-
 }

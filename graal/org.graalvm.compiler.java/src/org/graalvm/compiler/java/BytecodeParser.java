@@ -2095,7 +2095,11 @@ public class BytecodeParser implements GraphBuilderContext {
         genInfoPointNode(InfopointReason.METHOD_END, x);
         if (finalBarrierRequired) {
             assert originalReceiver != null;
-            append(new FinalFieldBarrierNode(originalReceiver));
+            /*
+             * When compiling an OSR with a final field store, don't bother tracking the original
+             * receiver since the receiver cannot be EA'ed.
+             */
+            append(new FinalFieldBarrierNode(entryBCI == INVOCATION_ENTRY_BCI ? originalReceiver : null));
         }
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
     }

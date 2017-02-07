@@ -158,9 +158,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         LIRSuites lirSuites = getLIRSuites(providers);
         ProfilingInfo profilingInfo = useProfilingInfo ? method.getProfilingInfo(!isOSR, isOSR) : DefaultProfilingInfo.get(TriState.FALSE);
         OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
-        if (isOSR) {
-            // In OSR compiles, we cannot rely on never executed code profiles, because
-            // all code after the OSR loop is never executed.
+
+        /*
+         * Cut of never executed code profiles if there is code, e.g. after the osr loop, that is
+         * never executed.
+         */
+        if (isOSR && !OnStackReplacementPhase.Options.DeoptAfterOSR.getValue()) {
             optimisticOpts.remove(Optimization.RemoveNeverExecutedCode);
         }
         CompilationResult result = new CompilationResult();
@@ -242,6 +245,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                 newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
             }
             if (isOSR) {
+                // We must not clear non liveness for OSR compilations.
+                GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
+                GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
+                graphBuilderConfig = graphBuilderConfig.withClearNonLiveLocals(false);
+                GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig);
+                newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
                 newGbs.appendPhase(new OnStackReplacementPhase());
             }
             return newGbs;

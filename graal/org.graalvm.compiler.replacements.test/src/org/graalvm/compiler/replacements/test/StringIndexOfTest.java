@@ -20,36 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.hotspot.test;
+package org.graalvm.compiler.replacements.test;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.nfi.NativeFunctionInterfaceRuntime;
-import com.oracle.nfi.api.NativeFunctionInterface;
+public class StringIndexOfTest extends StringIndexOfTestBase {
 
-public class NativeFunctionInterfaceUnsatisfiedLinkTest {
-
-    @Before
-    public void setUp() {
-        // Ignore on SPARC
-        Assume.assumeFalse(System.getProperty("os.arch").toUpperCase().contains("SPARC"));
-    }
-
-    @Ignore
     @Test
-    public void testNotFound() {
-        NativeFunctionInterface nfi = NativeFunctionInterfaceRuntime.getNativeFunctionInterface();
-
-        try {
-            nfi.getLibraryHandle("truffle_test_library_should_not_exist.so");
-            Assert.fail();
-        } catch (UnsatisfiedLinkError e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().indexOf("truffle_test_library_should_not_exist.so") != -1);
-        }
+    public void testStringIndexOfConstant() {
+        test("testStringIndexOf", new Object[]{this.sourceString, this.constantString});
     }
 
+    @Test
+    public void testStringIndexOfConstantOffset() {
+        test("testStringIndexOfOffset", new Object[]{this.sourceString, this.constantString, Math.min(sourceString.length() - 1, 3)});
+    }
+
+    @Test
+    public void testStringBuilderIndexOfConstant() {
+        test("testStringBuilderIndexOf", new Object[]{new StringBuilder(this.sourceString), this.constantString});
+    }
 }

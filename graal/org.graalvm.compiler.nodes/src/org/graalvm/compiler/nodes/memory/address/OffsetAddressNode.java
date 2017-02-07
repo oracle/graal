@@ -31,6 +31,7 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.spi.PiPushable;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -84,9 +85,13 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable, P
             // Rewrite (&base[offset1])[offset2] to base[offset1 + offset2].
             OffsetAddressNode b = (OffsetAddressNode) base;
             return new OffsetAddressNode(b.getBase(), BinaryArithmeticNode.add(b.getOffset(), this.getOffset()));
-        } else {
-            return this;
+        } else if (base instanceof AddNode) {
+            AddNode add = (AddNode) base;
+            if (add.getY().isConstant()) {
+                return new OffsetAddressNode(add.getX(), new AddNode(add.getY(), getOffset()));
+            }
         }
+        return this;
     }
 
     @Override

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.67.1",
+  "mxversion" : "5.69.3",
   "name" : "graal-core",
 
   "imports" : {
@@ -1239,7 +1239,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.hotspot",
-        "org.graalvm.compiler.asm.aarch64",
+        "org.graalvm.compiler.hotspot.aarch64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8=",

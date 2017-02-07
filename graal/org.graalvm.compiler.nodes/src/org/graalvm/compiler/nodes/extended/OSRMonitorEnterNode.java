@@ -20,49 +20,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.java;
+package org.graalvm.compiler.nodes.extended;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_20;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.java.MonitorEnterNode;
+import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.Virtualizable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
-@NodeInfo(cycles = CYCLES_20, size = SIZE_2)
-public class FinalFieldBarrierNode extends FixedWithNextNode implements Virtualizable, Lowerable {
-    public static final NodeClass<FinalFieldBarrierNode> TYPE = NodeClass.create(FinalFieldBarrierNode.class);
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
+public class OSRMonitorEnterNode extends MonitorEnterNode implements LIRLowerable {
 
-    @OptionalInput private ValueNode value;
+    public static final NodeClass<OSRMonitorEnterNode> TYPE = NodeClass.create(OSRMonitorEnterNode.class);
 
-    public FinalFieldBarrierNode(ValueNode value) {
-        super(TYPE, StampFactory.forVoid());
-        this.value = value;
-    }
-
-    public ValueNode getValue() {
-        return value;
+    public OSRMonitorEnterNode(ValueNode object, MonitorIdNode monitorId) {
+        super(TYPE, object, monitorId);
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (value != null && tool.getAlias(value) instanceof VirtualObjectNode) {
-            tool.delete();
-        }
+        // OSR Entry cannot be virtualized
+    }
+
+    @Override
+    public void generate(NodeLIRBuilderTool generator) {
+        // Nothing to do
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        graph().replaceFixedWithFixed(this, graph().add(new MembarNode(LOAD_STORE | STORE_STORE)));
+        /*
+         * Nothing to do for OSR compilations with locks the monitor enter operation already
+         * happened when we do the compilation.
+         */
     }
 }

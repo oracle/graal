@@ -1,15 +1,15 @@
 # overlay version
-overlay = dbc11c0654c1636697c813f16df1b0e2da706d55
+overlay = 02c87e4ce16a8aa8e9b4bfd555e7130c943f74f3
 
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-java8 : {name : labsjdk, version : "8u111-jvmci-0.24-dev", platformspecific: true}
+java8 : {name : labsjdk, version : "8u111-jvmci-0.23", platformspecific: true}
 java9 : {name : labsjdk, version : "9-SNAPSHOT", platformspecific: true}
 java9EA : {name : labsjdk, version : "9-ea+152", platformspecific: true}
-java8Debug : {name : labsjdk, version : "8u111-jvmci-0.24-dev-fastdebug", platformspecific: true}
+java8Debug : {name : labsjdk, version : "8u111-jvmci-0.23-fastdebug", platformspecific: true}
 
 mx : {
   packages : {
-    mx : "69c53ca08dfbff69006e61b0fae48700dba06674"
+    mx : "0e2401961274dc2eca8283e75a2405fe7750af9e"
   }
 }
 
