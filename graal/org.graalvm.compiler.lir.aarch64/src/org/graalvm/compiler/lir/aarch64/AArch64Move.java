@@ -463,21 +463,6 @@ public class AArch64Move {
         }
     }
 
-    public static void emitStackMove(CompilationResultBuilder crb, AArch64MacroAssembler masm, Value input) {
-        try (ScratchRegister r1 = masm.getScratchRegister(); ScratchRegister r2 = masm.getScratchRegister()) {
-            Register rscratch1 = r1.getRegister();
-            Register rscratch2 = r2.getRegister();
-            PlatformKind kind = input.getPlatformKind();
-            final int size = kind.getSizeInBytes() <= 4 ? 32 : 64;
-            // Always perform stack -> stack copies through integer registers
-            crb.blockComment("[stack -> stack copy]");
-            AArch64Address src = null;
-            masm.ldr(size, rscratch1, src);
-            AArch64Address dst = null;
-            masm.str(size, rscratch2, dst);
-        }
-    }
-
     private static void reg2stack(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
         AArch64Address dest = loadStackSlotAddress(crb, masm, asStackSlot(result), Value.ILLEGAL);
         Register src = asRegister(input);
