@@ -19,7 +19,7 @@ bench-jvmci : {
   mx-teardown : ["bench-uploader.py", "--url", "$BENCH_SERVER_URL", "bench-results.json"]
 }
 
-bench-common-8 : ${java8Downloads} {
+bench-common-8 : ${java8Downloads} ${mx} {
   setup: ${common.setup} [
     ["mx", "build"]
   ]

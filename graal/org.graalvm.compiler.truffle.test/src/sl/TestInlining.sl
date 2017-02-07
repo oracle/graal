@@ -15,6 +15,6 @@ function test() {
 }
 
 function main() {
-    waitForOptimization(callUntilOptimized(test));
+    callUntilOptimized(test);
     assertTrue(isInlined(test, test, add), "add is not inlined");
 }  

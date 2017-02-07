@@ -43,7 +43,6 @@ public final class GraalFrameInstance implements FrameInstance {
     private static final int CALL_TARGET_FRAME_INDEX = 1;
 
     private static final int CALL_NODE_NOTIFY_INDEX = 0;
-    private static final int CALL_NODE_FRAME_INDEX = 2;
 
     public static final Method CALL_TARGET_METHOD;
     public static final Method CALL_NODE_METHOD;
@@ -51,7 +50,7 @@ public final class GraalFrameInstance implements FrameInstance {
 
     static {
         try {
-            CALL_NODE_METHOD = OptimizedDirectCallNode.class.getDeclaredMethod("callProxy", MaterializedFrameNotify.class, CallTarget.class, VirtualFrame.class, Object[].class, boolean.class);
+            CALL_NODE_METHOD = OptimizedDirectCallNode.class.getDeclaredMethod("callProxy", Node.class, CallTarget.class, Object[].class, boolean.class);
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("callProxy", VirtualFrame.class);
             CALL_OSR_METHOD = OptimizedOSRLoopNode.OSRRootNode.class.getDeclaredMethod("callProxy", OSRRootNode.class, VirtualFrame.class);
         } catch (NoSuchMethodException | SecurityException e) {
@@ -59,35 +58,20 @@ public final class GraalFrameInstance implements FrameInstance {
         }
     }
 
-    private InspectedFrame callTargetFrame;
-    private InspectedFrame callNodeFrame;
-    private final boolean currentFrame;
+    private final InspectedFrame callTargetFrame;
+    private final InspectedFrame callNodeFrame;
 
-    public GraalFrameInstance(boolean currentFrame, InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
-        this.currentFrame = currentFrame;
+    public GraalFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
         this.callTargetFrame = callTargetFrame;
         this.callNodeFrame = callNodeFrame;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     @TruffleBoundary
-    public Frame getFrame(FrameAccess access, boolean slowPath) {
-        if (!slowPath && currentFrame) {
-            throw new UnsupportedOperationException("cannot access current frame as fast path");
-        }
+    public Frame getFrame(FrameAccess access) {
         if (access == FrameAccess.NONE) {
             return null;
-        }
-        if (!slowPath && callNodeFrame != null) {
-            MaterializedFrameNotify notify = (MaterializedFrameNotify) callNodeFrame.getLocal(CALL_NODE_NOTIFY_INDEX);
-            if (notify != null) {
-                if (access.ordinal() > notify.getOutsideFrameAccess().ordinal()) {
-                    notify.setOutsideFrameAccess(access);
-                }
-                if (callNodeFrame.isVirtual(CALL_NODE_FRAME_INDEX)) {
-                    callNodeFrame.materializeVirtualObjects(true);
-                }
-            }
         }
         switch (access) {
             case READ_ONLY: {
@@ -101,7 +85,11 @@ public final class GraalFrameInstance implements FrameInstance {
                 if (callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
                     callTargetFrame.materializeVirtualObjects(false);
                 }
-                return (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
+                Frame frame = (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
+                if (access == FrameAccess.MATERIALIZE) {
+                    frame = frame.materialize();
+                }
+                return frame;
             default:
                 throw GraalError.unimplemented();
         }

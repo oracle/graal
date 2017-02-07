@@ -45,7 +45,7 @@ import com.oracle.truffle.sl.test.SLTestSuite;
 
 @RunWith(SLTestRunner.class)
 @SLTestSuite({"sl"})
-public class SLTruffleGraalTestSuite {
+public class SLTruffleGraalTestSuite extends TestWithSynchronousCompiling {
 
     public static void main(String[] args) throws Exception {
         SLTestRunner.runInMain(SLTruffleGraalTestSuite.class, args);

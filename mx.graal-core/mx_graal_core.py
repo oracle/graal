@@ -465,7 +465,7 @@ graal_unit_test_runs = [
 
 _registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
 
-
+_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
 _assertionFlags = ['-esa']
 _graalErrorFlags = ['-Dgraal.ExitVMOnException=true']
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
@@ -478,15 +478,15 @@ _registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers]
 _immutableCodeFlags = ['-Dgraal.ImmutableCode=true']
 
 graal_bootstrap_tests = [
-    BootstrapTest('BootstrapWithSystemAssertionsFullVerify', _assertionFlags + _verificationFlags + _graalErrorFlags, tags=GraalTags.bootstrapfullverify),
-    BootstrapTest('BootstrapWithSystemAssertions', _assertionFlags + _graalErrorFlags, tags=GraalTags.bootstraplite),
-    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', _assertionFlags + _coopFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithGCVerification', _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithG1GCVerification', _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
-    BootstrapTest('BootstrapWithSystemAssertionsImmutableCode', _assertionFlags + _immutableCodeFlags + ['-Dgraal.VerifyPhases=true'] + _graalErrorFlags, tags=GraalTags.bootstrap)
+    BootstrapTest('BootstrapWithSystemAssertionsFullVerify', _defaultFlags + _assertionFlags + _verificationFlags + _graalErrorFlags, tags=GraalTags.bootstrapfullverify),
+    BootstrapTest('BootstrapWithSystemAssertions', _defaultFlags + _assertionFlags + _graalErrorFlags, tags=GraalTags.bootstraplite),
+    BootstrapTest('BootstrapWithSystemAssertionsNoCoop', _defaultFlags + _assertionFlags + _coopFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithGCVerification', _defaultFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithG1GCVerification', _defaultFlags + _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
+    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _defaultFlags + _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _defaultFlags + _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsImmutableCode', _defaultFlags + _assertionFlags + _immutableCodeFlags + ['-Dgraal.VerifyPhases=true'] + _graalErrorFlags, tags=GraalTags.bootstrap)
 ]
 
 def _graal_gate_runner(args, tasks):

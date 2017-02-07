@@ -25,7 +25,6 @@ package org.graalvm.compiler.phases.common.inlining;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -66,7 +65,6 @@ import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.GuardedValueNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -84,7 +82,6 @@ import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -233,14 +230,14 @@ public class InliningUtil {
         invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
     }
 
-    public static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
+    public static PiNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
         return createAnchoredReceiver(graph, anchor, receiver,
                         exact ? StampFactory.objectNonNull(TypeReference.createExactTrusted(commonType)) : StampFactory.objectNonNull(TypeReference.createTrusted(graph.getAssumptions(), commonType)));
     }
 
-    private static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ValueNode receiver, Stamp stamp) {
+    private static PiNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ValueNode receiver, Stamp stamp) {
         // to avoid that floating reads on receiver fields float above the type check
-        return graph.unique(new GuardedValueNode(receiver, anchor, stamp));
+        return graph.unique(new PiNode(receiver, stamp, (ValueNode) anchor));
     }
 
     /**
@@ -370,9 +367,6 @@ public class InliningUtil {
                 unwindNode = (UnwindNode) duplicates.get(unwindNode);
             }
 
-            if (UseGraalInstrumentation.getValue(graph.getOptions())) {
-                detachInstrumentation(invoke);
-            }
             finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph.getAssumptions(), inlineGraph);
             GraphUtil.killCFG(invokeNode);
 
@@ -734,11 +728,28 @@ public class InliningUtil {
         }
     }
 
+    /**
+     * Ensure that all states are either {@link BytecodeFrame#INVALID_FRAMESTATE_BCI} or one of
+     * {@link BytecodeFrame#AFTER_BCI} or {@link BytecodeFrame#BEFORE_BCI}. Mixing of before and
+     * after isn't allowed.
+     */
     private static boolean checkContainsOnlyInvalidOrAfterFrameState(UnmodifiableEconomicMap<Node, Node> duplicates) {
+        int okBci = BytecodeFrame.INVALID_FRAMESTATE_BCI;
         for (Node node : duplicates.getValues()) {
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
-                assert frameState.bci == BytecodeFrame.AFTER_BCI || frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI : node.toString(Verbosity.Debugger);
+                if (frameState.bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                    continue;
+                }
+                if (frameState.bci == BytecodeFrame.AFTER_BCI || frameState.bci == BytecodeFrame.BEFORE_BCI) {
+                    if (okBci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+                        okBci = frameState.bci;
+                    } else {
+                        assert okBci == frameState.bci : node.toString(Verbosity.Debugger);
+                    }
+                } else {
+                    assert false : node.toString(Verbosity.Debugger);
+                }
             }
         }
         return true;
@@ -815,24 +826,7 @@ public class InliningUtil {
      * This method exclude InstrumentationNode from inlining heuristics.
      */
     public static int getNodeCount(StructuredGraph graph) {
-        if (UseGraalInstrumentation.getValue(graph.getOptions())) {
-            return graph.getNodeCount() - graph.getNodes().filter(InstrumentationNode.class).count();
-        } else {
-            return graph.getNodeCount();
-        }
-    }
-
-    /**
-     * This method detach the instrumentation attached to the given Invoke. It is called when the
-     * given Invoke is inlined.
-     */
-    public static void detachInstrumentation(Invoke invoke) {
-        FixedNode invokeNode = invoke.asNode();
-        for (InstrumentationNode instrumentation : invokeNode.usages().filter(InstrumentationNode.class).snapshot()) {
-            if (instrumentation.getTarget() == invoke) {
-                instrumentation.replaceFirstInput(instrumentation.getTarget(), null);
-            }
-        }
+        return graph.getNodeCount();
     }
 
 }

@@ -637,7 +637,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return invoke(method, receiver, args);
     }
 
-    protected static class Result {
+    public static class Result {
 
         public final Object returnValue;
         public final Throwable exception;

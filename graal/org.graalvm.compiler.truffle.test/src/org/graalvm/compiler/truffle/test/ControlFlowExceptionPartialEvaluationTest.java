@@ -155,7 +155,7 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
 
         @Override
         public int execute(VirtualFrame frame) {
-            return (int) callNode.call(frame, new Object[0]);
+            return (int) callNode.call(new Object[0]);
         }
     }
 }

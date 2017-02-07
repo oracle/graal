@@ -30,6 +30,7 @@ import java.util.Iterator;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.graph.Graph;
@@ -52,6 +53,7 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -681,6 +683,20 @@ public class GraphUtil {
         } else {
             return null;
         }
+    }
+
+    public static ValueNode skipPiWhileNonNull(ValueNode node) {
+        ValueNode n = node;
+        while (n instanceof PiNode) {
+            PiNode piNode = (PiNode) n;
+            ObjectStamp originalStamp = (ObjectStamp) piNode.getOriginalNode().stamp();
+            if (originalStamp.nonNull()) {
+                n = piNode.getOriginalNode();
+            } else {
+                break;
+            }
+        }
+        return n;
     }
 
     /**

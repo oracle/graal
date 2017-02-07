@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,46 +22,8 @@
  */
 package org.graalvm.compiler.hotspot.sparc;
 
-import static org.graalvm.compiler.hotspot.HotSpotBackend.FETCH_UNROLL_INFO;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.UNCOMMON_TRAP;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
-import static jdk.vm.ci.sparc.SPARC.d32;
-import static jdk.vm.ci.sparc.SPARC.d34;
-import static jdk.vm.ci.sparc.SPARC.d36;
-import static jdk.vm.ci.sparc.SPARC.d38;
-import static jdk.vm.ci.sparc.SPARC.d40;
-import static jdk.vm.ci.sparc.SPARC.d42;
-import static jdk.vm.ci.sparc.SPARC.d44;
-import static jdk.vm.ci.sparc.SPARC.d46;
-import static jdk.vm.ci.sparc.SPARC.d48;
-import static jdk.vm.ci.sparc.SPARC.d50;
-import static jdk.vm.ci.sparc.SPARC.d52;
-import static jdk.vm.ci.sparc.SPARC.d54;
-import static jdk.vm.ci.sparc.SPARC.d56;
-import static jdk.vm.ci.sparc.SPARC.d58;
-import static jdk.vm.ci.sparc.SPARC.d60;
-import static jdk.vm.ci.sparc.SPARC.d62;
-import static jdk.vm.ci.sparc.SPARC.f0;
-import static jdk.vm.ci.sparc.SPARC.f10;
-import static jdk.vm.ci.sparc.SPARC.f12;
-import static jdk.vm.ci.sparc.SPARC.f14;
-import static jdk.vm.ci.sparc.SPARC.f16;
-import static jdk.vm.ci.sparc.SPARC.f18;
-import static jdk.vm.ci.sparc.SPARC.f2;
-import static jdk.vm.ci.sparc.SPARC.f20;
-import static jdk.vm.ci.sparc.SPARC.f22;
-import static jdk.vm.ci.sparc.SPARC.f24;
-import static jdk.vm.ci.sparc.SPARC.f26;
-import static jdk.vm.ci.sparc.SPARC.f28;
-import static jdk.vm.ci.sparc.SPARC.f30;
-import static jdk.vm.ci.sparc.SPARC.f4;
-import static jdk.vm.ci.sparc.SPARC.f6;
-import static jdk.vm.ci.sparc.SPARC.f8;
-import static jdk.vm.ci.sparc.SPARC.g1;
-import static jdk.vm.ci.sparc.SPARC.g3;
-import static jdk.vm.ci.sparc.SPARC.g4;
-import static jdk.vm.ci.sparc.SPARC.g5;
 import static jdk.vm.ci.sparc.SPARCKind.WORD;
 import static jdk.vm.ci.sparc.SPARCKind.XWORD;
 
@@ -99,7 +61,6 @@ import org.graalvm.compiler.lir.sparc.SPARCImmediateAddressValue;
 import org.graalvm.compiler.lir.sparc.SPARCMove.CompareAndSwapOp;
 import org.graalvm.compiler.lir.sparc.SPARCMove.NullCheckOp;
 import org.graalvm.compiler.lir.sparc.SPARCMove.StoreOp;
-import org.graalvm.util.EconomicMap;
 import org.graalvm.compiler.lir.sparc.SPARCPrefetchOp;
 import org.graalvm.compiler.lir.sparc.SPARCSaveRegistersOp;
 
@@ -125,7 +86,6 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     final GraalHotSpotVMConfig config;
     private HotSpotDebugInfoBuilder debugInfoBuilder;
-    private LIRFrameState currentRuntimeCallInfo;
 
     public SPARCHotSpotLIRGenerator(HotSpotProviders providers, GraalHotSpotVMConfig config, LIRGenerationResult lirGenRes) {
         this(providers, config, lirGenRes, new ConstantTableBaseProvider());
@@ -193,12 +153,6 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         }
 
         getResult().setMaxInterpreterFrameSize(debugInfoBuilder.maxInterpreterFrameSize());
-    }
-
-    @Override
-    protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-        currentRuntimeCallInfo = info;
-        super.emitForeignCallOp(linkage, result, arguments, temps, info);
     }
 
     @Override
@@ -398,108 +352,6 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public SaveRegistersOp emitSaveAllRegisters() {
-        // We save all registers that were not saved by the save instruction.
-        // @formatter:off
-        Register[] savedRegisters = {
-                        // CPU
-                        g1, g3, g4, g5,
-                        // FPU, use only every second register as doubles are stored anyways
-                        f0,  /*f1, */ f2,  /*f3, */ f4,  /*f5, */ f6,  /*f7, */
-                        f8,  /*f9, */ f10, /*f11,*/ f12, /*f13,*/ f14, /*f15,*/
-                        f16, /*f17,*/ f18, /*f19,*/ f20, /*f21,*/ f22, /*f23,*/
-                        f24, /*f25,*/ f26, /*f27,*/ f28, /*f29,*/ f30, /*f31 */
-                        d32,          d34,          d36,          d38,
-                        d40,          d42,          d44,          d46,
-                        d48,          d50,          d52,          d54,
-                        d56,          d58,          d60,          d62
-        };
-        // @formatter:on
-        AllocatableValue[] savedRegisterLocations = new AllocatableValue[savedRegisters.length];
-        for (int i = 0; i < savedRegisters.length; i++) {
-            PlatformKind kind = target().arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
-            VirtualStackSlot spillSlot = getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));
-            savedRegisterLocations[i] = spillSlot;
-        }
-        return emitSaveRegisters(savedRegisters, savedRegisterLocations, false);
-    }
-
-    @Override
-    public void emitLeaveCurrentStackFrame(SaveRegistersOp saveRegisterOp) {
-        append(new SPARCHotSpotLeaveCurrentStackFrameOp());
-    }
-
-    @Override
-    public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
-        append(new SPARCHotSpotLeaveDeoptimizedStackFrameOp());
-    }
-
-    @Override
-    public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp, SaveRegistersOp saveRegisterOp) {
-        Register thread = getProviders().getRegisters().getThreadRegister();
-        Variable framePcVariable = load(framePc);
-        Variable senderSpVariable = load(senderSp);
-        Variable scratchVariable = newVariable(LIRKind.value(target().arch.getWordKind()));
-        append(new SPARCHotSpotEnterUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), framePcVariable, senderSpVariable, scratchVariable,
-                        target().arch.getWordKind()));
-    }
-
-    @Override
-    public void emitLeaveUnpackFramesStackFrame(SaveRegistersOp saveRegisterOp) {
-        Register thread = getProviders().getRegisters().getThreadRegister();
-        append(new SPARCHotSpotLeaveUnpackFramesStackFrameOp(thread, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset()));
-    }
-
-    @Override
-    public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
-        Variable frameSizeVariable = load(frameSize);
-        Variable framePcVariable = load(framePc);
-        Variable senderSpVariable = load(senderSp);
-        Variable initialInfoVariable = load(initialInfo);
-        append(new SPARCHotSpotPushInterpreterFrameOp(frameSizeVariable, framePcVariable, senderSpVariable, initialInfoVariable));
-    }
-
-    @Override
-    public Value emitUncommonTrapCall(Value trapRequest, Value mode, SaveRegistersOp saveRegisterOp) {
-        ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(UNCOMMON_TRAP);
-
-        Register threadRegister = getProviders().getRegisters().getThreadRegister();
-        Value threadTemp = newVariable(LIRKind.value(target().arch.getWordKind()));
-        Register stackPointerRegister = getProviders().getRegisters().getStackPointerRegister();
-        Variable spScratch = newVariable(LIRKind.value(target().arch.getWordKind()));
-        append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), threadRegister, stackPointerRegister, threadTemp, spScratch));
-        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(target().arch.getWordKind())), trapRequest, mode);
-        append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister, threadTemp));
-
-        EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
-        assert currentRuntimeCallInfo != null;
-        assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
-        calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
-
-        return result;
-    }
-
-    @Override
-    public Value emitDeoptimizationFetchUnrollInfoCall(Value mode, SaveRegistersOp saveRegisterOp) {
-        ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(FETCH_UNROLL_INFO);
-
-        Register threadRegister = getProviders().getRegisters().getThreadRegister();
-        Value threadTemp = newVariable(LIRKind.value(target().arch.getWordKind()));
-        Register stackPointerRegister = getProviders().getRegisters().getStackPointerRegister();
-        Variable spScratch = newVariable(LIRKind.value(target().arch.getWordKind()));
-        append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), threadRegister, stackPointerRegister, threadTemp, spScratch));
-        Variable result = super.emitForeignCall(linkage, null, threadRegister.asValue(LIRKind.value(target().arch.getWordKind())), mode);
-        append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), threadRegister, threadTemp));
-
-        EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
-        assert currentRuntimeCallInfo != null;
-        assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
-        calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
-
-        return result;
-    }
-
-    @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
         PlatformKind kind = address.getPlatformKind();
         if (kind == WORD) {
@@ -535,7 +387,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    protected StrategySwitchOp createStrategySwitchOp(AllocatableValue base, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue scratchValue) {
+    protected StrategySwitchOp createStrategySwitchOp(AllocatableValue base, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, Variable scratchValue) {
         return new SPARCHotSpotStrategySwitchOp(base, strategy, keyTargets, defaultTarget, key, scratchValue);
     }
 

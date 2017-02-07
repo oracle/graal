@@ -73,6 +73,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MembarOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.StackLeaOp;
 import org.graalvm.compiler.lir.amd64.AMD64PauseOp;
+import org.graalvm.compiler.lir.amd64.AMD64StringIndexOfOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -443,6 +444,24 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
         append(new AMD64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length)));
+        return result;
+    }
+
+    /**
+     * Return a conservative estimate of the page size for use by the String.indexOf intrinsic.
+     */
+    protected int getVMPageSize() {
+        return 4096;
+    }
+
+    @Override
+    public Variable emitStringIndexOf(Value source, Value sourceCount, Value target, Value targetCount, int constantTargetCount) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        RegisterValue cnt1 = AMD64.rdx.asValue(sourceCount.getValueKind());
+        emitMove(cnt1, sourceCount);
+        RegisterValue cnt2 = AMD64.rax.asValue(targetCount.getValueKind());
+        emitMove(cnt2, targetCount);
+        append(new AMD64StringIndexOfOp(this, result, source, target, cnt1, cnt2, AMD64.rcx.asValue(), AMD64.xmm0.asValue(), constantTargetCount, getVMPageSize()));
         return result;
     }
 

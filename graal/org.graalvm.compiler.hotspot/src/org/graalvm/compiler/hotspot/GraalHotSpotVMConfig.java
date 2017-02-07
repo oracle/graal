@@ -147,8 +147,6 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final boolean verifyOops = getFlag("VerifyOops", Boolean.class);
     public final boolean ciTime = getFlag("CITime", Boolean.class);
     public final boolean ciTimeEach = getFlag("CITimeEach", Boolean.class);
-    public final int compileTheWorldStartAt = getFlag("CompileTheWorldStartAt", Integer.class, 1);
-    public final int compileTheWorldStopAt = getFlag("CompileTheWorldStopAt", Integer.class, Integer.MAX_VALUE);
     public final boolean dontCompileHugeMethods = getFlag("DontCompileHugeMethods", Boolean.class);
     public final int hugeMethodLimit = getFlag("HugeMethodLimit", Integer.class);
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
@@ -486,7 +484,6 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int methodCompiledEntryOffset = getFieldOffset("Method::_from_compiled_entry", Integer.class, "address");
     public final int methodCodeOffset = getFieldOffset("Method::_code", Integer.class, isJDK8 ? "nmethod*" : "CompiledMethod*");
 
-    public final int methodFlagsJfrTowrite = getConstant("Method::_jfr_towrite", Integer.class);
     public final int methodFlagsCallerSensitive = getConstant("Method::_caller_sensitive", Integer.class);
     public final int methodFlagsForceInline = getConstant("Method::_force_inline", Integer.class);
     public final int methodFlagsDontInline = getConstant("Method::_dont_inline", Integer.class);
@@ -787,7 +784,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
 
     // Checkstyle: resume
 
-    private boolean check() {
+    protected boolean check() {
         for (Field f : getClass().getDeclaredFields()) {
             int modifiers = f.getModifiers();
             if (Modifier.isPublic(modifiers) && !Modifier.isStatic(modifiers)) {

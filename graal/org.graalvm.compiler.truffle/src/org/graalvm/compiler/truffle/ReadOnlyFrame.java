@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.truffle;
 
-import org.graalvm.compiler.debug.GraalError;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -58,7 +57,11 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setObject(FrameSlot slot, Object value) {
-        throw GraalError.shouldNotReachHere();
+        throw newReadonlyAssertionError();
+    }
+
+    private static AssertionError newReadonlyAssertionError() {
+        return new AssertionError("Unexpected write access.");
     }
 
     @Override
@@ -70,7 +73,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setByte(FrameSlot slot, byte value) {
-        throw GraalError.shouldNotReachHere();
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -82,7 +85,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setBoolean(FrameSlot slot, boolean value) {
-        throw GraalError.shouldNotReachHere();
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -94,7 +97,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setInt(FrameSlot slot, int value) {
-        throw GraalError.shouldNotReachHere();
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -106,7 +109,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setLong(FrameSlot slot, long value) {
-        throw GraalError.shouldNotReachHere();
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -118,7 +121,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setFloat(FrameSlot slot, float value) {
-        throw GraalError.shouldNotReachHere();
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -130,7 +133,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public void setDouble(FrameSlot slot, double value) {
-        throw GraalError.shouldNotReachHere();
+        throw newReadonlyAssertionError();
     }
 
     @Override
@@ -142,7 +145,7 @@ class ReadOnlyFrame implements Frame {
     @Override
     @TruffleBoundary
     public MaterializedFrame materialize() {
-        throw GraalError.shouldNotReachHere();
+        throw newReadonlyAssertionError();
     }
 
     @Override

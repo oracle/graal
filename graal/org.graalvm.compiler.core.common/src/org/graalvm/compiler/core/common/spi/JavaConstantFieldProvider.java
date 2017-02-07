@@ -104,7 +104,7 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         if (isWellKnownImplicitStableField(field)) {
             return true;
         }
-        if (field == stringHashField) {
+        if (field.equals(stringHashField)) {
             return true;
         }
         return false;

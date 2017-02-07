@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.67.1",
+  "mxversion" : "5.69.3",
   "name" : "graal-core",
 
   "imports" : {
@@ -8,7 +8,7 @@ suite = {
         "name" : "truffle",
         # IMPORTANT: When updating the Truffle import, notify Truffle language developers
         # (by mail to graal-dev@openjdk.java.net) of the pending change.
-        "version" : "6d434dcbf2e5cebb027276830d249f02f8e254ca",
+        "version" : "4417deabe3c5e0b8b5bb593b4db7419d48f2fe03",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -1239,7 +1239,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.hotspot",
-        "org.graalvm.compiler.asm.aarch64",
+        "org.graalvm.compiler.hotspot.aarch64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8=",
@@ -1247,20 +1247,6 @@ suite = {
       "workingSets" : "Graal,Truffle,AArch64",
     },
 
-    # ------------- Salver -------------
-
-    "org.graalvm.compiler.salver" : {
-      "subDir" : "graal",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.compiler.phases"],
-      "annotationProcessors" : [
-        "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8=",
-      "workingSets" : "Graal",
-    },
   },
 
   "distributions" : {
@@ -1338,7 +1324,6 @@ suite = {
         "org.graalvm.compiler.replacements.amd64",
         "org.graalvm.compiler.core.sparc",
         "org.graalvm.compiler.replacements.sparc",
-        "org.graalvm.compiler.salver",
       ],
       "distDependencies" : [
         "GRAAL_API",
@@ -1497,7 +1482,6 @@ suite = {
         "org.graalvm.compiler.replacements.amd64",
         "org.graalvm.compiler.core.sparc",
         "org.graalvm.compiler.replacements.sparc",
-        "org.graalvm.compiler.salver",
         "org.graalvm.compiler.hotspot.aarch64",
         "org.graalvm.compiler.hotspot.amd64",
         "org.graalvm.compiler.hotspot.sparc",

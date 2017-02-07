@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.phases.common.inlining.info;
 
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,11 +37,11 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.GuardedValueNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -244,15 +242,12 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         assert invoke.next() == continuation;
         invoke.setNext(null);
         returnMerge.setNext(continuation);
-        if (UseGraalInstrumentation.getValue(graph.getOptions())) {
-            InliningUtil.detachInstrumentation(invoke);
-        }
         if (returnValuePhi != null) {
             invoke.asNode().replaceAtUsages(returnValuePhi);
         }
         invoke.asNode().safeDelete();
 
-        ArrayList<GuardedValueNode> replacementNodes = new ArrayList<>();
+        ArrayList<PiNode> replacementNodes = new ArrayList<>();
 
         // prepare the anchors for the invokes
         for (int i = 0; i < numberOfMethods; i++) {
@@ -268,7 +263,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
             ValueNode receiver = ((MethodCallTargetNode) invokeForInlining.callTarget()).receiver();
             boolean exact = (getTypeCount(i) == 1 && !methodDispatch);
-            GuardedValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, node, commonType, receiver, exact);
+            PiNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, node, commonType, receiver, exact);
             invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
             assert !anchoredReceiver.isDeleted() : anchoredReceiver;
@@ -456,7 +451,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
         invocationEntry.setNext(invoke.asNode());
         ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
-        GuardedValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
+        PiNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
         invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
         InliningUtil.replaceInvokeCallTarget(invoke, graph, kind, target);
     }

@@ -269,5 +269,17 @@ public class TruffleCompilerOptions {
     @Option(help = "Maximum number of instrumentation counters available.")
     public static final OptionKey<Integer> TruffleInstrumentBranchesCount = new OptionKey<>(10000);
 
+    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.")
+    public static final OptionKey<Boolean> TruffleInstrumentBoundaries = new OptionKey<>(false);
+
+    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.")
+    public static final OptionKey<Boolean> TruffleInstrumentBoundariesPerInlineSite = new OptionKey<>(false);
+
+    @Option(help = "Method filter for host methods in which to add instrumentation.")
+    public static final OptionKey<String> TruffleInstrumentFilter = new OptionKey<>("*.*.*");
+
+    @Option(help = "Maximum number of instrumentation counters available.")
+    public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
+
     // @formatter:on
 }

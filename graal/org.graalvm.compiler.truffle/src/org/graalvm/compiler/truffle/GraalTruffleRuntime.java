@@ -27,6 +27,7 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompila
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilerThreads;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
@@ -75,7 +76,7 @@ import org.graalvm.compiler.truffle.debug.TraceCompilationListener;
 import org.graalvm.compiler.truffle.debug.TraceCompilationPolymorphismListener;
 import org.graalvm.compiler.truffle.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.debug.TraceSplittingListener;
-import org.graalvm.compiler.truffle.phases.InstrumentBranchesPhase;
+import org.graalvm.compiler.truffle.phases.InstrumentPhase;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -122,9 +123,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             if (selectedProcessors == 0) {
                 // No manual selection made, check how many processors are available.
                 int availableProcessors = Runtime.getRuntime().availableProcessors();
-                if (availableProcessors >= 12) {
-                    selectedProcessors = 4;
-                } else if (availableProcessors >= 4) {
+                if (availableProcessors >= 4) {
                     selectedProcessors = 2;
                 }
             }
@@ -317,7 +316,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         private final FrameInstanceVisitor<T> visitor;
         private final CallMethods methods;
 
-        private boolean first = true;
         private int skipFrames;
 
         private InspectedFrame callNodeFrame;
@@ -337,13 +335,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
             } else if (frame.isMethod(methods.callTargetMethod)) {
                 try {
                     if (skipFrames == 0) {
-                        return visitor.visitFrame(new GraalFrameInstance(first, frame, callNodeFrame));
+                        return visitor.visitFrame(new GraalFrameInstance(frame, callNodeFrame));
                     } else {
                         skipFrames--;
                     }
                 } finally {
                     callNodeFrame = null;
-                    first = false;
                 }
             } else if (frame.isMethod(methods.callNodeMethod)) {
                 callNodeFrame = frame;
@@ -476,8 +473,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private void shutdown() {
         getCompilationNotify().notifyShutdown(this);
         OptionValues options = TruffleCompilerOptions.getOptions();
-        if (getValue(TruffleInstrumentBranches)) {
-            InstrumentBranchesPhase.instrumentation.dumpAccessTable(options);
+        if (getValue(TruffleInstrumentBranches) || getValue(TruffleInstrumentBoundaries)) {
+            InstrumentPhase.instrumentation.dumpAccessTable(options);
         }
     }
 

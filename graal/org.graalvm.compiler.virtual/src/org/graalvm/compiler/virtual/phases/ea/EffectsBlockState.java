@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,9 @@ import org.graalvm.util.UnmodifiableMapCursor;
 
 public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
 
-    /*
-     * This flag specifies whether this path that leads to this block is unreachable.
+    /**
+     * This flag specifies whether this block is unreachable, which can happen during analysis if
+     * conditions turn constant or nodes canonicalize to cfg sinks.
      */
     private boolean dead;
 
@@ -58,16 +59,20 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
         this.dead = true;
     }
 
-    protected static <K, V> boolean isSubMapOf(EconomicMap<K, V> left, EconomicMap<K, V> right) {
-        if (left == right) {
+    /**
+     * Returns true if every value in subMap is also present in the superMap (according to "equals"
+     * semantics).
+     */
+    protected static <K, V> boolean isSubMapOf(EconomicMap<K, V> superMap, EconomicMap<K, V> subMap) {
+        if (superMap == subMap) {
             return true;
         }
-        UnmodifiableMapCursor<K, V> cursor = right.getEntries();
+        UnmodifiableMapCursor<K, V> cursor = subMap.getEntries();
         while (cursor.advance()) {
             K key = cursor.getKey();
             V value = cursor.getValue();
             assert value != null;
-            V otherValue = left.get(key);
+            V otherValue = superMap.get(key);
             if (otherValue != value && !value.equals(otherValue)) {
                 return false;
             }
@@ -75,6 +80,9 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
         return true;
     }
 
+    /**
+     * Modifies target so that only entries that have corresponding entries in source remain.
+     */
     protected static <U, V> void meetMaps(Map<U, V> target, Map<U, V> source) {
         Iterator<Map.Entry<U, V>> iter = target.entrySet().iterator();
         while (iter.hasNext()) {
@@ -86,5 +94,4 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
             }
         }
     }
-
 }

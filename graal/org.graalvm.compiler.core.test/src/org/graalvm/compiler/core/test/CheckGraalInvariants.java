@@ -58,6 +58,7 @@ import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -173,56 +174,73 @@ public class CheckGraalInvariants extends GraalTest {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
 
         List<String> errors = Collections.synchronizedList(new ArrayList<>());
-        // Order outer classes before the inner classes
-        classNames.sort((String a, String b) -> a.compareTo(b));
-        // Initialize classes in single thread to avoid deadlocking issues during initialization
-        List<Class<?>> classes = initializeClasses(classNames);
-        for (Class<?> c : classes) {
-            String className = c.getName();
-            executor.execute(() -> {
-                try {
-                    checkClass(c, metaAccess);
-                } catch (Throwable e) {
-                    errors.add(String.format("Error while checking %s:%n%s", className, printStackTraceToString(e)));
-                }
-            });
 
-            for (Method m : c.getDeclaredMethods()) {
-                if (Modifier.isNative(m.getModifiers()) || Modifier.isAbstract(m.getModifiers())) {
-                    // ignore
-                } else {
-                    String methodName = className + "." + m.getName();
-                    if (matches(filters, methodName)) {
-                        executor.execute(() -> {
-                            ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                            StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
-                            try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
-                                graphBuilderSuite.apply(graph, context);
-                                // update phi stamps
-                                graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
-                                checkGraph(context, graph);
-                            } catch (VerificationError e) {
-                                errors.add(e.getMessage());
-                            } catch (LinkageError e) {
-                                // suppress linkages errors resulting from eager resolution
-                            } catch (BailoutException e) {
-                                // Graal bail outs on certain patterns in Java bytecode (e.g.,
-                                // unbalanced monitors introduced by jacoco).
-                            } catch (Throwable e) {
-                                errors.add(String.format("Error while checking %s:%n%s", methodName, printStackTraceToString(e)));
-                            }
-                        });
+        for (Method m : BadUsageWithEquals.class.getDeclaredMethods()) {
+            ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
+            StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).method(method).build();
+            try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
+                graphBuilderSuite.apply(graph, context);
+                // update phi stamps
+                graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
+                checkGraph(context, graph);
+                errors.add(String.format("Expected error while checking %s", m));
+            } catch (VerificationError e) {
+                // expected!
+            } catch (Throwable e) {
+                errors.add(String.format("Error while checking %s:%n%s", m, printStackTraceToString(e)));
+            }
+        }
+        if (errors.isEmpty()) {
+            // Order outer classes before the inner classes
+            classNames.sort((String a, String b) -> a.compareTo(b));
+            // Initialize classes in single thread to avoid deadlocking issues during initialization
+            List<Class<?>> classes = initializeClasses(classNames);
+            for (Class<?> c : classes) {
+                String className = c.getName();
+                executor.execute(() -> {
+                    try {
+                        checkClass(c, metaAccess);
+                    } catch (Throwable e) {
+                        errors.add(String.format("Error while checking %s:%n%s", className, printStackTraceToString(e)));
+                    }
+                });
+
+                for (Method m : c.getDeclaredMethods()) {
+                    if (Modifier.isNative(m.getModifiers()) || Modifier.isAbstract(m.getModifiers())) {
+                        // ignore
+                    } else {
+                        String methodName = className + "." + m.getName();
+                        if (matches(filters, methodName)) {
+                            executor.execute(() -> {
+                                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
+                                StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
+                                try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
+                                    graphBuilderSuite.apply(graph, context);
+                                    // update phi stamps
+                                    graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
+                                    checkGraph(context, graph);
+                                } catch (VerificationError e) {
+                                    errors.add(e.getMessage());
+                                } catch (LinkageError e) {
+                                    // suppress linkages errors resulting from eager resolution
+                                } catch (BailoutException e) {
+                                    // Graal bail outs on certain patterns in Java bytecode (e.g.,
+                                    // unbalanced monitors introduced by jacoco).
+                                } catch (Throwable e) {
+                                    errors.add(String.format("Error while checking %s:%n%s", methodName, printStackTraceToString(e)));
+                                }
+                            });
+                        }
                     }
                 }
             }
+            executor.shutdown();
+            try {
+                executor.awaitTermination(1, TimeUnit.HOURS);
+            } catch (InterruptedException e1) {
+                throw new RuntimeException(e1);
+            }
         }
-        executor.shutdown();
-        try {
-            executor.awaitTermination(1, TimeUnit.HOURS);
-        } catch (InterruptedException e1) {
-            throw new RuntimeException(e1);
-        }
-
         if (!errors.isEmpty()) {
             StringBuilder msg = new StringBuilder();
             String nl = String.format("%n");
@@ -268,6 +286,8 @@ public class CheckGraalInvariants extends GraalTest {
      */
     private static void checkGraph(HighTierContext context, StructuredGraph graph) {
         if (shouldVerifyEquals(graph.method())) {
+            // If you add a new type to test here, be sure to add appropriate
+            // methods to the BadUsageWithEquals class below
             new VerifyUsageWithEquals(Value.class).apply(graph, context);
             new VerifyUsageWithEquals(Register.class).apply(graph, context);
             new VerifyUsageWithEquals(RegisterCategory.class).apply(graph, context);
@@ -305,5 +325,109 @@ public class CheckGraalInvariants extends GraalTest {
         StringWriter sw = new StringWriter();
         t.printStackTrace(new PrintWriter(sw));
         return sw.toString();
+    }
+
+    static class BadUsageWithEquals {
+        Value aValue;
+        Register aRegister;
+        RegisterCategory aRegisterCategory;
+        JavaType aJavaType;
+        JavaField aJavaField;
+        JavaMethod aJavaMethod;
+        LocationIdentity aLocationIdentity;
+        LIRKind aLIRKind;
+        ArithmeticOpTable anArithmeticOpTable;
+        ArithmeticOpTable.Op anArithmeticOpTableOp;
+
+        static Value aStaticValue;
+        static Register aStaticRegister;
+        static RegisterCategory aStaticRegisterCategory;
+        static JavaType aStaticJavaType;
+        static JavaField aStaticJavaField;
+        static JavaMethod aStaticJavaMethod;
+        static LocationIdentity aStaticLocationIdentity;
+        static LIRKind aStaticLIRKind;
+        static ArithmeticOpTable aStaticArithmeticOpTable;
+        static ArithmeticOpTable.Op aStaticArithmeticOpTableOp;
+
+        boolean test01(Value f) {
+            return aValue == f;
+        }
+
+        boolean test02(Register f) {
+            return aRegister == f;
+        }
+
+        boolean test03(RegisterCategory f) {
+            return aRegisterCategory == f;
+        }
+
+        boolean test04(JavaType f) {
+            return aJavaType == f;
+        }
+
+        boolean test05(JavaField f) {
+            return aJavaField == f;
+        }
+
+        boolean test06(JavaMethod f) {
+            return aJavaMethod == f;
+        }
+
+        boolean test07(LocationIdentity f) {
+            return aLocationIdentity == f;
+        }
+
+        boolean test08(LIRKind f) {
+            return aLIRKind == f;
+        }
+
+        boolean test09(ArithmeticOpTable f) {
+            return anArithmeticOpTable == f;
+        }
+
+        boolean test10(ArithmeticOpTable.Op f) {
+            return anArithmeticOpTableOp == f;
+        }
+
+        boolean test12(Value f) {
+            return aStaticValue == f;
+        }
+
+        boolean test13(Register f) {
+            return aStaticRegister == f;
+        }
+
+        boolean test14(RegisterCategory f) {
+            return aStaticRegisterCategory == f;
+        }
+
+        boolean test15(JavaType f) {
+            return aStaticJavaType == f;
+        }
+
+        boolean test16(JavaField f) {
+            return aStaticJavaField == f;
+        }
+
+        boolean test17(JavaMethod f) {
+            return aStaticJavaMethod == f;
+        }
+
+        boolean test18(LocationIdentity f) {
+            return aStaticLocationIdentity == f;
+        }
+
+        boolean test19(LIRKind f) {
+            return aStaticLIRKind == f;
+        }
+
+        boolean test20(ArithmeticOpTable f) {
+            return aStaticArithmeticOpTable == f;
+        }
+
+        boolean test21(ArithmeticOpTable.Op f) {
+            return aStaticArithmeticOpTableOp == f;
+        }
     }
 }

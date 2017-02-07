@@ -29,7 +29,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 
-public class ReadEliminationBlockState extends EffectsBlockState<ReadEliminationBlockState> {
+/**
+ * This class maintains a set of known values, identified by base object, locations and offset.
+ */
+public final class ReadEliminationBlockState extends EffectsBlockState<ReadEliminationBlockState> {
 
     final EconomicMap<CacheEntry<?>, ValueNode> readCache;
 
@@ -70,7 +73,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         public abstract LocationIdentity getIdentity();
     }
 
-    static class LoadCacheEntry extends CacheEntry<LocationIdentity> {
+    static final class LoadCacheEntry extends CacheEntry<LocationIdentity> {
 
         LoadCacheEntry(ValueNode object, LocationIdentity identity) {
             super(object, identity);
@@ -97,7 +100,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
      * identity are separate so both must be considered when looking for optimizable memory
      * accesses.
      */
-    static class UnsafeLoadCacheEntry extends CacheEntry<ValueNode> {
+    static final class UnsafeLoadCacheEntry extends CacheEntry<ValueNode> {
 
         private final LocationIdentity locationIdentity;
 

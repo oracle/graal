@@ -31,7 +31,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -45,6 +44,9 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+/**
+ * Forwards calls from {@link VirtualizerTool} to the actual {@link PartialEscapeBlockState}.
+ */
 class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     private final MetaAccessProvider metaAccess;
@@ -145,7 +147,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     @Override
     public void replaceWithVirtual(VirtualObjectNode virtual) {
-        closure.addAndMarkAlias(virtual, current);
+        closure.addVirtualAlias(virtual, current);
         effects.deleteNode(current);
         deleted = true;
     }
@@ -194,19 +196,9 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
             virtualObject.setObjectId(id);
         }
         state.addObject(id, new ObjectState(entryState, locks, ensureVirtualized));
-        closure.addAndMarkAlias(virtualObject, virtualObject);
+        closure.addVirtualAlias(virtualObject, virtualObject);
         PartialEscapeClosure.COUNTER_ALLOCATION_REMOVED.increment();
-        effects.add("createVirtual", new EffectList.SimpleEffect() {
-            @Override
-            public void apply(StructuredGraph graph) {
-                // nothing to do
-            }
-
-            @Override
-            public int virtualObjects() {
-                return 1;
-            }
-        });
+        effects.addVirtualizationDelta(1);
     }
 
     @Override

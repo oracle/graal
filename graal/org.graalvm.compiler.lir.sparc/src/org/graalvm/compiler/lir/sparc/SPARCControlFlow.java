@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,7 +143,7 @@ public class SPARCControlFlow {
         public static final SizeEstimate SIZE = SizeEstimate.create(3);
         static final EnumSet<SPARCKind> SUPPORTED_KINDS = EnumSet.of(XWORD, WORD);
 
-        @Use({REG}) protected Value x;
+        @Use({REG}) protected AllocatableValue x;
         @Use({REG, CONST}) protected Value y;
         private ConditionFlag conditionFlag;
         protected final LabelRef trueDestination;
@@ -156,7 +156,8 @@ public class SPARCControlFlow {
         private int delaySlotPosition = -1;
         private double trueDestinationProbability;
 
-        public CompareBranchOp(Value x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, SPARCKind kind, boolean unorderedIsTrue, double trueDestinationProbability) {
+        public CompareBranchOp(AllocatableValue x, Value y, Condition condition, LabelRef trueDestination, LabelRef falseDestination, SPARCKind kind, boolean unorderedIsTrue,
+                        double trueDestinationProbability) {
             super(TYPE, SIZE);
             this.x = x;
             this.y = y;
@@ -428,12 +429,13 @@ public class SPARCControlFlow {
         private final EconomicMap<Label, LabelHint> labelHints;
         private final List<Label> conditionalLabels = new ArrayList<>();
 
-        public StrategySwitchOp(Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+        public StrategySwitchOp(Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, Variable scratch) {
             this(TYPE, constantTableBase, strategy, keyTargets, defaultTarget, key, scratch);
         }
 
-        protected StrategySwitchOp(LIRInstructionClass<? extends StrategySwitchOp> c, Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key,
-                        Value scratch) {
+        protected StrategySwitchOp(LIRInstructionClass<? extends StrategySwitchOp> c, Value constantTableBase, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget,
+                        AllocatableValue key,
+                        Variable scratch) {
             super(c);
             this.strategy = strategy;
             this.keyConstants = strategy.getKeyConstants();

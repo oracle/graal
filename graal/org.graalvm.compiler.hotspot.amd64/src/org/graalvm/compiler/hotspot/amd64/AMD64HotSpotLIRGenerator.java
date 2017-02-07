@@ -22,17 +22,16 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.rbp;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.INITIALIZE_KLASS_BY_SYMBOL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_KLASS_BY_SYMBOL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_STRING_BY_SYMBOL;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.FETCH_UNROLL_INFO;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.UNCOMMON_TRAP;
-import static jdk.vm.ci.amd64.AMD64.rbp;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
@@ -61,7 +60,6 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp.NoOp;
-import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
@@ -80,7 +78,6 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -294,34 +291,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         super.emitForeignCallOp(linkage, result, arguments, temps, info);
     }
 
-    @Override
-    public void emitLeaveCurrentStackFrame(SaveRegistersOp saveRegisterOp) {
-        append(new AMD64HotSpotLeaveCurrentStackFrameOp(saveRegisterOp));
-    }
-
-    @Override
-    public void emitLeaveDeoptimizedStackFrame(Value frameSize, Value initialInfo) {
-        Variable frameSizeVariable = load(frameSize);
-        Variable initialInfoVariable = load(initialInfo);
-        append(new AMD64HotSpotLeaveDeoptimizedStackFrameOp(frameSizeVariable, initialInfoVariable));
-    }
-
-    @Override
-    public void emitEnterUnpackFramesStackFrame(Value framePc, Value senderSp, Value senderFp, SaveRegistersOp saveRegisterOp) {
-        Register threadRegister = getProviders().getRegisters().getThreadRegister();
-        Variable framePcVariable = load(framePc);
-        Variable senderSpVariable = load(senderSp);
-        Variable senderFpVariable = load(senderFp);
-        append(new AMD64HotSpotEnterUnpackFramesStackFrameOp(threadRegister, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadLastJavaFpOffset(), framePcVariable,
-                        senderSpVariable, senderFpVariable, saveRegisterOp));
-    }
-
-    @Override
-    public void emitLeaveUnpackFramesStackFrame(SaveRegistersOp saveRegisterOp) {
-        Register threadRegister = getProviders().getRegisters().getThreadRegister();
-        append(new AMD64HotSpotLeaveUnpackFramesStackFrameOp(threadRegister, config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadLastJavaFpOffset(), saveRegisterOp));
-    }
-
     /**
      * @param savedRegisters the registers saved by this operation which may be subject to pruning
      * @param savedRegisterLocations the slots to which the registers are saved
@@ -357,13 +326,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             savedRegisterLocations[i] = allocateSaveRegisterLocation(savedRegisters[i]);
         }
         return emitSaveRegisters(savedRegisters, savedRegisterLocations, supportsRemove);
-    }
-
-    @Override
-    public SaveRegistersOp emitSaveAllRegisters() {
-        // We are saving all registers.
-        // TODO Save upper half of YMM registers.
-        return emitSaveAllRegisters(target().arch.getAvailableValueRegisters().toArray(), false);
     }
 
     protected void emitRestoreRegisters(AMD64SaveRegistersOp save) {
@@ -516,38 +478,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Value emitUncommonTrapCall(Value trapRequest, Value mode, SaveRegistersOp saveRegisterOp) {
-        ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(UNCOMMON_TRAP);
-
-        Register thread = getProviders().getRegisters().getThreadRegister();
-        append(new AMD64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread));
-        Variable result = super.emitForeignCall(linkage, null, thread.asValue(LIRKind.value(AMD64Kind.QWORD)), trapRequest, mode);
-        append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), config.threadLastJavaPcOffset(), thread));
-
-        EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
-        assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
-        calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
-
-        return result;
-    }
-
-    @Override
-    public Value emitDeoptimizationFetchUnrollInfoCall(Value mode, SaveRegistersOp saveRegisterOp) {
-        ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(FETCH_UNROLL_INFO);
-
-        Register thread = getProviders().getRegisters().getThreadRegister();
-        append(new AMD64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread));
-        Variable result = super.emitForeignCall(linkage, null, thread.asValue(LIRKind.value(AMD64Kind.QWORD)), mode);
-        append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), config.threadLastJavaPcOffset(), thread));
-
-        EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = getResult().getCalleeSaveInfo();
-        assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
-        calleeSaveInfo.put(currentRuntimeCallInfo, saveRegisterOp);
-
-        return result;
-    }
-
-    @Override
     public void emitTailcall(Value[] args, Value address) {
         append(new AMD64TailcallOp(args, address));
     }
@@ -630,15 +560,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             instructions.add(1, op);
             Debug.dump(Debug.INFO_LOG_LEVEL, lir, "created rescue dummy op");
         }
-    }
-
-    @Override
-    public void emitPushInterpreterFrame(Value frameSize, Value framePc, Value senderSp, Value initialInfo) {
-        Variable frameSizeVariable = load(frameSize);
-        Variable framePcVariable = load(framePc);
-        Variable senderSpVariable = load(senderSp);
-        Variable initialInfoVariable = load(initialInfo);
-        append(new AMD64HotSpotPushInterpreterFrameOp(frameSizeVariable, framePcVariable, senderSpVariable, initialInfoVariable, config));
     }
 
     @Override

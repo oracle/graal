@@ -1167,13 +1167,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         assert other.getNodeClass() == this;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
-            Object v1 = UNSAFE.getObject(node, offset);
-            Object v2 = UNSAFE.getObject(other, offset);
             if ((myMask & LIST_MASK) == 0) {
+                Object v1 = Edges.getNodeUnsafe(node, offset);
+                Object v2 = Edges.getNodeUnsafe(other, offset);
                 if (v1 != v2) {
                     return false;
                 }
             } else {
+                Object v1 = Edges.getNodeListUnsafe(node, offset);
+                Object v2 = Edges.getNodeListUnsafe(other, offset);
                 if (!Objects.equals(v1, v2)) {
                     return false;
                 }
@@ -1228,7 +1230,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 if (curNode != null) {
                     Node newNode = consumer.apply(node, curNode);
                     if (newNode != curNode) {
-                        UNSAFE.putObject(node, offset, newNode);
+                        Edges.putNodeUnsafe(node, offset, newNode);
                     }
                 }
             } else {
@@ -1261,7 +1263,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 Node curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode != null) {
                     node.updatePredecessor(curNode, null);
-                    UNSAFE.putObject(node, offset, null);
+                    Edges.putNodeUnsafe(node, offset, null);
                 }
             } else {
                 unregisterAtSuccessorsAsPredecessorHelper(node, offset);
@@ -1326,9 +1328,9 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {
-                Object curNode = UNSAFE.getObject(node, offset);
+                Object curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode == key) {
-                    UNSAFE.putObject(node, offset, replacement);
+                    Edges.putNodeUnsafe(node, offset, replacement);
                     return true;
                 }
             } else {
@@ -1383,7 +1385,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     if (curNode.hasNoUsages()) {
                         node.maybeNotifyZeroUsages(curNode);
                     }
-                    UNSAFE.putObject(node, offset, null);
+                    Edges.putNodeUnsafe(node, offset, null);
                 }
             } else {
                 unregisterAtInputsAsUsageHelper(node, offset);

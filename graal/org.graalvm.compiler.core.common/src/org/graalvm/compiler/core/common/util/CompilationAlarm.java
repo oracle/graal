@@ -64,7 +64,6 @@ public final class CompilationAlarm implements AutoCloseable {
     }
 
     private static void compilationFinished() {
-        assert compilationStartedTimeStamps.get() != null;
         compilationStartedTimeStamps.set(null);
     }
 

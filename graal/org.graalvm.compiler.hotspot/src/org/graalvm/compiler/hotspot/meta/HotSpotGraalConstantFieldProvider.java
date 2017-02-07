@@ -61,11 +61,9 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         assert !ImmutableCode.getValue(tool.getOptions()) || isCalledForSnippets(metaAccess) || SnippetGraphUnderConstruction.get() != null ||
                         FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : tool.getReceiver();
-        if (!field.isStatic() && field.getName().equals("value")) {
-            if (getStableOptionKeyType().isInstance(tool.getReceiver())) {
-                JavaConstant ret = tool.readValue();
-                return tool.foldConstant(ret);
-            }
+        if (!field.isStatic() && getStableOptionKeyType().isInstance(tool.getReceiver()) && field.getName().equals("value")) {
+            JavaConstant ret = tool.readValue();
+            return tool.foldConstant(ret);
         }
 
         return super.readConstantField(field, tool);

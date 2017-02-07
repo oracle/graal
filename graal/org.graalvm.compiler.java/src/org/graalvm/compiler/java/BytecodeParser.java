@@ -23,6 +23,8 @@
 package org.graalvm.compiler.java;
 
 import static java.lang.String.format;
+import static java.lang.reflect.Modifier.STATIC;
+import static java.lang.reflect.Modifier.SYNCHRONIZED;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateRecompile;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.JavaSubroutineMismatch;
@@ -242,7 +244,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.PrintProfilingInform
 import static org.graalvm.compiler.core.common.GraalOptions.ResolveClassBeforeStaticInvoke;
 import static org.graalvm.compiler.core.common.GraalOptions.StressExplicitExceptionCode;
 import static org.graalvm.compiler.core.common.GraalOptions.StressInvokeWithExceptionNode;
-import static org.graalvm.compiler.core.common.GraalOptions.UseGraalInstrumentation;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static org.graalvm.compiler.debug.GraalError.guarantee;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
@@ -254,12 +255,12 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.UseGuardedIntrinsi
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
 import static org.graalvm.compiler.nodes.type.StampTool.isPointerNonNull;
 
-import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Formatter;
 import java.util.List;
+
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.bytecode.BytecodeLookupSwitch;
@@ -268,6 +269,7 @@ import org.graalvm.compiler.bytecode.BytecodeStream;
 import org.graalvm.compiler.bytecode.BytecodeSwitch;
 import org.graalvm.compiler.bytecode.BytecodeTableSwitch;
 import org.graalvm.compiler.bytecode.Bytecodes;
+import org.graalvm.compiler.bytecode.Bytes;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.common.PermanentBailoutException;
@@ -360,7 +362,6 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.debug.instrumentation.InstrumentationBeginNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -403,8 +404,8 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -609,8 +610,6 @@ public class BytecodeParser implements GraphBuilderContext {
     private FixedWithNextNode[] firstInstructionArray;
     private FrameStateBuilder[] entryStateArray;
 
-    private int lastBCI; // BCI of lastInstr. This field is for resolving instrumentation target.
-
     private boolean finalBarrierRequired;
     private ValueNode originalReceiver;
 
@@ -634,7 +633,6 @@ public class BytecodeParser implements GraphBuilderContext {
         this.intrinsicContext = intrinsicContext;
         this.entryBCI = entryBCI;
         this.parent = parent;
-        this.lastBCI = -1;
 
         assert code.getCode() != null : "method must contain bytecodes: " + method;
 
@@ -1635,7 +1633,7 @@ public class BytecodeParser implements GraphBuilderContext {
             receiverType = targetMethod.getDeclaringClass();
         }
         ResolvedJavaMethod resolvedMethod = receiverType.resolveMethod(targetMethod, method.getDeclaringClass());
-        if (resolvedMethod == null || resolvedMethod == targetMethod) {
+        if (resolvedMethod == null || resolvedMethod.equals(targetMethod)) {
             assert resolvedMethod == null || targetMethod.getDeclaringClass().isAssignableFrom(resolvedMethod.getDeclaringClass());
             Mark mark = graph.getMark();
             FixedWithNextNode currentLastInstr = lastInstr;
@@ -1838,6 +1836,33 @@ public class BytecodeParser implements GraphBuilderContext {
         return null;
     }
 
+    private static final int ACCESSOR_BYTECODE_LENGTH = 5;
+
+    /**
+     * Tries to inline {@code targetMethod} if it is an instance field accessor. This avoids the
+     * overhead of creating and using a nested {@link BytecodeParser} object.
+     */
+    private boolean tryFastInlineAccessor(ValueNode[] args, ResolvedJavaMethod targetMethod) {
+        byte[] bytecode = targetMethod.getCode();
+        if (bytecode.length == ACCESSOR_BYTECODE_LENGTH &&
+                        Bytes.beU1(bytecode, 0) == ALOAD_0 &&
+                        Bytes.beU1(bytecode, 1) == GETFIELD) {
+            int b4 = Bytes.beU1(bytecode, 4);
+            if (b4 >= IRETURN && b4 <= ARETURN) {
+                int cpi = Bytes.beU2(bytecode, 2);
+                JavaField field = targetMethod.getConstantPool().lookupField(cpi, targetMethod, GETFIELD);
+                if (field instanceof ResolvedJavaField) {
+                    ValueNode receiver = invocationPluginReceiver.init(targetMethod, args).get();
+                    ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+                    genGetFieldHelper(receiver, resolvedField);
+                    printInlining(targetMethod, targetMethod, true, "inline accessor method (bytecode parsing)");
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public boolean intrinsify(BytecodeProvider intrinsicBytecodeProvider, ResolvedJavaMethod targetMethod, ResolvedJavaMethod substitute, InvocationPlugin.Receiver receiver, ValueNode[] args) {
         if (receiver != null) {
@@ -1849,14 +1874,16 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private boolean inline(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, BytecodeProvider intrinsicBytecodeProvider, ValueNode[] args) {
-        if (TraceInlineDuringParsing.getValue(options) || TraceParserPlugins.getValue(options)) {
-            if (targetMethod.equals(inlinedMethod)) {
-                traceWithContext("inlining call to %s", inlinedMethod.format("%h.%n(%p)"));
-            } else {
-                traceWithContext("inlining call to %s as intrinsic for %s", inlinedMethod.format("%h.%n(%p)"), targetMethod.format("%h.%n(%p)"));
-            }
-        }
+        traceInlining(targetMethod, inlinedMethod);
         IntrinsicContext intrinsic = this.intrinsicContext;
+
+        if (intrinsic == null && !graphBuilderConfig.insertFullInfopoints() &&
+                        targetMethod.equals(inlinedMethod) &&
+                        (targetMethod.getModifiers() & (STATIC | SYNCHRONIZED)) == 0 &&
+                        tryFastInlineAccessor(args, targetMethod)) {
+            return true;
+        }
+
         if (intrinsic != null && intrinsic.isCallToOriginal(targetMethod)) {
             if (intrinsic.isCompilationRoot()) {
                 // A root compiled intrinsic needs to deoptimize
@@ -1899,6 +1926,16 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
         return true;
+    }
+
+    private void traceInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod) {
+        if (TraceInlineDuringParsing.getValue(options) || TraceParserPlugins.getValue(options)) {
+            if (targetMethod.equals(inlinedMethod)) {
+                traceWithContext("inlining call to %s", inlinedMethod.format("%h.%n(%p)"));
+            } else {
+                traceWithContext("inlining call to %s as intrinsic for %s", inlinedMethod.format("%h.%n(%p)"), targetMethod.format("%h.%n(%p)"));
+            }
+        }
     }
 
     private void printInlining(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, boolean success, String msg) {
@@ -2064,7 +2101,11 @@ public class BytecodeParser implements GraphBuilderContext {
         genInfoPointNode(InfopointReason.METHOD_END, x);
         if (finalBarrierRequired) {
             assert originalReceiver != null;
-            append(new FinalFieldBarrierNode(originalReceiver));
+            /*
+             * When compiling an OSR with a final field store, don't bother tracking the original
+             * receiver since the receiver cannot be EA'ed.
+             */
+            append(new FinalFieldBarrierNode(entryBCI == INVOCATION_ENTRY_BCI ? originalReceiver : null));
         }
         synchronizedEpilogue(BytecodeFrame.AFTER_BCI, x, kind);
     }
@@ -2195,25 +2236,6 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private <T extends ValueNode> void updateLastInstruction(T v) {
-        if (UseGraalInstrumentation.getValue(options)) {
-            // resolve instrumentation target
-            if (v instanceof InstrumentationBeginNode) {
-                InstrumentationBeginNode begin = (InstrumentationBeginNode) v;
-                if (!begin.isAnchored() && lastBCI != -1) {
-                    int currentBCI = stream.currentBCI();
-                    // temporarily set the bytecode stream to lastBCI
-                    stream.setBCI(lastBCI);
-                    // The instrumentation should be associated with the predecessor. In case of the
-                    // predecessor being optimized away, e.g., inlining, we should not set the
-                    // target.
-                    if (stream.nextBCI() == currentBCI) {
-                        begin.setTarget(lastInstr);
-                    }
-                    // restore the current BCI
-                    stream.setBCI(currentBCI);
-                }
-            }
-        }
         if (v instanceof FixedNode) {
             FixedNode fixedNode = (FixedNode) v;
             lastInstr.setNext(fixedNode);
@@ -2221,10 +2243,8 @@ public class BytecodeParser implements GraphBuilderContext {
                 FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) fixedNode;
                 assert fixedWithNextNode.next() == null : "cannot append instruction to instruction which isn't end";
                 lastInstr = fixedWithNextNode;
-                lastBCI = stream.currentBCI();
             } else {
                 lastInstr = null;
-                lastBCI = -1;
             }
         }
     }
@@ -3583,21 +3603,29 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
+        genGetFieldHelper(receiver, resolvedField);
+    }
+
+    /**
+     * @return whether a plugin handled the field load
+     */
+    private boolean genGetFieldHelper(ValueNode receiver, ResolvedJavaField resolvedField) {
         if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
             graph.recordField(resolvedField);
         }
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             if (plugin.handleLoadField(this, receiver, resolvedField)) {
-                return;
+                return true;
             }
         }
 
-        frameState.push(field.getJavaKind(), append(genLoadField(receiver, resolvedField)));
-        if (resolvedField.getName().equals("referent") && resolvedField.getDeclaringClass().equals(metaAccess.lookupJavaType(Reference.class))) {
+        frameState.push(resolvedField.getJavaKind(), append(genLoadField(receiver, resolvedField)));
+        if (resolvedField.getDeclaringClass().getName().equals("Ljava/lang/ref/Reference;") && resolvedField.getName().equals("referent")) {
             LocationIdentity referentIdentity = new FieldLocationIdentity(resolvedField);
             append(new MembarNode(0, referentIdentity));
         }
+        return false;
     }
 
     /**

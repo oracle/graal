@@ -119,6 +119,8 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         FrameDescriptor descriptor = new FrameDescriptor();
         TwoIfsTestNode result = new TwoIfsTestNode(5, -1);
         RootTestNode rootNode = new RootTestNode(descriptor, "twoIfsRoot", result);
+        TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
+        TruffleCompilerOptions.TruffleInstrumentFilter.setValue("*.*.execute");
         OptimizedCallTarget target = compileHelper("twoIfsRoot", rootNode, new Object[0]);
         Assert.assertTrue(target.isValid());
         // We run this twice to make sure that it comes first in the sorted access list.

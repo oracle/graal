@@ -541,7 +541,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         assertPartialEvalEqualsAndRunsCorrect(new Program("irreducibleLoop04", bytecodes, 0, 3));
     }
 
-    @Test(timeout = 2000)
+    @Test(timeout = 5000)
     public void manyIfsProgram() {
         initializeForTimeout();
         byte[] bytecodes = new byte[]{

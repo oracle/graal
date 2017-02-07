@@ -47,14 +47,6 @@ public class EffectList implements Iterable<EffectList.Effect> {
             return false;
         }
 
-        /**
-         * Determines how many objects are virtualized (positive) or materialized (negative) by this
-         * effect.
-         */
-        default int virtualObjects() {
-            return 0;
-        }
-
         void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes);
     }
 

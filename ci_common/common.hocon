@@ -1,14 +1,20 @@
 # overlay version
-overlay = bce351e92fe50af9f7a3f9557005dc76b9acb5f3
+overlay = 02c87e4ce16a8aa8e9b4bfd555e7130c943f74f3
 
 java7 : {name : oraclejdk, version : "7",    platformspecific: true}
-java8 : {name : labsjdk, version : "8u111-jvmci-0.24-dev", platformspecific: true}
+java8 : {name : labsjdk, version : "8u111-jvmci-0.23", platformspecific: true}
 java9 : {name : labsjdk, version : "9-SNAPSHOT", platformspecific: true}
 java9EA : {name : labsjdk, version : "9-ea+152", platformspecific: true}
-java8Debug : {name : labsjdk, version : "8u111-jvmci-0.24-dev-fastdebug", platformspecific: true}
+java8Debug : {name : labsjdk, version : "8u111-jvmci-0.23-fastdebug", platformspecific: true}
+
+mx : {
+  packages : {
+    mx : "0e2401961274dc2eca8283e75a2405fe7750af9e"
+  }
+}
 
 chdirToSuite : ["cd", ${suite-root}]
-common : {
+common : ${mx} {
   setup : [${chdirToSuite}]
   timelimit : "30:00"
 }
@@ -34,7 +40,6 @@ commonSolaris : ${common} {
 commonDarwin : ${common} {
   packages : {
     # Brew does not support versions
-    git : ""
     mercurial : ""
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"

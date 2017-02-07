@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
-
 import java.util.EnumSet;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -34,8 +32,6 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
-import org.graalvm.compiler.hotspot.nodes.DeoptimizationFetchUnrollInfoCallNode;
-import org.graalvm.compiler.hotspot.nodes.UncommonTrapCallNode;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantStubCall;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
@@ -44,7 +40,6 @@ import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitution
 import org.graalvm.compiler.hotspot.replacements.SHA2Substitutions;
 import org.graalvm.compiler.hotspot.replacements.SHA5Substitutions;
 import org.graalvm.compiler.hotspot.replacements.SHASubstitutions;
-import org.graalvm.compiler.hotspot.stubs.DeoptimizationStub;
 import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
@@ -93,8 +88,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Use Graal stubs instead of HotSpot stubs where possible")
-        public static final OptionKey<Boolean> PreferGraalStubs = new OptionKey<>(false);
         @Option(help = "Use Graal arithmetic stubs instead of HotSpot stubs where possible")
         public static final OptionKey<Boolean> GraalArithmeticStubs = new OptionKey<>(true);
         @Option(help = "Enables instruction profiling on assembler level. Valid values are a comma separated list of supported instructions." +
@@ -132,16 +125,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_IN_CALLER = new ForeignCallDescriptor("exceptionHandlerInCaller", void.class, Object.class, Word.class);
 
     private final HotSpotGraalRuntimeProvider runtime;
-
-    /**
-     * @see DeoptimizationFetchUnrollInfoCallNode
-     */
-    public static final ForeignCallDescriptor FETCH_UNROLL_INFO = new ForeignCallDescriptor("fetchUnrollInfo", Word.class, long.class, int.class);
-
-    /**
-     * @see DeoptimizationStub#unpackFrames(ForeignCallDescriptor, Word, int)
-     */
-    public static final ForeignCallDescriptor UNPACK_FRAMES = newDescriptor(DeoptimizationStub.class, "unpackFrames", int.class, Word.class, int.class);
 
     /**
      * @see AESCryptSubstitutions#encryptBlockStub(ForeignCallDescriptor, Word, Word, Pointer)
@@ -318,11 +301,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      */
     public static final ForeignCallDescriptor INVOCATION_EVENT = new ForeignCallDescriptor("invocation_event", void.class, MethodCountersPointer.class);
     public static final ForeignCallDescriptor BACKEDGE_EVENT = new ForeignCallDescriptor("backedge_event", void.class, MethodCountersPointer.class, int.class, int.class);
-
-    /**
-     * @see UncommonTrapCallNode
-     */
-    public static final ForeignCallDescriptor UNCOMMON_TRAP = new ForeignCallDescriptor("uncommonTrap", Word.class, Word.class, int.class, int.class);
 
     public HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(providers);

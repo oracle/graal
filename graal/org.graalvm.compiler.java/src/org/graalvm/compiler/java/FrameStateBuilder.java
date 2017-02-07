@@ -625,7 +625,6 @@ public final class FrameStateBuilder implements SideEffectsState {
          * slots at the OSR entry aren't cleared. it is also not enough to rely on PiNodes with
          * Kind.Illegal, because the conflicting branch might not have been parsed.
          */
-
         if (!GraalOptions.OptClearNonLiveLocals.getValue(graph.getOptions())) {
             return;
         }

@@ -22,15 +22,12 @@
  */
 package org.graalvm.compiler.truffle.test.builtins;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -52,24 +49,23 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
     @Child private IndirectCallNode indirectCall = Truffle.getRuntime().createIndirectCallNode();
 
     @Specialization
-    public SLFunction callUntilCompiled(VirtualFrame frame, SLFunction function, @SuppressWarnings("unused") SLNull checkTarget) {
-        return callUntilCompiled(frame, function, false);
+    public SLFunction callUntilCompiled(SLFunction function, @SuppressWarnings("unused") SLNull checkTarget) {
+        return callUntilCompiled(function, false);
     }
 
     @Specialization
-    public SLFunction callUntilCompiled(VirtualFrame frame, SLFunction function, boolean checkTarget) {
+    public SLFunction callUntilCompiled(SLFunction function, boolean checkTarget) {
         OptimizedCallTarget target = ((OptimizedCallTarget) function.getCallTarget());
         for (int i = 0; i < MAX_CALLS; i++) {
             if (isCompiling(target)) {
                 break;
             } else {
-                indirectCall.call(frame, target, EMPTY_ARGS);
+                indirectCall.call(target, EMPTY_ARGS);
             }
         }
-        waitForCompilation(target);
 
         // call one more in compiled
-        indirectCall.call(frame, target, EMPTY_ARGS);
+        indirectCall.call(target, EMPTY_ARGS);
 
         if (checkTarget) {
             checkTarget(target);
@@ -82,15 +78,6 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
     private static void checkTarget(OptimizedCallTarget target) throws SLAssertionError {
         if (!target.isValid()) {
             throw new SLAssertionError("Function " + target + " invalidated.");
-        }
-    }
-
-    @TruffleBoundary
-    private static void waitForCompilation(OptimizedCallTarget target) {
-        try {
-            ((GraalTruffleRuntime) Truffle.getRuntime()).waitForCompilation(target, 640000);
-        } catch (ExecutionException | TimeoutException e) {
-            throw new RuntimeException(e);
         }
     }
 
