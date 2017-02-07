@@ -47,7 +47,7 @@ public class ClassCastExceptionStub extends CreateExceptionStub {
     }
 
     @Snippet
-    private static Object createClassCastException(Object object, KlassPointer targetKlass, @ConstantParameter Register threadRegister) {
+    private static Object createClassCastException(@Snippet.NonNullParameter Object object, KlassPointer targetKlass, @ConstantParameter Register threadRegister) {
         KlassPointer objKlass = HotSpotReplacementsUtil.loadHub(object);
         return createException(threadRegister, ClassCastException.class, objKlass, targetKlass);
     }
