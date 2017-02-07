@@ -47,6 +47,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probabil
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -242,7 +243,7 @@ public class InstanceOfSnippets implements Snippets {
     }
 
     @Snippet
-    public static Object isAssignableFrom(Class<?> thisClassNonNull, Class<?> otherClass, Object trueValue, Object falseValue) {
+    public static Object isAssignableFrom(@NonNullParameter Class<?> thisClassNonNull, Class<?> otherClass, Object trueValue, Object falseValue) {
         if (otherClass == null) {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
             return false;

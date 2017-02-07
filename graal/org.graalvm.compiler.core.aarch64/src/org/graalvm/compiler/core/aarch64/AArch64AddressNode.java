@@ -90,6 +90,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
         gen.setResult(this, new AArch64AddressValue(kind, baseValue, indexValue, displacement, scaled, addressingMode));
     }
 
+    @Override
     public ValueNode getBase() {
         return base;
     }

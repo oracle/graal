@@ -354,6 +354,12 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 b.push(returnKind, wordToObject);
                 break;
 
+            case TO_OBJECT_NON_NULL:
+                assert args.length == 1;
+                WordCastNode wordToObjectNonNull = b.add(WordCastNode.wordToObjectNonNull(args[0], wordKind));
+                b.push(returnKind, wordToObjectNonNull);
+                break;
+
             case CAS_POINTER:
                 assert args.length == 5;
                 AddressNode address = makeAddress(b, args[0], args[1]);

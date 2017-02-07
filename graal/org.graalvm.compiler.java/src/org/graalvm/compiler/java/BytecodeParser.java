@@ -3358,13 +3358,15 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
         }
+
+        boolean nonNull = ((ObjectStamp) object.stamp()).nonNull();
         if (castNode == null) {
             LogicNode condition = genUnique(createInstanceOfAllowNull(checkedType, object, null));
             if (condition.isTautology()) {
                 castNode = object;
             } else {
                 FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                castNode = append(new PiNode(object, StampFactory.object(checkedType), fixedGuard));
+                castNode = append(new PiNode(object, StampFactory.object(checkedType, nonNull), fixedGuard));
             }
         }
         frameState.push(JavaKind.Object, castNode);

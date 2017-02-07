@@ -67,4 +67,9 @@ public class SPARCImmediateAddressNode extends AddressNode implements LIRLowerab
 
         gen.setResult(this, new SPARCImmediateAddressValue(kind, baseValue, displacement));
     }
+
+    @Override
+    public ValueNode getBase() {
+        return base;
+    }
 }

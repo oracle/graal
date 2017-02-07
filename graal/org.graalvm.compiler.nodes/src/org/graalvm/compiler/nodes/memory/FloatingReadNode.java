@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
@@ -61,6 +62,9 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(TYPE, address, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
+
+        // The input to floating reads must be always non-null.
+        assert !(address.getBase().stamp() instanceof ObjectStamp) || ((ObjectStamp) address.getBase().stamp()).nonNull() : address.getBase();
     }
 
     @Override

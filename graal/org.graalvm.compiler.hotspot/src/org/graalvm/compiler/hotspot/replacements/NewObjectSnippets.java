@@ -219,7 +219,7 @@ public class NewObjectSnippets implements Snippets {
             result = newInstance(HotSpotBackend.NEW_INSTANCE, hub);
         }
         profileAllocation("instance", size, typeContext, options);
-        return piCast(verifyOop(result), StampFactory.forNodeIntrinsic());
+        return result;
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class, returnStampIsNonNull = true)
@@ -232,7 +232,7 @@ public class NewObjectSnippets implements Snippets {
         // just load it from the corresponding cell and avoid the resolution check. We have to use a
         // fixed load though, to prevent it from floating above the initialization.
         KlassPointer picHub = LoadConstantIndirectlyFixedNode.loadKlass(hub);
-        return allocateInstance(size, picHub, prototypeMarkWord, fillContents, threadRegister, constantSize, typeContext, options);
+        return piCast(verifyOop(allocateInstance(size, picHub, prototypeMarkWord, fillContents, threadRegister, constantSize, typeContext, options)), StampFactory.forNodeIntrinsic());
     }
 
     @Snippet
@@ -505,7 +505,7 @@ public class NewObjectSnippets implements Snippets {
             fillWithGarbage(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, useSnippetCounters);
         }
         MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, INIT_LOCATION);
-        return memory.toObject();
+        return memory.toObjectNonNull();
     }
 
     @Snippet

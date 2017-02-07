@@ -65,6 +65,7 @@ public class SPARCIndexedAddressNode extends AddressNode implements LIRLowerable
         gen.setResult(this, new SPARCIndexedAddressValue(kind, baseValue, indexValue));
     }
 
+    @Override
     public ValueNode getBase() {
         return base;
     }
