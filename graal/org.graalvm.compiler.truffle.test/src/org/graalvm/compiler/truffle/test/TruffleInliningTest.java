@@ -111,7 +111,7 @@ public abstract class TruffleInliningTest {
             public int size;
             public int execCount;
 
-            public TargetInstruction(int size, int execCount) {
+            TargetInstruction(int size, int execCount) {
                 this.size = size;
                 this.execCount = execCount;
             }

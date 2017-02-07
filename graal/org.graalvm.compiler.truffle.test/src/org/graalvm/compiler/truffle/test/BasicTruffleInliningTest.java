@@ -66,7 +66,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     public void testInlineBigFunctions() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()-3).
+                target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() - 3).
                 target("caller").
                     calls("callee").
                 build();
@@ -91,7 +91,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         // @formatter:off
         TruffleInlining decisions = builder.
                 target("callee").
-                target("caller", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()-3).
+                target("caller", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() - 3).
                 calls("callee").
                 build();
         // @formatter:on
@@ -146,7 +146,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     public void testInlineBigWithCallSites() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", (TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3)-3). // Minus 3 because of 3 call sites in the caller.
+                target("callee", (TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3) - 3).// Minus 3 because of 3 call sites in the caller.
                 target("caller").
                     calls("callee").
                     calls("callee").
