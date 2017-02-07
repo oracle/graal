@@ -277,7 +277,6 @@ import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -3345,7 +3344,7 @@ public class BytecodeParser implements GraphBuilderContext {
         ValueNode castNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
-                object = appendNullCheck(object);
+                object = nullCheckedValue(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
                     LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
@@ -3372,19 +3371,6 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.push(JavaKind.Object, castNode);
     }
 
-    private ValueNode appendNullCheck(ValueNode object) {
-        if (object.stamp() instanceof AbstractPointerStamp) {
-            AbstractPointerStamp stamp = (AbstractPointerStamp) object.stamp();
-            if (stamp.nonNull()) {
-                return object;
-            }
-        }
-
-        LogicNode isNull = append(IsNullNode.create(object));
-        FixedGuardNode fixedGuard = append(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true));
-        return append(new PiNode(object, object.stamp().join(StampFactory.objectNonNull()), fixedGuard));
-    }
-
     private void genInstanceOf() {
         int cpi = getStream().readCPI();
         JavaType type = lookupType(cpi, INSTANCEOF);
@@ -3406,7 +3392,7 @@ public class BytecodeParser implements GraphBuilderContext {
         LogicNode instanceOfNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
-                object = appendNullCheck(object);
+                object = nullCheckedValue(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
                     LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));

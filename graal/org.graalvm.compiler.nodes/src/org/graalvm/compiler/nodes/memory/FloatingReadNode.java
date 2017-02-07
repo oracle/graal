@@ -63,8 +63,8 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
         super(TYPE, address, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
 
-        // The input to floating reads must be always non-null.
-        assert !(address.getBase().stamp() instanceof ObjectStamp) || ((ObjectStamp) address.getBase().stamp()).nonNull() : address.getBase();
+        // The input to floating reads must be always non-null or have at least a guard.
+        assert guard != null || !(address.getBase().stamp() instanceof ObjectStamp) || ((ObjectStamp) address.getBase().stamp()).nonNull() : address.getBase();
     }
 
     @Override
