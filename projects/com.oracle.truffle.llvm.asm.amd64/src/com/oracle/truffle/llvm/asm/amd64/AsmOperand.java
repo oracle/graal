@@ -29,5 +29,5 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
-public abstract class AsmOperand {
+interface AsmOperand {
 }

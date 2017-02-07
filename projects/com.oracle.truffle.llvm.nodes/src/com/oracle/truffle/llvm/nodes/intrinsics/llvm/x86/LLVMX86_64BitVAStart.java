@@ -58,7 +58,7 @@ public class LLVMX86_64BitVAStart extends LLVMExpressionNode {
         this.malloc = heapFunctions.createMallocNode();
     }
 
-    enum VarArgArea {
+    private enum VarArgArea {
         GP_AREA,
         FP_AREA,
         OVERFLOW_AREA;

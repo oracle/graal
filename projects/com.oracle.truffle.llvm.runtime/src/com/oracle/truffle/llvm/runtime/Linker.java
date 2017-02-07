@@ -42,7 +42,7 @@ import java.util.Collection;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-public class Linker {
+public final class Linker {
 
     private static final int BUFFER_SIZE = 1024;
 

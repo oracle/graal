@@ -43,9 +43,9 @@ import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI8SelectNo
 import com.oracle.truffle.llvm.nodes.others.LLVMVectorSelectNodeFactory.LLVMI32VectorSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
-public class LLVMSelectFactory {
+final class LLVMSelectFactory {
 
-    public static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
+    static LLVMExpressionNode createSelect(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
         switch (llvmType) {
             case I1:
                 return LLVMI1SelectNodeGen.create(condition, trueValue, falseValue);
@@ -72,7 +72,7 @@ public class LLVMSelectFactory {
         }
     }
 
-    public static LLVMExpressionNode createSelectVector(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
+    static LLVMExpressionNode createSelectVector(LLVMBaseType llvmType, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
         switch (llvmType) {
             case I32_VECTOR:
                 return LLVMI32VectorSelectNodeGen.create(condition, trueValue, falseValue);

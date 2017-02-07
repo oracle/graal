@@ -29,22 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.floating;
 
-public class FloatHelper {
+final class FloatHelper {
 
     static final int FLOAT_SIGN_POS = 31;
 
     static final int FLOAT_FRACTION_BIT_WIDTH = 23;
 
-    public static final float POSITIVE_ZERO = 0;
+    static final float POSITIVE_ZERO = 0;
 
-    public static final float NEGATIVE_ZERO = -0.0f;
+    static final float NEGATIVE_ZERO = -0.0f;
 
-    public static final float NaN = Float.NaN;
+    static final float NaN = Float.NaN;
 
-    public static final float NEGATIVE_INFINITY = Float.NEGATIVE_INFINITY;
+    static final float NEGATIVE_INFINITY = Float.NEGATIVE_INFINITY;
 
-    public static final float POSITIVE_INFINITY = Float.POSITIVE_INFINITY;
-
-    public static final int FRACTION_MASK = BinaryHelper.getBitMask(FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
+    static final float POSITIVE_INFINITY = Float.POSITIVE_INFINITY;
 
 }

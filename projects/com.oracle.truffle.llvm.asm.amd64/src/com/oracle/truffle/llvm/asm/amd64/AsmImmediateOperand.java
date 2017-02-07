@@ -31,18 +31,12 @@ package com.oracle.truffle.llvm.asm.amd64;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
-public class AsmImmediateOperand extends AsmOperand {
+class AsmImmediateOperand implements AsmOperand {
     private final String val;
     private final long ival;
     private final boolean label;
 
-    public AsmImmediateOperand(String value) {
-        this.val = value;
-        this.ival = 0;
-        this.label = true;
-    }
-
-    public AsmImmediateOperand(long value) {
+    AsmImmediateOperand(long value) {
         this.val = null;
         this.ival = value;
         this.label = false;

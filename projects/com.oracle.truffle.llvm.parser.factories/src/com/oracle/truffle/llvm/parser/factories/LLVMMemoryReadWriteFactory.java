@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMLoadVectorNodeFactory.LLVMLoadDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMLoadVectorNodeFactory.LLVMLoadFloatVectorNodeGen;
@@ -74,18 +72,18 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeFactory.LLVMI64P
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeFactory.LLVMI8DirectLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeFactory.LLVMI8ProfilingLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMAccessGlobalVariableStorageNode;
-import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 
-public final class LLVMMemoryReadWriteFactory {
+final class LLVMMemoryReadWriteFactory {
 
     private LLVMMemoryReadWriteFactory() {
     }
 
-    public static LLVMExpressionNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
+    static LLVMExpressionNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget) {
         LLVMBaseType resultType = resolvedResultType.getLLVMBaseType();
 
         if (resolvedResultType instanceof VectorType) {
@@ -99,7 +97,7 @@ public final class LLVMMemoryReadWriteFactory {
         }
     }
 
-    public static LLVMExpressionNode createLoad(LLVMBaseType resultType, LLVMExpressionNode loadTarget, int bits) {
+    private static LLVMExpressionNode createLoad(LLVMBaseType resultType, LLVMExpressionNode loadTarget, int bits) {
         switch (resultType) {
             case I1:
                 return new LLVMI1UninitializedLoadNode(loadTarget);
@@ -144,8 +142,7 @@ public final class LLVMMemoryReadWriteFactory {
                     return LLVMAddressDirectLoadNodeGen.create(loadTarget);
                 }
             case FUNCTION_ADDRESS:
-                LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-                return LLVMFunctionDirectLoadNodeGen.create(loadTarget, context.getFunctionRegistry());
+                return LLVMFunctionDirectLoadNodeGen.create(loadTarget);
             case STRUCT:
             case ARRAY:
                 return LLVMStructDirectLoadNodeGen.create(loadTarget);
@@ -156,7 +153,7 @@ public final class LLVMMemoryReadWriteFactory {
         throw new AssertionError(resultType);
     }
 
-    public static LLVMExpressionNode createLoadVector(LLVMBaseType resultType, LLVMExpressionNode loadTarget, int size) {
+    private static LLVMExpressionNode createLoadVector(LLVMBaseType resultType, LLVMExpressionNode loadTarget, int size) {
         switch (resultType) {
             case I1_VECTOR:
                 return LLVMLoadI1VectorNodeGen.create(loadTarget, size);
@@ -177,11 +174,11 @@ public final class LLVMMemoryReadWriteFactory {
         }
     }
 
-    public static LLVMExpressionNode createStore(LLVMParserRuntime runtime, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
+    static LLVMExpressionNode createStore(LLVMParserRuntime runtime, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type) {
         return createStore(runtime, pointerNode, valueNode, type.getLLVMBaseType(), runtime.getByteSize(type));
     }
 
-    public static LLVMExpressionNode createStore(LLVMParserRuntime runtime, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, LLVMBaseType type, int size) {
+    private static LLVMExpressionNode createStore(LLVMParserRuntime runtime, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, LLVMBaseType type, int size) {
         switch (type) {
             case I1:
                 return LLVMI1StoreNodeGen.create(pointerNode, valueNode);

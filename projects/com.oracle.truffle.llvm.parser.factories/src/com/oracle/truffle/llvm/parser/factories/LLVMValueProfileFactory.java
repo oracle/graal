@@ -37,9 +37,9 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI6
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8ProfiledValueNodeGen;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
-public class LLVMValueProfileFactory {
+final class LLVMValueProfileFactory {
 
-    public static LLVMExpressionNode createValueProfiledNode(LLVMExpressionNode argNode, LLVMBaseType paramType) {
+    static LLVMExpressionNode createValueProfiledNode(LLVMExpressionNode argNode, LLVMBaseType paramType) {
         switch (paramType) {
             case I8:
                 return LLVMI8ProfiledValueNodeGen.create(argNode);

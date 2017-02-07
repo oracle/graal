@@ -37,14 +37,14 @@ import java.util.stream.Collectors;
 
 public final class OptionSummary {
 
-    public static class OptionInfo {
+    private static final class OptionInfo {
         private final String category;
         @SuppressWarnings("unused") private final String name;
         private final String optionName;
         private final String defaultValue;
         private final String help;
 
-        public OptionInfo(String category, String name, String optionName, String defaultValue, String help) {
+        private OptionInfo(String category, String name, String optionName, String defaultValue, String help) {
             this.category = category;
             this.name = name;
             this.optionName = optionName;

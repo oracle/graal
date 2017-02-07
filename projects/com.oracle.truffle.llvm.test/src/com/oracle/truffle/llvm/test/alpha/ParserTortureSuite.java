@@ -45,7 +45,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
 @RunWith(Parameterized.class)

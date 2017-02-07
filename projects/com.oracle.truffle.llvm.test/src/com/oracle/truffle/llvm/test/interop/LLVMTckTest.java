@@ -40,7 +40,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.tck.TruffleTCK;
 

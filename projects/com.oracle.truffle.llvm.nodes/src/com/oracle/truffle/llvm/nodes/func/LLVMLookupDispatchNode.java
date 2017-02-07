@@ -38,8 +38,8 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
@@ -51,9 +51,9 @@ public abstract class LLVMLookupDispatchNode extends Node {
 
     protected static final int INLINE_CACHE_SIZE = 5;
 
-    protected final LLVMContext context;
-    protected final LLVMRuntimeType retType;
-    protected final Type[] argTypes;
+    private final LLVMContext context;
+    private final LLVMRuntimeType retType;
+    private final Type[] argTypes;
 
     protected LLVMLookupDispatchNode(LLVMContext context, LLVMRuntimeType retType, Type[] argTypes) {
         this.context = context;
@@ -86,7 +86,7 @@ public abstract class LLVMLookupDispatchNode extends Node {
         if (function instanceof LLVMFunctionDescriptor) {
             return (LLVMFunctionDescriptor) function;
         } else {
-            return context.getFunctionRegistry().lookup(function);
+            return context.lookup(function);
         }
     }
 
@@ -107,7 +107,7 @@ public abstract class LLVMLookupDispatchNode extends Node {
     }
 
     @ExplodeLoop
-    protected Object[] getForeignArguments(Object[] arguments) {
+    private Object[] getForeignArguments(Object[] arguments) {
         assert arguments.length == argTypes.length;
         Object[] args = new Object[argTypes.length - 1];
         for (int i = 0; i < argTypes.length - 1; i++) {

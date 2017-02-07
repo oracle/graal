@@ -29,17 +29,17 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
-public class X86_64BitVarArgs {
+class X86_64BitVarArgs {
 
     // see http://www.x86-64.org/documentation/abi.pdf
-    public static final int GP_OFFSET = 0;
-    public static final int FP_OFFSET = 4;
-    public static final int OVERFLOW_ARG_AREA = 8;
-    public static final int REG_SAVE_AREA = 16;
+    static final int GP_OFFSET = 0;
+    static final int FP_OFFSET = 4;
+    static final int OVERFLOW_ARG_AREA = 8;
+    static final int REG_SAVE_AREA = 16;
 
-    public static final int MAX_GP_OFFSET = 48; // 6 * 8
-    public static final int MAX_FP_OFFSET = 304; // 6 * 8 + 16 * 6
+    static final int MAX_GP_OFFSET = 48; // 6 * 8
+    static final int MAX_FP_OFFSET = 304; // 6 * 8 + 16 * 6
 
-    public static final int TYPE_LENGTH = 8; // TODO: at the moment only 8 byte types allowed
+    static final int TYPE_LENGTH = 8; // TODO: at the moment only 8 byte types allowed
 
 }

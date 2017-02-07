@@ -35,8 +35,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
@@ -44,9 +42,11 @@ import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMAddressLiteralNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -61,7 +61,7 @@ public abstract class LLVMAtExit extends LLVMIntrinsic {
         LLVMExpressionNode[] args = {new LLVMAddressLiteralNode(context.getStack().getUpperBounds())};
         Type[] argsTypes = {new PointerType(null)};
 
-        LLVMFunctionDescriptor desc = context.getFunctionRegistry().lookup(func);
+        LLVMFunctionDescriptor desc = context.lookup(func);
         LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(desc);
 
         LLVMCallNode callNode = new LLVMCallNode(context, LLVMRuntimeType.VOID, functionNode, args, argsTypes);

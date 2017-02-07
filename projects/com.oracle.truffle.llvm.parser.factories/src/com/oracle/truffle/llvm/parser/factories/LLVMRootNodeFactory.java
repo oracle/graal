@@ -35,18 +35,18 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
-import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-public class LLVMRootNodeFactory {
+class LLVMRootNodeFactory {
 
-    public static LLVMGlobalRootNode createGlobalRootNode(
+    static LLVMGlobalRootNode createGlobalRootNode(
                     LLVMParserRuntime runtime,
                     RootCallTarget mainCallTarget,
                     Object[] args,
@@ -62,7 +62,7 @@ public class LLVMRootNodeFactory {
                         mainTypes);
     }
 
-    public static LLVMGlobalRootNode createGlobalRootNode(
+    private static LLVMGlobalRootNode createGlobalRootNode(
                     LLVMContext context,
                     FrameSlot stack,
                     FrameDescriptor frame,

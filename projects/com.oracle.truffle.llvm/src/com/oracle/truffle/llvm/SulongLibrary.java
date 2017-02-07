@@ -41,19 +41,19 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
-public class SulongLibrary {
+class SulongLibrary {
 
     private static final int BUFFER_SIZE = 1024;
 
     private File file;
 
-    public SulongLibrary(File file) {
+    SulongLibrary(File file) {
         this.file = file;
     }
 
-    public void readContents(Consumer<String> handleLibrary, Consumer<Source> handleSource) throws IOException {
+    void readContents(Consumer<String> handleLibrary, Consumer<Source> handleSource) throws IOException {
         final byte[] buffer = new byte[BUFFER_SIZE];
 
         try (ZipInputStream zipStream = new ZipInputStream(new FileInputStream(file))) {

@@ -29,18 +29,11 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
-public class AsmParseException extends RuntimeException {
+class AsmParseException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
-    public AsmParseException(String msg) {
+    AsmParseException(String msg) {
         super(msg);
     }
 
-    public AsmParseException(String msg, Throwable t) {
-        super(msg, t);
-    }
-
-    public AsmParseException(Throwable t) {
-        super(t);
-    }
 }

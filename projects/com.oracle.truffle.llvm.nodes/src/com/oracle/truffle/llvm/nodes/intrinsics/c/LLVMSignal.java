@@ -46,20 +46,20 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
-import com.oracle.truffle.llvm.nodes.api.LLVMThread;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMAddressLiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI32LiteralNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import com.oracle.truffle.llvm.runtime.LLVMThread;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -199,7 +199,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                 Type argType1 = IntegerType.INTEGER;
                 Type[] argsTypes = {argType0, argType1};
 
-                LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(context.getFunctionRegistry().lookup(function));
+                LLVMExpressionNode functionNode = LLVMFunctionLiteralNodeGen.create(context.lookup(function));
 
                 LLVMCallNode callNode = new LLVMCallNode(context, LLVMRuntimeType.VOID, functionNode, args, argsTypes);
 

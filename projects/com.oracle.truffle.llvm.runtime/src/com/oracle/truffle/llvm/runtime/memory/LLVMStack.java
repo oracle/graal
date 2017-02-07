@@ -92,11 +92,11 @@ public final class LLVMStack extends LLVMMemory {
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
     @ValueType
-    public static class AllocationResult {
+    public static final class AllocationResult {
         private final LLVMAddress stackPointer;
         private final LLVMAddress allocatedMemory;
 
-        public AllocationResult(LLVMAddress stackPointer, LLVMAddress allocatedMemory) {
+        private AllocationResult(LLVMAddress stackPointer, LLVMAddress allocatedMemory) {
             this.stackPointer = stackPointer;
             this.allocatedMemory = allocatedMemory;
         }
@@ -108,26 +108,6 @@ public final class LLVMStack extends LLVMMemory {
         public LLVMAddress getAllocatedMemory() {
             return allocatedMemory;
         }
-    }
-
-    /**
-     * Allocates stack memory.
-     *
-     * @param size the size of the memory to be allocated, must be greater equals zero
-     * @param alignment the alignment, either {@link #NO_ALIGNMENT_REQUIREMENTS} or a power of two.
-     * @return the allocated memory, satisfying the alignment requirements
-     */
-    public AllocationResult allocateMemory(final LLVMAddress stackPointer, final long size, final int alignment) {
-        assert size >= 0;
-        assert alignment != 0 && powerOfTo(alignment);
-        final long alignedAllocation = (stackPointer.getVal() - size) & -alignment;
-        LLVMAddress newStackPointer = LLVMAddress.fromLong(alignedAllocation);
-        if (newStackPointer.getVal() < lowerBounds) {
-            CompilerDirectives.transferToInterpreter();
-            throw new StackOverflowError("stack overflow");
-        }
-        final LLVMAddress allocatedMemory = LLVMAddress.fromLong(alignedAllocation);
-        return new AllocationResult(newStackPointer, allocatedMemory);
     }
 
     /**

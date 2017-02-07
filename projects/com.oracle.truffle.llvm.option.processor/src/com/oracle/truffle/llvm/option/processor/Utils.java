@@ -67,13 +67,13 @@ final class Utils {
         return getSimpleName(element.asType());
     }
 
-    static TypeMirror getTypeMirror(ProcessingEnvironment env, Class<?> clazz) {
+    private static TypeMirror getTypeMirror(ProcessingEnvironment env, Class<?> clazz) {
         String name = clazz.getCanonicalName();
         TypeElement elem = env.getElementUtils().getTypeElement(name);
         return elem.asType();
     }
 
-    static String getSimpleName(TypeMirror mirror) {
+    private static String getSimpleName(TypeMirror mirror) {
         switch (mirror.getKind()) {
             case BOOLEAN:
                 return "boolean";
@@ -110,7 +110,7 @@ final class Utils {
         }
     }
 
-    static String getQualifiedName(TypeMirror mirror) {
+    private static String getQualifiedName(TypeMirror mirror) {
         switch (mirror.getKind()) {
             case BOOLEAN:
                 return "boolean";
@@ -149,7 +149,7 @@ final class Utils {
         }
     }
 
-    static String getQualifiedName(TypeElement element) {
+    private static String getQualifiedName(TypeElement element) {
         String qualifiedName = element.getQualifiedName().toString();
         if (qualifiedName.contains("$")) {
             /*
@@ -165,7 +165,7 @@ final class Utils {
         return qualifiedName;
     }
 
-    static TypeElement fromTypeMirror(TypeMirror mirror) {
+    private static TypeElement fromTypeMirror(TypeMirror mirror) {
         switch (mirror.getKind()) {
             case DECLARED:
                 return (TypeElement) ((DeclaredType) mirror).asElement();
@@ -176,7 +176,7 @@ final class Utils {
         }
     }
 
-    static String getDeclaredName(DeclaredType element, boolean includeTypeVariables) {
+    private static String getDeclaredName(DeclaredType element, boolean includeTypeVariables) {
         String simpleName = fixECJBinaryNameIssue(element.asElement().getSimpleName().toString());
 
         if (!includeTypeVariables || element.getTypeArguments().size() == 0) {
@@ -197,7 +197,7 @@ final class Utils {
         return b.toString();
     }
 
-    static String fixECJBinaryNameIssue(String name) {
+    private static String fixECJBinaryNameIssue(String name) {
         if (name.contains("$")) {
             int lastIndex = name.lastIndexOf('$');
             return name.substring(lastIndex + 1, name.length());
@@ -219,7 +219,7 @@ final class Utils {
         return findPackageElement(element).getQualifiedName().toString();
     }
 
-    static PackageElement findPackageElement(Element type) {
+    private static PackageElement findPackageElement(Element type) {
         List<Element> hierarchy = getElementHierarchy(type);
         for (Element element : hierarchy) {
             if (element.getKind() == ElementKind.PACKAGE) {
@@ -229,7 +229,7 @@ final class Utils {
         return null;
     }
 
-    static List<Element> getElementHierarchy(Element e) {
+    private static List<Element> getElementHierarchy(Element e) {
         List<Element> elements = new ArrayList<>();
         elements.add(e);
 
@@ -248,7 +248,7 @@ final class Utils {
         return getPackageName(clazz) + "." + getSimpleSubClassName(clazz);
     }
 
-    static boolean typeEquals(TypeMirror type1, TypeMirror type2) {
+    private static boolean typeEquals(TypeMirror type1, TypeMirror type2) {
         if (type1 == type2) {
             return true;
         } else if (type1 == null || type2 == null) {
@@ -262,7 +262,7 @@ final class Utils {
         }
     }
 
-    static String getUniqueIdentifier(TypeMirror typeMirror) {
+    private static String getUniqueIdentifier(TypeMirror typeMirror) {
         if (typeMirror.getKind() == TypeKind.ARRAY) {
             return getUniqueIdentifier(((ArrayType) typeMirror).getComponentType()) + "[]";
         } else {

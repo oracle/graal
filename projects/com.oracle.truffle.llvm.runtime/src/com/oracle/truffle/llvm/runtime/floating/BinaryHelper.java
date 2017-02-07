@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.floating;
 
-public class BinaryHelper {
+class BinaryHelper {
 
     static final long INT_MASK = 0xffffffffL;
 
-    public static long getBitMask(long bits) {
+    static long getBitMask(long bits) {
         return ~(-1L << bits);
     }
 
-    public static int getBitMask(int bit) {
+    static int getBitMask(int bit) {
         return ~(-1 << bit);
     }
 

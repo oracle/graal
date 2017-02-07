@@ -35,9 +35,9 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeFactory.
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public class LLVMGetElementPtrFactory {
+class LLVMGetElementPtrFactory {
 
-    public static LLVMExpressionNode create(LLVMBaseType llvmBaseType, LLVMExpressionNode currentAddress, LLVMExpressionNode valueRef, int indexedTypeLength, Type type) {
+    static LLVMExpressionNode create(LLVMBaseType llvmBaseType, LLVMExpressionNode currentAddress, LLVMExpressionNode valueRef, int indexedTypeLength, Type type) {
         switch (llvmBaseType) {
             case I32:
                 return LLVMAddressI32GetElementPtrNodeGen.create(currentAddress, valueRef, indexedTypeLength, type);

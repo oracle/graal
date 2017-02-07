@@ -39,9 +39,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class MetadataBlock {
 
-    protected final List<MetadataBaseNode> metadata;
+    private final List<MetadataBaseNode> metadata;
 
-    protected int startIndex = 0;
+    private int startIndex = 0;
 
     public MetadataBlock() {
         metadata = new ArrayList<>();
@@ -116,7 +116,6 @@ public final class MetadataBlock {
 
         MetadataBaseNode get();
 
-        int getIndex();
     }
 
     @Override
@@ -126,7 +125,7 @@ public final class MetadataBlock {
 
     public static final VoidReference voidRef = new VoidReference();
 
-    public static final class VoidReference implements MetadataReference {
+    private static final class VoidReference implements MetadataReference {
 
         private VoidReference() {
         }
@@ -143,17 +142,12 @@ public final class MetadataBlock {
         }
 
         @Override
-        public int getIndex() {
-            return -1;
-        }
-
-        @Override
         public String toString() {
             return "VoidReference";
         }
     }
 
-    public final class Reference implements MetadataReference {
+    private final class Reference implements MetadataReference {
         public final int index;
 
         private Reference(int index) {
@@ -168,11 +162,6 @@ public final class MetadataBlock {
         @Override
         public MetadataBaseNode get() {
             return metadata.get(index - startIndex);
-        }
-
-        @Override
-        public int getIndex() {
-            return index;
         }
 
         @Override

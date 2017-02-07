@@ -40,12 +40,12 @@ import com.oracle.truffle.api.nodes.Node;
 
 public final class LLVMNativeCallUtils {
 
-    public static Node getBindNode() {
+    static Node getBindNode() {
         CompilerAsserts.neverPartOfCompilation();
         return Message.createInvoke(1).createNode();
     }
 
-    public static TruffleObject bindNativeSymbol(Node bindNode, TruffleObject symbol, String signature) {
+    static TruffleObject bindNativeSymbol(Node bindNode, TruffleObject symbol, String signature) {
         try {
             return (TruffleObject) ForeignAccess.sendInvoke(bindNode, symbol, "bind", signature);
         } catch (Throwable ex) {
@@ -54,7 +54,7 @@ public final class LLVMNativeCallUtils {
         }
     }
 
-    public static Object callNativeFunction(Node nativeCall, TruffleObject function, Object[] nativeArgs) {
+    static Object callNativeFunction(Node nativeCall, TruffleObject function, Object[] nativeArgs) {
         try {
             return ForeignAccess.sendExecute(nativeCall, function, nativeArgs);
         } catch (Throwable e) {

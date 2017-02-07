@@ -39,9 +39,9 @@ import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI64SwitchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMSwitchNode.LLVMI8SwitchNode;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
-public class LLVMSwitchFactory {
+final class LLVMSwitchFactory {
 
-    public static LLVMControlFlowNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases,
+    static LLVMControlFlowNode createSwitch(LLVMExpressionNode cond, int defaultLabel, int[] otherLabels, LLVMExpressionNode[] cases,
                     LLVMBaseType llvmType, LLVMExpressionNode[] phiWriteNodes) {
         switch (llvmType) {
             case I8:

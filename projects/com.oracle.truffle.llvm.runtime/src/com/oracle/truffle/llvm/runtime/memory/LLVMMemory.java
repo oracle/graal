@@ -51,7 +51,7 @@ public abstract class LLVMMemory {
     static final Unsafe UNSAFE = getUnsafe();
 
     @SuppressWarnings("restriction")
-    static Unsafe getUnsafe() {
+    private static Unsafe getUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
         try {
             Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
@@ -62,16 +62,8 @@ public abstract class LLVMMemory {
         }
     }
 
-    static long extractAddrNullPointerAllowed(LLVMAddress addr) {
-        return addr.getVal();
-    }
-
     public static LLVMAddress allocateMemory(long size) {
         return LLVMAddress.fromLong(UNSAFE.allocateMemory(size));
-    }
-
-    public static void freeMemory(long pointer) {
-        UNSAFE.freeMemory(pointer);
     }
 
     public static boolean getI1(LLVMAddress addr) {
@@ -165,7 +157,7 @@ public abstract class LLVMMemory {
         }
     }
 
-    static void putByteArray(LLVMAddress addr, byte[] bytes) {
+    private static void putByteArray(LLVMAddress addr, byte[] bytes) {
         LLVMAddress currentAddress = addr;
         for (int i = 0; i < bytes.length; i++) {
             putI8(currentAddress, bytes[i]);
@@ -215,10 +207,6 @@ public abstract class LLVMMemory {
 
     public static LLVMDoubleVector getDoubleVector(LLVMAddress addr, int size) {
         return LLVMDoubleVector.readVectorFromMemory(addr, size);
-    }
-
-    public static void putStruct(LLVMAddress address, LLVMAddress value, int structSize) {
-        UNSAFE.copyMemory(address.getVal(), value.getVal(), structSize);
     }
 
     // watch out for casts such as I32* to I32Vector* when changing the way how vectors are

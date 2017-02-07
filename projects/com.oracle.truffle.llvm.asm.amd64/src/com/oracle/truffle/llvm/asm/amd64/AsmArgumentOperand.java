@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
-public class AsmArgumentOperand extends AsmOperand {
+class AsmArgumentOperand implements AsmOperand {
     private final int index;
 
-    public AsmArgumentOperand(int index) {
+    AsmArgumentOperand(int index) {
         this.index = index;
     }
 
