@@ -94,12 +94,13 @@ import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PrefetchAllocateNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
@@ -237,14 +238,21 @@ public class NewObjectSnippets implements Snippets {
     @Snippet
     public static Object allocateInstanceDynamic(Class<?> type, Class<?> classClass, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
                     @ConstantParameter OptionValues options) {
-        if (probability(SLOW_PATH_PROBABILITY, type == null || DynamicNewInstanceNode.throwsInstantiationException(type, classClass))) {
+        if (probability(SLOW_PATH_PROBABILITY, type == null)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        Class<?> nonNullType = PiNode.piCastNonNullClass(type, SnippetAnchorNode.anchor());
+
+        if (probability(SLOW_PATH_PROBABILITY, DynamicNewInstanceNode.throwsInstantiationException(type, classClass))) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
 
-        KlassPointer hub = ClassGetHubNode.readClass(type);
+        KlassPointer hub = ClassGetHubNode.readClass(nonNullType);
         if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
-            if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(hub))) {
-                int layoutHelper = readLayoutHelper(hub);
+            KlassPointer nonNullHub = ClassGetHubNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
+
+            if (probability(FAST_PATH_PROBABILITY, isInstanceKlassFullyInitialized(nonNullHub))) {
+                int layoutHelper = readLayoutHelper(nonNullHub);
                 /*
                  * src/share/vm/oops/klass.hpp: For instances, layout helper is a positive number,
                  * the instance size. This size is already passed through align_object_size and
@@ -252,12 +260,12 @@ public class NewObjectSnippets implements Snippets {
                  * allocated using the fastpath.
                  */
                 if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
-                    Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION);
+                    Word prototypeMarkWord = nonNullHub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION);
                     /*
                      * FIXME(je,ds): we should actually pass typeContext instead of "" but late
                      * binding of parameters is not yet supported by the GraphBuilderPlugin system.
                      */
-                    return allocateInstance(layoutHelper, hub, prototypeMarkWord, fillContents, threadRegister, false, "", options);
+                    return allocateInstance(layoutHelper, nonNullHub, prototypeMarkWord, fillContents, threadRegister, false, "", options);
                 }
             }
         }
@@ -350,10 +358,15 @@ public class NewObjectSnippets implements Snippets {
         }
 
         KlassPointer klass = loadKlassFromObject(elementType, arrayKlassOffset(INJECTED_VMCONFIG), CLASS_ARRAY_KLASS_LOCATION);
-        if (probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, klass.isNull() || length < 0)) {
+        if (klass.isNull()) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        int layoutHelper = knownElementKind != JavaKind.Illegal ? knownLayoutHelper : readLayoutHelper(klass);
+        KlassPointer nonNullKlass = ClassGetHubNode.piCastNonNull(klass, SnippetAnchorNode.anchor());
+
+        if (length < 0) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+        }
+        int layoutHelper = knownElementKind != JavaKind.Illegal ? knownLayoutHelper : readLayoutHelper(nonNullKlass);
         //@formatter:off
         // from src/share/vm/oops/klass.hpp:
         //
@@ -370,7 +383,7 @@ public class NewObjectSnippets implements Snippets {
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
-        Object result = allocateArrayImpl(klass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true, options);
+        Object result = allocateArrayImpl(nonNullKlass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", true, options);
         return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
 

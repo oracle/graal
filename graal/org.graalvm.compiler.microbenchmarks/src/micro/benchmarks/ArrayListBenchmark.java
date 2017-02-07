@@ -60,4 +60,12 @@ public class ArrayListBenchmark extends GraalBenchmark {
         }
         state.list.clear();
     }
+
+    @Benchmark
+    @Warmup(iterations = 20)
+    public void addNull(ThreadState state) {
+        for (int i = 0; i < N; ++i) {
+            state.list.add(null);
+        }
+    }
 }
