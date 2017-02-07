@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.printer;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,6 +33,7 @@ import java.util.Set;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.debug.GraalDebugConfig.Options;
+import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
@@ -52,8 +51,8 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -123,7 +122,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             StructuredGraph structuredGraph = (StructuredGraph) graph;
             schedule = structuredGraph.getLastSchedule();
             if (schedule == null && tryToSchedule) {
-                if (Options.PrintIdealGraphSchedule.getValue(GLOBAL)) {
+                if (Options.PrintIdealGraphSchedule.getValue(DebugScope.getConfig().getOptions())) {
                     try {
                         SchedulePhase schedulePhase = new SchedulePhase(graph.getOptions());
                         schedulePhase.apply(structuredGraph);

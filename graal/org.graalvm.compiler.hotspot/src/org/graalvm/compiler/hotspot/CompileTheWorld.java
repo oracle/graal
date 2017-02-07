@@ -496,7 +496,7 @@ public final class CompileTheWorld {
         CompilerThreadFactory factory = new CompilerThreadFactory("CompileTheWorld", new DebugConfigAccess() {
             @Override
             public GraalDebugConfig getDebugConfig() {
-                return DebugEnvironment.ensureInitialized(compiler.getGraalRuntime().getHostProviders().getSnippetReflection());
+                return DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, compiler.getGraalRuntime().getHostProviders().getSnippetReflection());
             }
         });
 

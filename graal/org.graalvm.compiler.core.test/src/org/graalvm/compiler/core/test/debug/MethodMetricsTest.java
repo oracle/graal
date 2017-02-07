@@ -243,6 +243,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
         OptionValues options = OptionValues.GLOBAL;
         GraalDebugConfig debugConfig = new GraalDebugConfig(
+                        options,
                         GraalDebugConfig.Options.Log.getValue(options),
                         GraalDebugConfig.Options.Count.getValue(options),
                         GraalDebugConfig.Options.TrackMemUse.getValue(options),

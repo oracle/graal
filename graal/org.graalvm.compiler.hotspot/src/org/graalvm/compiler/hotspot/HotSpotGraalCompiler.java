@@ -120,7 +120,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
                 compilationCounters.countCompilation(method);
             }
             // Ensure a debug configuration for this thread is initialized
-            DebugEnvironment.ensureInitialized(graalRuntime.getHostProviders().getSnippetReflection());
+            DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, graalRuntime.getHostProviders().getSnippetReflection());
             CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, true, options);
             CompilationRequestResult r = null;
             try (DebugConfigScope dcs = Debug.setConfig(new TopLevelDebugConfig());

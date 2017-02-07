@@ -153,7 +153,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
 
     @BeforeClass
     public static void init() {
-        DebugEnvironment.ensureInitialized();
+        DebugEnvironment.ensureInitialized(GLOBAL);
     }
 
     // @Test

@@ -142,6 +142,7 @@ public class MethodMetricsTestInterception02 extends MethodMetricsTest {
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
         OptionValues options = OptionValues.GLOBAL;
         GraalDebugConfig debugConfig = new GraalDebugConfig(
+                        options,
                         GraalDebugConfig.Options.Log.getValue(options),
                         ""/* unscoped meter */,
                         GraalDebugConfig.Options.TrackMemUse.getValue(options),

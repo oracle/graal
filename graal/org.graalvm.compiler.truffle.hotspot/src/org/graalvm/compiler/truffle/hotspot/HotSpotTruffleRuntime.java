@@ -124,7 +124,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         public GraalDebugConfig getDebugConfig() {
             if (Debug.isEnabled()) {
                 SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
-                return DebugEnvironment.ensureInitialized(snippetReflection);
+                return DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, snippetReflection);
             } else {
                 return null;
             }

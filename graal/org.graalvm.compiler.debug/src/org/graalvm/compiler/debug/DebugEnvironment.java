@@ -30,7 +30,6 @@ import static org.graalvm.compiler.debug.GraalDebugConfig.Options.MethodMeter;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Time;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.TrackMemUse;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Verify;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +49,7 @@ public class DebugEnvironment {
      *
      * @return the current {@link GraalDebugConfig} or null if nothing was done
      */
-    public static GraalDebugConfig ensureInitialized(Object... capabilities) {
+    public static GraalDebugConfig ensureInitialized(OptionValues options, Object... capabilities) {
         if (!Debug.isEnabled()) {
             return null;
         }
@@ -60,8 +59,8 @@ public class DebugEnvironment {
             JVMCI.initialize();
             List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
             List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
-            OptionValues options = GLOBAL;
             debugConfig = new GraalDebugConfig(
+                            options,
                             Log.getValue(options),
                             Count.getValue(options),
                             TrackMemUse.getValue(options),

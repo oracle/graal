@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.debug.internal.method;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -203,7 +201,7 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
         if (threadCache == null) {
             // this branch will only be executed once for each compiler thread on the first request
             // of a method metric
-            threadCache = new HashMap<>(GraalDebugConfig.Options.MethodFilter.getValue(GLOBAL) == null ? 128 : 16);
+            threadCache = new HashMap<>(GraalDebugConfig.Options.MethodFilter.getValue(DebugScope.getConfig().getOptions()) == null ? 128 : 16);
             threadEntries.set(threadCache);
             addThreadCompilationData(threadCache);
         }

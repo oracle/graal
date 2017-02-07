@@ -90,8 +90,6 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.StableOptionKey;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
@@ -197,7 +195,6 @@ public class HotSpotGraphBuilderPlugins {
                 registerCallSitePlugins(invocationPlugins);
                 registerReflectionPlugins(invocationPlugins, replacementBytecodeProvider);
                 registerConstantPoolPlugins(invocationPlugins, wordTypes, config, replacementBytecodeProvider);
-                registerStableOptionPlugins(invocationPlugins, snippetReflection);
                 registerAESPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerCRC32Plugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerBigIntegerPlugins(invocationPlugins, config, replacementBytecodeProvider);
@@ -439,22 +436,6 @@ public class HotSpotGraphBuilderPlugins {
         });
 
         r.registerMethodSubstitution(ThreadSubstitutions.class, "isInterrupted", Receiver.class, boolean.class);
-    }
-
-    private static void registerStableOptionPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
-        Registration r = new Registration(plugins, StableOptionKey.class);
-        r.register2("getValue", Receiver.class, OptionValues.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode values) {
-                if (receiver.isConstant() && values.isConstant()) {
-                    StableOptionKey<?> option = snippetReflection.asObject(StableOptionKey.class, (JavaConstant) receiver.get().asConstant());
-                    OptionValues optionValues = snippetReflection.asObject(OptionValues.class, (JavaConstant) values.asConstant());
-                    b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(option.getValue(optionValues)), b.getMetaAccess()));
-                    return true;
-                }
-                return false;
-            }
-        });
     }
 
     public static final String cbcEncryptName;

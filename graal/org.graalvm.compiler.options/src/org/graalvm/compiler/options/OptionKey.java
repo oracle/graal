@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.options;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
-
 import java.util.ServiceLoader;
 
 import org.graalvm.util.EconomicMap;
@@ -52,11 +50,14 @@ public class OptionKey<T> {
         this.defaultValue = (T) UNINITIALIZED;
     }
 
+    private static final Error NO_DEFAULT_VALUE = new InternalError("Option without a default value value must override defaultValue()");
+
     /**
      * Lazy initialization of default value.
      */
     protected T defaultValue() {
-        throw new InternalError("Option without a default value value must override defaultValue()");
+        /* We want this method to be allocation free. */
+        throw NO_DEFAULT_VALUE;
     }
 
     /**
@@ -80,13 +81,17 @@ public class OptionKey<T> {
      * names to the options.
      */
     static class Lazy {
-        static void init() {
+        static {
             ServiceLoader<OptionDescriptors> loader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
             for (OptionDescriptors opts : loader) {
                 for (OptionDescriptor desc : opts) {
                     desc.getName();
                 }
             }
+        }
+
+        static void init() {
+            /* Running the static class initializer does all the initialization. */
         }
     }
 
@@ -110,8 +115,8 @@ public class OptionKey<T> {
     }
 
     /**
-     * The initial value specified in source code. The returned value is not affected by calls to
-     * {@link #setValue(Object)} or by options set on the command line.
+     * The initial value specified in source code. The returned value is not affected by options set
+     * on the command line.
      */
     public final T getDefaultValue() {
         if (defaultValue == UNINITIALIZED) {
@@ -125,36 +130,14 @@ public class OptionKey<T> {
      * current value is different than the default.
      */
     public boolean hasBeenSet(OptionValues values) {
-        assert !(this instanceof StableOptionKey);
-        if (!(this instanceof StableOptionKey)) {
-            getValue(values); // ensure initialized
-        }
         return values.containsKey(this);
-    }
-
-    @Override
-    public final int hashCode() {
-        return getName().hashCode();
-    }
-
-    @Override
-    public final boolean equals(Object obj) {
-        return this == obj;
     }
 
     /**
      * Gets the value of this option in {@code values}.
      */
     public T getValue(OptionValues values) {
-        assert !(this instanceof StableOptionKey);
         return values.get(this);
-    }
-
-    /**
-     * Sets the value of this option.
-     */
-    public OptionValues setValue(OptionValues options, Object v) {
-        return options.set(this, v);
     }
 
     /**
@@ -168,13 +151,6 @@ public class OptionKey<T> {
     public void update(EconomicMap<OptionKey<?>, Object> values, Object v) {
         T oldValue = (T) values.put(this, v);
         onValueUpdate(values, oldValue, (T) v);
-    }
-
-    /**
-     * Sets the value of this option.
-     */
-    public final void setValue(Object v) {
-        setValue(GLOBAL, v);
     }
 
     /**
