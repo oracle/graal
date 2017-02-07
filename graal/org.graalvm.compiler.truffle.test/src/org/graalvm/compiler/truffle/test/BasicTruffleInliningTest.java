@@ -63,6 +63,18 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     }
 
     @Test
+    public void testInlineBigFunctions() {
+        // @formatter:off
+        TruffleInlining decisions = builder.
+                target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()-3).
+                target("caller").
+                    calls("callee").
+                build();
+        // @formatter:on
+        assertInlined(decisions, "callee");
+    }
+
+    @Test
     public void testDontInlineBigFunctions() {
         // @formatter:off
         TruffleInlining decisions = builder.
@@ -72,6 +84,18 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 build();
         // @formatter:on
         assertNotInlined(decisions, "callee");
+    }
+
+    @Test
+    public void testInlineIntoBigFunctions() {
+        // @formatter:off
+        TruffleInlining decisions = builder.
+                target("callee").
+                target("caller", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()-3).
+                calls("callee").
+                build();
+        // @formatter:on
+        assertInlined(decisions, "callee");
     }
 
     @Test
@@ -90,6 +114,18 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     public void testRecursiveInline() {
         TruffleInlining decisions = builder.target("recursive").calls("recursive").build();
         Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue().intValue(), countInlines(decisions, "recursive"));
+    }
+
+    @Test
+    public void testDoubleRecursiveInline() {
+        TruffleInlining decisions = builder.target("recursive").calls("recursive").calls("recursive").build();
+        int n = TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue().intValue();
+        long geometricSum = 2 * (1 - ((long) Math.pow(2, n))) / (1 - 2); // sum of geometric
+                                                                         // progression a*r^n is
+                                                                         // (a(1-r^n))/(1-r)
+                                                                         // for 2*2^n it is
+                                                                         // 2*(1-2^n)/(1-2)
+        Assert.assertEquals(geometricSum, countInlines(decisions, "recursive"));
     }
 
     @Test
