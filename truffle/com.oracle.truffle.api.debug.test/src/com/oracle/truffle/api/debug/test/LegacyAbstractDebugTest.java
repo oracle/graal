@@ -193,6 +193,11 @@ public abstract class LegacyAbstractDebugTest {
                 public void run() {
                     context.executionEvent.prepareStepInto();
                 }
+
+                @Override
+                public String toString() {
+                    return "step into";
+                }
             });
             complete();
         }
@@ -209,6 +214,11 @@ public abstract class LegacyAbstractDebugTest {
                     for (Runnable work : workList) {
                         work.run();
                     }
+                }
+
+                @Override
+                public String toString() {
+                    return "complete";
                 }
             });
             isComplete = true;
@@ -274,6 +284,11 @@ public abstract class LegacyAbstractDebugTest {
                 public void run() {
                     context.suspendedEvent.prepareStepInto(size);
                 }
+
+                @Override
+                public String toString() {
+                    return "step into " + size;
+                }
             });
             complete();
         }
@@ -284,6 +299,11 @@ public abstract class LegacyAbstractDebugTest {
             workList.add(new Runnable() {
                 public void run() {
                     context.suspendedEvent.prepareStepOver(size);
+                }
+
+                @Override
+                public String toString() {
+                    return "step over " + size;
                 }
             });
             complete();
@@ -296,6 +316,11 @@ public abstract class LegacyAbstractDebugTest {
                 public void run() {
                     context.suspendedEvent.prepareStepOut();
                 }
+
+                @Override
+                public String toString() {
+                    return "step out";
+                }
             });
             complete();
         }
@@ -306,6 +331,11 @@ public abstract class LegacyAbstractDebugTest {
             workList.add(new Runnable() {
                 public void run() {
                     context.suspendedEvent.prepareKill();
+                }
+
+                @Override
+                public String toString() {
+                    return "kill";
                 }
             });
             complete();
@@ -323,6 +353,11 @@ public abstract class LegacyAbstractDebugTest {
                     for (Runnable work : workList) {
                         work.run();
                     }
+                }
+
+                @Override
+                public String toString() {
+                    return "complete";
                 }
             });
             isComplete = true;
