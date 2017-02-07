@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.truffle.hotspot;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
@@ -29,8 +31,9 @@ import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleRuntimeAccess;
 
@@ -44,7 +47,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
     static class Options {
         // @formatter:off
         @Option(help = "Select a Graal compiler configuration for Truffle compilation (default: use Graal system compiler configuration).")
-        public static final OptionValue<String> TruffleCompilerConfiguration = new OptionValue<>(null);
+        public static final OptionKey<String> TruffleCompilerConfiguration = new OptionKey<>(null);
         // @formatter:on
     }
 
@@ -75,13 +78,13 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         }
 
         static GraalJVMCICompiler getCompiler() {
-            if (!Options.TruffleCompilerConfiguration.hasBeenSet()) {
+            if (!Options.TruffleCompilerConfiguration.hasBeenSet(GLOBAL)) {
                 JVMCICompiler compiler = JVMCI.getRuntime().getCompiler();
                 if (compiler instanceof GraalJVMCICompiler) {
                     return (GraalJVMCICompiler) compiler;
                 }
             }
-            CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue());
+            CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(TruffleCompilerOptions.getValue(Options.TruffleCompilerConfiguration));
             return HotSpotGraalCompilerFactory.createCompiler(JVMCI.getRuntime(), compilerConfigurationFactory);
         }
     }

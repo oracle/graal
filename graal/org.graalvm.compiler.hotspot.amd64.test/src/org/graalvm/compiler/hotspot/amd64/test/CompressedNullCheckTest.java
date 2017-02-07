@@ -22,18 +22,18 @@
  */
 package org.graalvm.compiler.hotspot.amd64.test;
 
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
+import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullChecks;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.hotspot.nodes.CompressionNode;
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.OptionValues;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -57,16 +57,15 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         Container c = new Container();
         c.i = i;
 
-        try (OverrideScope s = OptionValue.override(GraalOptions.OptImplicitNullChecks, true)) {
-            ResolvedJavaMethod method = getResolvedJavaMethod("testSnippet");
-            Result expect = executeExpected(method, null, c);
+        ResolvedJavaMethod method = getResolvedJavaMethod("testSnippet");
+        Result expect = executeExpected(method, null, c);
 
-            // make sure we don't get a profile that removes the implicit null check
-            method.reprofile();
+        // make sure we don't get a profile that removes the implicit null check
+        method.reprofile();
 
-            Result actual = executeActual(method, null, c);
-            assertEquals(expect, actual);
-        }
+        OptionValues options = new OptionValues(GLOBAL, OptImplicitNullChecks, true);
+        Result actual = executeActual(options, method, null, c);
+        assertEquals(expect, actual);
     }
 
     @SuppressWarnings("try")
@@ -76,9 +75,7 @@ public class CompressedNullCheckTest extends HotSpotGraalCompilerTest {
         Container c = new Container();
         c.i = i;
 
-        try (OverrideScope s = OptionValue.override(GraalOptions.OptImplicitNullChecks, false)) {
-            test("testSnippet", c);
-        }
+        test(new OptionValues(GLOBAL, OptImplicitNullChecks, false), "testSnippet", c);
     }
 
     @Test

@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.truffle;
 
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleExpansionSource;
+
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -137,7 +139,7 @@ public class TruffleExpansionLogger {
 
             String sourceSource = "";
             String targetSource = "";
-            if (TruffleCompilerOptions.TraceTruffleExpansionSource.getValue()) {
+            if (TruffleCompilerOptions.getValue(TraceTruffleExpansionSource)) {
                 sourceSource = formatSource(sourceElement);
                 targetSource = formatSource(targetElement);
             }

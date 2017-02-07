@@ -63,6 +63,7 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.printf;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.verifyObject;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -125,7 +126,7 @@ public class NewInstanceStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return StubOptions.TraceNewInstanceStub.getValue();
+        return StubOptions.TraceNewInstanceStub.getValue(GLOBAL);
     }
 
     /**
@@ -297,7 +298,7 @@ public class NewInstanceStub extends SnippetStub {
 
     @Fold
     static boolean forceSlowPath() {
-        return StubOptions.ForceUseOfNewInstanceStub.getValue();
+        return StubOptions.ForceUseOfNewInstanceStub.getValue(GLOBAL);
     }
 
     public static final ForeignCallDescriptor NEW_INSTANCE_C = newDescriptor(NewInstanceStub.class, "newInstanceC", void.class, Word.class, KlassPointer.class);

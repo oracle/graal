@@ -72,6 +72,7 @@ import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryNode;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
 
 public final class SchedulePhase extends Phase {
@@ -87,12 +88,12 @@ public final class SchedulePhase extends Phase {
 
     private final boolean immutableGraph;
 
-    public SchedulePhase() {
-        this(false);
+    public SchedulePhase(OptionValues options) {
+        this(false, options);
     }
 
-    public SchedulePhase(boolean immutableGraph) {
-        this(OptScheduleOutOfLoops.getValue() ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST, immutableGraph);
+    public SchedulePhase(boolean immutableGraph, OptionValues options) {
+        this(OptScheduleOutOfLoops.getValue(options) ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST, immutableGraph);
     }
 
     public SchedulePhase(SchedulingStrategy strategy) {
@@ -161,7 +162,7 @@ public final class SchedulePhase extends Phase {
                 sortNodesLatestWithinBlock(cfg, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited);
 
                 assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
-                assert (!GraalOptions.DetailedAsserts.getValue()) || MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
+                assert (!GraalOptions.DetailedAsserts.getValue(graph.getOptions())) || MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap);
 
                 this.blockToNodesMap = latestBlockToNodesMap;
 
@@ -627,7 +628,7 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            assert (!GraalOptions.DetailedAsserts.getValue()) || MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
+            assert (!GraalOptions.DetailedAsserts.getValue(cfg.graph.getOptions())) || MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
         }
 
         private static boolean isFixedEnd(FixedNode endNode) {

@@ -268,7 +268,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             ScheduleResult schedule = graph.getLastSchedule();
 
             for (Block block : schedule.getCFG().getBlocks()) {
-                processBlock(block, schedule, context != null ? context.getTarget().implicitNullCheckLimit : 0);
+                processBlock(graph, block, schedule, context != null ? context.getTarget().implicitNullCheckLimit : 0);
             }
             graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
         }
@@ -281,8 +281,8 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         return true;
     }
 
-    private static void processBlock(Block block, ScheduleResult schedule, int implicitNullCheckLimit) {
-        if (OptImplicitNullChecks.getValue() && implicitNullCheckLimit > 0) {
+    private static void processBlock(StructuredGraph graph, Block block, ScheduleResult schedule, int implicitNullCheckLimit) {
+        if (OptImplicitNullChecks.getValue(graph.getOptions()) && implicitNullCheckLimit > 0) {
             new UseImplicitNullChecks(implicitNullCheckLimit).processNodes(block, schedule);
         }
         new LowerGuards(block, Debug.isDumpEnabledForMethod() || Debug.isLogEnabledForMethod()).processNodes(block, schedule);

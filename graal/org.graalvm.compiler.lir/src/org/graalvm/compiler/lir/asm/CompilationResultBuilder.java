@@ -22,10 +22,10 @@
  */
 package org.graalvm.compiler.lir.asm;
 
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,10 +51,11 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.util.Equivalence;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
@@ -80,7 +81,7 @@ public class CompilationResultBuilder {
 
     // @formatter:off
     @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug)
-    public static final OptionValue<Boolean> PrintLIRWithAssembly = new OptionValue<>(false);
+    public static final OptionKey<Boolean> PrintLIRWithAssembly = new OptionKey<>(false);
     // @formatter:on
 
     private static class ExceptionInfo {
@@ -142,18 +143,19 @@ public class CompilationResultBuilder {
 
     private List<ExceptionInfo> exceptionInfoList;
 
+    private final OptionValues options;
     private final EconomicMap<Constant, Data> dataCache;
 
     private Consumer<LIRInstruction> beforeOp;
     private Consumer<LIRInstruction> afterOp;
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    CompilationResult compilationResult) {
-        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, EconomicMap.create(Equivalence.DEFAULT));
+                    OptionValues options, CompilationResult compilationResult) {
+        this(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, compilationResult, EconomicMap.create(Equivalence.DEFAULT));
     }
 
     public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    CompilationResult compilationResult, EconomicMap<Constant, Data> dataCache) {
+                    OptionValues options, CompilationResult compilationResult, EconomicMap<Constant, Data> dataCache) {
         this.target = codeCache.getTarget();
         this.codeCache = codeCache;
         this.foreignCalls = foreignCalls;
@@ -162,6 +164,7 @@ public class CompilationResultBuilder {
         this.dataBuilder = dataBuilder;
         this.compilationResult = compilationResult;
         this.frameContext = frameContext;
+        this.options = options;
         assert frameContext != null;
         this.dataCache = dataCache;
 
@@ -459,12 +462,12 @@ public class CompilationResultBuilder {
         if (block == null) {
             return;
         }
-        if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL) || PrintLIRWithAssembly.getValue()) {
+        if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL) || PrintLIRWithAssembly.getValue(getOptions())) {
             blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : lir.getLIRforBlock(block)) {
-            if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL) || PrintLIRWithAssembly.getValue()) {
+            if (Debug.isDumpEnabled(Debug.BASIC_LOG_LEVEL) || PrintLIRWithAssembly.getValue(getOptions())) {
                 blockComment(String.format("%d %s", op.id(), op));
             }
 
@@ -510,5 +513,9 @@ public class CompilationResultBuilder {
     public void setOpCallback(Consumer<LIRInstruction> beforeOp, Consumer<LIRInstruction> afterOp) {
         this.beforeOp = beforeOp;
         this.afterOp = afterOp;
+    }
+
+    public OptionValues getOptions() {
+        return options;
     }
 }

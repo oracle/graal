@@ -35,6 +35,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
 import org.graalvm.compiler.loop.phases.ReassociateInvariantPhase;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
@@ -56,13 +57,13 @@ import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 
 public class MidTier extends PhaseSuite<MidTierContext> {
 
-    public MidTier() {
+    public MidTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        if (ImmutableCode.getValue()) {
+        if (ImmutableCode.getValue(options)) {
             canonicalizer.disableReadCanonicalization();
         }
 
-        if (OptPushThroughPi.getValue()) {
+        if (OptPushThroughPi.getValue(options)) {
             appendPhase(new PushThroughPiPhase());
         }
 
@@ -71,26 +72,26 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         appendPhase(new ValueAnchorCleanupPhase());
         appendPhase(new LockEliminationPhase());
 
-        if (OptReadElimination.getValue()) {
+        if (OptReadElimination.getValue(options)) {
             appendPhase(new EarlyReadEliminationPhase(canonicalizer));
         }
 
-        if (OptFloatingReads.getValue()) {
+        if (OptFloatingReads.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase()));
         }
         appendPhase(new RemoveValueProxyPhase());
 
         appendPhase(canonicalizer);
 
-        if (OptEliminatePartiallyRedundantGuards.getValue()) {
+        if (OptEliminatePartiallyRedundantGuards.getValue(options)) {
             appendPhase(new OptimizeGuardAnchorsPhase());
         }
 
-        if (ConditionalElimination.getValue()) {
+        if (ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, true));
         }
 
-        if (OptEliminatePartiallyRedundantGuards.getValue()) {
+        if (OptEliminatePartiallyRedundantGuards.getValue(options)) {
             appendPhase(new OptimizeGuardAnchorsPhase());
         }
 
@@ -102,7 +103,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new GuardLoweringPhase()));
 
-        if (VerifyHeapAtReturn.getValue()) {
+        if (VerifyHeapAtReturn.getValue(options)) {
             appendPhase(new VerifyHeapAtReturnPhase());
         }
 
@@ -110,11 +111,11 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new FrameStateAssignmentPhase());
 
-        if (ReassociateInvariants.getValue()) {
+        if (ReassociateInvariants.getValue(options)) {
             appendPhase(new ReassociateInvariantPhase());
         }
 
-        if (OptDeoptimizationGrouping.getValue()) {
+        if (OptDeoptimizationGrouping.getValue(options)) {
             appendPhase(new DeoptimizationGroupingPhase());
         }
 

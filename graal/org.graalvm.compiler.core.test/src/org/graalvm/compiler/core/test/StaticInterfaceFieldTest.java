@@ -22,13 +22,9 @@
  */
 package org.graalvm.compiler.core.test;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
 import java.lang.reflect.Method;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -39,10 +35,9 @@ import org.graalvm.compiler.debug.DebugConfigScope;
 import org.graalvm.compiler.debug.DelegatingDebugConfig;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.VerifyPhase;
@@ -50,6 +45,9 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.GraalTest;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Test that interfaces are correctly initialized by a static field resolution during eager graph
@@ -92,7 +90,7 @@ public class StaticInterfaceFieldTest extends GraalTest {
 
         final Method m = getMethod(clazz, methodName);
         ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-        StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO, INVALID_COMPILATION_ID);
+        StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
         try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("GraphBuilding", graph, method)) {
             graphBuilderSuite.apply(graph, context);
         } catch (Throwable e) {

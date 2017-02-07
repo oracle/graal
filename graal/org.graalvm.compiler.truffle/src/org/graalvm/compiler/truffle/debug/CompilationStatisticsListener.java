@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.truffle.debug;
 
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationStatisticDetails;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationStatistics;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.counting;
 import static java.util.stream.Collectors.groupingBy;
@@ -107,7 +109,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleCompilerOptions.TruffleCompilationStatistics.getValue() || TruffleCompilerOptions.TruffleCompilationStatisticDetails.getValue()) {
+        if (TruffleCompilerOptions.getValue(TruffleCompilationStatistics) || TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
             runtime.addCompilationListener(new CompilationStatisticsListener());
         }
     }
@@ -184,7 +186,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         loopCount.accept(callTargetStat.getLoopCount());
 
         truffleTierNodeCount.accept(graph.getNodeCount());
-        if (TruffleCompilerOptions.TruffleCompilationStatisticDetails.getValue()) {
+        if (TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
             truffleTierNodeStatistics.accept(nodeClassStream(graph));
         }
     }
@@ -194,7 +196,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         compilationLocal.get().graalTierFinished = System.nanoTime();
         graalTierNodeCount.accept(graph.getNodeCount());
 
-        if (TruffleCompilerOptions.TruffleCompilationStatisticDetails.getValue()) {
+        if (TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
             graalTierNodeStatistics.accept(nodeClassStream(graph));
         }
     }
@@ -282,7 +284,7 @@ public final class CompilationStatisticsListener extends AbstractDebugCompilatio
         printStatistic(rt, "  Marks", compilationResultMarks);
         printStatistic(rt, "  Data references", compilationResultDataPatches);
 
-        if (TruffleCompilerOptions.TruffleCompilationStatisticDetails.getValue()) {
+        if (TruffleCompilerOptions.getValue(TruffleCompilationStatisticDetails)) {
             printStatistic(rt, "Truffle nodes");
             nodeStatistics.printStatistics(rt, Class::getSimpleName);
             printStatistic(rt, "Graal nodes after Truffle tier");

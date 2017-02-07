@@ -46,7 +46,8 @@ import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.test.SubprocessUtil;
 
@@ -128,6 +129,8 @@ public class LazyInitializationTest {
         Assume.assumeFalse("This test can only run if JVMCI is not one of the default compilers", usesJvmciCompiler);
 
         args.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
+        args.add("-dsa");
+        args.add("-da");
         args.add("com.oracle.mxtool.junit.MxJUnitWrapper");
         args.addAll(Arrays.asList(tests));
 
@@ -176,9 +179,9 @@ public class LazyInitializationTest {
 
     private static boolean isGraalClass(String className) {
         if (className.startsWith("org.graalvm.compiler.truffle.") || className.startsWith("org.graalvm.compiler.serviceprovider.")) {
-            // Ignore classes in the org.graalvm.compiler.truffle package, they are all allowed.
-            // Also ignore classes in the graal serviceprovider package, as they might not be lazily
-            // loaded.
+            // Ignore classes in the com.oracle.graal.truffle package, they are all allowed.
+            // Also ignore classes in the Graal service provider package, as they might not be
+            // lazily loaded.
             return false;
         } else {
             return className.startsWith("org.graalvm.compiler.");
@@ -268,18 +271,13 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (cls == OptionsParser.class) {
+        if (cls == OptionsParser.class || cls == OptionValues.class) {
             // Classes implementing Graal option loading
             return true;
         }
 
-        if (OptionValue.class.isAssignableFrom(cls)) {
-            // If options are specified, that may implicitly load a custom OptionValue subclass.
-            return true;
-        }
-
-        if (OptionValue.OverrideScope.class.isAssignableFrom(cls)) {
-            // Reading options can check override scopes
+        if (OptionKey.class.isAssignableFrom(cls)) {
+            // If options are specified, that may implicitly load a custom OptionKey subclass.
             return true;
         }
 

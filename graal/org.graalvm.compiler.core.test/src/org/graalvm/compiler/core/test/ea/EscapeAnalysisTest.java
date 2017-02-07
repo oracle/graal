@@ -294,7 +294,7 @@ public class EscapeAnalysisTest extends EATestBase {
         Assert.assertEquals(1, graph.getNodes().filter(BoxNode.class).count());
         List<Node> nodes = graph.getNodes().snapshot();
         // verify that an additional run doesn't add or remove nodes
-        new PartialEscapePhase(false, false, new CanonicalizerPhase(), null).apply(graph, context);
+        new PartialEscapePhase(false, false, new CanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
         Assert.assertEquals(nodes.size(), graph.getNodeCount());
         for (Node node : nodes) {
             Assert.assertTrue(node.isAlive());
@@ -330,7 +330,7 @@ public class EscapeAnalysisTest extends EATestBase {
         graph.replaceFixedWithFloating(graph.getNodes().filter(LoadFieldNode.class).first(), graph.unique(ConstantNode.forInt(0)));
         new CanonicalizerPhase().apply(graph, context);
         // verify that an additional run removes all allocations
-        new PartialEscapePhase(false, false, new CanonicalizerPhase(), null).apply(graph, context);
+        new PartialEscapePhase(false, false, new CanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
         Assert.assertEquals(0, graph.getNodes().filter(CommitAllocationNode.class).count());
     }
 
@@ -402,7 +402,7 @@ public class EscapeAnalysisTest extends EATestBase {
     public void testFullyUnrolledLoop() {
         prepareGraph("testFullyUnrolledLoopSnippet", false);
         new LoopFullUnrollPhase(new CanonicalizerPhase(), new DefaultLoopPolicies()).apply(graph, context);
-        new PartialEscapePhase(false, new CanonicalizerPhase()).apply(graph, context);
+        new PartialEscapePhase(false, new CanonicalizerPhase(), graph.getOptions()).apply(graph, context);
         Assert.assertEquals(1, returnNodes.size());
         Assert.assertTrue(returnNodes.get(0).result() instanceof AllocatedObjectNode);
         CommitAllocationNode commit = ((AllocatedObjectNode) returnNodes.get(0).result()).getCommit();
@@ -433,7 +433,7 @@ public class EscapeAnalysisTest extends EATestBase {
     public void testPeeledLoop() {
         prepareGraph("testPeeledLoopSnippet", false);
         new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
-        new SchedulePhase().apply(graph);
+        new SchedulePhase(graph.getOptions()).apply(graph);
     }
 
     public static void testDeoptMonitorSnippetInner(Object o2, Object t, int i) {

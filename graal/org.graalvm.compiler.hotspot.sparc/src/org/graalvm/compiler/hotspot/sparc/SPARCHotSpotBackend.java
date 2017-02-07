@@ -91,9 +91,10 @@ import org.graalvm.compiler.lir.sparc.SPARCLIRInstructionMixin.SizeEstimate;
 import org.graalvm.compiler.lir.sparc.SPARCTailDelayedLIRInstruction;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.util.Equivalence;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -205,7 +206,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                 }
             }
 
-            if (ZapStackOnMethodEntry.getValue()) {
+            if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                 final int slotSize = 8;
                 for (int i = 0; i < frameSize / slotSize; ++i) {
                     // 0xC1C1C1C1
@@ -237,7 +238,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         // On SPARC we always use stack frames.
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
-        CompilationResultBuilder crb = factory.createBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, dataBuilder, frameContext, compilationResult);
+        OptionValues options = lir.getOptions();
+        CompilationResultBuilder crb = factory.createBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, dataBuilder, frameContext, options, compilationResult);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
@@ -499,9 +501,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig) {
+    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        return new SPARCHotSpotRegisterAllocationConfig(registerConfigNonNull);
+        return new SPARCHotSpotRegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo);
     }
 
     @Override

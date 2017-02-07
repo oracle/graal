@@ -27,6 +27,7 @@ import org.graalvm.compiler.debug.internal.method.MethodMetricsInlineeScopeInfo;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.common.inlining.info.elem.Inlineable;
@@ -63,9 +64,9 @@ public abstract class AbstractInlineInfo implements InlineInfo {
 
     @Override
     @SuppressWarnings("try")
-    public final void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer) {
+    public final void populateInlinableElements(HighTierContext context, StructuredGraph caller, CanonicalizerPhase canonicalizer, OptionValues options) {
         for (int i = 0; i < numberOfMethods(); i++) {
-            try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(), false)) {
+            try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", MethodMetricsInlineeScopeInfo.create(options), false)) {
                 Inlineable elem = Inlineable.getInlineableElement(methodAt(i), invoke, context, canonicalizer);
                 setInlinableElement(i, elem);
             }

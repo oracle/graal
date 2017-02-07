@@ -43,9 +43,10 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.util.Equivalence;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.UnmodifiableEconomicMap;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -63,7 +64,7 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  * A graph that contains at least one distinguished node : the {@link #start() start} node. This
  * node is the start of the control flow of the graph.
  */
-public class StructuredGraph extends Graph implements JavaMethodContext {
+public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
      * The different stages of the compilation of a {@link Graph} regarding the status of
@@ -116,8 +117,12 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     public enum AllowAssumptions {
         YES,
         NO;
-        public static AllowAssumptions from(boolean flag) {
+        public static AllowAssumptions ifTrue(boolean flag) {
             return flag ? YES : NO;
+        }
+
+        public static AllowAssumptions ifNonNull(Assumptions assumptions) {
+            return assumptions != null ? YES : NO;
         }
     }
 
@@ -146,6 +151,73 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
 
         public List<Node> nodesFor(Block block) {
             return blockToNodesMap.get(block);
+        }
+    }
+
+    /**
+     * Object used to create a {@link StructuredGraph}.
+     */
+    public static class Builder {
+        private String name;
+        private final Assumptions assumptions;
+        private SpeculationLog speculationLog;
+        private ResolvedJavaMethod rootMethod;
+        private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
+        private int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
+        private boolean useProfilingInfo = true;
+        private OptionValues options = OptionValues.GLOBAL;
+
+        /**
+         * Creates a builder for a graph.
+         */
+        public Builder(AllowAssumptions allowAssumptions) {
+            this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
+        }
+
+        /**
+         * Creates a builder for a graph that does not support {@link Assumptions}.
+         */
+        public Builder() {
+            assumptions = null;
+        }
+
+        public Builder name(String s) {
+            this.name = s;
+            return this;
+        }
+
+        public Builder method(ResolvedJavaMethod method) {
+            this.rootMethod = method;
+            return this;
+        }
+
+        public Builder speculationLog(SpeculationLog log) {
+            this.speculationLog = log;
+            return this;
+        }
+
+        public Builder compilationId(CompilationIdentifier id) {
+            this.compilationId = id;
+            return this;
+        }
+
+        public Builder entryBCI(int bci) {
+            this.entryBCI = bci;
+            return this;
+        }
+
+        public Builder useProfilingInfo(boolean flag) {
+            this.useProfilingInfo = flag;
+            return this;
+        }
+
+        public Builder options(OptionValues optionValues) {
+            this.options = optionValues;
+            return this;
+        }
+
+        public StructuredGraph build() {
+            return new StructuredGraph(name, rootMethod, entryBCI, assumptions, speculationLog, useProfilingInfo, compilationId, options);
         }
     }
 
@@ -191,65 +263,25 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
 
     private UnsafeAccessState hasUnsafeAccess = UnsafeAccessState.NO_ACCESS;
 
-    /**
-     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
-     * start} node.
-     */
-    public StructuredGraph(AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
-        this(null, null, allowAssumptions, compilationId);
-    }
-
     public static final boolean USE_PROFILING_INFO = true;
 
     public static final boolean NO_PROFILING_INFO = false;
 
-    private static final SpeculationLog NO_SPECULATION_LOG = null;
-
-    /**
-     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
-     * start} node.
-     */
-    public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
-        this(name, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, NO_SPECULATION_LOG, USE_PROFILING_INFO, compilationId);
-    }
-
-    public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, CompilationIdentifier compilationId) {
-        this(name, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog, USE_PROFILING_INFO, compilationId);
-    }
-
-    public StructuredGraph(String name, ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, boolean useProfilingInfo, CompilationIdentifier compilationId) {
-        this(name, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog, useProfilingInfo, compilationId);
-    }
-
-    public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
-        this(null, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, NO_SPECULATION_LOG, USE_PROFILING_INFO, compilationId);
-    }
-
-    public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, boolean useProfilingInfo, CompilationIdentifier compilationId) {
-        this(null, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, NO_SPECULATION_LOG, useProfilingInfo, compilationId);
-    }
-
-    public StructuredGraph(ResolvedJavaMethod method, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, CompilationIdentifier compilationId) {
-        this(null, method, JVMCICompiler.INVOCATION_ENTRY_BCI, allowAssumptions, speculationLog, USE_PROFILING_INFO, compilationId);
-    }
-
-    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, CompilationIdentifier compilationId) {
-        this(null, method, entryBCI, allowAssumptions, speculationLog, USE_PROFILING_INFO, compilationId);
-    }
-
-    public StructuredGraph(ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, boolean useProfilingInfo, CompilationIdentifier compilationId) {
-        this(null, method, entryBCI, allowAssumptions, speculationLog, useProfilingInfo, compilationId);
-    }
-
-    private StructuredGraph(String name, ResolvedJavaMethod method, int entryBCI, AllowAssumptions allowAssumptions, SpeculationLog speculationLog, boolean useProfilingInfo,
-                    CompilationIdentifier compilationId) {
-        super(name);
+    private StructuredGraph(String name,
+                    ResolvedJavaMethod method,
+                    int entryBCI,
+                    Assumptions assumptions,
+                    SpeculationLog speculationLog,
+                    boolean useProfilingInfo,
+                    CompilationIdentifier compilationId,
+                    OptionValues options) {
+        super(name, options);
         this.setStart(add(new StartNode()));
         this.rootMethod = method;
         this.graphId = uniqueGraphIds.incrementAndGet();
         this.compilationId = compilationId;
         this.entryBCI = entryBCI;
-        this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
+        this.assumptions = assumptions;
         this.speculationLog = speculationLog;
         this.useProfilingInfo = useProfilingInfo;
     }
@@ -362,8 +394,15 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     private StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId) {
-        AllowAssumptions allowAssumptions = AllowAssumptions.from(assumptions != null);
-        StructuredGraph copy = new StructuredGraph(newName, method(), entryBCI, allowAssumptions, speculationLog, useProfilingInfo, newCompilationId);
+        AllowAssumptions allowAssumptions = AllowAssumptions.ifNonNull(assumptions);
+        StructuredGraph copy = new StructuredGraph(newName,
+                        method(),
+                        entryBCI,
+                        assumptions == null ? null : new Assumptions(),
+                        speculationLog,
+                        useProfilingInfo,
+                        newCompilationId,
+                        getOptions());
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
         }
@@ -380,7 +419,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         return copy;
     }
 
-    public final StructuredGraph copyWithIdentifier(CompilationIdentifier newCompilationId) {
+    public StructuredGraph copyWithIdentifier(CompilationIdentifier newCompilationId) {
         return copy(name, null, newCompilationId);
     }
 
@@ -447,6 +486,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      *
      * @param node the node to be unlinked and removed
      */
+    @SuppressWarnings("static-method")
     public void removeFixed(FixedWithNextNode node) {
         assert node != null;
         if (node instanceof AbstractBeginNode) {
@@ -478,12 +518,14 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void replaceFixedWithFloating(FixedWithNextNode node, FloatingNode replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         GraphUtil.unlinkFixedNode(node);
         node.replaceAtUsagesAndDelete(replacement);
     }
 
+    @SuppressWarnings("static-method")
     public void removeSplit(ControlSplitNode node, AbstractBeginNode survivingSuccessor) {
         assert node != null;
         assert node.hasNoUsages();
@@ -497,6 +539,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         removeSplitPropagate(node, survivingSuccessor, null);
     }
 
+    @SuppressWarnings("static-method")
     public void removeSplitPropagate(ControlSplitNode node, AbstractBeginNode survivingSuccessor, SimplifierTool tool) {
         assert node != null;
         assert node.hasNoUsages();
@@ -524,6 +567,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void replaceSplitWithFixed(ControlSplitNode node, FixedWithNextNode replacement, AbstractBeginNode survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor != null;
@@ -532,6 +576,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         node.replaceAndDelete(replacement);
     }
 
+    @SuppressWarnings("static-method")
     public void replaceSplitWithFloating(ControlSplitNode node, FloatingNode replacement, AbstractBeginNode survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor != null;
@@ -540,6 +585,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         node.replaceAtUsagesAndDelete(replacement);
     }
 
+    @SuppressWarnings("static-method")
     public void addAfterFixed(FixedWithNextNode node, FixedNode newNode) {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " after " + node;
         FixedNode next = node.next();
@@ -552,6 +598,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void addBeforeFixed(FixedNode node, FixedWithNextNode newNode) {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " before " + node;
         assert node.predecessor() != null && node.predecessor() instanceof FixedWithNextNode : "cannot add " + newNode + " before " + node;
@@ -575,6 +622,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    @SuppressWarnings("static-method")
     public void reduceTrivialMerge(AbstractMergeNode merge) {
         assert merge.forwardEndCount() == 1;
         assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().isEmpty();
@@ -707,7 +755,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      * Records that {@code field} was accessed in this graph.
      */
     public void recordField(ResolvedJavaField field) {
-        assert GraalOptions.GeneratePIC.getValue();
+        assert GraalOptions.GeneratePIC.getValue(getOptions());
         if (this.fields == null) {
             this.fields = EconomicSet.create(Equivalence.IDENTITY);
         }
@@ -720,7 +768,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public void updateFields(StructuredGraph other) {
         assert this != other;
-        assert GraalOptions.GeneratePIC.getValue();
+        assert GraalOptions.GeneratePIC.getValue(getOptions());
         if (this.fields == null) {
             this.fields = EconomicSet.create(Equivalence.IDENTITY);
         }
@@ -777,7 +825,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         return speculationLog;
     }
 
-    public final void clearAllStateAfter() {
+    public void clearAllStateAfter() {
         for (Node node : getNodes()) {
             if (node instanceof StateSplit) {
                 FrameState stateAfter = ((StateSplit) node).stateAfter();
@@ -792,7 +840,7 @@ public class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
-    public final boolean hasVirtualizableAllocation() {
+    public boolean hasVirtualizableAllocation() {
         for (Node n : getNodes()) {
             if (n instanceof VirtualizableAllocation) {
                 return true;

@@ -31,6 +31,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -41,7 +42,7 @@ public final class TraceCompilationPolymorphismListener extends AbstractDebugCom
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TraceTruffleCompilationPolymorphism.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationPolymorphism)) {
             runtime.addCompilationListener(new TraceCompilationPolymorphismListener());
         }
     }

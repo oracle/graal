@@ -38,6 +38,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_LAYOUT_HELPER_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJ_ARRAY_KLASS_ELEMENT_KLASS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.INIT_LOCATION;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.lang.ref.Reference;
 
@@ -153,6 +154,7 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 
@@ -213,7 +215,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         arraycopySnippets = new ArrayCopySnippets.Templates(providers, target);
         stringToBytesSnippets = new StringToBytesSnippets.Templates(providers, target);
         hashCodeSnippets = new HashCodeSnippets.Templates(providers, target);
-        if (GeneratePIC.getValue()) {
+        if (GeneratePIC.getValue(GLOBAL)) {
             resolveConstantSnippets = new ResolveConstantSnippets.Templates(providers, target);
             profileSnippets = new ProfileSnippets.Templates(providers, target);
         }
@@ -441,7 +443,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             JavaType[] signature = callTarget.targetMethod().getSignature().toParameterTypes(callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
             LoweredCallTargetNode loweredCallTarget = null;
-            if (InlineVTableStubs.getValue() && callTarget.invokeKind().isIndirect() && (AlwaysInlineVTableStubs.getValue() || invoke.isPolymorphic())) {
+            OptionValues options = graph.getOptions();
+            if (InlineVTableStubs.getValue(options) && callTarget.invokeKind().isIndirect() && (AlwaysInlineVTableStubs.getValue(options) || invoke.isPolymorphic())) {
                 HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                 ResolvedJavaType receiverType = invoke.getReceiverType();
                 if (hsMethod.isInVirtualMethodTable(receiverType)) {
@@ -662,7 +665,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     private void lowerBytecodeExceptionNode(BytecodeExceptionNode node) {
-        if (OmitHotExceptionStacktrace.getValue()) {
+        if (OmitHotExceptionStacktrace.getValue(node.getOptions())) {
             if (throwCachedException(node)) {
                 return;
             }

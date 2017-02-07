@@ -112,7 +112,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         int baseProxyCount = graph.getNodes().filter(ProxyNode.class).count();
         DominatorConditionalEliminationPhase.create(true).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new SchedulePhase().apply(graph, context);
+        new SchedulePhase(graph.getOptions()).apply(graph, context);
         int actualProxiesCreated = graph.getNodes().filter(ProxyNode.class).count() - baseProxyCount;
         Assert.assertEquals(expectedProxiesCreated, actualProxiesCreated);
     }

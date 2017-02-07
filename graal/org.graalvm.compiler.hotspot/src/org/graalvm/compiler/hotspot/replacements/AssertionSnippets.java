@@ -53,15 +53,15 @@ public class AssertionSnippets implements Snippets {
     public static final ForeignCallDescriptor ASSERTION_VM_MESSAGE_C = new ForeignCallDescriptor("assertionVmMessageC", void.class, boolean.class, Word.class, long.class, long.class, long.class);
 
     @Snippet
-    public static void assertion(boolean value, @ConstantParameter String message) {
-        if (!value) {
+    public static void assertion(boolean condition, @ConstantParameter String message) {
+        if (!condition) {
             vmMessageC(ASSERTION_VM_MESSAGE_C, true, cstring(message), 0L, 0L, 0L);
         }
     }
 
     @Snippet
-    public static void stubAssertion(boolean value, @ConstantParameter String message) {
-        if (!value) {
+    public static void stubAssertion(boolean condition, @ConstantParameter String message) {
+        if (!condition) {
             vmMessageC(ASSERTION_VM_MESSAGE_C, true, cstring(message), 0L, 0L, 0L);
         }
     }
@@ -81,7 +81,7 @@ public class AssertionSnippets implements Snippets {
         public void lower(AssertionNode assertionNode, LoweringTool tool) {
             StructuredGraph graph = assertionNode.graph();
             Arguments args = new Arguments(graph.start() instanceof StubStartNode ? stubAssertion : assertion, graph.getGuardsStage(), tool.getLoweringStage());
-            args.add("value", assertionNode.value());
+            args.add("condition", assertionNode.condition());
             args.addConst("message", "failed runtime assertion in snippet/stub: " + assertionNode.message() + " (" + graph.method() + ")");
 
             template(args).instantiate(providers.getMetaAccess(), assertionNode, DEFAULT_REPLACER, args);

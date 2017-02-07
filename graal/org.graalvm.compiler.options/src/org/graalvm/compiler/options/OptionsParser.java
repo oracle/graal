@@ -22,16 +22,13 @@
  */
 package org.graalvm.compiler.options;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
-import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
+
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.MapCursor;
 
 /**
  * This class contains methods for parsing Graal options and matching them against a set of
@@ -39,34 +36,30 @@ import java.util.TreeMap;
  */
 public class OptionsParser {
 
-    public interface OptionConsumer {
-        void set(OptionDescriptor desc, Object value);
-    }
-
     /**
      * Parses a map representing assignments of values to options.
      *
      * @param optionSettings option settings (i.e., assignments of values to options)
-     * @param setter the object to notify of the parsed option and value
+     * @param values the object in which to store the parsed values
      * @param loader the loader for {@linkplain #lookup(ServiceLoader, String) looking} up
      *            {@link OptionDescriptor}s
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    public static void parseOptions(Map<String, String> optionSettings, OptionConsumer setter, ServiceLoader<OptionDescriptors> loader) {
+    public static void parseOptions(EconomicMap<String, String> optionSettings, EconomicMap<OptionKey<?>, Object> values, ServiceLoader<OptionDescriptors> loader) {
         if (optionSettings != null && !optionSettings.isEmpty()) {
-
-            for (Map.Entry<String, String> e : optionSettings.entrySet()) {
-                parseOption(e.getKey(), e.getValue(), setter, loader);
+            MapCursor<String, String> cursor = optionSettings.getEntries();
+            while (cursor.advance()) {
+                parseOption(cursor.getKey(), cursor.getValue(), values, loader);
             }
         }
     }
 
     /**
-     * Parses a given option setting string to a map of settings.
+     * Parses a given option setting string and adds the parsed key and value {@code dst}.
      *
      * @param optionSetting a string matching the pattern {@code <name>=<value>}
      */
-    public static void parseOptionSettingTo(String optionSetting, Map<String, String> dst) {
+    public static void parseOptionSettingTo(String optionSetting, EconomicMap<String, String> dst) {
         int eqIndex = optionSetting.indexOf('=');
         if (eqIndex == -1) {
             throw new InternalError("Option setting has does not match the pattern <name>=<value>: " + optionSetting);
@@ -96,13 +89,13 @@ public class OptionsParser {
      * Parses a given option name and value.
      *
      * @param name the option name
-     * @param valueString the option value as a string
-     * @param setter the object to notify of the parsed option and value
+     * @param uncheckedValue the unchecked value for the option
+     * @param values the object in which to store the parsed option and value
      * @param loader the loader for {@linkplain #lookup(ServiceLoader, String) looking} up
      *            {@link OptionDescriptor}s
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    private static void parseOption(String name, String valueString, OptionConsumer setter, ServiceLoader<OptionDescriptors> loader) {
+    static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, ServiceLoader<OptionDescriptors> loader) {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {
@@ -120,41 +113,49 @@ public class OptionsParser {
 
         Class<?> optionType = desc.getType();
         Object value;
-        if (optionType == Boolean.class) {
-            if ("true".equals(valueString)) {
-                value = Boolean.TRUE;
-            } else if ("false".equals(valueString)) {
-                value = Boolean.FALSE;
-            } else {
-                throw new IllegalArgumentException("Boolean option '" + name + "' must have value \"true\" or \"false\", not \"" + valueString + "\"");
+        if (!(uncheckedValue instanceof String)) {
+            if (optionType != uncheckedValue.getClass()) {
+                String type = optionType.getSimpleName();
+                throw new IllegalArgumentException(type + " option '" + name + "' must have " + type + " value, not " + uncheckedValue.getClass() + " [toString: " + uncheckedValue + "]");
             }
-        } else if (optionType == String.class || Enum.class.isAssignableFrom(optionType)) {
-            value = valueString;
+            value = uncheckedValue;
         } else {
-            if (valueString.isEmpty()) {
-                throw new IllegalArgumentException("Non empty value required for option '" + name + "'");
-            }
-            try {
-                if (optionType == Float.class) {
-                    value = Float.parseFloat(valueString);
-                } else if (optionType == Double.class) {
-                    value = Double.parseDouble(valueString);
-                } else if (optionType == Integer.class) {
-                    value = Integer.valueOf((int) parseLong(valueString));
-                } else if (optionType == Long.class) {
-                    value = Long.valueOf(parseLong(valueString));
+            String valueString = (String) uncheckedValue;
+            if (optionType == Boolean.class) {
+                if ("true".equals(valueString)) {
+                    value = Boolean.TRUE;
+                } else if ("false".equals(valueString)) {
+                    value = Boolean.FALSE;
                 } else {
-                    throw new IllegalArgumentException("Wrong value for option '" + name + "'");
+                    throw new IllegalArgumentException("Boolean option '" + name + "' must have value \"true\" or \"false\", not \"" + uncheckedValue + "\"");
                 }
-            } catch (NumberFormatException nfe) {
-                throw new IllegalArgumentException("Value for option '" + name + "' has invalid number format: " + valueString);
+            } else if (optionType == String.class) {
+                value = valueString;
+            } else if (Enum.class.isAssignableFrom(optionType)) {
+                value = ((EnumOptionKey<?>) desc.getOptionKey()).valueOf(valueString);
+            } else {
+                if (valueString.isEmpty()) {
+                    throw new IllegalArgumentException("Non empty value required for option '" + name + "'");
+                }
+                try {
+                    if (optionType == Float.class) {
+                        value = Float.parseFloat(valueString);
+                    } else if (optionType == Double.class) {
+                        value = Double.parseDouble(valueString);
+                    } else if (optionType == Integer.class) {
+                        value = Integer.valueOf((int) parseLong(valueString));
+                    } else if (optionType == Long.class) {
+                        value = Long.valueOf(parseLong(valueString));
+                    } else {
+                        throw new IllegalArgumentException("Wrong value for option '" + name + "'");
+                    }
+                } catch (NumberFormatException nfe) {
+                    throw new IllegalArgumentException("Value for option '" + name + "' has invalid number format: " + valueString);
+                }
             }
         }
-        if (setter == null) {
-            desc.getOptionValue().setValue(value);
-        } else {
-            setter.set(desc, value);
-        }
+
+        desc.optionKey.update(values, value);
     }
 
     private static long parseLong(String v) {
@@ -176,96 +177,6 @@ public class OptionsParser {
         }
 
         return Long.parseLong(valueString) * scale;
-    }
-
-    /**
-     * Wraps some given text to one or more lines of a given maximum width.
-     *
-     * @param text text to wrap
-     * @param width maximum width of an output line, exception for words in {@code text} longer than
-     *            this value
-     * @return {@code text} broken into lines
-     */
-    private static List<String> wrap(String text, int width) {
-        List<String> lines = Collections.singletonList(text);
-        if (text.length() > width) {
-            String[] chunks = text.split("\\s+");
-            lines = new ArrayList<>();
-            StringBuilder line = new StringBuilder();
-            for (String chunk : chunks) {
-                if (line.length() + chunk.length() > width) {
-                    lines.add(line.toString());
-                    line.setLength(0);
-                }
-                if (line.length() != 0) {
-                    line.append(' ');
-                }
-                String[] embeddedLines = chunk.split("%n", -2);
-                if (embeddedLines.length == 1) {
-                    line.append(chunk);
-                } else {
-                    for (int i = 0; i < embeddedLines.length; i++) {
-                        line.append(embeddedLines[i]);
-                        if (i < embeddedLines.length - 1) {
-                            lines.add(line.toString());
-                            line.setLength(0);
-                        }
-                    }
-                }
-            }
-            if (line.length() != 0) {
-                lines.add(line.toString());
-            }
-        }
-        return lines;
-    }
-
-    private static final int PROPERTY_LINE_WIDTH = 80;
-    private static final int PROPERTY_HELP_INDENT = 10;
-
-    public static void printFlags(ServiceLoader<OptionDescriptors> loader, PrintStream out, Set<String> explicitlyAssigned, String namePrefix) {
-        SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
-        for (OptionDescriptors opts : loader) {
-            for (OptionDescriptor desc : opts) {
-                String name = desc.getName();
-                OptionDescriptor existing = sortedOptions.put(name, desc);
-                assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
-            }
-        }
-        for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
-            OptionDescriptor desc = e.getValue();
-            Object value = desc.getOptionValue().getValue();
-            if (value instanceof String) {
-                value = '"' + String.valueOf(value) + '"';
-            }
-            String help = desc.getHelp();
-            if (desc.getOptionValue() instanceof EnumOptionValue) {
-                EnumOptionValue<?> eoption = (EnumOptionValue<?>) desc.getOptionValue();
-                String evalues = eoption.getOptionValues().toString();
-                if (help.length() > 0 && !help.endsWith(".")) {
-                    help += ".";
-                }
-                help += " Valid values are: " + evalues.substring(1, evalues.length() - 1);
-            }
-            String name = namePrefix + e.getKey();
-            String assign = explicitlyAssigned.contains(name) ? ":=" : "=";
-            String typeName = desc.getOptionValue() instanceof EnumOptionValue ? "String" : desc.getType().getSimpleName();
-            String linePrefix = String.format("%s %s %s ", name, assign, value);
-            int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
-            int linePad = typeStartPos - linePrefix.length();
-            if (linePad > 0) {
-                out.printf("%s%-" + linePad + "s[%s]%n", linePrefix, "", typeName);
-            } else {
-                out.printf("%s[%s]%n", linePrefix, typeName);
-            }
-
-            if (help.length() != 0) {
-                List<String> helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
-                for (int i = 0; i < helpLines.size(); i++) {
-                    out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", helpLines.get(i));
-                }
-            }
-        }
     }
 
     /**

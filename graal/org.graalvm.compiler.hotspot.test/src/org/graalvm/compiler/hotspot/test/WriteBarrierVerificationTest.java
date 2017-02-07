@@ -728,7 +728,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
 
             DebugConfig debugConfig = DebugScope.getConfig();
             DebugConfig fixedConfig = debugConfig == null ? null
-                            : Debug.fixedConfig(0, 0, false, false, false, false, false, debugConfig.dumpHandlers(), debugConfig.verifyHandlers(), debugConfig.output());
+                            : Debug.fixedConfig(debugConfig.getOptions(), 0, 0, false, false, false, false, false, debugConfig.dumpHandlers(), debugConfig.verifyHandlers(), debugConfig.output());
             try (DebugConfigScope s = Debug.setConfig(fixedConfig)) {
                 ReentrantNodeIterator.apply(closure, graph.start(), false);
                 new WriteBarrierVerificationPhase(config).apply(graph);

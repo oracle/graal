@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.phases.common.inlining.info.elem;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 import java.util.ArrayList;
@@ -194,7 +193,7 @@ public class InlineableGraph implements Inlineable {
      */
     @SuppressWarnings("try")
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller) {
-        StructuredGraph newGraph = new StructuredGraph(method, AllowAssumptions.from(caller.getAssumptions() != null), INVALID_COMPILATION_ID);
+        StructuredGraph newGraph = new StructuredGraph.Builder(AllowAssumptions.ifNonNull(caller.getAssumptions())).method(method).build();
         try (Debug.Scope s = Debug.scope("InlineGraph", newGraph)) {
             if (!caller.isUnsafeAccessTrackingEnabled()) {
                 newGraph.disableUnsafeAccessTracking();

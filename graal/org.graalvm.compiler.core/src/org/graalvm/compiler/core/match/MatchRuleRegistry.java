@@ -23,6 +23,7 @@
 package org.graalvm.compiler.core.match;
 
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.LogVerbose;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -85,7 +86,7 @@ public class MatchRuleRegistry {
             assert registry.get(theClass) == rules;
             result = rules;
 
-            if (LogVerbose.getValue()) {
+            if (LogVerbose.getValue(GLOBAL)) {
                 try (Scope s = Debug.scope("MatchComplexExpressions")) {
                     Debug.log("Match rules for %s", theClass.getSimpleName());
                     MapCursor<Class<? extends Node>, List<MatchStatement>> cursor = result.getEntries();

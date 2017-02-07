@@ -32,7 +32,7 @@ import java.util.List;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.options.StableOptionValue;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -58,13 +58,8 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
 
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        assert !ImmutableCode.getValue() || isCalledForSnippets(metaAccess) || SnippetGraphUnderConstruction.get() != null ||
+        assert !ImmutableCode.getValue(tool.getOptions()) || isCalledForSnippets(metaAccess) || SnippetGraphUnderConstruction.get() != null ||
                         FieldReadEnabledInImmutableCode.get() == Boolean.TRUE : tool.getReceiver();
-        if (!field.isStatic() && getStableOptionValueType().isInstance(tool.getReceiver()) && field.getName().equals("value")) {
-            JavaConstant ret = tool.readValue();
-            return tool.foldConstant(ret);
-        }
-
         return super.readConstantField(field, tool);
     }
 
@@ -72,8 +67,8 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
      * In AOT mode, some fields should never be embedded even for snippets/replacements.
      */
     @Override
-    protected boolean isStaticFieldConstant(ResolvedJavaField field) {
-        return super.isStaticFieldConstant(field) && (!ImmutableCode.getValue() || ImmutableCodeLazy.isEmbeddable(field));
+    protected boolean isStaticFieldConstant(ResolvedJavaField field, OptionValues options) {
+        return super.isStaticFieldConstant(field, options) && (!ImmutableCode.getValue(options) || ImmutableCodeLazy.isEmbeddable(field));
     }
 
     @Override
@@ -110,17 +105,9 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
 
     private final MetaAccessProvider metaAccess;
 
-    private ResolvedJavaType cachedStableOptionValueType;
     private ResolvedJavaType cachedHotSpotVMConfigType;
     private ResolvedJavaType cachedSnippetCounterType;
     private ResolvedJavaType cachedNodeClassType;
-
-    private ResolvedJavaType getStableOptionValueType() {
-        if (cachedStableOptionValueType == null) {
-            cachedStableOptionValueType = metaAccess.lookupJavaType(StableOptionValue.class);
-        }
-        return cachedStableOptionValueType;
-    }
 
     private ResolvedJavaType getHotSpotVMConfigType() {
         if (cachedHotSpotVMConfigType == null) {
@@ -173,7 +160,6 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
          * called for snippets or replacements.
          */
         static boolean isCalledForSnippets(MetaAccessProvider metaAccess) {
-            assert ImmutableCode.getValue();
             ResolvedJavaMethod makeGraphMethod = null;
             ResolvedJavaMethod initMethod = null;
             try {
@@ -201,7 +187,6 @@ public class HotSpotGraalConstantFieldProvider extends HotSpotConstantFieldProvi
          * Determine if it's ok to embed the value of {@code field}.
          */
         static boolean isEmbeddable(ResolvedJavaField field) {
-            assert ImmutableCode.getValue();
             return !embeddableFields.contains(field);
         }
 

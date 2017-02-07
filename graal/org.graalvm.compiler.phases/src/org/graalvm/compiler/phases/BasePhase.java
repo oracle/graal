@@ -36,8 +36,8 @@ import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.StableOptionValue;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.contract.PhaseSizeContract;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -52,7 +52,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public static class PhaseOptions {
         // @formatter:off
         @Option(help = "Verify before - after relation of the relative, computed, code size of a graph", type = OptionType.Debug)
-        public static final OptionValue<Boolean> VerifyGraalPhasesSize = new StableOptionValue<>(false);
+        public static final OptionKey<Boolean> VerifyGraalPhasesSize = new OptionKey<>(false);
         // @formatter:on
     }
 
@@ -140,7 +140,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         try (DebugCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start()) {
             int sizeBefore = 0;
             Mark before = null;
-            if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
+            OptionValues options = graph.getOptions();
+            if (PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract()) {
                 if (context instanceof PhaseContext) {
                     sizeBefore = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());
                     before = graph.getMark();
@@ -152,7 +153,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             inputNodesCount.add(graph.getNodeCount());
             this.run(graph, context);
             executionCount.increment();
-            if (PhaseOptions.VerifyGraalPhasesSize.getValue() && checkContract()) {
+            if (PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract()) {
                 if (context instanceof PhaseContext) {
                     if (!before.isCurrent()) {
                         int sizeAfter = NodeCostUtil.computeGraphSize(graph, ((PhaseContext) context).getNodeCostProvider());

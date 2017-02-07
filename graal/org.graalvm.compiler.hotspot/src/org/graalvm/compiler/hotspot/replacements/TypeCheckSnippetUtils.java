@@ -38,6 +38,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.util.Arrays;
 
@@ -159,7 +160,7 @@ public class TypeCheckSnippetUtils {
         return KlassPointer.fromWord(metaspaceArray.readWord(metaspaceArrayBaseOffset(INJECTED_VMCONFIG) + index * wordSize(), SECONDARY_SUPERS_ELEMENT_LOCATION));
     }
 
-    private static final SnippetCounter.Group counters = SnippetCounters.getValue() ? new SnippetCounter.Group("TypeCheck") : null;
+    private static final SnippetCounter.Group counters = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("TypeCheck") : null;
     static final SnippetCounter hintsHit = new SnippetCounter(counters, "hintsHit", "hit a hint type");
     static final SnippetCounter hintsMiss = new SnippetCounter(counters, "hintsMiss", "missed a hint type");
     static final SnippetCounter exactHit = new SnippetCounter(counters, "exactHit", "exact type test succeeded");

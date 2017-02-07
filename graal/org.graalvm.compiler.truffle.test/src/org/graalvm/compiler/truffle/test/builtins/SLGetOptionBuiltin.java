@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 
 /**
  * Looks up the value of an option in {@link TruffleCompilerOptions}. In the future this builtin
- * might be extend to lookup other options as well.
+ * might be extended to lookup other options as well.
  */
 @NodeInfo(shortName = "getOption")
 public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
@@ -42,10 +42,10 @@ public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
         TruffleCompilerOptions_OptionDescriptors options = new TruffleCompilerOptions_OptionDescriptors();
         for (OptionDescriptor option : options) {
             if (option.getName().equals(name)) {
-                return convertValue(option.getOptionValue().getValue());
+                return convertValue(TruffleCompilerOptions.getValue(option.getOptionKey()));
             }
         }
-        return null;
+        throw new SLAssertionError("No such option named \"" + name + "\" found in " + TruffleCompilerOptions.class.getName());
     }
 
     private static Object convertValue(Object value) {

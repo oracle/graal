@@ -25,6 +25,7 @@ package org.graalvm.compiler.replacements;
 import static org.graalvm.compiler.core.common.GraalOptions.SnippetCounters;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.lang.reflect.Field;
@@ -108,7 +109,7 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
      * @return a copy of privateLocations with any needed locations added
      */
     public static LocationIdentity[] addSnippetCounters(LocationIdentity[] privateLocations) {
-        if (SnippetCounters.getValue()) {
+        if (SnippetCounters.getValue(GLOBAL)) {
             for (LocationIdentity location : privateLocations) {
                 if (location.equals(SNIPPET_COUNTER_LOCATION)) {
                     return privateLocations;
@@ -122,9 +123,9 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
     }
 
     /**
-     * We do not want to use the {@link LocationIdentity} of the {@link SnippetCounter#value} field,
-     * so that the usage in snippets is always possible. If a method accesses the counter via the
-     * field and the snippet, the result might not be correct though.
+     * We do not want to use the {@link LocationIdentity} of the {@link SnippetCounter#value()}
+     * field, so that the usage in snippets is always possible. If a method accesses the counter via
+     * the field and the snippet, the result might not be correct though.
      */
     public static final LocationIdentity SNIPPET_COUNTER_LOCATION = NamedLocationIdentity.mutable("SnippetCounter");
 

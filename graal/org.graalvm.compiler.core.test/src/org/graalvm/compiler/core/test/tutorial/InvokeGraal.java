@@ -23,6 +23,7 @@
 package org.graalvm.compiler.core.test.tutorial;
 
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.lang.reflect.Method;
 
@@ -91,7 +92,7 @@ public class InvokeGraal {
              * that we want the compilation to make optimistic assumptions about runtime state such
              * as the loaded class hierarchy.
              */
-            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.YES, compilationId);
+            StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).method(method).compilationId(compilationId).build();
 
             /*
              * The phases used to build the graph. Usually this is just the GraphBuilderPhase. If
@@ -103,12 +104,12 @@ public class InvokeGraal {
              * The optimization phases that are applied to the graph. This is the main configuration
              * point for Graal. Add or remove phases to customize your compilation.
              */
-            Suites suites = backend.getSuites().getDefaultSuites();
+            Suites suites = backend.getSuites().getDefaultSuites(GLOBAL);
 
             /*
              * The low-level phases that are applied to the low-level representation.
              */
-            LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites();
+            LIRSuites lirSuites = backend.getSuites().getDefaultLIRSuites(GLOBAL);
 
             /*
              * We want Graal to perform all speculative optimistic optimizations, using the

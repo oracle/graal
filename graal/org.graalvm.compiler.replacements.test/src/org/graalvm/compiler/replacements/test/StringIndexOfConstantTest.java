@@ -24,6 +24,7 @@ package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.junit.Test;
 
@@ -44,33 +45,32 @@ public class StringIndexOfConstantTest extends StringIndexOfTestBase {
 
     @Test
     public void testStringIndexOfConstant() {
-        test("testStringIndexOf", new Object[]{this.sourceString, this.constantString});
+        testHelper("testStringIndexOf", new Object[]{this.sourceString, this.constantString});
     }
 
     @Test
     public void testStringIndexOfConstantOffset() {
-        test("testStringIndexOfOffset", new Object[]{this.sourceString, this.constantString, Math.min(sourceString.length() - 1, 3)});
+        testHelper("testStringIndexOfOffset", new Object[]{this.sourceString, this.constantString, Math.min(sourceString.length() - 1, 3)});
     }
 
     @Test
     public void testStringBuilderIndexOfConstant() {
-        test("testStringBuilderIndexOf", new Object[]{new StringBuilder(this.sourceString), this.constantString});
+        testHelper("testStringBuilderIndexOf", new Object[]{new StringBuilder(this.sourceString), this.constantString});
     }
 
-    @Override
-    protected Result test(String name, Object... args) {
+    protected Result testHelper(String name, Object... args) {
         constantArgs = new Object[args.length + 1];
         for (int i = 0; i < args.length; i++) {
             if (args[i] == constantString) {
                 constantArgs[i + 1] = constantString;
             }
         }
-        return super.test(name, args);
+        return test(name, args);
     }
 
     @Override
-    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph0, boolean forceCompile) {
+    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph0, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
         // Force recompile if constant binding should be done
-        return getCode(installedCodeOwner, graph0, true, false);
+        return super.getCode(installedCodeOwner, graph0, /* forceCompile */true, /* installAsDefault */false, options);
     }
 }

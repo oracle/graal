@@ -30,6 +30,7 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.cAssertionsEnabled;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.decipher;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.printf;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
@@ -100,7 +101,7 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return StubOptions.TraceUnwindStub.getValue();
+        return StubOptions.TraceUnwindStub.getValue(GLOBAL);
     }
 
     /**

@@ -30,7 +30,7 @@ import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.Phase;
 
 public class DeadCodeEliminationPhase extends Phase {
@@ -39,7 +39,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
         // @formatter:off
         @Option(help = "Disable optional dead code eliminations", type = OptionType.Debug)
-        public static final OptionValue<Boolean> ReduceDCE = new OptionValue<>(true);
+        public static final OptionKey<Boolean> ReduceDCE = new OptionKey<>(true);
         // @formatter:on
     }
 
@@ -70,7 +70,7 @@ public class DeadCodeEliminationPhase extends Phase {
 
     @Override
     public void run(StructuredGraph graph) {
-        if (optional && Options.ReduceDCE.getValue()) {
+        if (optional && Options.ReduceDCE.getValue(graph.getOptions())) {
             return;
         }
 

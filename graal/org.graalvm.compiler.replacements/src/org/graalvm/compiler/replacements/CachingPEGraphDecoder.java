@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.replacements;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.util.HashMap;
@@ -37,6 +36,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
@@ -59,8 +59,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     private final Map<ResolvedJavaMethod, EncodedGraph> graphCache;
 
     public CachingPEGraphDecoder(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, AllowAssumptions allowAssumptions,
-                    Architecture architecture) {
-        super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getStampProvider(), architecture);
+                    Architecture architecture, OptionValues options) {
+        super(providers.getMetaAccess(), providers.getConstantReflection(), providers.getConstantFieldProvider(), providers.getStampProvider(), architecture, options);
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
@@ -76,7 +76,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     @SuppressWarnings("try")
     private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
-        StructuredGraph graph = new StructuredGraph(method, allowAssumptions, false, INVALID_COMPILATION_ID);
+        StructuredGraph graph = new StructuredGraph.Builder(allowAssumptions).useProfilingInfo(false).method(method).build();
         try (Debug.Scope scope = Debug.scope("createGraph", graph)) {
             IntrinsicContext initialIntrinsicContext = intrinsicBytecodeProvider != null ? new IntrinsicContext(method, method, intrinsicBytecodeProvider, INLINE_AFTER_PARSING) : null;
             GraphBuilderPhase.Instance graphBuilderPhaseInstance = createGraphBuilderPhaseInstance(initialIntrinsicContext);

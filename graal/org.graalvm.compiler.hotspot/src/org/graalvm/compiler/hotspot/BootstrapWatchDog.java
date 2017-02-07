@@ -23,7 +23,8 @@
 package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.fmt;
-import static org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory.GRAAL_OPTION_PROPERTY_PREFIX;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+import static org.graalvm.compiler.options.OptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,8 +33,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
 
 import jdk.vm.ci.code.CompilationRequest;
 
@@ -58,9 +59,9 @@ final class BootstrapWatchDog extends Thread {
         // @formatter:off
         @Option(help = "Ratio of the maximum compilation rate below which the bootstrap compilation rate must not fall " +
                        "(0 or less disables monitoring).", type = OptionType.Debug)
-        public static final OptionValue<Double> BootstrapWatchDogCriticalRateRatio = new OptionValue<>(0.25D);
+        public static final OptionKey<Double> BootstrapWatchDogCriticalRateRatio = new OptionKey<>(0.25D);
         @Option(help = "Maximum time in minutes to spend bootstrapping (0 to disable this limit).", type = OptionType.Debug)
-        public static final OptionValue<Double> BootstrapTimeout = new OptionValue<>(15D);
+        public static final OptionKey<Double> BootstrapTimeout = new OptionKey<>(15D);
         // @formatter:on
     }
 
@@ -115,13 +116,13 @@ final class BootstrapWatchDog extends Thread {
     /**
      * Time in seconds before stopping a bootstrap.
      */
-    private static final int TIMEOUT = (int) (Options.BootstrapTimeout.getValue() * 60);
+    private static final int TIMEOUT = (int) (Options.BootstrapTimeout.getValue(GLOBAL) * 60);
 
     /**
      * The watch dog {@link #hitCriticalCompilationRateOrTimeout() hits} a critical compilation rate
      * if the current compilation rate falls below this ratio of the maximum compilation rate.
      */
-    private static final double MAX_RATE_DECREASE = Options.BootstrapWatchDogCriticalRateRatio.getValue();
+    private static final double MAX_RATE_DECREASE = Options.BootstrapWatchDogCriticalRateRatio.getValue(GLOBAL);
 
     @Override
     public void run() {

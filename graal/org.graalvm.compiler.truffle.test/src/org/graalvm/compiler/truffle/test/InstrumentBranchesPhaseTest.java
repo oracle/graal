@@ -22,15 +22,21 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranchesPretty;
+
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.phases.InstrumentBranchesPhase;
+import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
+import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.graalvm.compiler.truffle.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.phases.InstrumentBranchesPhase;
-import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
-import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -76,35 +82,32 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         }
     }
 
+    private TruffleOptionsOverrideScope overrides;
+
     @Override
     protected void beforeInitialization() {
-        Assert.assertFalse(TruffleCompilerOptions.TruffleInstrumentBranches.getValue());
-        TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
+        overrides = TruffleCompilerOptions.overrideOptions(TruffleInstrumentBranches, true, TruffleInstrumentBranchesPretty, false, TruffleInstrumentBranchesFilter, "*.*.execute");
     }
 
     @After
     public void disableInstrumentAfterTests() {
-        TruffleCompilerOptions.TruffleInstrumentBranches.setValue(false);
+        overrides.close();
+    }
+
+    private static OptionValues getOptions() {
+        return TruffleCompilerOptions.getOptions();
     }
 
     @Test
     public void simpleIfTest() {
         FrameDescriptor descriptor = new FrameDescriptor();
+
         SimpleIfTestNode result = new SimpleIfTestNode(5);
         RootTestNode rootNode = new RootTestNode(descriptor, "simpleIfRoot", result);
-        boolean instrumentFlag = TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
-        String filterFlag = TruffleCompilerOptions.TruffleInstrumentFilter.getValue();
-        try {
-            TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
-            TruffleCompilerOptions.TruffleInstrumentFilter.setValue("*.*.execute");
-            OptimizedCallTarget target = compileHelper("simpleIfRoot", rootNode, new Object[0]);
-            Assert.assertTrue(target.isValid());
-            target.call();
-        } finally {
-            TruffleCompilerOptions.TruffleInstrumentBranches.setValue(instrumentFlag);
-            TruffleCompilerOptions.TruffleInstrumentFilter.setValue(filterFlag);
-        }
-        String stackOutput = InstrumentBranchesPhase.instrumentation.accessTableToList().get(0);
+        OptimizedCallTarget target = compileHelper("simpleIfRoot", rootNode, new Object[0]);
+        Assert.assertTrue(target.isValid());
+        target.call();
+        String stackOutput = InstrumentBranchesPhase.instrumentation.accessTableToList(getOptions()).get(0);
         Assert.assertTrue(stackOutput.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$SimpleIfTestNode.execute(InstrumentBranchesPhaseTest.java"));
         Assert.assertTrue(stackOutput.contains("[bci: 4]\n[0] state = ELSE(if=0#, else=1#)"));
         String histogramOutput = InstrumentBranchesPhase.instrumentation.accessTableToHistogram().get(0);
@@ -116,24 +119,15 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         FrameDescriptor descriptor = new FrameDescriptor();
         TwoIfsTestNode result = new TwoIfsTestNode(5, -1);
         RootTestNode rootNode = new RootTestNode(descriptor, "twoIfsRoot", result);
-        boolean instrumentFlag = TruffleCompilerOptions.TruffleInstrumentBranches.getValue();
-        String filterFlag = TruffleCompilerOptions.TruffleInstrumentFilter.getValue();
-        try {
-            TruffleCompilerOptions.TruffleInstrumentBranches.setValue(true);
-            TruffleCompilerOptions.TruffleInstrumentFilter.setValue("*.*.execute");
-            OptimizedCallTarget target = compileHelper("twoIfsRoot", rootNode, new Object[0]);
-            Assert.assertTrue(target.isValid());
-            // We run this twice to make sure that it comes first in the sorted access list.
-            target.call();
-            target.call();
-        } finally {
-            TruffleCompilerOptions.TruffleInstrumentBranches.setValue(instrumentFlag);
-            TruffleCompilerOptions.TruffleInstrumentFilter.setValue(filterFlag);
-        }
-        String stackOutput1 = InstrumentBranchesPhase.instrumentation.accessTableToList().get(0);
+        OptimizedCallTarget target = compileHelper("twoIfsRoot", rootNode, new Object[0]);
+        Assert.assertTrue(target.isValid());
+        // We run this twice to make sure that it comes first in the sorted access list.
+        target.call();
+        target.call();
+        String stackOutput1 = InstrumentBranchesPhase.instrumentation.accessTableToList(getOptions()).get(0);
         Assert.assertTrue(stackOutput1.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
         Assert.assertTrue(stackOutput1.contains("[bci: 4]\n[1] state = ELSE(if=0#, else=2#)"));
-        String stackOutput2 = InstrumentBranchesPhase.instrumentation.accessTableToList().get(1);
+        String stackOutput2 = InstrumentBranchesPhase.instrumentation.accessTableToList(getOptions()).get(1);
         Assert.assertTrue(stackOutput2.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
         Assert.assertTrue(stackOutput2.contains("[bci: 18]\n[2] state = IF(if=2#, else=0#)"));
     }

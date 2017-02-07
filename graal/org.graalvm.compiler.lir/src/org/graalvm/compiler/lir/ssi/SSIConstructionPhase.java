@@ -30,8 +30,8 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.StableOptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
@@ -49,14 +49,14 @@ public final class SSIConstructionPhase extends AllocationPhase {
 
         //@formatter:off
         @Option(help = "Use fast SSI builder.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAFastSSIBuilder = new StableOptionValue<>(true);
+        public static final OptionKey<Boolean> TraceRAFastSSIBuilder = new OptionKey<>(true);
         //@formatter:on
     }
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         assert SSAUtil.verifySSAForm(lirGenRes.getLIR());
-        if (Options.TraceRAFastSSIBuilder.getValue()) {
+        if (Options.TraceRAFastSSIBuilder.getValue(lirGenRes.getLIR().getOptions())) {
             FastSSIBuilder fastSSIBuilder = new FastSSIBuilder(lirGenRes.getLIR());
             fastSSIBuilder.build();
             fastSSIBuilder.finish();

@@ -26,6 +26,7 @@ import org.graalvm.compiler.truffle.test.builtins.SLAssertFalseBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLAssertTrueBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLCallFunctionsWithBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLCallUntilOptimizedBuiltinFactory;
+import org.graalvm.compiler.truffle.test.builtins.SLCallWithOptionOverrideBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLDeoptimizeWhenCompiledBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLDisableSplittingBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLGenerateDummyNodesBuiltinFactory;
@@ -33,7 +34,6 @@ import org.graalvm.compiler.truffle.test.builtins.SLGetOptionBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLIsCompilationConstantBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLIsInlinedBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLIsOptimizedBuiltinFactory;
-import org.graalvm.compiler.truffle.test.builtins.SLSetOptionBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLTestTruffleBoundary01BuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLWaitForOptimizationBuiltinFactory;
 import org.junit.BeforeClass;
@@ -54,11 +54,11 @@ public class SLTruffleGraalTestSuite extends TestWithSynchronousCompiling {
     @BeforeClass
     public static void setupTestRunner() {
         SLTestRunner.installBuiltin(SLGetOptionBuiltinFactory.getInstance());
-        SLTestRunner.installBuiltin(SLSetOptionBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLIsOptimizedBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLWaitForOptimizationBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLDisableSplittingBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLCallUntilOptimizedBuiltinFactory.getInstance());
+        SLTestRunner.installBuiltin(SLCallWithOptionOverrideBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLIsInlinedBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLGenerateDummyNodesBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLCallFunctionsWithBuiltinFactory.getInstance());

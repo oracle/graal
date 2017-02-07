@@ -34,10 +34,11 @@ import org.graalvm.compiler.lir.alloc.trace.bu.BottomUpAllocator;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
-import org.graalvm.compiler.options.EnumOptionValue;
+import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.StableOptionValue;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.JVMCIError;
@@ -57,11 +58,11 @@ public final class DefaultTraceRegisterAllocationPolicy {
     public static class Options {
         // @formatter:off
         @Option(help = "Use special allocator for trivial blocks.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAtrivialBlockAllocator = new StableOptionValue<>(true);
+        public static final OptionKey<Boolean> TraceRAtrivialBlockAllocator = new OptionKey<>(true);
         @Option(help = "Use LSRA / BottomUp ratio", type = OptionType.Debug)
-        public static final StableOptionValue<Double> TraceRAbottomUpRatio = new StableOptionValue<>(0.0);
+        public static final OptionKey<Double> TraceRAbottomUpRatio = new OptionKey<>(0.0);
         @Option(help = "TraceRA allocation policy to use.", type = OptionType.Debug)
-        public static final EnumOptionValue<TraceRAPolicies> TraceRAPolicy = new EnumOptionValue<>(TraceRAPolicies.Default);
+        public static final EnumOptionKey<TraceRAPolicies> TraceRAPolicy = new EnumOptionKey<>(TraceRAPolicies.Default);
         // @formatter:on
     }
 
@@ -137,12 +138,12 @@ public final class DefaultTraceRegisterAllocationPolicy {
     }
 
     public static TraceRegisterAllocationPolicy allocationPolicy(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory,
-                    RegisterAllocationConfig registerAllocationConfig, AllocatableValue[] cachedStackSlots, TraceBuilderResult resultTraces, boolean neverSpillConstant) {
+                    RegisterAllocationConfig registerAllocationConfig, AllocatableValue[] cachedStackSlots, TraceBuilderResult resultTraces, boolean neverSpillConstant, OptionValues options) {
         TraceRegisterAllocationPolicy plan = new TraceRegisterAllocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots, resultTraces, neverSpillConstant);
-        if (Options.TraceRAtrivialBlockAllocator.getValue()) {
+        if (Options.TraceRAtrivialBlockAllocator.getValue(options)) {
             plan.appendStrategy(new TrivialTraceStrategy(plan));
         }
-        switch (Options.TraceRAPolicy.getValue()) {
+        switch (Options.TraceRAPolicy.getValue(options)) {
             case Default:
             case LinearScanOnly:
                 plan.appendStrategy(new TraceLinearScanStrategy(plan));

@@ -51,7 +51,7 @@ import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
 import org.graalvm.compiler.lir.framemap.VirtualStackSlotRange;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
-import org.graalvm.compiler.options.NestedBooleanOptionValue;
+import org.graalvm.compiler.options.NestedBooleanOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.util.EconomicSet;
@@ -76,7 +76,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Use linear scan stack slot allocation.", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptLSStackSlotAllocator = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionKey LIROptLSStackSlotAllocator = new NestedBooleanOptionKey(LIROptimization, true);
         // @formatter:on
     }
 

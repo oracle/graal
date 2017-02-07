@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.ArrayList;
@@ -31,8 +32,8 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.util.EconomicMap;
@@ -52,7 +53,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         @Option(help = "Names the Graal compiler configuration to use. If ommitted, the compiler configuration " +
                        "with the highest auto-selection priority is used. To see the set of available configurations, " +
                        "supply the value 'help' to this option.", type = OptionType.Expert)
-        public static final OptionValue<String> CompilerConfiguration = new OptionValue<>(null);
+        public static final OptionKey<String> CompilerConfiguration = new OptionKey<>(null);
         // @formatter:on
     }
 
@@ -172,7 +173,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     public static CompilerConfigurationFactory selectFactory(String name) {
         CompilerConfigurationFactory factory = null;
         try (InitTimer t = timer("CompilerConfigurationFactory.selectFactory")) {
-            String value = name == null ? Options.CompilerConfiguration.getValue() : name;
+            String value = name == null ? Options.CompilerConfiguration.getValue(GLOBAL) : name;
             if ("help".equals(value)) {
                 System.out.println("The available Graal compiler configurations are:");
                 for (CompilerConfigurationFactory candidate : getAllCandidates()) {

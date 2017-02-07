@@ -130,7 +130,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
         this.insertInstructionsBefore = new ArrayList<>(4);
         this.insertInstructionsAfter = new ArrayList<>(4);
 
-        if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue()) {
+        if (TraceRegisterAllocationPhase.Options.TraceRACacheStackSlots.getValue(lirGenRes.getLIR().getOptions())) {
             this.stackSlots = cachedStackSlots;
         } else {
             this.stackSlots = new AllocatableValue[lirGenRes.getLIR().numVariables()];
@@ -230,7 +230,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
                 Debug.log("inserting moves at beginning of toBlock B%d", toBlock.getId());
             }
 
-            if (DetailedAsserts.getValue()) {
+            if (DetailedAsserts.getValue(getLIR().getOptions())) {
                 assert lir.getLIRforBlock(fromBlock).get(0) instanceof StandardOp.LabelOp : "block does not start with a label";
 
                 /*

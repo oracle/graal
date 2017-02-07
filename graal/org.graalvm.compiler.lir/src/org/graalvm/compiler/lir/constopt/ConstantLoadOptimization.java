@@ -53,7 +53,7 @@ import org.graalvm.compiler.lir.constopt.ConstantTree.NodeCost;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase;
-import org.graalvm.compiler.options.NestedBooleanOptionValue;
+import org.graalvm.compiler.options.NestedBooleanOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 
@@ -72,7 +72,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
     public static class Options {
         // @formatter:off
         @Option(help = "Enable constant load optimization.", type = OptionType.Debug)
-        public static final NestedBooleanOptionValue LIROptConstantLoadOptimization = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final NestedBooleanOptionKey LIROptConstantLoadOptimization = new NestedBooleanOptionKey(LIROptimization, true);
         // @formatter:on
     }
 

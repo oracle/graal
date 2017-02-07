@@ -22,14 +22,12 @@
  */
 package org.graalvm.compiler.replacements;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
-import static org.graalvm.compiler.core.common.GraalOptions.DeoptALot;
 import static org.graalvm.compiler.core.common.GraalOptions.UseSnippetGraphCache;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineIntrinsicsDuringParsing;
-import static org.graalvm.compiler.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,7 +55,6 @@ import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -70,8 +67,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
@@ -132,7 +127,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         ResolvedJavaMethod subst = getSubstitutionMethod(method);
         if (subst != null) {
-            if (b.parsingIntrinsic() || InlineDuringParsing.getValue() || InlineIntrinsicsDuringParsing.getValue()) {
+            if (b.parsingIntrinsic() || InlineDuringParsing.getValue(b.getOptions()) || InlineIntrinsicsDuringParsing.getValue(b.getOptions())) {
                 // Forced inlining of intrinsics
                 return createIntrinsicInlineInfo(subst, bytecodeProvider);
             }
@@ -194,12 +189,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
 
-        StructuredGraph graph = UseSnippetGraphCache.getValue() ? graphs.get(method) : null;
+        StructuredGraph graph = UseSnippetGraphCache.getValue(GLOBAL) ? graphs.get(method) : null;
         if (graph == null) {
             try (DebugCloseable a = SnippetPreparationTime.start()) {
                 StructuredGraph newGraph = makeGraph(method, args, recursiveEntry);
                 Debug.counter("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
-                if (!UseSnippetGraphCache.getValue() || args != null) {
+                if (!UseSnippetGraphCache.getValue(GLOBAL) || args != null) {
                     return newGraph;
                 }
                 graphs.putIfAbsent(method, newGraph);
@@ -276,9 +271,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      */
     @SuppressWarnings("try")
     public StructuredGraph makeGraph(ResolvedJavaMethod method, Object[] args, ResolvedJavaMethod original) {
-        try (OverrideScope s = OptionValue.override(DeoptALot, false)) {
-            return createGraphMaker(method, original).makeGraph(args);
-        }
+        return createGraphMaker(method, original).makeGraph(args);
     }
 
     /**
@@ -334,7 +327,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            if (!GraalOptions.SnippetCounters.getValue() || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
+            if (!GraalOptions.SnippetCounters.getValue(GLOBAL) || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
                 int sideEffectCount = 0;
                 assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
                 new ConvertDeoptimizeToGuardPhase().apply(graph, null);
@@ -386,7 +379,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
 
-            final StructuredGraph graph = new StructuredGraph(methodToParse, AllowAssumptions.NO, NO_PROFILING_INFO, INVALID_COMPILATION_ID);
+            final StructuredGraph graph = new StructuredGraph.Builder().method(methodToParse).build();
 
             // They are not user code so they do not participate in unsafe access tracking
             graph.disableUnsafeAccessTracking();

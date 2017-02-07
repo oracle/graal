@@ -34,6 +34,7 @@ import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.OptimizedIndirectCallNode;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.graalvm.compiler.truffle.TruffleInlining.CallTreeNodeVisitor;
 import org.graalvm.compiler.truffle.TruffleInliningDecision;
@@ -45,7 +46,7 @@ public final class TraceCompilationCallTreeListener extends AbstractDebugCompila
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TraceTruffleCompilationCallTree.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationCallTree)) {
             runtime.addCompilationListener(new TraceCompilationCallTreeListener());
         }
     }

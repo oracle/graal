@@ -23,13 +23,14 @@
 package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.fmt;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.util.Arrays;
 
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -53,12 +54,12 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
     public static class Options {
         // @formatter:off
         @Option(help = "Delay in seconds before watch dog monitoring a compilation (0 disables monitoring).", type = OptionType.Debug)
-        public static final OptionValue<Double> CompilationWatchDogStartDelay = new OptionValue<>(0.0D);
+        public static final OptionKey<Double> CompilationWatchDogStartDelay = new OptionKey<>(0.0D);
         @Option(help = "Interval in seconds between a watch dog reporting stack traces for long running compilations.", type = OptionType.Debug)
-        public static final OptionValue<Double> CompilationWatchDogStackTraceInterval = new OptionValue<>(60.0D);
+        public static final OptionKey<Double> CompilationWatchDogStackTraceInterval = new OptionKey<>(60.0D);
         @Option(help = "Number of contiguous identical compiler thread stack traces allowed before the VM exits " +
                        "on the basis of a stuck compilation.", type = OptionType.Debug)
-         public static final OptionValue<Integer> NonFatalIdenticalCompilationSnapshots = new OptionValue<>(20);
+        public static final OptionKey<Integer> NonFatalIdenticalCompilationSnapshots = new OptionKey<>(20);
         // @formatter:on
     }
 
@@ -90,8 +91,8 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
      * this time period and thus not be actively monitored by the watch dog.
      */
     private static final int SPIN_TIMEOUT_MS = 1000;
-    private static final long START_DELAY_MS = ms(Options.CompilationWatchDogStartDelay.getValue());
-    private static final long STACK_TRACE_INTERVAL_MS = ms(Options.CompilationWatchDogStackTraceInterval.getValue());
+    private static final long START_DELAY_MS = ms(Options.CompilationWatchDogStartDelay.getValue(GLOBAL));
+    private static final long STACK_TRACE_INTERVAL_MS = ms(Options.CompilationWatchDogStackTraceInterval.getValue(GLOBAL));
     private static final boolean ENABLED = START_DELAY_MS > 0.0D;
 
     private WatchDogState state = WatchDogState.SLEEPING;
@@ -228,7 +229,7 @@ class CompilationWatchDog extends Thread implements AutoCloseable {
                                         numberOfIdenticalStackTraces = 0;
                                     }
                                     numberOfIdenticalStackTraces++;
-                                    if (numberOfIdenticalStackTraces > Options.NonFatalIdenticalCompilationSnapshots.getValue()) {
+                                    if (numberOfIdenticalStackTraces > Options.NonFatalIdenticalCompilationSnapshots.getValue(GLOBAL)) {
                                         synchronized (CompilationWatchDog.class) {
                                             TTY.printf("======================= WATCH DOG THREAD =======================%n" +
                                                             "%s took %d identical stack traces, which indicates a stuck compilation (id=%d) of %s%n%sExiting VM%n", this,

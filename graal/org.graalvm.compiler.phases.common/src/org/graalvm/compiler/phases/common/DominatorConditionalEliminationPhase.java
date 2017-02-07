@@ -166,7 +166,8 @@ public class DominatorConditionalEliminationPhase extends BasePhase<PhaseContext
             this.blockToNodes = blockToNodes;
             this.nodeToBlock = nodeToBlock;
             pendingTests = new ArrayDeque<>();
-            tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions(), context.getLowerer());
+            tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions(), graph.getOptions(),
+                            context.getLowerer());
         }
 
         public void processBlock(Block startBlock) {

@@ -22,8 +22,8 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import org.junit.Test;
 
@@ -135,9 +135,9 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         try (Debug.Scope scope = Debug.scope("GraphPETest", testMethod)) {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true);
             registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());
-            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, AllowAssumptions.YES, getTarget().arch);
+            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, AllowAssumptions.YES, getTarget().arch, GLOBAL);
 
-            targetGraph = new StructuredGraph(testMethod, AllowAssumptions.YES, INVALID_COMPILATION_ID);
+            targetGraph = new StructuredGraph.Builder(AllowAssumptions.YES).method(testMethod).build();
             decoder.decode(targetGraph, testMethod, null, null, new InlineInvokePlugin[]{new InlineAll()}, null);
             Debug.dump(Debug.BASIC_LOG_LEVEL, targetGraph, "Target Graph");
             targetGraph.verify();

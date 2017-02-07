@@ -205,7 +205,7 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
          */
         private boolean assignLocations(LIRInstruction op, ArrayList<LIRInstruction> instructions, int j) {
             assert op != null && instructions.get(j) == op;
-            if (TraceRAshareSpillInformation.getValue()) {
+            if (TraceRAshareSpillInformation.getValue(allocator.getOptions())) {
                 if (op instanceof BlockEndOp) {
                     ((BlockEndOp) op).forEachOutgoingValue(colorOutgoingIncomingValues);
                 } else if (op instanceof LabelOp) {

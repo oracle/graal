@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -53,15 +54,17 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     private final ConstantFieldProvider constantFieldProvider;
     private final PartialEscapeClosure<?> closure;
     private final Assumptions assumptions;
+    private final OptionValues options;
     private final LoweringProvider loweringProvider;
 
     VirtualizerToolImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, PartialEscapeClosure<?> closure,
-                    Assumptions assumptions, LoweringProvider loweringProvider) {
+                    Assumptions assumptions, OptionValues options, LoweringProvider loweringProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.constantFieldProvider = constantFieldProvider;
         this.closure = closure;
         this.assumptions = assumptions;
+        this.options = options;
         this.loweringProvider = loweringProvider;
     }
 
@@ -70,6 +73,11 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
     private ValueNode current;
     private FixedNode position;
     private GraphEffectList effects;
+
+    @Override
+    public OptionValues getOptions() {
+        return options;
+    }
 
     @Override
     public MetaAccessProvider getMetaAccessProvider() {
@@ -195,7 +203,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
 
     @Override
     public int getMaximumEntryCount() {
-        return MaximumEscapeAnalysisArrayLength.getValue();
+        return MaximumEscapeAnalysisArrayLength.getValue(current.getOptions());
     }
 
     @Override

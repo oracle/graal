@@ -22,6 +22,9 @@
  */
 package org.graalvm.compiler.truffle;
 
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleFunctionInlining;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleMaximumRecursiveInlining;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,7 +53,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     }
 
     private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
-        if (!TruffleCompilerOptions.TruffleFunctionInlining.getValue()) {
+        if (!TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
             return Collections.emptyList();
         }
         int nodeCount = sourceTarget.getNonTrivialNodeCount();
@@ -94,7 +97,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
 
         int recursions = countRecursions(callStack);
         int deepNodeCount = nodeCount;
-        if (callStack.size() < 15 && recursions <= TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue()) {
+        if (callStack.size() < 15 && recursions <= TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining)) {
             /*
              * We make a preliminary optimistic inlining decision with best possible characteristics
              * to avoid the exploration of unnecessary paths in the inlining tree.

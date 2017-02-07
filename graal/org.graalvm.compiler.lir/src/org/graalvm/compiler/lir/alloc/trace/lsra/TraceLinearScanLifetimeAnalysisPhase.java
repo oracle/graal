@@ -543,7 +543,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                         interval.setSpillState(SpillState.NoSpillStore);
                     }
                 }
-                if (TraceRAuseInterTraceHints.getValue()) {
+                if (TraceRAuseInterTraceHints.getValue(allocator.getLIR().getOptions())) {
                     addInterTraceHints();
                 }
                 for (FixedInterval interval1 : allocator.fixedIntervals()) {
@@ -601,7 +601,7 @@ public final class TraceLinearScanLifetimeAnalysisPhase extends TraceLinearScanA
                 setHint(label, to, from);
             } else if (isStackSlotValue(fromValue)) {
                 setSpillSlot(label, to, (AllocatableValue) fromValue);
-            } else if (TraceRAshareSpillInformation.getValue() && isShadowedRegisterValue(fromValue)) {
+            } else if (TraceRAshareSpillInformation.getValue(allocator.getLIR().getOptions()) && isShadowedRegisterValue(fromValue)) {
                 ShadowedRegisterValue shadowedRegisterValue = asShadowedRegisterValue(fromValue);
                 IntervalHint from = getIntervalHint(shadowedRegisterValue.getRegister());
                 setHint(label, to, from);

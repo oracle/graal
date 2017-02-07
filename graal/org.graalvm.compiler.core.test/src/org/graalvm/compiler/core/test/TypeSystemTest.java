@@ -208,7 +208,7 @@ public class TypeSystemTest extends GraalCompilerTest {
 
     public static void outputGraph(StructuredGraph graph, String message) {
         TTY.println("========================= " + message);
-        SchedulePhase schedulePhase = new SchedulePhase();
+        SchedulePhase schedulePhase = new SchedulePhase(graph.getOptions());
         schedulePhase.apply(graph);
         ScheduleResult schedule = graph.getLastSchedule();
         for (Block block : schedule.getCFG().getBlocks()) {

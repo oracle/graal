@@ -22,6 +22,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationThreshold;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleFunctionInlining;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOSRCompilationThreshold;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleReplaceReprofileCount;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -35,12 +40,11 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.compiler.core.common.util.Util;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.OptimizedOSRLoopNode;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.ConstantTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
@@ -122,8 +126,8 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 return null;
             }
         });
-        final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
-        final int reprofileCount = TruffleCompilerOptions.TruffleReplaceReprofileCount.getValue();
+        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+        final int reprofileCount = TruffleCompilerOptions.getValue(TruffleReplaceReprofileCount);
         assertTrue(compilationThreshold >= 2);
 
         int expectedCompiledCount = 0;
@@ -184,13 +188,13 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     @Test
     public void testRewriteAssumption() {
         String testName = "testRewriteAssumption";
-        final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
+        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
         assertTrue(compilationThreshold >= 2);
-        assertTrue("test only works with inlining enabled", TruffleCompilerOptions.TruffleFunctionInlining.getValue());
+        assertTrue("test only works with inlining enabled", TruffleCompilerOptions.getValue(TruffleFunctionInlining));
 
         IntStream.range(0, 8).parallel().forEach(i -> {
-            // We need to restate the OptionValue overrride for each thread individually.
-            try (OptionValue.OverrideScope s = OptionValue.override(TruffleCompilerOptions.TruffleBackgroundCompilation, false);) {
+            // We need to restate the option override for each thread individually.
+            try (TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleBackgroundCompilation, false)) {
                 OptimizedCallTarget innermostCallTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 0, new AbstractTestNode() {
                     @Child private AbstractTestNode child = new ConstantTestNode(42);
                     @Child private AbstractTestNode dummy = new ConstantTestNode(17);
@@ -264,10 +268,11 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testCompileOnly1() {
-        final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
+        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
 
         // test single include
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "foobar")) {
+
+        try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompileOnly, "foobar")) {
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
             for (int i = 0; i < compilationThreshold; i++) {
                 assertNotCompiled(target);
@@ -286,9 +291,9 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testCompileOnly2() {
-        final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
+        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
         // test single exclude
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "~foobar")) {
+        try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompileOnly, "~foobar")) {
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
             for (int i = 0; i < compilationThreshold; i++) {
                 assertNotCompiled(target);
@@ -306,9 +311,9 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testCompileOnly3() {
-        final int compilationThreshold = TruffleCompilerOptions.TruffleCompilationThreshold.getValue();
+        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
         // test two includes/excludes
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "foo,baz")) {
+        try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompileOnly, "foo,baz")) {
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
             for (int i = 0; i < compilationThreshold; i++) {
                 assertNotCompiled(target);
@@ -326,19 +331,24 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
     private static class OSRRepeatingNode extends Node implements RepeatingNode {
         int count = 0;
+        final int osrCompilationThreshold;
+
+        OSRRepeatingNode(int osrCompilationThreshold) {
+            this.osrCompilationThreshold = osrCompilationThreshold;
+        }
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
             count++;
-            return count < (TruffleCompilerOptions.TruffleOSRCompilationThreshold.getValue() + 10);
+            return count < (osrCompilationThreshold + 10);
         }
     }
 
     @Test
     public void testCompileOnly4() {
         // OSR should not trigger for compile-only includes
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "foobar")) {
-            final OSRRepeatingNode repeating = new OSRRepeatingNode();
+        try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompileOnly, "foobar")) {
+            final OSRRepeatingNode repeating = new OSRRepeatingNode(TruffleCompilerOptions.getValue(TruffleOSRCompilationThreshold));
             final LoopNode loop = runtime.createLoopNode(repeating);
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {
 
@@ -377,8 +387,8 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     @Test
     public void testCompileOnly5() {
         // OSR should trigger if compile-only with excludes
-        try (OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleCompileOnly, "~foobar")) {
-            final OSRRepeatingNode repeating = new OSRRepeatingNode();
+        try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompileOnly, "~foobar")) {
+            final OSRRepeatingNode repeating = new OSRRepeatingNode(TruffleCompilerOptions.getValue(TruffleOSRCompilationThreshold));
             final LoopNode loop = runtime.createLoopNode(repeating);
             OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {
 

@@ -29,6 +29,7 @@ import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -115,15 +116,16 @@ public class UnsafeReadEliminationTest extends GraalCompilerTest {
     }
 
     public void testPartialEscapeReadElimination(StructuredGraph graph, int reads, int writes) {
+        OptionValues options = graph.getOptions();
         PhaseContext context = getDefaultHighTierContext();
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         canonicalizer.apply(graph, context);
-        new PartialEscapePhase(true, true, canonicalizer, null).apply(graph, context);
+        new PartialEscapePhase(true, true, canonicalizer, null, options).apply(graph, context);
         Assert.assertEquals(3, graph.getNodes().filter(UnsafeAccessNode.class).count());
         // after lowering the same applies for reads and writes
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new PartialEscapePhase(true, true, canonicalizer, null).apply(graph, context);
+        new PartialEscapePhase(true, true, canonicalizer, null, options).apply(graph, context);
         Assert.assertEquals(reads, graph.getNodes().filter(ReadNode.class).count());
         Assert.assertEquals(writes, graph.getNodes().filter(WriteNode.class).count());
     }

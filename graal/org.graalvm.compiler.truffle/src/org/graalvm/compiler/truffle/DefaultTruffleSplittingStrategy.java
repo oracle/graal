@@ -22,6 +22,9 @@
  */
 package org.graalvm.compiler.truffle;
 
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplitting;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
+
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -57,7 +60,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
         if (call.isCallTargetCloned()) {
             return false;
         }
-        if (!TruffleCompilerOptions.TruffleSplitting.getValue()) {
+        if (!TruffleCompilerOptions.getValue(TruffleSplitting)) {
             return false;
         }
         if (!call.isCallTargetCloningAllowed()) {
@@ -73,7 +76,7 @@ public final class DefaultTruffleSplittingStrategy implements TruffleSplittingSt
 
         OptimizedCallTarget callTarget = call.getCallTarget();
         int nodeCount = callTarget.getNonTrivialNodeCount();
-        if (nodeCount > TruffleCompilerOptions.TruffleSplittingMaxCalleeSize.getValue()) {
+        if (nodeCount > TruffleCompilerOptions.getValue(TruffleSplittingMaxCalleeSize)) {
             return false;
         }
 

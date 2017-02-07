@@ -94,8 +94,9 @@ import org.graalvm.compiler.bytecode.BytecodeTableSwitch;
 import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.Debug;
-import org.graalvm.util.Equivalence;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -458,13 +459,13 @@ public final class BciBlockMapping {
     /**
      * Builds the block map and conservative CFG and numbers blocks.
      */
-    public void build(BytecodeStream stream) {
+    public void build(BytecodeStream stream, OptionValues options) {
         int codeSize = code.getCodeSize();
         BciBlock[] blockMap = new BciBlock[codeSize];
         makeExceptionEntries(blockMap);
         iterateOverBytecodes(blockMap, stream);
         if (hasJsrBytecodes) {
-            if (!SupportJsrBytecodes.getValue()) {
+            if (!SupportJsrBytecodes.getValue(options)) {
                 throw new JsrNotSupportedBailout("jsr/ret parsing disabled");
             }
             createJsrAlternatives(blockMap, blockMap[0]);
@@ -1047,9 +1048,9 @@ public final class BciBlockMapping {
         return loops;
     }
 
-    public static BciBlockMapping create(BytecodeStream stream, Bytecode code) {
+    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options) {
         BciBlockMapping map = new BciBlockMapping(code);
-        map.build(stream);
+        map.build(stream, options);
         if (Debug.isDumpEnabled(Debug.INFO_LOG_LEVEL)) {
             Debug.dump(Debug.INFO_LOG_LEVEL, map, code.getMethod().format("After block building %f %R %H.%n(%P)"));
         }

@@ -17,13 +17,14 @@ function test2() {
     notInlinableFunction(); 
 }
 
-function main() {
-    originalMaxCallerSize = getOption("TruffleInliningMaxCallerSize");
-    setOption("TruffleInliningMaxCallerSize", 20);
+function body() {
     callUntilOptimized(test1);
     assertTrue(isInlined(test1, test1, inlinableFunction), "inlinableFunction is not inlined");
     
     callUntilOptimized(test2); 
-    assertFalse(isInlined(test2, test2, notInlinableFunction), "notInlinableFunction is inlined"); 
-    setOption("TruffleInliningMaxCallerSize", originalMaxCallerSize);
+    assertFalse(isInlined(test2, test2, notInlinableFunction), "notInlinableFunction is inlined");
+}
+
+function main() {
+    callWithOptionOverride(body, "TruffleInliningMaxCallerSize", 20);
 }  

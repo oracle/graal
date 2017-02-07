@@ -28,6 +28,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.TruffleCallBoundary;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
@@ -60,6 +61,10 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions;
  */
 public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
+    public InstrumentTruffleBoundariesPhase(OptionValues options) {
+        super(options);
+    }
+
     @Override
     protected void instrumentGraph(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant) {
         for (Node n : graph.getNodes()) {
@@ -78,8 +83,8 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected boolean instrumentPerInlineSite() {
-        return TruffleCompilerOptions.TruffleInstrumentBoundariesPerInlineSite.getValue();
+    protected boolean instrumentPerInlineSite(OptionValues options) {
+        return TruffleCompilerOptions.TruffleInstrumentBoundariesPerInlineSite.getValue(options);
     }
 
     @Override
@@ -98,8 +103,8 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
         }
 
         @Override
-        public boolean isPrettified() {
-            return TruffleCompilerOptions.TruffleInstrumentBoundariesPerInlineSite.getValue();
+        public boolean isPrettified(OptionValues options) {
+            return TruffleCompilerOptions.TruffleInstrumentBoundariesPerInlineSite.getValue(options);
         }
 
         @Override

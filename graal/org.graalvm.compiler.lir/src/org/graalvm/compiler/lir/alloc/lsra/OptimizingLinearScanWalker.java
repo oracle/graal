@@ -36,7 +36,7 @@ import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterPriority;
 import org.graalvm.compiler.lir.alloc.lsra.Interval.State;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionKey;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -46,9 +46,9 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable LSRA optimization", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSRAOptimization = new OptionValue<>(false);
+        public static final OptionKey<Boolean> LSRAOptimization = new OptionKey<>(false);
         @Option(help = "LSRA optimization: Only split but do not reassign", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LSRAOptSplitOnly = new OptionValue<>(false);
+        public static final OptionKey<Boolean> LSRAOptSplitOnly = new OptionKey<>(false);
         // @formatter:on
     }
 
@@ -191,7 +191,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
                 Debug.log("right interval : %s", splitPart.logString(allocator));
             }
 
-            if (Options.LSRAOptSplitOnly.getValue()) {
+            if (Options.LSRAOptSplitOnly.getValue(allocator.getOptions())) {
                 // just add the split interval to the unhandled list
                 unhandledLists.addToListSortedByStartAndUsePositions(RegisterBinding.Any, splitPart);
             } else {

@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.core.test;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
 import java.io.File;
@@ -62,6 +61,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -168,7 +168,7 @@ public class CheckGraalInvariants extends GraalTest {
         CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread", new DebugConfigAccess() {
             @Override
             public GraalDebugConfig getDebugConfig() {
-                return DebugEnvironment.ensureInitialized();
+                return DebugEnvironment.ensureInitialized(OptionValues.GLOBAL);
             }
         });
         int availableProcessors = Runtime.getRuntime().availableProcessors();
@@ -178,7 +178,7 @@ public class CheckGraalInvariants extends GraalTest {
 
         for (Method m : BadUsageWithEquals.class.getDeclaredMethods()) {
             ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-            StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.YES, INVALID_COMPILATION_ID);
+            StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).method(method).build();
             try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
                 graphBuilderSuite.apply(graph, context);
                 // update phi stamps
@@ -214,11 +214,7 @@ public class CheckGraalInvariants extends GraalTest {
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
                                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                                String st = method.format("%H.%n");
-                                if (st.equals("org.graalvm.compiler.core.common.spi.JavaConstantFieldProvider.isStableField")) {
-                                    System.console();
-                                }
-                                StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO, INVALID_COMPILATION_ID);
+                                StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
                                 try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
                                     graphBuilderSuite.apply(graph, context);
                                     // update phi stamps

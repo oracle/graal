@@ -37,6 +37,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -50,8 +51,8 @@ public abstract class OptimizedCallTargetInstrumentation extends CompilationResu
     protected final HotSpotRegistersProvider registers;
 
     public OptimizedCallTargetInstrumentation(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    CompilationResult compilationResult, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
-        super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult);
+                    OptionValues options, CompilationResult compilationResult, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
+        super(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, compilationResult);
         this.config = config;
         this.registers = registers;
     }

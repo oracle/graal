@@ -34,6 +34,7 @@ import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Verify;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.debug.internal.DebugScope;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
@@ -48,7 +49,7 @@ public class DebugEnvironment {
      *
      * @return the current {@link GraalDebugConfig} or null if nothing was done
      */
-    public static GraalDebugConfig ensureInitialized(Object... capabilities) {
+    public static GraalDebugConfig ensureInitialized(OptionValues options, Object... capabilities) {
         if (!Debug.isEnabled()) {
             return null;
         }
@@ -58,8 +59,16 @@ public class DebugEnvironment {
             JVMCI.initialize();
             List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
             List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
-            debugConfig = new GraalDebugConfig(Log.getValue(), Count.getValue(), TrackMemUse.getValue(), Time.getValue(), Dump.getValue(), Verify.getValue(), MethodFilter.getValue(),
-                            MethodMeter.getValue(),
+            debugConfig = new GraalDebugConfig(
+                            options,
+                            Log.getValue(options),
+                            Count.getValue(options),
+                            TrackMemUse.getValue(options),
+                            Time.getValue(options),
+                            Dump.getValue(options),
+                            Verify.getValue(options),
+                            MethodFilter.getValue(options),
+                            MethodMeter.getValue(options),
                             TTY.out, dumpHandlers, verifyHandlers);
 
             for (DebugConfigCustomizer customizer : GraalServices.load(DebugConfigCustomizer.class)) {

@@ -187,9 +187,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
             if (scheduleResult == null) {
 
                 // Also provide a schedule when an error occurs
-                if (Options.PrintIdealGraphSchedule.getValue() || Debug.contextLookup(Throwable.class) != null) {
+                if (Options.PrintIdealGraphSchedule.getValue(graph.getOptions()) || Debug.contextLookup(Throwable.class) != null) {
                     try {
-                        SchedulePhase schedule = new SchedulePhase();
+                        SchedulePhase schedule = new SchedulePhase(graph.getOptions());
                         schedule.apply(structuredGraph);
                         scheduleResult = structuredGraph.getLastSchedule();
                     } catch (Throwable t) {
@@ -502,7 +502,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         for (Node node : graph.getNodes()) {
             NodeClass<?> nodeClass = node.getNodeClass();
             node.getDebugProperties(props);
-            if (cfg != null && Options.PrintGraphProbabilities.getValue() && node instanceof FixedNode) {
+            if (cfg != null && Options.PrintGraphProbabilities.getValue(graph.getOptions()) && node instanceof FixedNode) {
                 try {
                     props.put("probability", cfg.blockFor(node).probability());
                 } catch (Throwable t) {

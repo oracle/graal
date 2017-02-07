@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.test.deopt;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Assert;
@@ -66,7 +68,7 @@ public final class SafepointRethrowDeoptTest extends GraalCompilerTest {
 
     @Test
     public void test() {
-        Assume.assumeTrue(GraalOptions.GenLoopSafepoints.getValue());
+        Assume.assumeTrue(GraalOptions.GenLoopSafepoints.getValue(GLOBAL));
         synchronized (SafepointRethrowDeoptTest.class) {
             // needs static fields
             terminate = 1;

@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.source.SourceSection;
@@ -45,21 +46,21 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TraceTruffleCompilation.getValue() || TraceTruffleCompilationDetails.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleCompilation) || TruffleCompilerOptions.getValue(TraceTruffleCompilationDetails)) {
             runtime.addCompilationListener(new TraceCompilationListener());
         }
     }
 
     @Override
     public void notifyCompilationQueued(OptimizedCallTarget target) {
-        if (TraceTruffleCompilationDetails.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationDetails)) {
             log(0, "opt queued", target.toString(), target.getDebugProperties(null));
         }
     }
 
     @Override
     public void notifyCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        if (TraceTruffleCompilationDetails.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationDetails)) {
             Map<String, Object> properties = new LinkedHashMap<>();
             addSourceInfo(properties, source);
             properties.put("Reason", reason);
@@ -78,7 +79,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
 
     @Override
     public void notifyCompilationStarted(OptimizedCallTarget target) {
-        if (TraceTruffleCompilationDetails.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationDetails)) {
             log(0, "opt start", target.toString(), target.getDebugProperties(null));
         }
         LocalCompilation compilation = new LocalCompilation();

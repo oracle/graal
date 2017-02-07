@@ -47,7 +47,6 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
@@ -224,7 +223,7 @@ public class ForeignCallStub extends Stub {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
         boolean isObjectResult = !LIRKind.isValue(linkage.getOutgoingCallingConvention().getReturn());
 
-        StructuredGraph graph = new StructuredGraph(toString(), null, AllowAssumptions.NO, compilationId);
+        StructuredGraph graph = new StructuredGraph.Builder().name(toString()).compilationId(compilationId).build();
         graph.disableUnsafeAccessTracking();
 
         GraphKit kit = new GraphKit(graph, providers, wordTypes, providers.getGraphBuilderPlugins());

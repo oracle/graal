@@ -23,36 +23,35 @@
 package org.graalvm.compiler.options;
 
 /**
- * A nested Boolean {@link OptionValue} that can be overridden by a {@link #masterOption master
+ * A nested Boolean {@link OptionKey} that can be overridden by a {@link #masterOption master
  * option}.
  * <p>
  * <li>If the option is present on the command line the specified value is used.
- * <li>Otherwise {@link #getValue()} depends on the {@link #masterOption} and evaluates as follows:
+ * <li>Otherwise {@link #getValue} depends on the {@link #masterOption} and evaluates as follows:
  * <ul>
  * <li>If {@link #masterOption} is set, this value equals to {@link #initialValue}.
  * <li>Otherwise, if {@link #masterOption} is {@code false}, this option is {@code false}.
  */
-public class NestedBooleanOptionValue extends OptionValue<Boolean> {
-    private final OptionValue<Boolean> masterOption;
+public class NestedBooleanOptionKey extends OptionKey<Boolean> {
+    private final OptionKey<Boolean> masterOption;
     private final Boolean initialValue;
 
-    public NestedBooleanOptionValue(OptionValue<Boolean> masterOption, Boolean initialValue) {
+    public NestedBooleanOptionKey(OptionKey<Boolean> masterOption, Boolean initialValue) {
         super(null);
         this.masterOption = masterOption;
         this.initialValue = initialValue;
     }
 
-    public OptionValue<Boolean> getMasterOption() {
+    public OptionKey<Boolean> getMasterOption() {
         return masterOption;
     }
 
     @Override
-    public Boolean getValue() {
-        Boolean v = super.getValue();
+    public Boolean getValue(OptionValues options) {
+        Boolean v = super.getValue(options);
         if (v == null) {
-            return initialValue && masterOption.getValue();
+            return initialValue && masterOption.getValue(options);
         }
         return v;
     }
-
 }
