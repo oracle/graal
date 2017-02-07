@@ -165,21 +165,30 @@ public abstract class TruffleInliningTest {
             return this;
         }
 
-        TruffleInlining build() {
-            return build(false);
+        OptimizedCallTarget buildTarget() {
+            return buildTarget(false);
         }
 
-        TruffleInlining build(boolean andExecute) {
+        OptimizedCallTarget buildTarget(boolean andExecute) {
             try {
                 buildTargets();
                 buildCalls();
+                OptimizedCallTarget target = targets.get(lastAddedTargetName);
                 if (andExecute) {
-                    targets.get(lastAddedTargetName).call(0);
+                    target.call(0);
                 }
-                return new TruffleInlining(targets.get(lastAddedTargetName), policy);
+                return target;
             } finally {
                 cleanup();
             }
+        }
+
+        TruffleInlining buildDecisions() {
+            return buildDecisions(false);
+        }
+
+        TruffleInlining buildDecisions(boolean andExecute) {
+            return new TruffleInlining(buildTarget(andExecute), policy);
         }
 
         private void buildTargets() {

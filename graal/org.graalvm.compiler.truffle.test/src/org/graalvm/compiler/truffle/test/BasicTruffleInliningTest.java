@@ -37,7 +37,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 target("callee").
                 target("caller").
                     calls("callee").
-                build();
+                buildDecisions();
         // @formatter:on
         assertInlined(decisions, "callee");
     }
@@ -50,7 +50,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 target("caller").
                     calls("callee").
                     calls("callee").
-                build();
+                buildDecisions();
         // @formatter:on
         Assert.assertTrue(countInlines(decisions, "callee") == 2);
 
@@ -59,7 +59,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         for (int i = 0; i < inlineCount; i++) {
             builder.calls("callee");
         }
-        Assert.assertEquals(inlineCount, countInlines(builder.build(), "callee"));
+        Assert.assertEquals(inlineCount, countInlines(builder.buildDecisions(), "callee"));
     }
 
     @Test
@@ -69,7 +69,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() - 3).
                 target("caller").
                     calls("callee").
-                build();
+                buildDecisions();
         // @formatter:on
         assertInlined(decisions, "callee");
     }
@@ -81,7 +81,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()).
                 target("caller").
                     calls("callee").
-                build();
+                buildDecisions();
         // @formatter:on
         assertNotInlined(decisions, "callee");
     }
@@ -93,7 +93,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 target("callee").
                 target("caller", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() - 3).
                 calls("callee").
-                build();
+                buildDecisions();
         // @formatter:on
         assertInlined(decisions, "callee");
     }
@@ -105,20 +105,20 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 target("callee").
                 target("caller", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()).
                     calls("callee").
-                build();
+                buildDecisions();
         // @formatter:on
         assertNotInlined(decisions, "callee");
     }
 
     @Test
     public void testRecursiveInline() {
-        TruffleInlining decisions = builder.target("recursive").calls("recursive").build();
+        TruffleInlining decisions = builder.target("recursive").calls("recursive").buildDecisions();
         Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue().intValue(), countInlines(decisions, "recursive"));
     }
 
     @Test
     public void testDoubleRecursiveInline() {
-        TruffleInlining decisions = builder.target("recursive").calls("recursive").calls("recursive").build();
+        TruffleInlining decisions = builder.target("recursive").calls("recursive").calls("recursive").buildDecisions();
         int n = TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue().intValue();
         long geometricSum = 2 * (1 - ((long) Math.pow(2, n))) / (1 - 2); // sum of geometric
                                                                          // progression a*r^n is
@@ -136,7 +136,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                     calls("recursive").
                 target("recursive").
                     calls("callee").
-                build();
+                buildDecisions();
         // @formatter:on
         Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue().intValue(), countInlines(decisions, "recursive"));
         Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue() + 1, countInlines(decisions, "callee"));
@@ -146,12 +146,12 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     public void testInlineBigWithCallSites() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", (TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3) - 3).// Minus 3 because of 3 call sites in the caller.
+                target("callee", (TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3) - 3). // Minus 3 because of 3 call sites in the caller.
                 target("caller").
                     calls("callee").
                     calls("callee").
                     calls("callee").
-                build(true);
+                buildDecisions(true);
         // @formatter:on
         Assert.assertEquals(3, countInlines(decisions, "callee"));
     }
@@ -166,7 +166,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                     calls("callee").
                     calls("callee").
                     calls("callee").
-                build(true);
+                buildDecisions(true);
         // @formatter:on
         assertNotInlined(decisions, "callee");
         Assert.assertTrue("Wrong reason for not inlining!", decisions.getCallSites().get(0).getProfile().getFailedReason().startsWith("deepNodeCount * callSites  >"));
@@ -182,7 +182,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
             builder.target(nextCount.toString()).calls(count.toString());
         }
         final int[] inlineDepth = {0};
-        TruffleInlining decisions = builder.build();
+        TruffleInlining decisions = builder.buildDecisions();
         traverseDecisions(decisions.getCallSites(), decision -> {
             Assert.assertTrue(decision.isInline());
             inlineDepth[0]++;
@@ -197,7 +197,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         for (Integer i = 0; i < width; i++) {
             builder.calls("leaf");
         }
-        TruffleInlining decisions = builder.build();
+        TruffleInlining decisions = builder.buildDecisions();
         Assert.assertEquals(width, countInlines(decisions, "leaf"));
     }
 
@@ -208,7 +208,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                 target("callee").
                 target("caller").execute(4).
                     calls("callee", 2).
-                build();
+                buildDecisions();
         // @formatter:on
         assertInlined(decisions, "callee");
         Assert.assertEquals(0.5, decisions.getCallSites().get(0).getProfile().getFrequency(), 0);
@@ -223,7 +223,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                     target("callee").
                     target("caller").
                         calls("callee", 2).
-                    build();
+                    buildDecisions();
             // @formatter:on
             Assert.assertTrue("Decisions where made!", decisions.getCallSites().isEmpty());
         }
