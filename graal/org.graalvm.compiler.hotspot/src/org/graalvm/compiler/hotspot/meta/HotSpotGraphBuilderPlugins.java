@@ -43,6 +43,9 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.FingerprintUtil;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -74,6 +77,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ForeignCallPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -323,7 +327,12 @@ public class HotSpotGraphBuilderPlugins {
      */
     private static ValueNode getMetaspaceConstantPool(GraphBuilderContext b, ValueNode constantPoolOop, WordTypes wordTypes, GraalHotSpotVMConfig config) {
         // ConstantPool.constantPoolOop is in fact the holder class.
-        ClassGetHubNode klass = b.add(new ClassGetHubNode(constantPoolOop));
+
+        LogicNode isNull = b.add(IsNullNode.create(constantPoolOop));
+        FixedGuardNode fixedGuard = b.add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
+        Stamp newStamp = ((ObjectStamp) constantPoolOop.stamp()).improveWith(StampFactory.objectNonNull());
+        PiNode constantPoolNonNull = b.add(new PiNode(constantPoolOop, newStamp, fixedGuard));
+        ClassGetHubNode klass = b.add(new ClassGetHubNode(constantPoolNonNull));
 
         boolean notCompressible = false;
         AddressNode constantsAddress = b.add(new OffsetAddressNode(klass, b.add(ConstantNode.forLong(config.instanceKlassConstantsOffset))));
