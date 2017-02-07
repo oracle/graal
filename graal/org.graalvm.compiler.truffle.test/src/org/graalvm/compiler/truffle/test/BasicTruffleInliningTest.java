@@ -146,7 +146,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     public void testInlineBigWithCallSites() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", (TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3) - 3). // Minus 3 because of 3 call sites in the caller.
+                target("callee", (TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3) - 3).
                 target("caller").
                     calls("callee").
                     calls("callee").
