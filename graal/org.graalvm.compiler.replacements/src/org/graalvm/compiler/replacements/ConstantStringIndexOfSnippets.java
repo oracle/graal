@@ -66,6 +66,9 @@ public class ConstantStringIndexOfSnippets implements Snippets {
 
     static int md2(char[] target) {
         int c = target.length;
+        if (c == 0) {
+            return 0;
+        }
         char lastChar = target[c - 1];
         int md2 = c;
         for (int i = 0; i < c - 1; i++) {

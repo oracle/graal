@@ -50,13 +50,20 @@ public class AMD64StringSubstitutions {
             fromIndex = 0;
         }
         if (targetCount == 0) {
+            // The empty string is in every string.
             return fromIndex;
         }
 
         int totalOffset = sourceOffset + fromIndex;
+        if (sourceCount - fromIndex < targetCount) {
+            // The empty string contains nothing except the empty string.
+            return -1;
+        }
+        assert sourceCount - fromIndex > 0 && targetCount > 0;
+
         Pointer sourcePointer = Word.objectToTrackedPointer(source).add(Unsafe.ARRAY_CHAR_BASE_OFFSET).add(totalOffset * Unsafe.ARRAY_CHAR_INDEX_SCALE);
         Pointer targetPointer = Word.objectToTrackedPointer(target).add(Unsafe.ARRAY_CHAR_BASE_OFFSET).add(targetOffset * Unsafe.ARRAY_CHAR_INDEX_SCALE);
-        int result = AMD64StringIndexOfNode.optimizedStringIndexPointer(sourcePointer, sourceCount - totalOffset, targetPointer, targetCount - targetOffset);
+        int result = AMD64StringIndexOfNode.optimizedStringIndexPointer(sourcePointer, sourceCount - fromIndex, targetPointer, targetCount);
         if (result >= 0) {
             return result + totalOffset;
         }

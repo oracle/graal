@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -42,6 +43,9 @@ public abstract class StringIndexOfTestBase extends GraalCompilerTest {
             for (String target : targets) {
                 tests.add(new Object[]{source, target});
             }
+            tests.add(new Object[]{source, ""});
+            tests.add(new Object[]{"", source});
+            tests.add(new Object[]{"", ""});
         }
         for (String source : targets) {
             String s = "";
@@ -67,5 +71,47 @@ public abstract class StringIndexOfTestBase extends GraalCompilerTest {
 
     public int testStringBuilderIndexOf(StringBuilder a, String b) {
         return a.indexOf(b);
+    }
+
+    public int testStringBuilderIndexOfOffset(StringBuilder a, String b, int fromIndex) {
+        return a.indexOf(b, fromIndex);
+    }
+
+    @Test
+    public void testStringIndexOfConstant() {
+        test("testStringIndexOf", new Object[]{this.sourceString, this.constantString});
+    }
+
+    @Test
+    public void testStringIndexOfConstantOffset() {
+        test("testStringIndexOfOffset", new Object[]{this.sourceString, this.constantString, -1});
+        test("testStringIndexOfOffset", new Object[]{this.sourceString, this.constantString, 0});
+        test("testStringIndexOfOffset", new Object[]{this.sourceString, this.constantString, Math.max(0, sourceString.length() - constantString.length())});
+    }
+
+    @Test
+    public void testStringBuilderIndexOfConstant() {
+        /*
+         * Put a copy of the target string in the space after the current string to detect cases
+         * where we search too far.
+         */
+        StringBuilder sb = new StringBuilder(this.sourceString);
+        sb.append(constantString);
+        sb.setLength(sourceString.length());
+        test("testStringBuilderIndexOf", new Object[]{sb, this.constantString});
+    }
+
+    @Test
+    public void testStringBuilderIndexOfConstantOffset() {
+        /*
+         * Put a copy of the target string in the space after the current string to detect cases
+         * where we search too far.
+         */
+        StringBuilder sb = new StringBuilder(this.sourceString);
+        sb.append(constantString);
+        sb.setLength(sourceString.length());
+        test("testStringBuilderIndexOfOffset", new Object[]{sb, this.constantString, -1});
+        test("testStringBuilderIndexOfOffset", new Object[]{sb, this.constantString, 0});
+        test("testStringBuilderIndexOfOffset", new Object[]{sb, this.constantString, Math.max(0, sourceString.length() - constantString.length())});
     }
 }
