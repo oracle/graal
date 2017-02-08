@@ -242,7 +242,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     private synchronized void initialize() {
         if (compilationProfile == null) {
-            if (sourceCallTarget == null && rootNode.isCloningAllowed()) {
+            if (sourceCallTarget == null && rootNode.isCloningAllowed() && !rootNode.isCloneUninitializedSupported()) {
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = cloneRootNode(rootNode);
             }
@@ -312,7 +312,12 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     private static RootNode cloneRootNode(RootNode root) {
         assert root.isCloningAllowed();
-        return NodeUtil.cloneNode(root);
+        if (root.isCloneUninitializedSupported()) {
+            assert root == null;
+            return root.cloneUninitialized();
+        } else {
+            return NodeUtil.cloneNode(root);
+        }
     }
 
     OptimizedCallTarget cloneUninitialized() {
