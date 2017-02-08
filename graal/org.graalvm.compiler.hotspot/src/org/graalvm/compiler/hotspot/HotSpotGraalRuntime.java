@@ -90,6 +90,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private final GraalHotSpotVMConfig config;
 
+    private final OptionValues options;
+
     /**
      * @param compilerConfigurationFactory factory for the compiler configuration
      *            {@link CompilerConfigurationFactory#selectFactory(String)}
@@ -100,7 +102,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
         config = GeneratePIC.getValue(GLOBAL) ? new AOTGraalHotSpotVMConfig(store) : new GraalHotSpotVMConfig(store);
 
-        OptionValues options;
         // Only set HotSpotPrintInlining if it still has its default value (false).
         if (GraalOptions.HotSpotPrintInlining.getValue(GLOBAL) == false && config.printInlining) {
             options = new OptionValues(GLOBAL, HotSpotPrintInlining, true);
@@ -267,7 +268,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     void shutdown() {
         if (debugValuesPrinter != null) {
-            debugValuesPrinter.printDebugValues();
+            debugValuesPrinter.printDebugValues(options);
         }
         phaseTransition("final");
 
