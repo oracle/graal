@@ -119,6 +119,9 @@ final class InstrumentationHandler {
                     if (!sources.containsKey(source)) {
                         sources.put(source, null);
                         sourcesList.add(source);
+                    } else {
+                        // The source is not new
+                        source = null;
                     }
                 }
             }
