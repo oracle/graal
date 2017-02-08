@@ -112,6 +112,43 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
  * be discovered by explicitly {@linkplain #findGlobalSymbols(String) retrieving} all global symbols
  * with a particular name.
  *
+ * <h4>Truffle Language Interoperation</h4>
+ *
+ * <em>Interoperability</em> among executing guest language programs is supported in part by the
+ * cross-language exchange of <em>global symbols</em> whose {@linkplain #findGlobalSymbol(String)
+ * retrieval} produces results wrapped in instances of {@link Value}. The {@linkplain Value#get()
+ * content} of a {@link Value Value} may be a boxed Java primitive type or a <em>foreign object</em>
+ * (implemented internally as a {@link TruffleObject}). Foreign objects support a message-based
+ * protocol for access to their contents, possibly including fields and methods.
+ * <p>
+ * Foreign objects may be functional, in which case cross-language method/procedure calls are
+ * possible. Foreign calls return results wrapped in non-null {@link Value Value} instances.
+ *
+ * <h4>Truffle-Java Interoperation</h4>
+ *
+ * <em>Interoperability</em> is also supported between Java and guest language programs. For example
+ * a Java client can <em>export</em> global symbols during engine creation via
+ * {@link Builder#globalSymbol(String, Object)} and <em>import</em> them at any time via
+ * {@link #findGlobalSymbol(String)}. The {@linkplain Value#get() content} of a {@link Value Value}
+ * (for example retrieved from an imported symbol) can be accessed via {@link Value#as(Class)},
+ * which returns an object of the requested type. A {@link Value Value} determined to be functional
+ * can be called via {@link Value#execute(Object...)}, whose result is wrapped in a non-null
+ * {@link Value Value} instance.
+ * <p>
+ * Java clients <em>export values</em> in two ways:
+ * <ul>
+ * <li>bound to globally accessible names via {@link Builder#globalSymbol(String, Object)}, or</li>
+ * <li>as arguments to foreign method/procedure calls via {@link Value#execute(Object...)}.</li>
+ * </ul>
+ * In either case the engine <em>wraps</em> exported non-primitive Java values so that they appear
+ * to guest languages the same as other foreign objects. In situations where a Java object is
+ * exported and eventually returned (by import or method/procedure call), the identity of the result
+ * (obtained by {@link Value#get()}) is preserved.
+ * <p>
+ * Exporting a Java <em>object</em> grants guest language access to the object's public fields and
+ * methods. Exporting a Java <em>class</em> grants guest language access to the class's public
+ * static fields and public constructors.
+ *
  * <h4>Isolation</h4>
  *
  * An engine runs as an isolated <a href="https://en.wikipedia.org/wiki/Multitenancy">tenant</a> on
@@ -392,23 +429,23 @@ public class PolyglotEngine {
         }
 
         /**
-         * Adds a global symbol to the {@link PolyglotEngine engine} being built. Any
-         * {@link Language Language} can <em>import</em> this symbol, and it will take precedence
-         * over symbols exported by the languages. Any number of symbols may be added; later
-         * definition of the same name overrides the previous one.
+         * Adds a global symbol (named value) to be exported by the {@link PolyglotEngine engine}
+         * being built. Any guest {@link Language Language} can <em>import</em> this symbol, which
+         * takes precedence over any symbols exported under the same name by languages. Any number
+         * of symbols may be added; in case of name-collision only the last one added will be
+         * exported. The namespace of exported global symbols is immutable once the engine is built.
          * <p>
-         * In case one wants to interoperate with Java, one can export any Java classes or objects
-         * when creating the {@link PolyglotEngine} as shown in the following snippet:
+         * See {@linkplain PolyglotEngine "Truffle-Java Interoperation"} for the implications of
+         * exporting Java data to guest languages. The following example demonstrates the export of
+         * both a Java class and a Java object:
          *
          * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#configureJavaInterop}
          *
-         * The <b>mul</b> and <b>compose</b> objects are then available to any language.
+         * The <code>mul</code> and <code>compose</code> objects are then available to any guest
+         * language.
          *
-         * @param name name of the symbol to register
-         * @param obj value of the object - expected to be a primitive wrapper, {@link String} or
-         *            {@link TruffleObject} for mutual interoperability. If the object isn't of the
-         *            previous types, the system tries to wrap it using
-         *            {@link JavaInterop#asTruffleObject(Object)}, if available
+         * @param name name of the global symbol to register
+         * @param obj value of the symbol to export
          * @return this builder
          * @see PolyglotEngine#findGlobalSymbol(String)
          * @throws IllegalArgumentException if the object isn't of primitive type and cannot be
@@ -492,22 +529,22 @@ public class PolyglotEngine {
     /**
      * Evaluates guest language source code, using the installed {@link Language language} that
      * matches the code's {@link Source#getMimeType() MIME type}. The engine wraps the result in an
-     * instance of {@link Value Value}, for which Java-typed views (objects) can be created using
+     * instance of {@link Value Value}, for which Java-typed access (objects) can be created using
      * {@link Value#as(Class) Value#as(Class)}.
      * <p>
      * For sources marked as {@link Source#isInteractive() interactive}, the engine will will do
-     * more, depending the language. This may include printing the result in a language-specific
-     * format to the engine's {@link PolyglotEngine.Builder#setOut standard output}. It might read
+     * more, depending the language. This may include printing the result, in a language-specific
+     * format, to the engine's {@link PolyglotEngine.Builder#setOut standard output}. It might read
      * input values queried by the language.
      *
      * <h5>Java interoperation examples</h5>
      * <p>
      * {@link #eval(Source)} is also useful for Java applications that <em>interoperate</em> with
-     * guest languages. The following examples show how Java can access a guest language function,
-     * object, and class respectively. The general strategy is to {@linkplain #eval(Source)
-     * evaluate} guest language code that produces the desired language element and then
-     * {@linkplain Value#as(Class) create} a Java object of the appropriate type for Java access to
-     * the result.
+     * guest languages. The following examples demonstrate <em>foreign access</em> from Java to a
+     * guest language function, object, and class respectively. The general strategy is to
+     * {@linkplain #eval(Source) evaluate} guest language code that produces the desired language
+     * element and then {@linkplain Value#as(Class) create} a Java object of the appropriate type
+     * for Java access to the result.
      * <p>
      * The examples use JavaScript as the guest language, assuming that a Truffle implementation of
      * JavaScript is on the JVM class path. In each example a {@link Source#newBuilder(String)
@@ -515,13 +552,15 @@ public class PolyglotEngine {
      *
      * <h6>Java interop example: Java access to a JavaScript function</h6>
      *
-     * The simplest kind of interoperation is calling a guest language (foreign) function from Java.
+     * The simplest kind of interoperation is calling a <em>foreign</em> (guest language) function
+     * from Java.
      * <p>
      * In this example a fragment of JavaScript code named {@code "mul.js"} defines an anonymous
      * function of two arguments. Evaluation of that code returns the JavaScript function wrapped in
      * a {@link Value}. The method {@link Value#as(Class)} creates a Java object (an instance of
-     * functional interface {@code Multiplier}) that supports calls to the JavaScript function. The
-     * JavaScript value returned by the function is made available as a Java {@code int}.
+     * functional interface {@code Multiplier}) that supports foreign calls to the JavaScript
+     * function. The JavaScript value returned by the function is made available as a Java
+     * {@code int}.
      * <p>
      * Parentheses around the function definition keep it out of JavaScript's global scope, so the
      * Java object holds the only reference to it.
@@ -531,17 +570,17 @@ public class PolyglotEngine {
      * <h6>Java interop example: Java access to a JavaScript object</h6>
      *
      * A slightly more complex example requires access to two guest language functions that share
-     * state, which is implemented in the simplest case as a guest language object accessible from
-     * Java.
+     * state, which is implemented in the simplest case as a <em>foreign</em> (guest language)
+     * object accessible from Java.
      * <p>
      * In this example a fragment of JavaScript code named {@code "CountSeconds.js"} defines an
      * anonymous function of no arguments. That function creates a variable {@code "seconds"} plus
      * two functions and returns them as a dynamic object. Evaluation of {@code "CountSections.js"}
      * produces a JavaScript function wrapped as a {@link Value} that can be called directly using
-     * the method {@link Value#execute(Object...)}. Executing the JavaScript function produces a
-     * JavaScript object wrapped as a {@link Value}. The method {@link Value#as(Class)} creates a
-     * Java object that allows access to the JavaScript object as an instance of the Java interface
-     * {@code Counter}.
+     * the method {@link Value#execute(Object...)}. A foreign execution the JavaScript function
+     * produces a JavaScript object wrapped as a {@link Value}. The method {@link Value#as(Class)}
+     * creates a Java object that allows access to the JavaScript object as an instance of the Java
+     * interface {@code Counter}.
      * <p>
      * Parentheses around the function definition keep it out of JavaScript's global scope, so the
      * Java object holds the only reference to it.
@@ -552,15 +591,15 @@ public class PolyglotEngine {
      *
      * The ECMAScript 6 specification adds the concept of typeless classes to JavaScript.
      * Interoperability allows Java to access fields and functions of a JavaScript class. A
-     * JavaScript function that creates new instances can be called directly from Java, playing the
-     * role of a <em>factory</em> for the JavaScript class.
+     * JavaScript function that creates new instances can be (foreign) called directly from Java,
+     * playing the role of a <em>factory</em> for the JavaScript class.
      * <p>
      * In this example a fragment of JavaScript code named {@code "Incrementor.js"} defines an
      * anonymous function of no arguments. Evaluation of that code returns the JavaScript function
-     * wrapped in a {@link Value}, which can be called directly from Java using the method
+     * wrapped in a {@link Value}, which can be (foreign) called directly from Java using the method
      * {@link Value#execute(Object...)}. That JavaScript function defines the JavaScript class
      * {@code JSIncrementor} and returns another JavaScript function (wrapped in a {@link Value})
-     * that acts as a factory. Each call to the factory produces an instance of
+     * that acts as a factory. Each foreign call to the factory produces an instance of
      * {@code JSIncrementor} wrapped as a {@link Value}. The method {@link Value#as(Class)} creates
      * a Java object for each of those instances that allows access via the Java type
      * {@code Incrementor}.
@@ -572,8 +611,8 @@ public class PolyglotEngine {
      * More examples can be found in description of {@link Value#execute(Object...)} and
      * {@link Value#as(Class)} methods.
      *
-     * @param source code snippet to execute
-     * @return a non-null {@link Value} that holds the result
+     * @param source guest language code
+     * @return result of the evaluation wrapped in a non-null {@link Value}
      * @throws IllegalStateException if no installed language matches the code's MIME type
      * @throws Exception thrown to signal errors while processing the code
      * @see Value#as(Class)
@@ -1071,8 +1110,8 @@ public class PolyglotEngine {
         }
 
         /**
-         * Creates Java-typed access to the object wrapped by this {@link Value}. Results depend on
-         * the requested type:
+         * Creates Java-typed foreign access to the object wrapped by this {@link Value}. Results
+         * depend on the requested type:
          * <ul>
          * <li>For primitive types such as {@link Number}, the value is simply cast and returned.
          * </li>
@@ -1086,10 +1125,10 @@ public class PolyglotEngine {
          * <h5>Java interoperation examples</h5>
          * <p>
          * The method {@link PolyglotEngine.Value#as(Class)} plays an essential role supporting
-         * interoperation between Java and guest languages. Examples of basic Java interoperation
-         * (access to JavaScript functions, simple objects, and classes) appear in the method
+         * interoperation between Java and guest languages. Examples demonstrating Java foreign
+         * access to JavaScript functions, simple objects, and classes appear in the method
          * documentation for {@link PolyglotEngine#eval(Source)}. The examples here demonstrate Java
-         * access to more complex data structures.
+         * foreign access to more complex data structures.
          * <p>
          * The examples use JavaScript as the guest language, assuming that a Truffle implementation
          * of JavaScript is on the JVM class path. In each example a
@@ -1098,23 +1137,23 @@ public class PolyglotEngine {
          *
          * <h6>Java interop example: Java access to a JavaScript array with typed elements</h6>
          * <p>
-         * This example shows how Java can be given type-safe access to members of a JavaScript
-         * array with members of a known type.
+         * This example demonstrates type-safe Java foreign access to members of a JavaScript array
+         * with members of a known type.
          * <p>
          * In this example a fragment of JavaScript code named {@code "ArrayOfPoints.js"} defines an
          * anonymous function of no arguments. Evaluation of that code returns the JavaScript
          * function wrapped in a {@link Value}. The method {@link Value#as(Class)} creates a Java
-         * object (an instance of functional interface {@code PointProvider}) that supports calls to
-         * the JavaScript function. The JavaScript list returned by the function is made available
-         * as Java type {@code List<Point>}.
+         * object (an instance of functional interface {@code PointProvider}) that supports foreign
+         * calls to the JavaScript function. The JavaScript list returned by the function is made
+         * available as Java type {@code List<Point>}.
          *
          *
          * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptArrayWithTypedElementsFromJava}
          *
          * <h6>Java interop example: Java access to JavaScript JSON data</h6>
          *
-         * Imagine a need to access a JavaScript JSON-like structure from Java with type safety.
-         * This example is based on JSON data returned by a GitHub API.
+         * This example demonstrates type-safe Java foreign access to a JavaScript JSON-like
+         * structure. The example is based on JSON data returned by a GitHub API.
          * <p>
          * The GitHub response contains a list of repository objects. Each repository has an id,
          * name, list of URLs, and a nested structure describing its owner. Interfaces
@@ -1122,11 +1161,11 @@ public class PolyglotEngine {
          * <p>
          * In the example a fragment of Javascript code named {@code "github-api-value.js"} defines
          * an anonymous function of no arguments. Evaluation of that code returns the JavaScript
-         * function, wrapped in a {@link Value} that can be executed directly. Execution of that
-         * function returns a JavaScript mock JSON parser function, also wrapped in a {@link Value}.
-         * The method {@link Value#as(Class)} creates a Java object (an instance of functional
-         * interface {@code ParseJSON}) that supports Java calls to the mock parser, producing
-         * results that can be inspected in a type-safe way.
+         * function, wrapped in a {@link Value} that can be (foreign) executed directly. Execution
+         * of that function returns a JavaScript mock JSON parser function, also wrapped in a
+         * {@link Value Value}. The method {@link Value#as(Class)} creates a Java object (an
+         * instance of functional interface {@code ParseJSON}) that supports Java foreign calls to
+         * the JavaScript mock parser, producing results that can be inspected in a type-safe way.
          *
          * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptJSONObjectFromJava}
          *
@@ -1135,8 +1174,7 @@ public class PolyglotEngine {
          * {@link PolyglotEngine#eval(Source)} and {@link #execute(Object...)} methods.
          *
          * @param <T> the type of the requested view
-         * @param representation an interface describing the the requested view (must be an
-         *            interface)
+         * @param representation an interface describing the requested access (must be an interface)
          * @return instance of the view wrapping the object of this value
          * @throws Exception in case it is not possible to obtain the value of the object
          * @throws ClassCastException if the value cannot be converted to desired view
@@ -1185,26 +1223,23 @@ public class PolyglotEngine {
         }
 
         /**
-         * Executes this value. If the value represents a function, then it should be invoked with
-         * provided arguments. If the value represents a field, then first argument (if provided)
-         * should set the value to the field; the return value should be the actual value of the
-         * field when this method returns.
-         * <p>
-         * All {@linkplain Language languages} accept wrappers of Java primitive types (e.g.
-         * {@link java.lang.Byte}, {@link java.lang.Short}, {@link java.lang.Integer},
-         * {@link java.lang.Long}, {@link java.lang.Float}, {@link java.lang.Double},
-         * {@link java.lang.Character}, {@link java.lang.Boolean}, and {@link java.lang.String}) or
-         * generic {@link TruffleObject objects created} by one of the languages as parameters of
-         * their functions (or other objects that can be executed). In addition to that the
-         * <code>execute</code> method converts plain Java objects into appropriate wrappers to make
-         * them easily accessible from dynamic languages.
+         * Executes this value, depending on its content.
+         * <ul>
+         *
+         * <li>If the value represents a function, makes a <em>foreign function call</em> using
+         * appropriate Java arguments. See {@linkplain PolyglotEngine "Truffle-Java Interoperation"}
+         * for the implications of making Java data available to guest languages.</li>
+         *
+         * <li>If the value represents a field, then sets the field to the value of the first
+         * argument, if provided, and returns the (possibly new) value of the field.</li>
+         * </ul>
          *
          * <h5>Java interoperation examples</h5>
          * <p>
          * The method {@link PolyglotEngine.Value#execute(Object...)} plays an essential role
          * supporting interoperation between Java and guest languages. The examples here demonstrate
-         * JavaScript access to Java elements. Access in the other direction, Java access to
-         * JavaScript elements appear in method documentation for
+         * JavaScript foreign access to Java elements. Access in the other direction, Java foreign
+         * access to JavaScript elements appear in method documentation for
          * {@link PolyglotEngine#eval(Source)} and {@link Value#as(Class)}.
          * <p>
          * The examples use JavaScript as the guest language, assuming that a Truffle implementation
@@ -1214,42 +1249,42 @@ public class PolyglotEngine {
          *
          * <h6>Java interop example: JavaScript access to Java object fields and methods</h6>
          *
-         * This example shows how to expose <b>public</b> members of Java objects to scripts written
-         * in dynamic languages. In the example a JavaScript function is able to access fields in
-         * Java objects of type {@code Moment}.
+         * This example shows how to expose <em>public</em> members of Java objects to scripts
+         * written in dynamic languages. In the example a JavaScript function is able to access
+         * fields in (foreign) Java objects of type {@code Moment}.
          * <p>
          * Evaluating the JavaScript code fragment named {@code "MomentToSeconds.js"} produces a
-         * JavaScript function wrapped in a {@link Value}. This can be executed directly, as shown,
-         * which returns a JavaScript number that is also wrapped in a {@link Value}. Converting the
-         * result to Java requires using the method {@link Value#as(Class)}.
+         * JavaScript function of one argument wrapped in a {@link Value}. This can be (foreign)
+         * executed, as shown, which returns a JavaScript number wrapped in a {@link Value}.
+         * Converting the result to Java requires using the method {@link Value#as(Class)}.
          *
          * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObject}
          *
-         * The explicit conversion of the result in the above example can be avoided by explicitly
-         * converting the type of the <em>function</em> instead. In the following variation, the
-         * JavaScript function is given the Java functional type {@code MomentConvertor}, which
-         * returns a Java {@code int}.
+         * The explicit conversion of the result type in the above example can be avoided by
+         * explicitly converting the type of the <em>foreign function</em> instead. In the following
+         * variation, the JavaScript function is given the Java functional type
+         * {@code MomentConvertor}, which returns a Java {@code int}.
          *
          * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConverter}
          *
          * <h6>Java interop example: JavaScript access to Java static methods and constructors</h6>
          *
-         * Dynamic languages can also access <b>public static methods</b> and <b>public
-         * constructors</b> of Java classes, if they can get reference to them. In this example a
-         * JavaScript function (created by evaluating the JavaScript code fragment named
+         * Dynamic languages can also access <em>public static methods</em> and <em>public
+         * constructors</em> of any Java class for which they are provided a reference. In this
+         * example a JavaScript function (created by evaluating the JavaScript code fragment named
          * {@code "ConstructMoment.js"}) creates a JavaScript factory for a Java class passed to it
-         * as an argument. The factory invokes the class constructor and returns the new Java object
-         * instance wrapped in a {@link Value}.
+         * as an argument. The JavaScript factory (foreign) invokes the Java class constructor and
+         * returns the new Java object instance wrapped in a {@link Value}.
          *
          * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createJavaScriptFactoryForJavaClass}
          *
          * <p>
-         * Additional examples of Java/dynamic language interop can be found in description of
-         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
+         * Additional examples of Java/dynamic language interoperation can be found in description
+         * of {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
          * PolyglotEngine.eval(Source)} and {@link #as(Class) Value.as(Class)} methods.
          *
-         * @param args arguments to pass when invoking the value
-         * @return a non-null {@link Value} that holds the result
+         * @param args arguments to pass when executing the value
+         * @return result of the execution wrapped in a non-null {@link Value}
          * @throws Exception signals problem during execution
          * @since 0.9
          */
