@@ -249,7 +249,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 this.uninitializedRootNode = cloneRootNode(rootNode);
             }
             runtime().getTvmci().onFirstExecution(this);
-            runtime().getTvmci().onFirstExecution(this);
             this.compilationProfile = createCompilationProfile();
         }
     }

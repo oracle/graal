@@ -83,7 +83,7 @@ public class TruffleCompilerOptions {
      * The returned object should be used with the try-with-resource construct:
      *
      * <pre>
-     * try (OverrideScope s = overrideOptions(option1, value1, option2, value2)) {
+     * try (TruffleOptionsOverrideScope s = overrideOptions(option1, value1, option2, value2)) {
      *     ...
      * }
      * </pre>
