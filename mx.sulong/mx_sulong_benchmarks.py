@@ -144,12 +144,13 @@ class SulongVm(GuestVm):
         mx_sulong.ensureLLVMBinariesExist()
         inputFile = args[0]
         outputFile = 'test.bc'
-        mx_sulong.compileWithClangOpt(inputFile, outputFile, out=f, err=f)
+        mx_sulong.compileWithClangOpt(inputFile, outputFile, ['3.2', '3.3'], out=f, err=f)
 
         suTruffleOptions = [
             '-Dgraal.TruffleBackgroundCompilation=false',
             '-Dgraal.TruffleTimeThreshold=1000000',
             '-Dgraal.TruffleInliningMaxCallerSize=10000',
+            '-Dgraal.TruffleCompilationExceptionsAreFatal=true',
         ]
         sulongCmdLine = suTruffleOptions + [mx_sulong.getSearchPathOption()] + mx_sulong.getBitcodeLibrariesOption() + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + [outputFile]
         return self.host_vm().run(cwd, sulongCmdLine + args)

@@ -111,9 +111,10 @@ benchSulong: ${bench} {
     CPPFLAGS: "-I$LIBGMP/include"
     LD_LIBRARY_PATH: "$LIBGMP/lib:$LLVM/lib:$LD_LIBRARY_PATH"
     PATH: "$LLVM/bin:$PATH"
+    SULONG_VERSION: "3.2"
   },
 
-  cmd: [mx, --dynamicimport, "${GRAAL_DYNAMIC_IMPORT}", --jdk, jvmci, benchmark, --ignore-suite-commit-info, sulong, --results-file, "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}", "csuite:*"],
+  cmd: [mx, -v, --dynamicimport, "${GRAAL_DYNAMIC_IMPORT}", --jdk, jvmci, benchmark, --ignore-suite-commit-info, sulong, --results-file, "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}", "csuite:*"],
   vmArgs: [--, --native-vm, sulong, --jvm, server, --jvm-config, "${GRAAL_DYNAMIC_IMPORT}"],
 
   setup: [
