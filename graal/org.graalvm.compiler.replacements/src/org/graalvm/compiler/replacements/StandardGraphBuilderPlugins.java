@@ -42,7 +42,6 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -54,14 +53,12 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AbsNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
@@ -267,7 +264,7 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
                 // Emits a null-check for the otherwise unused receiver
                 unsafe.get();
-                b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazz, true));
+                b.addPush(JavaKind.Object, new DynamicNewInstanceNode(b.nullCheckedValue(clazz, DeoptimizationAction.None), true));
                 return true;
             }
 
@@ -805,18 +802,7 @@ public class StandardGraphBuilderPlugins {
         r.register1("guardingNonNull", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ObjectStamp objectStamp = (ObjectStamp) value.stamp();
-                if (objectStamp.nonNull()) {
-                    b.addPush(value.getStackKind(), value);
-                    return true;
-                } else if (objectStamp.alwaysNull()) {
-                    b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.NullCheckException));
-                    return true;
-                }
-                LogicNode isNull = b.add(IsNullNode.create(value));
-                FixedGuardNode fixedGuard = b.add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
-                Stamp newStamp = objectStamp.improveWith(StampFactory.objectNonNull());
-                b.addPush(value.getStackKind(), new PiNode(value, newStamp, fixedGuard));
+                b.addPush(value.getStackKind(), b.nullCheckedValue(value));
                 return true;
             }
         });

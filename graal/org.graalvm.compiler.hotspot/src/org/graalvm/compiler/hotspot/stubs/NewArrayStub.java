@@ -31,7 +31,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperHeaderSizeShift;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeMask;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.layoutHelperLog2ElementSizeShift;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadKlassLayoutHelperIntrinsic;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readLayoutHelper;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH;
@@ -103,7 +103,7 @@ public class NewArrayStub extends SnippetStub {
      */
     @Snippet
     private static Object newArray(KlassPointer hub, int length, boolean fillContents, @ConstantParameter KlassPointer intArrayHub, @ConstantParameter Register threadRegister) {
-        int layoutHelper = loadKlassLayoutHelperIntrinsic(hub);
+        int layoutHelper = readLayoutHelper(hub);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift(INJECTED_VMCONFIG)) & layoutHelperElementTypeMask(INJECTED_VMCONFIG);

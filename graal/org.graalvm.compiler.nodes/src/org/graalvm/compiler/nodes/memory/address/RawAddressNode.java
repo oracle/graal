@@ -49,4 +49,9 @@ public class RawAddressNode extends AddressNode {
         updateUsages(this.address, address);
         this.address = address;
     }
+
+    @Override
+    public ValueNode getBase() {
+        return address;
+    }
 }

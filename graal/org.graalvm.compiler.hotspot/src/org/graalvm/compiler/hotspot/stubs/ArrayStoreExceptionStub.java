@@ -47,7 +47,7 @@ public class ArrayStoreExceptionStub extends CreateExceptionStub {
     }
 
     @Snippet
-    private static Object createArrayStoreException(Object object, @ConstantParameter Register threadRegister) {
+    private static Object createArrayStoreException(@Snippet.NonNullParameter Object object, @ConstantParameter Register threadRegister) {
         KlassPointer klass = HotSpotReplacementsUtil.loadHub(object);
         return createException(threadRegister, ArrayStoreException.class, klass);
     }

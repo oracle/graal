@@ -87,6 +87,7 @@ public class AMD64AddressNode extends AddressNode implements LIRLowerable {
         gen.setResult(this, new AMD64AddressValue(kind, baseValue, indexValue, scale, displacement));
     }
 
+    @Override
     public ValueNode getBase() {
         return base;
     }

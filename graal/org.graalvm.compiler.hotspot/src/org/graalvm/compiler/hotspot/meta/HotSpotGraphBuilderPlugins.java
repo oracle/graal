@@ -323,7 +323,7 @@ public class HotSpotGraphBuilderPlugins {
      */
     private static ValueNode getMetaspaceConstantPool(GraphBuilderContext b, ValueNode constantPoolOop, WordTypes wordTypes, GraalHotSpotVMConfig config) {
         // ConstantPool.constantPoolOop is in fact the holder class.
-        ClassGetHubNode klass = b.add(new ClassGetHubNode(constantPoolOop));
+        ClassGetHubNode klass = b.add(new ClassGetHubNode(b.nullCheckedValue(constantPoolOop, DeoptimizationAction.None)));
 
         boolean notCompressible = false;
         AddressNode constantsAddress = b.add(new OffsetAddressNode(klass, b.add(ConstantNode.forLong(config.instanceKlassConstantsOffset))));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCA
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -42,7 +41,6 @@ import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
@@ -65,11 +63,11 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
     public ReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
-        super(TYPE, address, location, stamp, null, barrierType);
+        this(address, location, stamp, null, barrierType);
     }
 
     public ReadNode(AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        super(TYPE, address, location, stamp, guard, barrierType);
+        this(address, location, stamp, guard, barrierType, false, null);
     }
 
     public ReadNode(AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck, FrameState stateBefore) {
@@ -79,15 +77,6 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     protected ReadNode(NodeClass<? extends ReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
                     FrameState stateBefore) {
         super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
-    }
-
-    public ReadNode(AddressNode address, LocationIdentity location, ValueNode guard, BarrierType barrierType) {
-        /*
-         * Used by node intrinsics. Really, you can trust me on that! Since the initial value for
-         * location is a parameter, i.e., a ParameterNode, the constructor cannot use the declared
-         * type LocationNode.
-         */
-        super(TYPE, address, location, StampFactory.forNodeIntrinsic(), (GuardingNode) guard, barrierType);
     }
 
     @Override
@@ -105,13 +94,6 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             } else {
                 // Read without usages or guard can be safely removed.
                 return null;
-            }
-        }
-        if (getAddress() instanceof OffsetAddressNode) {
-            OffsetAddressNode objAddress = (OffsetAddressNode) getAddress();
-            if (objAddress.getBase() instanceof PiNode && ((PiNode) objAddress.getBase()).getGuard() == getGuard()) {
-                OffsetAddressNode newAddress = new OffsetAddressNode(((PiNode) objAddress.getBase()).getOriginalNode(), objAddress.getOffset());
-                return new ReadNode(newAddress, getLocationIdentity(), stamp(), getGuard(), getBarrierType(), getNullCheck(), stateBefore());
             }
         }
         if (!getNullCheck()) {

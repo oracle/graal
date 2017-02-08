@@ -48,6 +48,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -164,9 +165,11 @@ public class SnippetTemplate {
                 int count = method.getSignature().getParameterCount(false);
                 constantParameters = new boolean[count];
                 varargsParameters = new boolean[count];
+                nonNullParameters = new boolean[count];
                 for (int i = 0; i < count; i++) {
                     constantParameters[i] = method.getParameterAnnotation(ConstantParameter.class, i) != null;
                     varargsParameters[i] = method.getParameterAnnotation(VarargsParameter.class, i) != null;
+                    nonNullParameters[i] = method.getParameterAnnotation(NonNullParameter.class, i) != null;
 
                     assert !constantParameters[i] || !varargsParameters[i] : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
                                     VarargsParameter.class.getSimpleName();
@@ -178,6 +181,7 @@ public class SnippetTemplate {
 
             final boolean[] constantParameters;
             final boolean[] varargsParameters;
+            final boolean[] nonNullParameters;
 
             /**
              * The parameter names, taken from the local variables table. Only used for assertion
@@ -254,6 +258,10 @@ public class SnippetTemplate {
 
         public boolean isVarargsParameter(int paramIdx) {
             return lazy().varargsParameters[paramIdx];
+        }
+
+        public boolean isNonNullParameter(int paramIdx) {
+            return lazy().nonNullParameters[paramIdx];
         }
 
         public String getParameterName(int paramIdx) {
@@ -723,6 +731,8 @@ public class SnippetTemplate {
                         VarargsPlaceholderNode placeholder = snippetCopy.unique(new VarargsPlaceholderNode(varargs, providers.getMetaAccess()));
                         nodeReplacements.put(parameter, placeholder);
                         placeholders[i] = placeholder;
+                    } else if (args.info.isNonNullParameter(i)) {
+                        parameter.setStamp(parameter.stamp().join(StampFactory.objectNonNull()));
                     }
                 }
             }
