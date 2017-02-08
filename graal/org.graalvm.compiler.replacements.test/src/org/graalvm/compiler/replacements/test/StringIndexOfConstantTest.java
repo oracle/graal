@@ -32,6 +32,35 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class StringIndexOfConstantTest extends StringIndexOfTestBase {
+
+    /*
+     * These test definitions could live in the superclass except that the mx junit individual test
+     * runner can't find tests in superclasses.
+     */
+    @Override
+    @Test
+    public void testStringIndexOfConstant() {
+        super.testStringIndexOfConstant();
+    }
+
+    @Override
+    @Test
+    public void testStringIndexOfConstantOffset() {
+        super.testStringIndexOfConstantOffset();
+    }
+
+    @Override
+    @Test
+    public void testStringBuilderIndexOfConstant() {
+        super.testStringBuilderIndexOfConstant();
+    }
+
+    @Override
+    @Test
+    public void testStringBuilderIndexOfConstantOffset() {
+        super.testStringBuilderIndexOfConstantOffset();
+    }
+
     Object[] constantArgs;
 
     @Override
@@ -43,29 +72,15 @@ public class StringIndexOfConstantTest extends StringIndexOfTestBase {
         return super.editGraphBuilderConfiguration(conf);
     }
 
-    @Test
-    public void testStringIndexOfConstant() {
-        testHelper("testStringIndexOf", new Object[]{this.sourceString, this.constantString});
-    }
-
-    @Test
-    public void testStringIndexOfConstantOffset() {
-        testHelper("testStringIndexOfOffset", new Object[]{this.sourceString, this.constantString, Math.min(sourceString.length() - 1, 3)});
-    }
-
-    @Test
-    public void testStringBuilderIndexOfConstant() {
-        testHelper("testStringBuilderIndexOf", new Object[]{new StringBuilder(this.sourceString), this.constantString});
-    }
-
-    protected Result testHelper(String name, Object... args) {
+    @Override
+    protected Result test(OptionValues options, ResolvedJavaMethod method, Object receiver, Object... args) {
         constantArgs = new Object[args.length + 1];
         for (int i = 0; i < args.length; i++) {
             if (args[i] == constantString) {
                 constantArgs[i + 1] = constantString;
             }
         }
-        return test(name, args);
+        return super.test(options, method, receiver, args);
     }
 
     @Override

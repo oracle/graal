@@ -25,19 +25,32 @@ package org.graalvm.compiler.replacements.test;
 import org.junit.Test;
 
 public class StringIndexOfTest extends StringIndexOfTestBase {
+    /*
+     * These test definitions could live in the superclass except that the mx junit individual test
+     * runner can't find tests in superclasses.
+     */
 
+    @Override
     @Test
     public void testStringIndexOfConstant() {
-        test("testStringIndexOf", new Object[]{this.sourceString, this.constantString});
+        super.testStringIndexOfConstant();
     }
 
+    @Override
     @Test
     public void testStringIndexOfConstantOffset() {
-        test("testStringIndexOfOffset", new Object[]{this.sourceString, this.constantString, Math.min(sourceString.length() - 1, 3)});
+        super.testStringIndexOfConstantOffset();
     }
 
+    @Override
     @Test
     public void testStringBuilderIndexOfConstant() {
-        test("testStringBuilderIndexOf", new Object[]{new StringBuilder(this.sourceString), this.constantString});
+        super.testStringBuilderIndexOfConstant();
+    }
+
+    @Override
+    @Test
+    public void testStringBuilderIndexOfConstantOffset() {
+        super.testStringBuilderIndexOfConstantOffset();
     }
 }
