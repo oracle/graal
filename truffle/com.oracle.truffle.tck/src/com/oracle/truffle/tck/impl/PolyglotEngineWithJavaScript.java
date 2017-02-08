@@ -24,17 +24,21 @@
  */
 package com.oracle.truffle.tck.impl;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import java.util.List;
-import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 
 /**
  * Tests with code snippets referencing JavaScript. They are used from {@link PolyglotEngine} & co.
@@ -58,41 +62,46 @@ public class PolyglotEngineWithJavaScript {
 // @formatter:off
 
     @Test
-    public void testDefineJavaScriptFunctionAndUseItFromJava() {
-        defineJavaScriptFunctionAndUseItFromJava();
+    public void testCallJavaScriptFunctionFromJava() {
+        callJavaScriptFunctionFromJava();
     }
 
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineJavaScriptFunctionAndUseItFromJava
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptFunctionFromJava
     @FunctionalInterface
-    interface Mul {
-        int mul(int a, int b);
+    interface Multiplier {
+        int multiply(int a, int b);
     }
 
-    private void defineJavaScriptFunctionAndUseItFromJava() {
-        Mul multiply = engine.eval(Source.newBuilder(
+    public void callJavaScriptFunctionFromJava() {
+        Source src = Source.newBuilder(
             "(function (a, b) {\n" +
             "  return a * b;" +
-            "})"
-        ).mimeType("text/javascript").name("mul.js").build()).as(Mul.class);
+            "})").mimeType("text/javascript").name("mul.js").build();
 
-        assertEquals(42, multiply.mul(6, 7));
-        assertEquals(144, multiply.mul(12, 12));
-        assertEquals(256, multiply.mul(32, 8));
+        // Evaluate JavaScript function definition
+        Value jsFunction = engine.eval(src);
+
+        // Create Java access to JavaScript function
+        Multiplier mul = jsFunction.as(Multiplier.class);
+
+        assertEquals(42, mul.multiply(6, 7));
+        assertEquals(144, mul.multiply(12, 12));
+        assertEquals(256, mul.multiply(32, 8));
     }
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineJavaScriptFunctionAndUseItFromJava
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptFunctionFromJava
 
     @Test
-    public void testDefineMultipleJavaScriptFunctionsAndUseItFromJava() {
-        defineMultipleJavaScriptFunctionsAndUseItFromJava();
+    public void testCallJavaScriptFunctionsWithSharedStateFromJava() {
+        callJavaScriptFunctionsWithSharedStateFromJava();
     }
 
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineMultipleJavaScriptFunctionsAndUseItFromJava
-    interface Times {
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptFunctionsWithSharedStateFromJava
+    interface Counter {
         void addTime(int hours, int minutes, int seconds);
         int timeInSeconds();
     }
 
-    public void defineMultipleJavaScriptFunctionsAndUseItFromJava() {
+    public void callJavaScriptFunctionsWithSharedStateFromJava() {
         Source src = Source.newBuilder("\n"
             + "(function() {\n"
             + "  var seconds = 0;\n"
@@ -111,14 +120,22 @@ public class PolyglotEngineWithJavaScript {
             + "})\n"
         ).name("CountSeconds.js").mimeType("text/javascript").build();
 
-        Times times = engine.eval(src).execute().as(Times.class);
-        times.addTime(6, 30, 0);
-        times.addTime(9, 0, 0);
-        times.addTime(12, 5, 30);
+        // Evaluate JavaScript function definition
+        Value jsFunction = engine.eval(src);
 
-        assertEquals(99330, times.timeInSeconds());
+        // Execute the JavaScript function
+        Value jsObject = jsFunction.execute();
+
+        // Create Java access to the JavaScript object
+        Counter counter = jsObject.as(Counter.class);
+
+        counter.addTime(6, 30, 0);
+        counter.addTime(9, 0, 0);
+        counter.addTime(12, 5, 30);
+
+        assertEquals(99330, counter.timeInSeconds());
     }
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineMultipleJavaScriptFunctionsAndUseItFromJava
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptFunctionsWithSharedStateFromJava
 
     @Test
     public void testAccessFieldsOfJavaObject() {
@@ -126,8 +143,8 @@ public class PolyglotEngineWithJavaScript {
     }
 
     @Test
-    public void testAccessFieldsOfJavaObjectWithConvertor() {
-        accessFieldsOfJavaObjectWithConvertor();
+    public void testAccessFieldsOfJavaObjectWithConverter() {
+        accessFieldsOfJavaObjectWithConverter();
     }
 
     // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObject
@@ -152,44 +169,52 @@ public class PolyglotEngineWithJavaScript {
         ).name("MomentToSeconds.js").mimeType("text/javascript").build();
 
         final Moment m = new Moment(6, 30, 10);
-        int value = engine.eval(src).execute(m).as(Number.class).intValue();
-        assertEquals(3600 * 6 + 30 * 60 + 10, value);
+
+        Value jsFunction = engine.eval(src); // Evaluate JS function def.
+        Value jsSeconds = jsFunction.execute(m); // Execute JS function
+        int seconds = jsSeconds.as(Number.class).intValue(); // Convert result
+
+        assertEquals(3600 * 6 + 30 * 60 + 10, seconds);
     }
     // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObject
 
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConvertor
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConverter
 
     @FunctionalInterface
-    interface MomentConvertor {
+    interface MomentConverter {
         int toSeconds(Moment moment);
     }
 
-    public void accessFieldsOfJavaObjectWithConvertor() {
+    public void accessFieldsOfJavaObjectWithConverter() {
         Source src = Source.newBuilder("\n"
             + "(function(t) {\n"
             + "  return 3600 * t.hours + 60 * t.minutes + t.seconds;\n"
             + "})\n"
         ).name("MomentToSeconds.js").mimeType("text/javascript").build();
 
-        MomentConvertor convertor = engine.eval(src).as(MomentConvertor.class);
-
         final Moment m = new Moment(6, 30, 10);
-        assertEquals(3600 * 6 + 30 * 60 + 10, convertor.toSeconds(m));
+
+        final Value jsFunction = engine.eval(src); // Evaluate JS function def.
+        MomentConverter converter =
+                     jsFunction.as(MomentConverter.class); // Convert function
+        int seconds = converter.toSeconds(m);         // Execute Java function
+
+        assertEquals(3600 * 6 + 30 * 60 + 10, seconds);
     }
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConvertor
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConverter
 
     @Test
-    public void testCreateNewMoment() {
-        createNewMoment();
+    public void testCreateJavaScriptFactoryForJavaClass() {
+        createJavaScriptFactoryForJavaClass();
     }
 
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createNewMoment
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createJavaScriptFactoryForJavaClass
 
     interface MomentFactory {
         Moment create(int h, int m, int s);
     }
 
-    public void createNewMoment() {
+    public void createJavaScriptFactoryForJavaClass() {
         Source src = Source.newBuilder("\n"
             + "(function(Moment) {\n"
             + "  return function(h, m, s) {\n"
@@ -198,23 +223,28 @@ public class PolyglotEngineWithJavaScript {
             + "})\n"
         ).name("ConstructMoment.js").mimeType("text/javascript").build();
 
-        MomentFactory newMoment = engine.eval(src).execute(
-            Moment.class // provides access to Moment class
-        ).as(MomentFactory.class);
+        // Evaluate the JavaScript function definition
+        final Value jsFunction = engine.eval(src);
 
-        final Moment m = newMoment.create(6, 30, 10);
+        // Create a JavaScript factory for the provided Java class
+        final Value jsFactory = jsFunction.execute(Moment.class);
+
+        // Create Java-typed access to the JavaScript factory
+        MomentFactory momentFactory = jsFactory.as(MomentFactory.class);
+
+        final Moment m = momentFactory.create(6, 30, 10);
         assertEquals("Hours", 6, m.hours);
         assertEquals("Minutes", 30, m.minutes);
         assertEquals("Seconds", 10, m.seconds);
     }
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createNewMoment
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createJavaScriptFactoryForJavaClass
 
     @Test
-    public void testIncrementor() {
-        incrementor();
+    public void testCallJavaScriptClassFactoryFromJava() {
+        callJavaScriptClassFactoryFromJava();
     }
 
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptClassFactoryFromJava
 
     interface Incrementor {
         int inc();
@@ -222,10 +252,10 @@ public class PolyglotEngineWithJavaScript {
         int value();
     }
 
-    public void incrementor() {
+    public void callJavaScriptClassFactoryFromJava() {
         Source src = Source.newBuilder("\n"
             + "(function() {\n"
-            + "  class Incrementor {\n"
+            + "  class JSIncrementor {\n"
             + "     constructor(init) {\n"
             + "       this.value = init;\n"
             + "     }\n"
@@ -237,12 +267,18 @@ public class PolyglotEngineWithJavaScript {
             + "     }\n"
             + "  }\n"
             + "  return function(init) {\n"
-            + "    return new Incrementor(init);\n"
+            + "    return new JSIncrementor(init);\n"
             + "  }\n"
             + "})\n"
         ).name("Incrementor.js").mimeType("text/javascript").build();
 
-        final PolyglotEngine.Value factory = engine.eval(src).execute();
+        // Evaluate JavaScript function definition
+        Value jsFunction = engine.eval(src);
+
+        // Execute the JavaScript function
+        Value factory = jsFunction.execute();
+
+        // Call JavaScript function to create Java objects
         Incrementor initFive = factory.execute(5).as(Incrementor.class);
         Incrementor initTen = factory.execute(10).as(Incrementor.class);
 
@@ -255,15 +291,15 @@ public class PolyglotEngineWithJavaScript {
 
         assertEquals("Values are the same", initFive.value(), initTen.value());
     }
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptClassFactoryFromJava
 
 
     @Test
-    public void testArrayWithTypedElements() {
-        arrayWithTypedElements();
+    public void testAccessJavaScriptArrayWithTypedElementsFromJava() {
+        accessJavaScriptArrayWithTypedElementsFromJava();
     }
 
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptArrayWithTypedElementsFromJava
 
     interface Point {
         int x();
@@ -275,7 +311,7 @@ public class PolyglotEngineWithJavaScript {
         List<Point> createPoints();
     }
 
-    public void arrayWithTypedElements() {
+    public void accessJavaScriptArrayWithTypedElementsFromJava() {
         Source src = Source.newBuilder("\n"
             + "(function() {\n"
             + "  class Point {\n"
@@ -288,8 +324,15 @@ public class PolyglotEngineWithJavaScript {
             + "})\n"
         ).name("ArrayOfPoints.js").mimeType("text/javascript").build();
 
-        PointProvider provider = engine.eval(src).as(PointProvider.class);
-        List<Point> points = provider.createPoints();
+        // Evaluate the JavaScript function definition
+        Value jsFunction = engine.eval(src);
+
+        // Create Java-typed access to the JavaScript function
+        PointProvider pointProvider = jsFunction.as(PointProvider.class);
+
+        // Invoke the JavaScript function to generate points
+        List<Point> points = pointProvider.createPoints();
+
         assertEquals("Two points", 2, points.size());
 
         Point first = points.get(0);
@@ -300,43 +343,37 @@ public class PolyglotEngineWithJavaScript {
         assertEquals(5, second.x());
         assertEquals(7, second.y());
     }
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptArrayWithTypedElementsFromJava
 
     @Test
     public void tetsAccessJSONObjectProperties() {
-        accessJSONObjectProperties();
+        accessJavaScriptJSONObjectFromJava();
     }
 
 
     // Checkstyle: stop
-    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties
+    // BEGIN: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptJSONObjectFromJava
+
+    interface Repository {
+        int id();
+        String name();
+        Owner owner();
+        boolean has_wiki();
+        List<String> urls();
+    }
+
+    interface Owner {
+        int id();
+        String login();
+        boolean site_admin();
+    }
 
     @FunctionalInterface
     interface ParseJSON {
         List<Repository> parse();
     }
 
-    interface Repository {
-        int id();
-
-        String name();
-
-        Owner owner();
-
-        boolean has_wiki();
-
-        List<String> urls();
-    }
-
-    interface Owner {
-        int id();
-
-        String login();
-
-        boolean site_admin();
-    }
-
-    public void accessJSONObjectProperties() {
+    public void accessJavaScriptJSONObjectFromJava() {
         Source src = Source.newBuilder(
             "(function () { \n" +
             "  return function() {\n" +
@@ -360,9 +397,17 @@ public class PolyglotEngineWithJavaScript {
             "  };\n" +
             "})\n"
         ).name("github-api-value.js").mimeType("text/javascript").build();
-        ParseJSON parser = engine.eval(src).execute().as(ParseJSON.class);
 
-        List<Repository> repos = parser.parse();
+        // Evaluate the JavaScript function definition
+        Value jsFunction = engine.eval(src);
+
+        // Execute the JavaScript function to create the "mock parser"
+        Value jsMockParser = jsFunction.execute();
+
+        // Create Java-typed access to the "mock parser"
+        ParseJSON mockParser = jsMockParser.as(ParseJSON.class);
+
+        List<Repository> repos = mockParser.parse();
         assertEquals("One repo", 1, repos.size());
         assertEquals("holssewebsocket", repos.get(0).name());
         assertTrue("wiki", repos.get(0).has_wiki());
@@ -378,6 +423,6 @@ public class PolyglotEngineWithJavaScript {
         assertFalse(owner.site_admin());
     }
 
-    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties
+    // END: com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptJSONObjectFromJava
     // Checkstyle: resume
 }
