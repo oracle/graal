@@ -31,5 +31,4 @@ builds += [
   # TraceRA
   ${gateTest8}                 ${gateLinuxAMD64TraceRA} {name: "gate-test-8-linux-amd64-tracera"}
   ${gateTest8}                 ${gateLinuxAMD64TraceRABU} {name: "gate-test-8-linux-amd64-tracera-bu"}
-  ${gateTest8}                 ${gateLinuxAMD64TraceRASingleBlock} {name: "gate-test-8-linux-amd64-tracera-single-block"}
 ]
