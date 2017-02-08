@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.hotspot.stubs;
 
-import static org.graalvm.compiler.nodes.StructuredGraph.NO_PROFILING_INFO;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.lang.reflect.Method;
@@ -38,7 +37,6 @@ import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -112,7 +110,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
 
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM.
-        final StructuredGraph graph = new StructuredGraph(method, AllowAssumptions.NO, NO_PROFILING_INFO, compilationId);
+        final StructuredGraph graph = new StructuredGraph.Builder().method(method).compilationId(compilationId).build();
         try (Scope outer = Debug.scope("SnippetStub", graph)) {
             graph.disableUnsafeAccessTracking();
 

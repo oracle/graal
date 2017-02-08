@@ -22,15 +22,16 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.rbp;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.INITIALIZE_KLASS_BY_SYMBOL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_KLASS_BY_SYMBOL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_STRING_BY_SYMBOL;
-import static jdk.vm.ci.amd64.AMD64.rbp;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
@@ -76,6 +77,7 @@ import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -572,8 +574,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             // metaspace pointer
             Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
             AllocatableValue base = Value.ILLEGAL;
-            if (encoding.base != 0 || GeneratePIC.getValue()) {
-                if (GeneratePIC.getValue()) {
+            OptionValues options = getResult().getLIR().getOptions();
+            if (encoding.base != 0 || GeneratePIC.getValue(options)) {
+                if (GeneratePIC.getValue(options)) {
                     Variable baseAddress = newVariable(LIRKind.value(AMD64Kind.QWORD));
                     AMD64HotSpotMove.BaseMove move = new AMD64HotSpotMove.BaseMove(baseAddress, config);
                     append(move);
@@ -600,8 +603,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             // metaspace pointer
             Variable result = newVariable(LIRKind.value(AMD64Kind.QWORD));
             AllocatableValue base = Value.ILLEGAL;
-            if (encoding.base != 0 || GeneratePIC.getValue()) {
-                if (GeneratePIC.getValue()) {
+            OptionValues options = getResult().getLIR().getOptions();
+            if (encoding.base != 0 || GeneratePIC.getValue(options)) {
+                if (GeneratePIC.getValue(options)) {
                     Variable baseAddress = newVariable(LIRKind.value(AMD64Kind.QWORD));
                     AMD64HotSpotMove.BaseMove move = new AMD64HotSpotMove.BaseMove(baseAddress, config);
                     append(move);

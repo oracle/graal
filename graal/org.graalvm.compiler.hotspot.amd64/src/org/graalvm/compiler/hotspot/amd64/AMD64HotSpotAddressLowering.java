@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
@@ -55,6 +56,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
     private final long heapBase;
     private final Register heapBaseRegister;
     private final GraalHotSpotVMConfig config;
+    private final boolean generatePIC;
 
     @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
     public static class HeapBaseNode extends FloatingNode implements LIRLowerable {
@@ -75,10 +77,11 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
         }
     }
 
-    public AMD64HotSpotAddressLowering(GraalHotSpotVMConfig config, Register heapBaseRegister) {
+    public AMD64HotSpotAddressLowering(GraalHotSpotVMConfig config, Register heapBaseRegister, OptionValues options) {
         this.heapBase = config.getOopEncoding().base;
         this.config = config;
-        if (heapBase == 0 && !GeneratePIC.getValue()) {
+        this.generatePIC = GeneratePIC.getValue(options);
+        if (heapBase == 0 && !generatePIC) {
             this.heapBaseRegister = null;
         } else {
             this.heapBaseRegister = heapBaseRegister;
@@ -113,7 +116,7 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
             }
 
             if (heapBaseRegister != null && encoding.base == heapBase) {
-                if (!GeneratePIC.getValue() || compression.stamp() instanceof ObjectStamp) {
+                if (!generatePIC || compression.stamp() instanceof ObjectStamp) {
                     // With PIC it is only legal to do for oops since the base value may be
                     // different at runtime.
                     ValueNode base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
@@ -121,8 +124,8 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
                 } else {
                     return false;
                 }
-            } else if (encoding.base != 0 || (GeneratePIC.getValue() && compression.stamp() instanceof KlassPointerStamp)) {
-                if (GeneratePIC.getValue()) {
+            } else if (encoding.base != 0 || (generatePIC && compression.stamp() instanceof KlassPointerStamp)) {
+                if (generatePIC) {
                     ValueNode base = compression.graph().unique(new GraalHotSpotVMConfigNode(config, config.MARKID_NARROW_KLASS_BASE_ADDRESS, JavaKind.Long));
                     addr.setBase(base);
                 } else {

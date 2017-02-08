@@ -39,8 +39,8 @@ import org.graalvm.compiler.lir.phases.AllocationPhase;
 import org.graalvm.compiler.lir.ssi.SSIUtil;
 import org.graalvm.compiler.lir.ssi.SSIVerifier;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.StableOptionValue;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -55,13 +55,13 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
     public static class Options {
         // @formatter:off
         @Option(help = "Use inter-trace register hints.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAuseInterTraceHints = new StableOptionValue<>(true);
+        public static final OptionKey<Boolean> TraceRAuseInterTraceHints = new OptionKey<>(true);
         @Option(help = "Share information about spilled values to other traces.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAshareSpillInformation = new StableOptionValue<>(true);
+        public static final OptionKey<Boolean> TraceRAshareSpillInformation = new OptionKey<>(true);
         @Option(help = "Reuse spill slots for global move resolution cycle breaking.", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRAreuseStackSlotsForMoveResolutionCycleBreaking = new StableOptionValue<>(true);
+        public static final OptionKey<Boolean> TraceRAreuseStackSlotsForMoveResolutionCycleBreaking = new OptionKey<>(true);
         @Option(help = "Cache stack slots globally (i.e. a variable always gets the same slot in every trace).", type = OptionType.Debug)
-        public static final StableOptionValue<Boolean> TraceRACacheStackSlots = new StableOptionValue<>(true);
+        public static final OptionKey<Boolean> TraceRACacheStackSlots = new OptionKey<>(true);
         // @formatter:on
     }
 
@@ -82,13 +82,13 @@ public final class TraceRegisterAllocationPhase extends AllocationPhase {
         TraceBuilderResult resultTraces = context.contextLookup(TraceBuilderResult.class);
 
         TraceAllocationContext traceContext = new TraceAllocationContext(spillMoveFactory, registerAllocationConfig, resultTraces);
-        AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue() ? new AllocatableValue[lir.numVariables()] : null;
+        AllocatableValue[] cachedStackSlots = Options.TraceRACacheStackSlots.getValue(lir.getOptions()) ? new AllocatableValue[lir.numVariables()] : null;
 
         // currently this is not supported
         boolean neverSpillConstant = false;
 
         final TraceRegisterAllocationPolicy plan = DefaultTraceRegisterAllocationPolicy.allocationPolicy(target, lirGenRes, spillMoveFactory, registerAllocationConfig, cachedStackSlots,
-                        resultTraces, neverSpillConstant);
+                        resultTraces, neverSpillConstant, lir.getOptions());
 
         Debug.dump(Debug.INFO_LOG_LEVEL, lir, "Before TraceRegisterAllocation");
         try (Scope s0 = Debug.scope("AllocateTraces", resultTraces)) {

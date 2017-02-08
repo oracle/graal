@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static java.lang.Thread.currentThread;
 
 import java.io.FileNotFoundException;
@@ -44,7 +45,8 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import org.graalvm.compiler.debug.CSVUtil;
 import org.graalvm.compiler.debug.Management;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 import com.sun.management.ThreadMXBean;
 
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
@@ -56,12 +58,12 @@ public final class CompilationStatistics {
     public static class Options {
         // @formatter:off
         @Option(help = "Enables CompilationStatistics.")
-        public static final OptionValue<Boolean> UseCompilationStatistics = new OptionValue<>(false);
+        public static final OptionKey<Boolean> UseCompilationStatistics = new OptionKey<>(false);
         // @formatter:on
     }
 
     private static final long RESOLUTION = 100000000;
-    private static final boolean ENABLED = Options.UseCompilationStatistics.getValue();
+    private static final boolean ENABLED = Options.UseCompilationStatistics.getValue(GLOBAL);
 
     private static final CompilationStatistics DUMMY = new CompilationStatistics(null, false);
 

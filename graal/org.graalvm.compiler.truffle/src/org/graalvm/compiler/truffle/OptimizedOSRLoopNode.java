@@ -22,6 +22,10 @@
  */
 package org.graalvm.compiler.truffle;
 
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOSR;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOSRCompilationThreshold;
+
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -266,7 +270,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     public static LoopNode create(RepeatingNode repeat) {
         // using static methods with LoopNode return type ensures
         // that only one loop node implementation gets loaded.
-        if (TruffleCompilerOptions.TruffleOSR.getValue()) {
+        if (TruffleCompilerOptions.getValue(TruffleOSR)) {
             return createDefault(repeat);
         } else {
             return OptimizedLoopNode.create(repeat);
@@ -326,12 +330,12 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         @Override
         protected int getInvalidationBackoff() {
-            return TruffleCompilerOptions.TruffleInvalidationReprofileCount.getValue();
+            return TruffleCompilerOptions.getValue(TruffleInvalidationReprofileCount);
         }
 
         @Override
         protected int getThreshold() {
-            return TruffleCompilerOptions.TruffleOSRCompilationThreshold.getValue();
+            return TruffleCompilerOptions.getValue(TruffleOSRCompilationThreshold);
         }
 
     }

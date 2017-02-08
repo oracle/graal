@@ -41,6 +41,7 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.handlePendingException
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.printf;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.verifyObject;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.hotspot.HotSpotMetaAccessProvider.computeArrayAllocationSize;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -88,7 +89,7 @@ public class NewArrayStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return StubOptions.TraceNewArrayStub.getValue();
+        return StubOptions.TraceNewArrayStub.getValue(GLOBAL);
     }
 
     /**

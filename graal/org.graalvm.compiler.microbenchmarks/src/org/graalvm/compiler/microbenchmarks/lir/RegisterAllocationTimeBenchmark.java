@@ -22,17 +22,17 @@
  */
 package org.graalvm.compiler.microbenchmarks.lir;
 
+import static org.graalvm.compiler.core.common.GraalOptions.TraceRA;
+
 import java.util.HashMap;
 
 import org.openjdk.jmh.annotations.Benchmark;
 
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.OptionValues;
 
 public class RegisterAllocationTimeBenchmark extends GraalBenchmark {
 
@@ -40,10 +40,8 @@ public class RegisterAllocationTimeBenchmark extends GraalBenchmark {
     public static class LSRA_Allocation extends GraalCompilerState.AllocationStage {
         @SuppressWarnings("try")
         @Override
-        protected LIRSuites createLIRSuites() {
-            try (OverrideScope os = OptionValue.override(GraalOptions.TraceRA, false)) {
-                return super.createLIRSuites();
-            }
+        protected LIRSuites createLIRSuites(OptionValues options) {
+            return super.createLIRSuites(new OptionValues(options, TraceRA, false));
         }
     }
 
@@ -68,10 +66,8 @@ public class RegisterAllocationTimeBenchmark extends GraalBenchmark {
     public static class TraceRA_Allocation extends GraalCompilerState.AllocationStage {
         @SuppressWarnings("try")
         @Override
-        protected LIRSuites createLIRSuites() {
-            try (OverrideScope os = OptionValue.override(GraalOptions.TraceRA, true)) {
-                return super.createLIRSuites();
-            }
+        protected LIRSuites createLIRSuites(OptionValues options) {
+            return super.createLIRSuites(new OptionValues(options, TraceRA, true));
         }
     }
 

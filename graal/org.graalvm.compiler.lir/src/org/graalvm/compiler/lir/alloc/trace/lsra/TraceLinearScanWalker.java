@@ -570,7 +570,7 @@ final class TraceLinearScanWalker extends TraceIntervalWalker {
      * @param spillPos position of the spill
      */
     private void changeSpillState(TraceInterval interval, int spillPos) {
-        if (TraceLinearScanPhase.Options.LIROptTraceRAEliminateSpillMoves.getValue()) {
+        if (TraceLinearScanPhase.Options.LIROptTraceRAEliminateSpillMoves.getValue(allocator.getOptions())) {
             switch (interval.spillState()) {
                 case NoSpillStore:
                     final int minSpillPos = interval.spillDefinitionPos();

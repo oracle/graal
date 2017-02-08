@@ -22,13 +22,15 @@
  */
 package org.graalvm.compiler.truffle.phases;
 
-import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Instruments {@link IfNode}s in the graph, by adding execution counters to the true and the false
@@ -59,6 +61,10 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions;
  */
 public class InstrumentBranchesPhase extends InstrumentPhase {
 
+    public InstrumentBranchesPhase(OptionValues options) {
+        super(options);
+    }
+
     @Override
     protected void instrumentGraph(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant) {
         for (IfNode n : graph.getNodes().filter(IfNode.class)) {
@@ -76,8 +82,8 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected boolean instrumentPerInlineSite() {
-        return TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue();
+    protected boolean instrumentPerInlineSite(OptionValues options) {
+        return TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue(options);
     }
 
     @Override
@@ -115,8 +121,8 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
         }
 
         @Override
-        public boolean isPrettified() {
-            return TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue();
+        public boolean isPrettified(OptionValues options) {
+            return TruffleCompilerOptions.TruffleInstrumentBranchesPerInlineSite.getValue(options);
         }
 
         public long ifVisits() {

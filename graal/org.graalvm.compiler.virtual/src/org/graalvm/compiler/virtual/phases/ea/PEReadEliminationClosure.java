@@ -59,6 +59,7 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheEntry;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
@@ -414,7 +415,8 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
                 loopKilledLocations = new LoopKillCache(1/* 1.visit */);
                 loopLocationKillCache.put(loop, loopKilledLocations);
             } else {
-                if (loopKilledLocations.visits() > ReadEliminationMaxLoopVisits.getValue()) {
+                OptionValues options = loop.getHeader().getBeginNode().getOptions();
+                if (loopKilledLocations.visits() > ReadEliminationMaxLoopVisits.getValue(options)) {
                     // we have processed the loop too many times, kill all locations so the inner
                     // loop will never be processed more than once again on visit
                     loopKilledLocations.setKillsAll();

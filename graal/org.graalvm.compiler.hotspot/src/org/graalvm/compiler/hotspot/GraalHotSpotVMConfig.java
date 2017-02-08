@@ -147,8 +147,6 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final boolean verifyOops = getFlag("VerifyOops", Boolean.class);
     public final boolean ciTime = getFlag("CITime", Boolean.class);
     public final boolean ciTimeEach = getFlag("CITimeEach", Boolean.class);
-    public final int compileTheWorldStartAt = getFlag("CompileTheWorldStartAt", Integer.class, 1);
-    public final int compileTheWorldStopAt = getFlag("CompileTheWorldStopAt", Integer.class, Integer.MAX_VALUE);
     public final boolean dontCompileHugeMethods = getFlag("DontCompileHugeMethods", Boolean.class);
     public final int hugeMethodLimit = getFlag("HugeMethodLimit", Integer.class);
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);

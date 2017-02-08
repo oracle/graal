@@ -36,6 +36,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.lang.reflect.Method;
 import java.util.EnumMap;
@@ -320,11 +321,11 @@ public class ArrayCopySnippets implements Snippets {
         }
     }
 
-    private static final SnippetCounter.Group checkCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("System.arraycopy checkInputs") : null;
+    private static final SnippetCounter.Group checkCounters = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("System.arraycopy checkInputs") : null;
     private static final SnippetCounter checkSuccessCounter = new SnippetCounter(checkCounters, "checkSuccess", "checkSuccess");
     private static final SnippetCounter checkAIOOBECounter = new SnippetCounter(checkCounters, "checkAIOOBE", "checkAIOOBE");
 
-    private static final SnippetCounter.Group counters = SnippetCounters.getValue() ? new SnippetCounter.Group("System.arraycopy") : null;
+    private static final SnippetCounter.Group counters = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("System.arraycopy") : null;
 
     private static final SnippetCounter objectCheckcastCounter = new SnippetCounter(counters, "Object[]{non-exact}", "arraycopy for non-exact Object[] arrays");
     private static final SnippetCounter objectCheckcastSameTypeCounter = new SnippetCounter(counters, "Object[]{same-type}", "arraycopy call for src.klass == dest.klass Object[] arrays");
@@ -361,13 +362,13 @@ public class ArrayCopySnippets implements Snippets {
     private static final SnippetCounter genericObjectExactCallCounter = new SnippetCounter(counters, "genericObjectExact", "generic arraycopy snippet for special object arrays");
     private static final SnippetCounter SystemArraycopyCounter = new SnippetCounter(counters, "genericObject", "call to System.arraycopy");
 
-    private static final SnippetCounter.Group lengthCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("System.arraycopy 0-length checks") : null;
+    private static final SnippetCounter.Group lengthCounters = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("System.arraycopy 0-length checks") : null;
 
     private static final SnippetCounter zeroLengthStaticCounter = new SnippetCounter(lengthCounters, "0-lengthcopy static", "arraycopy where the length is statically 0");
     private static final SnippetCounter zeroLengthDynamicCounter = new SnippetCounter(lengthCounters, "0-lengthcopy dynamically", "arraycopy where the length is dynamically 0");
     private static final SnippetCounter nonZeroLengthDynamicCounter = new SnippetCounter(lengthCounters, "non-0-lengthcopy dynamically", "arraycopy where the length is dynamically not zero");
 
-    private static final SnippetCounter.Group copiedCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("System.arraycopy copied elements") : null;
+    private static final SnippetCounter.Group copiedCounters = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("System.arraycopy copied elements") : null;
 
     private static final SnippetCounter nonZeroLengthDynamicCopiedCounter = new SnippetCounter(copiedCounters, "non-0-lengthcopy dynamically", "arraycopy where the length is dynamically not zero");
     private static final SnippetCounter genericPrimitiveCallCopiedCounter = new SnippetCounter(copiedCounters, "genericPrimitive", "generic arraycopy snippet for primitive arrays");

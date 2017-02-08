@@ -22,10 +22,11 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import org.junit.Assert;
-import org.junit.Test;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
  * Test on-stack-replacement with Graal. The test manually triggers a Graal OSR-compilation which is
@@ -36,7 +37,7 @@ public class GraalOSRTest extends GraalOSRTestBase {
     @Test
     public void testOSR01() {
         try {
-            testOSR("testReduceLoop");
+            testOSR(GLOBAL, "testReduceLoop");
         } catch (Throwable t) {
             Assert.assertEquals("OSR compilation without OSR entry loop.", t.getMessage());
         }
@@ -44,12 +45,12 @@ public class GraalOSRTest extends GraalOSRTestBase {
 
     @Test
     public void testOSR02() {
-        testOSR("testSequentialLoop");
+        testOSR(GLOBAL, "testSequentialLoop");
     }
 
     @Test
     public void testOSR03() {
-        testOSR("testNonReduceLoop");
+        testOSR(GLOBAL, "testNonReduceLoop");
     }
 
     static int limit = 10000;

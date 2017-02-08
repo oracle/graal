@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle.hotspot.nfi;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -37,7 +38,6 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
@@ -122,10 +122,10 @@ public class NativeCallStubGraphBuilder {
         PhaseSuite<HighTierContext> graphBuilder = new PhaseSuite<>();
         graphBuilder.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins)));
 
-        Suites suites = providers.getSuites().getDefaultSuites();
-        LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites();
+        Suites suites = providers.getSuites().getDefaultSuites(GLOBAL);
+        LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites(GLOBAL);
 
-        StructuredGraph g = new StructuredGraph(callStubMethod, AllowAssumptions.NO, backend.getCompilationIdentifier(callStubMethod));
+        StructuredGraph g = new StructuredGraph.Builder().method(callStubMethod).compilationId(backend.getCompilationIdentifier(callStubMethod)).build();
         CompilationResult compResult = GraalCompiler.compileGraph(g, callStubMethod, providers, backend, graphBuilder, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
                         lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
 

@@ -39,8 +39,9 @@ import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
@@ -59,50 +60,50 @@ public class HighTier extends PhaseSuite<HighTierContext> {
 
         // @formatter:off
         @Option(help = "Enable inlining", type = OptionType.Expert)
-        public static final OptionValue<Boolean> Inline = new OptionValue<>(true);
+        public static final OptionKey<Boolean> Inline = new OptionKey<>(true);
         // @formatter:on
     }
 
-    public HighTier() {
+    public HighTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-        if (ImmutableCode.getValue()) {
+        if (ImmutableCode.getValue(options)) {
             canonicalizer.disableReadCanonicalization();
         }
 
         appendPhase(canonicalizer);
 
-        if (Options.Inline.getValue()) {
+        if (Options.Inline.getValue(options)) {
             appendPhase(new InliningPhase(canonicalizer));
             appendPhase(new DeadCodeEliminationPhase(Optional));
         }
 
-        if (ConditionalElimination.getValue()) {
+        if (ConditionalElimination.getValue(options)) {
             appendPhase(canonicalizer);
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
-        if (OptConvertDeoptsToGuards.getValue()) {
+        if (OptConvertDeoptsToGuards.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new ConvertDeoptimizeToGuardPhase()));
         }
 
         LoopPolicies loopPolicies = createLoopPolicies();
-        if (FullUnroll.getValue()) {
+        if (FullUnroll.getValue(options)) {
             appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
         }
 
-        if (OptLoopTransform.getValue()) {
-            if (LoopPeeling.getValue()) {
+        if (OptLoopTransform.getValue(options)) {
+            if (LoopPeeling.getValue(options)) {
                 appendPhase(new LoopPeelingPhase(loopPolicies));
             }
-            if (LoopUnswitch.getValue()) {
+            if (LoopUnswitch.getValue(options)) {
                 appendPhase(new LoopUnswitchingPhase(loopPolicies));
             }
         }
 
         appendPhase(canonicalizer);
 
-        if (PartialEscapeAnalysis.getValue()) {
-            appendPhase(new PartialEscapePhase(true, canonicalizer));
+        if (PartialEscapeAnalysis.getValue(options)) {
+            appendPhase(new PartialEscapePhase(true, canonicalizer, options));
         }
         appendPhase(new RemoveValueProxyPhase());
 

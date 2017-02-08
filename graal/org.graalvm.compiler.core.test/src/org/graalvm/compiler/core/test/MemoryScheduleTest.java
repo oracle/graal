@@ -25,6 +25,7 @@ package org.graalvm.compiler.core.test;
 import static org.graalvm.compiler.core.common.GraalOptions.OptImplicitNullChecks;
 import static org.graalvm.compiler.core.common.GraalOptions.OptScheduleOutOfLoops;
 import static org.graalvm.compiler.graph.test.matchers.NodeIterableCount.hasCount;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.junit.Assert.assertThat;
 
@@ -48,8 +49,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
@@ -723,34 +723,33 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @SuppressWarnings("try")
     private ScheduleResult getFinalSchedule(final String snippet, final TestMode mode, final SchedulingStrategy schedulingStrategy) {
-        final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
+        OptionValues options = new OptionValues(GLOBAL, OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false);
+        final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO, options);
         try (Scope d = Debug.scope("FloatingReadTest", graph)) {
-            try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS, OptImplicitNullChecks, false)) {
-                HighTierContext context = getDefaultHighTierContext();
-                CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
-                canonicalizer.apply(graph, context);
-                if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                    new InliningPhase(canonicalizer).apply(graph, context);
-                }
-                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
-                if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                    graph.clearAllStateAfter();
-                }
-                Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "after removal of framestates");
-
-                new FloatingReadPhase().apply(graph);
-                new RemoveValueProxyPhase().apply(graph);
-
-                MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
-                new GuardLoweringPhase().apply(graph, midContext);
-                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
-                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(graph, midContext);
-
-                SchedulePhase schedule = new SchedulePhase(schedulingStrategy);
-                schedule.apply(graph);
-                assertDeepEquals(1, graph.getNodes().filter(StartNode.class).count());
-                return graph.getLastSchedule();
+            HighTierContext context = getDefaultHighTierContext();
+            CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+            canonicalizer.apply(graph, context);
+            if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
+                new InliningPhase(canonicalizer).apply(graph, context);
             }
+            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
+                graph.clearAllStateAfter();
+            }
+            Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "after removal of framestates");
+
+            new FloatingReadPhase().apply(graph);
+            new RemoveValueProxyPhase().apply(graph);
+
+            MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
+            new GuardLoweringPhase().apply(graph, midContext);
+            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
+            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(graph, midContext);
+
+            SchedulePhase schedule = new SchedulePhase(schedulingStrategy);
+            schedule.apply(graph);
+            assertDeepEquals(1, graph.getNodes().filter(StartNode.class).count());
+            return graph.getLastSchedule();
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

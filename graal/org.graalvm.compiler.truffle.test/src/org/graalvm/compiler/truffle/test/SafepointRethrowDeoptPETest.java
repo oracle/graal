@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Assert;
@@ -186,7 +188,7 @@ public class SafepointRethrowDeoptPETest extends PartialEvaluationTest {
 
     @Test
     public void test() {
-        Assume.assumeTrue(GraalOptions.GenLoopSafepoints.getValue());
+        Assume.assumeTrue(GraalOptions.GenLoopSafepoints.getValue(GLOBAL));
         synchronized (SafepointRethrowDeoptPETest.class) { // safeguard static fields
             testInner(new Test0RootNode());
             testInner(new Test1RootNode());

@@ -22,14 +22,14 @@
  */
 package org.graalvm.compiler.truffle.hotspot.aarch64;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-
 import org.graalvm.compiler.hotspot.aarch64.AArch64RawNativeCallNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.hotspot.nfi.RawNativeCallNodeFactory;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 @ServiceProvider(RawNativeCallNodeFactory.class)
 public class AArch64RawNativeCallNodeFactory implements RawNativeCallNodeFactory {

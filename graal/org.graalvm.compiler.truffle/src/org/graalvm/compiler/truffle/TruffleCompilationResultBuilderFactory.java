@@ -35,6 +35,7 @@ import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.nodes.AssumptionValidAssumption;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -63,8 +64,8 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
 
     @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    CompilationResult compilationResult) {
-        return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult) {
+                    OptionValues options, CompilationResult compilationResult) {
+        return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, compilationResult) {
             @Override
             protected void closeCompilationResult() {
                 CompilationResult result = this.compilationResult;

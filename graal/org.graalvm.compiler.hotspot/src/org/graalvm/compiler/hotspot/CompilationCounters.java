@@ -24,6 +24,7 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.fmt;
 import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.str;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -35,9 +36,8 @@ import java.util.TreeSet;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.StableOptionValue;
-
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.OptionKey;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -47,7 +47,7 @@ class CompilationCounters {
         // @formatter:off
         @Option(help = "The number of compilations allowed for any method before " +
                        "the VM exits (a value of 0 means there is no limit).", type = OptionType.Debug)
-        public static final OptionValue<Integer> CompilationCountLimit = new StableOptionValue<>(0);
+        public static final OptionKey<Integer> CompilationCountLimit = new OptionKey<>(0);
         // @formatter:on
     }
 
@@ -68,16 +68,17 @@ class CompilationCounters {
         Integer val = counters.get(method);
         val = val != null ? val + 1 : 1;
         counters.put(method, val);
-        if (val > Options.CompilationCountLimit.getValue()) {
+        OptionValues options = GLOBAL;
+        if (val > Options.CompilationCountLimit.getValue(options)) {
             TTY.printf("Error. Method %s was compiled too many times. Number of compilations: %d\n", fmt(method),
-                            CompilationCounters.Options.CompilationCountLimit.getValue());
+                            CompilationCounters.Options.CompilationCountLimit.getValue(options));
             TTY.println("==================================== High compilation counters ====================================");
             SortedSet<Map.Entry<ResolvedJavaMethod, Integer>> sortedCounters = new TreeSet<>(new CounterComparator());
             for (Map.Entry<ResolvedJavaMethod, Integer> e : counters.entrySet()) {
                 sortedCounters.add(e);
             }
             for (Map.Entry<ResolvedJavaMethod, Integer> entry : sortedCounters) {
-                if (entry.getValue() >= Options.CompilationCountLimit.getValue() / 2) {
+                if (entry.getValue() >= Options.CompilationCountLimit.getValue(options) / 2) {
                     TTY.out.printf("%d\t%s%n", entry.getValue(), str(entry.getKey()));
                 }
             }

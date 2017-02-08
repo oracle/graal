@@ -22,13 +22,15 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.core.common.util.CompilationAlarm.Options.CompilationExpirationPeriod;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+
 import org.graalvm.compiler.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
 import org.junit.Test;
 
@@ -44,7 +46,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
         protected void run(StructuredGraph graph) {
             while (true) {
                 sleep(200);
-                if (CompilationAlarm.hasExpired()) {
+                if (CompilationAlarm.hasExpired(graph.getOptions())) {
                     return;
                 }
             }
@@ -58,7 +60,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
         protected void run(StructuredGraph graph) {
             while (true) {
                 sleep(200);
-                if (CompilationAlarm.hasExpired()) {
+                if (CompilationAlarm.hasExpired(graph.getOptions())) {
                     throw new RetryableBailoutException("Expiring...");
                 }
             }
@@ -72,7 +74,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
         protected void run(StructuredGraph graph) {
             for (int i = 0; i < 10; i++) {
                 sleep(200);
-                if (CompilationAlarm.hasExpired()) {
+                if (CompilationAlarm.hasExpired(graph.getOptions())) {
                     throw new RuntimeException("Phase must not exit in the timeout path");
                 }
             }
@@ -83,7 +85,7 @@ public class CooperativePhaseTest extends GraalCompilerTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            if (CompilationAlarm.hasExpired()) {
+            if (CompilationAlarm.hasExpired(graph.getOptions())) {
                 throw new RuntimeException("Phase must not exit in the timeout path");
             }
         }
@@ -101,9 +103,9 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     public void test01() {
         initializeForTimeout();
-        StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
-        try (OverrideScope o = OptionValue.override(CompilationAlarm.Options.CompilationExpirationPeriod, 1/* sec */);
-                        CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod()) {
+        OptionValues options = new OptionValues(GLOBAL, CompilationExpirationPeriod, 1/* sec */);
+        try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(GLOBAL)) {
+            StructuredGraph g = parseEager("snippet", AllowAssumptions.NO, options);
             new CooperativePhase().apply(g);
         }
     }
@@ -112,9 +114,9 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     public void test02() {
         initializeForTimeout();
-        StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
-        try (OverrideScope o = OptionValue.override(CompilationAlarm.Options.CompilationExpirationPeriod, 1/* sec */);
-                        CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod()) {
+        OptionValues options = new OptionValues(GLOBAL, CompilationExpirationPeriod, 1/* sec */);
+        try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(GLOBAL)) {
+            StructuredGraph g = parseEager("snippet", AllowAssumptions.NO, options);
             new UnCooperativePhase().apply(g);
         }
     }
@@ -123,10 +125,10 @@ public class CooperativePhaseTest extends GraalCompilerTest {
     @SuppressWarnings("try")
     public void test03() {
         initializeForTimeout();
-        StructuredGraph g = parseEager("snippet", AllowAssumptions.NO);
         // 0 disables alarm utility
-        try (OverrideScope o = OptionValue.override(CompilationAlarm.Options.CompilationExpirationPeriod, 0);
-                        CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod()) {
+        OptionValues options = new OptionValues(GLOBAL, CompilationExpirationPeriod, 0);
+        try (CompilationAlarm c1 = CompilationAlarm.trackCompilationPeriod(GLOBAL)) {
+            StructuredGraph g = parseEager("snippet", AllowAssumptions.NO, options);
             new ParlyCooperativePhase().apply(g);
         }
     }

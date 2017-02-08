@@ -26,6 +26,7 @@ import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
 import static org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.getOptions;
 import static org.graalvm.compiler.truffle.hotspot.UnsafeAccess.UNSAFE;
 
 import java.nio.file.FileSystems;
@@ -60,6 +61,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -75,6 +77,7 @@ import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCallBoundary;
 import org.graalvm.compiler.truffle.TruffleCompiler;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.hotspot.nfi.HotSpotNativeFunctionInterface;
 import org.graalvm.compiler.truffle.hotspot.nfi.RawNativeCallNodeFactory;
 
@@ -121,7 +124,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         public GraalDebugConfig getDebugConfig() {
             if (Debug.isEnabled()) {
                 SnippetReflectionProvider snippetReflection = runtime.getRequiredGraalCapability(SnippetReflectionProvider.class);
-                return DebugEnvironment.ensureInitialized(snippetReflection);
+                return DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, snippetReflection);
             } else {
                 return null;
             }
@@ -238,10 +241,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     private CompilationResult compileMethod(ResolvedJavaMethod javaMethod, CompilationIdentifier compilationId) {
         HotSpotProviders providers = getHotSpotProviders();
         SuitesProvider suitesProvider = providers.getSuites();
-        Suites suites = suitesProvider.getDefaultSuites().copy();
-        LIRSuites lirSuites = suitesProvider.getDefaultLIRSuites();
+        OptionValues opts = getOptions();
+        Suites suites = suitesProvider.getDefaultSuites(opts).copy();
+        LIRSuites lirSuites = suitesProvider.getDefaultLIRSuites(opts);
         removeInliningPhase(suites);
-        StructuredGraph graph = new StructuredGraph(javaMethod, AllowAssumptions.NO, false, compilationId);
+        StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.NO).method(javaMethod).compilationId(compilationId).build();
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Plugins plugins = new Plugins(new InvocationPlugins(metaAccess));
@@ -332,7 +336,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
-        if (TraceTruffleTransferToInterpreter.getValue()) {
+        if (TruffleCompilerOptions.getValue(TraceTruffleTransferToInterpreter)) {
             TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, getVMConfig());
         }
     }
@@ -434,7 +438,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime {
         }
 
         private static void logTransferToInterpreter(final HotSpotTruffleRuntime runtime) {
-            final int limit = TraceTruffleStackTraceLimit.getValue();
+            final int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit);
 
             runtime.log("[truffle] transferToInterpreter at");
             runtime.iterateFrames(new FrameInstanceVisitor<Object>() {

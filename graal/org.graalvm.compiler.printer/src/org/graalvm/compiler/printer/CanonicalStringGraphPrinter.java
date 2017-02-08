@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -259,6 +260,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
     @Override
     public void print(Graph graph, String title, Map<Object, Object> properties) throws IOException {
         if (graph instanceof StructuredGraph) {
+            OptionValues options = graph.getOptions();
             StructuredGraph structuredGraph = (StructuredGraph) graph;
             currentDirectory.toFile().mkdirs();
             if (this.root != null) {
@@ -267,13 +269,13 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
             }
             Path filePath = currentDirectory.resolve(escapeFileName(title));
             try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filePath.toFile())))) {
-                switch (PrintCanonicalGraphStringFlavor.getValue()) {
+                switch (PrintCanonicalGraphStringFlavor.getValue(options)) {
                     case 1:
-                        writeCanonicalExpressionCFGString(structuredGraph, CanonicalGraphStringsCheckConstants.getValue(), CanonicalGraphStringsRemoveIdentities.getValue(), writer);
+                        writeCanonicalExpressionCFGString(structuredGraph, CanonicalGraphStringsCheckConstants.getValue(options), CanonicalGraphStringsRemoveIdentities.getValue(options), writer);
                         break;
                     case 0:
                     default:
-                        writeCanonicalGraphString(structuredGraph, CanonicalGraphStringsExcludeVirtuals.getValue(), CanonicalGraphStringsCheckConstants.getValue(), writer);
+                        writeCanonicalGraphString(structuredGraph, CanonicalGraphStringsExcludeVirtuals.getValue(options), CanonicalGraphStringsCheckConstants.getValue(options), writer);
                         break;
                 }
             }

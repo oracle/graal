@@ -56,7 +56,7 @@ public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
         CompilationIdentifier compilationId = runtime().getHostBackend().getCompilationIdentifier(method);
         StructuredGraph graph = compiler.getIntrinsicGraph(method, providers, compilationId);
         if (graph != null) {
-            return getCode(method, graph, true, true);
+            return getCode(method, graph, true, true, graph.getOptions());
         }
         return null;
     }

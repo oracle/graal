@@ -22,14 +22,14 @@
  */
 package org.graalvm.compiler.lir.alloc.trace.lsra;
 
-import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
-import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.core.common.GraalOptions.DetailedAsserts;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +43,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.alloc.trace.lsra.TraceLinearScanPhase.TraceLinearScan;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -378,6 +379,8 @@ final class TraceInterval extends IntervalHint {
      */
     private int numMaterializationValuesAdded;
 
+    private final OptionValues options;
+
     private boolean splitChildrenEmpty() {
         assert splitChildren == null || !splitChildren.isEmpty();
         return splitChildren == null;
@@ -546,12 +549,13 @@ final class TraceInterval extends IntervalHint {
     /**
      * Sentinel interval to denote the end of an interval list.
      */
-    static final TraceInterval EndMarker = new TraceInterval(Value.ILLEGAL, -1);
+    static final TraceInterval EndMarker = new TraceInterval(Value.ILLEGAL, -1, null);
 
-    TraceInterval(AllocatableValue operand, int operandNumber) {
+    TraceInterval(AllocatableValue operand, int operandNumber, OptionValues options) {
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;
+        this.options = options;
         if (isRegister(operand)) {
             location = operand;
         } else {
@@ -857,7 +861,7 @@ final class TraceInterval extends IntervalHint {
 
         // do not add use positions for precolored intervals because they are never used
         if (registerPriority != RegisterPriority.None && isVariable(operand)) {
-            if (DetailedAsserts.getValue()) {
+            if (DetailedAsserts.getValue(options)) {
                 for (int i = 0; i < numUsePos(); i++) {
                     assert pos <= getUsePos(i) : "already added a use-position with lower position";
                     if (i > 0) {
@@ -938,7 +942,7 @@ final class TraceInterval extends IntervalHint {
         // split list of use positions
         splitUsePosAt(result, splitPos);
 
-        if (DetailedAsserts.getValue()) {
+        if (DetailedAsserts.getValue(options)) {
             for (int i = 0; i < numUsePos(); i++) {
                 assert getUsePos(i) < splitPos;
             }

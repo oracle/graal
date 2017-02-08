@@ -35,6 +35,7 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.decipher;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.fatal;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.newDescriptor;
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.printf;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
@@ -137,7 +138,7 @@ public class ExceptionHandlerStub extends SnippetStub {
 
     @Fold
     static boolean logging() {
-        return StubOptions.TraceExceptionHandlerStub.getValue();
+        return StubOptions.TraceExceptionHandlerStub.getValue(GLOBAL);
     }
 
     /**

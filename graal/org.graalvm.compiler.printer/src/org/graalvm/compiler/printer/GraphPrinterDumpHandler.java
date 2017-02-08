@@ -120,7 +120,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     @Override
     @SuppressWarnings("try")
     public void dump(Object object, final String message) {
-        if (object instanceof Graph && Options.PrintIdealGraph.getValue()) {
+        if (object instanceof Graph && Options.PrintIdealGraph.getValue(DebugScope.getConfig().getOptions())) {
             ensureInitialized();
             if (printer == null) {
                 return;
@@ -184,7 +184,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     void handleException(IOException e) {
-        if (GraalDebugConfig.Options.DumpingErrorsAreFatal.getValue()) {
+        if (GraalDebugConfig.Options.DumpingErrorsAreFatal.getValue(DebugScope.getConfig().getOptions())) {
             throw new GraalError(e);
         }
         if (e instanceof ClosedByInterruptException) {

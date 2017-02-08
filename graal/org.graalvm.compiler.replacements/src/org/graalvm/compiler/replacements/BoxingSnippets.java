@@ -24,6 +24,7 @@ package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.core.common.GraalOptions.SnippetCounters;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.EnumMap;
@@ -192,7 +193,7 @@ public class BoxingSnippets implements Snippets {
         public void lower(BoxNode box, LoweringTool tool) {
             FloatingNode canonical = canonicalizeBoxing(box, providers.getMetaAccess(), providers.getConstantReflection());
             // if in AOT mode, we don't want to embed boxed constants.
-            if (canonical != null && !ImmutableCode.getValue()) {
+            if (canonical != null && !ImmutableCode.getValue(box.getOptions())) {
                 box.graph().replaceFixedWithFloating(box, canonical);
             } else {
                 Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
@@ -214,7 +215,7 @@ public class BoxingSnippets implements Snippets {
         }
     }
 
-    private static final SnippetCounter.Group integerCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("Integer intrinsifications") : null;
+    private static final SnippetCounter.Group integerCounters = SnippetCounters.getValue(GLOBAL) ? new SnippetCounter.Group("Integer intrinsifications") : null;
     private static final SnippetCounter valueOfCounter = new SnippetCounter(integerCounters, "valueOf", "valueOf intrinsification");
 
 }

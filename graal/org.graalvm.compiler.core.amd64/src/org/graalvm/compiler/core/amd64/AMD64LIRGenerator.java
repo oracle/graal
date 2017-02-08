@@ -114,10 +114,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     protected static final boolean canStoreConstant(JavaConstant c) {
         // there is no immediate move of 64-bit constants on Intel
         switch (c.getJavaKind()) {
-            case Long: {
-                long l = c.asLong();
-                return (int) l == l;
-            }
+            case Long:
+                return NumUtil.isInt(c.asLong());
             case Double:
                 return false;
             case Object:
@@ -428,7 +426,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         long maxOffset = linkage.getMaxCallTargetOffset();
-        if (maxOffset != (int) maxOffset && !GeneratePIC.getValue()) {
+        if (maxOffset != (int) maxOffset && !GeneratePIC.getValue(getResult().getLIR().getOptions())) {
             append(new AMD64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, info));
         } else {
             append(new AMD64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info));

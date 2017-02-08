@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.replacements;
 
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 
 // JaCoCo Exclude
@@ -36,7 +35,7 @@ public final class ReplacementsUtil {
     static {
         boolean assertionsEnabled = false;
         assert (assertionsEnabled = true) != false;
-        REPLACEMENTS_ASSERTIONS_ENABLED = assertionsEnabled && GraalOptions.ImmutableCode.getValue() == false;
+        REPLACEMENTS_ASSERTIONS_ENABLED = assertionsEnabled;
     }
 
     /**

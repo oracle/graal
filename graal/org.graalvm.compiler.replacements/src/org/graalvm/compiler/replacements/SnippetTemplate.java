@@ -22,15 +22,15 @@
  */
 package org.graalvm.compiler.replacements;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
+import static java.util.FormattableFlags.ALTERNATE;
 import static org.graalvm.compiler.core.common.LocationIdentity.ANY_LOCATION;
 import static org.graalvm.compiler.core.common.LocationIdentity.any;
 import static org.graalvm.compiler.debug.Debug.applyFormattingFlagsAndWidth;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
-import static java.util.FormattableFlags.ALTERNATE;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
@@ -87,7 +87,6 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
@@ -106,7 +105,7 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.MemoryProxy;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
@@ -119,9 +118,9 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import org.graalvm.compiler.word.WordBase;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.UnmodifiableEconomicMap;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -554,10 +553,10 @@ public class SnippetTemplate {
 
     static class Options {
         @Option(help = "Use a LRU cache for snippet templates.")//
-        static final OptionValue<Boolean> UseSnippetTemplateCache = new OptionValue<>(true);
+        static final OptionKey<Boolean> UseSnippetTemplateCache = new OptionKey<>(true);
 
         @Option(help = "")//
-        static final OptionValue<Integer> MaxTemplatesPerSnippet = new OptionValue<>(50);
+        static final OptionKey<Integer> MaxTemplatesPerSnippet = new OptionKey<>(50);
     }
 
     /**
@@ -574,8 +573,8 @@ public class SnippetTemplate {
             this.providers = providers;
             this.snippetReflection = snippetReflection;
             this.target = target;
-            if (Options.UseSnippetTemplateCache.getValue()) {
-                int size = Options.MaxTemplatesPerSnippet.getValue();
+            if (Options.UseSnippetTemplateCache.getValue(GLOBAL)) {
+                int size = Options.MaxTemplatesPerSnippet.getValue(GLOBAL);
                 this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
             } else {
                 this.templates = null;
@@ -604,7 +603,7 @@ public class SnippetTemplate {
             assert findMethod(declaringClass, methodName, method) == null : "found more than one method named " + methodName + " in " + declaringClass;
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
             providers.getReplacements().registerSnippet(javaMethod);
-            if (GraalOptions.EagerSnippets.getValue()) {
+            if (GraalOptions.EagerSnippets.getValue(GLOBAL)) {
                 return new EagerSnippetInfo(javaMethod, privateLocations);
             } else {
                 return new LazySnippetInfo(javaMethod, privateLocations);
@@ -616,12 +615,12 @@ public class SnippetTemplate {
          */
         @SuppressWarnings("try")
         protected SnippetTemplate template(final Arguments args) {
-            SnippetTemplate template = Options.UseSnippetTemplateCache.getValue() && args.cacheable ? templates.get(args.cacheKey) : null;
+            SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(GLOBAL) && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null) {
                 SnippetTemplates.increment();
                 try (DebugCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
                     template = new SnippetTemplate(providers, snippetReflection, args);
-                    if (Options.UseSnippetTemplateCache.getValue() && args.cacheable) {
+                    if (Options.UseSnippetTemplateCache.getValue(GLOBAL) && args.cacheable) {
                         templates.put(args.cacheKey, template);
                     }
                 } catch (Throwable e) {
@@ -684,7 +683,7 @@ public class SnippetTemplate {
         PhaseContext phaseContext = new PhaseContext(providers);
 
         // Copy snippet graph, replacing constant parameters with given arguments
-        final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method(), AllowAssumptions.NO, INVALID_COMPILATION_ID);
+        final StructuredGraph snippetCopy = new StructuredGraph.Builder().name(snippetGraph.name).method(snippetGraph.method()).build();
 
         try (Debug.Scope scope = Debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {

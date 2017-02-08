@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.nodes.test;
 
-import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.junit.Assert.assertEquals;
 
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
@@ -45,7 +44,7 @@ public class NegateNodeCanonicalizationTest {
 
     @Before
     public void before() {
-        graph = new StructuredGraph(AllowAssumptions.YES, INVALID_COMPILATION_ID);
+        graph = new StructuredGraph.Builder(AllowAssumptions.YES).build();
     }
 
     @Test

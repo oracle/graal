@@ -22,17 +22,15 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.util.HashMap;
-import java.util.Map;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleBackgroundCompilation;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileImmediately;
 
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
-import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import com.oracle.truffle.sl.test.SLSimpleTestSuite;
 import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
@@ -41,11 +39,11 @@ import com.oracle.truffle.sl.test.SLTestSuite;
 @SLTestSuite(value = {"tests"}, testCaseDirectory = SLSimpleTestSuite.class)
 public class SLCompileImmediatelyTestSuite {
 
-    private static OverrideScope oldOptionValues;
+    private static TruffleCompilerOptions.TruffleOptionsOverrideScope overrideScope;
 
     @BeforeClass
-    public static void before() {
-        assert oldOptionValues == null;
+    public static void beforeClass() {
+        assert overrideScope == null;
 
         /*
          * We turn on the flag to compile every Truffle function immediately, on its first execution
@@ -55,16 +53,13 @@ public class SLCompileImmediatelyTestSuite {
          * it has all nodes in the uninitialized specialization. This means that most methods are
          * compiled multiple times, in different specialization states.
          */
-        Map<OptionValue<?>, Object> newOptionValues = new HashMap<>();
-        newOptionValues.put(TruffleCompilerOptions.TruffleCompileImmediately, true);
-        newOptionValues.put(TruffleCompilerOptions.TruffleBackgroundCompilation, false);
-        oldOptionValues = OptionValue.override(newOptionValues);
+        overrideScope = TruffleCompilerOptions.overrideOptions(TruffleCompileImmediately, true, TruffleBackgroundCompilation, false);
     }
 
     @AfterClass
-    public static void after() {
-        oldOptionValues.close();
-        oldOptionValues = null;
+    public static void afterClass() {
+        assert overrideScope != null;
+        overrideScope.close();
     }
 
     /*

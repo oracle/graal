@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.jtt.jdk;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+
 import org.graalvm.compiler.jtt.JTTTest;
 import org.junit.Test;
 
@@ -47,6 +49,6 @@ public class Unsafe_compareAndSwapNullCheck extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTest(EMPTY, false, true, "test", null, 1L, 2L);
+        runTest(GLOBAL, EMPTY, false, true, "test", null, 1L, 2L);
     }
 }

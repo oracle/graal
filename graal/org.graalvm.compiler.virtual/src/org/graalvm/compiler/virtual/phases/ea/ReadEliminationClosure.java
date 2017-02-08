@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationBlockState.UnsafeLoadCacheEntry;
@@ -332,7 +333,8 @@ public final class ReadEliminationClosure extends EffectsClosure<ReadElimination
                 loopKilledLocations = new LoopKillCache(1/* 1.visit */);
                 loopLocationKillCache.put(loop, loopKilledLocations);
             } else {
-                if (loopKilledLocations.visits() > ReadEliminationMaxLoopVisits.getValue()) {
+                OptionValues options = loop.getHeader().getBeginNode().getOptions();
+                if (loopKilledLocations.visits() > ReadEliminationMaxLoopVisits.getValue(options)) {
                     // we have processed the loop too many times, kill all locations so the inner
                     // loop will never be processed more than once again on visit
                     loopKilledLocations.setKillsAll();

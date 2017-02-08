@@ -22,11 +22,15 @@
  */
 package org.graalvm.compiler.truffle.phases;
 
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaUtil;
-import jdk.vm.ci.meta.ResolvedJavaField;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentationTableSize;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -40,20 +44,18 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentationTableSize;
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
@@ -65,12 +67,12 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
     };
     public static Instrumentation instrumentation = new Instrumentation();
     private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
-    private static final int ACCESS_TABLE_SIZE = TruffleInstrumentationTableSize.getValue();
+    private static final int ACCESS_TABLE_SIZE = TruffleInstrumentationTableSize.getValue(TruffleCompilerOptions.getOptions());
     public static final long[] ACCESS_TABLE = new long[ACCESS_TABLE_SIZE];
     protected final MethodFilter[] methodFilter;
 
-    public InstrumentPhase() {
-        String filterValue = instrumentationFilter();
+    public InstrumentPhase(OptionValues options) {
+        String filterValue = instrumentationFilter(options);
         if (filterValue != null) {
             methodFilter = MethodFilter.parse(filterValue);
         } else {
@@ -78,8 +80,8 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
         }
     }
 
-    protected String instrumentationFilter() {
-        return TruffleCompilerOptions.TruffleInstrumentFilter.getValue();
+    protected String instrumentationFilter(OptionValues options) {
+        return TruffleCompilerOptions.TruffleInstrumentFilter.getValue(options);
     }
 
     protected static void insertCounter(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant,
@@ -116,7 +118,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
 
     protected abstract int instrumentationPointSlotCount();
 
-    protected abstract boolean instrumentPerInlineSite();
+    protected abstract boolean instrumentPerInlineSite(OptionValues options);
 
     protected abstract Instrumentation.Point createPoint(int id, int startIndex, Node n);
 
@@ -169,7 +171,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
                 if (!MethodFilter.matches(methodFilter, pos.getMethod())) {
                     return null;
                 }
-                if (phase.instrumentPerInlineSite()) {
+                if (phase.instrumentPerInlineSite(node.getOptions())) {
                     StringBuilder sb = new StringBuilder();
                     while (pos != null) {
                         MetaUtil.appendLocation(sb.append("at "), pos.getMethod(), pos.getBCI());
@@ -189,8 +191,8 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        private static String prettify(String key, Point p) {
-            if (p.isPrettified()) {
+        private static String prettify(String key, Point p, OptionValues options) {
+            if (p.isPrettified(options)) {
                 StringBuilder sb = new StringBuilder();
                 NodeSourcePosition pos = p.getPosition();
                 NodeSourcePosition lastPos = null;
@@ -242,8 +244,8 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
             }
         }
 
-        public synchronized ArrayList<String> accessTableToList() {
-            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue()) + CodeUtil.NEW_LINE + entry.getValue()).collect(
+        public synchronized ArrayList<String> accessTableToList(OptionValues options) {
+            return pointMap.entrySet().stream().sorted(entriesComparator).map(entry -> prettify(entry.getKey(), entry.getValue(), options) + CodeUtil.NEW_LINE + entry.getValue()).collect(
                             Collectors.toCollection(ArrayList::new));
         }
 
@@ -256,7 +258,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
             }).collect(Collectors.toCollection(ArrayList::new));
         }
 
-        public synchronized void dumpAccessTable() {
+        public synchronized void dumpAccessTable(OptionValues options) {
             // Dump accumulated profiling information.
             TTY.println("Execution profile (sorted by hotness)");
             TTY.println("=====================================");
@@ -264,7 +266,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
                 TTY.println(line);
             }
             TTY.println();
-            for (String line : accessTableToList()) {
+            for (String line : accessTableToList(options)) {
                 TTY.println(line);
                 TTY.println();
             }
@@ -323,7 +325,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
 
             public abstract long getHotness();
 
-            public abstract boolean isPrettified();
+            public abstract boolean isPrettified(OptionValues options);
         }
     }
 }

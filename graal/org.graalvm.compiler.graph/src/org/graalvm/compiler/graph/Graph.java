@@ -36,10 +36,11 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.util.Equivalence;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.UnmodifiableEconomicMap;
 
 /**
@@ -49,13 +50,13 @@ public class Graph {
 
     public static class Options {
         @Option(help = "Verify graphs often during compilation when assertions are turned on", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> VerifyGraalGraphs = new OptionValue<>(true);
+        public static final OptionKey<Boolean> VerifyGraalGraphs = new OptionKey<>(true);
         @Option(help = "Perform expensive verification of graph inputs, usages, successors and predecessors", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> VerifyGraalGraphEdges = new OptionValue<>(false);
+        public static final OptionKey<Boolean> VerifyGraalGraphEdges = new OptionKey<>(false);
         @Option(help = "Graal graph compression is performed when percent of live nodes falls below this value", type = OptionType.Debug)//
-        public static final OptionValue<Integer> GraphCompressionThreshold = new OptionValue<>(70);
+        public static final OptionKey<Integer> GraphCompressionThreshold = new OptionKey<>(70);
         @Option(help = "Use Unsafe to clone graph nodes thus avoiding copying fields that will be re-initialized anyway", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> CloneNodesWithUnsafe = new OptionValue<>(true);
+        public static final OptionKey<Boolean> CloneNodesWithUnsafe = new OptionKey<>(true);
     }
 
     public final String name;
@@ -129,11 +130,16 @@ public class Graph {
         }
     };
 
-    /*
-     * Indicates that the graph should no longer be modified. Frozen graphs can be used my multiple
+    /**
+     * Indicates that the graph should no longer be modified. Frozen graphs can be used by multiple
      * threads so it's only safe to read them.
      */
     private boolean isFrozen = false;
+
+    /**
+     * The option values used while compiling this graph.
+     */
+    private final OptionValues options;
 
     private class NodeSourcePositionScope implements DebugCloseable {
         private final NodeSourcePosition previous;
@@ -206,7 +212,7 @@ public class Graph {
      * Creates an empty Graph with no name.
      */
     public Graph() {
-        this(null);
+        this(null, OptionValues.GLOBAL);
     }
 
     /**
@@ -227,11 +233,13 @@ public class Graph {
      *
      * @param name the name of the graph, used for debugging purposes
      */
-    public Graph(String name) {
+    public Graph(String name, OptionValues options) {
         nodes = new Node[INITIAL_NODES_SIZE];
         iterableNodesFirst = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         iterableNodesLast = new ArrayList<>(NodeClass.allocatedNodeIterabledIds());
         this.name = name;
+        this.options = options != null ? options : OptionValues.GLOBAL;
+
         if (isModificationCountsEnabled()) {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
             nodeUsageModCounts = new int[INITIAL_NODES_SIZE];
@@ -318,12 +326,16 @@ public class Graph {
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      */
     protected Graph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback) {
-        Graph copy = new Graph(newName);
+        Graph copy = new Graph(newName, options);
         UnmodifiableEconomicMap<Node, Node> duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), (EconomicMap<Node, Node>) null);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
         return copy;
+    }
+
+    public final OptionValues getOptions() {
+        return options;
     }
 
     @Override
@@ -781,14 +793,12 @@ public class Graph {
 
     }
 
-    public static final int COMPRESSION_THRESHOLD = Options.GraphCompressionThreshold.getValue();
-
     private static final DebugCounter GraphCompressions = Debug.counter("GraphCompressions");
 
     /**
-     * If the {@linkplain #COMPRESSION_THRESHOLD compression threshold} is met, the list of nodes is
-     * compressed such that all non-null entries precede all null entries while preserving the
-     * ordering between the nodes within the list.
+     * If the {@linkplain Options#GraphCompressionThreshold compression threshold} is met, the list
+     * of nodes is compressed such that all non-null entries precede all null entries while
+     * preserving the ordering between the nodes within the list.
      */
     public boolean maybeCompress() {
         if (Debug.isDumpEnabledForMethod() || Debug.isLogEnabledForMethod()) {
@@ -796,7 +806,8 @@ public class Graph {
         }
         int liveNodeCount = getNodeCount();
         int liveNodePercent = liveNodeCount * 100 / nodesSize;
-        if (COMPRESSION_THRESHOLD == 0 || liveNodePercent >= COMPRESSION_THRESHOLD) {
+        int compressionThreshold = Options.GraphCompressionThreshold.getValue(options);
+        if (compressionThreshold == 0 || liveNodePercent >= compressionThreshold) {
             return false;
         }
         GraphCompressions.increment();
@@ -1019,7 +1030,7 @@ public class Graph {
     }
 
     public boolean verify() {
-        if (Options.VerifyGraalGraphs.getValue()) {
+        if (Options.VerifyGraalGraphs.getValue(options)) {
             for (Node node : getNodes()) {
                 try {
                     try {

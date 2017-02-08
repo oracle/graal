@@ -64,6 +64,7 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicSet;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -169,7 +170,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                 } else {
                     asm.decrementq(rsp, frameSize);
                 }
-                if (ZapStackOnMethodEntry.getValue()) {
+                if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                     final int intSize = 4;
                     for (int i = 0; i < frameSize / intSize; ++i) {
                         asm.movl(new AMD64Address(rsp, i * intSize), 0xC1C1C1C1);
@@ -207,13 +208,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         HotSpotLIRGenerationResult gen = (HotSpotLIRGenerationResult) lirGenRen;
         LIR lir = gen.getLIR();
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
-        boolean omitFrame = CanOmitFrame.getValue() && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
+        OptionValues options = lir.getOptions();
+        boolean omitFrame = CanOmitFrame.getValue(options) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
 
         Stub stub = gen.getStub();
         Assembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
-        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, compilationResult);
+        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, dataBuilder, frameContext, options, compilationResult);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         StackSlot deoptimizationRescueSlot = gen.getDeoptimizationRescueSlot();
@@ -267,7 +269,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
             if (config.useCompressedClassPointers) {
                 Register register = r10;
                 AMD64HotSpotMove.decodeKlassPointer(crb, asm, register, providers.getRegisters().getHeapBaseRegister(), src, config);
-                if (GeneratePIC.getValue()) {
+                if (GeneratePIC.getValue(crb.getOptions())) {
                     asm.movq(providers.getRegisters().getHeapBaseRegister(), asm.getPlaceholder(-1));
                     crb.recordMark(config.MARKID_NARROW_OOP_BASE_ADDRESS);
                 } else {
@@ -288,7 +290,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         asm.bind(verifiedEntry);
         crb.recordMark(config.MARKID_VERIFIED_ENTRY);
 
-        if (GeneratePIC.getValue()) {
+        if (GeneratePIC.getValue(crb.getOptions())) {
             // Check for method state
             HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
             if (!frameContext.isStub) {
@@ -333,9 +335,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig) {
+    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        return new AMD64HotSpotRegisterAllocationConfig(registerConfigNonNull);
+        return new AMD64HotSpotRegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo);
     }
 
     @Override

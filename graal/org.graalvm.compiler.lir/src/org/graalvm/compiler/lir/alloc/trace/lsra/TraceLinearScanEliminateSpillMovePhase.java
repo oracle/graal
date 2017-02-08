@@ -81,7 +81,7 @@ final class TraceLinearScanEliminateSpillMovePhase extends TraceLinearScanAlloca
              * by Interval.spillDefinitionPos.
              */
             TraceInterval interval = allocator.createUnhandledListBySpillPos(spilledIntervals);
-            if (DetailedAsserts.getValue()) {
+            if (DetailedAsserts.getValue(allocator.getOptions())) {
                 checkIntervals(interval);
             }
             if (Debug.isLogEnabled()) {

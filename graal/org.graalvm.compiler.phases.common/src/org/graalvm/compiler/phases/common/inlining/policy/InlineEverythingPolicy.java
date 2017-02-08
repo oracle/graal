@@ -34,7 +34,7 @@ public class InlineEverythingPolicy implements InliningPolicy {
 
     @Override
     public boolean continueInlining(StructuredGraph graph) {
-        if (InliningUtil.getNodeCount(graph) >= MaximumDesiredSize.getValue()) {
+        if (InliningUtil.getNodeCount(graph) >= MaximumDesiredSize.getValue(graph.getOptions())) {
             throw new PermanentBailoutException("Inline all calls failed. The resulting graph is too large.");
         }
         return true;

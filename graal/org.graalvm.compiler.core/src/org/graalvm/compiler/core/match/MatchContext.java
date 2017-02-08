@@ -109,7 +109,7 @@ public class MatchContext {
                 // don't interfere with this match.
                 continue;
             } else if ((consumed == null || !consumed.contains(node)) && node != root) {
-                if (LogVerbose.getValue()) {
+                if (LogVerbose.getValue(root.getOptions())) {
                     Debug.log("unexpected node %s", node);
                     for (int j = startIndex; j <= endIndex; j++) {
                         Node theNode = nodes.get(j);

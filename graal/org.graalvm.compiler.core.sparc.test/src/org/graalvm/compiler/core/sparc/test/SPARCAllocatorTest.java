@@ -22,23 +22,25 @@
  */
 package org.graalvm.compiler.core.sparc.test;
 
-import static org.graalvm.compiler.core.common.GraalOptions.TraceRA;
 import static org.graalvm.compiler.core.common.GraalOptions.RegisterPressure;
+import static org.graalvm.compiler.core.common.GraalOptions.TraceRA;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.junit.Assume.assumeTrue;
-import jdk.vm.ci.sparc.SPARC;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import org.graalvm.compiler.core.test.backend.AllocatorTest;
 
+import jdk.vm.ci.sparc.SPARC;
+
 public class SPARCAllocatorTest extends AllocatorTest {
 
     @Before
     public void checkSPARC() {
         assumeTrue("skipping SPARC specific test", getTarget().arch instanceof SPARC);
-        assumeTrue("RegisterPressure is set -> skip", RegisterPressure.getValue() == null);
-        assumeTrue("TraceRA is set -> skip", !TraceRA.getValue());
+        assumeTrue("RegisterPressure is set -> skip", RegisterPressure.getValue(GLOBAL) == null);
+        assumeTrue("TraceRA is set -> skip", !TraceRA.getValue(GLOBAL));
     }
 
     @Test

@@ -36,6 +36,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.hotspot.OptimizedCallTargetInstrumentation;
 import org.graalvm.compiler.truffle.hotspot.OptimizedCallTargetInstrumentationFactory;
@@ -49,8 +50,8 @@ public class AArch64OptimizedCallTargetInstumentationFactory extends OptimizedCa
 
     @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    CompilationResult compilationResult) {
-        return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, compilationResult, config, registers) {
+                    OptionValues options, CompilationResult compilationResult) {
+        return new OptimizedCallTargetInstrumentation(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, compilationResult, config, registers) {
             @Override
             protected void injectTailCallCode() {
                 AArch64MacroAssembler masm = (AArch64MacroAssembler) this.asm;

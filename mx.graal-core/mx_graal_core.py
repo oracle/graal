@@ -30,6 +30,7 @@ from argparse import ArgumentParser
 import re
 import zipfile
 import subprocess
+import mx_truffle
 
 import mx
 from mx_gate import Task
@@ -473,7 +474,7 @@ _coopFlags = ['-XX:-UseCompressedOops']
 _gcVerificationFlags = ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC']
 _g1VerificationFlags = ['-XX:-UseSerialGC', '-XX:+UseG1GC']
 _exceptionFlags = ['-Dgraal.StressInvokeWithExceptionNode=true']
-_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers, '-Dgraal.LIRUnlockBackendRestart=true']
+_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers]
 _immutableCodeFlags = ['-Dgraal.ImmutableCode=true']
 
 graal_bootstrap_tests = [
@@ -752,7 +753,13 @@ mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
 mx.add_argument('--lldb', action='store_const', const='lldb --', dest='vm_prefix', help='alias for --vmprefix "lldb --"')
 
+def sl(args):
+    """run an SL program"""
+    mx.get_opts().jdk = 'jvmci'
+    mx_truffle.sl(args)
+
 mx.update_commands(_suite, {
+    'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],

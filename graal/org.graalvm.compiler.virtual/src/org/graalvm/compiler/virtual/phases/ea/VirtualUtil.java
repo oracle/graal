@@ -23,6 +23,7 @@
 package org.graalvm.compiler.virtual.phases.ea;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TraceEscapeAnalysis;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.util.List;
 
@@ -119,32 +120,32 @@ public final class VirtualUtil {
         return success;
     }
 
-    public static void trace(String format) {
-        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
-            Debug.logv(format);
+    public static void trace(String msg) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue(GLOBAL) && Debug.isLogEnabled()) {
+            Debug.log(msg);
         }
     }
 
     public static void trace(String format, Object obj) {
-        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue(GLOBAL) && Debug.isLogEnabled()) {
             Debug.logv(format, obj);
         }
     }
 
     public static void trace(String format, Object obj, Object obj2) {
-        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue(GLOBAL) && Debug.isLogEnabled()) {
             Debug.logv(format, obj, obj2);
         }
     }
 
     public static void trace(String format, Object obj, Object obj2, Object obj3) {
-        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue(GLOBAL) && Debug.isLogEnabled()) {
             Debug.logv(format, obj, obj2, obj3);
         }
     }
 
     public static void trace(String format, Object obj, Object obj2, Object obj3, Object obj4) {
-        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue() && Debug.isLogEnabled()) {
+        if (Debug.isEnabled() && TraceEscapeAnalysis.getValue(GLOBAL) && Debug.isLogEnabled()) {
             Debug.logv(format, obj, obj2, obj3, obj4);
         }
     }

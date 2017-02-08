@@ -27,8 +27,8 @@ import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvide
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_EXP_STUB;
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG10_STUB;
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG_STUB;
-import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_SIN_STUB;
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_POW_STUB;
+import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_SIN_STUB;
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_TAN_STUB;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -43,6 +43,7 @@ import org.graalvm.compiler.hotspot.nodes.profiling.ProfileNode;
 import org.graalvm.compiler.hotspot.replacements.profiling.ProbabilisticProfileSnippets;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.amd64.AMD64ConvertSnippets;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
@@ -64,7 +65,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     @Override
     public void initialize(HotSpotProviders providers, GraalHotSpotVMConfig config) {
         convertSnippets = new AMD64ConvertSnippets.Templates(providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
-        profileSnippets = ProfileNode.Options.ProbabilisticProfiling.getValue() ? new ProbabilisticProfileSnippets.Templates(providers, providers.getCodeCache().getTarget()) : null;
+        profileSnippets = ProfileNode.Options.ProbabilisticProfiling.getValue(OptionValues.GLOBAL) ? new ProbabilisticProfileSnippets.Templates(providers, providers.getCodeCache().getTarget()) : null;
         super.initialize(providers, config);
     }
 
@@ -81,7 +82,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     @Override
     protected ForeignCallDescriptor toForeignCall(UnaryOperation operation) {
-        if (GraalArithmeticStubs.getValue()) {
+        if (GraalArithmeticStubs.getValue(OptionValues.GLOBAL)) {
             switch (operation) {
                 case LOG:
                     return ARITHMETIC_LOG_STUB;
@@ -105,7 +106,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     @Override
     protected ForeignCallDescriptor toForeignCall(BinaryOperation operation) {
-        if (GraalArithmeticStubs.getValue()) {
+        if (GraalArithmeticStubs.getValue(OptionValues.GLOBAL)) {
             switch (operation) {
                 case POW:
                     return ARITHMETIC_POW_STUB;

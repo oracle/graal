@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
@@ -104,12 +105,14 @@ public final class ReentrantBlockIterator {
         StateT state = initialState;
         Block current = start;
 
+        StructuredGraph graph = start.getBeginNode().graph();
         while (true) {
-            if (CompilationAlarm.hasExpired()) {
-                if (CompilationAlarm.Options.CompilationExpirationPeriod.getValue() > 120) {
-                    throw new PermanentBailoutException("Compilation exceeded %d seconds during CFG traversal", CompilationAlarm.Options.CompilationExpirationPeriod.getValue());
+            if (CompilationAlarm.hasExpired(graph.getOptions())) {
+                int period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
+                if (period > 120) {
+                    throw new PermanentBailoutException("Compilation exceeded %d seconds during CFG traversal", period);
                 } else {
-                    throw new RetryableBailoutException("Compilation exceeded %d seconds during CFG traversal", CompilationAlarm.Options.CompilationExpirationPeriod.getValue());
+                    throw new RetryableBailoutException("Compilation exceeded %d seconds during CFG traversal", period);
                 }
             }
             Block next = null;

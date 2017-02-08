@@ -56,10 +56,11 @@ import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
-import org.graalvm.compiler.options.NestedBooleanOptionValue;
+import org.graalvm.compiler.options.NestedBooleanOptionKey;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.code.Register;
@@ -80,7 +81,7 @@ public class LinearScan {
     public static class Options {
         // @formatter:off
         @Option(help = "Enable spill position optimization", type = OptionType.Debug)
-        public static final OptionValue<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionValue(LIROptimization, true);
+        public static final OptionKey<Boolean> LIROptLSRAOptimizeSpillPosition = new NestedBooleanOptionKey(LIROptimization, true);
         // @formatter:on
     }
 
@@ -205,6 +206,10 @@ public class LinearScan {
 
     public Interval intervalEndMarker() {
         return intervalEndMarker;
+    }
+
+    public OptionValues getOptions() {
+        return ir.getOptions();
     }
 
     public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
@@ -662,13 +667,11 @@ public class LinearScan {
     }
 
     @SuppressWarnings("try")
-    protected void allocate(TargetDescription target, LIRGenerationResult lirGenRes, MoveFactory spillMoveFactory, RegisterAllocationConfig registerAllocationConfig) {
-
+    protected void allocate(TargetDescription target, LIRGenerationResult lirGenRes, AllocationContext context) {
         /*
          * This is the point to enable debug logging for the whole register allocation.
          */
         try (Indent indent = Debug.logAndIndent("LinearScan allocate")) {
-            AllocationContext context = new AllocationContext(spillMoveFactory, registerAllocationConfig);
 
             createLifetimeAnalysisPhase().apply(target, lirGenRes, context);
 
@@ -677,21 +680,21 @@ public class LinearScan {
 
                 createRegisterAllocationPhase().apply(target, lirGenRes, context);
 
-                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue()) {
+                if (LinearScan.Options.LIROptLSRAOptimizeSpillPosition.getValue(getOptions())) {
                     createOptimizeSpillPositionPhase().apply(target, lirGenRes, context);
                 }
                 createResolveDataFlowPhase().apply(target, lirGenRes, context);
 
                 sortIntervalsAfterAllocation();
 
-                if (DetailedAsserts.getValue()) {
+                if (DetailedAsserts.getValue(getOptions())) {
                     verify();
                 }
                 beforeSpillMoveElimination();
                 createSpillMoveEliminationPhase().apply(target, lirGenRes, context);
                 createAssignLocationsPhase().apply(target, lirGenRes, context);
 
-                if (DetailedAsserts.getValue()) {
+                if (DetailedAsserts.getValue(getOptions())) {
                     verifyIntervals();
                 }
             } catch (Throwable e) {

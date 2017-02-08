@@ -65,8 +65,9 @@ import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Equivalence;
 
@@ -82,7 +83,7 @@ public class GraphUtil {
 
     public static class Options {
         @Option(help = "Verify that there are no new unused nodes when performing killCFG", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> VerifyKillCFGUnusedNodes = new OptionValue<>(false);
+        public static final OptionKey<Boolean> VerifyKillCFGUnusedNodes = new OptionKey<>(false);
     }
 
     @SuppressWarnings("try")
@@ -91,10 +92,11 @@ public class GraphUtil {
             EconomicSet<Node> unusedNodes = null;
             EconomicSet<Node> unsafeNodes = null;
             Graph.NodeEventScope nodeEventScope = null;
-            if (Graph.Options.VerifyGraalGraphEdges.getValue()) {
+            OptionValues options = node.getOptions();
+            if (Graph.Options.VerifyGraalGraphEdges.getValue(options)) {
                 unsafeNodes = collectUnsafeNodes(node.graph());
             }
-            if (GraphUtil.Options.VerifyKillCFGUnusedNodes.getValue()) {
+            if (GraphUtil.Options.VerifyKillCFGUnusedNodes.getValue(options)) {
                 EconomicSet<Node> collectedUnusedNodes = unusedNodes = EconomicSet.create(Equivalence.IDENTITY);
                 nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
                     @Override
@@ -112,12 +114,12 @@ public class GraphUtil {
                     killCFG(n, tool, worklist);
                 }
             }
-            if (Graph.Options.VerifyGraalGraphEdges.getValue()) {
+            if (Graph.Options.VerifyGraalGraphEdges.getValue(options)) {
                 EconomicSet<Node> newUnsafeNodes = collectUnsafeNodes(node.graph());
                 newUnsafeNodes.removeAll(unsafeNodes);
                 assert newUnsafeNodes.isEmpty() : "New unsafe nodes: " + newUnsafeNodes;
             }
-            if (GraphUtil.Options.VerifyKillCFGUnusedNodes.getValue()) {
+            if (GraphUtil.Options.VerifyKillCFGUnusedNodes.getValue(options)) {
                 nodeEventScope.close();
                 Iterator<Node> iterator = unusedNodes.iterator();
                 while (iterator.hasNext()) {
@@ -854,15 +856,17 @@ public class GraphUtil {
         private final ConstantFieldProvider constantFieldProvider;
         private final boolean canonicalizeReads;
         private final Assumptions assumptions;
+        private final OptionValues options;
         private final LoweringProvider loweringProvider;
 
         DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, boolean canonicalizeReads,
-                        Assumptions assumptions, LoweringProvider loweringProvider) {
+                        Assumptions assumptions, OptionValues options, LoweringProvider loweringProvider) {
             this.metaAccess = metaAccess;
             this.constantReflection = constantReflection;
             this.constantFieldProvider = constantFieldProvider;
             this.canonicalizeReads = canonicalizeReads;
             this.assumptions = assumptions;
+            this.options = options;
             this.loweringProvider = loweringProvider;
         }
 
@@ -917,6 +921,11 @@ public class GraphUtil {
         }
 
         @Override
+        public OptionValues getOptions() {
+            return options;
+        }
+
+        @Override
         public boolean supportSubwordCompare(int bits) {
             if (loweringProvider != null) {
                 return loweringProvider.supportSubwordCompare(bits);
@@ -927,13 +936,13 @@ public class GraphUtil {
     }
 
     public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    boolean canonicalizeReads, Assumptions assumptions) {
-        return getDefaultSimplifier(metaAccess, constantReflection, constantFieldProvider, canonicalizeReads, assumptions, null);
+                    boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {
+        return getDefaultSimplifier(metaAccess, constantReflection, constantFieldProvider, canonicalizeReads, assumptions, options, null);
     }
 
     public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    boolean canonicalizeReads, Assumptions assumptions, LoweringProvider loweringProvider) {
-        return new DefaultSimplifierTool(metaAccess, constantReflection, constantFieldProvider, canonicalizeReads, assumptions, loweringProvider);
+                    boolean canonicalizeReads, Assumptions assumptions, OptionValues options, LoweringProvider loweringProvider) {
+        return new DefaultSimplifierTool(metaAccess, constantReflection, constantFieldProvider, canonicalizeReads, assumptions, options, loweringProvider);
     }
 
     public static Constant foldIfConstantAndRemove(ValueNode node, ValueNode constant) {

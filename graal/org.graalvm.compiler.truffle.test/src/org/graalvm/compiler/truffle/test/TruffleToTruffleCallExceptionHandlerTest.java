@@ -32,14 +32,13 @@ import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
 import org.graalvm.compiler.truffle.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.DefaultTruffleCompiler;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TruffleCompiler;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import com.oracle.truffle.api.Truffle;
@@ -137,7 +136,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (OverrideScope o = OptionValue.override(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
             StructuredGraph graph = partialEval(callerNoException, new Object[0], AllowAssumptions.YES);
             Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
         }
@@ -160,7 +159,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (OverrideScope o = OptionValue.override(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
             StructuredGraph graph = partialEval(callerWithException, new Object[0], AllowAssumptions.YES);
             Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
         }

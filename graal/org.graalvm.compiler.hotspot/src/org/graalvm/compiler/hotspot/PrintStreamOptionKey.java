@@ -22,16 +22,16 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
-import java.lang.management.RuntimeMXBean;
 
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.UniquePathUtilities;
+import org.graalvm.compiler.options.OptionKey;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
@@ -39,32 +39,20 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 /**
  * An option that encapsulates and configures a print stream.
  */
-public class PrintStreamOption extends OptionValue<String> {
+public class PrintStreamOptionKey extends OptionKey<String> {
 
-    public PrintStreamOption() {
+    public PrintStreamOptionKey() {
         super(null);
     }
 
     /**
-     * The print stream to which output will be written.
-     *
-     * Declared {@code volatile} to enable safe use of double-checked locking in
-     * {@link #getStream()} and {@link #setValue(Object)}.
-     */
-    private volatile PrintStream ps;
-
-    /**
-     * Replaces any instance of %p with an identifying name such as a process ID extracted from
-     * {@link RuntimeMXBean#getName()} and any instance of %t with the value of
-     * {@link System#currentTimeMillis()}.
+     * Replace any instance of %p with a an identifying name. Try to get it from the RuntimeMXBean
+     * name.
      *
      * @return the name of the file to log to
      */
     private String getFilename() {
-        String name = getValue();
-        if (name.contains("%t")) {
-            name = name.replaceAll("%t", String.valueOf(UniquePathUtilities.getGlobalTimeStamp()));
-        }
+        String name = getValue(GLOBAL);
         if (name.contains("%p")) {
             String runtimeName = ManagementFactory.getRuntimeMXBean().getName();
             try {
@@ -127,44 +115,25 @@ public class PrintStreamOption extends OptionValue<String> {
      * will output to HotSpot's {@link HotSpotJVMCIRuntimeProvider#getLogStream() log} stream.
      */
     public PrintStream getStream() {
-        if (ps == null) {
-            if (getValue() != null) {
-                synchronized (this) {
-                    if (ps == null) {
-                        try {
-                            final boolean enableAutoflush = true;
-                            ps = new PrintStream(new FileOutputStream(getFilename()), enableAutoflush);
-                            /*
-                             * Add the JVM and Java arguments to the log file to help identity it.
-                             */
-                            String inputArguments = String.join(" ", ManagementFactory.getRuntimeMXBean().getInputArguments());
-                            ps.println("VM Arguments: " + inputArguments);
-                            String cmd = System.getProperty("sun.java.command");
-                            if (cmd != null) {
-                                ps.println("sun.java.command=" + cmd);
-                            }
-                        } catch (FileNotFoundException e) {
-                            throw new RuntimeException("couldn't open file: " + getValue(), e);
-                        }
-                    }
+        if (getValue(GLOBAL) != null) {
+            try {
+                final boolean enableAutoflush = true;
+                PrintStream ps = new PrintStream(new FileOutputStream(getFilename()), enableAutoflush);
+                /*
+                 * Add the JVM and Java arguments to the log file to help identity it.
+                 */
+                String inputArguments = String.join(" ", ManagementFactory.getRuntimeMXBean().getInputArguments());
+                ps.println("VM Arguments: " + inputArguments);
+                String cmd = System.getProperty("sun.java.command");
+                if (cmd != null) {
+                    ps.println("sun.java.command=" + cmd);
                 }
-            } else {
-                ps = new PrintStream(new DelayedOutputStream());
+                return ps;
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException("couldn't open file: " + getValue(GLOBAL), e);
             }
+        } else {
+            return new PrintStream(new DelayedOutputStream());
         }
-        return ps;
-    }
-
-    @Override
-    public void setValue(Object v) {
-        if (ps != null) {
-            synchronized (this) {
-                if (ps != null) {
-                    ps.close();
-                    ps = null;
-                }
-            }
-        }
-        super.setValue(v);
     }
 }

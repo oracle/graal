@@ -58,8 +58,9 @@ import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 
@@ -71,18 +72,18 @@ public class OnStackReplacementPhase extends Phase {
         // @formatter:off
         @Option(help = "Deoptimize OSR compiled code when the OSR entry loop is finished " +
                        "if there is no mature profile available for the rest of the method.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> DeoptAfterOSR = new OptionValue<>(true);
+        public static final OptionKey<Boolean> DeoptAfterOSR = new OptionKey<>(true);
         @Option(help = "Support OSR compilations with locks. If DeoptAfterOSR is true we can per definition not have " +
                        "unbalaced enter/extis mappings. If DeoptAfterOSR is false insert artificial monitor enters after " +
                        "the OSRStart to have balanced enter/exits in the graph.", type = OptionType.Debug)
-        public static final OptionValue<Boolean> SupportOSRWithLocks = new OptionValue<>(true);
+        public static final OptionKey<Boolean> SupportOSRWithLocks = new OptionKey<>(true);
         // @formatter:on
     }
 
     private static final DebugCounter OsrWithLocksCount = Debug.counter("OSRWithLocks");
 
-    private static boolean supportOSRWithLocks() {
-        return Options.SupportOSRWithLocks.getValue();
+    private static boolean supportOSRWithLocks(OptionValues options) {
+        return Options.SupportOSRWithLocks.getValue(options);
     }
 
     @Override
@@ -112,7 +113,7 @@ public class OnStackReplacementPhase extends Phase {
             throw new PermanentBailoutException("OSR compilation without OSR entry loop.");
         }
 
-        if (!supportOSRWithLocks() && currentOSRWithLocks) {
+        if (!supportOSRWithLocks(graph.getOptions()) && currentOSRWithLocks) {
             throw new PermanentBailoutException("OSR with locks disabled.");
         }
 

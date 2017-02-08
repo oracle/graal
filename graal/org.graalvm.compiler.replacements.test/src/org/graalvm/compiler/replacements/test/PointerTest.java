@@ -22,9 +22,6 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LocationIdentity;
@@ -37,6 +34,7 @@ import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -45,6 +43,8 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.nodes.WordCastNode;
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.TargetDescription;
@@ -67,7 +67,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     }
 
     @Override
-    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
+    protected StructuredGraph parseEager(ResolvedJavaMethod m, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, OptionValues options) {
         return installer.makeGraph(m, null, null);
     }
 

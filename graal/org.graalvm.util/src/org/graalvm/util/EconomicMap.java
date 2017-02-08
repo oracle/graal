@@ -35,6 +35,13 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
 
     V put(K key, V value);
 
+    default void putAll(EconomicMap<K, V> other) {
+        MapCursor<K, V> e = other.getEntries();
+        while (e.advance()) {
+            put(e.getKey(), e.getValue());
+        }
+    }
+
     void clear();
 
     V removeKey(K key);

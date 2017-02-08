@@ -22,11 +22,12 @@
  */
 package org.graalvm.compiler.core.test.debug;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -63,8 +64,7 @@ import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.ShiftNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -241,30 +241,26 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
     static DebugConfig overrideGraalDebugConfig(PrintStream log, String methodFilter, String methodMeter) {
         List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
         List<DebugVerifyHandler> verifyHandlers = new ArrayList<>();
+        OptionValues options = OptionValues.GLOBAL;
         GraalDebugConfig debugConfig = new GraalDebugConfig(
-                        GraalDebugConfig.Options.Log.getValue(),
-                        GraalDebugConfig.Options.Count.getValue(),
-                        GraalDebugConfig.Options.TrackMemUse.getValue(),
-                        GraalDebugConfig.Options.Time.getValue(),
-                        GraalDebugConfig.Options.Dump.getValue(),
-                        GraalDebugConfig.Options.Verify.getValue(),
+                        options,
+                        GraalDebugConfig.Options.Log.getValue(options),
+                        GraalDebugConfig.Options.Count.getValue(options),
+                        GraalDebugConfig.Options.TrackMemUse.getValue(options),
+                        GraalDebugConfig.Options.Time.getValue(options),
+                        GraalDebugConfig.Options.Dump.getValue(options),
+                        GraalDebugConfig.Options.Verify.getValue(options),
                         methodFilter,
                         methodMeter,
                         log, dumpHandlers, verifyHandlers);
         return debugConfig;
     }
 
-    private static OverrideScope overrideMetricPrinterConfig() {
-        Map<OptionValue<?>, Object> mapping = new HashMap<>();
-        mapping.put(MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);
-        return OptionValue.override(mapping);
-    }
-
     abstract Phase additionalPhase();
 
     @Override
-    protected Suites createSuites() {
-        Suites ret = super.createSuites();
+    protected Suites createSuites(OptionValues options) {
+        Suites ret = super.createSuites(options);
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
         PhaseSuite.findNextPhase(iter, CanonicalizerPhase.class);
         iter.add(additionalPhase());
@@ -274,7 +270,7 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
     @Test
     @SuppressWarnings("try")
     public void test() throws Throwable {
-        try (DebugConfigScope s = Debug.setConfig(getConfig()); OverrideScope o = getOScope();) {
+        try (DebugConfigScope s = Debug.setConfig(getConfig())) {
             executeMethod(TestApplication.class.getMethod("m01", testSignature), null, testArgs);
             executeMethod(TestApplication.class.getMethod("m02", testSignature), null, testArgs);
             executeMethod(TestApplication.class.getMethod("m03", testSignature), null, testArgs);
@@ -289,6 +285,11 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
         }
     }
 
+    void executeMethod(Method m, Object receiver, Object... args) {
+        OptionValues options = new OptionValues(GLOBAL, MethodMetricsPrinter.Options.MethodMeterPrintAscii, true);
+        test(options, asResolvedJavaMethod(m), receiver, args);
+    }
+
     @Before
     public void rememberScopeId() {
         scopeIdBeforeAccess = DebugScope.getCurrentGlobalScopeId();
@@ -300,10 +301,6 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
     }
 
     abstract DebugConfig getConfig();
-
-    OverrideScope getOScope() {
-        return overrideMetricPrinterConfig();
-    }
 
     abstract void assertValues() throws Throwable;
 
@@ -373,9 +370,4 @@ public abstract class MethodMetricsTest extends GraalCompilerTest {
             throw new RuntimeException(t);
         }
     }
-
-    void executeMethod(Method m, Object receiver, Object... args) {
-        test(asResolvedJavaMethod(m), receiver, args);
-    }
-
 }

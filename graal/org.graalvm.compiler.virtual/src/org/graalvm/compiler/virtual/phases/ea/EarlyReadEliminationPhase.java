@@ -38,7 +38,7 @@ public class EarlyReadEliminationPhase extends EffectsPhase<PhaseContext> {
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue())) {
+        if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()))) {
             runAnalysis(graph, context);
         }
     }

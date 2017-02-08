@@ -57,7 +57,7 @@ public final class LinearScanRegisterAllocationPhase extends AllocationPhase {
 
             // allocate cpu registers
             LinearScanWalker lsw;
-            if (OptimizingLinearScanWalker.Options.LSRAOptimization.getValue()) {
+            if (OptimizingLinearScanWalker.Options.LSRAOptimization.getValue(allocator.getOptions())) {
                 lsw = new OptimizingLinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);
             } else {
                 lsw = new LinearScanWalker(allocator, precoloredIntervals, notPrecoloredIntervals);

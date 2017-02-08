@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
+
 import java.lang.management.ManagementFactory;
 import java.lang.management.MonitorInfo;
 import java.lang.management.ThreadInfo;
@@ -29,7 +31,6 @@ import java.lang.management.ThreadMXBean;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.phases.HighTier;
@@ -37,8 +38,9 @@ import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.phases.OnStackReplacementPhase;
-import org.graalvm.compiler.options.OptionValue;
-import org.graalvm.compiler.options.OptionValue.OverrideScope;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.EconomicMap;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -101,15 +103,15 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
         return isMonitorLockHeld(lock) || isMonitorLockHeld(lock1);
     }
 
-    protected static Map<OptionValue<?>, Object> osrLockNoDeopt() {
-        HashMap<OptionValue<?>, Object> overrides = new HashMap<>();
+    protected static EconomicMap<OptionKey<?>, Object> osrLockNoDeopt() {
+        EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
         overrides.put(OnStackReplacementPhase.Options.DeoptAfterOSR, false);
         overrides.put(OnStackReplacementPhase.Options.SupportOSRWithLocks, true);
         return overrides;
     }
 
-    protected static Map<OptionValue<?>, Object> osrLockDeopt() {
-        HashMap<OptionValue<?>, Object> overrides = new HashMap<>();
+    protected static EconomicMap<OptionKey<?>, Object> osrLockDeopt() {
+        EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
         overrides.put(OnStackReplacementPhase.Options.SupportOSRWithLocks, true);
         return overrides;
     }
@@ -151,16 +153,15 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
 
     @BeforeClass
     public static void init() {
-        DebugEnvironment.ensureInitialized();
+        DebugEnvironment.ensureInitialized(GLOBAL);
     }
 
     // @Test
     @SuppressWarnings("try")
     public void testLockOSROuterImmediateDeoptAfter() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockDeopt())) {
-                testOSR("testOuterLockImmediateDeoptAfter");
-            }
+            OptionValues options = new OptionValues(GLOBAL, osrLockDeopt());
+            testOSR(options, "testOuterLockImmediateDeoptAfter");
         });
     }
 
@@ -197,7 +198,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
         for (int i = 0; i < 100000; i++) {
             instance.listeners.put("hello" + i, null);
         }
-        testOSR("synchronizedSnippet", instance);
+        testOSR(GLOBAL, "synchronizedSnippet", instance);
         Assert.assertFalse(isMonitorLockHeld(instance));
     }
 
@@ -205,8 +206,9 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testOSRTrivialLoop() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockDeopt())) {
-                testOSR("testReduceOSRTrivialLoop");
+            OptionValues options = new OptionValues(GLOBAL, osrLockDeopt());
+            try {
+                testOSR(options, "testReduceOSRTrivialLoop");
             } catch (Throwable t) {
                 Assert.assertEquals("OSR compilation without OSR entry loop.", t.getMessage());
             }
@@ -217,9 +219,8 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testLockOSROuterInnerImmediateDeoptAfter() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockDeopt())) {
-                testOSR("testOuterInnerLockImmediateDeoptAfter");
-            }
+            OptionValues options = new OptionValues(GLOBAL, osrLockDeopt());
+            testOSR(options, "testOuterInnerLockImmediateDeoptAfter");
         });
     }
 
@@ -227,11 +228,10 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testLockOSROuterCompileRestOfMethod() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt());
-                            OverrideScope o2 = OptionValue.override(HighTier.Options.Inline, false)) {
-                testOSR("testOuterLockCompileRestOfMethod");
-            }
-
+            EconomicMap<OptionKey<?>, Object> overrides = osrLockNoDeopt();
+            overrides.put(HighTier.Options.Inline, false);
+            OptionValues options = new OptionValues(GLOBAL, overrides);
+            testOSR(options, "testOuterLockCompileRestOfMethod");
         });
     }
 
@@ -239,9 +239,8 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testLockOSROuterInnerCompileRestOfMethod() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt())) {
-                testOSR("testOuterInnerLockCompileRestOfMethod");
-            }
+            OptionValues options = new OptionValues(GLOBAL, osrLockNoDeopt());
+            testOSR(options, "testOuterInnerLockCompileRestOfMethod");
         });
     }
 
@@ -249,10 +248,10 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testLockOSROuterInnerLockDepthCompileRestOfMethod() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt());
-                            OverrideScope o2 = OptionValue.override(HighTier.Options.Inline, false)) {
-                testOSR("testOuterInnerLockDepth1CompileRestOfMethod");
-            }
+            EconomicMap<OptionKey<?>, Object> overrides = osrLockNoDeopt();
+            overrides.put(HighTier.Options.Inline, false);
+            OptionValues options = new OptionValues(GLOBAL, overrides);
+            testOSR(options, "testOuterInnerLockDepth1CompileRestOfMethod");
         });
     }
 
@@ -260,10 +259,10 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testLockOSROuterInnerLockDepthDeopt() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt());
-                            OverrideScope o2 = OptionValue.override(HighTier.Options.Inline, false)) {
-                testOSR("testOuterInnerLockDepth1DeoptAfter");
-            }
+            EconomicMap<OptionKey<?>, Object> overrides = osrLockNoDeopt();
+            overrides.put(HighTier.Options.Inline, false);
+            OptionValues options = new OptionValues(GLOBAL, overrides);
+            testOSR(options, "testOuterInnerLockDepth1DeoptAfter");
         });
     }
 
@@ -271,9 +270,8 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testLockOSROuterInnerLockDepthRecursiveCompileRestOfMethod0() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt())) {
-                testOSR("testOuterInnerLockDepth1RecursiveCompileRestOfMethod1");
-            }
+            OptionValues options = new OptionValues(GLOBAL, osrLockNoDeopt());
+            testOSR(options, "testOuterInnerLockDepth1RecursiveCompileRestOfMethod1");
         });
     }
 
@@ -281,9 +279,8 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testLockOSROuterInnerLockDepthRecursiveCompileRestOfMethod1() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt())) {
-                testOSR("testOuterInnerLockDepth1RecursiveCompileRestOfMethod2");
-            }
+            OptionValues options = new OptionValues(GLOBAL, osrLockNoDeopt());
+            testOSR(options, "testOuterInnerLockDepth1RecursiveCompileRestOfMethod2");
         });
     }
 
@@ -291,9 +288,8 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testLockOSROuterCompileRestOfMethodSubsequentLock() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt())) {
-                testOSR("testOuterLockCompileRestOfMethodSubsequentLock");
-            }
+            OptionValues options = new OptionValues(GLOBAL, osrLockNoDeopt());
+            testOSR(options, "testOuterLockCompileRestOfMethodSubsequentLock");
         });
     }
 
@@ -301,9 +297,8 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
     @SuppressWarnings("try")
     public void testLockOSROuterInnerSameLockCompileRestOfMethod() {
         run(() -> {
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt())) {
-                testOSR("testOuterInnerSameLockCompileRestOfMethod");
-            }
+            OptionValues options = new OptionValues(GLOBAL, osrLockNoDeopt());
+            testOSR(options, "testOuterInnerSameLockCompileRestOfMethod");
         });
     }
 
@@ -317,11 +312,11 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
             // profile it
             leaf.reprofile();
             testRecursiveLockingLeaf();
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt());
-                            OverrideScope o2 = OptionValue.override(HighTier.Options.Inline, false)) {
-                compile(leaf, -1);
-                testOSR("testRecursiveLockingRoot");
-            }
+            EconomicMap<OptionKey<?>, Object> overrides = osrLockNoDeopt();
+            overrides.put(HighTier.Options.Inline, false);
+            OptionValues options = new OptionValues(GLOBAL, overrides);
+            compile(options, leaf, -1);
+            testOSR(options, "testRecursiveLockingRoot");
         });
     }
 
@@ -331,15 +326,16 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
         run(() -> {
             testRecursiveRootNoOSR();
             ResolvedJavaMethod root = getResolvedJavaMethod("testRecursiveRootNoOSR");
-            try (OverrideScope o = OptionValue.override(osrLockNoDeopt());
-                            OverrideScope o2 = OptionValue.override(HighTier.Options.Inline, false)) {
-                compile(root, -1);
-                testOSR("testRecursiveLeafOSR");
-                // force a safepoint and hope the inflated locks are deflated
-                System.gc();
-                // call the root to call into the leaf and enter the osr-ed code
-                testRecursiveRootNoOSR();
-            }
+            EconomicMap<OptionKey<?>, Object> overrides = osrLockNoDeopt();
+            overrides.put(HighTier.Options.Inline, false);
+            OptionValues options = new OptionValues(GLOBAL, overrides);
+            compile(options, root, -1);
+            testOSR(options, "testRecursiveLeafOSR");
+            // force a safepoint and hope the inflated locks are deflated
+            System.gc();
+            // call the root to call into the leaf and enter the osr-ed code
+            testRecursiveRootNoOSR();
+
         });
     }
 

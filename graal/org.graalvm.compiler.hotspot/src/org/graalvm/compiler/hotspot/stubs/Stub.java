@@ -26,6 +26,7 @@ import static org.graalvm.compiler.core.GraalCompiler.emitBackEnd;
 import static org.graalvm.compiler.core.GraalCompiler.emitFrontEnd;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.UNCOMMON_TRAP_HANDLER;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,6 +49,7 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.profiling.MoveProfilingPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.Suites;
@@ -198,7 +200,7 @@ public abstract class Stub {
 
     @SuppressWarnings("try")
     private CompilationResult buildCompilationResult(final Backend backend) {
-        CompilationResult compResult = new CompilationResult(toString(), GeneratePIC.getValue());
+        CompilationResult compResult = new CompilationResult(toString(), GeneratePIC.getValue(GLOBAL));
         final StructuredGraph graph = getGraph(getStubCompilationId());
 
         // Stubs cannot be recompiled so they cannot be compiled with assumptions
@@ -211,9 +213,9 @@ public abstract class Stub {
         }
 
         try (Scope s0 = Debug.scope("StubCompilation", graph, providers.getCodeCache())) {
-            Suites suites = createSuites();
+            Suites suites = createSuites(GLOBAL);
             emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites);
-            LIRSuites lirSuites = createLIRSuites();
+            LIRSuites lirSuites = createLIRSuites(GLOBAL);
             emitBackEnd(graph, Stub.this, getInstalledCodeOwner(), backend, compResult, CompilationResultBuilderFactory.Default, getRegisterConfig(), lirSuites);
             assert checkStubInvariants(compResult);
         } catch (Throwable e) {
@@ -273,13 +275,13 @@ public abstract class Stub {
         return true;
     }
 
-    protected Suites createSuites() {
-        Suites defaultSuites = providers.getSuites().getDefaultSuites();
+    protected Suites createSuites(OptionValues options) {
+        Suites defaultSuites = providers.getSuites().getDefaultSuites(options);
         return new Suites(new PhaseSuite<>(), defaultSuites.getMidTier(), defaultSuites.getLowTier());
     }
 
-    protected LIRSuites createLIRSuites() {
-        LIRSuites lirSuites = new LIRSuites(providers.getSuites().getDefaultLIRSuites());
+    protected LIRSuites createLIRSuites(OptionValues options) {
+        LIRSuites lirSuites = new LIRSuites(providers.getSuites().getDefaultLIRSuites(options));
         ListIterator<LIRPhase<PostAllocationOptimizationContext>> moveProfiling = lirSuites.getPostAllocationOptimizationStage().findPhase(MoveProfilingPhase.class);
         if (moveProfiling != null) {
             moveProfiling.remove();

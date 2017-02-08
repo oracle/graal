@@ -22,6 +22,14 @@
  */
 package org.graalvm.compiler.printer;
 
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpPath;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphPort;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphs;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintCanonicalGraphStringsDirectory;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintIdealGraphAddress;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintIdealGraphFileName;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintIdealGraphPort;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
@@ -42,6 +50,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.UniquePathUtilities;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
@@ -50,20 +59,21 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
 
     @Override
     public void customize(DebugConfig config) {
-        if (Options.PrintIdealGraphFile.getValue()) {
-            config.dumpHandlers().add(new GraphPrinterDumpHandler(this::createFilePrinter));
+        OptionValues options = config.getOptions();
+        if (Options.PrintIdealGraphFile.getValue(options)) {
+            config.dumpHandlers().add(new GraphPrinterDumpHandler(() -> createFilePrinter(options)));
         } else {
-            config.dumpHandlers().add(new GraphPrinterDumpHandler(this::createNetworkPrinter));
+            config.dumpHandlers().add(new GraphPrinterDumpHandler(() -> createNetworkPrinter(options)));
         }
-        if (Options.PrintCanonicalGraphStrings.getValue()) {
-            config.dumpHandlers().add(new GraphPrinterDumpHandler(this::createStringPrinter));
+        if (Options.PrintCanonicalGraphStrings.getValue(options)) {
+            config.dumpHandlers().add(new GraphPrinterDumpHandler(() -> createStringPrinter(options)));
         }
         config.dumpHandlers().add(new NodeDumper());
-        if (Options.PrintCFG.getValue() || Options.PrintBackendCFG.getValue()) {
-            if (Options.PrintBinaryGraphs.getValue() && Options.PrintCFG.getValue()) {
+        if (Options.PrintCFG.getValue(options) || Options.PrintBackendCFG.getValue(options)) {
+            if (Options.PrintBinaryGraphs.getValue(options) && Options.PrintCFG.getValue(options)) {
                 TTY.out.println("Complete C1Visualizer dumping slows down PrintBinaryGraphs: use -Dgraal.PrintCFG=false to disable it");
             }
-            config.dumpHandlers().add(new CFGPrinterObserver(Options.PrintCFG.getValue()));
+            config.dumpHandlers().add(new CFGPrinterObserver(Options.PrintCFG.getValue(options)));
         }
         config.verifyHandlers().add(new NoDeadCodeVerifyHandler());
     }
@@ -91,18 +101,18 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
         }
     }
 
-    private CanonicalStringGraphPrinter createStringPrinter() {
+    private static CanonicalStringGraphPrinter createStringPrinter(OptionValues options) {
         // Construct the path to the directory.
-        Path path = UniquePathUtilities.getPath(Options.PrintCanonicalGraphStringsDirectory, Options.DumpPath, "");
+        Path path = UniquePathUtilities.getPath(options, PrintCanonicalGraphStringsDirectory, Options.DumpPath, "");
         return new CanonicalStringGraphPrinter(path);
     }
 
-    private GraphPrinter createNetworkPrinter() throws IOException {
-        String host = Options.PrintIdealGraphAddress.getValue();
-        int port = Options.PrintBinaryGraphs.getValue() ? Options.PrintBinaryGraphPort.getValue() : Options.PrintIdealGraphPort.getValue();
+    private static GraphPrinter createNetworkPrinter(OptionValues options) throws IOException {
+        String host = PrintIdealGraphAddress.getValue(options);
+        int port = PrintBinaryGraphs.getValue(options) ? PrintBinaryGraphPort.getValue(options) : PrintIdealGraphPort.getValue(options);
         try {
             GraphPrinter printer;
-            if (Options.PrintBinaryGraphs.getValue()) {
+            if (Options.PrintBinaryGraphs.getValue(options)) {
                 printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)));
             } else {
                 printer = new IdealGraphPrinter(new Socket(host, port).getOutputStream(), true);
@@ -121,16 +131,16 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
         }
     }
 
-    private static Path getFilePrinterPath() {
+    private static Path getFilePrinterPath(OptionValues options) {
         // Construct the path to the file.
-        return UniquePathUtilities.getPath(Options.PrintIdealGraphFileName, Options.DumpPath, Options.PrintBinaryGraphs.getValue() ? "bgv" : "gv.xml");
+        return UniquePathUtilities.getPath(options, PrintIdealGraphFileName, DumpPath, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml");
     }
 
-    private GraphPrinter createFilePrinter() throws IOException {
-        Path path = getFilePrinterPath();
+    private static GraphPrinter createFilePrinter(OptionValues options) throws IOException {
+        Path path = getFilePrinterPath(options);
         try {
             GraphPrinter printer;
-            if (Options.PrintBinaryGraphs.getValue()) {
+            if (Options.PrintBinaryGraphs.getValue(options)) {
                 printer = new BinaryGraphPrinter(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
             } else {
                 printer = new IdealGraphPrinter(Files.newOutputStream(path), true);

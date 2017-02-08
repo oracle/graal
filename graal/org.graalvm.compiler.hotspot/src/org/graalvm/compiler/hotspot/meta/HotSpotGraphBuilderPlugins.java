@@ -29,6 +29,7 @@ import static org.graalvm.compiler.core.common.util.Util.Java8OrEarlier;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
+import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
@@ -89,7 +90,6 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.options.StableOptionValue;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
@@ -135,7 +135,7 @@ public class HotSpotGraphBuilderPlugins {
 
         plugins.appendTypePlugin(nodePlugin);
         plugins.appendNodePlugin(nodePlugin);
-        if (GeneratePIC.getValue()) {
+        if (GeneratePIC.getValue(GLOBAL)) {
             // AOT needs to filter out bad invokes
             plugins.prependNodePlugin(new NodePlugin() {
                 @Override
@@ -172,13 +172,13 @@ public class HotSpotGraphBuilderPlugins {
         }
         plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
         plugins.appendInlineInvokePlugin(replacements);
-        if (InlineDuringParsing.getValue()) {
+        if (InlineDuringParsing.getValue(GLOBAL)) {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
-        if (GeneratePIC.getValue()) {
+        if (GeneratePIC.getValue(GLOBAL)) {
             plugins.setClassInitializationPlugin(new HotSpotClassInitializationPlugin());
-            if (TieredAOT.getValue()) {
+            if (TieredAOT.getValue(GLOBAL)) {
                 plugins.setProfilingPlugin(new HotSpotAOTProfilingPlugin());
             }
         }
@@ -195,7 +195,6 @@ public class HotSpotGraphBuilderPlugins {
                 registerCallSitePlugins(invocationPlugins);
                 registerReflectionPlugins(invocationPlugins, replacementBytecodeProvider);
                 registerConstantPoolPlugins(invocationPlugins, wordTypes, config, replacementBytecodeProvider);
-                registerStableOptionPlugins(invocationPlugins, snippetReflection);
                 registerAESPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerCRC32Plugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerBigIntegerPlugins(invocationPlugins, config, replacementBytecodeProvider);
@@ -212,7 +211,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerObjectPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
         Registration r = new Registration(plugins, Object.class, bytecodeProvider);
-        if (!GeneratePIC.getValue()) {
+        if (!GeneratePIC.getValue(GLOBAL)) {
             // FIXME: clone() requires speculation and requires a fix in here (to check that
             // b.getAssumptions() != null), and in ReplacementImpl.getSubstitution() where there is
             // an instantiation of IntrinsicGraphBuilder using a constructor that sets
@@ -437,21 +436,6 @@ public class HotSpotGraphBuilderPlugins {
         });
 
         r.registerMethodSubstitution(ThreadSubstitutions.class, "isInterrupted", Receiver.class, boolean.class);
-    }
-
-    private static void registerStableOptionPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
-        Registration r = new Registration(plugins, StableOptionValue.class);
-        r.register1("getValue", Receiver.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (receiver.isConstant()) {
-                    StableOptionValue<?> option = snippetReflection.asObject(StableOptionValue.class, (JavaConstant) receiver.get().asConstant());
-                    b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(option.getValue()), b.getMetaAccess()));
-                    return true;
-                }
-                return false;
-            }
-        });
     }
 
     public static final String cbcEncryptName;

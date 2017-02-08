@@ -58,8 +58,8 @@ import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
@@ -89,10 +89,10 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static class Options {
         // @formatter:off
         @Option(help = "Use Graal arithmetic stubs instead of HotSpot stubs where possible")
-        public static final OptionValue<Boolean> GraalArithmeticStubs = new OptionValue<>(true);
+        public static final OptionKey<Boolean> GraalArithmeticStubs = new OptionKey<>(true);
         @Option(help = "Enables instruction profiling on assembler level. Valid values are a comma separated list of supported instructions." +
                         " Compare with subclasses of Assembler.InstructionCounter.", type = OptionType.Debug)
-        public static final OptionValue<String> ASMInstructionProfiling = new OptionValue<>(null);
+        public static final OptionKey<String> ASMInstructionProfiling = new OptionKey<>(null);
         // @formatter:on
     }
 
@@ -396,7 +396,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     }
 
     protected void profileInstructions(LIR lir, CompilationResultBuilder crb) {
-        if (HotSpotBackend.Options.ASMInstructionProfiling.getValue() != null) {
+        if (HotSpotBackend.Options.ASMInstructionProfiling.getValue(lir.getOptions()) != null) {
             HotSpotInstructionProfiling.countInstructions(lir, crb.asm);
         }
     }

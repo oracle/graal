@@ -24,6 +24,7 @@ package org.graalvm.compiler.phases.common.inlining;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -92,9 +93,9 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.UnmodifiableEconomicMap;
 import org.graalvm.util.UnmodifiableMapCursor;
 
@@ -119,7 +120,9 @@ public class InliningUtil {
     }
 
     private static void printInlining(final ResolvedJavaMethod method, final Invoke invoke, final int inliningDepth, final boolean success, final String msg, final Object... args) {
-        Util.printInlining(method, invoke.bci(), inliningDepth, success, msg, args);
+        if (HotSpotPrintInlining.getValue(invoke.asNode().getOptions())) {
+            Util.printInlining(method, invoke.bci(), inliningDepth, success, msg, args);
+        }
     }
 
     public static void logInlinedMethod(InlineInfo info, int inliningDepth, boolean allowLogging, String msg, Object... args) {
@@ -273,10 +276,10 @@ public class InliningUtil {
      */
     @SuppressWarnings("try")
     public static UnmodifiableEconomicMap<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod) {
-        MethodMetricsInlineeScopeInfo m = MethodMetricsInlineeScopeInfo.create();
+        FixedNode invokeNode = invoke.asNode();
+        StructuredGraph graph = invokeNode.graph();
+        MethodMetricsInlineeScopeInfo m = MethodMetricsInlineeScopeInfo.create(graph.getOptions());
         try (Debug.Scope s = Debug.methodMetricsScope("InlineEnhancement", m, false)) {
-            FixedNode invokeNode = invoke.asNode();
-            StructuredGraph graph = invokeNode.graph();
             if (Fingerprint.ENABLED) {
                 Fingerprint.submit("inlining %s into %s: %s", formatGraph(inlineGraph), formatGraph(invoke.asNode().graph()), inlineGraph.getNodes().snapshot());
             }
@@ -469,14 +472,14 @@ public class InliningUtil {
                 assumptions.record(inlinedAssumptions);
             }
         } else {
-            assert inlinedAssumptions == null : "cannot inline graph which makes assumptions into a graph that doesn't";
+            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", inlineGraph, graph);
         }
 
         // Copy inlined methods from inlinee to caller
         graph.updateMethods(inlineGraph);
 
         // Update the set of accessed fields
-        if (GraalOptions.GeneratePIC.getValue()) {
+        if (GraalOptions.GeneratePIC.getValue(graph.getOptions())) {
             graph.updateFields(inlineGraph);
         }
 

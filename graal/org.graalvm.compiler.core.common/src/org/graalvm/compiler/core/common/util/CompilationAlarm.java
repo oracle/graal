@@ -23,8 +23,9 @@
 package org.graalvm.compiler.core.common.util;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionValues;
 
 /**
  * Utility class that allows the compiler to monitor compilations that take a very long time.
@@ -34,25 +35,25 @@ public final class CompilationAlarm implements AutoCloseable {
     public static class Options {
         // @formatter:off
         @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit).", type = OptionType.Debug)
-        public static final OptionValue<Integer> CompilationExpirationPeriod = new OptionValue<>(300);
+        public static final OptionKey<Integer> CompilationExpirationPeriod = new OptionKey<>(300);
         // @formatter:on
     }
 
     private CompilationAlarm() {
     }
 
-    private static boolean enabled() {
-        return Options.CompilationExpirationPeriod.getValue() > 0;
+    private static boolean enabled(OptionValues options) {
+        return Options.CompilationExpirationPeriod.getValue(options) > 0;
     }
 
     /**
-     * Thread local storage for compilation start timestamps. Everytime a compiler thread calls
-     * {@link #trackCompilationPeriod()} it will save the start timestamp of the compilation.
+     * Thread local storage for compilation start timestamps. Every time a compiler thread calls
+     * {@link #trackCompilationPeriod} it will save the start timestamp of the compilation.
      */
     private static final ThreadLocal<Long> compilationStartedTimeStamps = new ThreadLocal<>();
 
-    private static boolean compilationStarted() {
-        if (enabled()) {
+    private static boolean compilationStarted(OptionValues options) {
+        if (enabled(options)) {
             Long start = compilationStartedTimeStamps.get();
             if (start == null) {
                 compilationStartedTimeStamps.set(System.currentTimeMillis());
@@ -74,13 +75,13 @@ public final class CompilationAlarm implements AutoCloseable {
      *         {@linkplain CompilationAlarm.Options#CompilationExpirationPeriod}, {@code false}
      *         otherwise
      */
-    public static boolean hasExpired() {
-        if (enabled()) {
+    public static boolean hasExpired(OptionValues options) {
+        if (enabled(options)) {
             Long start = compilationStartedTimeStamps.get();
             if (start != null) {
                 long time = System.currentTimeMillis();
                 assert time >= start;
-                return time - start > Options.CompilationExpirationPeriod.getValue() * 1000;
+                return time - start > Options.CompilationExpirationPeriod.getValue(options) * 1000;
             }
         }
         return false;
@@ -91,17 +92,17 @@ public final class CompilationAlarm implements AutoCloseable {
         compilationFinished();
     }
 
-    private static final CompilationAlarm INSTANCE = enabled() ? new CompilationAlarm() : null;
+    private static final CompilationAlarm INSTANCE = new CompilationAlarm();
 
     /**
-     * Gets an object that can be used in a try-with-resource statement to set an time limit based
+     * Gets an object that can be used in a try-with-resource statement to set a time limit based
      * alarm for a compilation.
      *
      * @return a {@link CompilationAlarm} instance if there is no current alarm for the calling
      *         thread otherwise {@code null}
      */
-    public static CompilationAlarm trackCompilationPeriod() {
-        if (compilationStarted()) {
+    public static CompilationAlarm trackCompilationPeriod(OptionValues options) {
+        if (compilationStarted(options)) {
             return INSTANCE;
         }
         return null;

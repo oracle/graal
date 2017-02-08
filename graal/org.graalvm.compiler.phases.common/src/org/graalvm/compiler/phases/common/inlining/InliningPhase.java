@@ -28,7 +28,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValue;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.common.AbstractInliningPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
@@ -41,7 +41,7 @@ public class InliningPhase extends AbstractInliningPhase {
     public static class Options {
 
         @Option(help = "Unconditionally inline intrinsics", type = OptionType.Debug)//
-        public static final OptionValue<Boolean> AlwaysInlineIntrinsics = new OptionValue<>(false);
+        public static final OptionKey<Boolean> AlwaysInlineIntrinsics = new OptionKey<>(false);
 
         /**
          * This is a defensive measure against known pathologies of the inliner where the breadth of
@@ -49,7 +49,7 @@ public class InliningPhase extends AbstractInliningPhase {
          * in reasonable time.
          */
         @Option(help = "Per-compilation method inlining exploration limit before giving up (use 0 to disable)", type = OptionType.Debug)//
-        public static final OptionValue<Integer> MethodInlineBailoutLimit = new OptionValue<>(5000);
+        public static final OptionKey<Integer> MethodInlineBailoutLimit = new OptionKey<>(5000);
     }
 
     private final InliningPolicy inliningPolicy;
@@ -97,7 +97,7 @@ public class InliningPhase extends AbstractInliningPhase {
 
         int count = 0;
         assert data.repOK();
-        int limit = Options.MethodInlineBailoutLimit.getValue();
+        int limit = Options.MethodInlineBailoutLimit.getValue(graph.getOptions());
         while (data.hasUnprocessedGraphs()) {
             boolean wasInlined = data.moveForward();
             assert data.repOK();
