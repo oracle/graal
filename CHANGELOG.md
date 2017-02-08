@@ -7,6 +7,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Made [@NodeChild](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/NodeChild.html) and [@NodeField](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/NodeField.html) annotations repeatable
 * Added Truffle Native Function Interface.
 * Abstract deprecated methods in [NodeClass](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/NodeClass.html) have default implementation
+* Added [RootNode.copyUninitialized](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/RootNode.html) that allows an optimizing runtime to efficiently create uninitialized copies of root nodes on demand.
 
 ## Version 0.23
 1-Feb-2017
