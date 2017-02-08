@@ -17,11 +17,11 @@ x52.tracera-bu-tmpfs10g: ${x52.default} {
 
 builds += [
   ${x52.tracera-tmpfs10g} ${bench-dacapo-hwloc}                         { targets : [bench, daily],  name: "bench-dacapo-linux-x52-tracera" }
-  ${x52.tracera-tmpfs10g} ${bench-dacapo-timing-hwloc}                  { targets : [bench, daily],  name: "bench-dacapo-timing-linux-x52-tracera" }
-  ${x52.tracera-tmpfs10g} ${bench-dacapo-move-profiling-hwloc}          { targets : [bench, daily],  name: "bench-dacapo-move-profiling-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-dacapo-timing-hwloc}                  { targets : [bench, weekly], name: "bench-dacapo-timing-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-dacapo-move-profiling-hwloc}          { targets : [bench, weekly], name: "bench-dacapo-move-profiling-linux-x52-tracera" }
   ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-hwloc}                   { targets : [bench, daily],  name: "bench-scala-dacapo-linux-x52-tracera" }
-  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-timing-hwloc}            { targets : [bench, daily],  name: "bench-scala-dacapo-timing-linux-x52-tracera" }
-  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-move-profiling-hwloc}    { targets : [bench, daily],  name: "bench-scala-dacapo-move-profiling-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-timing-hwloc}            { targets : [bench, weekly], name: "bench-scala-dacapo-timing-linux-x52-tracera" }
+  ${x52.tracera-tmpfs10g} ${bench-scala-dacapo-move-profiling-hwloc}    { targets : [bench, weekly], name: "bench-scala-dacapo-move-profiling-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjvm2008-Single}                            { targets : [bench, daily],  name: "bench-specjvm2008-Single-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjvm2008-OneVM}                             { targets : [bench, weekly], name: "bench-specjvm2008-OneVM-linux-x52-tracera" }
   ${x52.tracera} ${bench-specjbb2015}                                   { targets : [bench, daily],  name: "bench-specjbb2015-linux-x52-tracera" }
