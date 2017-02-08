@@ -22,7 +22,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.options.OptionValue;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleFunctionInlining;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInliningMaxCallerSize;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleMaximumRecursiveInlining;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.overrideOptions;
+
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.TruffleInlining;
 import org.junit.Assert;
@@ -66,7 +70,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     public void testInlineBigFunctions() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() - 3).
+                target("callee", TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize) - 3).
                 target("caller").
                     calls("callee").
                 buildDecisions();
@@ -78,7 +82,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     public void testDontInlineBigFunctions() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()).
+                target("callee", TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize)).
                 target("caller").
                     calls("callee").
                 buildDecisions();
@@ -91,7 +95,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         // @formatter:off
         TruffleInlining decisions = builder.
                 target("callee").
-                target("caller", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() - 3).
+                target("caller", TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize) - 3).
                 calls("callee").
                 buildDecisions();
         // @formatter:on
@@ -103,7 +107,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         // @formatter:off
         TruffleInlining decisions = builder.
                 target("callee").
-                target("caller", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue()).
+                target("caller", TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize)).
                     calls("callee").
                 buildDecisions();
         // @formatter:on
@@ -113,13 +117,13 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     @Test
     public void testRecursiveInline() {
         TruffleInlining decisions = builder.target("recursive").calls("recursive").buildDecisions();
-        Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue().intValue(), countInlines(decisions, "recursive"));
+        Assert.assertEquals(TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining).intValue(), countInlines(decisions, "recursive"));
     }
 
     @Test
     public void testDoubleRecursiveInline() {
         TruffleInlining decisions = builder.target("recursive").calls("recursive").calls("recursive").buildDecisions();
-        int n = TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue().intValue();
+        int n = TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining).intValue();
         long geometricSum = 2 * (1 - ((long) Math.pow(2, n))) / (1 - 2); // sum of geometric
                                                                          // progression a*r^n is
                                                                          // (a(1-r^n))/(1-r)
@@ -138,15 +142,15 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                     calls("callee").
                 buildDecisions();
         // @formatter:on
-        Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue().intValue(), countInlines(decisions, "recursive"));
-        Assert.assertEquals(TruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue() + 1, countInlines(decisions, "callee"));
+        Assert.assertEquals(TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining).intValue(), countInlines(decisions, "recursive"));
+        Assert.assertEquals(TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining) + 1, countInlines(decisions, "callee"));
     }
 
     @Test
     public void testInlineBigWithCallSites() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", (TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3) - 3).
+                target("callee", (TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize) / 3) - 3).
                 target("caller").
                     calls("callee").
                     calls("callee").
@@ -161,7 +165,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         // Do not inline a function if it's size * cappedCallSites is too big
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", TruffleCompilerOptions.TruffleInliningMaxCallerSize.getValue() / 3).
+                target("callee", TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize) / 3).
                 target("caller").
                     calls("callee").
                     calls("callee").
@@ -217,7 +221,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     @Test
     @SuppressWarnings("try")
     public void testTruffleFunctionInliningFlag() {
-        try (OptionValue.OverrideScope scope = OptionValue.override(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = overrideOptions(TruffleFunctionInlining, false)) {
             // @formatter:off
             TruffleInlining decisions = builder.
                     target("callee").
