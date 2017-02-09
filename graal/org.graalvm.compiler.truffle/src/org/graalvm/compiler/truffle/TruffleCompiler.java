@@ -145,7 +145,7 @@ public abstract class TruffleCompiler {
     public static final DebugMemUseTracker CodeInstallationMemUse = Debug.memUseTracker("TruffleCodeInstallationMemUse");
 
     @SuppressWarnings("try")
-    public void compileMethod(final OptimizedCallTarget compilable, GraalTruffleRuntime runtime) {
+    public void compileMethod(final OptimizedCallTarget compilable, GraalTruffleRuntime runtime, GraalTruffleRuntime.CancelableCompileTask task) {
         StructuredGraph graph = null;
 
         compilationNotify.notifyCompilationStarted(compilable);
@@ -155,7 +155,7 @@ public abstract class TruffleCompiler {
             CompilationIdentifier compilationId = runtime.getCompilationIdentifier(compilable, partialEvaluator.getCompilationRootMethods()[0], backend);
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
             try (DebugCloseable a = PartialEvaluationTime.start(); DebugCloseable c = PartialEvaluationMemUse.start()) {
-                graph = partialEvaluator.createGraph(compilable, inliningDecision, AllowAssumptions.YES, compilationId);
+                graph = partialEvaluator.createGraph(compilable, inliningDecision, AllowAssumptions.YES, compilationId, task);
             }
 
             if (Thread.currentThread().isInterrupted()) {

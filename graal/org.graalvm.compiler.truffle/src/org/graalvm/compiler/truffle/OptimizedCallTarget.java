@@ -88,7 +88,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     private volatile int callSitesKnown;
-    private volatile Future<?> compilationTask;
+    private volatile GraalTruffleRuntime.CancelableCompileTask compilationTask;
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
      * assumption. It gets invalidated when a node rewriting is performed. This ensures that all
@@ -273,7 +273,10 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
                 if (!isCompiling()) {
-                    compilationTask = submitted = runtime().submitForCompilation(this);
+                    compilationTask = runtime().submitForCompilation(this);
+                    if (compilationTask != null) {
+                        submitted = compilationTask.getTask();
+                    }
                 }
             }
             if (submitted != null) {
@@ -284,7 +287,13 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public final boolean isCompiling() {
-        return getCompilationTask() != null;
+        GraalTruffleRuntime.CancelableCompileTask task = getCompilationTask();
+        if (task != null) {
+            if (task.getTask() != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -554,7 +563,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return System.identityHashCode(this);
     }
 
-    Future<?> getCompilationTask() {
+    GraalTruffleRuntime.CancelableCompileTask getCompilationTask() {
         return compilationTask;
     }
 
