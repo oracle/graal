@@ -277,7 +277,6 @@ import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -297,7 +296,6 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
 import org.graalvm.compiler.java.BciBlockMapping.ExceptionDispatchBlock;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -365,8 +363,6 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.extended.GuardedNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
@@ -825,44 +821,11 @@ public class BytecodeParser implements GraphBuilderContext {
             Node predecessor = beginNode.predecessor();
             if (predecessor instanceof ControlSplitNode) {
                 // The begin node is necessary.
-            } else {
-                if (beginNode.hasUsages()) {
-                    reanchorGuardedNodes(beginNode);
-                }
+            } else if (!beginNode.hasUsages()) {
                 GraphUtil.unlinkFixedNode(beginNode);
                 beginNode.safeDelete();
             }
         }
-    }
-
-    /**
-     * Removes {@link GuardedNode}s from {@code beginNode}'s usages and re-attaches them to an
-     * appropriate preceeding {@link GuardingNode}.
-     */
-    protected void reanchorGuardedNodes(BeginNode beginNode) {
-        // Find the new guarding node
-        GuardingNode guarding = null;
-        Node pred = beginNode.predecessor();
-        while (pred != null) {
-            if (pred instanceof BeginNode) {
-                if (pred.predecessor() instanceof ControlSplitNode) {
-                    guarding = (GuardingNode) pred;
-                    break;
-                }
-            } else if (pred.getNodeClass().getAllowedUsageTypes().contains(InputType.Guard)) {
-                guarding = (GuardingNode) pred;
-                break;
-            }
-            pred = pred.predecessor();
-        }
-
-        // Reset the guard for all of beginNode's usages
-        for (Node usage : beginNode.usages().snapshot()) {
-            GuardedNode guarded = (GuardedNode) usage;
-            assert guarded.getGuard() == beginNode;
-            guarded.setGuard(guarding);
-        }
-        assert beginNode.hasNoUsages() : beginNode;
     }
 
     /**
@@ -3381,7 +3344,7 @@ public class BytecodeParser implements GraphBuilderContext {
         ValueNode castNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
-                object = appendNullCheck(object);
+                object = nullCheckedValue(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
                     LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
@@ -3394,29 +3357,18 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
         }
+
+        boolean nonNull = ((ObjectStamp) object.stamp()).nonNull();
         if (castNode == null) {
             LogicNode condition = genUnique(createInstanceOfAllowNull(checkedType, object, null));
             if (condition.isTautology()) {
                 castNode = object;
             } else {
                 FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                castNode = append(new PiNode(object, StampFactory.object(checkedType), fixedGuard));
+                castNode = append(new PiNode(object, StampFactory.object(checkedType, nonNull), fixedGuard));
             }
         }
         frameState.push(JavaKind.Object, castNode);
-    }
-
-    private ValueNode appendNullCheck(ValueNode object) {
-        if (object.stamp() instanceof AbstractPointerStamp) {
-            AbstractPointerStamp stamp = (AbstractPointerStamp) object.stamp();
-            if (stamp.nonNull()) {
-                return object;
-            }
-        }
-
-        LogicNode isNull = append(IsNullNode.create(object));
-        FixedGuardNode fixedGuard = append(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true));
-        return append(new PiNode(object, object.stamp().join(StampFactory.objectNonNull()), fixedGuard));
     }
 
     private void genInstanceOf() {
@@ -3440,7 +3392,7 @@ public class BytecodeParser implements GraphBuilderContext {
         LogicNode instanceOfNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
-                object = appendNullCheck(object);
+                object = nullCheckedValue(object);
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
                     LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));

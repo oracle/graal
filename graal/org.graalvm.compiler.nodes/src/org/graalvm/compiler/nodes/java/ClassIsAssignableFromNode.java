@@ -55,11 +55,11 @@ public final class ClassIsAssignableFromNode extends BinaryOpLogicNode implement
         super(TYPE, thisClass, otherClass);
     }
 
-    public Object getThisClass() {
+    public ValueNode getThisClass() {
         return getX();
     }
 
-    public Object getOtherClass() {
+    public ValueNode getOtherClass() {
         return getY();
     }
 

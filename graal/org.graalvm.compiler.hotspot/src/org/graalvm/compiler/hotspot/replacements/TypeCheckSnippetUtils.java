@@ -60,23 +60,23 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public class TypeCheckSnippetUtils {
 
-    static boolean checkSecondarySubType(KlassPointer t, KlassPointer s) {
+    static boolean checkSecondarySubType(KlassPointer t, KlassPointer sNonNull) {
         // if (S.cache == T) return true
-        if (s.readKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
+        if (sNonNull.readKlassPointer(secondarySuperCacheOffset(INJECTED_VMCONFIG), SECONDARY_SUPER_CACHE_LOCATION).equal(t)) {
             cacheHit.inc();
             return true;
         }
 
-        return checkSelfAndSupers(t, s);
+        return checkSelfAndSupers(t, sNonNull);
     }
 
-    static boolean checkUnknownSubType(KlassPointer t, KlassPointer s) {
+    static boolean checkUnknownSubType(KlassPointer t, KlassPointer sNonNull) {
         // int off = T.offset
         int superCheckOffset = t.readInt(superCheckOffsetOffset(INJECTED_VMCONFIG), KLASS_SUPER_CHECK_OFFSET_LOCATION);
         boolean primary = superCheckOffset != secondarySuperCacheOffset(INJECTED_VMCONFIG);
 
         // if (T = S[off]) return true
-        if (s.readKlassPointer(superCheckOffset, PRIMARY_SUPERS_LOCATION).equal(t)) {
+        if (sNonNull.readKlassPointer(superCheckOffset, PRIMARY_SUPERS_LOCATION).equal(t)) {
             if (primary) {
                 cacheHit.inc();
             } else {
@@ -91,7 +91,7 @@ public class TypeCheckSnippetUtils {
             return false;
         }
 
-        return checkSelfAndSupers(t, s);
+        return checkSelfAndSupers(t, sNonNull);
     }
 
     private static boolean checkSelfAndSupers(KlassPointer t, KlassPointer s) {

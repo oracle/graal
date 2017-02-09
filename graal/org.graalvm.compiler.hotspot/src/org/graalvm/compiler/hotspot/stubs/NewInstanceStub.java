@@ -36,7 +36,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.getAndClearObjectResult;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.initializeTlab;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.isInstanceKlassFullyInitialized;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadKlassLayoutHelperIntrinsic;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readLayoutHelper;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.log2WordSize;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.prototypeMarkWordOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.readTlabEnd;
@@ -142,7 +142,7 @@ public class NewInstanceStub extends SnippetStub {
          * The type is known to be an instance so Klass::_layout_helper is the instance size as a
          * raw number
          */
-        int sizeInBytes = loadKlassLayoutHelperIntrinsic(hub);
+        int sizeInBytes = readLayoutHelper(hub);
         Word thread = registerAsWord(threadRegister);
         boolean inlineContiguousAllocationSupported = GraalHotSpotVMConfigNode.inlineContiguousAllocationSupported();
         if (!forceSlowPath() && inlineContiguousAllocationSupported) {

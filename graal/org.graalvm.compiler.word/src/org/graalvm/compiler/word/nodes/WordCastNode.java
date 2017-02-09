@@ -67,6 +67,11 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
         return new WordCastNode(StampFactory.object(), input);
     }
 
+    public static WordCastNode wordToObjectNonNull(ValueNode input, JavaKind wordKind) {
+        assert input.getStackKind() == wordKind;
+        return new WordCastNode(StampFactory.objectNonNull(), input);
+    }
+
     public static WordCastNode addressToWord(ValueNode input, JavaKind wordKind) {
         assert input.stamp() instanceof AbstractPointerStamp;
         return new WordCastNode(StampFactory.forKind(wordKind), input);

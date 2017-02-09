@@ -85,8 +85,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ArrayCopySnippets implements Snippets {
 
-    private static int checkArrayType(KlassPointer hub) {
-        int layoutHelper = readLayoutHelper(hub);
+    private static int checkArrayType(KlassPointer nonNullHub) {
+        int layoutHelper = readLayoutHelper(nonNullHub);
         if (probability(SLOW_PATH_PROBABILITY, layoutHelper >= 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }

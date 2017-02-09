@@ -31,6 +31,7 @@ import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.StructuralInput;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 
 /**
@@ -46,4 +47,6 @@ public abstract class AddressNode extends FloatingNode implements IndirectCanoni
 
     public abstract static class Address extends StructuralInput.Association {
     }
+
+    public abstract ValueNode getBase();
 }

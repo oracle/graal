@@ -305,7 +305,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
         test("test6Snippet", 5, new int[]{1, 2});
     }
 
-    @Test(expected = AssertionError.class)
+    @Test
     public void test23() {
         test("test6Snippet", 5, new int[]{3});
     }
@@ -573,7 +573,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
         test("test11Snippet", 11, new int[]{5});
     }
 
-    @Test
+    @Test(expected = AssertionError.class)
     public void test56() {
         test("test11Snippet", 11, new int[]{11});
     }

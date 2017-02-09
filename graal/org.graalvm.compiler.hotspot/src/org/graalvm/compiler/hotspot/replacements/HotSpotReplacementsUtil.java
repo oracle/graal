@@ -46,10 +46,8 @@ import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
 import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
@@ -389,32 +387,23 @@ public class HotSpotReplacementsUtil {
         return config.klassLayoutHelperOffset;
     }
 
-    public static int readLayoutHelper(KlassPointer hub) {
-        // return hub.readInt(klassLayoutHelperOffset(), KLASS_LAYOUT_HELPER_LOCATION);
-        GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        return loadKlassLayoutHelperIntrinsic(hub, anchorNode);
-    }
-
     @NodeIntrinsic(value = KlassLayoutHelperNode.class)
-    public static native int loadKlassLayoutHelperIntrinsic(KlassPointer object, GuardingNode anchor);
-
-    @NodeIntrinsic(value = KlassLayoutHelperNode.class)
-    public static native int loadKlassLayoutHelperIntrinsic(KlassPointer object);
+    public static native int readLayoutHelper(KlassPointer object);
 
     /**
      * Checks if class {@code klass} is an array.
      *
      * See: Klass::layout_helper_is_array
      *
-     * @param klass the class to be checked
-     * @return true if klass is an array, false otherwise
+     * @param klassNonNull the class to be checked
+     * @return true if klassNonNull is an array, false otherwise
      */
-    public static boolean klassIsArray(KlassPointer klass) {
+    public static boolean klassIsArray(KlassPointer klassNonNull) {
         /*
          * The less-than check only works if both values are ints. We use local variables to make
          * sure these are still ints and haven't changed.
          */
-        final int layoutHelper = readLayoutHelper(klass);
+        final int layoutHelper = readLayoutHelper(klassNonNull);
         final int layoutHelperNeutralValue = config(INJECTED_VMCONFIG).klassLayoutHelperNeutralValue;
         return (layoutHelper < layoutHelperNeutralValue);
     }

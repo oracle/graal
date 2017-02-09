@@ -47,7 +47,9 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probabil
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -230,31 +232,44 @@ public class InstanceOfSnippets implements Snippets {
             }
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        KlassPointer objectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
+        KlassPointer nonNullObjectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
         // The hub of a primitive type can be null => always return false in this case.
-        if (hub.isNull() || !checkUnknownSubType(hub, objectHub)) {
-            return falseValue;
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !hub.isNull())) {
+            if (checkUnknownSubType(hub, nonNullObjectHub)) {
+                return trueValue;
+            }
         }
-        return trueValue;
+        return falseValue;
     }
 
     @Snippet
-    public static Object isAssignableFrom(Class<?> thisClass, Class<?> otherClass, Object trueValue, Object falseValue) {
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.NOT_FREQUENT_PROBABILITY, otherClass == null)) {
+    public static Object isAssignableFrom(@NonNullParameter Class<?> thisClassNonNull, Class<?> otherClass, Object trueValue, Object falseValue) {
+        if (otherClass == null) {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
             return false;
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
-        KlassPointer thisHub = ClassGetHubNode.readClass(thisClass, anchorNode);
-        KlassPointer otherHub = ClassGetHubNode.readClass(otherClass, anchorNode);
-        if (thisHub.isNull() || otherHub.isNull()) {
-            // primitive types, only true if equal.
-            return thisClass == otherClass ? trueValue : falseValue;
+        Class<?> otherClassNonNull = PiNode.piCastNonNullClass(otherClass, anchorNode);
+
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.NOT_LIKELY_PROBABILITY, thisClassNonNull == otherClassNonNull)) {
+            return trueValue;
         }
-        if (!TypeCheckSnippetUtils.checkUnknownSubType(thisHub, otherHub)) {
-            return falseValue;
+
+        KlassPointer thisHub = ClassGetHubNode.readClass(thisClassNonNull);
+        KlassPointer otherHub = ClassGetHubNode.readClass(otherClassNonNull);
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !thisHub.isNull())) {
+            if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !otherHub.isNull())) {
+                GuardingNode guardNonNull = SnippetAnchorNode.anchor();
+                KlassPointer nonNullOtherHub = ClassGetHubNode.piCastNonNull(otherHub, guardNonNull);
+                if (TypeCheckSnippetUtils.checkUnknownSubType(thisHub, nonNullOtherHub)) {
+                    return trueValue;
+                }
+            }
         }
-        return trueValue;
+
+        // If either hub is null, one of them is a primitive type and given that the class is not
+        // equal, return false.
+        return falseValue;
     }
 
     public static class Templates extends InstanceOfSnippetsTemplates {
@@ -341,7 +356,8 @@ public class InstanceOfSnippets implements Snippets {
             } else if (replacer.instanceOf instanceof ClassIsAssignableFromNode) {
                 ClassIsAssignableFromNode isAssignable = (ClassIsAssignableFromNode) replacer.instanceOf;
                 Arguments args = new Arguments(isAssignableFrom, isAssignable.graph().getGuardsStage(), tool.getLoweringStage());
-                args.add("thisClass", isAssignable.getThisClass());
+                assert ((ObjectStamp) isAssignable.getThisClass().stamp()).nonNull();
+                args.add("thisClassNonNull", isAssignable.getThisClass());
                 args.add("otherClass", isAssignable.getOtherClass());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);

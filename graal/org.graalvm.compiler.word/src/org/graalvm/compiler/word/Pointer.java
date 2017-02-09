@@ -46,6 +46,15 @@ public interface Pointer extends Unsigned, PointerBase {
     Object toObject();
 
     /**
+     * Unsafe conversion of this Pointer to a Java language object. No correctness checks or type
+     * checks are performed. The caller must ensure that the Pointer contains a valid Java object
+     * that can i.e., processed by the garbage collector and the Pointer does not contain 0.
+     *
+     * @return this Pointer cast to non-null Object.
+     */
+    Object toObjectNonNull();
+
+    /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * <p>

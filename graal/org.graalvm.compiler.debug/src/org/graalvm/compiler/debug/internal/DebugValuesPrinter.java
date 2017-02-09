@@ -62,9 +62,7 @@ public class DebugValuesPrinter {
         this.mmPrinter = mmPrinter;
     }
 
-    public void printDebugValues() throws GraalError {
-        OptionValues options = DebugScope.getConfig().getOptions();
-
+    public void printDebugValues(OptionValues options) throws GraalError {
         TTY.println();
         TTY.println("<DebugValues>");
         List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();

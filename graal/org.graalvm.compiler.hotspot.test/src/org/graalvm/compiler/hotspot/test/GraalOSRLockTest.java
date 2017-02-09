@@ -372,7 +372,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                 if (i % 33 == 0) {
                     ret = ReturnValue.SUCCESS;
                     if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                        System.out.println("DoneBeforeDeopting");
+                        GraalDirectives.blackhole(ret);
                     }
                 }
             }
@@ -393,7 +393,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                     if (i % 33 == 0) {
                         ret = ReturnValue.SUCCESS;
                         if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                            System.out.println("DoneBeforeDeopting");
+                            GraalDirectives.blackhole(ret);
                         }
                     }
                 }
@@ -411,7 +411,6 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                 GraalDirectives.blackhole(i);
                 if (i % 1001 == 0) {
                     ret = ReturnValue.SUCCESS;
-                    System.out.println("Doing a gc");
                     System.gc();
                 }
             }
@@ -428,7 +427,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                     if (i % 33 == 0) {
                         ret = ReturnValue.SUCCESS;
                         if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                            System.out.println("DoneBeforeNotDeopting");
+                            GraalDirectives.blackhole(ret);
                             System.gc();
                         }
                     }
@@ -452,7 +451,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                     if (i % 1001 == 0) {
                         ret = ReturnValue.SUCCESS;
                         if (GraalDirectives.inCompiledCode() && i + 33 > (limit)) {
-                            System.out.println("DoneBeforeNotDeopting");
+                            GraalDirectives.blackhole(ret);
                             System.gc();
                         }
                     }
@@ -486,7 +485,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                     if (i % 33 == 0) {
                         ret = ReturnValue.SUCCESS;
                         if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                            System.out.println("DoneBeforeNotDeopting");
+                            GraalDirectives.blackhole(ret);
                         }
                     }
                 }
@@ -510,7 +509,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                     if (i % 33 == 0) {
                         ret = ReturnValue.SUCCESS;
                         if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                            System.out.println("DoneBeforeNotDeopting");
+                            GraalDirectives.blackhole(ret);
                         }
                     }
                 }
@@ -534,7 +533,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                     if (i % 33 == 0) {
                         ret = ReturnValue.SUCCESS;
                         if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                            System.out.println("DoneBeforeNotDeopting");
+                            GraalDirectives.blackhole(ret);
                         }
                     }
                 }
@@ -559,7 +558,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                     if (i % 33 == 0) {
                         ret = ReturnValue.SUCCESS;
                         if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                            System.out.println("DoneBeforeNotDeopting");
+                            GraalDirectives.blackhole(ret);
                         }
                     }
                 }
@@ -617,7 +616,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                 if (i % 33 == 0) {
                     ret = ReturnValue.SUCCESS;
                     if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                        System.out.println("DoneBeforeNotDeopting");
+                        GraalDirectives.blackhole(ret);
                     }
                 }
             }
@@ -636,7 +635,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                 if (i % 33 == 0) {
                     ret = ReturnValue.SUCCESS;
                     if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                        System.out.println("DoneBeforeNotDeopting");
+                        GraalDirectives.blackhole(ret);
                     }
                 }
             }
@@ -661,7 +660,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
                     if (i % 33 == 0) {
                         ret = ReturnValue.SUCCESS;
                         if (GraalDirectives.inCompiledCode() && i + 33 > (10 * limit)) {
-                            System.out.println("DoneBeforeNotDeopting");
+                            GraalDirectives.blackhole(ret);
                         }
                     }
                 }

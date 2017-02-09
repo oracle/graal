@@ -47,7 +47,6 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 //JaCoCo Exclude
 
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -92,9 +91,13 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         this(object, StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType), nonNull || StampTool.isPointerNonNull(object.stamp())));
     }
 
+    public final Stamp piStamp() {
+        return piStamp;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool generator) {
-        if (object.getStackKind() != JavaKind.Void && object.getStackKind() != JavaKind.Illegal) {
+        if (generator.hasOperand(object)) {
             generator.setResult(this, generator.operand(object));
         }
     }
@@ -220,6 +223,13 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
      */
     @NodeIntrinsic
     public static native Object piCastNonNull(Object object, GuardingNode anchor);
+
+    /**
+     * Changes the stamp of an object and ensures the newly stamped value is non-null and does not
+     * float above a given anchor.
+     */
+    @NodeIntrinsic
+    public static native Class<?> piCastNonNullClass(Class<?> object, GuardingNode anchor);
 
     /**
      * Changes the stamp of an object to represent a given type and to indicate that the object is
