@@ -44,6 +44,7 @@ import org.junit.Test;
 import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.common.util.ModuleAPI;
 import org.graalvm.compiler.core.common.util.Util;
+import org.graalvm.compiler.nodes.Cancelable;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
@@ -179,7 +180,7 @@ public class LazyInitializationTest {
     }
 
     private static boolean isGraalClass(String className) {
-        if (className.startsWith("org.graalvm.compiler.truffle.") || className.startsWith("org.graalvm.compiler.serviceprovider.") || className.equals("org.graalvm.compiler.nodes.Cancelable")) {
+        if (className.startsWith("org.graalvm.compiler.truffle.") || className.startsWith("org.graalvm.compiler.serviceprovider.")) {
             // Ignore classes in the com.oracle.graal.truffle package, they are all allowed.
             // Also ignore classes in the Graal service provider package, as they might not be
             // lazily loaded.
@@ -216,6 +217,8 @@ public class LazyInitializationTest {
                 }
             }
         }
+
+        whitelist.add(Cancelable.class);
 
         List<String> forbiddenClasses = new ArrayList<>();
         for (Class<?> cls : loadedGraalClasses) {
