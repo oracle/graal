@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
@@ -45,10 +44,10 @@ import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeStoreNode;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
@@ -120,14 +119,7 @@ public final class ReadEliminationClosure extends EffectsClosure<ReadElimination
                 ValueNode object = GraphUtil.unproxify(read.getAddress());
                 LoadCacheEntry identifier = new LoadCacheEntry(object, read.getLocationIdentity());
                 ValueNode cachedValue = state.getCacheEntry(identifier);
-                if (cachedValue != null && read.stamp().isCompatible(cachedValue.stamp())) {
-                    // Anchor guard if it is not fixed and different from cachedValue's guard such
-                    // that it gets preserved.
-                    if (read.getGuard() != null && !(read.getGuard() instanceof FixedNode)) {
-                        if (!(cachedValue instanceof GuardedNode) || ((GuardedNode) cachedValue).getGuard() != read.getGuard()) {
-                            effects.addFixedNodeBefore(new ValueAnchorNode((ValueNode) read.getGuard()), read);
-                        }
-                    }
+                if (cachedValue != null && areValuesReplaceable(read, cachedValue)) {
                     effects.replaceAtUsages(read, cachedValue, read);
                     addScalarAlias(read, cachedValue);
                     deleted = true;
@@ -159,7 +151,7 @@ public final class ReadEliminationClosure extends EffectsClosure<ReadElimination
                     ValueNode object = GraphUtil.unproxify(load.object());
                     UnsafeLoadCacheEntry identifier = new UnsafeLoadCacheEntry(object, load.offset(), load.getLocationIdentity());
                     ValueNode cachedValue = state.getCacheEntry(identifier);
-                    if (cachedValue != null && load.stamp().isCompatible(cachedValue.stamp())) {
+                    if (cachedValue != null && areValuesReplaceable(load, cachedValue)) {
                         effects.replaceAtUsages(load, cachedValue, load);
                         addScalarAlias(load, cachedValue);
                         deleted = true;
@@ -195,6 +187,19 @@ public final class ReadEliminationClosure extends EffectsClosure<ReadElimination
             }
         }
         return deleted;
+    }
+
+    private static boolean areValuesReplaceable(ValueNode originalValue, ValueNode replacementValue) {
+        return originalValue.stamp().isCompatible(replacementValue.stamp()) &&
+                        (getGuard(originalValue) == null || getGuard(originalValue) == getGuard(replacementValue));
+    }
+
+    private static GuardingNode getGuard(ValueNode node) {
+        if (node instanceof GuardedNode) {
+            GuardedNode guardedNode = (GuardedNode) node;
+            return guardedNode.getGuard();
+        }
+        return null;
     }
 
     private static void processIdentity(ReadEliminationBlockState state, LocationIdentity identity) {
