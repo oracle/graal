@@ -40,8 +40,8 @@ public class ImplicitCastTest {
     @Layout
     public interface NoCastLayout {
 
-        public static final String LONG_VALUE_IDENTIFIER = "long-value";
-        public static final String DOUBLE_VALUE_IDENTIFIER = "double-value";
+        String LONG_VALUE_IDENTIFIER = "long-value";
+        String DOUBLE_VALUE_IDENTIFIER = "double-value";
 
         DynamicObject createNoCast(long longValue, double doubleValue);
 
@@ -58,8 +58,8 @@ public class ImplicitCastTest {
     @Layout(implicitCastIntToLong = true, implicitCastIntToDouble = true)
     public interface CastLayout {
 
-        public static final String LONG_VALUE_IDENTIFIER = "long-value";
-        public static final String DOUBLE_VALUE_IDENTIFIER = "double-value";
+        String LONG_VALUE_IDENTIFIER = "long-value";
+        String DOUBLE_VALUE_IDENTIFIER = "double-value";
 
         DynamicObject createCast(long longValue, double doubleValue);
 
