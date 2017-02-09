@@ -145,7 +145,7 @@ public abstract class TruffleCompiler {
     public static final DebugMemUseTracker CodeInstallationMemUse = Debug.memUseTracker("TruffleCodeInstallationMemUse");
 
     @SuppressWarnings("try")
-    public void compileMethod(final OptimizedCallTarget compilable, GraalTruffleRuntime runtime, GraalTruffleRuntime.CancelableCompileTask task) {
+    public void compileMethod(final OptimizedCallTarget compilable, GraalTruffleRuntime runtime, CancelableCompileTask task) {
         StructuredGraph graph = null;
 
         compilationNotify.notifyCompilationStarted(compilable);

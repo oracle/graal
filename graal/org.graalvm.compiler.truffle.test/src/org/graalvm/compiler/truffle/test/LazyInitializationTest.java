@@ -179,7 +179,7 @@ public class LazyInitializationTest {
     }
 
     private static boolean isGraalClass(String className) {
-        if (className.startsWith("org.graalvm.compiler.truffle.") || className.startsWith("org.graalvm.compiler.serviceprovider.")) {
+        if (className.startsWith("org.graalvm.compiler.truffle.") || className.startsWith("org.graalvm.compiler.serviceprovider.") || className.equals("org.graalvm.compiler.nodes.Cancelable")) {
             // Ignore classes in the com.oracle.graal.truffle package, they are all allowed.
             // Also ignore classes in the Graal service provider package, as they might not be
             // lazily loaded.

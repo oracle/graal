@@ -522,34 +522,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     protected abstract BackgroundCompileQueue getCompileQueue();
 
-    public class CancelableCompileTask {
-        Future<?> task = null;
-        boolean canceled = false;
-
-        // This cannot be done in the constructor because the CancelableCompileTask needs to be
-        // passed down to the compiler through a Runnable inner class.
-        // This means it must be final and initialized before the task can be set.
-        public synchronized void setTask(Future<?> task) {
-            if (this.task == null) {
-                this.task = task;
-            } else {
-                throw new IllegalStateException("The task should not be re-set.");
-            }
-        }
-
-        public synchronized Future<?> getTask() {
-            return task;
-        }
-
-        public synchronized boolean isCanceled() {
-            return canceled;
-        }
-
-        public synchronized void cancel() {
-            canceled = true;
-        }
-    }
-
     @SuppressWarnings("try")
     public CancelableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
         BackgroundCompileQueue l = getCompileQueue();

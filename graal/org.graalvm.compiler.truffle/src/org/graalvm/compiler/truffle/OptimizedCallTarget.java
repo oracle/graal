@@ -88,7 +88,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     private volatile int callSitesKnown;
-    private volatile GraalTruffleRuntime.CancelableCompileTask compilationTask;
+    private volatile CancelableCompileTask compilationTask;
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
      * assumption. It gets invalidated when a node rewriting is performed. This ensures that all
@@ -287,7 +287,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     public final boolean isCompiling() {
-        GraalTruffleRuntime.CancelableCompileTask task = getCompilationTask();
+        CancelableCompileTask task = getCompilationTask();
         if (task != null) {
             if (task.getTask() != null) {
                 return true;
@@ -563,7 +563,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
         return System.identityHashCode(this);
     }
 
-    GraalTruffleRuntime.CancelableCompileTask getCompilationTask() {
+    CancelableCompileTask getCompilationTask() {
         return compilationTask;
     }
 
