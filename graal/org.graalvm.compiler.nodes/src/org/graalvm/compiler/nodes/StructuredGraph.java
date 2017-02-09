@@ -202,8 +202,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public Builder cancelable(Cancelable cancelable) {
-            this.cancelable = cancelable;
+        public Builder cancelable(Cancelable cancel) {
+            this.cancelable = cancel;
             return this;
         }
 
