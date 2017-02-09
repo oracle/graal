@@ -119,6 +119,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import org.graalvm.compiler.word.WordBase;
+import org.graalvm.util.CollectionsUtil;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
 import org.graalvm.util.Equivalence;
@@ -1333,9 +1334,10 @@ public class SnippetTemplate {
                     if (pos.getInputType() == InputType.Memory && pos.get(usage) == node) {
                         MemoryNode replacement = map.getLastLocationAccess(location);
                         if (replacement == null) {
-                            assert mayRemoveLocation || LocationIdentity.any().equals(location) || Arrays.stream(info.privateLocations).anyMatch(Predicate.isEqual(location)) : "Snippet " +
-                                            info.method.format("%h.%n") + " contains access to the non-private location " + location + ", but replacee doesn't access this location." +
-                                            map.getLocations();
+                            assert mayRemoveLocation || LocationIdentity.any().equals(location) ||
+                                            CollectionsUtil.anyMatch(info.privateLocations, Predicate.isEqual(location)) : "Snippet " +
+                                                            info.method.format("%h.%n") + " contains access to the non-private location " +
+                                                            location + ", but replacee doesn't access this location." + map.getLocations();
                         } else {
                             pos.set(usage, replacement.asNode());
                         }

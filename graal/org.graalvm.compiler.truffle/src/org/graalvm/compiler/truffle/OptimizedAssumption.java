@@ -26,8 +26,6 @@ import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleAs
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
 
 import java.lang.ref.WeakReference;
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.TTY;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -137,6 +135,13 @@ public final class OptimizedAssumption extends AbstractAssumption {
         final int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit);
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         String suffix = stackTrace.length > skip + limit ? "\n  ..." : "";
-        TTY.out().out().println(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n  ", "", suffix)));
+        StringBuilder strb = new StringBuilder();
+        String sep = "";
+        for (int i = skip; i < stackTrace.length && i < skip + limit; i++) {
+            strb.append(sep).append(stackTrace[i].toString()).append(suffix);
+            sep = "\n";
+        }
+
+        TTY.out().out().println(strb);
     }
 }

@@ -24,15 +24,19 @@ package org.graalvm.compiler.truffle.debug;
 
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCallTargetProfiling;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.TraceCompilationProfile;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
+
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 
 public final class PrintCallTargetProfiling extends AbstractDebugCompilationListener {
@@ -46,17 +50,22 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
     @Override
     @SuppressWarnings("deprecation")
     public void notifyShutdown(GraalTruffleRuntime runtime) {
-        Map<OptimizedCallTarget, List<OptimizedCallTarget>> groupedTargets = Truffle.getRuntime().getCallTargets().stream().map(target -> (OptimizedCallTarget) target).collect(
-                        Collectors.groupingBy(target -> {
-                            if (target.getSourceCallTarget() != null) {
-                                return target.getSourceCallTarget();
-                            }
-                            return target;
-                        }));
 
-        List<OptimizedCallTarget> uniqueSortedTargets = groupedTargets.keySet().stream().sorted(
-                        (target1, target2) -> sumCalls(groupedTargets.get(target2), p -> p.getTotalCallCount()) - sumCalls(groupedTargets.get(target1), p -> p.getTotalCallCount())).collect(
-                                        Collectors.toList());
+        Map<OptimizedCallTarget, List<OptimizedCallTarget>> groupedTargets = new HashMap<>();
+        for (RootCallTarget target : Truffle.getRuntime().getCallTargets()) {
+            OptimizedCallTarget optimizedTarget = (OptimizedCallTarget) target;
+            List<OptimizedCallTarget> targetsList = groupedTargets.get(optimizedTarget);
+            if (targetsList == null) {
+                targetsList = new ArrayList<>();
+                groupedTargets.put(optimizedTarget, targetsList);
+            }
+            targetsList.add(optimizedTarget.getSourceCallTarget() != null ? optimizedTarget.getSourceCallTarget() : optimizedTarget);
+        }
+
+        List<OptimizedCallTarget> uniqueSortedTargets = new ArrayList<>();
+        uniqueSortedTargets.addAll(groupedTargets.keySet());
+        Collections.sort(uniqueSortedTargets,
+                        (target1, target2) -> sumCalls(groupedTargets.get(target2), p -> p.getTotalCallCount()) - sumCalls(groupedTargets.get(target1), p -> p.getTotalCallCount()));
 
         int totalDirectCallCount = 0;
         int totalInlinedCallCount = 0;
@@ -75,7 +84,7 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
             int inlinedCallCount = sumCalls(allCallTargets, p -> p.getInlinedCallCount());
             int interpreterCallCount = sumCalls(allCallTargets, p -> p.getInterpreterCallCount());
             int totalCallCount = sumCalls(allCallTargets, p -> p.getTotalCallCount());
-            int invalidationCount = allCallTargets.stream().collect(Collectors.summingInt(target -> target.getCompilationProfile().getInvalidationCount()));
+            int invalidationCount = sumCalls(allCallTargets, p -> p.getInvalidationCount());
 
             totalDirectCallCount += directCallCount;
             totalInlinedCallCount += inlinedCallCount;
@@ -97,6 +106,10 @@ public final class PrintCallTargetProfiling extends AbstractDebugCompilationList
     }
 
     private static int sumCalls(List<OptimizedCallTarget> targets, Function<TraceCompilationProfile, Integer> function) {
-        return targets.stream().collect(Collectors.summingInt(target -> function.apply((TraceCompilationProfile) target.getCompilationProfile())));
+        int sum = 0;
+        for (OptimizedCallTarget target : targets) {
+            sum += function.apply((TraceCompilationProfile) target.getCompilationProfile());
+        }
+        return sum;
     }
 }

@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerOptions;
@@ -141,7 +140,11 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     private static List<TruffleInliningDecision> decideInlining(List<TruffleInliningDecision> callSites, TruffleInliningPolicy policy, int nodeCount, CompilerOptions options) {
         int deepNodeCount = nodeCount;
         int index = 0;
-        for (TruffleInliningDecision callSite : callSites.stream().sorted().collect(Collectors.toList())) {
+
+        /* First sort the call sites. */
+        Collections.sort(callSites);
+
+        for (TruffleInliningDecision callSite : callSites) {
             TruffleInliningProfile profile = callSite.getProfile();
             profile.setQueryIndex(index++);
             if (policy.isAllowed(profile, deepNodeCount, options)) {
@@ -153,15 +156,31 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
     }
 
     public int getInlinedNodeCount() {
-        return getCallSites().stream().filter(callSite -> callSite.isInline()).mapToInt(callSite -> callSite.getProfile().getDeepNodeCount()).sum();
+        int sum = 0;
+        for (TruffleInliningDecision callSite : getCallSites()) {
+            if (callSite.isInline()) {
+                sum += callSite.getProfile().getDeepNodeCount();
+            }
+        }
+        return sum;
     }
 
     public int countCalls() {
-        return getCallSites().stream().mapToInt(callSite -> callSite.isInline() ? callSite.countCalls() + 1 : 1).sum();
+        int sum = 0;
+        for (TruffleInliningDecision callSite : getCallSites()) {
+            sum += callSite.isInline() ? callSite.countCalls() + 1 : 1;
+        }
+        return sum;
     }
 
     public int countInlinedCalls() {
-        return getCallSites().stream().filter(TruffleInliningDecision::isInline).mapToInt(callSite -> callSite.countInlinedCalls() + 1).sum();
+        int sum = 0;
+        for (TruffleInliningDecision callSite : getCallSites()) {
+            if (callSite.isInline()) {
+                sum += callSite.countInlinedCalls() + 1;
+            }
+        }
+        return sum;
     }
 
     public final List<TruffleInliningDecision> getCallSites() {

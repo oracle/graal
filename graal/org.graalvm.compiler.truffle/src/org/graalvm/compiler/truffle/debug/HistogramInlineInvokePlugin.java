@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.debug;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.IntSummaryStatistics;
 import java.util.List;
@@ -94,7 +95,22 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
         OptimizedCallTarget.log("  Nodes = Number of non-trival Graal nodes created for this method during partial evaluation.");
         OptimizedCallTarget.log("  Calls = Number of not expanded calls created for this method during partial evaluation.");
         OptimizedCallTarget.log(String.format(" %-11s |Nodes %5s %5s %5s %8s |Calls %5s %5s %5s %8s | Method Name", "Invocations", "Sum", "Min", "Max", "Avg", "Sum", "Min", "Max", "Avg"));
-        histogram.values().stream().filter(statistics -> statistics.shallowCount.getSum() > 0).sorted().forEach(statistics -> statistics.print());
+
+        /* First filter the statistics and collect them in a list. */
+        List<MethodStatistics> statisticsList = new ArrayList<>();
+        for (MethodStatistics statistics : histogram.values()) {
+            if (statistics.shallowCount.getSum() > 0) {
+                statisticsList.add(statistics);
+            }
+        }
+
+        /* Then sort the list. */
+        Collections.sort(statisticsList);
+
+        /* Finally print the filtered and sorted statistics. */
+        for (MethodStatistics statistics : statisticsList) {
+            statistics.print();
+        }
     }
 
     private static class MethodStatistics implements Comparable<MethodStatistics> {
