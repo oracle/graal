@@ -184,7 +184,7 @@ public class PartialEvaluator {
 
         String name = callTarget.toString();
         final StructuredGraph graph = new StructuredGraph.Builder(allowAssumptions).name(name).method(callRootMethod).speculationLog(callTarget.getSpeculationLog()).compilationId(
-                        compilationId).options(TruffleCompilerOptions.getOptions()).build();
+                        compilationId).options(TruffleCompilerOptions.getOptions()).cancelable(task).build();
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
