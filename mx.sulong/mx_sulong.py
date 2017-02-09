@@ -3,7 +3,6 @@ import os
 from os.path import join
 import shutil
 import subprocess
-import sys
 
 import mx
 import mx_findbugs
@@ -23,7 +22,6 @@ _mx = join(_suite.dir, "mx.sulong/")
 _root = join(_suite.dir, "projects/")
 _libPath = join(_root, "com.oracle.truffle.llvm.libraries/src")
 _testDir = join(_suite.dir, "tests/")
-_argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
 _toolDir = join(_suite.dir, "cache/tools/")
 _clangPath = _toolDir + 'llvm/bin/clang'
 
@@ -60,7 +58,6 @@ mdlCheckDirectories = [
 
 # the file paths for which we do not want to apply the mdl Markdown file checker
 mdlCheckExcludeDirectories = [
-    join(_suite.dir, 'projects/com.oracle.truffle.llvm.test/argon2/phc-winner-argon2'),
     join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
 ]
 
@@ -139,14 +136,6 @@ def travis2(args=None):
         if t: mx_testsuites.runSuite(['parserTorture'])
     with Task('TestLifetime', tasks) as t:
         if t: mx_testsuites.runSuite(['lifetimeanalysis'])
-
-def travisArgon2(args=None):
-    """executes the argon2 Travis job (Javac build, argon2 test cases)"""
-    tasks = []
-    with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
-    with Task('TestArgon2', tasks) as t:
-        if t: runTestArgon2(optimize=False)
 
 def pullTools(args=None):
     """pulls the LLVM and Dragonegg tools"""
@@ -404,61 +393,6 @@ def compileWithEcjStrict(args=None):
         mx.command_function('build')(['-p', '--warning-as-error'])
     else:
         exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
-
-def compileArgon2(main, optimize, cflags=None):
-    if cflags is None:
-        cflags = []
-    argon2Src = ['src/argon2', 'src/core', 'src/blake2/blake2b', 'src/thread', 'src/encoding', 'src/ref', 'src/%s' % main, '../pthread-stub/pthread']
-    argon2Bin = '%s.su' % main
-    for src in argon2Src:
-        inputFile = '%s.c' % src
-        outputFile = '%s.bc' % src
-        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, '-std=c89', '-Wall', '-Wextra', '-Wno-type-limits', '-I../pthread-stub', '-Iinclude', '-Isrc'] + cflags + [inputFile])
-        if optimize:
-            opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags())
-    link(['-o', argon2Bin] + ['%s.bc' % x for x in argon2Src])
-
-def runTestArgon2Kats(args=None):
-    for v in ['16', '19']:
-        for t in ['i', 'd']:
-            sys.stdout.write("argon2%s v=%s: " % (t, v))
-
-            if v == '19':
-                kats = 'kats/argon2%s' % t
-            else:
-                kats = 'kats/argon2%s_v%s' % (t, v)
-
-            ret = runLLVM(args + ['genkat.su', t, v], out=open('tmp', 'w'))
-            if ret == 0:
-                ret = mx.run(['diff', 'tmp', kats])
-                if ret == 0:
-                    print 'OK'
-                else:
-                    print 'ERROR'
-                    return ret
-            else:
-                print 'FAILED'
-                return ret
-
-    return 0
-
-def runTestArgon2(args=None, optimize=False):
-    """runs Argon2 tests with Sulong"""
-
-    ensureArgon2Exists()
-    os.chdir(_argon2Dir)
-    if args is None:
-        args = []
-    # TODO: Enable assertions
-    #args.extend(['-ea', '-esa'])
-
-    compileArgon2('genkat', optimize, ['-DGENKAT'])
-    ret = runTestArgon2Kats(args)
-    if ret != 0:
-        return ret
-
-    compileArgon2('test', optimize)
-    return runLLVM(args + ['test.su'])
 
 def getCommonOptions(lib_args=None, versionFolder=None):
     return [
@@ -730,11 +664,6 @@ def ensureLLVMBinariesExist():
         if findLLVMProgram(llvmBinary) is None:
             raise Exception(llvmBinary + ' not found')
 
-def ensureArgon2Exists():
-    """downloads Argon2 if not downloaded yet"""
-    if not os.path.exists(_argon2Dir):
-        pullTestSuite('ARGON2', _argon2Dir, stripLevels=1)
-
 def suBench(args=None):
     """runs a given benchmark with Sulong"""
     ensureLLVMBinariesExist()
@@ -935,7 +864,6 @@ mx.update_commands(_suite, {
     'su-g++' : [dragonEggGPP, ''],
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
-    'su-travis-argon2' : [travisArgon2, ''],
     'su-ecj-strict' : [compileWithEcjStrict, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, ''],
