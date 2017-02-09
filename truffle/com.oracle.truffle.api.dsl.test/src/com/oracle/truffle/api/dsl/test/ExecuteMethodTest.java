@@ -436,4 +436,24 @@ public class ExecuteMethodTest {
         }
     }
 
+    @TypeSystem
+    @DSLOptions(defaultGenerator = DSLOptions.DSLGenerator.FLAT)
+    static class ObjectArrayTypes {
+    }
+
+    @TypeSystemReference(ObjectArrayTypes.class)
+    abstract static class ObjectArrayAsArg extends Node {
+        @Children protected final ObjectArrayAsArg[] args;
+
+        ObjectArrayAsArg() {
+            args = new ObjectArrayAsArg[0];
+        }
+
+        abstract Object execute(VirtualFrame frame, Object[] a);
+
+        @Specialization
+        Object test(Object[] a) {
+            return a;
+        }
+    }
 }
