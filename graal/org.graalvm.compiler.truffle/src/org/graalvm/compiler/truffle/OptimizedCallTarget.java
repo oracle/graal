@@ -275,7 +275,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 if (!isCompiling()) {
                     compilationTask = runtime().submitForCompilation(this);
                     if (compilationTask != null) {
-                        submitted = compilationTask.getTask();
+                        submitted = compilationTask.getFuture();
                     }
                 }
             }
@@ -289,7 +289,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     public final boolean isCompiling() {
         CancelableCompileTask task = getCompilationTask();
         if (task != null) {
-            if (task.getTask() != null) {
+            if (task.getFuture() != null) {
                 return true;
             }
         }
