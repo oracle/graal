@@ -91,6 +91,10 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         this(object, StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType), nonNull || StampTool.isPointerNonNull(object.stamp())));
     }
 
+    public final Stamp piStamp() {
+        return piStamp;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         if (generator.hasOperand(object)) {
