@@ -56,6 +56,7 @@ suite = {
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "workingSets" : "API,Truffle",
     },
@@ -325,7 +326,7 @@ suite = {
         "com.oracle.truffle.object.dsl.processor",
         "mx:JUNIT",
       ],
-      "checkstyle" : "com.oracle.truffle.object.dsl.processor",
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Codegen,Test",
