@@ -152,9 +152,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void processConditionAnchor(ConditionAnchorNode node) {
-            tryProveCondition(node.condition(), (guard, result, newInput) -> {
+            tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
-                    rewirePiNodes(node, newInput);
+                    rewirePiNodes(node, guardedValueStamp, newInput);
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
@@ -167,22 +167,38 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             });
         }
 
-        private static void rewirePiNodes(GuardingNode node, ValueProxy newInput) {
+        private static void rewirePiNodes(GuardingNode node, Stamp guardedValueStamp, ValueProxy newInput) {
             ValueNode unproxified = GraphUtil.unproxify(newInput);
-            for (Node usage : node.asNode().usages()) {
+            for (Node usage : node.asNode().usages().snapshot()) {
                 if (usage instanceof PiNode) {
                     PiNode piNode = (PiNode) usage;
+
                     if (piNode.getOriginalNode() != newInput && GraphUtil.unproxify(piNode.getOriginalNode()) == unproxified) {
                         piNode.setOriginalNode((ValueNode) newInput.asNode());
+                    }
+
+                    if (piNode.getOriginalNode() == newInput) {
+                        Stamp piStamp = piNode.piStamp();
+                        Stamp newStamp = piStamp.join(guardedValueStamp);
+
+                        /*
+                         * Use an improved stamp in the PiNode. It's possible when joining class and
+                         * interfaces for the stamp to become worse so keep the original stamp in
+                         * that case. It's just not clear which answer would be most useful to
+                         * users.
+                         */
+                        if (!newStamp.isEmpty() && !newStamp.equals(piStamp) && !newStamp.join(piStamp).equals(piStamp)) {
+                            usage.replaceAtUsagesAndDelete(piNode.graph().unique(new PiNode(piNode.getOriginalNode(), newStamp, piNode.getGuard().asNode())));
+                        }
                     }
                 }
             }
         }
 
         protected void processGuard(GuardNode node) {
-            if (!tryProveGuardCondition(node, node.getCondition(), (guard, result, newInput) -> {
+            if (!tryProveGuardCondition(node, node.getCondition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
-                    rewirePiNodes(node, newInput);
+                    rewirePiNodes(node, guardedValueStamp, newInput);
                     node.replaceAndDelete(guard.asNode());
                 } else {
                     DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.getAction(), node.getReason(), node.getSpeculation()));
@@ -198,9 +214,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void processFixedGuard(FixedGuardNode node) {
-            if (!tryProveGuardCondition(node, node.condition(), (guard, result, newInput) -> {
+            if (!tryProveGuardCondition(node, node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
-                    rewirePiNodes(node, newInput);
+                    rewirePiNodes(node, guardedValueStamp, newInput);
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
@@ -218,9 +234,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void processIf(IfNode node) {
-            tryProveCondition(node.condition(), (guard, result, newInput) -> {
+            tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
-                rewirePiNodes(survivingSuccessor, newInput);
+                rewirePiNodes(survivingSuccessor, guardedValueStamp, newInput);
                 survivingSuccessor.replaceAtUsages(InputType.Guard, guard.asNode());
                 survivingSuccessor.replaceAtPredecessor(null);
                 node.replaceAtPredecessor(survivingSuccessor);
@@ -449,7 +465,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                      */
                     InputFilter v = new InputFilter(original);
                     thisGuard.getCondition().applyInputs(v);
-                    if (v.ok && foldGuard(thisGuard, pending.guard, rewireGuardFunction)) {
+                    if (v.ok && foldGuard(thisGuard, pending.guard, newStamp, rewireGuardFunction)) {
                         return true;
                     }
                 }
@@ -457,11 +473,11 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             return false;
         }
 
-        protected boolean foldGuard(DeoptimizingGuard thisGuard, DeoptimizingGuard otherGuard, GuardRewirer rewireGuardFunction) {
+        protected boolean foldGuard(DeoptimizingGuard thisGuard, DeoptimizingGuard otherGuard, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
             if (otherGuard.getAction() == thisGuard.getAction() && otherGuard.getSpeculation() == thisGuard.getSpeculation()) {
                 LogicNode condition = (LogicNode) thisGuard.getCondition().copyWithInputs();
-                GuardRewirer rewirer = (guard, result, newInput) -> {
-                    if (rewireGuardFunction.rewire(guard, result, newInput)) {
+                GuardRewirer rewirer = (guard, result, innerGuardedValueStamp, newInput) -> {
+                    if (rewireGuardFunction.rewire(guard, result, innerGuardedValueStamp, newInput)) {
                         otherGuard.setCondition(condition, thisGuard.isNegated());
                         return true;
                     }
@@ -469,7 +485,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     return false;
                 };
                 // Move the later test up
-                return rewireGuards(otherGuard, !thisGuard.isNegated(), null, rewirer);
+                return rewireGuards(otherGuard, !thisGuard.isNegated(), null, guardedValueStamp, rewirer);
             }
             return false;
         }
@@ -488,9 +504,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             return map.get(value);
         }
 
-        protected boolean rewireGuards(GuardingNode guard, boolean result, ValueProxy proxifiedInput, GuardRewirer rewireGuardFunction) {
+        protected boolean rewireGuards(GuardingNode guard, boolean result, ValueProxy proxifiedInput, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
             counterStampsFound.increment();
-            return rewireGuardFunction.rewire(guard, result, proxifiedInput);
+            return rewireGuardFunction.rewire(guard, result, guardedValueStamp, proxifiedInput);
         }
 
         protected boolean tryProveCondition(LogicNode node, GuardRewirer rewireGuardFunction) {
@@ -501,7 +517,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             InfoElement infoElement = getInfoElements(node);
             if (infoElement != null) {
                 assert infoElement.getStamp() == StampFactory.tautology() || infoElement.getStamp() == StampFactory.contradiction();
-                return rewireGuards(infoElement.getGuard(), infoElement.getStamp() == StampFactory.tautology(), infoElement.getProxifiedInput(), rewireGuardFunction);
+                return rewireGuards(infoElement.getGuard(), infoElement.getStamp() == StampFactory.tautology(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
             }
             if (node instanceof UnaryOpLogicNode) {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) node;
@@ -511,7 +527,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     Stamp stamp = infoElement.getStamp();
                     TriState result = unaryLogicNode.tryFold(stamp);
                     if (result.isKnown()) {
-                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), rewireGuardFunction);
+                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
                     }
                     infoElement = infoElement.getParent();
                 }
@@ -519,7 +535,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 if (foldResult != null) {
                     TriState result = unaryLogicNode.tryFold(foldResult.getRight());
                     if (result.isKnown()) {
-                        return rewireGuards(foldResult.getLeft().getGuard(), result.toBoolean(), foldResult.getLeft().getProxifiedInput(), rewireGuardFunction);
+                        return rewireGuards(foldResult.getLeft().getGuard(), result.toBoolean(), foldResult.getLeft().getProxifiedInput(), foldResult.getRight(), rewireGuardFunction);
                     }
                 }
                 if (thisGuard != null) {
@@ -534,9 +550,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 infoElement = getInfoElements(binaryOpLogicNode);
                 while (infoElement != null) {
                     if (infoElement.getStamp().equals(StampFactory.contradiction())) {
-                        return rewireGuards(infoElement.getGuard(), false, infoElement.getProxifiedInput(), rewireGuardFunction);
+                        return rewireGuards(infoElement.getGuard(), false, infoElement.getProxifiedInput(), null, rewireGuardFunction);
                     } else if (infoElement.getStamp().equals(StampFactory.tautology())) {
-                        return rewireGuards(infoElement.getGuard(), true, infoElement.getProxifiedInput(), rewireGuardFunction);
+                        return rewireGuards(infoElement.getGuard(), true, infoElement.getProxifiedInput(), null, rewireGuardFunction);
                     }
                     infoElement = infoElement.getParent();
                 }
@@ -547,7 +563,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 while (infoElement != null) {
                     TriState result = binaryOpLogicNode.tryFold(infoElement.getStamp(), y.stamp());
                     if (result.isKnown()) {
-                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), rewireGuardFunction);
+                        return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
                     }
                     infoElement = infoElement.getParent();
                 }
@@ -557,7 +573,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     if (foldResult != null) {
                         TriState result = binaryOpLogicNode.tryFold(foldResult.getRight(), y.stamp());
                         if (result.isKnown()) {
-                            return rewireGuards(foldResult.getLeft().getGuard(), result.toBoolean(), foldResult.getLeft().getProxifiedInput(), rewireGuardFunction);
+                            return rewireGuards(foldResult.getLeft().getGuard(), result.toBoolean(), foldResult.getLeft().getProxifiedInput(), foldResult.getRight(), rewireGuardFunction);
                         }
                     }
                 } else {
@@ -565,7 +581,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     while (infoElement != null) {
                         TriState result = binaryOpLogicNode.tryFold(x.stamp(), infoElement.getStamp());
                         if (result.isKnown()) {
-                            return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), rewireGuardFunction);
+                            return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
                         }
                         infoElement = infoElement.getParent();
                     }
@@ -586,7 +602,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                             Stamp newStampX = binary.foldStamp(infoElement.getStamp(), binary.getY().stamp());
                             TriState result = binaryOpLogicNode.tryFold(newStampX, y.stamp());
                             if (result.isKnown()) {
-                                return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), rewireGuardFunction);
+                                return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), newStampX, rewireGuardFunction);
                             }
                             infoElement = infoElement.getParent();
                         }
@@ -625,13 +641,13 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 }
             } else if (node instanceof ShortCircuitOrNode) {
                 final ShortCircuitOrNode shortCircuitOrNode = (ShortCircuitOrNode) node;
-                return tryProveCondition(shortCircuitOrNode.getX(), (guard, result, newInput) -> {
+                return tryProveCondition(shortCircuitOrNode.getX(), (guard, result, guardedValueStamp, newInput) -> {
                     if (result == !shortCircuitOrNode.isXNegated()) {
-                        return rewireGuards(guard, true, newInput, rewireGuardFunction);
+                        return rewireGuards(guard, true, newInput, guardedValueStamp, rewireGuardFunction);
                     } else {
-                        return tryProveCondition(shortCircuitOrNode.getY(), (innerGuard, innerResult, innerNewInput) -> {
+                        return tryProveCondition(shortCircuitOrNode.getY(), (innerGuard, innerResult, innerGuardedValueStamp, innerNewInput) -> {
                             if (innerGuard == guard && newInput == innerNewInput) {
-                                return rewireGuards(guard, innerResult ^ shortCircuitOrNode.isYNegated(), newInput, rewireGuardFunction);
+                                return rewireGuards(guard, innerResult ^ shortCircuitOrNode.isYNegated(), newInput, innerGuardedValueStamp, rewireGuardFunction);
                             }
                             return false;
                         });
@@ -785,7 +801,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
          * @param newInput new input to pi nodes depending on the new guard
          * @return whether the transformation could be applied
          */
-        boolean rewire(GuardingNode guard, boolean result, ValueProxy newInput);
+        boolean rewire(GuardingNode guard, boolean result, Stamp guardedValueStamp, ValueProxy newInput);
     }
 
     protected static class PendingTest {
