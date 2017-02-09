@@ -50,11 +50,27 @@ public class DebugEnvironment {
      * @return the current {@link GraalDebugConfig} or null if nothing was done
      */
     public static GraalDebugConfig ensureInitialized(OptionValues options, Object... capabilities) {
+        return ensureInitializedHelper(options, false, capabilities);
+    }
+
+    /**
+     * Create a new GraalDebugConfig if {@link Debug#isEnabled()} is true, even if one had already
+     * been created. Additionally add {@code extraArgs} as capabilities to the
+     * {@link DebugDumpHandler}s associated with the current config. Capabilities can be added at
+     * any time.
+     *
+     * @return the current {@link GraalDebugConfig} or null if nothing was done
+     */
+    public static GraalDebugConfig forceInitialization(OptionValues options, Object... capabilities) {
+        return ensureInitializedHelper(options, true, capabilities);
+    }
+
+    private static GraalDebugConfig ensureInitializedHelper(OptionValues options, boolean forceInit, Object... capabilities) {
         if (!Debug.isEnabled()) {
             return null;
         }
         GraalDebugConfig debugConfig = (GraalDebugConfig) DebugScope.getConfig();
-        if (debugConfig == null) {
+        if (debugConfig == null || forceInit) {
             // Initialize JVMCI before loading class Debug
             JVMCI.initialize();
             List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
