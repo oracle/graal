@@ -268,20 +268,20 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
                 return;
             }
 
-            Future<?> submitted = null;
+            CancelableCompileTask task = null;
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
                 if (!isCompiling()) {
-                    compilationTask = runtime().submitForCompilation(this);
-                    if (compilationTask != null) {
-                        submitted = compilationTask.getFuture();
-                    }
+                    compilationTask = task = runtime().submitForCompilation(this);
                 }
             }
-            if (submitted != null) {
-                boolean mayBeAsynchronous = TruffleCompilerOptions.getValue(TruffleBackgroundCompilation) && !TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown);
-                runtime().finishCompilation(this, submitted, mayBeAsynchronous);
+            if (task != null) {
+                Future<?> submitted = task.getFuture();
+                if (submitted != null) {
+                    boolean mayBeAsynchronous = TruffleCompilerOptions.getValue(TruffleBackgroundCompilation) && !TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown);
+                    runtime().finishCompilation(this, submitted, mayBeAsynchronous);
+                }
             }
         }
     }
@@ -568,8 +568,6 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     void resetCompilationTask() {
-        synchronized (this) {
-            this.compilationTask = null;
-        }
+        this.compilationTask = null;
     }
 }
