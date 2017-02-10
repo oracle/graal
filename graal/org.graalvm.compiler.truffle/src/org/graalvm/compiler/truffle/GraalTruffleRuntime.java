@@ -81,7 +81,6 @@ import org.graalvm.compiler.truffle.phases.InstrumentPhase;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
@@ -280,7 +279,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @Override
     public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
-        if (useFrameWithoutBoxing()) {
+        if (useFrameWithoutBoxing) {
             return new FrameWithoutBoxing(frameDescriptor, arguments);
         } else {
             return new FrameWithBoxing(frameDescriptor, arguments);
@@ -748,11 +747,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     /**
      * The flag is checked from within a Truffle compilation and we need to constant fold the
-     * decision. A @link{CompilationFinal} field is the easiest way to achieve that.
+     * decision. In addition, we want only one of {@link FrameWithoutBoxing} and
+     * {@link FrameWithBoxing} seen as reachable in AOT mode, so we need to be able to constant fold
+     * the decision as early as possible.
      */
-    @CompilationFinal public boolean useFrameWithoutBoxing = TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing);
-
-    public boolean useFrameWithoutBoxing() {
-        return useFrameWithoutBoxing;
-    }
+    public static final boolean useFrameWithoutBoxing = TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing);
 }
