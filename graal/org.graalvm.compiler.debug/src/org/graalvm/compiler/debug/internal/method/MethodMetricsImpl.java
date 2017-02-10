@@ -334,7 +334,7 @@ public class MethodMetricsImpl implements DebugMethodMetrics {
             Set<ResolvedJavaMethod> methods = new HashSet<>();
 
             // gather all methods we found
-            threadMaps.stream().forEach(x -> {
+            threadMaps.forEach(x -> {
                 // snapshot the current compilations to only capture all methods compiled until now
                 HashMap<ResolvedJavaMethod, CompilationData> snapShot = new HashMap<>(x);
                 snapShot.keySet().forEach(y -> methods.add(y));
