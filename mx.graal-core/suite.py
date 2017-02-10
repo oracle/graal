@@ -106,7 +106,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8=",
     },
 
     "com.oracle.nfi.test" : {
