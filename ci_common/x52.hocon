@@ -13,6 +13,12 @@ x52.tmpfs10g : ${x52.default} {
   capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
 }
 
+x52.tmpfs10g-g1gc: ${x52.tmpfs10g} {
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}"-g1gc"
+  }
+}
+
 builds += [
   ${x52.tmpfs10g} ${bench-dacapo-hwloc}              { name: "bench-dacapo-linux-x52" }
   ${x52.tmpfs10g} ${bench-dacapo-timing-hwloc}       { name: "bench-dacapo-timing-linux-x52" }
@@ -24,4 +30,9 @@ builds += [
   ${x52.default} ${bench-specjvm2008-OneVM}   { name: "bench-specjvm2008-OneVM-linux-x52" }
   ${x52.default} ${bench-specjbb2015}         { name: "bench-specjbb2015-linux-x52" }
   ${x52.default} ${bench-micros-graal}        { name: "bench-jmh-micros-graal-linux-x52" }
+
+  ${x52.tmpfs10g-g1gc} ${bench-dacapo-hwloc}              { targets : [weekly, bench], name: "bench-dacapo-g1gc-linux-x52" }
+  ${x52.tmpfs10g-g1gc} ${bench-scala-dacapo-hwloc}        { targets : [weekly, bench], name: "bench-scala-dacapo-g1gc-linux-x52" }
+  ${x52.tmpfs10g-g1gc} ${bench-specjvm2008-Single}         { targets : [weekly, bench], name: "bench-specjvm2008-g1gc-Single-linux-x52" }
+  ${x52.tmpfs10g-g1gc} ${bench-specjbb2015}                { targets : [weekly, bench], name: "bench-specjbb2015-g1gc-linux-x52" }
 ]

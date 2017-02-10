@@ -9,6 +9,14 @@ x32.default : ${commonLinux} {
   }
 }
 
+x32.default-g1gc : ${x32.default} {
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}"-g1gc"
+  }
+}
+
 builds += [
   ${x32.default} ${bench-renaissance-hwloc}         { name: "bench-renaissance-linux-x32" }
+
+  ${x32.default-g1gc} ${bench-renaissance-hwloc}         { targets : [weekly, bench], name: "bench-renaissance-g1gc-linux-x32" }  
 ]

@@ -11,6 +11,13 @@ m7_eighth.default : ${commonSolaris} {
   }
 }
 
+m7_eighth.default-g1gc : ${m7_eighth.default} {
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}"-g1gc"
+  }
+}
+
+
 builds += [
   ${m7_eighth.default} ${bench-dacapo}              { name: "bench-dacapo-solaris-m7_eighth" }
   ${m7_eighth.default} ${bench-dacapo-timing}       { name: "bench-dacapo-timing-solaris-m7_eighth" }
@@ -20,4 +27,9 @@ builds += [
   ${m7_eighth.default} ${bench-specjvm2008-OneVM}   { name: "bench-specjvm2008-OneVM-solaris-m7_eighth" }  
   ${m7_eighth.default} ${bench-specjbb2015}         { name: "bench-specjbb2015-solaris-m7_eighth" }
   ${m7_eighth.default} ${bench-micros-graal}        { name: "bench-jmh-micros-graal-solaris-m7_eighth" }
+
+  ${m7_eighth.default-g1gc} ${bench-dacapo}              { targets : [weekly, bench], name: "bench-dacapo-g1gc-solaris-m7_eighth" }
+  ${m7_eighth.default-g1gc} ${bench-scala-dacapo}        { targets : [weekly, bench], name: "bench-scala-dacapo-g1gc-solaris-m7_eighth" }
+  ${m7_eighth.default-g1gc} ${bench-specjvm2008-Single}  { targets : [weekly, bench], name: "bench-specjvm2008-g1gc-Single-solaris-m7_eighth" }
+  ${m7_eighth.default-g1gc} ${bench-specjbb2015}         { targets : [weekly, bench], name: "bench-specjbb2015-g1gc-solaris-m7_eighth" }
 ]
