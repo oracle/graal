@@ -37,9 +37,9 @@ import java.util.Formatter;
 class JVMCIVersionCheck {
 
     private static final int JVMCI8_MIN_MAJOR_VERSION = 0;
-    private static final int JVMCI8_MIN_MINOR_VERSION = 23;
+    private static final int JVMCI8_MIN_MINOR_VERSION = 24;
 
-    private static final int JVMCI9_MIN_EA_BUILD = 152;
+    private static final int JVMCI9_MIN_EA_BUILD = 156;
 
     private static void failVersionCheck(boolean exit, String reason, Object... args) {
         Formatter errorMessage = new Formatter().format(reason, args);
