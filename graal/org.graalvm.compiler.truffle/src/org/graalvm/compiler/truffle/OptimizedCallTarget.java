@@ -427,7 +427,7 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
 
     /** Intrinsified in {@link TruffleGraphBuilderPlugins}. */
     public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
-        if (GraalTruffleRuntime.getRuntime().useFrameWithoutBoxing()) {
+        if (GraalTruffleRuntime.useFrameWithoutBoxing) {
             return new FrameWithoutBoxing(descriptor, args);
         } else {
             return new FrameWithBoxing(descriptor, args);
