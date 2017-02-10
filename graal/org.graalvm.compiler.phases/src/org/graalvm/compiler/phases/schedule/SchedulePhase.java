@@ -27,7 +27,6 @@ import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.stri
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Formatter;
 import java.util.List;
 
@@ -70,10 +69,9 @@ import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
-import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 
 public final class SchedulePhase extends Phase {
 
@@ -486,6 +484,8 @@ public final class SchedulePhase extends Phase {
                 latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap);
             }
 
+            assert latestBlock != null : currentNode;
+
             if (strategy == SchedulingStrategy.FINAL_SCHEDULE || strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS) {
                 assert latestBlock != null;
                 while (latestBlock.getLoopDepth() > earliestBlock.getLoopDepth() && latestBlock != earliestBlock.getDominator()) {
@@ -526,79 +526,151 @@ public final class SchedulePhase extends Phase {
             } else {
                 // All other types of usages: Put the input into the same block as the usage.
                 Block otherBlock = currentNodeMap.get(usage);
+                if (usage instanceof ProxyNode) {
+                    ProxyNode proxyNode = (ProxyNode) usage;
+                    otherBlock = currentNodeMap.get(proxyNode.proxyPoint());
+
+                }
                 currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
             }
             return currentBlock;
         }
 
+        private static class MicroBlock {
+            private final int id;
+            private int childCount;
+            private NodeEntry head;
+            private NodeEntry tail;
+
+            MicroBlock(int id) {
+                this.id = id;
+            }
+
+            public void add(Node node) {
+                NodeEntry newTail = new NodeEntry(node, null);
+                if (tail == null) {
+                    tail = head = newTail;
+                } else {
+                    tail.next = newTail;
+                    tail = newTail;
+                }
+                childCount++;
+            }
+
+            public int getChildCount() {
+                return childCount;
+            }
+
+            public int getId() {
+                return id;
+            }
+
+            public NodeEntry getFirst() {
+                return head;
+            }
+
+            public void prependChildrenTo(MicroBlock newBlock) {
+                if (tail != null) {
+                    tail.next = newBlock.head;
+                    newBlock.head = head;
+                    head = tail = null;
+                    newBlock.childCount += childCount;
+                    childCount = 0;
+                }
+            }
+
+            @Override
+            public String toString() {
+                return "MicroBlock id " + id;
+            }
+        }
+
+        private static class NodeEntry {
+            private final Node node;
+            private NodeEntry next;
+
+            NodeEntry(Node node, NodeEntry next) {
+                this.node = node;
+                this.next = next;
+            }
+
+            public NodeEntry getNext() {
+                return next;
+            }
+
+            public Node getNode() {
+                return node;
+            }
+        }
+
         private void scheduleEarliestIterative(BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph, boolean immutableGraph) {
 
-            BitSet floatingReads = new BitSet(cfg.getBlocks().length);
-
-            // Add begin nodes as the first entry and set the block for phi nodes.
-            for (Block b : cfg.getBlocks()) {
-                AbstractBeginNode beginNode = b.getBeginNode();
-                ArrayList<Node> nodes = new ArrayList<>();
-                nodeToBlock.set(beginNode, b);
-                nodes.add(beginNode);
-                blockToNodes.put(b, nodes);
-
-                if (beginNode instanceof AbstractMergeNode) {
-                    AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
-                    for (PhiNode phi : mergeNode.phis()) {
-                        nodeToBlock.set(phi, b);
-                    }
-                } else if (beginNode instanceof LoopExitNode) {
-                    LoopExitNode loopExitNode = (LoopExitNode) beginNode;
-                    for (ProxyNode proxy : loopExitNode.proxies()) {
-                        nodeToBlock.set(proxy, b);
-                    }
-                }
-            }
-
+            NodeMap<MicroBlock> entries = graph.createNodeMap();
             NodeStack stack = new NodeStack();
 
-            // Start analysis with control flow ends.
-            Block[] reversePostOrder = cfg.reversePostOrder();
-            for (int j = reversePostOrder.length - 1; j >= 0; --j) {
-                Block b = reversePostOrder[j];
-                FixedNode endNode = b.getEndNode();
-                if (isFixedEnd(endNode)) {
-                    stack.push(endNode);
-                    nodeToBlock.set(endNode, b);
+            // Initialize with fixed nodes.
+            MicroBlock startBlock = null;
+            int nextId = 1;
+            for (Block b : cfg.reversePostOrder()) {
+                FixedNode current = b.getBeginNode();
+                while (true) {
+                    MicroBlock microBlock = new MicroBlock(nextId++);
+                    entries.put(current, microBlock);
+                    visited.checkAndMarkInc(current);
+
+                    if (startBlock == null) {
+                        startBlock = microBlock;
+                    }
+
+                    // Process inputs of this fixed node.
+                    for (Node input : current.inputs()) {
+                        if (entries.get(input) == null) {
+                            processStack(input, startBlock, entries, visited, stack);
+                        }
+                    }
+
+                    if (current == b.getEndNode()) {
+                        // Break loop when reaching end node.
+                        break;
+                    }
+
+                    current = ((FixedWithNextNode) current).next();
                 }
             }
 
-            processStack(cfg, blockToNodes, nodeToBlock, visited, floatingReads, stack);
+            assert stack.isEmpty();
 
-            // Visit back input edges of loop phis.
-            boolean changed;
-            boolean unmarkedPhi;
-            do {
-                changed = false;
-                unmarkedPhi = false;
-                for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {
-                    for (PhiNode phi : loopBegin.phis()) {
-                        if (visited.isMarked(phi)) {
-                            for (int i = 0; i < loopBegin.getLoopEndCount(); ++i) {
-                                Node node = phi.valueAt(i + loopBegin.forwardEndCount());
-                                if (node != null && !visited.isMarked(node)) {
-                                    changed = true;
-                                    stack.push(node);
-                                    processStack(cfg, blockToNodes, nodeToBlock, visited, floatingReads, stack);
+            if (visited.getCounter() < graph.getNodeCount()) {
+
+                // Visit back input edges of loop phis.
+                boolean changed;
+                boolean unmarkedPhi;
+                do {
+                    changed = false;
+                    unmarkedPhi = false;
+                    for (LoopBeginNode loopBegin : graph.getNodes(LoopBeginNode.TYPE)) {
+                        for (PhiNode phi : loopBegin.phis()) {
+                            if (visited.isMarked(phi)) {
+                                for (int i = 0; i < loopBegin.getLoopEndCount(); ++i) {
+                                    Node node = phi.valueAt(i + loopBegin.forwardEndCount());
+                                    if (node != null && entries.get(node) == null) {
+                                        changed = true;
+                                        stack.push(node);
+                                        processStack(node, startBlock, entries, visited, stack);
+                                    }
                                 }
+                            } else {
+                                unmarkedPhi = true;
                             }
-                        } else {
-                            unmarkedPhi = true;
                         }
                     }
-                }
 
-                /*
-                 * the processing of one loop phi could have marked a previously checked loop phi,
-                 * therefore this needs to be iterative.
-                 */
-            } while (unmarkedPhi && changed);
+                    /*
+                     * the processing of one loop phi could have marked a previously checked loop
+                     * phi, therefore this needs to be iterative.
+                     */
+                } while (unmarkedPhi && changed);
+            }
 
             // Check for dead nodes.
             if (!immutableGraph && visited.getCounter() < graph.getNodeCount()) {
@@ -610,193 +682,160 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            // Add end nodes as the last nodes in each block.
-            for (Block b : cfg.getBlocks()) {
-                FixedNode endNode = b.getEndNode();
-                if (isFixedEnd(endNode)) {
-                    if (endNode != b.getBeginNode()) {
-                        addNode(blockToNodes, b, endNode);
-                    }
+            for (Block b : cfg.reversePostOrder()) {
+                FixedNode fixedNode = b.getEndNode();
+                if (fixedNode instanceof ControlSplitNode) {
+                    ControlSplitNode controlSplitNode = (ControlSplitNode) fixedNode;
+                    MicroBlock endBlock = entries.get(fixedNode);
+                    MicroBlock primarySuccessor = entries.get(controlSplitNode.getPrimarySuccessor());
+                    endBlock.prependChildrenTo(primarySuccessor);
                 }
             }
 
-            if (!floatingReads.isEmpty()) {
-                for (Block b : cfg.getBlocks()) {
-                    if (floatingReads.get(b.getId())) {
-                        resortEarliestWithinBlock(b, blockToNodes, nodeToBlock, visited);
+            // Initialize with begin nodes
+            for (Block b : cfg.reversePostOrder()) {
+
+                FixedNode current = b.getBeginNode();
+                int totalCount = 0;
+                while (true) {
+
+                    MicroBlock microBlock = entries.get(current);
+                    totalCount += microBlock.getChildCount() + 1;
+
+                    if (current == b.getEndNode()) {
+                        // Break loop when reaching end node.
+                        break;
                     }
+
+                    current = ((FixedWithNextNode) current).next();
+                }
+
+                // Initialize with begin node, it is always the first node.
+                ArrayList<Node> nodes = new ArrayList<>(totalCount);
+                blockToNodes.put(b, nodes);
+
+                current = b.getBeginNode();
+                while (true) {
+
+                    MicroBlock microBlock = entries.get(current);
+                    nodeToBlock.set(current, b);
+                    nodes.add(current);
+                    NodeEntry next = microBlock.getFirst();
+                    while (next != null) {
+                        Node nextNode = next.getNode();
+                        nodeToBlock.set(nextNode, b);
+                        nodes.add(nextNode);
+                        next = next.getNext();
+                    }
+
+                    if (current == b.getEndNode()) {
+                        // Break loop when reaching end node.
+                        break;
+                    }
+
+                    current = ((FixedWithNextNode) current).next();
                 }
             }
 
             assert (!GraalOptions.DetailedAsserts.getValue(cfg.graph.getOptions())) || MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
         }
 
+        private static final MicroBlock MARKER_BLOCK = new MicroBlock(-1);
+
+        private static void processStackPhi(NodeStack stack, PhiNode phiNode, NodeMap<MicroBlock> nodeToBlock, NodeBitMap visited) {
+            stack.pop();
+            if (visited.checkAndMarkInc(phiNode)) {
+                MicroBlock mergeBlock = nodeToBlock.get(phiNode.merge());
+                assert mergeBlock != null && mergeBlock != MARKER_BLOCK : mergeBlock + " / " + phiNode.merge();
+                nodeToBlock.set(phiNode, mergeBlock);
+                AbstractMergeNode merge = phiNode.merge();
+                for (int i = 0; i < merge.forwardEndCount(); ++i) {
+                    Node input = phiNode.valueAt(i);
+                    if (input != null && nodeToBlock.get(input) == null) {
+                        stack.push(input);
+                    }
+                }
+            }
+        }
+
+        private static void processStackProxy(NodeStack stack, ProxyNode proxyNode, NodeMap<MicroBlock> nodeToBlock, NodeBitMap visited) {
+            stack.pop();
+            if (visited.checkAndMarkInc(proxyNode)) {
+                nodeToBlock.set(proxyNode, nodeToBlock.get(proxyNode.proxyPoint()));
+                Node input = proxyNode.value();
+                if (input != null && nodeToBlock.get(input) == null) {
+                    stack.push(input);
+                }
+            }
+        }
+
+        private static void processStack(Node first, MicroBlock startBlock, NodeMap<MicroBlock> nodeToMicroBlock, NodeBitMap visited, NodeStack stack) {
+            stack.push(first);
+            Node current = first;
+            while (true) {
+                if (current instanceof PhiNode) {
+                    processStackPhi(stack, (PhiNode) current, nodeToMicroBlock, visited);
+                } else if (current instanceof ProxyNode) {
+                    processStackProxy(stack, (ProxyNode) current, nodeToMicroBlock, visited);
+                } else {
+                    MicroBlock currentBlock = nodeToMicroBlock.get(current);
+                    if (currentBlock == null || currentBlock == MARKER_BLOCK) {
+                        MicroBlock earliestBlock = processInputs(nodeToMicroBlock, stack, startBlock, current);
+                        if (earliestBlock == null) {
+                            // We need to delay until inputs are processed.
+                            nodeToMicroBlock.set(current, MARKER_BLOCK);
+                        } else {
+                            // Can immediately process and pop.
+                            stack.pop();
+                            visited.checkAndMarkInc(current);
+                            assignBlock(nodeToMicroBlock, current, earliestBlock);
+                        }
+                    } else {
+                        stack.pop();
+                    }
+                }
+
+                if (stack.isEmpty()) {
+                    break;
+                }
+                current = stack.peek();
+            }
+        }
+
+        private static void assignBlock(NodeMap<MicroBlock> nodeToMicroBlock, Node current, MicroBlock earliestBlock) {
+            nodeToMicroBlock.set(current, earliestBlock);
+            earliestBlock.add(current);
+        }
+
+        /**
+         * Processes the inputs of given block. Pushes unprocessed inputs onto the stack. Returns
+         * null if there were still unprocessed inputs, otherwise returns the earliest block given
+         * node can be scheduled in.
+         */
+        private static MicroBlock processInputs(NodeMap<MicroBlock> nodeToBlock, NodeStack stack, MicroBlock startBlock, Node current) {
+            if (current.getNodeClass().isLeafNode()) {
+                return startBlock;
+            }
+
+            MicroBlock earliestBlock = startBlock;
+            for (Node input : current.inputs()) {
+                MicroBlock inputBlock = nodeToBlock.get(input);
+                if (inputBlock == null) {
+                    earliestBlock = null;
+                    stack.push(input);
+                } else if (earliestBlock != null && inputBlock.getId() >= earliestBlock.getId()) {
+                    if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
+                        // Skip edge.
+                        continue;
+                    }
+                    earliestBlock = inputBlock;
+                }
+            }
+            return earliestBlock;
+        }
+
         private static boolean isFixedEnd(FixedNode endNode) {
             return endNode instanceof ControlSplitNode || endNode instanceof ControlSinkNode || endNode instanceof AbstractEndNode;
-        }
-
-        private static void resortEarliestWithinBlock(Block b, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap unprocessed) {
-            ArrayList<FloatingReadNode> watchList = new ArrayList<>();
-            List<Node> oldList = blockToNodes.get(b);
-            AbstractBeginNode beginNode = b.getBeginNode();
-            for (Node n : oldList) {
-                if (n instanceof FloatingReadNode) {
-                    FloatingReadNode floatingReadNode = (FloatingReadNode) n;
-                    LocationIdentity locationIdentity = floatingReadNode.getLocationIdentity();
-                    MemoryNode lastLocationAccess = floatingReadNode.getLastLocationAccess();
-                    if (locationIdentity.isMutable() && lastLocationAccess != null) {
-                        ValueNode lastAccessLocation = lastLocationAccess.asNode();
-                        if (nodeToBlock.get(lastAccessLocation) == b && lastAccessLocation != beginNode && !(lastAccessLocation instanceof MemoryPhiNode)) {
-                            // This node's last access location is within this block. Add to watch
-                            // list when processing the last access location.
-                        } else {
-                            watchList.add(floatingReadNode);
-                        }
-                    }
-                }
-            }
-
-            ArrayList<Node> newList = new ArrayList<>(oldList.size());
-            assert oldList.get(0) == beginNode;
-            unprocessed.clear(beginNode);
-            newList.add(beginNode);
-            for (int i = 1; i < oldList.size(); ++i) {
-                Node n = oldList.get(i);
-                if (unprocessed.isMarked(n)) {
-                    if (n instanceof MemoryNode) {
-                        if (n instanceof MemoryCheckpoint) {
-                            assert n instanceof FixedNode;
-                            if (watchList.size() > 0) {
-                                // Check whether we need to commit reads from the watch list.
-                                checkWatchList(b, nodeToBlock, unprocessed, newList, watchList, n);
-                            }
-                        }
-                        // Add potential dependent reads to the watch list.
-                        for (Node usage : n.usages()) {
-                            if (usage instanceof FloatingReadNode) {
-                                FloatingReadNode floatingReadNode = (FloatingReadNode) usage;
-                                if (nodeToBlock.get(floatingReadNode) == b && floatingReadNode.getLastLocationAccess() == n && !(n instanceof MemoryPhiNode)) {
-                                    watchList.add(floatingReadNode);
-                                }
-                            }
-                        }
-                    }
-                    assert unprocessed.isMarked(n);
-                    unprocessed.clear(n);
-                    newList.add(n);
-                } else {
-                    // This node was pulled up.
-                    assert !(n instanceof FixedNode) : n;
-                }
-            }
-
-            for (Node n : newList) {
-                unprocessed.mark(n);
-            }
-
-            assert newList.size() == oldList.size();
-            blockToNodes.put(b, newList);
-        }
-
-        private static void addNode(BlockMap<List<Node>> blockToNodes, Block b, Node endNode) {
-            assert !blockToNodes.get(b).contains(endNode) : endNode;
-            blockToNodes.get(b).add(endNode);
-        }
-
-        private static void processStack(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, BitSet floatingReads, NodeStack stack) {
-            Block startBlock = cfg.getStartBlock();
-            while (!stack.isEmpty()) {
-                Node current = stack.peek();
-                if (visited.checkAndMarkInc(current)) {
-
-                    // Push inputs and predecessor.
-                    Node predecessor = current.predecessor();
-                    if (predecessor != null) {
-                        stack.push(predecessor);
-                    }
-
-                    if (current instanceof PhiNode) {
-                        processStackPhi(stack, (PhiNode) current);
-                    } else if (current instanceof ProxyNode) {
-                        processStackProxy(stack, (ProxyNode) current);
-                    } else if (current instanceof FrameState) {
-                        processStackFrameState(stack, current);
-                    } else {
-                        current.pushInputs(stack);
-                    }
-                } else {
-                    stack.pop();
-                    if (nodeToBlock.get(current) == null) {
-                        Block curBlock = cfg.blockFor(current);
-                        if (curBlock == null) {
-                            assert current.predecessor() == null && !(current instanceof FixedNode) : "The assignment of blocks to fixed nodes is already done when constructing the cfg.";
-                            Block earliest = startBlock;
-                            for (Node input : current.inputs()) {
-                                Block inputEarliest = nodeToBlock.get(input);
-                                if (inputEarliest == null) {
-                                    assert current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current : current;
-                                } else {
-                                    assert inputEarliest != null;
-                                    if (inputEarliest.getEndNode() == input) {
-                                        // This is the last node of the block.
-                                        if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
-                                            // Keep regular inputEarliest.
-                                        } else if (input instanceof ControlSplitNode) {
-                                            inputEarliest = nodeToBlock.get(((ControlSplitNode) input).getPrimarySuccessor());
-                                        } else {
-                                            assert inputEarliest.getSuccessorCount() == 1;
-                                            assert !(input instanceof AbstractEndNode);
-                                            // Keep regular inputEarliest
-                                        }
-                                    }
-                                    if (earliest.getDominatorDepth() < inputEarliest.getDominatorDepth()) {
-                                        earliest = inputEarliest;
-                                    }
-                                }
-                            }
-                            curBlock = earliest;
-                        }
-                        assert curBlock != null;
-                        addNode(blockToNodes, curBlock, current);
-                        nodeToBlock.set(current, curBlock);
-                        if (current instanceof FloatingReadNode) {
-                            FloatingReadNode floatingReadNode = (FloatingReadNode) current;
-                            if (curBlock.canKill(floatingReadNode.getLocationIdentity())) {
-                                floatingReads.set(curBlock.getId());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private static void processStackFrameState(NodeStack stack, Node current) {
-            for (Node input : current.inputs()) {
-                if (input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
-                    // Ignore the cycle.
-                } else {
-                    stack.push(input);
-                }
-            }
-        }
-
-        private static void processStackProxy(NodeStack stack, ProxyNode proxyNode) {
-            LoopExitNode proxyPoint = proxyNode.proxyPoint();
-            for (Node input : proxyNode.inputs()) {
-                if (input != proxyPoint) {
-                    stack.push(input);
-                }
-            }
-        }
-
-        private static void processStackPhi(NodeStack stack, PhiNode phiNode) {
-            AbstractMergeNode merge = phiNode.merge();
-            for (int i = 0; i < merge.forwardEndCount(); ++i) {
-                Node input = phiNode.valueAt(i);
-                if (input != null) {
-                    stack.push(input);
-                }
-            }
         }
 
         public String printScheduleHelper(String desc) {
