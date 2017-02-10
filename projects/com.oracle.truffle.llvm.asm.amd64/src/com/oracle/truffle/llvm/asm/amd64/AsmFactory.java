@@ -130,9 +130,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToI32NodeGen.LLVMToI32NoZeroExtNod
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64NodeGen.LLVMToI64NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8NoZeroExtNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
-import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaConstInstruction;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI64StoreNodeGen;
@@ -169,19 +167,21 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 class AsmFactory {
-    private FrameDescriptor frameDescriptor;
-    private List<LLVMExpressionNode> statements;
-    private List<LLVMExpressionNode> arguments;
-    private List<String> registers;
-    private LLVMExpressionNode[] args;
+    private static final int REG_START_INDEX = 1;
+
+    private final FrameDescriptor frameDescriptor;
+    private final List<LLVMExpressionNode> statements;
+    private final List<LLVMExpressionNode> arguments;
+    private final List<String> registers;
     private LLVMExpressionNode result;
     private List<Argument> argInfo;
-    private String asmFlags;
-    private Type[] argTypes;
-    private Type retType;
+    private final String asmFlags;
+    private final Type[] argTypes;
+    private final Type retType;
+    private final Type[] retTypes;
+    private final int[] retOffsets;
 
-    AsmFactory(LLVMExpressionNode[] args, Type[] argTypes, String asmFlags, Type retType) {
-        this.args = args;
+    AsmFactory(Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, int[] retOffsets) {
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
         this.frameDescriptor = new FrameDescriptor();
@@ -189,6 +189,8 @@ class AsmFactory {
         this.arguments = new ArrayList<>();
         this.registers = new ArrayList<>();
         this.retType = retType;
+        this.retTypes = retTypes;
+        this.retOffsets = retOffsets;
         parseArguments();
     }
 
@@ -273,14 +275,7 @@ class AsmFactory {
         argInfo = new ArrayList<>();
         String[] tokens = asmFlags.substring(1, asmFlags.length() - 1).split(",");
 
-        int index = LLVMCallNode.USER_ARGUMENT_OFFSET;
-        LLVMAllocaConstInstruction alloca = null;
-        if (retType instanceof StructureType) { // multiple out values
-            assert args[1] instanceof LLVMAllocaConstInstruction;
-            alloca = (LLVMAllocaConstInstruction) args[1];
-            index++;
-        }
-
+        int index = REG_START_INDEX + (retType instanceof StructureType ? 1 : 0);
         int outIndex = 0;
 
         for (String token : tokens) {
@@ -336,7 +331,7 @@ class AsmFactory {
                     type = new PointerType(retType);
                     idOut = index++;
                 } else {
-                    type = alloca.getType(outIndex++);
+                    type = retTypes[outIndex++];
                 }
             } else if (isOutput) {
                 type = retType;
@@ -349,7 +344,7 @@ class AsmFactory {
             argInfo.add(new Argument(isInput, isOutput, isMemory, type, argInfo.size(), idIn, idOut, source, registerName));
         }
         assert index == argTypes.length;
-        assert retType instanceof StructureType ? outIndex == alloca.getOffsets().length : outIndex == 0;
+        assert retType instanceof StructureType ? outIndex == retOffsets.length : outIndex == 0;
     }
 
     LLVMInlineAssemblyRootNode finishInline() {
@@ -837,14 +832,11 @@ class AsmFactory {
     }
 
     private void getArguments() {
-        LLVMAllocaConstInstruction alloca = null;
         LLVMStructWriteNode[] writeNodes = null;
         LLVMExpressionNode[] valueNodes = null;
         if (retType instanceof StructureType) {
-            assert args[1] instanceof LLVMAllocaConstInstruction;
-            alloca = (LLVMAllocaConstInstruction) args[1];
-            writeNodes = new LLVMStructWriteNode[alloca.getLength()];
-            valueNodes = new LLVMExpressionNode[alloca.getLength()];
+            writeNodes = new LLVMStructWriteNode[retTypes.length];
+            valueNodes = new LLVMExpressionNode[retTypes.length];
         }
 
         Set<String> todoRegisters = new HashSet<>(registers);
@@ -856,7 +848,7 @@ class AsmFactory {
                     slot = getRegisterSlot(arg.getRegister());
                     LLVMExpressionNode register = LLVMI64ReadNodeGen.create(slot);
                     if (retType instanceof StructureType) {
-                        assert alloca.getType(arg.getOutIndex()) == arg.getType();
+                        assert retTypes[arg.getOutIndex()] == arg.getType();
                         PrimitiveKind primitiveKind = ((PrimitiveType) arg.getType()).getPrimitiveKind();
                         switch (primitiveKind) {
                             case I8:
@@ -950,7 +942,7 @@ class AsmFactory {
             LLVMWriteAddressNode writeAddr = LLVMWriteAddressNodeGen.create(addrArg, slot, null);
             statements.add(writeAddr);
             LLVMExpressionNode addr = LLVMAddressReadNodeGen.create(slot);
-            this.result = new StructLiteralNode(alloca.getOffsets(), writeNodes, valueNodes, addr);
+            this.result = new StructLiteralNode(retOffsets, writeNodes, valueNodes, addr);
         }
 
         // initialize registers

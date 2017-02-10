@@ -76,8 +76,8 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
             this.offsets = offsets;
         }
 
-        public Type getType(int i) {
-            return types[i];
+        public Type[] getTypes() {
+            return types;
         }
 
         public int[] getOffsets() {
