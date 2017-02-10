@@ -52,5 +52,8 @@ public class CancelableCompileTask implements Cancelable {
 
     public synchronized void cancel() {
         canceled = true;
+        if (future != null) {
+            future.cancel(false);
+        }
     }
 }
