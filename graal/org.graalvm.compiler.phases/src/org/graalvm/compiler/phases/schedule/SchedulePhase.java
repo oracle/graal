@@ -50,14 +50,12 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StartNode;
-import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
@@ -536,9 +534,13 @@ public final class SchedulePhase extends Phase {
             return currentBlock;
         }
 
+        /**
+         * Micro block that is allocated for each fixed node and captures all floating nodes that
+         * need to be scheduled immediately after the corresponding fixed node.
+         */
         private static class MicroBlock {
             private final int id;
-            private int childCount;
+            private int nodeCount;
             private NodeEntry head;
             private NodeEntry tail;
 
@@ -546,7 +548,11 @@ public final class SchedulePhase extends Phase {
                 this.id = id;
             }
 
+            /**
+             * Adds a new floating node into the micro block.
+             */
             public void add(Node node) {
+                assert !(node instanceof FixedNode);
                 NodeEntry newTail = new NodeEntry(node, null);
                 if (tail == null) {
                     tail = head = newTail;
@@ -554,37 +560,56 @@ public final class SchedulePhase extends Phase {
                     tail.next = newTail;
                     tail = newTail;
                 }
-                childCount++;
+                nodeCount++;
             }
 
-            public int getChildCount() {
-                return childCount;
+            /**
+             * Number of nodes in this micro block.
+             */
+            public int getNodeCount() {
+                return nodeCount;
             }
 
+            /**
+             * The id of the micro block, with a block always associated with a lower id than its
+             * successors.
+             */
             public int getId() {
                 return id;
             }
 
-            public NodeEntry getFirst() {
+            /**
+             * First node of the linked list of nodes of this micro block.
+             */
+            public NodeEntry getFirstNode() {
                 return head;
             }
 
+            /**
+             * Takes all nodes in this micro blocks and prepends them to the nodes of the given
+             * parameter.
+             *
+             * @param newBlock the new block for the nodes
+             */
             public void prependChildrenTo(MicroBlock newBlock) {
                 if (tail != null) {
                     tail.next = newBlock.head;
                     newBlock.head = head;
                     head = tail = null;
-                    newBlock.childCount += childCount;
-                    childCount = 0;
+                    newBlock.nodeCount += nodeCount;
+                    nodeCount = 0;
                 }
             }
 
             @Override
             public String toString() {
-                return "MicroBlock id " + id;
+                return String.format("MicroBlock[id=%d]", id);
             }
         }
 
+        /**
+         * Entry in the linked list of nodes.
+         */
         private static class NodeEntry {
             private final Node node;
             private NodeEntry next;
@@ -638,8 +663,6 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            assert stack.isEmpty();
-
             if (visited.getCounter() < graph.getNodeCount()) {
 
                 // Visit back input edges of loop phis.
@@ -655,7 +678,6 @@ public final class SchedulePhase extends Phase {
                                     Node node = phi.valueAt(i + loopBegin.forwardEndCount());
                                     if (node != null && entries.get(node) == null) {
                                         changed = true;
-                                        stack.push(node);
                                         processStack(node, startBlock, entries, visited, stack);
                                     }
                                 }
@@ -700,7 +722,7 @@ public final class SchedulePhase extends Phase {
                 while (true) {
 
                     MicroBlock microBlock = entries.get(current);
-                    totalCount += microBlock.getChildCount() + 1;
+                    totalCount += microBlock.getNodeCount() + 1;
 
                     if (current == b.getEndNode()) {
                         // Break loop when reaching end node.
@@ -720,7 +742,7 @@ public final class SchedulePhase extends Phase {
                     MicroBlock microBlock = entries.get(current);
                     nodeToBlock.set(current, b);
                     nodes.add(current);
-                    NodeEntry next = microBlock.getFirst();
+                    NodeEntry next = microBlock.getFirstNode();
                     while (next != null) {
                         Node nextNode = next.getNode();
                         nodeToBlock.set(nextNode, b);
@@ -740,13 +762,11 @@ public final class SchedulePhase extends Phase {
             assert (!GraalOptions.DetailedAsserts.getValue(cfg.graph.getOptions())) || MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes);
         }
 
-        private static final MicroBlock MARKER_BLOCK = new MicroBlock(-1);
-
         private static void processStackPhi(NodeStack stack, PhiNode phiNode, NodeMap<MicroBlock> nodeToBlock, NodeBitMap visited) {
             stack.pop();
             if (visited.checkAndMarkInc(phiNode)) {
                 MicroBlock mergeBlock = nodeToBlock.get(phiNode.merge());
-                assert mergeBlock != null && mergeBlock != MARKER_BLOCK : mergeBlock + " / " + phiNode.merge();
+                assert mergeBlock != null : phiNode;
                 nodeToBlock.set(phiNode, mergeBlock);
                 AbstractMergeNode merge = phiNode.merge();
                 for (int i = 0; i < merge.forwardEndCount(); ++i) {
@@ -770,6 +790,8 @@ public final class SchedulePhase extends Phase {
         }
 
         private static void processStack(Node first, MicroBlock startBlock, NodeMap<MicroBlock> nodeToMicroBlock, NodeBitMap visited, NodeStack stack) {
+            assert stack.isEmpty();
+            assert !visited.isMarked(first);
             stack.push(first);
             Node current = first;
             while (true) {
@@ -779,16 +801,16 @@ public final class SchedulePhase extends Phase {
                     processStackProxy(stack, (ProxyNode) current, nodeToMicroBlock, visited);
                 } else {
                     MicroBlock currentBlock = nodeToMicroBlock.get(current);
-                    if (currentBlock == null || currentBlock == MARKER_BLOCK) {
+                    if (currentBlock == null) {
                         MicroBlock earliestBlock = processInputs(nodeToMicroBlock, stack, startBlock, current);
                         if (earliestBlock == null) {
                             // We need to delay until inputs are processed.
-                            nodeToMicroBlock.set(current, MARKER_BLOCK);
                         } else {
                             // Can immediately process and pop.
                             stack.pop();
                             visited.checkAndMarkInc(current);
-                            assignBlock(nodeToMicroBlock, current, earliestBlock);
+                            nodeToMicroBlock.set(current, earliestBlock);
+                            earliestBlock.add(current);
                         }
                     } else {
                         stack.pop();
@@ -800,11 +822,6 @@ public final class SchedulePhase extends Phase {
                 }
                 current = stack.peek();
             }
-        }
-
-        private static void assignBlock(NodeMap<MicroBlock> nodeToMicroBlock, Node current, MicroBlock earliestBlock) {
-            nodeToMicroBlock.set(current, earliestBlock);
-            earliestBlock.add(current);
         }
 
         /**
@@ -824,10 +841,6 @@ public final class SchedulePhase extends Phase {
                     earliestBlock = null;
                     stack.push(input);
                 } else if (earliestBlock != null && inputBlock.getId() >= earliestBlock.getId()) {
-                    if (current instanceof FrameState && input instanceof StateSplit && ((StateSplit) input).stateAfter() == current) {
-                        // Skip edge.
-                        continue;
-                    }
                     earliestBlock = inputBlock;
                 }
             }
