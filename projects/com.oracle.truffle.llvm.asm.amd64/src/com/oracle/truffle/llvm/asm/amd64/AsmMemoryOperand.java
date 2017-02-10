@@ -30,32 +30,54 @@
 package com.oracle.truffle.llvm.asm.amd64;
 
 class AsmMemoryOperand implements AsmOperand {
-    private final String displacement;
-    private final AsmRegisterOperand base;
-    private final AsmRegisterOperand offset;
-    private final String scale;
+    public static final int HEX = 16;
+    public static final int SCALE_1 = 1;
+    public static final int SCALE_2 = 2;
+    public static final int SCALE_4 = 4;
 
-    AsmMemoryOperand(String displacement, AsmRegisterOperand base, AsmRegisterOperand offset, String scale) {
+    private final String displacement;
+    private final AsmOperand base;
+    private final AsmOperand offset;
+    private final int scale;
+
+    AsmMemoryOperand(String displacement, AsmOperand base, AsmOperand offset, int scale) {
         this.displacement = displacement;
         this.base = base;
         this.offset = offset;
         this.scale = scale;
     }
 
-    public String getDisplacement() {
-        return displacement;
+    public int getDisplacement() {
+        if (displacement.startsWith("0x")) {
+            return Integer.parseInt(displacement.substring(2), HEX);
+        } else {
+            return Integer.parseInt(displacement);
+        }
     }
 
-    public AsmRegisterOperand getBase() {
+    public AsmOperand getBase() {
         return base;
     }
 
-    public AsmRegisterOperand getOffset() {
+    public AsmOperand getOffset() {
         return offset;
     }
 
-    public String getScale() {
+    public int getScale() {
         return scale;
+    }
+
+    public int getShift() {
+        switch (scale) {
+            case SCALE_1:
+                return 0;
+            case SCALE_2:
+                return 1;
+            case SCALE_4:
+                return 2;
+            default:
+                throw new AsmParseException("invalid scale: " + scale);
+        }
     }
 
     @Override
@@ -70,7 +92,7 @@ class AsmMemoryOperand implements AsmOperand {
             if (offset != null) {
                 b.append(",");
                 b.append(offset);
-                if (scale != null) {
+                if (scale != 1) {
                     b.append(",");
                     b.append(scale);
                 }

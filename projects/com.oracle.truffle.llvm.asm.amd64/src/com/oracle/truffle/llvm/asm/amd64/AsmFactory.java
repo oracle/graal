@@ -119,6 +119,8 @@ import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVM
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI32RegisterNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteRegisterNode.LLVMAMD64WriteI64RegisterNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressDisplacementComputationNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressOffsetComputationNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64ToI8NodeFactory.LLVMAMD64I64ToI8NodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
@@ -923,8 +925,12 @@ class AsmFactory {
                     slot = getRegisterSlot(reg);
                     todoRegisters.remove(reg);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
-                    LLVMExpressionNode node = LLVMToI64NoZeroExtNodeGen.create(argnode);
-                    arguments.add(LLVMWriteI64NodeGen.create(node, slot, null));
+                    if (argTypes[arg.getInIndex()] instanceof PointerType) {
+                        arguments.add(LLVMWriteAddressNodeGen.create(argnode, slot, null));
+                    } else {
+                        LLVMExpressionNode node = LLVMToI64NoZeroExtNodeGen.create(argnode);
+                        arguments.add(LLVMWriteI64NodeGen.create(node, slot, null));
+                    }
                 }
                 slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getInIndex()]);
                 LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
@@ -1031,7 +1037,10 @@ class AsmFactory {
             FrameSlot frame = getRegisterSlot(op.getBaseRegister());
             LLVMExpressionNode register = LLVMI64ReadNodeGen.create(frame);
             int shift = op.getShift();
-            assert type == op.getWidth();
+            assert type instanceof PointerType || type == op.getWidth();
+            if (type instanceof PointerType) {
+                return LLVMAddressReadNodeGen.create(frame);
+            }
             switch (((PrimitiveType) op.getWidth()).getPrimitiveKind()) {
                 case I8:
                     return LLVMAMD64I64ToI8NodeGen.create(shift, register);
@@ -1042,7 +1051,7 @@ class AsmFactory {
                 case I64:
                     return register;
                 default:
-                    throw new AsmParseException("invalid operand size");
+                    throw new AsmParseException("unsupported operand type: " + type);
             }
         } else if (operand instanceof AsmImmediateOperand) {
             AsmImmediateOperand op = (AsmImmediateOperand) operand;
@@ -1059,7 +1068,7 @@ class AsmFactory {
                     case I64:
                         return LLVMAMD64I64NodeGen.create(op.getValue());
                     default:
-                        throw new AsmParseException("invalid dst type");
+                        throw new AsmParseException("unsupported operand type: " + type);
                 }
             }
         } else if (operand instanceof AsmArgumentOperand) {
@@ -1077,10 +1086,13 @@ class AsmFactory {
                     case I64:
                         return LLVMI64LoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                     default:
-                        throw new AsmParseException("invalid operand size");
+                        throw new AsmParseException("unsupported operand type: " + type);
                 }
             } else {
-                assert type == info.getType();
+                assert type instanceof PointerType || type == info.getType();
+                if (type instanceof PointerType) {
+                    return LLVMAddressReadNodeGen.create(frame);
+                }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
                         return LLVMI8ReadNodeGen.create(frame);
@@ -1091,8 +1103,34 @@ class AsmFactory {
                     case I64:
                         return LLVMI64ReadNodeGen.create(frame);
                     default:
-                        throw new AsmParseException("invalid operand size");
+                        throw new AsmParseException("unsupported operand type: " + type);
                 }
+            }
+        } else if (operand instanceof AsmMemoryOperand) {
+            AsmMemoryOperand op = (AsmMemoryOperand) operand;
+            int displacement = op.getDisplacement();
+            AsmOperand base = op.getBase();
+            AsmOperand offset = op.getOffset();
+            int shift = op.getShift();
+            LLVMExpressionNode baseAddress = getOperandLoad(new PointerType(type), base);
+            LLVMExpressionNode address;
+            if (offset == null) {
+                address = LLVMAMD64AddressDisplacementComputationNodeGen.create(displacement, baseAddress);
+            } else {
+                LLVMExpressionNode offsetNode = getOperandLoad(PrimitiveType.I64, base);
+                address = LLVMAMD64AddressOffsetComputationNodeGen.create(displacement, shift, baseAddress, offsetNode);
+            }
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
+                case I8:
+                    return LLVMI8LoadNodeGen.create(address);
+                case I16:
+                    return LLVMI16LoadNodeGen.create(address);
+                case I32:
+                    return LLVMI32LoadNodeGen.create(address);
+                case I64:
+                    return LLVMI64LoadNodeGen.create(address);
+                default:
+                    throw new AsmParseException("unsupported operand type: " + type);
             }
         }
         throw new AsmParseException("unsupported operand type: " + operand);
@@ -1120,7 +1158,7 @@ class AsmFactory {
                     out = from;
                     break;
                 default:
-                    throw new AsmParseException("unsupported operand size");
+                    throw new AsmParseException("unsupported operand type: " + op.getWidth());
             }
             return LLVMWriteI64NodeGen.create(out, frame, null);
         } else if (operand instanceof AsmArgumentOperand) {
@@ -1138,7 +1176,7 @@ class AsmFactory {
                     case I64:
                         return LLVMI64StoreNodeGen.create(null, address, from);
                     default:
-                        throw new AsmParseException("invalid operand size");
+                        throw new AsmParseException("unsupported operand type: " + type);
                 }
             } else {
                 assert type == info.getType();
@@ -1153,7 +1191,7 @@ class AsmFactory {
                     case I64:
                         return LLVMWriteI64NodeGen.create(from, frame, null);
                     default:
-                        throw new AsmParseException("invalid operand size");
+                        throw new AsmParseException("unsupported operand type: " + type);
                 }
             }
         }
@@ -1196,7 +1234,7 @@ class AsmFactory {
 
     private FrameSlot getArgumentSlot(int index, Type type) {
         Argument info = argInfo.get(index);
-        assert info.isMemory() || type instanceof StructureType || type == info.getType() : String.format("arg: %s; %s vs %s", info, type, info.getType());
+        assert info.isMemory() || type instanceof StructureType || type instanceof PointerType || type == info.getType() : String.format("arg: %s; %s vs %s", info, type, info.getType());
 
         String name = getArgumentName(index);
         addFrameSlot(name, info.getType());

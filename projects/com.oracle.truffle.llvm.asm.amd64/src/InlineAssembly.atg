@@ -613,14 +613,14 @@ Operand<out AsmOperand op> =				(. op = null; .)
   )
   .
 
-MemoryReference<out AsmMemoryOperand operand> =		(. String displacement = null, scale = null; AsmRegisterOperand base = null, offset = null; long tmp; .)
+MemoryReference<out AsmMemoryOperand operand> =		(. String displacement = null; AsmOperand base = null, offset = null; long tmp; int scale = 1; .)
   ( ident						(. displacement = t.val; .)
   | Number<out tmp>					(. displacement = String.valueOf(tmp); .)
   )
   [ "("
-    Register64<out base>
-    [ "," Register64<out offset>
-      [ "," Number<out tmp>				(. scale = String.valueOf(tmp); .)
+    Operand<out base>
+    [ "," Operand<out offset>
+      [ "," Number<out tmp>				(. scale = (int) tmp; .)
       ]
     ]
     ")"
