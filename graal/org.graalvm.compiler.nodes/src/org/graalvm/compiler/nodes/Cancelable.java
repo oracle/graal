@@ -22,6 +22,11 @@
  */
 package org.graalvm.compiler.nodes;
 
+/**
+ * Cancelable describes an interface for operations that can be canceled externally. Implementing
+ * the interface allows operations to be monitored by others that need to know if the operation has
+ * been canceled or not.
+ */
 public interface Cancelable {
     boolean isCanceled();
 }
