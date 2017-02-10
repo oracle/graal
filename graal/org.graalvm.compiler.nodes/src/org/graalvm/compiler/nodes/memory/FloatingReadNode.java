@@ -31,11 +31,13 @@ import org.graalvm.compiler.core.common.LocationIdentity;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
@@ -62,6 +64,13 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
         super(TYPE, address, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
+
+        if (!(guard != null || !(address.getBase().stamp() instanceof ObjectStamp) || ((ObjectStamp) address.getBase().stamp()).nonNull())) {
+            for (Node n : address.getBase().graph().getNodes()) {
+                TTY.println(n.toString(Verbosity.All));
+                TTY.println("inputs: " + n.inputs());
+            }
+        }
 
         // The input to floating reads must be always non-null or have at least a guard.
         assert guard != null || !(address.getBase().stamp() instanceof ObjectStamp) || ((ObjectStamp) address.getBase().stamp()).nonNull() : address.getBase();

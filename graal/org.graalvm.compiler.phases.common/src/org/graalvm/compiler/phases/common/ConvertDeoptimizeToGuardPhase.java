@@ -84,7 +84,12 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
             assert d.isAlive();
-            visitDeoptBegin(AbstractBeginNode.prevBegin(d), d.action(), d.reason(), d.getSpeculation(), graph, context != null ? context.getLowerer() : null);
+            // Can only aggressively move deoptimization point if their action implies that
+            // the deoptimization will not be triggered again. Example for such action is
+            // reprofiling or recompiling with less aggressive options.
+            if (d.action() != DeoptimizationAction.None) {
+                visitDeoptBegin(AbstractBeginNode.prevBegin(d), d.action(), d.reason(), d.getSpeculation(), graph, context != null ? context.getLowerer() : null);
+            }
         }
 
         if (context != null) {
