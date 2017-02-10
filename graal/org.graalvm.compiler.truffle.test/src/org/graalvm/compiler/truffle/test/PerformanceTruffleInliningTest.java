@@ -172,8 +172,6 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
     public void testHugeGraph() {
         hugeGraphBuilderHelper(10, 4, "1");
         OptimizedCallTarget target = builder.target("main").calls("1").buildTarget();
-        System.out.println(targetCount);
-        System.out.println("BUILDER DONE!");
         assertDecidingTakesLessThan(target, 500);
 
     }
