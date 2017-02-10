@@ -55,7 +55,7 @@ public final class Block extends AbstractBlockBase<Block> {
     private LocationSet killLocations;
     private LocationSet killLocationsBetweenThisAndDominator;
 
-    protected Block(AbstractBeginNode node) {
+    public Block(AbstractBeginNode node) {
         this.beginNode = node;
     }
 

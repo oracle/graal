@@ -449,6 +449,8 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     ValueNode y = binaryOpLogicNode.getY();
                     if (binaryOpLogicNode.getX() == original) {
                         result = binaryOpLogicNode.tryFold(newStamp, binaryOpLogicNode.getY().stamp());
+                    } else if (binaryOpLogicNode.getY() == original) {
+                        result = binaryOpLogicNode.tryFold(binaryOpLogicNode.getX().stamp(), newStamp);
                     } else if (binaryOpLogicNode instanceof IntegerEqualsNode && y.isConstant() && x instanceof AndNode) {
                         AndNode and = (AndNode) x;
                         if (and.getY() == y && and.getX() == original) {
