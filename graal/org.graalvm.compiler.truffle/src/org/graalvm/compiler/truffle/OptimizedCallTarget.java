@@ -568,6 +568,8 @@ public class OptimizedCallTarget extends InstalledCode implements RootCallTarget
     }
 
     void resetCompilationTask() {
-        this.compilationTask = null;
+        synchronized (this) {
+            this.compilationTask = null;
+        }
     }
 }
