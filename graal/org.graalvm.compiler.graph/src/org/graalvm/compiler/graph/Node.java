@@ -706,7 +706,9 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     public void replaceAndDelete(Node other) {
         assert checkReplaceWith(other);
         assert other != null;
-        replaceAtUsages(other);
+        if (this.hasUsages()) {
+            replaceAtUsages(other);
+        }
         replaceAtPredecessor(other);
         this.safeDelete();
     }
