@@ -120,27 +120,27 @@ public class ConditionalEliminationTest5 extends ConditionalEliminationTestBase 
 
     public static int reference4Snippet(Object a) {
         if (!(a instanceof B)) {
-            GraalDirectives.deoptimize();
+            GraalDirectives.deoptimizeAndInvalidate();
         }
         return 1;
     }
 
     public static int test4Snippet1(Object a) {
         if (!(a instanceof B)) {
-            GraalDirectives.deoptimize();
+            GraalDirectives.deoptimizeAndInvalidate();
         }
         if (!(a instanceof A)) {
-            GraalDirectives.deoptimize();
+            GraalDirectives.deoptimizeAndInvalidate();
         }
         return 1;
     }
 
     public static int test4Snippet2(Object a) {
         if (!(a instanceof A)) {
-            GraalDirectives.deoptimize();
+            GraalDirectives.deoptimizeAndInvalidate();
         }
         if (!(a instanceof B)) {
-            GraalDirectives.deoptimize();
+            GraalDirectives.deoptimizeAndInvalidate();
         }
         return 1;
     }
