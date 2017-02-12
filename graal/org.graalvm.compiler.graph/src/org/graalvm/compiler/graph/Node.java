@@ -35,7 +35,6 @@ import java.util.Formattable;
 import java.util.FormattableFlags;
 import java.util.Formatter;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -365,17 +364,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      */
     public final boolean hasExactlyOneUsage() {
         return hasUsages() && !hasMoreThanOneUsage();
-    }
-
-    void reverseUsageOrder() {
-        List<Node> snapshot = this.usages().snapshot();
-        for (Node n : snapshot) {
-            this.removeUsage(n);
-        }
-        Collections.reverse(snapshot);
-        for (Node n : snapshot) {
-            this.addUsage(n);
-        }
     }
 
     /**

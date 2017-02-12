@@ -1110,16 +1110,6 @@ public class Graph {
         }
     }
 
-    /**
-     * Reverses the usage orders of all nodes. This is used for debugging to make sure an unorthodox
-     * usage order does not trigger bugs in the compiler.
-     */
-    public void reverseUsageOrder() {
-        for (Node n : getNodes()) {
-            n.reverseUsageOrder();
-        }
-    }
-
     public boolean isFrozen() {
         return isFrozen;
     }
