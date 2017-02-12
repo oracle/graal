@@ -27,6 +27,7 @@ import org.graalvm.compiler.debug.DebugCounter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -78,6 +79,16 @@ public class DeadCodeEliminationPhase extends Phase {
         int totalNodeCount = graph.getNodeCount();
         flood.add(graph.start());
         iterateSuccessorsAndInputs(flood);
+        boolean changed = false;
+        for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
+            if (flood.isMarked(guard.getAnchor().asNode())) {
+                flood.add(guard);
+                changed = true;
+            }
+        }
+        if (changed) {
+            iterateSuccessorsAndInputs(flood);
+        }
         int totalMarkedCount = flood.getTotalMarkedCount();
         if (totalNodeCount == totalMarkedCount) {
             // All nodes are live => nothing more to do.
@@ -99,6 +110,7 @@ public class DeadCodeEliminationPhase extends Phase {
                 return succOrInput;
             }
         };
+
         for (Node current : flood) {
             if (current instanceof AbstractEndNode) {
                 AbstractEndNode end = (AbstractEndNode) current;

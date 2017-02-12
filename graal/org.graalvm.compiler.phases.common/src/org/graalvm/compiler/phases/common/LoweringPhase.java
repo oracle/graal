@@ -63,7 +63,6 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -198,8 +197,6 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 return result;
             } else {
                 GuardNode newGuard = graph.unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated, speculation));
-                ValueAnchorNode valueAnchor = graph.add(new ValueAnchorNode(newGuard));
-                graph.addBeforeFixed(before, valueAnchor);
                 if (OptEliminateGuards.getValue(graph.getOptions())) {
                     activeGuards.markAndGrow(newGuard);
                 }

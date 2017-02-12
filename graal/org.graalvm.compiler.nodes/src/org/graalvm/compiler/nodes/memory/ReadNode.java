@@ -39,11 +39,9 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -88,13 +86,8 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (tool.allUsagesAvailable() && hasNoUsages()) {
-            if (getGuard() != null && !(getGuard() instanceof FixedNode)) {
-                // The guard is necessary even if the read goes away.
-                return new ValueAnchorNode((ValueNode) getGuard());
-            } else {
-                // Read without usages or guard can be safely removed.
-                return null;
-            }
+            // Read without usages or guard can be safely removed.
+            return null;
         }
         if (!getNullCheck()) {
             return canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);

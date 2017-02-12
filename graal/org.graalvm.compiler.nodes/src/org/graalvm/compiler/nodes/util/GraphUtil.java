@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -345,12 +346,13 @@ public class GraphUtil {
                 }
                 usage.replaceFirstInput(node, null);
             }
-            killWithUnusedFloatingInputs(node);
+            killWithUnusedFloatingInputs(node, true);
         }
         return newWorkList;
     }
 
-    private static boolean checkKill(Node node) {
+    private static boolean checkKill(Node node, boolean mayKillGuards) {
+        node.assertTrue(mayKillGuards || !(node instanceof GuardNode), "must not be a guard node %s", node);
         node.assertTrue(node.isAlive(), "must be alive");
         node.assertTrue(node.hasNoUsages(), "cannot kill node %s because of usages: %s", node, node.usages());
         node.assertTrue(node.predecessor() == null, "cannot kill node %s because of predecessor: %s", node, node.predecessor());
@@ -358,7 +360,11 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node) {
-        assert checkKill(node);
+        killWithUnusedFloatingInputs(node, false);
+    }
+
+    public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuards) {
+        assert checkKill(node, mayKillGuards);
         node.markDeleted();
         outer: for (Node in : node.inputs()) {
             if (in.isAlive()) {
@@ -368,7 +374,11 @@ public class GraphUtil {
                 }
                 if (isFloatingNode(in)) {
                     if (in.hasNoUsages()) {
-                        killWithUnusedFloatingInputs(in);
+                        if (in instanceof GuardNode) {
+                            // Guard nodes are only killed if their anchor dies.
+                        } else {
+                            killWithUnusedFloatingInputs(in);
+                        }
                     } else if (in instanceof PhiNode) {
                         for (Node use : in.usages()) {
                             if (use != in) {
@@ -763,7 +773,7 @@ public class GraphUtil {
     }
 
     public static boolean tryKillUnused(Node node) {
-        if (node.isAlive() && isFloatingNode(node) && node.hasNoUsages()) {
+        if (node.isAlive() && isFloatingNode(node) && node.hasNoUsages() && !(node instanceof GuardNode)) {
             killWithUnusedFloatingInputs(node);
             return true;
         }

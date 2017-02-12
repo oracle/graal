@@ -468,30 +468,35 @@ public final class SchedulePhase extends Phase {
         protected void calcLatestBlock(Block earliestBlock, SchedulingStrategy strategy, Node currentNode, NodeMap<Block> currentNodeMap, LocationIdentity constrainingLocation,
                         BlockMap<ArrayList<FloatingReadNode>> watchListMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeBitMap visited, boolean immutableGraph) {
             Block latestBlock = null;
-            assert currentNode.hasUsages();
-            for (Node usage : currentNode.usages()) {
-                if (immutableGraph && !visited.contains(usage)) {
-                    /*
-                     * Normally, dead nodes are deleted by the scheduler before we reach this point.
-                     * Only when the scheduler is asked to not modify a graph, we can see dead nodes
-                     * here.
-                     */
-                    continue;
+            if (!currentNode.hasUsages()) {
+                assert currentNode instanceof GuardNode;
+                latestBlock = earliestBlock;
+            } else {
+                assert currentNode.hasUsages();
+                for (Node usage : currentNode.usages()) {
+                    if (immutableGraph && !visited.contains(usage)) {
+                        /*
+                         * Normally, dead nodes are deleted by the scheduler before we reach this
+                         * point. Only when the scheduler is asked to not modify a graph, we can see
+                         * dead nodes here.
+                         */
+                        continue;
+                    }
+                    latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap);
                 }
-                latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap);
-            }
 
-            assert latestBlock != null : currentNode;
+                assert latestBlock != null : currentNode;
 
-            if (strategy == SchedulingStrategy.FINAL_SCHEDULE || strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS) {
-                assert latestBlock != null;
-                while (latestBlock.getLoopDepth() > earliestBlock.getLoopDepth() && latestBlock != earliestBlock.getDominator()) {
-                    latestBlock = latestBlock.getDominator();
+                if (strategy == SchedulingStrategy.FINAL_SCHEDULE || strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS) {
+                    assert latestBlock != null;
+                    while (latestBlock.getLoopDepth() > earliestBlock.getLoopDepth() && latestBlock != earliestBlock.getDominator()) {
+                        latestBlock = latestBlock.getDominator();
+                    }
                 }
-            }
 
-            if (latestBlock != earliestBlock && latestBlock != earliestBlock.getDominator() && constrainingLocation != null) {
-                latestBlock = checkKillsBetween(earliestBlock, latestBlock, constrainingLocation);
+                if (latestBlock != earliestBlock && latestBlock != earliestBlock.getDominator() && constrainingLocation != null) {
+                    latestBlock = checkKillsBetween(earliestBlock, latestBlock, constrainingLocation);
+                }
             }
 
             selectLatestBlock(currentNode, earliestBlock, latestBlock, currentNodeMap, watchListMap, constrainingLocation, latestBlockToNodesMap);
@@ -664,7 +669,9 @@ public final class SchedulePhase extends Phase {
 
             // Now process guards.
             for (GuardNode guardNode : graph.getNodes(GuardNode.TYPE)) {
-                processStack(guardNode, startBlock, entries, visited, stack);
+                if (entries.get(guardNode) == null) {
+                    processStack(guardNode, startBlock, entries, visited, stack);
+                }
             }
 
             // Now process inputs of fixed nodes.
