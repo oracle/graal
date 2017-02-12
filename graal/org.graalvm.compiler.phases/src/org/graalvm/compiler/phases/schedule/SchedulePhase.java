@@ -662,6 +662,32 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
+            // Now process guards.
+            for (GuardNode guardNode : graph.getNodes(GuardNode.TYPE)) {
+                processStack(guardNode, startBlock, entries, visited, stack);
+            }
+
+            // Now process inputs of fixed nodes.
+            for (Block b : cfg.reversePostOrder()) {
+                FixedNode current = b.getBeginNode();
+                while (true) {
+
+                    // Process inputs of this fixed node.
+                    for (Node input : current.inputs()) {
+                        if (entries.get(input) == null) {
+                            processStack(input, startBlock, entries, visited, stack);
+                        }
+                    }
+
+                    if (current == b.getEndNode()) {
+                        // Break loop when reaching end node.
+                        break;
+                    }
+
+                    current = ((FixedWithNextNode) current).next();
+                }
+            }
+
             if (visited.getCounter() < graph.getNodeCount()) {
 
                 // Visit back input edges of loop phis.
