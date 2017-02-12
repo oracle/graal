@@ -84,6 +84,8 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.Pair;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -106,7 +108,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     protected void run(StructuredGraph graph, PhaseContext context) {
         try (Debug.Scope s = Debug.scope("DominatorConditionalElimination")) {
             BlockMap<List<Node>> blockToNodes;
-            NodeMap<Block> nodeToBlock;
             ControlFlowGraph cfg;
             if (fullSchedule) {
                 SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST);
@@ -114,22 +115,87 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 cfg = graph.getLastSchedule().getCFG();
                 cfg.computePostdominators();
                 blockToNodes = graph.getLastSchedule().getBlockToNodesMap();
-                nodeToBlock = graph.getLastSchedule().getNodeToBlockMap();
+                cfg.visitDominatorTree(new MoveGuardsUpwards(blockToNodes), graph.hasValueProxies());
             } else {
                 cfg = ControlFlowGraph.compute(graph, true, true, true, true);
                 blockToNodes = null;
-                nodeToBlock = cfg.getNodeToBlock();
             }
 
-            Instance visitor = new Instance(graph, blockToNodes, nodeToBlock, context);
+            Instance visitor = new Instance(graph, blockToNodes, context);
             cfg.visitDominatorTree(visitor, graph.hasValueProxies());
         }
+    }
+
+    public static class MoveGuardsUpwards implements ControlFlowGraph.RecursiveVisitor<Block> {
+
+        Block anchorBlock;
+        private BlockMap<List<Node>> blockToNodes;
+
+        public MoveGuardsUpwards(BlockMap<List<Node>> blockToNodes) {
+            this.blockToNodes = blockToNodes;
+        }
+
+        @Override
+        public Block enter(Block b) {
+            Block oldAnchorBlock = anchorBlock;
+            if (b.getDominator() == null || b.getDominator().getPostdominator() != b) {
+                // New anchor.
+                anchorBlock = b;
+            }
+
+            if (b.getEndNode() instanceof IfNode) {
+                IfNode node = (IfNode) b.getEndNode();
+
+                // Check if we can move guards upwards.
+                AbstractBeginNode trueSuccessor = node.trueSuccessor();
+                EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
+                for (GuardNode guard : trueSuccessor.guards()) {
+                    LogicNode condition = guard.getCondition();
+                    if (condition.hasMoreThanOneUsage()) {
+                        trueGuards.put(condition, guard);
+                    }
+                }
+
+                if (!trueGuards.isEmpty()) {
+                    for (GuardNode guard : node.falseSuccessor().guards().snapshot()) {
+                        GuardNode otherGuard = trueGuards.get(guard.getCondition());
+                        if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
+                            JavaConstant speculation = otherGuard.getSpeculation();
+                            if (speculation == null) {
+                                speculation = guard.getSpeculation();
+                            } else if (guard.getSpeculation() != null && guard.getSpeculation() != speculation) {
+                                // Cannot optimize due to different speculations.
+                                continue;
+                            }
+                            GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation);
+                            GuardNode newGuard = node.graph().unique(
+                                            newlyCreatedGuard);
+                            if (otherGuard.isAlive()) {
+                                otherGuard.replaceAndDelete(newGuard);
+                            }
+                            guard.replaceAndDelete(newGuard);
+                            if (newGuard == newlyCreatedGuard) {
+                                // Register guard to it will be processed by subsequent conditional
+                                // elimination.
+                                blockToNodes.get(b).add(newGuard);
+                            }
+                        }
+                    }
+                }
+            }
+            return oldAnchorBlock;
+        }
+
+        @Override
+        public void exit(Block b, Block value) {
+            anchorBlock = value;
+        }
+
     }
 
     public static class Instance implements ControlFlowGraph.RecursiveVisitor<Integer> {
         protected final NodeMap<InfoElement> map;
         protected final BlockMap<List<Node>> blockToNodes;
-        protected final NodeMap<Block> nodeToBlock;
         protected final CanonicalizerTool tool;
         protected final NodeStack undoOperations;
         protected final StructuredGraph graph;
@@ -139,11 +205,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
          */
         private Deque<PendingTest> pendingTests;
 
-        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes,
-                        NodeMap<Block> nodeToBlock, PhaseContext context) {
+        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, PhaseContext context) {
             this.graph = graph;
             this.blockToNodes = blockToNodes;
-            this.nodeToBlock = nodeToBlock;
             this.undoOperations = new NodeStack();
             this.map = graph.createNodeMap();
             pendingTests = new ArrayDeque<>();
@@ -255,17 +319,17 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void processIf(IfNode node) {
-            tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
+            if (!tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
                 rewirePiNodes(survivingSuccessor, guard, guardedValueStamp, newInput);
                 survivingSuccessor.replaceAtUsages(InputType.Guard, guard.asNode());
                 survivingSuccessor.replaceAtPredecessor(null);
                 node.replaceAtPredecessor(survivingSuccessor);
                 GraphUtil.killCFG(node);
-                Debug.log("Kill if");
                 counterIfsKilled.increment();
                 return true;
-            });
+            })) {
+            }
         }
 
         @Override
@@ -313,6 +377,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 } else {
                     processAbstractBegin((AbstractBeginNode) node);
                 }
+
             } else if (node instanceof FixedGuardNode) {
                 processFixedGuard((FixedGuardNode) node);
             } else if (node instanceof GuardNode) {
@@ -726,7 +791,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         private static boolean maybeMultipleUsages(ValueNode value) {
-            if (value.getUsageCount() > 1) {
+            if (value.hasMoreThanOneUsage()) {
                 return true;
             } else {
                 return value instanceof ProxyNode;

@@ -39,6 +39,10 @@ public class ConditionalEliminationTest5 extends ConditionalEliminationTestBase 
     interface B extends A {
     }
 
+    interface C extends B {
+
+    }
+
     static final class DistinctA {
     }
 
@@ -115,7 +119,7 @@ public class ConditionalEliminationTest5 extends ConditionalEliminationTestBase 
 
     @Test
     public void test3() {
-        testConditionalElimination("test3Snippet", "reference3Snippet", true);
+        testConditionalElimination("test3Snippet", "reference3Snippet", true, false);
     }
 
     public static int reference4Snippet(Object a) {
@@ -145,9 +149,47 @@ public class ConditionalEliminationTest5 extends ConditionalEliminationTestBase 
         return 1;
     }
 
+    @SuppressWarnings({"cast", "unused"})
+    public static int test4Snippet3(Object a) {
+        Object pi = (A) a;
+        if (!(a instanceof B)) {
+            GraalDirectives.deoptimizeAndInvalidate();
+        }
+        return 1;
+    }
+
+    public static int test4Snippet4(Object a) {
+        if (!(a instanceof A)) {
+            GraalDirectives.deoptimizeAndInvalidate();
+        }
+        if (!(((A) a) instanceof B)) {
+            GraalDirectives.deoptimizeAndInvalidate();
+        }
+        return 1;
+    }
+
+    @SuppressWarnings({"cast"})
+    public static int test4Snippet5(Object a) {
+        Object pi = (A) a;
+        if (pi == null) {
+            GraalDirectives.deoptimizeAndInvalidate();
+        }
+        if (!(a instanceof B)) {
+            GraalDirectives.deoptimizeAndInvalidate();
+        }
+        return 1;
+    }
+
     @Test
     public void test4() {
         testConditionalElimination("test4Snippet1", "reference4Snippet");
         testConditionalElimination("test4Snippet2", "reference4Snippet");
+        testConditionalElimination("test4Snippet3", "reference4Snippet");
+        testConditionalElimination("test4Snippet5", "reference4Snippet");
+    }
+
+    @Test
+    public void test5() {
+        testConditionalElimination("test4Snippet4", "reference4Snippet", false, true);
     }
 }

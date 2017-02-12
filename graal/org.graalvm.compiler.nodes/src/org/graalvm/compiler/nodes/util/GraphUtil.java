@@ -685,6 +685,15 @@ public class GraphUtil {
         }
     }
 
+    public static ValueNode skipPi(ValueNode node) {
+        ValueNode n = node;
+        while (n instanceof PiNode) {
+            PiNode piNode = (PiNode) n;
+            n = piNode.getOriginalNode();
+        }
+        return n;
+    }
+
     public static ValueNode skipPiWhileNonNull(ValueNode node) {
         ValueNode n = node;
         while (n instanceof PiNode) {

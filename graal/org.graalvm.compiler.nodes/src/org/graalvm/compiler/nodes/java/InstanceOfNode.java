@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.TriState;
@@ -94,7 +95,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         if (synonym != null) {
             return synonym;
         } else {
-            return new InstanceOfNode(checkedStamp, object, profile, anchor);
+            return new InstanceOfNode(checkedStamp, GraphUtil.skipPi(object), profile, anchor);
         }
     }
 

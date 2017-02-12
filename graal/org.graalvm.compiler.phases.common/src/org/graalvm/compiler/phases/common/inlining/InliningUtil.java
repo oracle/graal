@@ -765,20 +765,13 @@ public class InliningUtil {
         StructuredGraph graph = callTarget.graph();
         ValueNode firstParam = callTarget.arguments().get(0);
         if (firstParam.getStackKind() == JavaKind.Object) {
-            Stamp paramStamp = firstParam.stamp();
-            Stamp stamp = paramStamp.join(StampFactory.objectNonNull(TypeReference.create(graph.getAssumptions(), callTarget.targetMethod().getDeclaringClass())));
             if (!StampTool.isPointerNonNull(firstParam)) {
                 LogicNode condition = graph.unique(IsNullNode.create(firstParam));
                 FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
-                PiNode nonNullReceiver = graph.unique(new PiNode(firstParam, stamp, fixedGuard));
+                PiNode nonNullReceiver = graph.unique(new PiNode(firstParam, StampFactory.objectNonNull(), fixedGuard));
                 graph.addBeforeFixed(invoke.asNode(), fixedGuard);
                 callTarget.replaceFirstInput(firstParam, nonNullReceiver);
                 return nonNullReceiver;
-            }
-            if (!stamp.equals(paramStamp)) {
-                PiNode cast = graph.unique(new PiNode(firstParam, stamp));
-                callTarget.replaceFirstInput(firstParam, cast);
-                return cast;
             }
         }
         return firstParam;

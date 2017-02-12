@@ -55,11 +55,11 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
     }
 
     protected void testConditionalElimination(String snippet, String referenceSnippet) {
-        testConditionalElimination(snippet, referenceSnippet, false);
+        testConditionalElimination(snippet, referenceSnippet, false, false);
     }
 
     @SuppressWarnings("try")
-    protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference) {
+    protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference, boolean applyLowering) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         Debug.dump(Debug.BASIC_LOG_LEVEL, graph, "Graph");
         PhaseContext context = new PhaseContext(getProviders());
@@ -69,6 +69,11 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
              * Some tests break if simplification is done so only do it when needed.
              */
             canonicalizer1.disableSimplification();
+        }
+        if (applyLowering) {
+            new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+            new LoweringPhase(canonicalizer1, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            canonicalizer1.apply(graph, context);
         }
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
         try (Debug.Scope scope = Debug.scope("ConditionalEliminationTest", graph)) {

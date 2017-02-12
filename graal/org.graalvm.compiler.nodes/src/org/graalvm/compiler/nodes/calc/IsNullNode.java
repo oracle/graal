@@ -41,6 +41,7 @@ import org.graalvm.compiler.nodes.spi.PiPushable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.TriState;
 
@@ -59,7 +60,7 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
 
     public static LogicNode create(ValueNode forValue) {
         LogicNode result = tryCanonicalize(forValue);
-        return result == null ? new IsNullNode(forValue) : result;
+        return result == null ? new IsNullNode(GraphUtil.skipPi(forValue)) : result;
     }
 
     public static LogicNode tryCanonicalize(ValueNode forValue) {
