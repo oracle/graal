@@ -1817,7 +1817,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 if (field instanceof ResolvedJavaField) {
                     ValueNode receiver = invocationPluginReceiver.init(targetMethod, args).get();
                     ResolvedJavaField resolvedField = (ResolvedJavaField) field;
-                    genGetFieldHelper(receiver, resolvedField);
+                    genGetField(resolvedField, receiver);
                     printInlining(targetMethod, targetMethod, true, "inline accessor method (bytecode parsing)");
                     return true;
                 }
@@ -3035,6 +3035,22 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.push(kind, value);
     }
 
+    public void loadLocalObject(int index) {
+        ValueNode value = frameState.loadLocal(index, JavaKind.Object);
+
+        int nextBCI = stream.nextBCI();
+        int nextBC = stream.readUByte(nextBCI);
+        if (nextBC == Bytecodes.GETFIELD) {
+            stream.next();
+            genGetField(lookupField(stream.readCPI(), Bytecodes.GETFIELD), value);
+        } else if (nextBC == Bytecodes.PUTFIELD) {
+            stream.next();
+            genPutField(lookupField(stream.readCPI(), Bytecodes.PUTFIELD), value);
+        } else {
+            frameState.push(JavaKind.Object, value);
+        }
+    }
+
     public void storeLocal(JavaKind kind, int index) {
         ValueNode value = frameState.pop(kind);
         frameState.storeLocal(index, kind, value);
@@ -3557,28 +3573,27 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genGetField(JavaField field) {
-        ValueNode receiver = emitExplicitExceptions(frameState.pop(JavaKind.Object), null);
-
-        if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
-            handleUnresolvedLoadField(field, receiver);
-            return;
-        }
-        ResolvedJavaField resolvedField = (ResolvedJavaField) field;
-
-        genGetFieldHelper(receiver, resolvedField);
+        genGetField(field, frameState.pop(JavaKind.Object));
     }
 
-    /**
-     * @return whether a plugin handled the field load
-     */
-    private boolean genGetFieldHelper(ValueNode receiver, ResolvedJavaField resolvedField) {
+    private void genGetField(JavaField field, ValueNode receiverInput) {
+        ValueNode receiver = emitExplicitExceptions(receiverInput, null);
+        if (field instanceof ResolvedJavaField) {
+            ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+            genGetField(resolvedField, receiver);
+        } else {
+            handleUnresolvedLoadField(field, receiver);
+        }
+    }
+
+    private void genGetField(ResolvedJavaField resolvedField, ValueNode receiver) {
         if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
             graph.recordField(resolvedField);
         }
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             if (plugin.handleLoadField(this, receiver, resolvedField)) {
-                return true;
+                return;
             }
         }
 
@@ -3587,7 +3602,6 @@ public class BytecodeParser implements GraphBuilderContext {
             LocationIdentity referentIdentity = new FieldLocationIdentity(resolvedField);
             append(new MembarNode(0, referentIdentity));
         }
-        return false;
     }
 
     /**
@@ -3622,29 +3636,31 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genPutField(JavaField field) {
-        ValueNode value = frameState.pop(field.getJavaKind());
+        genPutField(field, frameState.pop(field.getJavaKind()));
+    }
+
+    private void genPutField(JavaField field, ValueNode value) {
         ValueNode receiver = emitExplicitExceptions(frameState.pop(JavaKind.Object), null);
+        if (field instanceof ResolvedJavaField) {
+            ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
-        if (!(field instanceof ResolvedJavaField) || !((ResolvedJavaField) field).getDeclaringClass().isInitialized()) {
-            handleUnresolvedStoreField(field, value, receiver);
-            return;
-        }
-        ResolvedJavaField resolvedField = (ResolvedJavaField) field;
-
-        if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
-            graph.recordField(resolvedField);
-        }
-
-        for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
-            if (plugin.handleStoreField(this, receiver, resolvedField, value)) {
-                return;
+            if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
+                graph.recordField(resolvedField);
             }
-        }
 
-        if (resolvedField.isFinal() && method.isConstructor()) {
-            finalBarrierRequired = true;
+            for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                if (plugin.handleStoreField(this, receiver, resolvedField, value)) {
+                    return;
+                }
+            }
+
+            if (resolvedField.isFinal() && method.isConstructor()) {
+                finalBarrierRequired = true;
+            }
+            genStoreField(receiver, resolvedField, value);
+        } else {
+            handleUnresolvedStoreField(field, value, receiver);
         }
-        genStoreField(receiver, resolvedField, value);
     }
 
     private void genGetStatic(JavaField field) {
@@ -3870,7 +3886,7 @@ public class BytecodeParser implements GraphBuilderContext {
             case LLOAD          : loadLocal(stream.readLocalIndex(), JavaKind.Long); break;
             case FLOAD          : loadLocal(stream.readLocalIndex(), JavaKind.Float); break;
             case DLOAD          : loadLocal(stream.readLocalIndex(), JavaKind.Double); break;
-            case ALOAD          : loadLocal(stream.readLocalIndex(), JavaKind.Object); break;
+            case ALOAD          : loadLocalObject(stream.readLocalIndex()); break;
             case ILOAD_0        : // fall through
             case ILOAD_1        : // fall through
             case ILOAD_2        : // fall through
@@ -3890,7 +3906,7 @@ public class BytecodeParser implements GraphBuilderContext {
             case ALOAD_0        : // fall through
             case ALOAD_1        : // fall through
             case ALOAD_2        : // fall through
-            case ALOAD_3        : loadLocal(opcode - ALOAD_0, JavaKind.Object); break;
+            case ALOAD_3        : loadLocalObject(opcode - ALOAD_0); break;
             case IALOAD         : genLoadIndexed(JavaKind.Int   ); break;
             case LALOAD         : genLoadIndexed(JavaKind.Long  ); break;
             case FALOAD         : genLoadIndexed(JavaKind.Float ); break;
