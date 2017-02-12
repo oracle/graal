@@ -362,7 +362,6 @@ import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
@@ -2724,12 +2723,6 @@ public class BytecodeParser implements GraphBuilderContext {
         BciBlock trueBlock = currentBlock.getSuccessor(0);
         BciBlock falseBlock = currentBlock.getSuccessor(1);
 
-        FrameState stateBefore = null;
-        ProfilingPlugin profilingPlugin = this.graphBuilderConfig.getPlugins().getProfilingPlugin();
-        if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-            stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
-        }
-
         if (trueBlock == falseBlock) {
             // The target block is the same independent of the condition.
             appendGoto(trueBlock);
@@ -2750,8 +2743,21 @@ public class BytecodeParser implements GraphBuilderContext {
 
         // Check whether the condition needs to negate the result.
         boolean negate = cond.canonicalNegate();
+        genIf(condition, negate, trueBlock, falseBlock);
+    }
+
+    protected void genIf(LogicNode conditionInput, boolean negateCondition, BciBlock trueBlockInput, BciBlock falseBlockInput) {
+        BciBlock trueBlock = trueBlockInput;
+        BciBlock falseBlock = falseBlockInput;
+        LogicNode condition = conditionInput;
+        FrameState stateBefore = null;
+        ProfilingPlugin profilingPlugin = this.graphBuilderConfig.getPlugins().getProfilingPlugin();
+        if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
+            stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
+        }
 
         // Remove a logic negation node and fold it into the negate boolean.
+        boolean negate = negateCondition;
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode logicNegationNode = (LogicNegationNode) condition;
             negate = !negate;
@@ -2812,13 +2818,6 @@ public class BytecodeParser implements GraphBuilderContext {
             ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
             postProcessIfNode(ifNode);
             append(ifNode);
-            if (parsingIntrinsic()) {
-                if (x instanceof BranchProbabilityNode) {
-                    ((BranchProbabilityNode) x).simplify(null);
-                } else if (y instanceof BranchProbabilityNode) {
-                    ((BranchProbabilityNode) y).simplify(null);
-                }
-            }
         }
     }
 
@@ -3407,7 +3406,17 @@ public class BytecodeParser implements GraphBuilderContext {
         if (instanceOfNode == null) {
             instanceOfNode = createInstanceOf(resolvedType, object, null);
         }
-        frameState.push(JavaKind.Int, append(genConditional(genUnique(instanceOfNode))));
+        LogicNode logicNode = genUnique(instanceOfNode);
+
+        int next = getStream().nextBCI();
+        int value = getStream().readUByte(next);
+        if (value == Bytecodes.IFEQ || value == Bytecodes.IFNE) {
+            getStream().next();
+            genIf(instanceOfNode, value != Bytecodes.IFNE, currentBlock.getSuccessor(0), currentBlock.getSuccessor(1));
+        } else {
+            // Most frequent for value is IRETURN, followed by ISTORE.
+            frameState.push(JavaKind.Int, append(genConditional(logicNode)));
+        }
     }
 
     void genNewInstance(int cpi) {
