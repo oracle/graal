@@ -1199,12 +1199,13 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, NullPointerException.class));
         AbstractBeginNode falseSucc = graph.add(new BeginNode());
-        PiNode nonNullReceiver = graph.unique(new PiNode(receiver, receiver.stamp().join(objectNonNull()), falseSucc));
+        PiNode nonNullReceiver = graph.unique(new PiNode(receiver, objectNonNull(), falseSucc));
         append(new IfNode(graph.unique(IsNullNode.create(receiver)), exception, falseSucc, 0.01));
         lastInstr = falseSucc;
 
         exception.setStateAfter(createFrameState(bci(), exception));
         exception.setNext(handleException(exception, bci()));
+        EXPLICIT_EXCEPTIONS.increment();
         return nonNullReceiver;
     }
 
@@ -1396,7 +1397,7 @@ public class BytecodeParser implements GraphBuilderContext {
             returnType = returnType.resolve(targetMethod.getDeclaringClass());
         }
         if (invokeKind.hasReceiver()) {
-            args[0] = emitExplicitExceptions(args[0], null);
+            args[0] = emitExplicitExceptions(args[0]);
 
             if (args[0].isNullConstant()) {
                 append(new DeoptimizeNode(InvalidateRecompile, NullCheckException));
@@ -3043,9 +3044,6 @@ public class BytecodeParser implements GraphBuilderContext {
         if (nextBC == Bytecodes.GETFIELD) {
             stream.next();
             genGetField(lookupField(stream.readCPI(), Bytecodes.GETFIELD), value);
-        } else if (nextBC == Bytecodes.PUTFIELD) {
-            stream.next();
-            genPutField(lookupField(stream.readCPI(), Bytecodes.PUTFIELD), value);
         } else {
             frameState.push(JavaKind.Object, value);
         }
@@ -3577,7 +3575,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genGetField(JavaField field, ValueNode receiverInput) {
-        ValueNode receiver = emitExplicitExceptions(receiverInput, null);
+        ValueNode receiver = emitExplicitExceptions(receiverInput);
         if (field instanceof ResolvedJavaField) {
             ResolvedJavaField resolvedField = (ResolvedJavaField) field;
             genGetField(resolvedField, receiver);
@@ -3608,31 +3606,34 @@ public class BytecodeParser implements GraphBuilderContext {
      * @param receiver the receiver of an object based operation
      * @param index the index of an array based operation that is to be tested for out of bounds.
      *            This is null for a non-array operation.
-     * @return the receiver value possibly modified to have a tighter stamp
+     * @return the receiver value possibly modified to have a non-null stamp
      */
     protected ValueNode emitExplicitExceptions(ValueNode receiver, ValueNode index) {
-        assert receiver != null;
-        if (graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.OmitAll) {
-            return receiver;
-        }
-        if (graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.Profile) {
-            if (profilingInfo == null) {
-                return receiver;
-            }
-            if (optimisticOpts.useExceptionProbabilityForOperations(getOptions()) &&
-                            profilingInfo.getExceptionSeen(bci()) == TriState.FALSE &&
-                            !StressExplicitExceptionCode.getValue(options)) {
-                return receiver;
-            }
-        }
-
-        ValueNode nonNullReceiver = emitExplicitNullCheck(receiver);
-        if (index != null) {
+        if (needsExplicitException()) {
+            ValueNode nonNullReceiver = emitExplicitNullCheck(receiver);
             ValueNode length = append(genArrayLength(nonNullReceiver));
             emitExplicitBoundsCheck(index, length);
+            return nonNullReceiver;
         }
-        EXPLICIT_EXCEPTIONS.increment();
-        return nonNullReceiver;
+        return receiver;
+    }
+
+    protected ValueNode emitExplicitExceptions(ValueNode receiver) {
+        if (StampTool.isPointerNonNull(receiver) || !needsExplicitException()) {
+            return receiver;
+        } else {
+            return emitExplicitNullCheck(receiver);
+        }
+    }
+
+    private boolean needsExplicitException() {
+        BytecodeExceptionMode exceptionMode = graphBuilderConfig.getBytecodeExceptionMode();
+        if (exceptionMode == BytecodeExceptionMode.CheckAll || StressExplicitExceptionCode.getValue(options)) {
+            return true;
+        } else if (exceptionMode == BytecodeExceptionMode.Profile && profilingInfo != null) {
+            return profilingInfo.getExceptionSeen(bci()) == TriState.TRUE;
+        }
+        return false;
     }
 
     private void genPutField(JavaField field) {
@@ -3640,7 +3641,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genPutField(JavaField field, ValueNode value) {
-        ValueNode receiver = emitExplicitExceptions(frameState.pop(JavaKind.Object), null);
+        ValueNode receiver = emitExplicitExceptions(frameState.pop(JavaKind.Object));
         if (field instanceof ResolvedJavaField) {
             ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
@@ -4070,7 +4071,7 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genArrayLength() {
-        ValueNode array = emitExplicitExceptions(frameState.pop(JavaKind.Object), null);
+        ValueNode array = emitExplicitExceptions(frameState.pop(JavaKind.Object));
         frameState.push(JavaKind.Int, append(genArrayLength(array)));
     }
 

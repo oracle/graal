@@ -319,7 +319,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void processIf(IfNode node) {
-            if (!tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
+            tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
                 rewirePiNodes(survivingSuccessor, guard, guardedValueStamp, newInput);
                 survivingSuccessor.replaceAtUsages(InputType.Guard, guard.asNode());
@@ -328,8 +328,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 GraphUtil.killCFG(node);
                 counterIfsKilled.increment();
                 return true;
-            })) {
-            }
+            });
         }
 
         @Override

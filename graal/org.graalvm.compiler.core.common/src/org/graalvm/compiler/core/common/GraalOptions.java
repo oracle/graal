@@ -166,9 +166,6 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> UseExceptionProbability = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> UseExceptionProbabilityForOperations = new OptionKey<>(true);
-
-    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OmitHotExceptionStacktrace = new OptionKey<>(false);
 
     @Option(help = "", type = OptionType.Debug)
