@@ -73,8 +73,8 @@ public final class IntegerBelowNode extends CompareNode {
             return synonym;
         }
         if (forX.isConstant() && forX.asJavaConstant().asLong() == 0) {
-            // 0 |<| y is the same as 0 != y
-            return LogicNegationNode.create(CompareNode.createCompareNode(Condition.EQ, forX, forY, tool.getConstantReflection()));
+            // 0 |<| y is the same as y != 0
+            return LogicNegationNode.create(CompareNode.createCompareNode(Condition.EQ, forY, forX, tool.getConstantReflection()));
         }
         return this;
     }
