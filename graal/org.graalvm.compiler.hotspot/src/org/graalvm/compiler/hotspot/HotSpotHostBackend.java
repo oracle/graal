@@ -33,6 +33,7 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.common.InitTimer;
@@ -65,16 +66,16 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
 
     @Override
     @SuppressWarnings("try")
-    public void completeInitialization(HotSpotJVMCIRuntime jvmciRuntime) {
+    public void completeInitialization(HotSpotJVMCIRuntime jvmciRuntime, OptionValues options) {
         final HotSpotProviders providers = getProviders();
         HotSpotHostForeignCallsProvider foreignCalls = (HotSpotHostForeignCallsProvider) providers.getForeignCalls();
         final HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
 
         try (InitTimer st = timer("foreignCalls.initialize")) {
-            foreignCalls.initialize(providers);
+            foreignCalls.initialize(providers, options);
         }
         try (InitTimer st = timer("lowerer.initialize")) {
-            lowerer.initialize(providers, config);
+            lowerer.initialize(options, providers, config);
         }
     }
 

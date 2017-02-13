@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.core.test.tutorial;
 
+import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions;
+
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
@@ -238,7 +240,7 @@ public class StaticAnalysis {
                  * Build the Graal graph for the method using the bytecode parser provided by Graal.
                  */
 
-                StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
+                StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions()).method(method).build();
                 /*
                  * Support for graph dumping, IGV uses this information to show the method name of a
                  * graph.

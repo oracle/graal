@@ -76,7 +76,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     @SuppressWarnings("try")
     private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
-        StructuredGraph graph = new StructuredGraph.Builder(allowAssumptions).useProfilingInfo(false).method(method).build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).useProfilingInfo(false).method(method).build();
         try (Debug.Scope scope = Debug.scope("createGraph", graph)) {
             IntrinsicContext initialIntrinsicContext = intrinsicBytecodeProvider != null ? new IntrinsicContext(method, method, intrinsicBytecodeProvider, INLINE_AFTER_PARSING) : null;
             GraphBuilderPhase.Instance graphBuilderPhaseInstance = createGraphBuilderPhaseInstance(initialIntrinsicContext);

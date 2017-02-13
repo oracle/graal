@@ -47,6 +47,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.UnsafeCopyNode;
 import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -284,8 +285,8 @@ public class UnsafeArrayCopySnippets implements Snippets {
         private final SnippetInfo[] arraycopySnippets;
         private final SnippetInfo genericPrimitiveSnippet;
 
-        public Templates(HotSpotProviders providers, TargetDescription target) {
-            super(providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers, TargetDescription target) {
+            super(options, providers, providers.getSnippetReflection(), target);
 
             arraycopySnippets = new SnippetInfo[JavaKind.values().length];
             arraycopySnippets[JavaKind.Boolean.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyBoolean");

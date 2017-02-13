@@ -284,8 +284,8 @@ public class InstanceOfSnippets implements Snippets {
         private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic", SECONDARY_SUPER_CACHE_LOCATION);
         private final SnippetInfo isAssignableFrom = snippet(InstanceOfSnippets.class, "isAssignableFrom", SECONDARY_SUPER_CACHE_LOCATION);
 
-        public Templates(HotSpotProviders providers, TargetDescription target) {
-            super(providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers, TargetDescription target) {
+            super(options, providers, providers.getSnippetReflection(), target);
         }
 
         @Override
@@ -295,15 +295,15 @@ public class InstanceOfSnippets implements Snippets {
                 ValueNode object = instanceOf.getValue();
                 Assumptions assumptions = instanceOf.graph().getAssumptions();
 
-                OptionValues options = instanceOf.getOptions();
+                OptionValues localOptions = instanceOf.getOptions();
                 JavaTypeProfile profile = instanceOf.profile();
-                if (GeneratePIC.getValue(options)) {
+                if (GeneratePIC.getValue(localOptions)) {
                     // FIXME: We can't embed constants in hints. We can't really load them from GOT
                     // either. Hard problem.
                     profile = null;
                 }
-                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), profile, assumptions, TypeCheckMinProfileHitProbability.getValue(options),
-                                TypeCheckMaxHints.getValue(options));
+                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), profile, assumptions, TypeCheckMinProfileHitProbability.getValue(localOptions),
+                                TypeCheckMaxHints.getValue(localOptions));
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type().getType();
                 ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), instanceOf.graph());
 
@@ -317,19 +317,19 @@ public class InstanceOfSnippets implements Snippets {
                     args.addVarargs("hints", KlassPointer.class, KlassPointerStamp.klassNonNull(), hints.hubs);
                     args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(JavaKind.Boolean), hints.isPositive);
                 } else if (hintInfo.exact != null) {
-                    SnippetInfo snippet = GeneratePIC.getValue(options) ? instanceofExactPIC : instanceofExact;
+                    SnippetInfo snippet = GeneratePIC.getValue(localOptions) ? instanceofExactPIC : instanceofExact;
                     args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
                     args.add("exactHub", ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), ((HotSpotResolvedObjectType) hintInfo.exact).klass(), providers.getMetaAccess(), graph));
                 } else if (type.isPrimaryType()) {
-                    SnippetInfo snippet = GeneratePIC.getValue(options) ? instanceofPrimaryPIC : instanceofPrimary;
+                    SnippetInfo snippet = GeneratePIC.getValue(localOptions) ? instanceofPrimaryPIC : instanceofPrimary;
                     args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addConst("superCheckOffset", type.superCheckOffset());
                 } else {
                     Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
-                    SnippetInfo snippet = GeneratePIC.getValue(options) ? instanceofSecondaryPIC : instanceofSecondary;
+                    SnippetInfo snippet = GeneratePIC.getValue(localOptions) ? instanceofSecondaryPIC : instanceofSecondary;
                     args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);

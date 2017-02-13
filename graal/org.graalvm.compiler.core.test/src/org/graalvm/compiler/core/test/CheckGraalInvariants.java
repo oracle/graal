@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 
 import java.io.File;
@@ -165,10 +166,11 @@ public class CheckGraalInvariants extends GraalTest {
         String property = System.getProperty(CheckGraalInvariants.class.getName() + ".filters");
         String[] filters = property == null ? null : property.split(",");
 
+        OptionValues options = getInitialOptions();
         CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread", new DebugConfigAccess() {
             @Override
             public GraalDebugConfig getDebugConfig() {
-                return DebugEnvironment.ensureInitialized(OptionValues.GLOBAL);
+                return DebugEnvironment.ensureInitialized(options);
             }
         });
         int availableProcessors = Runtime.getRuntime().availableProcessors();
@@ -178,7 +180,7 @@ public class CheckGraalInvariants extends GraalTest {
 
         for (Method m : BadUsageWithEquals.class.getDeclaredMethods()) {
             ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-            StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).method(method).build();
+            StructuredGraph graph = new StructuredGraph.Builder(options, AllowAssumptions.YES).method(method).build();
             try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
                 graphBuilderSuite.apply(graph, context);
                 // update phi stamps
@@ -214,7 +216,7 @@ public class CheckGraalInvariants extends GraalTest {
                         if (matches(filters, methodName)) {
                             executor.execute(() -> {
                                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                                StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
+                                StructuredGraph graph = new StructuredGraph.Builder(options).method(method).build();
                                 try (DebugConfigScope s = Debug.setConfig(new DelegatingDebugConfig().disable(INTERCEPT)); Debug.Scope ds = Debug.scope("CheckingGraph", graph, method)) {
                                     graphBuilderSuite.apply(graph, context);
                                     // update phi stamps

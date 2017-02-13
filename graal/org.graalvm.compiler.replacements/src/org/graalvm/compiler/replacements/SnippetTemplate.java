@@ -29,7 +29,6 @@ import static org.graalvm.compiler.debug.Debug.applyFormattingFlagsAndWidth;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import java.lang.reflect.Array;
@@ -107,6 +106,7 @@ import org.graalvm.compiler.nodes.spi.MemoryProxy;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
@@ -573,17 +573,19 @@ public class SnippetTemplate {
      */
     public abstract static class AbstractTemplates implements org.graalvm.compiler.api.replacements.SnippetTemplateCache {
 
+        protected final OptionValues options;
         protected final Providers providers;
         protected final SnippetReflectionProvider snippetReflection;
         protected final TargetDescription target;
         private final Map<CacheKey, SnippetTemplate> templates;
 
-        protected AbstractTemplates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+        protected AbstractTemplates(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+            this.options = options;
             this.providers = providers;
             this.snippetReflection = snippetReflection;
             this.target = target;
-            if (Options.UseSnippetTemplateCache.getValue(GLOBAL)) {
-                int size = Options.MaxTemplatesPerSnippet.getValue(GLOBAL);
+            if (Options.UseSnippetTemplateCache.getValue(options)) {
+                int size = Options.MaxTemplatesPerSnippet.getValue(options);
                 this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
             } else {
                 this.templates = null;
@@ -612,7 +614,7 @@ public class SnippetTemplate {
             assert findMethod(declaringClass, methodName, method) == null : "found more than one method named " + methodName + " in " + declaringClass;
             ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
             providers.getReplacements().registerSnippet(javaMethod);
-            if (GraalOptions.EagerSnippets.getValue(GLOBAL)) {
+            if (GraalOptions.EagerSnippets.getValue(options)) {
                 return new EagerSnippetInfo(javaMethod, privateLocations);
             } else {
                 return new LazySnippetInfo(javaMethod, privateLocations);
@@ -624,12 +626,12 @@ public class SnippetTemplate {
          */
         @SuppressWarnings("try")
         protected SnippetTemplate template(final Arguments args) {
-            SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(GLOBAL) && args.cacheable ? templates.get(args.cacheKey) : null;
+            SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null) {
                 SnippetTemplates.increment();
                 try (DebugCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
-                    template = new SnippetTemplate(providers, snippetReflection, args);
-                    if (Options.UseSnippetTemplateCache.getValue(GLOBAL) && args.cacheable) {
+                    template = new SnippetTemplate(options, providers, snippetReflection, args);
+                    if (Options.UseSnippetTemplateCache.getValue(options) && args.cacheable) {
                         templates.put(args.cacheKey, template);
                     }
                 } catch (Throwable e) {
@@ -677,7 +679,7 @@ public class SnippetTemplate {
      * Creates a snippet template.
      */
     @SuppressWarnings("try")
-    protected SnippetTemplate(final Providers providers, SnippetReflectionProvider snippetReflection, Arguments args) {
+    protected SnippetTemplate(OptionValues options, final Providers providers, SnippetReflectionProvider snippetReflection, Arguments args) {
         this.snippetReflection = snippetReflection;
         this.info = args.info;
 
@@ -692,7 +694,7 @@ public class SnippetTemplate {
         PhaseContext phaseContext = new PhaseContext(providers);
 
         // Copy snippet graph, replacing constant parameters with given arguments
-        final StructuredGraph snippetCopy = new StructuredGraph.Builder().name(snippetGraph.name).method(snippetGraph.method()).build();
+        final StructuredGraph snippetCopy = new StructuredGraph.Builder(options).name(snippetGraph.name).method(snippetGraph.method()).build();
 
         try (Debug.Scope scope = Debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {

@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
@@ -272,7 +273,7 @@ public class VerifyVirtualizableTest {
         for (Method m : c.getDeclaredMethods()) {
             if (!Modifier.isNative(m.getModifiers()) && !Modifier.isAbstract(m.getModifiers())) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
+                StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions()).method(method).build();
                 graphBuilderSuite.apply(graph, context);
                 try (DebugConfigScope s = Debug.disableIntercept()) {
                     new VerifyVirtualizableUsage().apply(graph, context);

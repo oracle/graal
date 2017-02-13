@@ -86,7 +86,7 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest {
     private void checkForBailout(String name) throws ClassNotFoundException {
         ResolvedJavaMethod method = getResolvedJavaMethod(LOADER.findClass(INNER_CLASS_NAME), name);
         try {
-            StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
+            StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions()).method(method).build();
             Plugins plugins = new Plugins(new InvocationPlugins(getMetaAccess()));
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;

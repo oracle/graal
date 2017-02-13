@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -150,8 +151,8 @@ public class SnippetCounterNode extends FixedWithNextNode implements Lowerable {
 
             private final SnippetInfo add = snippet(SnippetCounterSnippets.class, "add", SNIPPET_COUNTER_LOCATION);
 
-            Templates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-                super(providers, snippetReflection, target);
+            Templates(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+                super(options, providers, snippetReflection, target);
             }
 
             public void lower(SnippetCounterNode counter, LoweringTool tool) {

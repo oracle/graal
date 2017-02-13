@@ -37,6 +37,7 @@ import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.stubs.ForeignCallStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.util.EconomicMap;
@@ -142,9 +143,9 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
      *            cannot be re-executed.
      * @param killedLocations the memory locations killed by the foreign call
      */
-    public void linkForeignCall(HotSpotProviders providers, ForeignCallDescriptor descriptor, long address, boolean prependThread, Transition transition, boolean reexecutable,
-                    LocationIdentity... killedLocations) {
-        ForeignCallStub stub = new ForeignCallStub(jvmciRuntime, providers, address, descriptor, prependThread, transition, reexecutable, killedLocations);
+    public void linkForeignCall(OptionValues options, HotSpotProviders providers, ForeignCallDescriptor descriptor, long address, boolean prependThread, Transition transition,
+                    boolean reexecutable, LocationIdentity... killedLocations) {
+        ForeignCallStub stub = new ForeignCallStub(options, jvmciRuntime, providers, address, descriptor, prependThread, transition, reexecutable, killedLocations);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);

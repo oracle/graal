@@ -160,6 +160,14 @@ import jdk.vm.ci.services.Services;
                 "java.base/jdk.internal.org.objectweb.asm.tree"})
 public abstract class GraalCompilerTest extends GraalTest {
 
+    /**
+     * Gets the initial option values provided by the Graal runtime. These are option values
+     * typically parsed from the command line.
+     */
+    public static OptionValues getInitialOptions() {
+        return Graal.getRequiredCapability(OptionValues.class);
+    }
+
     private static final int BAILOUT_RETRY_LIMIT = 1;
     private final Providers providers;
     private final Backend backend;
@@ -1166,8 +1174,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     private StructuredGraph parse1(ResolvedJavaMethod javaMethod, PhaseSuite<HighTierContext> graphBuilderSuite, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId,
                     OptionValues options) {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
-        StructuredGraph graph = new StructuredGraph.Builder(allowAssumptions).method(javaMethod).speculationLog(getSpeculationLog()).useProfilingInfo(true).compilationId(
-                        compilationId).options(options).build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, allowAssumptions).method(javaMethod).speculationLog(getSpeculationLog()).useProfilingInfo(true).compilationId(
+                        compilationId).build();
         try (Scope ds = Debug.scope("Parsing", javaMethod, graph)) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             return graph;

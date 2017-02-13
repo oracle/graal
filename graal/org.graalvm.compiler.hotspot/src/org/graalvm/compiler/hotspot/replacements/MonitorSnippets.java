@@ -662,8 +662,8 @@ public class MonitorSnippets implements Snippets {
 
         private final boolean useFastLocking;
 
-        public Templates(HotSpotProviders providers, TargetDescription target, boolean useFastLocking) {
-            super(providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers, TargetDescription target, boolean useFastLocking) {
+            super(options, providers, providers.getSnippetReflection(), target);
             this.useFastLocking = useFastLocking;
         }
 

@@ -30,7 +30,6 @@ import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Dump;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Log;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.MethodFilter;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.Verify;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayIndexScale;
@@ -99,14 +98,15 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     @SuppressWarnings("try")
     HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory) {
 
+        OptionValues initialOptions = OptionValues.GLOBAL;
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
-        config = GeneratePIC.getValue(GLOBAL) ? new AOTGraalHotSpotVMConfig(store) : new GraalHotSpotVMConfig(store);
+        config = GeneratePIC.getValue(initialOptions) ? new AOTGraalHotSpotVMConfig(store) : new GraalHotSpotVMConfig(store);
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
-        if (GraalOptions.HotSpotPrintInlining.getValue(GLOBAL) == false && config.printInlining) {
-            options = new OptionValues(GLOBAL, HotSpotPrintInlining, true);
+        if (GraalOptions.HotSpotPrintInlining.getValue(initialOptions) == false && config.printInlining) {
+            options = new OptionValues(initialOptions, HotSpotPrintInlining, true);
         } else {
-            options = GLOBAL;
+            options = initialOptions;
         }
 
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
@@ -119,7 +119,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             if (factory == null) {
                 throw new GraalError("No backend available for host architecture \"%s\"", hostArchitecture);
             }
-            hostBackend = registerBackend(factory.createBackend(this, compilerConfiguration, jvmciRuntime, null));
+            hostBackend = registerBackend(factory.createBackend(this, options, compilerConfiguration, jvmciRuntime, null));
         }
 
         for (JVMCIBackend jvmciBackend : jvmciRuntime.getJVMCIBackends().values()) {
@@ -133,7 +133,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 throw new GraalError("No backend available for specified GPU architecture \"%s\"", gpuArchitecture);
             }
             try (InitTimer t = timer("create backend:", gpuArchitecture)) {
-                registerBackend(factory.createBackend(this, compilerConfiguration, null, hostBackend));
+                registerBackend(factory.createBackend(this, options, compilerConfiguration, null, hostBackend));
             }
         }
 
@@ -144,7 +144,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         }
 
         if (Debug.isEnabled()) {
-            DebugEnvironment.ensureInitialized(OptionValues.GLOBAL, hostBackend.getProviders().getSnippetReflection());
+            DebugEnvironment.ensureInitialized(options, hostBackend.getProviders().getSnippetReflection());
 
             String summary = DebugValueSummary.getValue(options);
             if (summary != null) {
@@ -189,12 +189,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         // Complete initialization of backends
         try (InitTimer st = timer(hostBackend.getTarget().arch.getName(), ".completeInitialization")) {
-            hostBackend.completeInitialization(jvmciRuntime);
+            hostBackend.completeInitialization(jvmciRuntime, options);
         }
         for (HotSpotBackend backend : backends.getValues()) {
             if (backend != hostBackend) {
                 try (InitTimer st = timer(backend.getTarget().arch.getName(), ".completeInitialization")) {
-                    backend.completeInitialization(jvmciRuntime);
+                    backend.completeInitialization(jvmciRuntime, options);
                 }
             }
         }
@@ -234,6 +234,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     public <T> T getCapability(Class<T> clazz) {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
+        } else if (clazz == OptionValues.class) {
+            return (T) options;
         } else if (clazz == StackIntrospection.class) {
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {

@@ -404,7 +404,7 @@ public class GraphEncoder {
      */
     @SuppressWarnings("try")
     public static boolean verifyEncoding(StructuredGraph originalGraph, EncodedGraph encodedGraph, Architecture architecture) {
-        StructuredGraph decodedGraph = new StructuredGraph.Builder(AllowAssumptions.YES).method(originalGraph.method()).build();
+        StructuredGraph decodedGraph = new StructuredGraph.Builder(originalGraph.getOptions(), AllowAssumptions.YES).method(originalGraph.method()).build();
         GraphDecoder decoder = new GraphDecoder(architecture);
         decoder.decode(decodedGraph, encodedGraph);
 

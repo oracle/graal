@@ -44,6 +44,7 @@ import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.nodes.UnwindNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
 
@@ -55,8 +56,8 @@ import jdk.vm.ci.code.Register;
  */
 public class UnwindExceptionToCallerStub extends SnippetStub {
 
-    public UnwindExceptionToCallerStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super("unwindExceptionToCaller", providers, linkage);
+    public UnwindExceptionToCallerStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("unwindExceptionToCaller", options, providers, linkage);
     }
 
     /**

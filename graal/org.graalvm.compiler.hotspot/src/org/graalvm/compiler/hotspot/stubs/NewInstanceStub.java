@@ -79,6 +79,7 @@ import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.NewObjectSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.Register;
@@ -93,8 +94,8 @@ import jdk.vm.ci.meta.JavaKind;
  */
 public class NewInstanceStub extends SnippetStub {
 
-    public NewInstanceStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super("newInstance", providers, linkage);
+    public NewInstanceStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("newInstance", options, providers, linkage);
     }
 
     @Override

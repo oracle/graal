@@ -58,6 +58,7 @@ import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.NewObjectSnippets;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.Register;
@@ -71,8 +72,8 @@ import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
  */
 public class NewArrayStub extends SnippetStub {
 
-    public NewArrayStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super("newArray", providers, linkage);
+    public NewArrayStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("newArray", options, providers, linkage);
     }
 
     @Override

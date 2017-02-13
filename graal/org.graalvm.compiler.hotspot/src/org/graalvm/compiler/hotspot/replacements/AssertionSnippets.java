@@ -35,6 +35,7 @@ import org.graalvm.compiler.hotspot.nodes.StubStartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
@@ -74,8 +75,8 @@ public class AssertionSnippets implements Snippets {
         private final SnippetInfo assertion = snippet(AssertionSnippets.class, "assertion");
         private final SnippetInfo stubAssertion = snippet(AssertionSnippets.class, "stubAssertion");
 
-        public Templates(HotSpotProviders providers, TargetDescription target) {
-            super(providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers, TargetDescription target) {
+            super(options, providers, providers.getSnippetReflection(), target);
         }
 
         public void lower(AssertionNode assertionNode, LoweringTool tool) {

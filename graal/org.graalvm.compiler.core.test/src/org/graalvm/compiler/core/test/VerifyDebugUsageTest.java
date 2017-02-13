@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -304,7 +306,7 @@ public class VerifyDebugUsageTest {
         for (Method m : c.getDeclaredMethods()) {
             if (!Modifier.isNative(m.getModifiers()) && !Modifier.isAbstract(m.getModifiers())) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
-                StructuredGraph graph = new StructuredGraph.Builder().method(method).build();
+                StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions()).method(method).build();
                 graphBuilderSuite.apply(graph, context);
                 try (DebugConfigScope s = Debug.disableIntercept()) {
                     new VerifyDebugUsage().apply(graph, context);

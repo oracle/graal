@@ -29,6 +29,7 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -43,8 +44,8 @@ public class ConstantStringIndexOfSnippets implements Snippets {
 
         private final SnippetInfo indexOfConstant = snippet(ConstantStringIndexOfSnippets.class, "indexOfConstant");
 
-        public Templates(Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-            super(providers, snippetReflection, target);
+        public Templates(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+            super(options, providers, snippetReflection, target);
         }
 
         public void lower(SnippetLowerableMemoryNode stringIndexOf, LoweringTool tool) {

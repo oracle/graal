@@ -29,6 +29,7 @@ import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.Register;
 
@@ -36,8 +37,8 @@ import jdk.vm.ci.code.Register;
  */
 public class ArrayStoreExceptionStub extends CreateExceptionStub {
 
-    public ArrayStoreExceptionStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super("createArrayStoreException", providers, linkage);
+    public ArrayStoreExceptionStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("createArrayStoreException", options, providers, linkage);
     }
 
     @Override

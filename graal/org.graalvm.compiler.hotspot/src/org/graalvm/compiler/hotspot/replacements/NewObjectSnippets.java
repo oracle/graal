@@ -567,8 +567,8 @@ public class NewObjectSnippets implements Snippets {
         private final SnippetInfo verifyHeap = snippet(NewObjectSnippets.class, "verifyHeap");
         private final GraalHotSpotVMConfig config;
 
-        public Templates(HotSpotProviders providers, TargetDescription target, GraalHotSpotVMConfig config) {
-            super(providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers, TargetDescription target, GraalHotSpotVMConfig config) {
+            super(options, providers, providers.getSnippetReflection(), target);
             this.config = config;
         }
 
@@ -582,8 +582,8 @@ public class NewObjectSnippets implements Snippets {
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), graph);
             int size = instanceSize(type);
 
-            OptionValues options = graph.getOptions();
-            SnippetInfo snippet = GeneratePIC.getValue(options) ? allocateInstancePIC : allocateInstance;
+            OptionValues localOptions = graph.getOptions();
+            SnippetInfo snippet = GeneratePIC.getValue(localOptions) ? allocateInstancePIC : allocateInstance;
             Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.addConst("size", size);
             args.add("hub", hub);
@@ -591,8 +591,8 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("fillContents", newInstanceNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("constantSize", true);
-            args.addConst("typeContext", ProfileAllocations.getValue(options) ? type.toJavaName(false) : "");
-            args.addConst("options", options);
+            args.addConst("typeContext", ProfileAllocations.getValue(localOptions) ? type.toJavaName(false) : "");
+            args.addConst("options", localOptions);
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, args);
@@ -611,9 +611,9 @@ public class NewObjectSnippets implements Snippets {
             final int headerSize = getArrayBaseOffset(elementKind);
             int log2ElementSize = CodeUtil.log2(HotSpotJVMCIRuntimeProvider.getArrayIndexScale(elementKind));
 
-            OptionValues options = graph.getOptions();
+            OptionValues localOptions = graph.getOptions();
             SnippetInfo snippet;
-            if (GeneratePIC.getValue(options)) {
+            if (GeneratePIC.getValue(localOptions)) {
                 if (elementType.isPrimitive()) {
                     snippet = allocatePrimitiveArrayPIC;
                 } else {
@@ -634,8 +634,8 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("fillContents", newArrayNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("maybeUnroll", length.isConstant());
-            args.addConst("typeContext", ProfileAllocations.getValue(options) ? arrayType.toJavaName(false) : "");
-            args.addConst("options", options);
+            args.addConst("typeContext", ProfileAllocations.getValue(localOptions) ? arrayType.toJavaName(false) : "");
+            args.addConst("options", localOptions);
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
@@ -643,14 +643,14 @@ public class NewObjectSnippets implements Snippets {
 
         public void lower(DynamicNewInstanceNode newInstanceNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             Arguments args = new Arguments(allocateInstanceDynamic, newInstanceNode.graph().getGuardsStage(), tool.getLoweringStage());
-            OptionValues options = newInstanceNode.getOptions();
+            OptionValues localOptions = newInstanceNode.getOptions();
             args.add("type", newInstanceNode.getInstanceType());
             ValueNode classClass = newInstanceNode.getClassClass();
             assert classClass != null;
             args.add("classClass", classClass);
             args.addConst("fillContents", newInstanceNode.fillContents());
             args.addConst("threadRegister", registers.getThreadRegister());
-            args.addConst("options", options);
+            args.addConst("options", localOptions);
 
             SnippetTemplate template = template(args);
             template.instantiate(providers.getMetaAccess(), newInstanceNode, DEFAULT_REPLACER, args);
@@ -658,7 +658,7 @@ public class NewObjectSnippets implements Snippets {
 
         public void lower(DynamicNewArrayNode newArrayNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = newArrayNode.graph();
-            OptionValues options = graph.getOptions();
+            OptionValues localOptions = graph.getOptions();
             Arguments args = new Arguments(allocateArrayDynamic, newArrayNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("elementType", newArrayNode.getElementType());
             ValueNode voidClass = newArrayNode.getVoidClass();
@@ -679,7 +679,7 @@ public class NewObjectSnippets implements Snippets {
                 args.addConst("knownLayoutHelper", 0);
             }
             args.add("prototypeMarkWord", lookupArrayClass(tool, JavaKind.Object).prototypeMarkWord());
-            args.addConst("options", options);
+            args.addConst("options", localOptions);
             SnippetTemplate template = template(args);
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
         }
@@ -690,7 +690,7 @@ public class NewObjectSnippets implements Snippets {
 
         public void lower(NewMultiArrayNode newmultiarrayNode, LoweringTool tool) {
             StructuredGraph graph = newmultiarrayNode.graph();
-            OptionValues options = graph.getOptions();
+            OptionValues localOptions = graph.getOptions();
             int rank = newmultiarrayNode.dimensionCount();
             ValueNode[] dims = new ValueNode[rank];
             for (int i = 0; i < newmultiarrayNode.dimensionCount(); i++) {
@@ -699,7 +699,7 @@ public class NewObjectSnippets implements Snippets {
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newmultiarrayNode.type();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), graph);
 
-            SnippetInfo snippet = GeneratePIC.getValue(options) ? newmultiarrayPIC : newmultiarray;
+            SnippetInfo snippet = GeneratePIC.getValue(localOptions) ? newmultiarrayPIC : newmultiarray;
             Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
             args.addConst("rank", rank);

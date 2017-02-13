@@ -42,6 +42,7 @@ import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -65,7 +66,7 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
     }
 
     @Override
-    public void initialize(HotSpotProviders providers) {
+    public void initialize(HotSpotProviders providers, OptionValues options) {
         GraalHotSpotVMConfig config = runtime.getVMConfig();
         TargetDescription target = providers.getCodeCache().getTarget();
         PlatformKind word = target.arch.getWordKind();
@@ -87,7 +88,7 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
             registerForeignCall(UPDATE_BYTES_CRC32, config.updateBytesCRC32Stub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, NOT_REEXECUTABLE, any());
         }
 
-        super.initialize(providers);
+        super.initialize(providers, options);
     }
 
     @Override

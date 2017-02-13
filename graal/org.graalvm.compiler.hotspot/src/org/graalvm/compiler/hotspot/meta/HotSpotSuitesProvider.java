@@ -142,7 +142,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
 
                 SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(),
                                 context.getStampProvider(), !ImmutableCode.getValue(graph.getOptions()), runtime.getTarget().arch);
-                StructuredGraph targetGraph = new StructuredGraph.Builder(AllowAssumptions.YES).method(graph.method()).options(graph.getOptions()).build();
+                StructuredGraph targetGraph = new StructuredGraph.Builder(graph.getOptions(), AllowAssumptions.YES).method(graph.method()).build();
                 graphDecoder.decode(targetGraph, encodedGraph);
             }
 

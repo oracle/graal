@@ -79,6 +79,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.Log;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
@@ -388,8 +389,8 @@ public class WriteBarrierSnippets implements Snippets {
 
         private final CompressEncoding oopEncoding;
 
-        public Templates(HotSpotProviders providers, TargetDescription target, CompressEncoding oopEncoding) {
-            super(providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers, TargetDescription target, CompressEncoding oopEncoding) {
+            super(options, providers, providers.getSnippetReflection(), target);
             this.oopEncoding = oopEncoding;
         }
 

@@ -49,6 +49,7 @@ import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.Register;
@@ -63,8 +64,8 @@ import jdk.vm.ci.code.Register;
  */
 public class ExceptionHandlerStub extends SnippetStub {
 
-    public ExceptionHandlerStub(HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super("exceptionHandler", providers, linkage);
+    public ExceptionHandlerStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("exceptionHandler", options, providers, linkage);
     }
 
     /**

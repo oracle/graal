@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
 import org.graalvm.compiler.word.Word;
@@ -98,9 +99,10 @@ public class ForeignCallStub extends Stub {
      *            be re-executed.
      * @param killedLocations the memory locations killed by the stub call
      */
-    public ForeignCallStub(HotSpotJVMCIRuntimeProvider runtime, HotSpotProviders providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition,
+    public ForeignCallStub(OptionValues options, HotSpotJVMCIRuntimeProvider runtime, HotSpotProviders providers, long address, ForeignCallDescriptor descriptor, boolean prependThread,
+                    Transition transition,
                     boolean reexecutable, LocationIdentity... killedLocations) {
-        super(providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), descriptor, 0L,
+        super(options, providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), descriptor, 0L,
                         PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
         this.jvmciRuntime = runtime;
         this.prependThread = prependThread;
@@ -223,7 +225,7 @@ public class ForeignCallStub extends Stub {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
         boolean isObjectResult = !LIRKind.isValue(linkage.getOutgoingCallingConvention().getReturn());
 
-        StructuredGraph graph = new StructuredGraph.Builder().name(toString()).compilationId(compilationId).build();
+        StructuredGraph graph = new StructuredGraph.Builder(options).name(toString()).compilationId(compilationId).build();
         graph.disableUnsafeAccessTracking();
 
         GraphKit kit = new GraphKit(graph, providers, wordTypes, providers.getGraphBuilderPlugins());

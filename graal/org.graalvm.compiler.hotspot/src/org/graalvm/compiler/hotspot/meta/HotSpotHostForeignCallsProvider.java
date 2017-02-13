@@ -120,6 +120,7 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
 import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.util.EconomicMap;
@@ -241,7 +242,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
     }
 
-    public void initialize(HotSpotProviders providers) {
+    public void initialize(HotSpotProviders providers, OptionValues options) {
         GraalHotSpotVMConfig c = runtime.getVMConfig();
         registerForeignCall(DEOPTIMIZATION_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
         registerForeignCall(UNCOMMON_TRAP_HANDLER, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
@@ -275,47 +276,47 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall, DESTROYS_REGISTERS, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
         registerForeignCall(ASSERTION_VM_MESSAGE_C, c.vmMessageAddress, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
 
-        link(new NewInstanceStub(providers, registerStubCall(NEW_INSTANCE, REEXECUTABLE, SAFEPOINT, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION)));
-        link(new NewArrayStub(providers, registerStubCall(NEW_ARRAY, REEXECUTABLE, SAFEPOINT, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION)));
-        link(new ExceptionHandlerStub(providers, foreignCalls.get(EXCEPTION_HANDLER)));
-        link(new UnwindExceptionToCallerStub(providers, registerStubCall(UNWIND_EXCEPTION_TO_CALLER, NOT_REEXECUTABLE, SAFEPOINT, any())));
-        link(new VerifyOopStub(providers, registerStubCall(VERIFY_OOP, REEXECUTABLE, LEAF_NOFP, NO_LOCATIONS)));
-        link(new ArrayStoreExceptionStub(providers, registerStubCall(CREATE_ARRAY_STORE_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
-        link(new ClassCastExceptionStub(providers, registerStubCall(CREATE_CLASS_CAST_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
-        link(new NullPointerExceptionStub(providers, registerStubCall(CREATE_NULL_POINTER_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
-        link(new OutOfBoundsExceptionStub(providers, registerStubCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
+        link(new NewInstanceStub(options, providers, registerStubCall(NEW_INSTANCE, REEXECUTABLE, SAFEPOINT, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION)));
+        link(new NewArrayStub(options, providers, registerStubCall(NEW_ARRAY, REEXECUTABLE, SAFEPOINT, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION)));
+        link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER)));
+        link(new UnwindExceptionToCallerStub(options, providers, registerStubCall(UNWIND_EXCEPTION_TO_CALLER, NOT_REEXECUTABLE, SAFEPOINT, any())));
+        link(new VerifyOopStub(options, providers, registerStubCall(VERIFY_OOP, REEXECUTABLE, LEAF_NOFP, NO_LOCATIONS)));
+        link(new ArrayStoreExceptionStub(options, providers, registerStubCall(CREATE_ARRAY_STORE_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
+        link(new ClassCastExceptionStub(options, providers, registerStubCall(CREATE_CLASS_CAST_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
+        link(new NullPointerExceptionStub(options, providers, registerStubCall(CREATE_NULL_POINTER_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
+        link(new OutOfBoundsExceptionStub(options, providers, registerStubCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, REEXECUTABLE, SAFEPOINT, any())));
 
-        linkForeignCall(providers, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, MARK_WORD_LOCATION);
-        linkForeignCall(providers, REGISTER_FINALIZER, c.registerFinalizerAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());
-        linkForeignCall(providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());
-        linkForeignCall(providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, STACK_INSPECTABLE_LEAF, NOT_REEXECUTABLE, any());
-        linkForeignCall(providers, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
-        linkForeignCall(providers, DYNAMIC_NEW_ARRAY, c.dynamicNewArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION);
-        linkForeignCall(providers, DYNAMIC_NEW_INSTANCE, c.dynamicNewInstanceAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION);
-        linkForeignCall(providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(providers, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(providers, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD, LEAF_NOFP, NOT_REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(providers, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(options, providers, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, MARK_WORD_LOCATION);
+        linkForeignCall(options, providers, REGISTER_FINALIZER, c.registerFinalizerAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());
+        linkForeignCall(options, providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());
+        linkForeignCall(options, providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, STACK_INSPECTABLE_LEAF, NOT_REEXECUTABLE, any());
+        linkForeignCall(options, providers, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        linkForeignCall(options, providers, DYNAMIC_NEW_ARRAY, c.dynamicNewArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION);
+        linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE, c.dynamicNewInstanceAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION);
+        linkForeignCall(options, providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(options, providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(options, providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(options, providers, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(options, providers, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD, LEAF_NOFP, NOT_REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(options, providers, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(options, providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(options, providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
 
         if (GeneratePIC.getValue(GLOBAL)) {
             registerForeignCall(WRONG_METHOD_HANDLER, c.handleWrongMethodStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS);
             CompilerRuntimeHotSpotVMConfig cr = new CompilerRuntimeHotSpotVMConfig(HotSpotJVMCIRuntime.runtime().getConfigStore());
-            linkForeignCall(providers, RESOLVE_STRING_BY_SYMBOL, cr.resolveStringBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
-            linkForeignCall(providers, RESOLVE_KLASS_BY_SYMBOL, cr.resolveKlassBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
-            linkForeignCall(providers, RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS, cr.resolveMethodBySymbolAndLoadCounters, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
-            linkForeignCall(providers, INITIALIZE_KLASS_BY_SYMBOL, cr.initializeKlassBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
-            linkForeignCall(providers, INVOCATION_EVENT, cr.invocationEvent, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
-            linkForeignCall(providers, BACKEDGE_EVENT, cr.backedgeEvent, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
+            linkForeignCall(options, providers, RESOLVE_STRING_BY_SYMBOL, cr.resolveStringBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, INIT_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+            linkForeignCall(options, providers, RESOLVE_KLASS_BY_SYMBOL, cr.resolveKlassBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
+            linkForeignCall(options, providers, RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS, cr.resolveMethodBySymbolAndLoadCounters, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
+            linkForeignCall(options, providers, INITIALIZE_KLASS_BY_SYMBOL, cr.initializeKlassBySymbol, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
+            linkForeignCall(options, providers, INVOCATION_EVENT, cr.invocationEvent, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
+            linkForeignCall(options, providers, BACKEDGE_EVENT, cr.backedgeEvent, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, NO_LOCATIONS);
         }
 
         // Cannot be a leaf as VM acquires Thread_lock which requires thread_in_vm state
-        linkForeignCall(providers, THREAD_IS_INTERRUPTED, c.threadIsInterruptedAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());
+        linkForeignCall(options, providers, THREAD_IS_INTERRUPTED, c.threadIsInterruptedAddress, PREPEND_THREAD, SAFEPOINT, NOT_REEXECUTABLE, any());
 
-        linkForeignCall(providers, TEST_DEOPTIMIZE_CALL_INT, c.testDeoptimizeCallInt, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
+        linkForeignCall(options, providers, TEST_DEOPTIMIZE_CALL_INT, c.testDeoptimizeCallInt, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, any());
 
         registerArrayCopy(JavaKind.Byte, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);
         registerArrayCopy(JavaKind.Boolean, c.jbyteArraycopy, c.jbyteAlignedArraycopy, c.jbyteDisjointArraycopy, c.jbyteAlignedDisjointArraycopy);

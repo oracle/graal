@@ -23,6 +23,7 @@
 package org.graalvm.compiler.core.test.tutorial;
 
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
+import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions;
 import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.lang.reflect.Method;
@@ -92,7 +93,7 @@ public class InvokeGraal {
              * that we want the compilation to make optimistic assumptions about runtime state such
              * as the loaded class hierarchy.
              */
-            StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).method(method).compilationId(compilationId).build();
+            StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), AllowAssumptions.YES).method(method).compilationId(compilationId).build();
 
             /*
              * The phases used to build the graph. Usually this is just the GraphBuilderPhase. If

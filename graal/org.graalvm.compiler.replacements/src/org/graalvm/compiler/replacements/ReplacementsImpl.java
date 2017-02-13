@@ -27,7 +27,6 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsin
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineIntrinsicsDuringParsing;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,6 +66,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
@@ -74,8 +74,8 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
+import org.graalvm.util.Equivalence;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -85,6 +85,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
+    public final OptionValues options;
     public final Providers providers;
     public final SnippetReflectionProvider snippetReflection;
     public final TargetDescription target;
@@ -167,7 +168,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     // it is stable across VM executions (in support of replay compilation).
     private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
+    public ReplacementsImpl(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
+        this.options = options;
         this.providers = providers.copyWith(this);
         this.snippetReflection = snippetReflection;
         this.target = target;
@@ -189,12 +191,12 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
 
-        StructuredGraph graph = UseSnippetGraphCache.getValue(GLOBAL) ? graphs.get(method) : null;
+        StructuredGraph graph = UseSnippetGraphCache.getValue(options) ? graphs.get(method) : null;
         if (graph == null) {
             try (DebugCloseable a = SnippetPreparationTime.start()) {
                 StructuredGraph newGraph = makeGraph(method, args, recursiveEntry);
                 Debug.counter("SnippetNodeCount[%#s]", method).add(newGraph.getNodeCount());
-                if (!UseSnippetGraphCache.getValue(GLOBAL) || args != null) {
+                if (!UseSnippetGraphCache.getValue(options) || args != null) {
                     return newGraph;
                 }
                 graphs.putIfAbsent(method, newGraph);
@@ -253,7 +255,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 ConstantReflectionProvider constantReflection = providers.getConstantReflection();
                 ConstantFieldProvider constantFieldProvider = providers.getConstantFieldProvider();
                 StampProvider stampProvider = providers.getStampProvider();
-                result = new IntrinsicGraphBuilder(metaAccess, constantReflection, constantFieldProvider, stampProvider, code, invokeBci).buildGraph(plugin);
+                result = new IntrinsicGraphBuilder(options, metaAccess, constantReflection, constantFieldProvider, stampProvider, code, invokeBci).buildGraph(plugin);
             }
         } else {
             result = null;
@@ -327,7 +329,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
          * Does final processing of a snippet graph.
          */
         protected void finalizeGraph(StructuredGraph graph) {
-            if (!GraalOptions.SnippetCounters.getValue(GLOBAL) || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
+            if (!GraalOptions.SnippetCounters.getValue(replacements.options) || graph.getNodes().filter(SnippetCounterNode.class).isEmpty()) {
                 int sideEffectCount = 0;
                 assert (sideEffectCount = graph.getNodes().filter(e -> hasSideEffect(e)).count()) >= 0;
                 new ConvertDeoptimizeToGuardPhase().apply(graph, null);
@@ -379,7 +381,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
 
-            final StructuredGraph graph = new StructuredGraph.Builder().method(methodToParse).build();
+            final StructuredGraph graph = new StructuredGraph.Builder(replacements.options).method(methodToParse).build();
 
             // They are not user code so they do not participate in unsafe access tracking
             graph.disableUnsafeAccessTracking();

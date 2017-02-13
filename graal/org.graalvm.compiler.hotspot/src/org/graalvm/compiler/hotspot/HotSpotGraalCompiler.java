@@ -149,14 +149,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
-        StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers, compilationId);
+        StructuredGraph graph = method.isNative() || isOSR ? null : getIntrinsicGraph(method, providers, compilationId, options);
 
         if (graph == null) {
             SpeculationLog speculationLog = method.getSpeculationLog();
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
-            graph = new StructuredGraph.Builder(AllowAssumptions.ifTrue(OptAssumptions.getValue(options))).method(method).entryBCI(entryBCI).options(options).speculationLog(
+            graph = new StructuredGraph.Builder(options, AllowAssumptions.ifTrue(OptAssumptions.getValue(options))).method(method).entryBCI(entryBCI).speculationLog(
                             speculationLog).useProfilingInfo(useProfilingInfo).compilationId(compilationId).build();
         }
 
@@ -192,15 +192,16 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
      *
      * @param method
      * @param compilationId
+     * @param options
      * @return an intrinsic graph that can be compiled and installed for {@code method} or null
      */
     @SuppressWarnings("try")
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, HotSpotProviders providers, CompilationIdentifier compilationId) {
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, HotSpotProviders providers, CompilationIdentifier compilationId, OptionValues options) {
         Replacements replacements = providers.getReplacements();
         ResolvedJavaMethod substMethod = replacements.getSubstitutionMethod(method);
         if (substMethod != null) {
             assert !substMethod.equals(method);
-            StructuredGraph graph = new StructuredGraph.Builder(AllowAssumptions.YES).method(substMethod).compilationId(compilationId).build();
+            StructuredGraph graph = new StructuredGraph.Builder(options, AllowAssumptions.YES).method(substMethod).compilationId(compilationId).build();
             try (Debug.Scope scope = Debug.scope("GetIntrinsicGraph", graph)) {
                 Plugins plugins = new Plugins(providers.getGraphBuilderPlugins());
                 GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);

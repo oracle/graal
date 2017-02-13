@@ -52,7 +52,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
 
     private void longAddChain(boolean reverse) {
         HighTierContext context = getDefaultHighTierContext();
-        StructuredGraph graph = new StructuredGraph.Builder().build();
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions()).build();
         ValueNode constant = graph.unique(ConstantNode.forPrimitive(JavaConstant.INT_1));
         ValueNode value = null;
         if (reverse) {

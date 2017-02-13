@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.truffle.hotspot.nfi;
 
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -49,6 +48,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -68,6 +68,7 @@ import jdk.vm.ci.meta.TriState;
  */
 public class NativeCallStubGraphBuilder {
 
+    private final OptionValues options;
     private final HotSpotProviders providers;
     private final Backend backend;
     private final RawNativeCallNodeFactory factory;
@@ -97,7 +98,8 @@ public class NativeCallStubGraphBuilder {
         }
     }
 
-    NativeCallStubGraphBuilder(HotSpotProviders providers, Backend backend, RawNativeCallNodeFactory factory) {
+    NativeCallStubGraphBuilder(OptionValues options, HotSpotProviders providers, Backend backend, RawNativeCallNodeFactory factory) {
+        this.options = options;
         this.providers = providers;
         this.backend = backend;
         this.factory = factory;
@@ -122,10 +124,10 @@ public class NativeCallStubGraphBuilder {
         PhaseSuite<HighTierContext> graphBuilder = new PhaseSuite<>();
         graphBuilder.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins)));
 
-        Suites suites = providers.getSuites().getDefaultSuites(GLOBAL);
-        LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites(GLOBAL);
+        Suites suites = providers.getSuites().getDefaultSuites(options);
+        LIRSuites lirSuites = providers.getSuites().getDefaultLIRSuites(options);
 
-        StructuredGraph g = new StructuredGraph.Builder().method(callStubMethod).compilationId(backend.getCompilationIdentifier(callStubMethod)).build();
+        StructuredGraph g = new StructuredGraph.Builder(options).method(callStubMethod).compilationId(backend.getCompilationIdentifier(callStubMethod)).build();
         CompilationResult compResult = GraalCompiler.compileGraph(g, callStubMethod, providers, backend, graphBuilder, OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites,
                         lirSuites, new CompilationResult(), CompilationResultBuilderFactory.Default);
 

@@ -199,25 +199,25 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     @Override
-    public void initialize(HotSpotProviders providers, GraalHotSpotVMConfig config) {
-        super.initialize(providers, providers.getSnippetReflection());
+    public void initialize(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+        super.initialize(options, providers, providers.getSnippetReflection());
 
         assert target == providers.getCodeCache().getTarget();
-        instanceofSnippets = new InstanceOfSnippets.Templates(providers, target);
-        newObjectSnippets = new NewObjectSnippets.Templates(providers, target, config);
-        monitorSnippets = new MonitorSnippets.Templates(providers, target, config.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, target, config.useCompressedOops ? config.getOopEncoding() : null);
-        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, target);
-        unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
-        assertionSnippets = new AssertionSnippets.Templates(providers, target);
-        arraycopySnippets = new ArrayCopySnippets.Templates(providers, target);
-        stringToBytesSnippets = new StringToBytesSnippets.Templates(providers, target);
-        hashCodeSnippets = new HashCodeSnippets.Templates(providers, target);
+        instanceofSnippets = new InstanceOfSnippets.Templates(options, providers, target);
+        newObjectSnippets = new NewObjectSnippets.Templates(options, providers, target, config);
+        monitorSnippets = new MonitorSnippets.Templates(options, providers, target, config.useFastLocking);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(options, providers, target, config.useCompressedOops ? config.getOopEncoding() : null);
+        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, providers, target);
+        unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(options, providers, target);
+        assertionSnippets = new AssertionSnippets.Templates(options, providers, target);
+        arraycopySnippets = new ArrayCopySnippets.Templates(options, providers, target);
+        stringToBytesSnippets = new StringToBytesSnippets.Templates(options, providers, target);
+        hashCodeSnippets = new HashCodeSnippets.Templates(options, providers, target);
         if (GeneratePIC.getValue(GLOBAL)) {
-            resolveConstantSnippets = new ResolveConstantSnippets.Templates(providers, target);
-            profileSnippets = new ProfileSnippets.Templates(providers, target);
+            resolveConstantSnippets = new ResolveConstantSnippets.Templates(options, providers, target);
+            profileSnippets = new ProfileSnippets.Templates(options, providers, target);
         }
-        providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
+        providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(options, providers, target));
     }
 
     @Override
