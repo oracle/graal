@@ -158,9 +158,9 @@ public abstract class RootNode extends Node {
      * before it is executed for the first time to ensure it is able to create new uninitialized
      * copies when needed. By returning <code>true</code> and therefore supporting uninitialized
      * copies an optimizing runtime does not need to keep a reference to an uninitialized copy on
-     * its own and might therefore be able to safe memory.
+     * its own and might therefore be able to save memory.
      *
-     * @return <code>true</code> if calls {@link #cloneUninitialized() uninitialized copies} are
+     * @return <code>true</code> if calls to {@link #cloneUninitialized() uninitialized copies} are
      *         supported.
      * @see #cloneUninitialized()
      * @since 0.24
@@ -177,7 +177,7 @@ public abstract class RootNode extends Node {
      * runtime might need to copy the root node before it is executed for the first time to ensure
      * it is able to create new uninitialized copies when needed. By supporting uninitialized copies
      * an optimizing runtime does not need to keep a reference to an uninitialized copy on its own
-     * and might therefore be able to safe memory.
+     * and might therefore be able to save memory.
      *
      * <p>
      * Two common strategies to implement {@link #cloneUninitialized()} are:
