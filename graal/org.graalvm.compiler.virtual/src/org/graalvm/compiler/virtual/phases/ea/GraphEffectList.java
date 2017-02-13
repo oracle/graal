@@ -31,8 +31,10 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.debug.WeakCounterNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -219,6 +221,12 @@ public final class GraphEffectList extends EffectList {
             assert insertBefore != null;
             if (replacementNode instanceof FixedWithNextNode && ((FixedWithNextNode) replacementNode).next() == null) {
                 graph.addBeforeFixed(insertBefore, (FixedWithNextNode) replacementNode);
+            }
+            if (replacementNode instanceof ValuePhiNode) {
+                ValuePhiNode valuePhiNode = (ValuePhiNode) replacementNode;
+                if (!node.stamp().equals(valuePhiNode.stamp())) {
+                    replacementNode = graph.unique(new PiNode(replacementNode, node.stamp()));
+                }
             }
             node.replaceAtUsages(replacementNode);
             if (node instanceof FixedWithNextNode) {
