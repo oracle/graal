@@ -22,11 +22,14 @@
  */
 package org.graalvm.compiler.nodes;
 
+import org.graalvm.compiler.common.CancellationBailoutException;
+
 /**
- * Cancelable describes an interface for operations that can be canceled externally. Implementing
- * the interface allows operations to be monitored by others that need to know if the operation has
- * been canceled or not.
+ * An interface for supporting co-operative cancellation of tasks. An external entity gives a
+ * Cancellable to a task and the task polls the Cancellable at regular intervals. If
+ * {@link #isCancelled} returns true, then the task will promptly terminate by means of throwing a
+ * {@link CancellationBailoutException}.
  */
-public interface Cancelable {
-    boolean isCanceled();
+public interface Cancellable {
+    boolean isCancelled();
 }

@@ -211,6 +211,8 @@ public class GraalCompiler {
             Debug.dump(Debug.BASIC_LOG_LEVEL, graph.getLastSchedule(), "Final HIR schedule");
         } catch (Throwable e) {
             throw Debug.handle(e);
+        } finally {
+            graph.checkCancellation();
         }
     }
 
@@ -236,6 +238,8 @@ public class GraalCompiler {
             }
         } catch (Throwable e) {
             throw Debug.handle(e);
+        } finally {
+            graph.checkCancellation();
         }
     }
 
@@ -252,6 +256,8 @@ public class GraalCompiler {
             }
             /* If the re-execution fails we convert the exception into a "hard" failure */
             throw new GraalError(e);
+        } finally {
+            graph.checkCancellation();
         }
     }
 
@@ -296,6 +302,8 @@ public class GraalCompiler {
             }
         } catch (Throwable e) {
             throw Debug.handle(e);
+        } finally {
+            graph.checkCancellation();
         }
     }
 

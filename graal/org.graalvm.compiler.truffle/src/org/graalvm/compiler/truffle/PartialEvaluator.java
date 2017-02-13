@@ -175,7 +175,7 @@ public class PartialEvaluator {
 
     @SuppressWarnings("try")
     public StructuredGraph createGraph(final OptimizedCallTarget callTarget, TruffleInlining inliningDecision, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId,
-                    CancelableCompileTask task) {
+                    CancellableCompileTask task) {
         try (Scope c = Debug.scope("TruffleTree")) {
             Debug.dump(Debug.BASIC_LOG_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget), "%s", callTarget);
         } catch (Throwable e) {
@@ -184,7 +184,7 @@ public class PartialEvaluator {
 
         String name = callTarget.toString();
         final StructuredGraph graph = new StructuredGraph.Builder(allowAssumptions).name(name).method(callRootMethod).speculationLog(callTarget.getSpeculationLog()).compilationId(
-                        compilationId).options(TruffleCompilerOptions.getOptions()).cancelable(task).build();
+                        compilationId).options(TruffleCompilerOptions.getOptions()).cancellable(task).build();
         assert graph != null : "no graph for root method";
 
         try (Scope s = Debug.scope("CreateGraph", graph); Indent indent = Debug.logAndIndent("createGraph %s", graph)) {
@@ -194,7 +194,7 @@ public class PartialEvaluator {
 
             fastPartialEvaluation(callTarget, inliningDecision, graph, baseContext, tierContext);
 
-            if (Thread.currentThread().isInterrupted()) {
+            if (task != null && task.isCancelled()) {
                 return null;
             }
 

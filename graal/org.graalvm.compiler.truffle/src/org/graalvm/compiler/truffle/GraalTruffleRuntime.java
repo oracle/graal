@@ -485,7 +485,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
-    protected void doCompile(OptimizedCallTarget optimizedCallTarget, CancelableCompileTask task) {
+    protected void doCompile(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
         int repeats = TruffleCompilerOptions.getValue(TruffleCompilationRepeats);
         if (repeats <= 1) {
             /* Normal compilation. */
@@ -501,7 +501,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     @SuppressWarnings("try")
-    private void doCompile0(OptimizedCallTarget optimizedCallTarget, CancelableCompileTask task) {
+    private void doCompile0(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
         try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
             getTruffleCompiler().compileMethod(optimizedCallTarget, this, task);
         } catch (Throwable e) {
@@ -523,23 +523,25 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected abstract BackgroundCompileQueue getCompileQueue();
 
     @SuppressWarnings("try")
-    public CancelableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
+    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
         BackgroundCompileQueue l = getCompileQueue();
         final WeakReference<OptimizedCallTarget> weakCallTarget = new WeakReference<>(optimizedCallTarget);
         final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
-        CancelableCompileTask cancelable = new CancelableCompileTask();
-        cancelable.setFuture(l.compileQueue.submit(new Runnable() {
+        CancellableCompileTask cancellable = new CancellableCompileTask();
+        cancellable.setFuture(l.compileQueue.submit(new Runnable() {
             @Override
             public void run() {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
                 if (callTarget != null) {
                     try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                        doCompile(callTarget, cancelable);
+                        doCompile(callTarget, cancellable);
                     }
                 }
             }
         }));
-        return cancelable;
+        // task and future must never diverge from each other
+        assert cancellable.future != null;
+        return cancellable;
     }
 
     public void finishCompilation(OptimizedCallTarget optimizedCallTarget, Future<?> future, boolean mayBeAsynchronous) {
@@ -552,21 +554,37 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
                 if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown) && !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
                     throw new RuntimeException(e.getCause());
                 } else {
-                    // silently ignored
+                    // silenlty ignored
                 }
-            } catch (InterruptedException | CancellationException e) {
-                // silently ignored
+            } catch (InterruptedException e) {
+                /*
+                 * Compilation cancellation happens cooperatively. A compiler thread (which is a VM
+                 * thread) must never throw an interrupted exception.
+                 */
+                GraalError.shouldNotReachHere(e);
+            } catch (CancellationException e) {
+                /*
+                 * Silently ignored as future might have undergone a "soft" cancel(false).
+                 */
             }
         }
     }
 
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        CancelableCompileTask task = optimizedCallTarget.getCompilationTask();
+        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
         if (task != null) {
             Future<?> compilationFuture = task.getFuture();
             if (compilationFuture != null && isCompiling(optimizedCallTarget)) {
                 optimizedCallTarget.resetCompilationTask();
-                boolean result = compilationFuture.cancel(true);
+                /*
+                 * Cancellation of an installed task: There are two dimensions here: First we set
+                 * the cancel bit in the task, this allows the compiler to, cooperatively, stop
+                 * compilation and throw a non permanent bailout and then we cancel the future which
+                 * might have already stopped at that point in time.
+                 */
+                task.cancel();
+                // Either the task finished already, or it was cancelled.
+                boolean result = !task.isRunning();
                 if (result) {
                     optimizedCallTarget.resetCompilationTask();
                     getCompilationNotify().notifyCompilationDequeued(optimizedCallTarget, source, reason);
@@ -578,7 +596,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
-        CancelableCompileTask task = optimizedCallTarget.getCompilationTask();
+        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
         if (task != null) {
             Future<?> compilationFuture = task.getFuture();
             if (compilationFuture != null && isCompiling(optimizedCallTarget)) {
@@ -607,7 +625,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
-        CancelableCompileTask task = optimizedCallTarget.getCompilationTask();
+        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
         if (task != null) {
             Future<?> compilationFuture = task.getFuture();
             if (compilationFuture != null) {

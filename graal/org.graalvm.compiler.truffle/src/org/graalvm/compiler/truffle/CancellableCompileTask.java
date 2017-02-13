@@ -24,13 +24,13 @@ package org.graalvm.compiler.truffle;
 
 import java.util.concurrent.Future;
 
-import org.graalvm.compiler.nodes.Cancelable;
+import org.graalvm.compiler.nodes.Cancellable;
 
-public class CancelableCompileTask implements Cancelable {
+public class CancellableCompileTask implements Cancellable {
     Future<?> future = null;
-    boolean canceled = false;
+    boolean cancelled = false;
 
-    // This cannot be done in the constructor because the CancelableCompileTask needs to be
+    // This cannot be done in the constructor because the CancellableCompileTask needs to be
     // passed down to the compiler through a Runnable inner class.
     // This means it must be final and initialized before the future can be set.
     public synchronized void setFuture(Future<?> future) {
@@ -46,14 +46,27 @@ public class CancelableCompileTask implements Cancelable {
     }
 
     @Override
-    public synchronized boolean isCanceled() {
-        return canceled;
+    public synchronized boolean isCancelled() {
+        assert future != null;
+        assert !cancelled || future.isCancelled();
+        return cancelled;
     }
 
     public synchronized void cancel() {
-        canceled = true;
-        if (future != null) {
-            future.cancel(false);
+        if (!cancelled) {
+            assert future != null;
+            cancelled = true;
+            if (future != null) {
+                assert !future.isCancelled();
+                // should assert future.cancel(false)=true but future might already finished between
+                // the cancelled=true write and the call to cancel(false)
+                future.cancel(false);
+            }
         }
+    }
+
+    public boolean isRunning() {
+        assert future != null;
+        return !(future.isDone() || future.isCancelled());
     }
 }

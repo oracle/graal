@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
@@ -166,7 +167,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
         private boolean useProfilingInfo = true;
         private OptionValues options = OptionValues.GLOBAL;
-        private Cancelable cancelable = null;
+        private Cancellable cancellable = null;
 
         /**
          * Creates a builder for a graph.
@@ -202,8 +203,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public Builder cancelable(Cancelable cancel) {
-            this.cancelable = cancel;
+        public Builder cancellable(Cancellable cancel) {
+            this.cancellable = cancel;
             return this;
         }
 
@@ -223,7 +224,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
 
         public StructuredGraph build() {
-            return new StructuredGraph(name, rootMethod, entryBCI, assumptions, speculationLog, useProfilingInfo, compilationId, options, cancelable);
+            return new StructuredGraph(name, rootMethod, entryBCI, assumptions, speculationLog, useProfilingInfo, compilationId, options, cancellable);
         }
     }
 
@@ -239,7 +240,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private boolean isAfterFloatingReadPhase = false;
     private boolean hasValueProxies = true;
     private final boolean useProfilingInfo;
-    private final Cancelable cancelable;
+    private final Cancellable cancellable;
     /**
      * The assumptions made while constructing and transforming this graph.
      */
@@ -281,7 +282,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                     boolean useProfilingInfo,
                     CompilationIdentifier compilationId,
                     OptionValues options,
-                    Cancelable cancelable) {
+                    Cancellable cancellable) {
         super(name, options);
         this.setStart(add(new StartNode()));
         this.rootMethod = method;
@@ -291,7 +292,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.assumptions = assumptions;
         this.speculationLog = speculationLog;
         this.useProfilingInfo = useProfilingInfo;
-        this.cancelable = cancelable;
+        this.cancellable = cancellable;
     }
 
     public void setLastSchedule(ScheduleResult result) {
@@ -371,8 +372,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return entryBCI;
     }
 
-    public Cancelable getCancelable() {
-        return cancelable;
+    public Cancellable getCancellable() {
+        return cancellable;
+    }
+
+    public void checkCancellation() {
+        if (cancellable != null && cancellable.isCancelled()) {
+            CancellationBailoutException.cancelCompilation();
+        }
     }
 
     public boolean isOSR() {
