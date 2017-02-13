@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -109,7 +110,16 @@ public final class GraphEffectList extends EffectList {
      * @param node The floating node to be added.
      */
     public void addFloatingNode(ValueNode node, @SuppressWarnings("unused") String cause) {
-        add("add floating node", graph -> graph.addWithoutUnique(node));
+        add("add floating node", graph -> {
+            if (node instanceof ProxyNode) {
+                ProxyNode proxyNode = (ProxyNode) node;
+                ValueNode value = proxyNode.value();
+                if (!value.isAlive()) {
+                    graph.addWithoutUnique(value);
+                }
+            }
+            graph.addWithoutUnique(node);
+        });
     }
 
     /**
@@ -225,6 +235,9 @@ public final class GraphEffectList extends EffectList {
             if (replacementNode instanceof ValuePhiNode) {
                 ValuePhiNode valuePhiNode = (ValuePhiNode) replacementNode;
                 if (!node.stamp().equals(valuePhiNode.stamp())) {
+                    // The phi node could have a weaker stamp due to shortcomings of {@link
+                    // ValueNode#inferStamp} in the context of loops. Therefore, we use
+                    // a pi node to make sure the correct type is not lost.
                     replacementNode = graph.unique(new PiNode(replacementNode, node.stamp()));
                 }
             }
