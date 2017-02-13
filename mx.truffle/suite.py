@@ -504,6 +504,37 @@ suite = {
       },
     },
 
+    "com.oracle.truffle.nfi.test" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "TRUFFLE_NFI",
+      ],
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle",
+      "javaProperties" : {
+        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>"
+      },
+    },
+
+    "com.oracle.truffle.nfi.test.native" : {
+      "subDir" : "truffle",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/<lib:nativetest>",
+      ],
+      "buildDependencies" : [
+        "TRUFFLE_NFI_NATIVE",
+      ],
+      "buildEnv" : {
+        "TARGET" : "bin/<lib:nativetest>",
+        "CPPFLAGS" : "-I<path:TRUFFLE_NFI_NATIVE>/include",
+        "OS" : "<os>",
+      },
+    },
+
     "com.oracle.truffle.sl" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
@@ -700,14 +731,27 @@ suite = {
          "com.oracle.truffle.api.object.dsl.test",
          "com.oracle.truffle.object.basic.test",
          "com.oracle.truffle.tools.test",
+         "com.oracle.truffle.nfi.test",
        ],
        "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH"],
        "distDependencies" : [
          "TRUFFLE_API",
+         "TRUFFLE_NFI",
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_DEBUG",
+         "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
       ],
+      "maven" : False,
+     },
+
+     "TRUFFLE_TEST_NATIVE" : {
+       "native" : True,
+       "platformDependent" : True,
+       "output" : "mxbuild/truffle-test-native",
+       "dependencies" : [
+         "com.oracle.truffle.nfi.test.native",
+       ],
       "maven" : False,
      },
   },
