@@ -24,20 +24,23 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import com.oracle.truffle.api.nodes.Node;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.nodes.Node;
+
 /**
  * A {@link NodeChild} element defines an executable child for the enclosing {@link Node}. A
  * {@link Node} contains multiple {@link NodeChildren} specified in linear execution order.
- * 
+ *
  * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
+@Repeatable(NodeChildren.class)
 public @interface NodeChild {
 
     String value() default "";

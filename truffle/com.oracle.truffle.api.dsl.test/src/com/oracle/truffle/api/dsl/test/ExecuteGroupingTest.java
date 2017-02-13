@@ -30,7 +30,6 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.ExecuteGroupingTestFactory.ExecuteGrouping1NodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -87,7 +86,9 @@ public class ExecuteGroupingTest {
 
     }
 
-    @NodeChildren({@NodeChild(type = ExecuteGroupingChild.class), @NodeChild(type = ExecuteGroupingChild.class), @NodeChild(type = ExecuteGroupingChild.class)})
+    @NodeChild(type = ExecuteGroupingChild.class)
+    @NodeChild(type = ExecuteGroupingChild.class)
+    @NodeChild(type = ExecuteGroupingChild.class)
     abstract static class ExecuteGrouping1Node extends Node {
 
         abstract Object execute();

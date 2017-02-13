@@ -32,7 +32,6 @@ import java.lang.reflect.Type;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -46,12 +45,12 @@ class JavaFunctionMessageResolution {
 
         @Child private DoExecuteNode doExecute;
 
-        public Object access(VirtualFrame frame, JavaFunctionObject function, Object[] args) {
+        public Object access(JavaFunctionObject function, Object[] args) {
             if (doExecute == null || args.length != doExecute.numberOfArguments()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 doExecute = insert(new DoExecuteNode(args.length));
             }
-            return doExecute.execute(frame, function.method, function.obj, args);
+            return doExecute.execute(function.method, function.obj, args);
         }
 
         static final class DoExecuteNode extends Node {
@@ -70,11 +69,11 @@ class JavaFunctionMessageResolution {
             }
 
             @ExplodeLoop
-            Object execute(VirtualFrame frame, Method method, Object obj, Object[] args) {
+            Object execute(Method method, Object obj, Object[] args) {
                 Object[] convertedArguments = new Object[toJava.length];
                 TypeAndClass<?>[] types = getTypes(method, toJava.length);
                 for (int i = 0; i < toJava.length; i++) {
-                    convertedArguments[i] = toJava[i].execute(frame, args[i], types[i]);
+                    convertedArguments[i] = toJava[i].execute(args[i], types[i]);
                 }
                 return doInvoke(method, obj, convertedArguments);
             }

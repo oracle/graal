@@ -1,0 +1,179 @@
+/*
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.truffle.api.interop;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+
+abstract class InteropAccessNode extends Node {
+
+    static final int ARG0_RECEIVER = 0;
+
+    protected static final int CACHE_SIZE = 8;
+    protected final Message message;
+    @CompilationFinal private int previousLength = -2;
+
+    protected InteropAccessNode(Message message) {
+        this.message = message;
+    }
+
+    @SuppressWarnings("unused")
+    public final Object execute(TruffleObject receiver) throws InteropException {
+        return executeImpl(receiver, new Object[]{receiver});
+    }
+
+    @SuppressWarnings("unused")
+    public final Object execute(TruffleObject receiver, Object[] arguments) throws InteropException {
+        return executeImpl(receiver, insertArg1(arguments, receiver));
+    }
+
+    @SuppressWarnings("unused")
+    public final Object execute(TruffleObject receiver, Object arg0) throws InteropException {
+        return executeImpl(receiver, new Object[]{receiver, arg0});
+    }
+
+    @SuppressWarnings("unused")
+    public final Object execute(TruffleObject receiver, Object arg0, Object arg1) throws InteropException {
+        return executeImpl(receiver, new Object[]{receiver, arg0, arg1});
+    }
+
+    @SuppressWarnings("unused")
+    public final Object execute(TruffleObject receiver, Object arg0, Object[] arguments) throws InteropException {
+        return executeImpl(receiver, insertArg2(arguments, receiver, arg0));
+    }
+
+    @Deprecated
+    public final Object executeOld(TruffleObject receiver, Object[] arguments) {
+        return executeImpl(receiver, insertArg1(arguments, receiver));
+    }
+
+    private Object[] insertArg1(Object[] arguments, Object arg0) {
+        int length = profileLength(arguments.length);
+        Object[] newArguments = new Object[length + 1];
+        newArguments[0] = arg0;
+        arraycopy(arguments, 0, newArguments, 1, length);
+        return newArguments;
+    }
+
+    private Object[] insertArg2(Object[] arguments, Object arg0, Object arg1) {
+        int length = profileLength(arguments.length);
+        Object[] newArguments = new Object[length + 2];
+        newArguments[0] = arg0;
+        newArguments[1] = arg1;
+        arraycopy(arguments, 0, newArguments, 2, length);
+        return newArguments;
+    }
+
+    private static void arraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
+        for (int i = 0; i < length; i++) {
+            dest[destPos + i] = src[srcPos + i];
+        }
+    }
+
+    private int profileLength(int length) {
+        int returnLength = length;
+        if (previousLength != -1) {
+            if (previousLength == length) {
+                returnLength = previousLength;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (previousLength == -2) {
+                    previousLength = length;
+                } else {
+                    previousLength = -1;
+                }
+            }
+        }
+        return returnLength;
+    }
+
+    protected abstract Object executeImpl(TruffleObject receiver, Object[] arguments);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = "acceptCached(receiver, foreignAccess, canHandleCall)", limit = "CACHE_SIZE")
+    protected static Object doCached(TruffleObject receiver, Object[] arguments,
+                    @Cached("receiver.getForeignAccess()") ForeignAccess foreignAccess,
+                    @Cached("createInlinedCallNode(createMessageTarget(foreignAccess))") DirectCallNode sendMessageCall,
+                    @Cached("createInlinedCallNode(createCanHandleTarget(foreignAccess))") DirectCallNode canHandleCall) {
+        return sendMessageCall.call(arguments);
+    }
+
+    protected static boolean acceptCached(TruffleObject receiver, ForeignAccess foreignAccess, DirectCallNode canHandleCall) {
+        if (canHandleCall != null) {
+            return (boolean) canHandleCall.call(new Object[]{receiver});
+        } else if (foreignAccess != null) {
+            return foreignAccess.canHandle(receiver);
+        } else {
+            return false;
+        }
+    }
+
+    protected static DirectCallNode createInlinedCallNode(CallTarget target) {
+        if (target == null) {
+            return null;
+        }
+        DirectCallNode callNode = DirectCallNode.create(target);
+        callNode.forceInlining();
+        return callNode;
+    }
+
+    @Specialization
+    protected Object doGeneric(TruffleObject receiver, Object[] arguments, @Cached("create()") IndirectCallNode indirectCall) {
+        return indirectCall.call(createGenericMessageTarget(receiver), arguments);
+    }
+
+    @TruffleBoundary
+    protected CallTarget createCanHandleTarget(ForeignAccess access) {
+        return access != null ? access.checkLanguage() : null;
+    }
+
+    @TruffleBoundary
+    protected CallTarget createGenericMessageTarget(TruffleObject receiver) {
+        return createMessageTarget(receiver.getForeignAccess());
+    }
+
+    protected CallTarget createMessageTarget(ForeignAccess fa) {
+        CallTarget ct = null;
+        if (fa != null) {
+            ct = fa.access(message);
+        }
+        if (ct == null) {
+            throw UnsupportedMessageException.raise(message);
+        }
+        return ct;
+    }
+
+    public static InteropAccessNode create(Message message) {
+        return InteropAccessNodeGen.create(message);
+    }
+
+}

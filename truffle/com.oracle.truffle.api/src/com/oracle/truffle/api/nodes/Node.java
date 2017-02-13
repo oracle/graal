@@ -45,7 +45,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.utilities.JSONHelper;
 
 /**
  * Abstract base class for all Truffle nodes.
@@ -55,7 +54,7 @@ import com.oracle.truffle.api.utilities.JSONHelper;
 public abstract class Node implements NodeInterface, Cloneable {
 
     private final NodeClass nodeClass;
-    @CompilationFinal private Node parent;
+    @CompilationFinal private volatile Node parent;
 
     /**
      * Marks array fields that are children of this node.
@@ -85,8 +84,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     protected Node() {
         CompilerAsserts.neverPartOfCompilation("do not create a Node from compiled code");
         this.nodeClass = NodeClass.get(getClass());
-        if (TruffleOptions.TraceASTJSON) {
-            JSONHelper.dumpNewNode(this);
+        if (TruffleOptions.TraceASTJSON && ACCESSOR != null) {
+            ACCESSOR.dumpSupport().dump(this, null, null);
         }
     }
 
@@ -204,7 +203,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         newChild.parent = this;
         if (TruffleOptions.TraceASTJSON) {
-            JSONHelper.dumpNewChild(this, newChild);
+            ACCESSOR.dumpSupport().dump(this, newChild, null);
         }
         NodeUtil.adoptChildrenHelper(newChild);
     }
@@ -324,7 +323,7 @@ public abstract class Node implements NodeInterface, Cloneable {
             NodeUtil.traceRewrite(this, newNode, reason);
         }
         if (TruffleOptions.TraceASTJSON) {
-            JSONHelper.dumpReplaceChild(this, newNode, reason);
+            ACCESSOR.dumpSupport().dump(this, newNode, reason);
         }
     }
 
@@ -579,6 +578,11 @@ public abstract class Node implements NodeInterface, Cloneable {
         @Override
         protected Accessor.Nodes nodes() {
             return new AccessNodes();
+        }
+
+        @Override
+        protected DumpSupport dumpSupport() {
+            return super.dumpSupport();
         }
 
         static final class AccessNodes extends Accessor.Nodes {

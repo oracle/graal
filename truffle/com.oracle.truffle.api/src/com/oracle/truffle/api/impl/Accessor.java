@@ -34,6 +34,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -65,6 +66,10 @@ public abstract class Accessor {
         public abstract void executionStarted(Object vm);
     }
 
+    public abstract static class DumpSupport {
+        public abstract void dump(Node newNode, Node newChild, CharSequence reason);
+    }
+
     public abstract static class EngineSupport {
         public static final int EXECUTION_EVENT = 1;
         public static final int SUSPENDED_EVENT = 2;
@@ -91,6 +96,8 @@ public abstract class Accessor {
 
         @SuppressWarnings("rawtypes")
         public abstract Object findLanguage(Class<? extends TruffleLanguage> language);
+
+        public abstract Object findOriginalObject(Object truffleObject);
     }
 
     public abstract static class LanguageSupport {
@@ -150,6 +157,7 @@ public abstract class Accessor {
     private static Accessor.Nodes NODES;
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
     private static Accessor.DebugSupport DEBUG;
+    private static Accessor.DumpSupport DUMP;
     private static Accessor.Frames FRAMES;
     @SuppressWarnings("unused") private static Accessor SOURCE;
 
@@ -182,6 +190,13 @@ public abstract class Accessor {
 
         conditionallyInitDebugger();
         conditionallyInitEngine();
+        if (TruffleOptions.TraceASTJSON) {
+            try {
+                Class.forName("com.oracle.truffle.api.utilities.JSONHelper", true, Accessor.class.getClassLoader());
+            } catch (ClassNotFoundException ex) {
+                throw new IllegalStateException(ex);
+            }
+        }
     }
 
     @SuppressWarnings("all")
@@ -241,6 +256,8 @@ public abstract class Accessor {
             FRAMES = this.framesSupport();
         } else if (this.getClass().getSimpleName().endsWith("SourceAccessor")) {
             SOURCE = this;
+        } else if (this.getClass().getSimpleName().endsWith("DumpAccessor")) {
+            DUMP = this.dumpSupport();
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();
@@ -259,6 +276,10 @@ public abstract class Accessor {
 
     protected DebugSupport debugSupport() {
         return DEBUG;
+    }
+
+    protected DumpSupport dumpSupport() {
+        return DUMP;
     }
 
     protected EngineSupport engineSupport() {
