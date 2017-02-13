@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -149,11 +149,48 @@ public final class JavaInterop {
      *         was <code>null</code>
      * @since 0.9
      */
-    @SuppressWarnings("unchecked")
     public static <T> T asJavaObject(Class<T> type, TruffleObject foreignObject) {
+        if (foreignObject instanceof JavaObject) {
+            JavaObject javaObject = (JavaObject) foreignObject;
+            if (type.isInstance(javaObject.obj)) {
+                return type.cast(javaObject.obj);
+            }
+        }
+        return convertToJavaObject(type, foreignObject);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    @SuppressWarnings("unchecked")
+    private static <T> T convertToJavaObject(Class<T> type, TruffleObject foreignObject) {
         RootNode root = new TemporaryConvertRoot(TruffleLanguage.class, ToJavaNodeGen.create(), foreignObject, type);
         Object convertedValue = Truffle.getRuntime().createCallTarget(root).call();
         return (T) convertedValue;
+    }
+
+    /**
+     * Checks whether an {@link TruffleObject object} is a Java object of a given type.
+     * <p>
+     * Given some Java object <code>x</code> of type <code>X</code>, the following assertion will
+     * always pass.
+     *
+     * <pre>
+     * X x = ...;
+     * TruffleObject obj = JavaInterop.asTruffleObject(x);
+     * assert JavaInterop.isJavaObject(X.class, obj);
+     * </pre>
+     *
+     * @param type Java class that the object is tested for
+     * @param foreignObject object coming from a {@link TruffleObject Truffle language}
+     * @return {@code true} if the {@code foreignObject} was created from an object of class
+     *         {@code type} using {@link #asTruffleObject(Object)}, {@code false} otherwise
+     * @since 0.24
+     */
+    public static boolean isJavaObject(Class<?> type, TruffleObject foreignObject) {
+        if (foreignObject instanceof JavaObject) {
+            JavaObject javaObject = (JavaObject) foreignObject;
+            return type.isInstance(javaObject.obj);
+        }
+        return false;
     }
 
     /**
