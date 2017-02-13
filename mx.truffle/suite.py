@@ -78,6 +78,19 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
+    "com.oracle.truffle.api.utilities" : {
+      "subDir" : "truffle",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api"
+      ],
+      "exports" : [
+        "<package-info>", # exports all packages containing package-info.java
+      ],
+      "javaCompliance" : "1.8",
+      "workingSets" : "API,Truffle",
+    },
+
     "com.oracle.truffle.api.vm" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
@@ -102,6 +115,7 @@ suite = {
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.debug",
+        "com.oracle.truffle.api.utilities",
         "com.oracle.truffle.api.vm",
         "mx:JUNIT",
       ],
@@ -296,7 +310,10 @@ suite = {
     "com.oracle.truffle.api.object" : {
       "subDir" : "truffle",
       "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.interop"],
+      "dependencies" : [
+        "com.oracle.truffle.api.interop",
+        "com.oracle.truffle.api.utilities"
+      ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
       ],
@@ -487,6 +504,7 @@ suite = {
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.profiles",
         "com.oracle.truffle.api.debug",
+        "com.oracle.truffle.api.utilities",
         "com.oracle.truffle.api.vm",
         "com.oracle.truffle.object.basic",
         "com.oracle.truffle.api.object.dsl",
