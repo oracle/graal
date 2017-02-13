@@ -120,7 +120,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     @Override
     @SuppressWarnings("try")
     public void dump(Object object, final String message) {
-        if (object instanceof Graph && Options.PrintIdealGraph.getValue(DebugScope.getConfig().getOptions())) {
+        if (object instanceof Graph && Options.PrintGraph.getValue(DebugScope.getConfig().getOptions())) {
             ensureInitialized();
             if (printer == null) {
                 return;
