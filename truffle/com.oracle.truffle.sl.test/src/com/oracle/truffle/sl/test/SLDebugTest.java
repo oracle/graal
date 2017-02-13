@@ -471,4 +471,116 @@ public class SLDebugTest {
         }
     }
 
+    @Test
+    public void testStack() {
+        final Source stackSource = slCode("function main() {\n" +
+                        "  return fac(10);\n" +
+                        "}\n" +
+                        "function fac(n) {\n" +
+                        "  if (n <= 1) {\n" +
+                        "    return 1;\n" + // break
+                        "  }\n" +
+                        "  return n * fac(n - 1);\n" +
+                        "}\n");
+
+        try (DebuggerSession session = startSession()) {
+            session.install(Breakpoint.newBuilder(stackSource).lineIs(6).build());
+            startEval(stackSource);
+
+            expectSuspended((SuspendedEvent event) -> {
+                Iterator<DebugStackFrame> sfIt = event.getStackFrames().iterator();
+                assertTrue(sfIt.hasNext());
+                DebugStackFrame dsf = sfIt.next();
+                assertEquals("fac", dsf.getName());
+                assertEquals(6, dsf.getSourceSection().getStartLine());
+                assertFalse(dsf.isInternal());
+                int numStacksAt8 = 10 - 1;
+                for (int i = 0; i < numStacksAt8; i++) {
+                    assertTrue(sfIt.hasNext());
+                    dsf = sfIt.next();
+                    assertEquals("fac", dsf.getName());
+                    assertEquals(8, dsf.getSourceSection().getStartLine());
+                    assertFalse(dsf.isInternal());
+                }
+                assertTrue(sfIt.hasNext());
+                dsf = sfIt.next();
+                assertEquals("main", dsf.getName());
+                assertEquals(2, dsf.getSourceSection().getStartLine());
+                assertFalse(dsf.isInternal());
+                assertFalse(sfIt.hasNext());
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testStackInterop() {
+        final Source stackSource = slCode("function fac(n, multiply) {\n" +
+                        "  if (n <= 1) {\n" +
+                        "    debugger;\n" +
+                        "    return 1;\n" +
+                        "  }\n" +
+                        "  return multiply.multiply(n, fac, n - 1);\n" +
+                        "}\n");
+
+        PolyglotEngine engine = PolyglotEngine.newBuilder().setOut(System.out).setErr(System.err).build();
+        engine.eval(stackSource);
+        PolyglotEngine.Value fac = engine.findGlobalSymbol("fac");
+        Object multiply = new Multiply();
+        Debugger debugger = Debugger.find(engine);
+        boolean[] done = new boolean[1];
+        try (DebuggerSession session = debugger.startSession((event) -> {
+            Iterator<DebugStackFrame> sfIt = event.getStackFrames().iterator();
+            assertTrue(sfIt.hasNext());
+            DebugStackFrame dsf = sfIt.next();
+            assertEquals("fac", dsf.getName());
+            assertEquals(3, dsf.getSourceSection().getStartLine());
+            assertFalse(dsf.isInternal());
+            int numStacksAt6 = 10 - 1;
+            int numInteropStacks = 0;
+            for (int i = 0; i < numStacksAt6;) {
+                assertTrue(sfIt.hasNext());
+                dsf = sfIt.next();
+                boolean inFac = dsf.getName() != null;
+                if (inFac) {
+                    // Frame in fac function
+                    assertEquals("fac", dsf.getName());
+                    assertEquals(6, dsf.getSourceSection().getStartLine());
+                    assertFalse(dsf.isInternal());
+                    i++;
+                } else {
+                    // Frame in an interop method, internal
+                    assertEquals(null, dsf.getName());
+                    assertNull(dsf.getSourceSection());
+                    assertTrue(dsf.isInternal());
+                    numInteropStacks++;
+                }
+            }
+            // There were at least as many interop internal frames as frames in fac function:
+            assertTrue("numInteropStacks = " + numInteropStacks, numInteropStacks >= numStacksAt6);
+            // Some more internal frames remain
+            while (sfIt.hasNext()) {
+                dsf = sfIt.next();
+                assertEquals(null, dsf.getName());
+                assertNull(dsf.getSourceSection());
+                assertTrue(dsf.isInternal());
+            }
+            done[0] = true;
+        })) {
+            Assert.assertNotNull(session);
+            PolyglotEngine.Value ret = fac.execute(new Object[]{10, multiply});
+            assertEquals(ret.get(), 3628800L);
+        }
+        assertTrue(done[0]);
+    }
+
+    public static class Multiply {
+        public long multiply(long n, Fac fce, long i) {
+            return n * fce.fac(i, this);
+        }
+    }
+
+    public interface Fac {
+        long fac(long n, Multiply multiply);
+    }
 }

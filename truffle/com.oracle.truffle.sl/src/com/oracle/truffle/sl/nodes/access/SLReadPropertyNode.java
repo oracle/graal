@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.nodes.access;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
@@ -67,7 +66,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     @Child private SLReadPropertyCacheNode readNode = SLReadPropertyCacheNodeGen.create();
 
     @Specialization
-    protected Object read(VirtualFrame frame, Object receiver, Object name) {
-        return readNode.executeRead(frame, receiver, name);
+    protected Object read(Object receiver, Object name) {
+        return readNode.executeRead(receiver, name);
     }
 }

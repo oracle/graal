@@ -24,20 +24,28 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
+import static org.junit.Assert.assertFalse;
+
+import org.junit.Test;
+
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
-import static org.junit.Assert.assertFalse;
-import org.junit.Test;
 
 public class ObjectTypeTest {
 
     @Test
     public void objectTypeRespondsToIsBoxed() {
         final Layout layout = Layout.newLayout().build();
-        final Shape rootShape = layout.createShape(new ObjectType());
+        final Shape rootShape = layout.createShape(new ObjectType() {
+            @Override
+            public ForeignAccess getForeignAccessFactory(DynamicObject obj) {
+                return null;
+            }
+        });
         final DynamicObject obj = rootShape.newInstance();
         final boolean is = JavaInterop.isBoxed(obj);
         assertFalse("It is not boxed", is);
@@ -46,7 +54,12 @@ public class ObjectTypeTest {
     @Test
     public void objectTypeRespondsToIsNull() {
         final Layout layout = Layout.newLayout().build();
-        final Shape rootShape = layout.createShape(new ObjectType());
+        final Shape rootShape = layout.createShape(new ObjectType() {
+            @Override
+            public ForeignAccess getForeignAccessFactory(DynamicObject obj) {
+                return null;
+            }
+        });
         final DynamicObject obj = rootShape.newInstance();
         final boolean is = JavaInterop.isNull(obj);
         assertFalse("It is not null", is);
@@ -55,7 +68,12 @@ public class ObjectTypeTest {
     @Test
     public void objectTypeRespondsToIsArray() {
         final Layout layout = Layout.newLayout().build();
-        final Shape rootShape = layout.createShape(new ObjectType());
+        final Shape rootShape = layout.createShape(new ObjectType() {
+            @Override
+            public ForeignAccess getForeignAccessFactory(DynamicObject obj) {
+                return null;
+            }
+        });
         final DynamicObject obj = rootShape.newInstance();
         final boolean is = JavaInterop.isArray(obj);
         assertFalse("It is not array", is);

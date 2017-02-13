@@ -75,8 +75,8 @@ class ComplexNumbersBMessageResolution {
                 this.readImag = insert(Message.READ.createNode());
             }
             try {
-                Number realPart = TckLanguage.expectNumber(ForeignAccess.sendRead(readReal, frame, value, ComplexNumber.REAL_IDENTIFIER));
-                Number imagPart = TckLanguage.expectNumber(ForeignAccess.sendRead(readImag, frame, value, ComplexNumber.IMAGINARY_IDENTIFIER));
+                Number realPart = TckLanguage.expectNumber(ForeignAccess.sendRead(readReal, value, ComplexNumber.REAL_IDENTIFIER));
+                Number imagPart = TckLanguage.expectNumber(ForeignAccess.sendRead(readImag, value, ComplexNumber.IMAGINARY_IDENTIFIER));
                 complexNumbers.getReals()[index.intValue()] = realPart.doubleValue();
                 complexNumbers.getImags()[index.intValue()] = imagPart.doubleValue();
                 return value;

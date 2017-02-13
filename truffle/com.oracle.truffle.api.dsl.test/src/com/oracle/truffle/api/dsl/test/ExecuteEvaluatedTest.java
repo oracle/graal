@@ -340,4 +340,18 @@ public class ExecuteEvaluatedTest {
         }
     }
 
+    /*
+     * Failed test where execute parameter Object[] was cased using (Object) which led to a compile
+     * error.
+     */
+    abstract static class TestExecuteWithObjectArg extends Node {
+
+        public abstract Object execute(VirtualFrame frame, Object[] args);
+
+        @Specialization
+        public Object test(@SuppressWarnings("unused") final Object[] args) {
+            return null;
+        }
+    }
+
 }
