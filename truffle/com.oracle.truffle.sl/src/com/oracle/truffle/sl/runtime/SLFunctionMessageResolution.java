@@ -42,7 +42,6 @@ package com.oracle.truffle.sl.runtime;
 
 import static com.oracle.truffle.sl.runtime.SLContext.fromForeignValue;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -65,14 +64,14 @@ public class SLFunctionMessageResolution {
 
         @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
 
-        public Object access(VirtualFrame frame, SLFunction receiver, Object[] arguments) {
+        public Object access(SLFunction receiver, Object[] arguments) {
             Object[] arr = new Object[arguments.length];
             // Before the arguments can be used by the SLFunction, they need to be converted to SL
             // values.
             for (int i = 0; i < arr.length; i++) {
                 arr[i] = fromForeignValue(arguments[i]);
             }
-            Object result = dispatch.executeDispatch(frame, receiver, arr);
+            Object result = dispatch.executeDispatch(receiver, arr);
             return result;
         }
     }

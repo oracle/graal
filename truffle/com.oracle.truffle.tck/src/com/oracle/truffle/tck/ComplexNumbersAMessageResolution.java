@@ -25,7 +25,6 @@
 package com.oracle.truffle.tck;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -43,15 +42,15 @@ class ComplexNumbersAMessageResolution {
         @Child private Node readReal;
         @Child private Node readImag;
 
-        public Object access(VirtualFrame frame, ComplexNumbersA complexNumbers, Number index, TruffleObject value) {
+        public Object access(ComplexNumbersA complexNumbers, Number index, TruffleObject value) {
             if (readReal == null || readImag == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.readReal = insert(Message.READ.createNode());
                 this.readImag = insert(Message.READ.createNode());
             }
             try {
-                Number realPart = TckLanguage.expectNumber(ForeignAccess.sendRead(readReal, frame, value, new Object[]{ComplexNumber.REAL_IDENTIFIER}));
-                Number imagPart = TckLanguage.expectNumber(ForeignAccess.sendRead(readImag, frame, value, new Object[]{ComplexNumber.IMAGINARY_IDENTIFIER}));
+                Number realPart = TckLanguage.expectNumber(ForeignAccess.sendRead(readReal, value, new Object[]{ComplexNumber.REAL_IDENTIFIER}));
+                Number imagPart = TckLanguage.expectNumber(ForeignAccess.sendRead(readImag, value, new Object[]{ComplexNumber.IMAGINARY_IDENTIFIER}));
 
                 int idx = TckLanguage.checkBounds(index.intValue(), complexNumbers.getData().length / 2);
 

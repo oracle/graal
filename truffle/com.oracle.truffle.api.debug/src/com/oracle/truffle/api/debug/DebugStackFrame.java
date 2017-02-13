@@ -97,7 +97,15 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      */
     public boolean isInternal() {
         verifyValidState(true);
-        return findCurrentRoot().getSourceSection().getSource().isInternal();
+        RootNode root = findCurrentRoot();
+        if (root == null) {
+            return true;
+        }
+        SourceSection section = root.getSourceSection();
+        if (section == null) {
+            return true;
+        }
+        return section.getSource().isInternal();
     }
 
     /**
@@ -281,7 +289,7 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         if (currentFrame == null) {
             return event.getMaterializedFrame();
         } else {
-            return currentFrame.getFrame(FrameAccess.MATERIALIZE, true).materialize();
+            return currentFrame.getFrame(FrameAccess.MATERIALIZE).materialize();
         }
     }
 

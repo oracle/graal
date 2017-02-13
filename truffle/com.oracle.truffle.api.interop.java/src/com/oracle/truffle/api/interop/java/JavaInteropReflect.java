@@ -152,17 +152,20 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findPublicFieldsNames(Class<?> c) throws SecurityException {
+    static String[] findPublicFieldsNames(Class<?> c, boolean onlyInstance) throws SecurityException {
         Class<?> clazz = c;
         while ((clazz.getModifiers() & Modifier.PUBLIC) == 0) {
             clazz = clazz.getSuperclass();
         }
         final Field[] fields = clazz.getFields();
-        final String[] names = new String[fields.length];
-        for (int i = 0; i < fields.length; i++) {
-            names[i] = fields[i].getName();
+        List<String> names = new ArrayList<>();
+        for (Field field : fields) {
+            if (((field.getModifiers() & Modifier.STATIC) == 0) != onlyInstance) {
+                continue;
+            }
+            names.add(field.getName());
         }
-        return names;
+        return names.toArray(new String[0]);
     }
 
     private static final class SingleHandler implements InvocationHandler {

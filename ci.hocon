@@ -39,10 +39,6 @@ solaris : {
 }
 
 darwin : {
-  packages : {
-    "git" : ""
-  }
-
   environment : ${common.environment} {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
   }
@@ -100,7 +96,7 @@ gateLite : {
 }
 
 # overlay version
-overlay = c8f5c8d553b577d72e82027242642150bca61634
+overlay = ba2610209dcaa955c5dcc06934e2b5b2098f0fcf
 
 builds = [
   ${common} ${java8Downloads} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], capabilities : [linux, amd64], targets : [gate], name: "gate-truffle-8"},

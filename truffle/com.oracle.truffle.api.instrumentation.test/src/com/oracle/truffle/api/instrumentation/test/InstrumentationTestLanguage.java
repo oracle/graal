@@ -469,7 +469,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Map<String, Cal
                 CallTarget target = context.get(identifier);
                 callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
             }
-            return callNode.call(frame, new Object[0]);
+            return callNode.call(new Object[0]);
         }
     }
 

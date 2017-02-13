@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -60,9 +59,9 @@ public abstract class SLGetSizeBuiltin extends SLBuiltinNode {
     @Child private Node getSize = Message.GET_SIZE.createNode();
 
     @Specialization
-    public Object getSize(VirtualFrame frame, TruffleObject obj) {
+    public Object getSize(TruffleObject obj) {
         try {
-            return ForeignAccess.sendGetSize(getSize, frame, obj);
+            return ForeignAccess.sendGetSize(getSize, obj);
         } catch (UnsupportedMessageException e) {
             throw new SLException(e.getMessage());
         }

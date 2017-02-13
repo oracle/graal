@@ -726,7 +726,7 @@ public final class DebuggerSession implements Closeable {
                 frame = ev.getMaterializedFrame();
             } else {
                 node = frameInstance.getCallNode();
-                frame = frameInstance.getFrame(FrameAccess.MATERIALIZE, true).materialize();
+                frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
             }
             return Debugger.ACCESSOR.evalInContext(ev.getSession().getDebugger().getSourceVM(), node, frame, code);
         } catch (KillException kex) {

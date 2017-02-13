@@ -120,7 +120,7 @@
  * {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class) uses the result as} the {@code Mul}
  * interface:
  *
- * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineJavaScriptFunctionAndUseItFromJava}
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptFunctionFromJava}
  *
  * In case of JavaScript, it is adviced to wrap the function into parenthesis,
  * as then the function doesn't polute the global scope - the only reference to
@@ -136,7 +136,7 @@
  * can be done by typing these functions via Java interface as well. Just the
  * interface needs to have more than a single method:
  *
- * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineMultipleJavaScriptFunctionsAndUseItFromJava}
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptFunctionsWithSharedStateFromJava}
  *
  * The previous example defines an object with two functions:
  * <code>addTime</code> and <code>timeInSeconds</code>. The Java interface
@@ -155,7 +155,7 @@
  * The following example defines a {@link java.lang.FunctionalInterface} which's method returns a
  * {@link java.util.List} of points:
  *
- * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements}
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptArrayWithTypedElementsFromJava}
  *
  * <h3>Accessing JavaScript Classes</h3>
  *
@@ -164,7 +164,7 @@
  * that defines <code>class Incrementor</code> with two functions and one field
  * and "types it" with Java interface:
  *
- * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor}
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptClassFactoryFromJava}
  *
  *
  * <h3>Accessing JSON Structure</h3>
@@ -174,7 +174,7 @@
  * objects. Each repository has an id, name, list of URLs and a nested structure describing
  * owner. Let's start by defining the structure with Java interfaces:
  *
- * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties}
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptJSONObjectFromJava}
  *
  * The example defines a parser that somehow obtains object representing the JSON data and
  * converts it into {@link java.util.List} of {@code Repository} instances. After calling the method
@@ -193,9 +193,9 @@
  *
  * Of course, the {@link com.oracle.truffle.api.vm.PolyglotEngine.Value#as(java.lang.Class) manual conversion} to {@link java.lang.Number} is
  * annoying. Should it be performed frequently, it is better to define a
- * <code>MomentConvertor</code> interface:
+ * <code>MomentConverter</code> interface:
  *
- * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConvertor}
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConverter}
  *
  * then one gets completely type-safe view of the dynamic function including its parameters
  * and return type.
@@ -208,7 +208,7 @@
  * for wrapping instances of
  * {@link java.lang.Class} to appropriate objects:
  *
- * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createNewMoment}
+ * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createJavaScriptFactoryForJavaClass}
  *
  * In the above example the <code>Moment.class</code> is passed into the JavaScript function
  * as first argument and can be used by the dynamic language as a constructor in

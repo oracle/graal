@@ -84,7 +84,7 @@ class JavaObjectMessageResolution {
 
         @Child private DoExecuteNode doExecute;
 
-        public Object access(VirtualFrame frame, JavaObject object, String name, Object[] args) {
+        public Object access(JavaObject object, String name, Object[] args) {
             if (TruffleOptions.AOT) {
                 throw UnsupportedMessageException.raise(Message.createInvoke(args.length));
             }
@@ -96,7 +96,7 @@ class JavaObjectMessageResolution {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     doExecute = insert(new DoExecuteNode(args.length));
                 }
-                return doExecute.execute(frame, foundMethod, object.obj, args);
+                return doExecute.execute(foundMethod, object.obj, args);
             }
 
             throw UnknownIdentifierException.raise(name);
@@ -186,19 +186,19 @@ class JavaObjectMessageResolution {
 
         @Child private ToJavaNode toJava = ToJavaNodeGen.create();
 
-        public Object access(VirtualFrame frame, JavaObject receiver, String name, Object value) {
+        public Object access(JavaObject receiver, String name, Object value) {
             Object obj = receiver.obj;
             if (obj instanceof Map) {
                 @SuppressWarnings("unchecked")
                 Map<Object, Object> map = (Map<Object, Object>) obj;
-                Object convertedValue = toJava.execute(frame, value, TypeAndClass.ANY);
+                Object convertedValue = toJava.execute(value, TypeAndClass.ANY);
                 return map.put(name, convertedValue);
             }
             if (TruffleOptions.AOT) {
                 throw UnsupportedMessageException.raise(Message.WRITE);
             }
             Field f = JavaInteropReflect.findField(receiver, name);
-            Object convertedValue = toJava.execute(frame, value, new TypeAndClass<>(f.getGenericType(), f.getType()));
+            Object convertedValue = toJava.execute(value, new TypeAndClass<>(f.getGenericType(), f.getType()));
             JavaInteropReflect.setField(obj, f, convertedValue);
             return JavaObject.NULL;
         }
@@ -224,7 +224,7 @@ class JavaObjectMessageResolution {
                     fields[i++] = Objects.toString(key, null);
                 }
             } else {
-                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findPublicFieldsNames(receiver.clazz);
+                fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findPublicFieldsNames(receiver.clazz, receiver.obj != null);
             }
             return JavaInterop.asTruffleObject(fields);
         }

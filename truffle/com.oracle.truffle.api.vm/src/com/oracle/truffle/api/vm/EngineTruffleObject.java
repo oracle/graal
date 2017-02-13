@@ -25,8 +25,10 @@
 package com.oracle.truffle.api.vm;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -36,12 +38,42 @@ import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Objects;
 
 final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory {
+    private static final Class<?> JFO_CLASS;
+    private static final Class<?> JO_CLASS;
+    static {
+        try {
+            ClassLoader l = EngineTruffleObject.class.getClassLoader();
+            if (!TruffleOptions.AOT) {
+                JFO_CLASS = Class.forName("com.oracle.truffle.api.interop.java.JavaFunctionObject", false, l);
+            } else {
+                JFO_CLASS = null;
+            }
+            JO_CLASS = Class.forName("com.oracle.truffle.api.interop.java.JavaObject", false, l);
+        } catch (ClassNotFoundException ex) {
+            throw new ExceptionInInitializerError(ex);
+        }
+    }
+
     private final PolyglotEngine engine;
     private final TruffleObject delegate;
 
-    EngineTruffleObject(PolyglotEngine engine, TruffleObject obj) {
+    private EngineTruffleObject(PolyglotEngine engine, TruffleObject obj) {
         this.engine = engine;
         this.delegate = obj;
+    }
+
+    static Object wrap(PolyglotEngine engine, Object obj) {
+        if (obj instanceof TruffleObject) {
+            if (obj.getClass() == JO_CLASS) {
+                return obj;
+            }
+            if (obj.getClass() == JFO_CLASS) {
+                return obj;
+            }
+            return new EngineTruffleObject(engine, (TruffleObject) obj);
+        } else {
+            return obj;
+        }
     }
 
     @Override
@@ -51,6 +83,17 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
 
     TruffleObject getDelegate() {
         return delegate;
+    }
+
+    void assertEngine(PolyglotEngine other) {
+        if (this.engine != other) {
+            throwEngine(other);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private void throwEngine(PolyglotEngine other) throws IllegalArgumentException {
+        throw new IllegalArgumentException("This object comes from " + this.engine + " and cannot be sent to " + other);
     }
 
     @Override

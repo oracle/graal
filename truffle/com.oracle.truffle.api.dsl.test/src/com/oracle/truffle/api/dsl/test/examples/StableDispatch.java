@@ -46,16 +46,16 @@ public class StableDispatch {
     public static class StableDispatchNode extends ExampleNode {
 
         @Specialization(guards = "function == cachedFunction", assumptions = "cachedFunction.getCallTargetStable()")
-        protected static Object directDispatch(VirtualFrame frame, SLFunction function, Object[] arguments, //
+        protected static Object directDispatch(SLFunction function, Object[] arguments, //
                         @Cached("function") SLFunction cachedFunction, //
                         @Cached("create(cachedFunction.getCallTarget())") DirectCallNode callNode) {
-            return callNode.call(frame, arguments);
+            return callNode.call(arguments);
         }
 
         @Specialization(replaces = "directDispatch")
-        protected static Object indirectDispatch(VirtualFrame frame, SLFunction function, Object[] arguments, //
+        protected static Object indirectDispatch(SLFunction function, Object[] arguments, //
                         @Cached("create()") IndirectCallNode callNode) {
-            return callNode.call(frame, function.getCallTarget(), arguments);
+            return callNode.call(function.getCallTarget(), arguments);
         }
     }
 

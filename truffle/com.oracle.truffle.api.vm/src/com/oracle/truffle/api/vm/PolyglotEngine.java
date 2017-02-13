@@ -24,15 +24,21 @@
  */
 package com.oracle.truffle.api.vm;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -47,7 +53,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -62,58 +67,134 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.NoSuchElementException;
 
 /**
- * Gate way into the world of {@link TruffleLanguage Truffle languages}. {@link #newBuilder()
- * Instantiate} your own portal into the isolated, multi-language system with all the registered
- * languages ready for your use. A {@link PolyglotEngine} runs inside of a <em>JVM</em>. There can
- * however be multiple instances (some would say tenants) of {@link PolyglotEngine} running next to
- * each other in a single <em>JVM</em> with a complete mutual isolation. There is 1:N mapping
- * between <em>JVM</em> and {@link PolyglotEngine}.
- * <p>
- * It would not be correct to think of a {@link PolyglotEngine} as a runtime for a single
- * {@link TruffleLanguage Truffle language} (Ruby, Python, R, C, JavaScript, etc.) either.
- * {@link PolyglotEngine} can host as many of Truffle languages as {@link Registration registered on
- * a class path} of your <em>JVM</em> application. {@link PolyglotEngine} orchestrates these
- * languages, manages exchange of objects and calls among them. While it may happen that there is
- * just one activated language inside of a {@link PolyglotEngine}, the greatest strength of
- * {@link PolyglotEngine} is in inter-operability between all Truffle languages. There is 1:N
- * mapping between {@link PolyglotEngine} and {@link TruffleLanguage Truffle language
- * implementations}.
+ * A multi-language execution environment for Truffle-implemented {@linkplain Language languages}
+ * that supports <em>interoperability</em> among the Truffle languages and with Java, for example
+ * cross-language calls, foreign object exchange, and shared <em>global symbols</em>. The
+ * environment also includes a framework for <em>instrumentation</em> that supports both built-in
+ * services, for example debugging and profiling, as well as API access to dynamic execution state
+ * for external tools.
  *
- * <h2>Usage</h2>
+ * <h4>Creation</h4>
  *
+ * <em>Engine</em> instances are created using a {@linkplain #newBuilder() builder} that allows
+ * application- and language-specific configuration.
+ *
+ * <h4>Languages</h4>
+ *
+ * An engine supports every {@linkplain Language Truffle language} available on the host JVM class
+ * path.
  * <p>
- * Use {@link #newBuilder()} to create a new isolated portal ready for execution of various
- * languages. All the languages in a single portal see each others exported global symbols and can
- * cooperate. Use {@link #newBuilder()} multiple times to create different, isolated environments
- * that are completely separated from each other.
+ * Languages are initialized on demand, the first time an engine evaluates code of a matching
+ * {@linkplain Source#getMimeType() MIME type}. The engine throws an {@link IllegalStateException}
+ * if no matching language is available. Languages remain initialized for the lifetime of the
+ * engine.
  * <p>
- * Once instantiated use {@link #eval(com.oracle.truffle.api.source.Source)} with a reference to a
- * file or URL or directly pass code snippet into the virtual machine via
- * {@link #eval(com.oracle.truffle.api.source.Source)}. Support for individual languages is
- * initialized on demand - e.g. once a file of certain MIME type is about to be processed, its
- * appropriate engine (if found), is initialized. Once an engine gets initialized, it remains so,
- * until the virtual machine is garbage collected.
+ * Specific language environments can be configured, for example in response to command line
+ * options, by building the engine with combinations of language-specific
+ * {@linkplain Builder#config(String, String, Object) MIME-key-value settings} and pre-registered
+ * {@linkplain PolyglotEngine.Builder#globalSymbol global symbols}.
+ *
+ * <h4>Global Symbols</h4>
+ *
+ * An engine supports communication among {@linkplain Language languages} that export and import
+ * named values known as <em>global symbols</em>. These typically implement guest language
+ * export/import statements used for <em>language interoperation</em>.
  * <p>
- * For using a {@link TruffleLanguage language} with a custom setup or configuration, the necessary
- * parameters should be communicated to the {@link PolyglotEngine} - either via
- * {@link PolyglotEngine.Builder#config} as exposed by the language implementation or by evaluating
- * appropriate "prelude" scripts via {@link PolyglotEngine.Language#eval}. Another possibility is to
- * pre-register various {@link PolyglotEngine.Builder#globalSymbol global objects} and make them
- * available to the {@link PolyglotEngine}. Configuration parameters are obtained for instance by
- * parsing command line arguments.
+ * Each language dynamically manages a namespace of global symbols. The engine provides its own
+ * (static) namespace, configured when the engine is
+ * {@linkplain Builder#globalSymbol(String, Object) built}.
  * <p>
- * The engine is single-threaded and tries to enforce that. It records the thread it has been
- * {@link Builder#build() created} by and checks that all subsequent calls are coming from the same
- * thread. There is 1:1 mapping between {@link PolyglotEngine} and a thread that can tell it what to
- * do.
+ * The engine {@linkplain #findGlobalSymbol(String) retrieves} global symbols by name, first
+ * searching the engine's namespace, and then searching every language's namespace in unspecified
+ * order, returning the first one found. Name collisions across namespaces are possible and can only
+ * be discovered by explicitly {@linkplain #findGlobalSymbols(String) retrieving} all global symbols
+ * with a particular name.
+ *
+ * <h4>Truffle Language Interoperation</h4>
+ *
+ * <em>Interoperability</em> among executing guest language programs is supported in part by the
+ * cross-language exchange of <em>global symbols</em> whose {@linkplain #findGlobalSymbol(String)
+ * retrieval} produces results wrapped in instances of {@link Value}. The {@linkplain Value#get()
+ * content} of a {@link Value Value} may be a boxed Java primitive type or a <em>foreign object</em>
+ * (implemented internally as a {@link TruffleObject}). Foreign objects support a message-based
+ * protocol for access to their contents, possibly including fields and methods.
+ * <p>
+ * Foreign objects may be functional, in which case cross-language method/procedure calls are
+ * possible. Foreign calls return results wrapped in non-null {@link Value Value} instances.
+ *
+ * <h4>Truffle-Java Interoperation</h4>
+ *
+ * <em>Interoperability</em> is also supported between Java and guest language programs. For example
+ * a Java client can <em>export</em> global symbols during engine creation via
+ * {@link Builder#globalSymbol(String, Object)} and <em>import</em> them at any time via
+ * {@link #findGlobalSymbol(String)}. The {@linkplain Value#get() content} of a {@link Value Value}
+ * (for example retrieved from an imported symbol) can be accessed via {@link Value#as(Class)},
+ * which returns an object of the requested type. A {@link Value Value} determined to be functional
+ * can be called via {@link Value#execute(Object...)}, whose result is wrapped in a non-null
+ * {@link Value Value} instance.
+ * <p>
+ * Java clients <em>export values</em> in two ways:
+ * <ul>
+ * <li>bound to globally accessible names via {@link Builder#globalSymbol(String, Object)}, or</li>
+ * <li>as arguments to foreign method/procedure calls via {@link Value#execute(Object...)}.</li>
+ * </ul>
+ * In either case the engine <em>wraps</em> exported non-primitive Java values so that they appear
+ * to guest languages the same as other foreign objects. In situations where a Java object is
+ * exported and eventually returned (by import or method/procedure call), the identity of the result
+ * (obtained by {@link Value#get()}) is preserved.
+ * <p>
+ * Exporting a Java <em>object</em> grants guest language access to the object's public fields and
+ * methods. Exporting a Java <em>class</em> grants guest language access to the class's public
+ * static fields and public constructors.
+ *
+ * <h4>Isolation</h4>
+ *
+ * An engine runs as an isolated <a href="https://en.wikipedia.org/wiki/Multitenancy">tenant</a> on
+ * a host Java Virtual Machine. Other than shared host resources such as memory management, no
+ * aspects of program execution, language environments, or global symbols are shared with other
+ * engine instances.
+ *
+ * <h4>Threads</h4>
+ *
+ * Guest language code execution is single-threaded, performed on a thread determined by the
+ * engine's configuration.
+ * <p>
+ * <ul>
+ * <li>Execution is by default synchronous (performed on the calling thread) and only permitted by
+ * the thread that created the engine.</li>
+ * <li>An engine can be {@linkplain Builder#executor(Executor) configured} with a custom
+ * {@link Executor} that performs all executions on a different thread. In this case the engine
+ * requires only that all executions are performed on the same thread.</li>
+ * </ul>
+ * <p>
+ * In contrast, instrumentation-based access to engine state is <em>thread-safe</em>, both from
+ * built-in services such as debugging and profiling as well as from external tools.
+ *
+ * <h4>Use case: run guest language code</h4>
+ *
+ * An engine {@linkplain #eval(Source) evaluates} {@link Source} objects, which may wrap references
+ * to guest language code (e.g. a filename or URL) or may represent code literally as in the example
+ * below. The engine uses the language matching the code's MIME type and returns the result wrapped
+ * in a language-agnostic {@link Value}.
+ *
+ * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#evalCode}
+ *
+ * <h4>Use case: Java interoperation with guest language code</h4>
+ *
+ * There are many ways in which Java and guest language code can interoperate. For example:
+ * <ul>
+ * <li>The documentation for {@link PolyglotEngine#eval(Source)} includes three examples that show
+ * how Java code can directly access JavaScript functions, objects, and classes respectively.</li>
+ *
+ * <li>The documentation for {@link Value#as(Class)} includes two examples that show how Java code
+ * can directly access JavaScript data structures: lists and JSON data respectively.</li>
+ *
+ * <li>The documentation for {@link Value#execute(Object...)} includes examples showing how guest
+ * language code can access Java objects, classes, and constructors.</li>
+ *
+ * </ul>
  *
  * @since 0.9
  */
@@ -207,24 +288,27 @@ public class PolyglotEngine {
     }
 
     /**
-     * Creation of new Truffle virtual machine. Use the {@link Builder} methods to configure your
-     * virtual machine and then create one using {@link Builder#build()}:
+     * Returns a builder for creating an engine instance. After any configuration methods have been
+     * called, the final {@link Builder#build() build()} step creates the engine and installs all
+     * available languages. For example:
      *
-     * {@link PolyglotEngineSnippets#createPolyglotEngine}
-     * 
-     * It searches for {@link Registration languages registered} in the system class loader and
-     * makes them available for later evaluation via
-     * {@link #eval(com.oracle.truffle.api.source.Source)} method.
+     * <pre>
+     * {@link PolyglotEngine} engine = {@link PolyglotEngine}.{@link PolyglotEngine#newBuilder() newBuilder()}
+     *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
+     *     .{@link Builder#setErr(java.io.OutputStream) setErr}({@link OutputStream yourOutput})
+     *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
+     *     .{@link Builder#build() build()};
+     * </pre>
      *
-     * @return new builder to create isolated polyglot engine with pre-registered languages
+     * @return a builder to create a new engine with all available languages installed
      * @since 0.10
      */
     public static PolyglotEngine.Builder newBuilder() {
         // making Builder non-static inner class is a
         // nasty trick to avoid the Builder class to appear
         // in Javadoc next to PolyglotEngine class
-        PolyglotEngine vm = new PolyglotEngine();
-        return vm.new Builder();
+        PolyglotEngine engine = new PolyglotEngine();
+        return engine.new Builder();
     }
 
     /**
@@ -238,11 +322,12 @@ public class PolyglotEngine {
     }
 
     /**
-     * Builder for a new {@link PolyglotEngine}. Call various configuration methods in a chain and
-     * at the end create new {@link PolyglotEngine virtual machine}:
+     * A builder for creating an engine instance. After any configuration methods have been called,
+     * the final {@link Builder#build() build()} step creates the engine and installs all available
+     * languages. For example:
      *
      * <pre>
-     * {@link PolyglotEngine} vm = {@link PolyglotEngine}.{@link PolyglotEngine#newBuilder() newBuilder()}
+     * {@link PolyglotEngine} engine = {@link PolyglotEngine}.{@link PolyglotEngine#newBuilder() newBuilder()}
      *     .{@link Builder#setOut(java.io.OutputStream) setOut}({@link OutputStream yourOutput})
      *     .{@link Builder#setErr(java.io.OutputStream) setErr}({@link OutputStream yourOutput})
      *     .{@link Builder#setIn(java.io.InputStream) setIn}({@link InputStream yourInput})
@@ -264,11 +349,11 @@ public class PolyglotEngine {
         }
 
         /**
-         * Changes the default output for languages running in <em>to be created</em>
-         * {@link PolyglotEngine virtual machine}. The default is to use {@link System#out}.
+         * Configures default output for languages running in the {@link PolyglotEngine engine}
+         * being built, defaults to {@link System#out}.
          *
          * @param os the stream to use as output
-         * @return instance of this builder
+         * @return this builder
          * @since 0.9
          */
         public Builder setOut(OutputStream os) {
@@ -277,11 +362,11 @@ public class PolyglotEngine {
         }
 
         /**
-         * Changes the error output for languages running in <em>to be created</em>
-         * {@link PolyglotEngine virtual machine}. The default is to use {@link System#err}.
+         * Configures error output for languages running in the {@link PolyglotEngine engine} being
+         * built, defaults to {@link System#err}.
          *
          * @param os the stream to use as output
-         * @return instance of this builder
+         * @return this builder
          * @since 0.9
          */
         public Builder setErr(OutputStream os) {
@@ -290,11 +375,11 @@ public class PolyglotEngine {
         }
 
         /**
-         * Changes the default input for languages running in <em>to be created</em>
-         * {@link PolyglotEngine virtual machine}. The default is to use {@link System#in}.
+         * Configures default input for languages running in the {@link PolyglotEngine engine} being
+         * built, defaults to {@link System#in}.
          *
          * @param is the stream to use as input
-         * @return instance of this builder
+         * @return this builder
          * @since 0.9
          */
         public Builder setIn(InputStream is) {
@@ -307,7 +392,7 @@ public class PolyglotEngine {
          * {@link PolyglotEngine}.
          *
          * @param handler the handler to register
-         * @return instance of this builder
+         * @return this builder
          * @since 0.9
          * @deprecated all event types that use this API have been deprecated.
          */
@@ -319,23 +404,20 @@ public class PolyglotEngine {
         }
 
         /**
-         * Provide configuration data to initialize the {@link PolyglotEngine} for a specific
-         * language. These arguments {@link com.oracle.truffle.api.TruffleLanguage.Env#getConfig()
-         * can be used by the language} to initialize and configure their
-         * {@link com.oracle.truffle.api.TruffleLanguage#createContext(com.oracle.truffle.api.TruffleLanguage.Env)
-         * initial execution state} correctly.
+         * Adds {@link Language Language}-specific initialization data to the {@link PolyglotEngine
+         * engine} being built. For example:
          *
          * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#initializeWithParameters}
          *
-         * If the same key is specified multiple times for the same language, the previous values
-         * are replaced and just the last one remains.
+         * If the same key is specified multiple times for the same language, only the last one
+         * specified applies.
          *
-         * @param mimeType identification of the language for which the arguments are - if the
-         *            language declares multiple MIME types, any of them can be used
+         * @param mimeType identification of the language to which the configuration data is
+         *            provided; any of the language's declared MIME types may be used
          *
          * @param key to identify a language-specific configuration element
          * @param value to parameterize initial state of a language
-         * @return instance of this builder
+         * @return this builder
          * @since 0.11
          */
         public Builder config(String mimeType, String key, Object value) {
@@ -347,28 +429,25 @@ public class PolyglotEngine {
         }
 
         /**
-         * Adds global named symbol into the configuration of to-be-built {@link PolyglotEngine}.
-         * This symbol will be accessible to all languages via
-         * {@link Env#importSymbol(java.lang.String)} and will take precedence over
-         * {@link TruffleLanguage#findExportedSymbol symbols exported by languages itself}. Repeated
-         * use of <code>globalSymbol</code> is possible; later definition of the same name overrides
-         * the previous one.
+         * Adds a global symbol (named value) to be exported by the {@link PolyglotEngine engine}
+         * being built. Any guest {@link Language Language} can <em>import</em> this symbol, which
+         * takes precedence over any symbols exported under the same name by languages. Any number
+         * of symbols may be added; in case of name-collision only the last one added will be
+         * exported. The namespace of exported global symbols is immutable once the engine is built.
          * <p>
-         * In case one wants to interoperate with Java, one can export any Java classes or objects
-         * when creating the {@link PolyglotEngine} as shown in the following snippet:
+         * See {@linkplain PolyglotEngine "Truffle-Java Interoperation"} for the implications of
+         * exporting Java data to guest languages. The following example demonstrates the export of
+         * both a Java class and a Java object:
          *
          * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#configureJavaInterop}
          *
-         * The <b>mul</b> and <b>compose</b> objects are then available to any
-         * {@link TruffleLanguage language} implementation.
+         * The <code>mul</code> and <code>compose</code> objects are then available to any guest
+         * language.
          *
-         * @param name name of the symbol to register
-         * @param obj value of the object - expected to be primitive wrapper, {@link String} or
-         *            <code>TruffleObject</code> for mutual inter-operability. If the object isn't
-         *            of the previous types, the system tries to wrap it using
-         *            {@link JavaInterop#asTruffleObject(java.lang.Object)}, if available
-         * @return instance of this builder
-         * @see PolyglotEngine#findGlobalSymbol(java.lang.String)
+         * @param name name of the global symbol to register
+         * @param obj value of the symbol to export
+         * @return this builder
+         * @see PolyglotEngine#findGlobalSymbol(String)
          * @throws IllegalArgumentException if the object isn't of primitive type and cannot be
          *             converted to {@link TruffleObject}
          * @since 0.9
@@ -380,19 +459,19 @@ public class PolyglotEngine {
         }
 
         /**
-         * Provides own executor for running {@link PolyglotEngine} scripts. By default
-         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} and
-         * {@link Value#invoke(java.lang.Object, java.lang.Object[])} are executed synchronously in
-         * the calling thread. Sometimes, however it is more beneficial to run them asynchronously -
-         * the easiest way to do so is to provide own executor when configuring the {
-         * {@link #executor(java.util.concurrent.Executor) the builder}. The executor is expected to
-         * execute all {@link Runnable runnables} passed into its
-         * {@link Executor#execute(java.lang.Runnable)} method in the order they arrive and in a
-         * single (yet arbitrary) thread.
+         * Provides an {@link Executor} for running guest language code asynchronously, on a thread
+         * other than the calling thread.
+         * <p>
+         * By default engines execute both {@link PolyglotEngine#eval(Source)} and
+         * {@link Value#invoke(Object, Object[])} synchronously in the calling thread.
+         * <p>
+         * A custom {@link Executor} is expected to perform every execution it is given (via
+         * {@link Executor#execute(Runnable)}) in order of arrival. An arbitrary thread may be used,
+         * but the engine requires that there be only one.
          *
-         * @param executor the executor to use for internal execution inside the {@link #build() to
-         *            be created} {@link PolyglotEngine}
-         * @return instance of this builder
+         * @param executor the executor of code to be used by {@link PolyglotEngine engine} being
+         *            built
+         * @return this builder
          * @since 0.9
          */
         @SuppressWarnings("hiding")
@@ -402,10 +481,9 @@ public class PolyglotEngine {
         }
 
         /**
-         * Creates the {@link PolyglotEngine Truffle virtual machine}. The configuration is taken
-         * from values passed into configuration methods in this class.
+         * Creates an {@link PolyglotEngine engine} configured by builder methods.
          *
-         * @return new, isolated virtual machine with pre-registered languages
+         * @return a new engine with all available languages installed
          * @since 0.9
          */
         public PolyglotEngine build() {
@@ -424,10 +502,12 @@ public class PolyglotEngine {
     }
 
     /**
-     * Descriptions of languages supported in this Truffle virtual machine.
+     * Gets the map: MIME type --> {@linkplain Language metadata} for the matching language
+     * installed in this engine, whether or not the language has been initialized.
      *
-     * @return an immutable map with keys being MIME types and values the {@link Language
-     *         descriptions} of associated languages
+     *
+     * @return an immutable map: MIME type --> metadata for the language that supports the source
+     *         type
      * @since 0.9
      */
     public Map<String, ? extends Language> getLanguages() {
@@ -435,11 +515,11 @@ public class PolyglotEngine {
     }
 
     /**
-     * Returns all instruments <em>loaded</em> in this this {@linkplain PolyglotEngine engine},
-     * whether or not they are currently enabled. Some instruments are enabled automatically at
-     * startup.
+     * Gets the map: {@linkplain Instrument#getId() Instrument ID} --> {@link Instrument} loaded in
+     * this {@linkplain PolyglotEngine engine}, whether the instrument is
+     * {@linkplain Instrument#isEnabled() enabled} or not.
      *
-     * @return the set of currently loaded instruments
+     * @return map of currently loaded instruments
      * @since 0.9
      */
     public Map<String, Instrument> getInstruments() {
@@ -447,67 +527,95 @@ public class PolyglotEngine {
     }
 
     /**
-     * Evaluates provided source. Chooses language registered for a particular
-     * {@link Source#getMimeType() MIME type} (throws an {@link IllegalStateException} if there is
-     * none). The language is then allowed to parse and execute the source. The format of the
-     * {@link Source} is of course language specific, but to illustrate the possibilities, here is
-     * few inspiring examples.
-     *
-     * <h5>Define Function. Use it from Java.</h5>
-     *
-     * To use a function written in a dynamic language from Java one needs to give it a type. The
-     * following sample defines {@code Mul} interface with a single method. Then it evaluates the
-     * dynamic code to define the function and {@link Value#as(java.lang.Class) uses the result as}
-     * the {@code Mul} interface:
-     *
-     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineJavaScriptFunctionAndUseItFromJava}
-     *
-     * In case of JavaScript, it is adviced to wrap the function into parenthesis, as then the
-     * function doesn't polute the global scope - the only reference to it is via implementation of
-     * the {@code Mul} interface.
-     *
-     * <h5>Define Functions with State</h5>
-     *
-     * Often it is necessary to expose multiple dynamic language functions that work in
-     * orchestration - for example when they share some common variables. This can be done by typing
-     * these functions via Java interface as well. Just the interface needs to have more than a
-     * single method:
-     *
-     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#defineMultipleJavaScriptFunctionsAndUseItFromJava}
-     *
-     * The previous example defines an object with two functions: <code>addTime</code> and
-     * <code>timeInSeconds</code>. The Java interface <code>Times</code> wraps this dynamic object
-     * and gives it a type: for example the <code>addTime</code> method is known to take three
-     * integer arguments. Both functions in the dynamic language are defined in a single,
-     * encapsulating function - as such they can share variable <code>seconds</code>. Because of
-     * using parenthesis when defining the encapsulating function, nothing is visible in a global
-     * JavaScript scope - the only reference to the system is from Java via the implementation of
-     * <code>Times</code> interface.
-     *
-     * <h5>Typings for ECMAScript 6 Classes</h5>
-     *
-     * The ECMAScript 6 specification of JavaScript adds concept of typeless classes. With Java
-     * interop one can give the classes types. Here is an example that defines
-     * <code>class Incrementor</code> with two functions and one field and "types it" with Java
-     * interface:
-     *
-     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#incrementor}
-     *
-     *
+     * Evaluates guest language source code, using the installed {@link Language language} that
+     * matches the code's {@link Source#getMimeType() MIME type}. The engine wraps the result in an
+     * instance of {@link Value Value}, for which Java-typed access (objects) can be created using
+     * {@link Value#as(Class) Value#as(Class)}.
      * <p>
-     * More examples can be found in description of {@link Value#execute(java.lang.Object...)} and
-     * {@link Value#as(java.lang.Class)} methods.
-     * <p>
-     * When evaluating an {@link Source#isInteractive() interactive source} the result of the
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluation} is
-     * {@link TruffleLanguage#isVisible(java.lang.Object, java.lang.Object) tested to be visible}
-     * and if the value is visible, it gets
-     * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) converted to string} and
-     * printed to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut standard output}.
+     * For sources marked as {@link Source#isInteractive() interactive}, the engine will will do
+     * more, depending the language. This may include printing the result, in a language-specific
+     * format, to the engine's {@link PolyglotEngine.Builder#setOut standard output}. It might read
+     * input values queried by the language.
      *
-     * @param source code snippet to execute
-     * @return a {@link Value} object that holds result of an execution, never <code>null</code>
+     * <h5>Java interoperation examples</h5>
+     * <p>
+     * {@link #eval(Source)} is also useful for Java applications that <em>interoperate</em> with
+     * guest languages. The following examples demonstrate <em>foreign access</em> from Java to a
+     * guest language function, object, and class respectively. The general strategy is to
+     * {@linkplain #eval(Source) evaluate} guest language code that produces the desired language
+     * element and then {@linkplain Value#as(Class) create} a Java object of the appropriate type
+     * for Java access to the result.
+     * <p>
+     * The examples use JavaScript as the guest language, assuming that a Truffle implementation of
+     * JavaScript is on the JVM class path. In each example a {@link Source#newBuilder(String)
+     * Source} builder creates a literal fragment of JavaScript code.
+     *
+     * <h6>Java interop example: Java access to a JavaScript function</h6>
+     *
+     * The simplest kind of interoperation is calling a <em>foreign</em> (guest language) function
+     * from Java.
+     * <p>
+     * In this example a fragment of JavaScript code named {@code "mul.js"} defines an anonymous
+     * function of two arguments. Evaluation of that code returns the JavaScript function wrapped in
+     * a {@link Value}. The method {@link Value#as(Class)} creates a Java object (an instance of
+     * functional interface {@code Multiplier}) that supports foreign calls to the JavaScript
+     * function. The JavaScript value returned by the function is made available as a Java
+     * {@code int}.
+     * <p>
+     * Parentheses around the function definition keep it out of JavaScript's global scope, so the
+     * Java object holds the only reference to it.
+     *
+     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptFunctionFromJava}
+     *
+     * <h6>Java interop example: Java access to a JavaScript object</h6>
+     *
+     * A slightly more complex example requires access to two guest language functions that share
+     * state, which is implemented in the simplest case as a <em>foreign</em> (guest language)
+     * object accessible from Java.
+     * <p>
+     * In this example a fragment of JavaScript code named {@code "CountSeconds.js"} defines an
+     * anonymous function of no arguments. That function creates a variable {@code "seconds"} plus
+     * two functions and returns them as a dynamic object. Evaluation of {@code "CountSections.js"}
+     * produces a JavaScript function wrapped as a {@link Value} that can be called directly using
+     * the method {@link Value#execute(Object...)}. A foreign execution the JavaScript function
+     * produces a JavaScript object wrapped as a {@link Value}. The method {@link Value#as(Class)}
+     * creates a Java object that allows access to the JavaScript object as an instance of the Java
+     * interface {@code Counter}.
+     * <p>
+     * Parentheses around the function definition keep it out of JavaScript's global scope, so the
+     * Java object holds the only reference to it.
+     *
+     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptFunctionsWithSharedStateFromJava}
+     *
+     * <h6>Java interop example: Java access to a JavaScript class</h6>
+     *
+     * The ECMAScript 6 specification adds the concept of typeless classes to JavaScript.
+     * Interoperability allows Java to access fields and functions of a JavaScript class. A
+     * JavaScript function that creates new instances can be (foreign) called directly from Java,
+     * playing the role of a <em>factory</em> for the JavaScript class.
+     * <p>
+     * In this example a fragment of JavaScript code named {@code "Incrementor.js"} defines an
+     * anonymous function of no arguments. Evaluation of that code returns the JavaScript function
+     * wrapped in a {@link Value}, which can be (foreign) called directly from Java using the method
+     * {@link Value#execute(Object...)}. That JavaScript function defines the JavaScript class
+     * {@code JSIncrementor} and returns another JavaScript function (wrapped in a {@link Value})
+     * that acts as a factory. Each foreign call to the factory produces an instance of
+     * {@code JSIncrementor} wrapped as a {@link Value}. The method {@link Value#as(Class)} creates
+     * a Java object for each of those instances that allows access via the Java type
+     * {@code Incrementor}.
+     *
+     * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#callJavaScriptClassFactoryFromJava}
+     *
+     * <h6>More use cases</h6>
+     *
+     * More examples can be found in description of {@link Value#execute(Object...)} and
+     * {@link Value#as(Class)} methods.
+     *
+     * @param source guest language code
+     * @return result of the evaluation wrapped in a non-null {@link Value}
+     * @throws IllegalStateException if no installed language matches the code's MIME type
      * @throws Exception thrown to signal errors while processing the code
+     * @see Value#as(Class)
      * @since 0.9
      */
     public Value eval(Source source) {
@@ -522,12 +630,10 @@ public class PolyglotEngine {
     }
 
     /**
-     * Dispose instance of this engine. A user can explicitly
-     * {@link TruffleLanguage#disposeContext(java.lang.Object) dispose all resources} allocated by
-     * the languages active in this engine, when it is known the system is not going to be used in
-     * the future.
+     * Disposes this engine instance and {@link TruffleLanguage#disposeContext(Object) releases all
+     * resources} allocated by languages active in this engine.
      * <p>
-     * Calling any other method of this class after the dispose has been done yields an
+     * Calling any other method on this instance after disposal throws an
      * {@link IllegalStateException}.
      *
      * @since 0.9
@@ -631,6 +737,7 @@ public class PolyglotEngine {
             try {
                 Access.DEBUG.executionStarted(PolyglotEngine.this);
                 final Object[] args = ForeignAccess.getArguments(frame).toArray();
+                SymbolInvokerImpl.unwrapArgs(this, args);
                 res = ForeignAccess.execute(foreignNode, frame, receiver, args);
             } finally {
                 ExecutionImpl.executionEnded(prev);
@@ -638,11 +745,7 @@ public class PolyglotEngine {
         } else {
             res = invokeForeignOnExecutor(foreignNode, frame, receiver);
         }
-        if (res instanceof TruffleObject) {
-            return new EngineTruffleObject(this, (TruffleObject) res);
-        } else {
-            return res;
-        }
+        return EngineTruffleObject.wrap(this, res);
     }
 
     static void assertNoTruffle() {
@@ -672,18 +775,17 @@ public class PolyglotEngine {
     }
 
     /**
-     * Looks global symbol provided by one of initialized languages up. First of all execute your
-     * program via {@link #eval(com.oracle.truffle.api.source.Source)} method and then look expected
-     * symbol up using this method.
+     * Finds a <em>global symbol</em> by name. Returns the symbol in the engine's namespace of
+     * {@linkplain Builder#globalSymbol(String, Object) preconfigured} global symbols, if present.
+     * Otherwise returns the first symbol found, if any, in a language namespace, which are queried
+     * in an unspecified order.
      * <p>
-     * The names of the symbols are language dependent. This method finds only "first" symbol - in
-     * an unspecified order - if there are multiple languages exporting a symbol and the same name,
-     * it is safer to obtain all via {@link #findGlobalSymbols(java.lang.String)} and process them
-     * accordingly. Once an symbol is obtained, it remembers values for fast access and is ready for
-     * being invoked.
+     * Symbol names are language dependent. Cross-language name collisions are possible, in which
+     * case this method only returns one of them (use {@link #findGlobalSymbols(String)} to return
+     * all of them).
      *
-     * @param globalName the name of the symbol to find
-     * @return found symbol or <code>null</code> if it has not been found
+     * @param globalName a global symbol name
+     * @return the value of a global symbol with the specified name, <code>null</code> if none
      * @since 0.9
      */
     public Value findGlobalSymbol(final String globalName) {
@@ -705,17 +807,17 @@ public class PolyglotEngine {
     }
 
     /**
-     * Searches for global symbols provided by all initialized languages. First of all execute your
-     * program via {@link #eval(com.oracle.truffle.api.source.Source)} method and then look expected
-     * symbols up using this method. If you want to be sure only one symbol has been exported, you
-     * can use:
+     * Finds all <em>global symbols</em> with a specified name by searching every language's
+     * namespace of exported symbols, together with the the engine's namespace of
+     * {@linkplain Builder#globalSymbol(String, Object) preconfigured} symbols.
      * <p>
-     * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols}
-     * <p>
-     * to make sure the <code>iterator</code> contains only one element.
+     * The following example shows how this method can be used to retrieve a single global symbol,
+     * while treating name collisions as an error.
      *
-     * @param globalName the name of the symbols to find
-     * @return iterable to provide access to all found symbols exported under requested name
+     * {@link com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols}
+     *
+     * @param globalName a global symbol name
+     * @return iterable access to the values of global symbols with the specified name
      * @since 0.22
      */
     public Iterable<Value> findGlobalSymbols(String globalName) {
@@ -915,7 +1017,7 @@ public class PolyglotEngine {
 
     private static class PolyglotEvalRootNode extends PolyglotRootNode {
 
-        private static final Object[] DEFAULT_ARGUMENTS = new Object[0];
+        private static final Object[] EMPTY_ARRAY = new Object[0];
 
         @Child private DirectCallNode call;
         private TruffleLanguage<?> fillLanguage;
@@ -942,7 +1044,7 @@ public class PolyglotEngine {
                 initialize();
             }
             fillLang[0] = fillLanguage;
-            return call.call(frame, DEFAULT_ARGUMENTS);
+            return call.call(EMPTY_ARRAY);
         }
 
         private void initialize() {
@@ -958,11 +1060,9 @@ public class PolyglotEngine {
 
     /**
      * A future value wrapper. A user level wrapper around values returned by evaluation of various
-     * {@link PolyglotEngine} functions like
-     * {@link PolyglotEngine#findGlobalSymbol(java.lang.String)} and
-     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} or a value returned by
-     * {@link #invoke(java.lang.Object, java.lang.Object...) a subsequent execution}. In case the
-     * {@link PolyglotEngine} has been initialized for
+     * {@link PolyglotEngine} functions like {@link PolyglotEngine#findGlobalSymbol(String)} and
+     * {@link PolyglotEngine#eval(Source)} or a value returned by {@link #invoke(Object, Object...)
+     * a subsequent execution}. In case the {@link PolyglotEngine} has been initialized for
      * {@link Builder#executor(java.util.concurrent.Executor) asynchronous execution}, the
      * {@link Value} represents a future - i.e., it is returned immediately, leaving the execution
      * running on behind.
@@ -982,12 +1082,12 @@ public class PolyglotEngine {
         abstract Object value();
 
         /**
-         * Obtains the object represented by this symbol. The <em>raw</em> object can either be a
-         * wrapper about primitive type (e.g. {@link Number}, {@link String}, {@link Character},
-         * {@link Boolean}) or a <em>TruffleObject</em> representing more complex object from a
-         * language. The method can return <code>null</code>.
+         * Returns the object represented by this value, possibly null. The <em>raw</em> object can
+         * either be a wrapped primitive type (e.g. {@link Number}, {@link String},
+         * {@link Character}, {@link Boolean}) or a {@link TruffleObject} representing more complex
+         * object created by a language.
          *
-         * @return the object or <code>null</code>
+         * @return the object, possibly <code>null</code>
          * @throws Exception in case it is not possible to obtain the value of the object
          * @since 0.9
          */
@@ -1002,54 +1102,80 @@ public class PolyglotEngine {
                 if (unwrapJava) {
                     result = JavaInterop.asJavaObject(Object.class, (TruffleObject) result);
                 }
-                if (wrapEngine && executor != null && result instanceof TruffleObject) {
-                    return new EngineTruffleObject(PolyglotEngine.this, (TruffleObject) result);
+                if (wrapEngine && result instanceof TruffleObject) {
+                    return EngineTruffleObject.wrap(PolyglotEngine.this, result);
                 }
             }
             return result;
         }
 
         /**
-         * Obtains Java view of the object represented by this symbol. The method basically
-         * delegates to
-         * {@link JavaInterop#asJavaObject(java.lang.Class, com.oracle.truffle.api.interop.TruffleObject)}
-         * . The method handles primitive types (like {@link Number}, etc.) by casting and returning
-         * them. When a {@link String}.<code>class</code> is requested, the method let's the
-         * language that produced the value to do the
-         * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) necessary formating}.
-         * When an instance of {@link FunctionalInterface} is requested, the code checks, if the
-         * returned value {@link Message#IS_EXECUTABLE can be executed} and if so, it binds the
-         * functional method of the interface to such execution. Complex types like {@link List} or
-         * {@link Map} are also supported and even in combination with nested generics.
+         * Creates Java-typed foreign access to the object wrapped by this {@link Value}. Results
+         * depend on the requested type:
+         * <ul>
+         * <li>For primitive types such as {@link Number}, the value is simply cast and returned.
+         * </li>
+         * <li>A {@link String} is produced by the language that returned the value.</li>
+         * <li>A {@link FunctionalInterface} instance is returned if the value
+         * {@link Message#IS_EXECUTABLE can be executed}.</li>
+         * <li>Aggregate types such as {@link List} and {@link Map} are supported, including when
+         * used in combination with nested generics.</li>
+         * </ul>
          *
-         * <h5>Type-safe View of an Array</h5>
+         * <h5>Java interoperation examples</h5>
+         * <p>
+         * The method {@link PolyglotEngine.Value#as(Class)} plays an essential role supporting
+         * interoperation between Java and guest languages. Examples demonstrating Java foreign
+         * access to JavaScript functions, simple objects, and classes appear in the method
+         * documentation for {@link PolyglotEngine#eval(Source)}. The examples here demonstrate Java
+         * foreign access to more complex data structures.
+         * <p>
+         * The examples use JavaScript as the guest language, assuming that a Truffle implementation
+         * of JavaScript is on the JVM class path. In each example a
+         * {@link Source#newBuilder(String) Source} builder creates a literal fragment of JavaScript
+         * code.
          *
-         * The following example defines a {@link FunctionalInterface} which's method returns a
-         * {@link List} of points:
+         * <h6>Java interop example: Java access to a JavaScript array with typed elements</h6>
+         * <p>
+         * This example demonstrates type-safe Java foreign access to members of a JavaScript array
+         * with members of a known type.
+         * <p>
+         * In this example a fragment of JavaScript code named {@code "ArrayOfPoints.js"} defines an
+         * anonymous function of no arguments. Evaluation of that code returns the JavaScript
+         * function wrapped in a {@link Value}. The method {@link Value#as(Class)} creates a Java
+         * object (an instance of functional interface {@code PointProvider}) that supports foreign
+         * calls to the JavaScript function. The JavaScript list returned by the function is made
+         * available as Java type {@code List<Point>}.
          *
-         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#arrayWithTypedElements}
          *
-         * <h5>Type-safe Parsing of a JSON</h5>
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptArrayWithTypedElementsFromJava}
          *
-         * Imagine a need to safely access complex JSON-like structure. The next example uses one
-         * modeled after JSON response returned by a GitHub API. It contains a list of repository
-         * objects. Each repository has an id, name, list of URLs and a nested structure describing
-         * owner. Let's start by defining the structure with Java interfaces:
+         * <h6>Java interop example: Java access to JavaScript JSON data</h6>
          *
-         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJSONObjectProperties}
-         * 
-         * The example defines a parser that somehow obtains object representing the JSON data and
-         * converts it into {@link List} of {@code Repository} instances. After calling the method
-         * we can safely use the interfaces ({@link List}, {@code Repository}, {@code Owner}) and
-         * inspect the JSON structure in a type-safe way.
+         * This example demonstrates type-safe Java foreign access to a JavaScript JSON-like
+         * structure. The example is based on JSON data returned by a GitHub API.
+         * <p>
+         * The GitHub response contains a list of repository objects. Each repository has an id,
+         * name, list of URLs, and a nested structure describing its owner. Interfaces
+         * {@code Repository} and {@code Owner} define the structure as Java types.
+         * <p>
+         * In the example a fragment of Javascript code named {@code "github-api-value.js"} defines
+         * an anonymous function of no arguments. Evaluation of that code returns the JavaScript
+         * function, wrapped in a {@link Value} that can be (foreign) executed directly. Execution
+         * of that function returns a JavaScript mock JSON parser function, also wrapped in a
+         * {@link Value Value}. The method {@link Value#as(Class)} creates a Java object (an
+         * instance of functional interface {@code ParseJSON}) that supports Java foreign calls to
+         * the JavaScript mock parser, producing results that can be inspected in a type-safe way.
+         *
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessJavaScriptJSONObjectFromJava}
+         *
          * <p>
          * Other examples of Java to dynamic language interop can be found in documentation of
-         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} and
-         * {@link #execute(java.lang.Object...)} methods.
+         * {@link PolyglotEngine#eval(Source)} and {@link #execute(Object...)} methods.
          *
-         * @param <T> the type of the view one wants to obtain
-         * @param representation the class of the view interface (it has to be an interface)
-         * @return instance of the view wrapping the object of this symbol
+         * @param <T> the type of the requested view
+         * @param representation an interface describing the requested access (must be an interface)
+         * @return instance of the view wrapping the object of this value
          * @throws Exception in case it is not possible to obtain the value of the object
          * @throws ClassCastException if the value cannot be converted to desired view
          * @since 0.9
@@ -1097,60 +1223,68 @@ public class PolyglotEngine {
         }
 
         /**
-         * Executes the symbol. If the symbol represents a function, then it should be invoked with
-         * provided arguments. If the symbol represents a field, then first argument (if provided)
-         * should set the value to the field; the return value should be the actual value of the
-         * field when the <code>invoke</code> method returns.
+         * Executes this value, depending on its content.
+         * <ul>
+         *
+         * <li>If the value represents a function, makes a <em>foreign function call</em> using
+         * appropriate Java arguments. See {@linkplain PolyglotEngine "Truffle-Java Interoperation"}
+         * for the implications of making Java data available to guest languages.</li>
+         *
+         * <li>If the value represents a field, then sets the field to the value of the first
+         * argument, if provided, and returns the (possibly new) value of the field.</li>
+         * </ul>
+         *
+         * <h5>Java interoperation examples</h5>
          * <p>
-         * All {@link TruffleLanguage Truffle languages} accept wrappers of Java primitive types
-         * (e.g. {@link java.lang.Byte}, {@link java.lang.Short}, {@link java.lang.Integer},
-         * {@link java.lang.Long}, {@link java.lang.Float}, {@link java.lang.Double},
-         * {@link java.lang.Character}, {@link java.lang.Boolean}, and {@link java.lang.String}) or
-         * generic {@link TruffleObject objects created} by one of the languages as parameters of
-         * their functions (or other objects that can be executed). In addition to that the
-         * <code>execute</code> method converts plain Java objects into appropriate wrappers to make
-         * them easily accessible from dynamic languages.
+         * The method {@link PolyglotEngine.Value#execute(Object...)} plays an essential role
+         * supporting interoperation between Java and guest languages. The examples here demonstrate
+         * JavaScript foreign access to Java elements. Access in the other direction, Java foreign
+         * access to JavaScript elements appear in method documentation for
+         * {@link PolyglotEngine#eval(Source)} and {@link Value#as(Class)}.
+         * <p>
+         * The examples use JavaScript as the guest language, assuming that a Truffle implementation
+         * of JavaScript is on the JVM class path. In each example a
+         * {@link Source#newBuilder(String) Source} builder creates a literal fragment of JavaScript
+         * code.
          *
-         * <h5>Access Fields and Methods of Java Objects</h5>
+         * <h6>Java interop example: JavaScript access to Java object fields and methods</h6>
          *
-         * This method allows one to easily expose <b>public</b> members of Java objects to scripts
-         * written in dynamic languages. For example the next code defines class <code>Moment</code>
-         * and allows dynamic language access its fields:
+         * This example shows how to expose <em>public</em> members of Java objects to scripts
+         * written in dynamic languages. In the example a JavaScript function is able to access
+         * fields in (foreign) Java objects of type {@code Moment}.
+         * <p>
+         * Evaluating the JavaScript code fragment named {@code "MomentToSeconds.js"} produces a
+         * JavaScript function of one argument wrapped in a {@link Value}. This can be (foreign)
+         * executed, as shown, which returns a JavaScript number wrapped in a {@link Value}.
+         * Converting the result to Java requires using the method {@link Value#as(Class)}.
          *
          * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObject}
          *
-         * Of course, the {@link #as(java.lang.Class) manual conversion} to {@link Number} is
-         * annoying. Should it be performed frequently, it is better to define a
-         * <code>MomentConvertor</code> interface:
+         * The explicit conversion of the result type in the above example can be avoided by
+         * explicitly converting the type of the <em>foreign function</em> instead. In the following
+         * variation, the JavaScript function is given the Java functional type
+         * {@code MomentConvertor}, which returns a Java {@code int}.
          *
-         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConvertor}
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#accessFieldsOfJavaObjectWithConverter}
          *
-         * then one gets completely type-safe view of the dynamic function including its parameters
-         * and return type.
+         * <h6>Java interop example: JavaScript access to Java static methods and constructors</h6>
          *
-         * <h5>Accessing Static Methods</h5>
+         * Dynamic languages can also access <em>public static methods</em> and <em>public
+         * constructors</em> of any Java class for which they are provided a reference. In this
+         * example a JavaScript function (created by evaluating the JavaScript code fragment named
+         * {@code "ConstructMoment.js"}) creates a JavaScript factory for a Java class passed to it
+         * as an argument. The JavaScript factory (foreign) invokes the Java class constructor and
+         * returns the new Java object instance wrapped in a {@link Value}.
          *
-         * Dynamic languages can also access <b>public</b> static methods and <b>public</b>
-         * constructors of Java classes, if they can get reference to them. Luckily
-         * {@linkplain #execute(java.lang.Object...) there is a support} for wrapping instances of
-         * {@link Class} to appropriate objects:
-         *
-         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createNewMoment}
-         *
-         * In the above example the <code>Moment.class</code> is passed into the JavaScript function
-         * as first argument and can be used by the dynamic language as a constructor in
-         * <code>new Moment(h, m, s)</code> - that creates new instances of the Java class. Static
-         * methods of the passed in <code>Moment</code> object could be invoked as well.
+         * {@codesnippet com.oracle.truffle.tck.impl.PolyglotEngineWithJavaScript#createJavaScriptFactoryForJavaClass}
          *
          * <p>
-         * Additional examples of Java/dynamic language interop can be found in description of
-         * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} and
-         * {@link #as(java.lang.Class)} methods.
+         * Additional examples of Java/dynamic language interoperation can be found in description
+         * of {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
+         * PolyglotEngine.eval(Source)} and {@link #as(Class) Value.as(Class)} methods.
          *
-         * @param args arguments to pass when invoking the symbol
-         *
-         * @return symbol wrapper around the value returned by invoking the symbol, never
-         *         <code>null</code>
+         * @param args arguments to pass when executing the value
+         * @return result of the execution wrapped in a non-null {@link Value}
          * @throws Exception signals problem during execution
          * @since 0.9
          */
@@ -1237,10 +1371,16 @@ public class PolyglotEngine {
     }
 
     /**
-     * Handle for an installed {@linkplain TruffleInstrument instrument}: a client of a running
-     * {@linkplain PolyglotEngine engine} that can observe and inject behavior into interpreters
-     * written using the Truffle framework. The handle provides access to the instrument's metadata
-     * and allows the instrument to be {@linkplain Instrument#setEnabled(boolean) enabled/disabled}.
+     * A handle for an <em>instrument</em> installed in an engine, usable from other threads, that
+     * can observe and inject behavior into language execution. The handle provides access to the
+     * instrument's metadata and allows the instrument to be dynamically
+     * {@linkplain Instrument#setEnabled(boolean) enabled/disabled} in the engine.
+     * <p>
+     * All methods here, as well as instrumentation services in general, can be used safely from
+     * threads other than the engine's single execution thread.
+     * <p>
+     * Refer to {@link TruffleInstrument} for information about implementing and installing
+     * instruments.
      *
      * @see PolyglotEngine#getInstruments()
      * @since 0.9
@@ -1256,7 +1396,9 @@ public class PolyglotEngine {
         }
 
         /**
-         * @return the id of the instrument
+         * Gets the id clients can use to acquire this instrument.
+         *
+         * @return this instrument's unique id
          * @since 0.9
          */
         public String getId() {
@@ -1264,7 +1406,9 @@ public class PolyglotEngine {
         }
 
         /**
-         * @return a human readable name of the installed instrument.
+         * Gets a human readable name of this instrument.
+         *
+         * @return this instrument's user-friendly name
          * @since 0.9
          */
         public String getName() {
@@ -1272,7 +1416,9 @@ public class PolyglotEngine {
         }
 
         /**
-         * @return the version of the installed instrument.
+         * Gets the version of this instrument.
+         *
+         * @return this instrument's version
          * @since 0.9
          */
         public String getVersion() {
@@ -1284,7 +1430,9 @@ public class PolyglotEngine {
         }
 
         /**
-         * @return <code>true</code> if the underlying instrument is enabled else <code>false</code>
+         * Returns whether this instrument is currently enabled in the engine.
+         *
+         * @return this instrument's status in the engine
          * @since 0.9
          */
         public boolean isEnabled() {
@@ -1292,13 +1440,15 @@ public class PolyglotEngine {
         }
 
         /**
-         * Lookup additional service provided by the instrument. Here is an example how to query for
-         * a hypothetical <code>DebuggerController</code>: {@codesnippet DebuggerExampleTest}
+         * Returns an additional service provided by this instrument, specified by type.
+         * <p>
+         * Here is an example for locating a hypothetical <code>DebuggerController</code>:
+         *
+         * {@codesnippet DebuggerExampleTest}
          *
          * @param <T> the type of the service
          * @param type class of the service that is being requested
-         * @return instance of requested type, or <code>null</code> if no such service is available
-         *         for the instrument
+         * @return instance of requested type, <code>null</code> if no such service is available
          * @since 0.9
          */
         public <T> T lookup(Class<T> type) {
@@ -1306,7 +1456,7 @@ public class PolyglotEngine {
         }
 
         /**
-         * Enables/disables the installed instrument in the engine.
+         * Enables/disables this instrument in the engine.
          *
          * @param enabled <code>true</code> to enable <code>false</code> to disable
          * @since 0.9
@@ -1350,15 +1500,14 @@ public class PolyglotEngine {
     }
 
     /**
-     * Description of a language registered in {@link PolyglotEngine Truffle virtual machine}.
-     * Languages are registered by {@link Registration} annotation which stores necessary
-     * information into a descriptor inside of the language's JAR file. When a new
-     * {@link PolyglotEngine} is created, it reads all available descriptors and creates
-     * {@link Language} objects to represent them. One can obtain a {@link #getName() name} or list
-     * of supported {@link #getMimeTypes() MIME types} for each language. The actual language
-     * implementation is not initialized until
-     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) a code is evaluated} in it.
+     * A handle for a Truffle language installed in a {@link PolyglotEngine}. The handle provides
+     * access to the language's metadata, including the language's {@linkplain #getName() name},
+     * {@linkplain #getVersion() version}, and supported {@linkplain #getMimeTypes() MIME types}.
+     * <p>
+     * Documentation about how Truffle languages are implemented begins with the abstract class
+     * {@link TruffleLanguage}.
      *
+     * @see PolyglotEngine#getLanguages()
      * @since 0.9
      */
     public class Language {
@@ -1373,9 +1522,9 @@ public class PolyglotEngine {
         }
 
         /**
-         * MIME types recognized by the language.
+         * Gets the MIME types supported by this language.
          *
-         * @return returns immutable set of recognized MIME types
+         * @return an immutable set of supported MIME types
          * @since 0.9
          */
         public Set<String> getMimeTypes() {
@@ -1383,9 +1532,9 @@ public class PolyglotEngine {
         }
 
         /**
-         * Human readable name of the language. Think of C, Ruby, JS, etc.
+         * Gets the human-readable name of this language.
          *
-         * @return string giving the language a name
+         * @return a human-friendly name
          * @since 0.9
          */
         public String getName() {
@@ -1393,9 +1542,9 @@ public class PolyglotEngine {
         }
 
         /**
-         * Name of the language version.
+         * Gets the version of this language.
          *
-         * @return string specifying the language version
+         * @return a version string
          * @since 0.9
          */
         public String getVersion() {
@@ -1403,13 +1552,11 @@ public class PolyglotEngine {
         }
 
         /**
-         * Test whether the language has a support for interactive evaluation of {@link Source
-         * sources}. Such languages should be displayed in interactive environments and presented to
-         * the user. This value is specified by {@link Registration#interactive() interactive
-         * attribute} when registering the {@link TruffleLanguage language}.
+         * Returns whether this language supports interactive evaluation of {@link Source sources}.
+         * Such languages should be displayed in interactive environments and presented to the user.
          *
-         * @return <code>true</code> if the language implements an interactive response to
-         *         evaluation of interactive sources, <code>false</code> otherwise.
+         * @return <code>true</code> if and only if this language implements an interactive response
+         *         to evaluation of interactive sources.
          * @since 0.22
          */
         public boolean isInteractive() {
@@ -1417,19 +1564,18 @@ public class PolyglotEngine {
         }
 
         /**
-         * Evaluates provided source. Ignores the particular {@link Source#getMimeType() MIME type}
-         * and forces evaluation in the context of <code>this</code> language.
+         * Evaluates code using this language, ignoring the code's {@link Source#getMimeType() MIME
+         * type}.
          * <p>
          * When evaluating an {@link Source#isInteractive() interactive source} the result of the
          * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval evaluation} is
-         * {@link TruffleLanguage#isVisible(java.lang.Object, java.lang.Object) tested to be
-         * visible} and if the value is visible, it gets
-         * {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object) converted to string}
+         * {@link TruffleLanguage#isVisible(Object, Object) tested to be visible} and if the value
+         * is visible, it gets {@link TruffleLanguage#toString(Object, Object) converted to string}
          * and printed to {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut standard
          * output}.
          *
-         * @param source code snippet to execute
-         * @return a {@link Value} object that holds result of an execution, never <code>null</code>
+         * @param source code to execute
+         * @return a non-null {@link Value} that holds the result
          * @throws Exception thrown to signal errors while processing the code
          * @since 0.9
          */
@@ -1439,14 +1585,13 @@ public class PolyglotEngine {
         }
 
         /**
-         * Returns value representing global object of the language.
+         * Returns this language's <em>global object</em>, {@code null} if not supported.
          * <p>
-         * The object is expected to be <code>TruffleObject</code> (e.g. a native object from the
-         * other language) but technically it can be one of Java primitive wrappers ({@link Integer}
-         * , {@link Double}, {@link Short}, etc.).
+         * The result is expected to be a {@link TruffleObject} (e.g. a native object from the other
+         * language) but technically it can also be one of Java's primitive wrappers (
+         * {@link Integer} , {@link Double}, {@link Short}, etc.).
          *
-         * @return the global object or <code>null</code> if the language does not support such
-         *         concept
+         * @return this language's global object, <code>null</code> if the language has none
          * @since 0.9
          */
         @SuppressWarnings("try")
@@ -1661,6 +1806,14 @@ public class PolyglotEngine {
                 assert engine.debugger()[0] == null || engine.debugger()[0] == debugger;
                 engine.debugger()[0] = debugger;
             }
+
+            @Override
+            public Object findOriginalObject(Object truffleObject) {
+                if (truffleObject instanceof EngineTruffleObject) {
+                    return ((EngineTruffleObject) truffleObject).getDelegate();
+                }
+                return truffleObject;
+            }
         }
 
     } // end of SPIAccessor
@@ -1685,16 +1838,31 @@ class PolyglotEngineSnippets {
         return engine;
     }
 
+    public static int evalCode() {
+        // @formatter:off
+        // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#evalCode
+        Source src = Source.newBuilder("3 + 39").
+                        mimeType("application/my-test-lang").
+                        name("example.test-lang").
+                        build();
+        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
+        Value result = engine.eval(src);
+        int answer = result.as(Integer.class);
+        // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#evalCode
+        // @formatter:on
+        return answer;
+    }
+
     public static PolyglotEngine initializeWithParameters() {
         // @formatter:off
         // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#initializeWithParameters
         String[] args = {"--kernel", "Kernel.som", "--instrument", "dyn-metrics"};
         PolyglotEngine.Builder builder = PolyglotEngine.newBuilder();
         builder.config(YourLang.MIME_TYPE, "CMD_ARGS", args);
-        PolyglotEngine vm = builder.build();
+        PolyglotEngine engine = builder.build();
         // END: com.oracle.truffle.api.vm.PolyglotEngineSnippets#initializeWithParameters
         // @formatter:on
-        return vm;
+        return engine;
     }
 
     // @formatter:off
@@ -1736,8 +1904,7 @@ class PolyglotEngineSnippets {
     // @formatter:off
     // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#findAndReportMultipleExportedSymbols
     static Value findAndReportMultipleExportedSymbols(
-        PolyglotEngine engine, String name
-    ) {
+                      PolyglotEngine engine, String name) {
         Value found = null;
         for (Value value : engine.findGlobalSymbols(name)) {
             if (found != null) {

@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -58,7 +57,7 @@ public abstract class SLIsNullBuiltin extends SLBuiltinNode {
     @Child private Node isNull = Message.IS_NULL.createNode();
 
     @Specialization
-    public Object isNull(VirtualFrame frame, TruffleObject obj) {
-        return ForeignAccess.sendIsNull(isNull, frame, obj);
+    public Object isNull(TruffleObject obj) {
+        return ForeignAccess.sendIsNull(isNull, obj);
     }
 }
