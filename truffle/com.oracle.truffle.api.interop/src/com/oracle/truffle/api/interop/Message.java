@@ -370,9 +370,9 @@ public abstract class Message {
     public static final Message IS_NULL = IsNull.INSTANCE;
 
     /**
-     * Message to check for having a size. If a {@link TruffleObject} indicates it
-     * <em>has a size</em>, it is expected it represents array-like structure and it also properly
-     * responds to {@link #GET_SIZE} message
+     * Message to check for having a size. If a {@link TruffleObject} indicates it <em>has a
+     * size</em>, it is expected it represents array-like structure and it also properly responds to
+     * {@link #GET_SIZE} message
      * <p>
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
      * created for this message should yield value of {@link Boolean}.
@@ -470,7 +470,7 @@ public abstract class Message {
      * @since 0.8 or earlier
      */
     public final Node createNode() {
-        return new ForeignObjectAccessHeadNode(this);
+        return InteropAccessNode.create(this);
     }
 
     /**

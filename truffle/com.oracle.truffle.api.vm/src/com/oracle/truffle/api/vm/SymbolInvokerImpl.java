@@ -66,6 +66,17 @@ abstract class SymbolInvokerImpl {
         return new TemporaryRoot(lang, foreignAccess, function);
     }
 
+    static void unwrapArgs(PolyglotEngine engine, final Object[] args) {
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] instanceof EngineTruffleObject) {
+                final EngineTruffleObject engineObject = (EngineTruffleObject) args[i];
+                engineObject.assertEngine(engine);
+                args[i] = engineObject.getDelegate();
+            }
+            args[i] = JavaInterop.asTruffleValue(args[i]);
+        }
+    }
+
     static class TemporaryRoot extends RootNode {
         @Child private Node foreignAccess;
         @Child private ConvertNode convert;
@@ -84,8 +95,8 @@ abstract class SymbolInvokerImpl {
         public Object execute(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
             try {
-                Object tmp = ForeignAccess.send(foreignAccess, frame, function, args);
-                return convert.convert(frame, typeProfile.profile(tmp));
+                Object tmp = ForeignAccess.send(foreignAccess, function, args);
+                return convert.convert(typeProfile.profile(tmp));
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
@@ -109,16 +120,14 @@ abstract class SymbolInvokerImpl {
         @Override
         protected Object executeImpl(VirtualFrame frame) {
             final Object[] args = frame.getArguments();
-            for (int i = 0; i < args.length; i++) {
-                args[i] = JavaInterop.asTruffleValue(args[i]);
-            }
+            unwrapArgs(engine, args);
             try {
                 if (foreignAccess == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     foreignAccess = insert(Message.createExecute(args.length).createNode());
                 }
-                Object tmp = ForeignAccess.send(foreignAccess, frame, function, args);
-                return convert.convert(frame, tmp);
+                Object tmp = ForeignAccess.send(foreignAccess, function, args);
+                return convert.convert(tmp);
             } catch (ArityException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignAccess = insert(Message.createExecute(args.length).createNode());
@@ -143,24 +152,24 @@ abstract class SymbolInvokerImpl {
             this.unbox = Message.UNBOX.createNode();
         }
 
-        Object convert(VirtualFrame frame, Object obj) {
+        Object convert(Object obj) {
             if (obj instanceof TruffleObject) {
-                return convert(frame, (TruffleObject) obj);
+                return convert((TruffleObject) obj);
             } else {
                 return obj;
             }
         }
 
-        private Object convert(VirtualFrame frame, TruffleObject obj) {
-            boolean isBoxedResult = ForeignAccess.sendIsBoxed(isBoxed, frame, obj);
+        private Object convert(TruffleObject obj) {
+            boolean isBoxedResult = ForeignAccess.sendIsBoxed(isBoxed, obj);
             if (isBoxedProfile.profile(isBoxedResult)) {
                 try {
-                    return ForeignAccess.sendUnbox(unbox, frame, obj);
+                    return ForeignAccess.sendUnbox(unbox, obj);
                 } catch (UnsupportedMessageException e) {
                     return null;
                 }
             } else {
-                boolean isNullResult = ForeignAccess.sendIsNull(isNull, frame, obj);
+                boolean isNullResult = ForeignAccess.sendIsNull(isNull, obj);
                 if (isNullResult) {
                     return null;
                 }

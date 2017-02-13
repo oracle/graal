@@ -85,7 +85,7 @@ public final class SLInvokeNode extends SLExpressionNode {
         for (int i = 0; i < argumentNodes.length; i++) {
             argumentValues[i] = argumentNodes[i].executeGeneric(frame);
         }
-        return dispatchNode.executeDispatch(frame, function, argumentValues);
+        return dispatchNode.executeDispatch(function, argumentValues);
     }
 
     @Override

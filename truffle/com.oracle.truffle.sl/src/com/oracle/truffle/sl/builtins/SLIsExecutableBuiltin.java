@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -58,7 +57,7 @@ public abstract class SLIsExecutableBuiltin extends SLBuiltinNode {
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
 
     @Specialization
-    public Object isExecutable(VirtualFrame frame, TruffleObject obj) {
-        return ForeignAccess.sendIsExecutable(isExecutable, frame, obj);
+    public Object isExecutable(TruffleObject obj) {
+        return ForeignAccess.sendIsExecutable(isExecutable, obj);
     }
 }

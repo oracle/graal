@@ -24,22 +24,25 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import com.oracle.truffle.api.nodes.Node;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * A {@link NodeField} element defines a field for the generated {@link Node}. A {@link Node}
  * contains multiple {@link NodeFields} specified in linear declaration order. The field can be
  * accessed by declaring an abstract getter named
  * <code>"get" + firstLetterUpperCase({@link #name()})()</code>.
- * 
+ *
  * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
+@Repeatable(NodeFields.class)
 public @interface NodeField {
 
     String name();

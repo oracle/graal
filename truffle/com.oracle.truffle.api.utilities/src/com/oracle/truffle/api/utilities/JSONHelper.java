@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.utilities;
 
+import com.oracle.truffle.api.impl.Accessor;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -267,6 +268,30 @@ public class JSONHelper {
                 comma = true;
             }
             sb.append("]");
+        }
+    }
+
+    static final DumpAccessor ACCESSOR = new DumpAccessor();
+
+    private static final class DumpAccessor extends Accessor {
+        private static final DumpSupport DUMP_SUPPORT = new DumpSupport() {
+            @Override
+            public void dump(Node newNode, Node newChild, CharSequence reason) {
+                if (reason != null) {
+                    dumpReplaceChild(newNode, newChild, reason);
+                } else {
+                    if (newChild != null) {
+                        dumpNewChild(newNode, newChild);
+                    } else {
+                        dumpNewNode(newNode);
+                    }
+                }
+            }
+        };
+
+        @Override
+        protected DumpSupport dumpSupport() {
+            return DUMP_SUPPORT;
         }
     }
 }

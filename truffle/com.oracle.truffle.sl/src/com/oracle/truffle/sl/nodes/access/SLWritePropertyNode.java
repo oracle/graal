@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.nodes.access;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
@@ -69,8 +68,8 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
     @Child private SLWritePropertyCacheNode writeNode = SLWritePropertyCacheNodeGen.create();
 
     @Specialization
-    protected Object write(VirtualFrame frame, Object receiver, Object name, Object value) {
-        writeNode.executeWrite(frame, receiver, name, value);
+    protected Object write(Object receiver, Object name, Object value) {
+        writeNode.executeWrite(receiver, name, value);
         return value;
     }
 }

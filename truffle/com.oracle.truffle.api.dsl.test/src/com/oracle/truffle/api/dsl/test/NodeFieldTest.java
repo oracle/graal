@@ -28,7 +28,6 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.IntFieldNoGetterTestNodeFactory;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.IntFieldTestNodeFactory;
@@ -78,7 +77,8 @@ public class NodeFieldTest {
         assertEquals(42, createCallTarget(MultipleFieldsTestNodeFactory.create(21, 21)).call());
     }
 
-    @NodeFields({@NodeField(name = "field0", type = int.class), @NodeField(name = "field1", type = int.class)})
+    @NodeField(name = "field0", type = int.class)
+    @NodeField(name = "field1", type = int.class)
     abstract static class MultipleFieldsTestNode extends ValueNode {
 
         public abstract int getField0();
