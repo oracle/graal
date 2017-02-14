@@ -26,9 +26,9 @@ import static org.graalvm.compiler.debug.GraalDebugConfig.Options.DumpPath;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphPort;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintBinaryGraphs;
 import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintCanonicalGraphStringsDirectory;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintIdealGraphAddress;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintIdealGraphFileName;
-import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintIdealGraphPort;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphHost;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintGraphFileName;
+import static org.graalvm.compiler.debug.GraalDebugConfig.Options.PrintXmlGraphPort;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -60,7 +60,7 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
     @Override
     public void customize(DebugConfig config) {
         OptionValues options = config.getOptions();
-        if (Options.PrintIdealGraphFile.getValue(options)) {
+        if (Options.PrintGraphFile.getValue(options)) {
             config.dumpHandlers().add(new GraphPrinterDumpHandler(() -> createFilePrinter(options)));
         } else {
             config.dumpHandlers().add(new GraphPrinterDumpHandler(() -> createNetworkPrinter(options)));
@@ -108,8 +108,8 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
     }
 
     private static GraphPrinter createNetworkPrinter(OptionValues options) throws IOException {
-        String host = PrintIdealGraphAddress.getValue(options);
-        int port = PrintBinaryGraphs.getValue(options) ? PrintBinaryGraphPort.getValue(options) : PrintIdealGraphPort.getValue(options);
+        String host = PrintGraphHost.getValue(options);
+        int port = PrintBinaryGraphs.getValue(options) ? PrintBinaryGraphPort.getValue(options) : PrintXmlGraphPort.getValue(options);
         try {
             GraphPrinter printer;
             if (Options.PrintBinaryGraphs.getValue(options)) {
@@ -127,13 +127,18 @@ public class GraalDebugConfigCustomizer implements DebugConfigCustomizer {
              */
             return null;
         } catch (IOException e) {
-            throw new IOException(String.format("Could not connect to the IGV on %s:%d", host, port), e);
+            if (!Options.PrintGraphFile.hasBeenSet(options)) {
+                TTY.println(String.format("Could not connect to the IGV on %s:%d - falling back to file dumping...", host, port));
+                return createFilePrinter(options);
+            } else {
+                throw new IOException(String.format("Could not connect to the IGV on %s:%d", host, port), e);
+            }
         }
     }
 
     private static Path getFilePrinterPath(OptionValues options) {
         // Construct the path to the file.
-        return UniquePathUtilities.getPath(options, PrintIdealGraphFileName, DumpPath, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml");
+        return UniquePathUtilities.getPath(options, PrintGraphFileName, DumpPath, PrintBinaryGraphs.getValue(options) ? "bgv" : "gv.xml");
     }
 
     private static GraphPrinter createFilePrinter(OptionValues options) throws IOException {
