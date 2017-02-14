@@ -579,7 +579,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-        if (!targetMethod.canBeInlined()) {
+        if (targetMethod.hasNeverInlineDirective()) {
             return null;
         }
 
