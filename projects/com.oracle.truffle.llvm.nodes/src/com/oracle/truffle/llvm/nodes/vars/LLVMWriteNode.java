@@ -41,7 +41,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 
@@ -59,9 +59,9 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
         LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(basicBlock, LLVMFunctionStartNode.class);
         assert functionStartNode != null : basicBlock.getParent().getClass();
         if (basicBlock.getBlockId() == 0) {
-            return String.format("assignment of %s in first basic block in function %s", getSlot().getIdentifier(), functionStartNode.getFunctionName());
+            return String.format("assignment of %s in first basic block in function %s", getSlot().getIdentifier(), functionStartNode.getName());
         } else {
-            return String.format("assignment of %s in basic block %s in function %s", getSlot().getIdentifier(), basicBlock.getBlockName(), functionStartNode.getFunctionName());
+            return String.format("assignment of %s in basic block %s in function %s", getSlot().getIdentifier(), basicBlock.getBlockName(), functionStartNode.getName());
         }
     }
 
@@ -177,7 +177,7 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
     public abstract static class LLVMWriteFunctionNode extends LLVMWriteNode {
 
         @Specialization
-        protected Object writeAddress(VirtualFrame frame, LLVMFunctionDescriptor value) {
+        protected Object writeAddress(VirtualFrame frame, LLVMFunction value) {
             frame.setObject(getSlot(), value);
             return null;
         }

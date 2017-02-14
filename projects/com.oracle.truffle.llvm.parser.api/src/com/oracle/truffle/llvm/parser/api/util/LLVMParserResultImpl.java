@@ -30,11 +30,9 @@
 package com.oracle.truffle.llvm.parser.api.util;
 
 import java.util.List;
-import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.llvm.parser.api.LLVMParserResult;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 
 public class LLVMParserResultImpl implements LLVMParserResult {
 
@@ -43,30 +41,22 @@ public class LLVMParserResultImpl implements LLVMParserResult {
     private final RootCallTarget globalVarDeallocs;
     private final List<RootCallTarget> constructorFunctions;
     private final List<RootCallTarget> destructorFunctions;
-    private final Map<LLVMFunction, RootCallTarget> parsedFunctions;
 
     public LLVMParserResultImpl(RootCallTarget mainFunction,
                     RootCallTarget globalVarInits,
                     RootCallTarget globalVarDeallocs,
                     List<RootCallTarget> constructorFunctions,
-                    List<RootCallTarget> destructorFunctions,
-                    Map<LLVMFunction, RootCallTarget> parsedFunctions) {
+                    List<RootCallTarget> destructorFunctions) {
         this.mainFunction = mainFunction;
         this.globalVarInits = globalVarInits;
         this.globalVarDeallocs = globalVarDeallocs;
         this.constructorFunctions = constructorFunctions;
         this.destructorFunctions = destructorFunctions;
-        this.parsedFunctions = parsedFunctions;
     }
 
     @Override
     public RootCallTarget getMainFunction() {
         return mainFunction;
-    }
-
-    @Override
-    public Map<LLVMFunction, RootCallTarget> getParsedFunctions() {
-        return parsedFunctions;
     }
 
     @Override

@@ -78,12 +78,12 @@ def runSulongSuite(vmArgs):
     """runs the Sulong test suite"""
     mx_sulong.ensureDragonEggExists()
     compileSuite(['sulong'])
-    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite")
 
 def runSulongSuite38(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['sulong38'])
-    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite", ['-Dgraal.TruffleCompilationThreshold=10', '-Dsulong.ExecutionCount=20'])
+    return run38(vmArgs, "com.oracle.truffle.llvm.test.alpha.SulongSuite")
 
 def runShootoutSuite(vmArgs):
     """runs the Sulong test suite"""
@@ -124,6 +124,11 @@ def runArgsTests(vmArgs):
     """runs the Sulong test suite"""
     compileSuite(['args'])
     return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.MainArgsTest")
+
+def runCallbackTests(vmArgs):
+    """runs the Sulong test suite"""
+    compileSuite(['callback'])
+    return run32(vmArgs, "com.oracle.truffle.llvm.test.alpha.CallbackTest")
 
 def runInteropTests(vmArgs):
     """runs the Sulong test suite"""
@@ -227,6 +232,7 @@ def compileNWCCSuite():
 
 testSuites = {
     'args' : (compileOtherTests, runArgsTests),
+    'callback' : (compileOtherTests, runCallbackTests),
     'nwcc' : (compileNWCCSuite, runNWCCSuite),
     # 'nwcc38' : (compileV38NWCCSuite, runNWCCSuite38),
     'assembly' : (compileInlineAssemblySuite, runInlineAssemblySuite),

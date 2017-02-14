@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.MetadataVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public class MetadataBlock {
+public final class MetadataBlock {
 
     protected final List<MetadataBaseNode> metadata;
 

@@ -51,7 +51,5 @@ matrix:
     jdk: oraclejdk8
   - env: TEST_COMMAND='mx su-travis2' CLANG='suite version (3.2)'
     jdk: oraclejdk8
-  - env: TEST_COMMAND='mx su-travis-argon2' CLANG='suite version (3.2)'
-    jdk: oraclejdk8
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat

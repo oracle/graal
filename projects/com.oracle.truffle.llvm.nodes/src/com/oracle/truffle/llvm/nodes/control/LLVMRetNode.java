@@ -35,14 +35,15 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -176,7 +177,7 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     public abstract static class LLVMFunctionRetNode extends LLVMRetNode {
 
         @Specialization
-        public int executeGetSuccessorIndex(VirtualFrame frame, LLVMFunctionDescriptor retResult) {
+        public int executeGetSuccessorIndex(VirtualFrame frame, TruffleObject retResult) {
             frame.setObject(getRetSlot(), retResult);
             return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
         }
@@ -234,12 +235,18 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeField(name = "structSize", type = int.class)
     public abstract static class LLVMStructRetNode extends LLVMRetNode {
 
+        @Child private MemCopyNode memCopy;
+
         public abstract int getStructSize();
+
+        protected LLVMStructRetNode(LLVMHeapFunctions heapFunctions) {
+            memCopy = heapFunctions.createMemCopyNode();
+        }
 
         @Specialization
         public int executeGetSuccessorIndex(VirtualFrame frame, LLVMAddress retResult) {
             LLVMAddress retStructAddress = (LLVMAddress) FrameUtil.getObjectSafe(frame, getRetSlot());
-            LLVMHeap.memCopy(retStructAddress, retResult, getStructSize());
+            memCopy.execute(retStructAddress, retResult, getStructSize());
             return LLVMBasicBlockNode.DEFAULT_SUCCESSOR;
         }
 

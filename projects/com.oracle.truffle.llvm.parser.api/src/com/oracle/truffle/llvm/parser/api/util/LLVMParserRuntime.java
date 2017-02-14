@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 
 public interface LLVMParserRuntime {
 
@@ -84,6 +85,8 @@ public interface LLVMParserRuntime {
     void addDestructor(LLVMExpressionNode destructorNode);
 
     long getNativeHandle(String name);
+
+    LLVMHeapFunctions getHeapFunctions();
 
     Map<String, Type> getVariableNameTypesMapping();
 

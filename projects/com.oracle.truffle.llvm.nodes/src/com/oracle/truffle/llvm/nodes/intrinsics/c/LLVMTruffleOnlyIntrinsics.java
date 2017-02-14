@@ -29,25 +29,23 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
-import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.context.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMNativeCallUtils;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 public final class LLVMTruffleOnlyIntrinsics {
@@ -57,49 +55,54 @@ public final class LLVMTruffleOnlyIntrinsics {
 
     public abstract static class LLVMTruffleOnlyI64Intrinsic extends LLVMIntrinsic {
 
-        protected final NativeFunctionHandle handle;
+        @Child private Node foreignExecute;
 
-        public LLVMTruffleOnlyI64Intrinsic(LLVMFunction descriptor) {
-            handle = NativeLookup.getNFI().getFunctionHandle(descriptor.getName().substring(1), getReturnValueClass(), getParameterClasses());
+        protected final TruffleObject nativeFunction;
+
+        public LLVMTruffleOnlyI64Intrinsic(TruffleObject nativeSymbol, String signature, int arity) {
+            nativeFunction = LLVMNativeCallUtils.bindNativeSymbol(nativeSymbol, signature);
+            foreignExecute = Message.createExecute(arity).createNode();
         }
 
-        protected abstract Class<?>[] getParameterClasses();
-
-        protected Class<?> getReturnValueClass() {
-            return long.class;
+        protected final long callNative(Object... args) {
+            try {
+                return (long) ForeignAccess.sendExecute(foreignExecute, nativeFunction, args);
+            } catch (InteropException e) {
+                throw new IllegalStateException(e);
+            }
         }
     }
 
     public abstract static class LLVMTruffleOnlyI32Intrinsic extends LLVMIntrinsic {
 
-        protected final NativeFunctionHandle handle;
+        @Child private Node foreignExecute;
 
-        public LLVMTruffleOnlyI32Intrinsic(LLVMFunction descriptor) {
-            handle = NativeLookup.getNFI().getFunctionHandle(descriptor.getName().substring(1), getReturnValueClass(), getParameterClasses());
+        protected final TruffleObject nativeFunction;
+
+        public LLVMTruffleOnlyI32Intrinsic(TruffleObject nativeSymbol, String signature, int arity) {
+            nativeFunction = LLVMNativeCallUtils.bindNativeSymbol(nativeSymbol, signature);
+            foreignExecute = Message.createExecute(arity).createNode();
         }
 
-        protected abstract Class<?>[] getParameterClasses();
-
-        protected Class<?> getReturnValueClass() {
-            return int.class;
+        protected final int callNative(Object... args) {
+            try {
+                return (int) ForeignAccess.sendExecute(foreignExecute, nativeFunction, args);
+            } catch (InteropException e) {
+                throw new IllegalStateException(e);
+            }
         }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMStrlen extends LLVMTruffleOnlyI64Intrinsic {
 
-        public LLVMStrlen(LLVMFunction descriptor) {
-            super(descriptor);
-        }
-
-        @Override
-        protected Class<?>[] getParameterClasses() {
-            return new Class<?>[]{long.class};
+        public LLVMStrlen(TruffleObject nativeSymbol) {
+            super(nativeSymbol, "(POINTER):SINT64", 1);
         }
 
         @Specialization
         public long executeIntrinsic(LLVMAddress string) {
-            return (long) handle.call(string.getVal());
+            return callNative(string.getVal());
         }
 
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
@@ -107,13 +110,13 @@ public final class LLVMTruffleOnlyIntrinsics {
         @Child private ToLLVMNode toLLVM = ToLLVMNode.createNode(long.class);
 
         @Specialization
-        public long executeIntrinsic(VirtualFrame frame, TruffleObject object) {
-            boolean hasSize = ForeignAccess.sendHasSize(foreignHasSize, frame, object);
+        public long executeIntrinsic(TruffleObject object) {
+            boolean hasSize = ForeignAccess.sendHasSize(foreignHasSize, object);
             if (hasSize) {
                 Object strlen;
                 try {
-                    strlen = ForeignAccess.sendGetSize(foreignGetSize, frame, object);
-                    long size = (long) toLLVM.executeWithTarget(frame, strlen);
+                    strlen = ForeignAccess.sendGetSize(foreignGetSize, object);
+                    long size = (long) toLLVM.executeWithTarget(strlen);
                     return size;
                 } catch (UnsupportedMessageException e) {
                     throw new AssertionError(e);
@@ -129,18 +132,13 @@ public final class LLVMTruffleOnlyIntrinsics {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMStrCmp extends LLVMTruffleOnlyI32Intrinsic {
 
-        public LLVMStrCmp(LLVMFunction descriptor) {
-            super(descriptor);
-        }
-
-        @Override
-        protected Class<?>[] getParameterClasses() {
-            return new Class<?>[]{long.class, long.class};
+        public LLVMStrCmp(TruffleObject symbol) {
+            super(symbol, "(POINTER,POINTER):SINT32", 2);
         }
 
         @Specialization
         public int executeIntrinsic(LLVMAddress str1, LLVMAddress str2) {
-            return (int) handle.call(str1.getVal(), str2.getVal());
+            return callNative(str1.getVal(), str2.getVal());
         }
 
         @Child private Node readStr1 = Message.READ.createNode();
@@ -152,26 +150,26 @@ public final class LLVMTruffleOnlyIntrinsics {
         @Child private ToLLVMNode toLLVM1 = ToLLVMNode.createNode(char.class);
         @Child private ToLLVMNode toLLVM2 = ToLLVMNode.createNode(char.class);
 
-        @Specialization(limit = "20", guards = {"getSize1(frame, str1) == size1", "getSize2(frame, str2) == size2"})
+        @Specialization(limit = "20", guards = {"getSize1(str1) == size1", "getSize2(str2) == size2"})
         @ExplodeLoop
-        public int executeIntrinsic(VirtualFrame frame, TruffleObject str1, TruffleObject str2, @Cached("getSize1(frame, str1)") long size1, @Cached("getSize2(frame, str2)") long size2) {
+        public int executeIntrinsic(TruffleObject str1, TruffleObject str2, @Cached("getSize1(str1)") long size1, @Cached("getSize2(str2)") long size2) {
             try {
                 int i;
                 for (i = 0; i < size1; i++) {
-                    Object s1 = ForeignAccess.sendRead(readStr1, frame, str1, i);
-                    char c1 = (char) toLLVM1.executeWithTarget(frame, s1);
+                    Object s1 = ForeignAccess.sendRead(readStr1, str1, i);
+                    char c1 = (char) toLLVM1.executeWithTarget(s1);
                     if (i >= size2) {
                         return c1;
                     }
-                    Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                    char c2 = (char) toLLVM2.executeWithTarget(frame, s2);
+                    Object s2 = ForeignAccess.sendRead(readStr2, str2, i);
+                    char c2 = (char) toLLVM2.executeWithTarget(s2);
                     if (c1 != c2) {
                         return c1 - c2;
                     }
                 }
                 if (i < size2) {
-                    Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                    char c2 = (char) toLLVM2.executeWithTarget(frame, s2);
+                    Object s2 = ForeignAccess.sendRead(readStr2, str2, i);
+                    char c2 = (char) toLLVM2.executeWithTarget(s2);
                     return -c2;
                 } else {
                     return 0;
@@ -181,32 +179,32 @@ public final class LLVMTruffleOnlyIntrinsics {
             }
         }
 
-        protected long getSize2(VirtualFrame frame, TruffleObject str2) {
+        protected long getSize2(TruffleObject str2) {
             try {
-                return (long) toLLVMSize2.executeWithTarget(frame, ForeignAccess.sendGetSize(getSize2, frame, str2));
+                return (long) toLLVMSize2.executeWithTarget(ForeignAccess.sendGetSize(getSize2, str2));
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
             }
         }
 
-        protected long getSize1(VirtualFrame frame, TruffleObject str1) {
+        protected long getSize1(TruffleObject str1) {
             try {
-                return (long) toLLVMSize1.executeWithTarget(frame, ForeignAccess.sendGetSize(getSize1, frame, str1));
+                return (long) toLLVMSize1.executeWithTarget(ForeignAccess.sendGetSize(getSize1, str1));
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);
             }
         }
 
-        @Specialization(guards = {"getSize2(frame, str2) == size2"})
+        @Specialization(guards = {"getSize2(str2) == size2"})
         @ExplodeLoop
-        public int executeIntrinsic(VirtualFrame frame, LLVMAddress str1, TruffleObject str2, @Cached("getSize2(frame, str2)") long size2) {
+        public int executeIntrinsic(LLVMAddress str1, TruffleObject str2, @Cached("getSize2(str2)") long size2) {
             try {
                 char[] arr = new char[(int) size2];
                 for (int i = 0; i < size2; i++) {
-                    Object s2 = ForeignAccess.sendRead(readStr2, frame, str2, i);
-                    char c2 = (char) toLLVM2.executeWithTarget(frame, s2);
+                    Object s2 = ForeignAccess.sendRead(readStr2, str2, i);
+                    char c2 = (char) toLLVM2.executeWithTarget(s2);
                     arr[i] = c2;
                 }
                 return compare(str1, arr);

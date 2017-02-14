@@ -33,7 +33,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public abstract class LLVMStackFrameNuller {
+public abstract class LLVMStackFrameNuller extends LLVMNode {
 
     private final FrameSlot frameSlot;
 

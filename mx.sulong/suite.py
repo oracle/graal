@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.60.2",
+  "mxversion" : "5.70.2",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -7,17 +7,9 @@ suite = {
     "suites" : [
       {
         "name" : "truffle",
-        "version" : "16e66aa3231ee95b9dfe2f0cc8a32cfb63d86025",
+        "version" : "bedd07ffe41330aaf4cb50c2a8a38b0af95545b4",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle", "kind" : "git"},
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-        ]
-      },
-      {
-        "name" : "graal-core",
-        "version" : "ca815239f932dd28e0b8a32fbef8844b2489bc00",
-        "urls" : [
-          {"url" : "https://github.com/graalvm/graal-core", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
         ]
       },
@@ -27,14 +19,6 @@ suite = {
   "javac.lint.overrides" : "none",
 
   "libraries" : {
-    "ARGON2" : {
-      "path" : "tests/phc-winner-argon2-20160406.tar.gz",
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/20160406.tar.gz",
-        "https://github.com/P-H-C/phc-winner-argon2/archive/20160406.tar.gz",
-      ],
-      "sha1" : "5552052e53fcd7fe40c558866c9cd51027c17322",
-    },
     "LLVM_TEST_SUITE" : {
       "path" : "tests/test-suite-3.2.src.tar.gz",
       "urls" : [
@@ -99,6 +83,13 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
+    "com.oracle.truffle.llvm.test.native" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "class" : "SulongNativeProject",
+      "license" : "BSD-new",
+    },
 
     "com.oracle.truffle.llvm.bench" : {
       "subDir" : "projects",
@@ -129,10 +120,9 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:TRUFFLE_API",
         "com.oracle.truffle.llvm.option",
         "truffle:TRUFFLE_API",
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
+        "truffle:TRUFFLE_NFI",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.nodes.api",
       "annotationProcessors" : ["SULONG_OPTIONS"],
@@ -240,7 +230,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
+        "truffle:TRUFFLE_NFI",
         "com.oracle.truffle.llvm.parser.api"
        ],
       "checkstyle" : "com.oracle.truffle.llvm",
@@ -330,11 +320,8 @@ suite = {
       "dependencies" : ["com.oracle.truffle.llvm"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "SULONG_OPTIONS",
-        "graal-core:GRAAL_API",
-        "graal-core:GRAAL_COMPILER",
-        "graal-core:GRAAL_HOTSPOT",
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
       ]
     },
 
@@ -361,10 +348,6 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_TCK",
-        "graal-core:GRAAL_API",
-        "graal-core:GRAAL_COMPILER",
-        "graal-core:GRAAL_HOTSPOT",
-        "graal-core:GRAAL_TRUFFLE_HOTSPOT",
         "sulong:SULONG",
         "SULONG_TEST_NATIVE",
       ]

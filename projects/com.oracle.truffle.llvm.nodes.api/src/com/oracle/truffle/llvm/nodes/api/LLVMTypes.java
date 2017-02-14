@@ -54,7 +54,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
                 LLVMTruffleObject.class,
                 LLVM80BitFloat.class,
                 LLVMFunctionDescriptor.class,
-                LLVMAddress.class, TruffleObject.class, LLVMFunction.class})
+                LLVMAddress.class, LLVMFunction.class, TruffleObject.class})
 @DSLOptions(defaultGenerator = DSLGenerator.FLAT)
 public class LLVMTypes {
 

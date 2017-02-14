@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -47,8 +46,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToChar
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToIntNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShortNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToLongNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToShortNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNodeFactory.ToTruffleObjectNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 
@@ -83,7 +82,7 @@ public abstract class ToLLVMNode extends Node {
         }
     }
 
-    public abstract Object executeWithTarget(VirtualFrame frame, Object value);
+    public abstract Object executeWithTarget(Object value);
 
     abstract static class ToIntNode extends ToLLVMNode {
         @Specialization
@@ -127,9 +126,9 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public int fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        public int fromTruffleObject(TruffleObject obj) {
             try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
                 return (int) convertPrimitive(int.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -180,9 +179,9 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public long fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        public long fromTruffleObject(TruffleObject obj) {
             try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
                 return (long) convertPrimitive(long.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -233,9 +232,9 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public long fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        public long fromTruffleObject(TruffleObject obj) {
             try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
                 return (short) convertPrimitive(short.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -286,9 +285,9 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public byte fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        public byte fromTruffleObject(TruffleObject obj) {
             try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
                 return (byte) convertPrimitive(byte.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -339,9 +338,9 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public char fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        public char fromTruffleObject(TruffleObject obj) {
             try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
                 return (char) convertPrimitive(char.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -392,9 +391,9 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public float fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        public float fromTruffleObject(TruffleObject obj) {
             try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
                 return (float) convertPrimitive(float.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -445,9 +444,9 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public double fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        public double fromTruffleObject(TruffleObject obj) {
             try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
                 return (double) convertPrimitive(double.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -498,9 +497,9 @@ public abstract class ToLLVMNode extends Node {
         }
 
         @Specialization
-        public boolean fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+        public boolean fromTruffleObject(TruffleObject obj) {
             try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, frame, obj);
+                Object unboxed = ForeignAccess.sendUnbox(unbox, obj);
                 return (boolean) convertPrimitive(boolean.class, unboxed);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -609,19 +608,19 @@ public abstract class ToLLVMNode extends Node {
     static final class SlowConvertNodeObject extends ToLLVMNode {
 
         @Override
-        public Object executeWithTarget(VirtualFrame frame, Object value) {
+        public Object executeWithTarget(Object value) {
             return value;
         }
     }
 
-    public Object slowConvert(VirtualFrame frame, Object value, Class<?> requestedType) {
+    public Object slowConvert(Object value, Class<?> requestedType) {
         Object attr;
         if (value instanceof TruffleObject) {
-            if (!Boolean.TRUE.equals(ForeignAccess.sendIsBoxed(isBoxed, frame, (TruffleObject) value))) {
+            if (!Boolean.TRUE.equals(ForeignAccess.sendIsBoxed(isBoxed, (TruffleObject) value))) {
                 return null;
             }
             try {
-                attr = ForeignAccess.sendUnbox(unbox, frame, (TruffleObject) value);
+                attr = ForeignAccess.sendUnbox(unbox, (TruffleObject) value);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedTypeException.raise(new Object[]{value});

@@ -66,6 +66,14 @@ public abstract class LLVMMemory {
         return addr.getVal();
     }
 
+    public static LLVMAddress allocateMemory(long size) {
+        return LLVMAddress.fromLong(UNSAFE.allocateMemory(size));
+    }
+
+    public static void freeMemory(long pointer) {
+        UNSAFE.freeMemory(pointer);
+    }
+
     public static boolean getI1(LLVMAddress addr) {
         return UNSAFE.getByte(LLVMMemory.extractAddr(addr)) == 0 ? false : true;
     }
@@ -210,7 +218,7 @@ public abstract class LLVMMemory {
     }
 
     public static void putStruct(LLVMAddress address, LLVMAddress value, int structSize) {
-        LLVMHeap.memCopy(address, value, structSize);
+        UNSAFE.copyMemory(address.getVal(), value.getVal(), structSize);
     }
 
     // watch out for casts such as I32* to I32Vector* when changing the way how vectors are

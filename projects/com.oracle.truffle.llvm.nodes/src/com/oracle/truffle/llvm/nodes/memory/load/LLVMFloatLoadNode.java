@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -51,11 +50,11 @@ public abstract class LLVMFloatLoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = ToLLVMNode.createNode(float.class);
 
-    protected float doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
+    protected float doForeignAccess(LLVMTruffleObject addr) {
         try {
             int index = (int) (addr.getOffset() / LLVMExpressionNode.FLOAT_SIZE_IN_BYTES);
-            Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
-            return (float) toLLVM.executeWithTarget(frame, value);
+            Object value = ForeignAccess.sendRead(foreignRead, addr.getObject(), index);
+            return (float) toLLVM.executeWithTarget(value);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
@@ -69,13 +68,13 @@ public abstract class LLVMFloatLoadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public float executeFloat(VirtualFrame frame, LLVMTruffleObject addr) {
-            return doForeignAccess(frame, addr);
+        public float executeFloat(LLVMTruffleObject addr) {
+            return doForeignAccess(addr);
         }
 
         @Specialization
-        public float executeFloat(VirtualFrame frame, TruffleObject addr) {
-            return executeFloat(frame, new LLVMTruffleObject(addr, FloatingPointType.FLOAT));
+        public float executeFloat(TruffleObject addr) {
+            return executeFloat(new LLVMTruffleObject(addr, FloatingPointType.FLOAT));
         }
 
     }
@@ -91,13 +90,13 @@ public abstract class LLVMFloatLoadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public float executeFloat(VirtualFrame frame, LLVMTruffleObject addr) {
-            return doForeignAccess(frame, addr);
+        public float executeFloat(LLVMTruffleObject addr) {
+            return doForeignAccess(addr);
         }
 
         @Specialization
-        public float executeFloat(VirtualFrame frame, TruffleObject addr) {
-            return executeFloat(frame, new LLVMTruffleObject(addr, FloatingPointType.FLOAT));
+        public float executeFloat(TruffleObject addr) {
+            return executeFloat(new LLVMTruffleObject(addr, FloatingPointType.FLOAT));
         }
 
     }

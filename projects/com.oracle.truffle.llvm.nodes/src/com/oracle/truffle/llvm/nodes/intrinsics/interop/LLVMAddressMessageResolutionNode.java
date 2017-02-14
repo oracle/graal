@@ -34,11 +34,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 abstract class LLVMAddressMessageResolutionNode extends Node {
     private static final int I1_SIZE = 1;
@@ -116,39 +116,39 @@ abstract class LLVMAddressMessageResolutionNode extends Node {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"index == cachedIndex", "typeGuard(receiver, cachedType)"})
-        public static Object doCachedTypeCachedOffset(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value,
+        public static Object doCachedTypeCachedOffset(LLVMTruffleAddress receiver, int index, Object value,
                         @Cached("getType(receiver)") LLVMRuntimeType cachedType,
                         @Cached("index") int cachedIndex,
                         @Cached("getToLLVMNode(cachedType)") ToLLVMNode toLLVM) {
-            return doFastWrite(frame, receiver, cachedType, cachedIndex, value, toLLVM);
+            return doFastWrite(receiver, cachedType, cachedIndex, value, toLLVM);
         }
 
         @Specialization(guards = {"typeGuard(receiver, cachedType)"}, replaces = "doCachedTypeCachedOffset")
-        public static Object doCachedType(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value,
+        public static Object doCachedType(LLVMTruffleAddress receiver, int index, Object value,
                         @Cached("getType(receiver)") LLVMRuntimeType cachedType,
                         @Cached("getToLLVMNode(cachedType)") ToLLVMNode toLLVM) {
-            return doFastWrite(frame, receiver, cachedType, index, value, toLLVM);
+            return doFastWrite(receiver, cachedType, index, value, toLLVM);
         }
 
         @Child private ToLLVMNode slowConvert;
 
         @Specialization(replaces = {"doCachedTypeCachedOffset", "doCachedType"})
-        public Object doRegular(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value) {
+        public Object doRegular(LLVMTruffleAddress receiver, int index, Object value) {
             LLVMPerformance.warn(this);
             if (slowConvert == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.slowConvert = insert(ToLLVMNode.createNode(null));
             }
-            return doSlowWrite(frame, receiver, receiver.getType(), index, value, slowConvert);
+            return doSlowWrite(receiver, receiver.getType(), index, value, slowConvert);
         }
 
-        private static Object doFastWrite(VirtualFrame frame, LLVMTruffleAddress receiver, LLVMRuntimeType cachedType, int index, Object value, ToLLVMNode toLLVM) {
-            Object v = toLLVM.executeWithTarget(frame, value);
+        private static Object doFastWrite(LLVMTruffleAddress receiver, LLVMRuntimeType cachedType, int index, Object value, ToLLVMNode toLLVM) {
+            Object v = toLLVM.executeWithTarget(value);
             return doWrite(receiver, cachedType, index, v);
         }
 
-        private static Object doSlowWrite(VirtualFrame frame, LLVMTruffleAddress receiver, LLVMRuntimeType cachedType, int index, Object value, ToLLVMNode toLLVM) {
-            Object v = toLLVM.slowConvert(frame, value, ToLLVMNode.convert(cachedType));
+        private static Object doSlowWrite(LLVMTruffleAddress receiver, LLVMRuntimeType cachedType, int index, Object value, ToLLVMNode toLLVM) {
+            Object v = toLLVM.slowConvert(value, ToLLVMNode.convert(cachedType));
             return doWrite(receiver, cachedType, index, v);
         }
 

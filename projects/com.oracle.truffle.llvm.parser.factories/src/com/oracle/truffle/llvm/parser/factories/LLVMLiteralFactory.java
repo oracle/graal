@@ -34,7 +34,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.LLVMFunctionRegistry;
 import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
@@ -65,11 +64,10 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI16ArrayLit
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI32ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI64ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStoreNodeFactory.LLVMI8ArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMAccessGlobalVariableStorageNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMAccessGlobalVariableStorageNode;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
@@ -130,8 +128,8 @@ public final class LLVMLiteralFactory {
                 return new LLVMAddressLiteralNode(LLVMAddress.createUndefinedAddress());
             case FUNCTION_ADDRESS:
                 LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-                LLVMFunction functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor("<undefined function>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
-                return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) functionDescriptor);
+                LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().lookupFunctionDescriptor("<undefined function>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false);
+                return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
             default:
                 throw new AssertionError(type);
         }
@@ -176,9 +174,8 @@ public final class LLVMLiteralFactory {
             case FUNCTION_ADDRESS:
                 if (constant == null) {
                     LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
-                    LLVMFunction functionDescriptor = context.getFunctionRegistry().createFunctionDescriptor(LLVMFunctionRegistry.ZERO_FUNCTION, LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0],
-                                    false);
-                    return LLVMFunctionLiteralNodeGen.create((LLVMFunctionDescriptor) functionDescriptor);
+                    LLVMFunctionDescriptor functionDescriptor = context.getFunctionRegistry().getZeroFunctionDescriptor();
+                    return LLVMFunctionLiteralNodeGen.create(functionDescriptor);
                 } else {
                     throw new AssertionError("Not a Simple Constant: " + constant);
                 }
@@ -329,7 +326,7 @@ public final class LLVMLiteralFactory {
                 if (value instanceof LLVMAddress) {
                     return new LLVMAddressLiteralNode((LLVMAddress) value);
                 } else if (value instanceof LLVMGlobalVariableDescriptor) {
-                    return LLVMAccessGlobalVariableStorageNodeGen.create((LLVMGlobalVariableDescriptor) value);
+                    return new LLVMAccessGlobalVariableStorageNode((LLVMGlobalVariableDescriptor) value);
                 } else {
                     throw new AssertionError(value.getClass());
                 }
@@ -369,7 +366,7 @@ public final class LLVMLiteralFactory {
                 return LLVM80BitFloatArrayLiteralNodeGen.create(arrayValues.toArray(new LLVMExpressionNode[nrElements]), byteLength, arrayAlloc);
             case ARRAY:
             case STRUCT:
-                return LLVMAddressArrayCopyNodeGen.create(arrayValues.toArray(new LLVMExpressionNode[nrElements]), baseTypeSize, arrayAlloc);
+                return LLVMAddressArrayCopyNodeGen.create(runtime.getHeapFunctions(), arrayValues.toArray(new LLVMExpressionNode[nrElements]), baseTypeSize, arrayAlloc);
             case ADDRESS:
                 return LLVMAddressArrayLiteralNodeGen.create(arrayValues.toArray(new LLVMExpressionNode[nrElements]), baseTypeSize, arrayAlloc);
             case FUNCTION_ADDRESS:

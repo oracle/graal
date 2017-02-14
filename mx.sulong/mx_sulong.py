@@ -3,7 +3,6 @@ import os
 from os.path import join
 import shutil
 import subprocess
-import sys
 
 import mx
 import mx_findbugs
@@ -12,9 +11,7 @@ import argparse
 import mx_benchmark
 import mx_sulong_benchmarks
 
-from mx_unittest import add_config_participant
 from mx_gate import Task, add_gate_runner
-from mx_gitlogcheck import logCheck
 
 import mx_testsuites
 
@@ -25,7 +22,6 @@ _mx = join(_suite.dir, "mx.sulong/")
 _root = join(_suite.dir, "projects/")
 _libPath = join(_root, "com.oracle.truffle.llvm.libraries/src")
 _testDir = join(_suite.dir, "tests/")
-_argon2Dir = join(_testDir, "argon2/phc-winner-argon2/")
 _toolDir = join(_suite.dir, "cache/tools/")
 _clangPath = _toolDir + 'llvm/bin/clang'
 
@@ -33,21 +29,6 @@ _dragonEggPath = _toolDir + 'dragonegg/dragonegg-3.2.src/dragonegg.so'
 
 _captureSrcDir = join(_root, "projects/com.oracle.truffle.llvm.pipe.native/src")
 
-def _unittest_config_participant(config):
-    """modifies the classpath to use the Sulong distribution jars instead of the classfiles to enable the use of Java's ServiceLoader"""
-    (vmArgs, mainClass, mainClassArgs) = config
-    cpIndex, _ = mx.find_classpath_arg(vmArgs)
-    junitCp = mx.classpath("com.oracle.mxtool.junit")
-    sulongCp = ':'.join([mx.classpath(mx.distribution(distr), jdk=mx.get_jdk(tag='jvmci')) for distr in sulongDistributions])
-    vmArgs[cpIndex] = junitCp + ":" + sulongCp
-    return (vmArgs, mainClass, mainClassArgs)
-
-add_config_participant(_unittest_config_participant)
-
-sulongDistributions = [
-    'SULONG',
-    'SULONG_TEST'
-]
 
 # the supported GCC versions (see dragonegg.llvm.org)
 supportedGCCVersions = [
@@ -77,7 +58,6 @@ mdlCheckDirectories = [
 
 # the file paths for which we do not want to apply the mdl Markdown file checker
 mdlCheckExcludeDirectories = [
-    join(_suite.dir, 'projects/com.oracle.truffle.llvm.test/argon2/phc-winner-argon2'),
     join(_suite.dir, 'mx') # we exclude the mx directory since we download it into the sulong folder in the Travis gate
 ]
 
@@ -136,6 +116,8 @@ def travis1(args=None):
         if t: mx_testsuites.runSuite(['type'])
     with Task('TestMainArgs', tasks) as t:
         if t: mx_testsuites.runSuite(['args'])
+    with Task('TestCallback', tasks) as t:
+        if t: mx_testsuites.runSuite(['callback'])
     with Task('TestPipe', tasks) as t:
         if t: mx_testsuites.runSuite(['pipe'])
     with Task('TestLLVM', tasks) as t:
@@ -154,14 +136,6 @@ def travis2(args=None):
         if t: mx_testsuites.runSuite(['parserTorture'])
     with Task('TestLifetime', tasks) as t:
         if t: mx_testsuites.runSuite(['lifetimeanalysis'])
-
-def travisArgon2(args=None):
-    """executes the argon2 Travis job (Javac build, argon2 test cases)"""
-    tasks = []
-    with Task('BuildJavaWithJavac', tasks) as t:
-        if t: mx.command_function('build')(['-p', '--warning-as-error', '--force-javac'])
-    with Task('TestArgon2', tasks) as t:
-        if t: runTestArgon2(optimize=False)
 
 def pullTools(args=None):
     """pulls the LLVM and Dragonegg tools"""
@@ -379,7 +353,7 @@ def runLLVM(args=None, out=None):
             libNames.append(arg)
         else:
             sulongArgs.append(arg)
-    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.LLVM"] + sulongArgs, out=out, jdk=mx.get_jdk(tag='jvmci'))
+    return mx.run_java(getCommonOptions(libNames) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.LLVM"] + sulongArgs, out=out)
 
 def runTests(args=None):
     mx_testsuites.runSuite(args)
@@ -420,61 +394,6 @@ def compileWithEcjStrict(args=None):
     else:
         exit('JDT environment variable not set. Cannot execute BuildJavaWithEcj task.')
 
-def compileArgon2(main, optimize, cflags=None):
-    if cflags is None:
-        cflags = []
-    argon2Src = ['src/argon2', 'src/core', 'src/blake2/blake2b', 'src/thread', 'src/encoding', 'src/ref', 'src/%s' % main, '../pthread-stub/pthread']
-    argon2Bin = '%s.su' % main
-    for src in argon2Src:
-        inputFile = '%s.c' % src
-        outputFile = '%s.bc' % src
-        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, '-std=c89', '-Wall', '-Wextra', '-Wno-type-limits', '-I../pthread-stub', '-Iinclude', '-Isrc'] + cflags + [inputFile])
-        if optimize:
-            opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags())
-    link(['-o', argon2Bin] + ['%s.bc' % x for x in argon2Src])
-
-def runTestArgon2Kats(args=None):
-    for v in ['16', '19']:
-        for t in ['i', 'd']:
-            sys.stdout.write("argon2%s v=%s: " % (t, v))
-
-            if v == '19':
-                kats = 'kats/argon2%s' % t
-            else:
-                kats = 'kats/argon2%s_v%s' % (t, v)
-
-            ret = runLLVM(args + ['genkat.su', t, v], out=open('tmp', 'w'))
-            if ret == 0:
-                ret = mx.run(['diff', 'tmp', kats])
-                if ret == 0:
-                    print 'OK'
-                else:
-                    print 'ERROR'
-                    return ret
-            else:
-                print 'FAILED'
-                return ret
-
-    return 0
-
-def runTestArgon2(args=None, optimize=False):
-    """runs Argon2 tests with Sulong"""
-
-    ensureArgon2Exists()
-    os.chdir(_argon2Dir)
-    if args is None:
-        args = []
-    # TODO: Enable assertions
-    #args.extend(['-ea', '-esa'])
-
-    compileArgon2('genkat', optimize, ['-DGENKAT'])
-    ret = runTestArgon2Kats(args)
-    if ret != 0:
-        return ret
-
-    compileArgon2('test', optimize)
-    return runLLVM(args + ['test.su'])
-
 def getCommonOptions(lib_args=None, versionFolder=None):
     return [
         '-Dgraal.TruffleCompilationExceptionsArePrinted=true',
@@ -506,6 +425,12 @@ def getSearchPathOption(lib_args=None):
         else:
             lib_arg = lib_arg[2:]
         lib_names.append(lib_arg)
+
+    libpath = join(mx.project('com.oracle.truffle.llvm.test.native').getOutput(), 'bin')
+    for path, _, files in os.walk(libpath):
+        for f in files:
+            if f.endswith('.so'):
+                lib_names.append(join(path, f))
 
     return '-Dsulong.DynamicNativeLibraryPath=' + ':'.join(lib_names)
 
@@ -693,9 +618,11 @@ def getLLVMProgramPath(args=None):
     else:
         print findLLVMProgram(args[0])
 
-def compileWithClang(args=None, out=None, err=None):
+def compileWithClang(args=None, version=None, out=None, err=None):
     """runs Clang"""
-    return mx.run([findLLVMProgram('clang')] + args, out=out, err=err)
+    c = findLLVMProgram('clang', version)
+    print c
+    return mx.run([findLLVMProgram('clang', version)] + args, out=out, err=err)
 
 def compileWithGCC(args=None):
     """runs GCC"""
@@ -703,21 +630,21 @@ def compileWithGCC(args=None):
     gccPath = _toolDir + 'llvm/bin/gcc'
     return mx.run([gccPath] + args)
 
-def opt(args=None, out=None, err=None):
+def opt(args=None, version=None, out=None, err=None):
     """runs opt"""
-    return mx.run([findLLVMProgram('opt')] + args, out=out, err=err)
+    return mx.run([findLLVMProgram('opt', version)] + args, out=out, err=err)
 
 def link(args=None):
     """Links LLVM bitcode into an su file."""
     return mx.run_java(getClasspathOptions() + ["com.oracle.truffle.llvm.runtime.Linker"] + args)
 
-def compileWithClangPP(args=None, out=None, err=None):
+def compileWithClangPP(args=None, version=None, out=None, err=None):
     """runs Clang++"""
-    return mx.run([findLLVMProgram('clang++')] + args, out=out, err=err)
+    return mx.run([findLLVMProgram('clang++', version)] + args, out=out, err=err)
 
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
-    return ['-cp', ':'.join([mx.classpath(mx.distribution(distr), jdk=mx.get_jdk(tag='jvmci')) for distr in sulongDistributions])]
+    return mx.get_runtime_jvm_args('SULONG')
 
 def printOptions(args=None):
     """prints the Sulong Java property options"""
@@ -736,11 +663,6 @@ def ensureLLVMBinariesExist():
     for llvmBinary in basicLLVMDependencies:
         if findLLVMProgram(llvmBinary) is None:
             raise Exception(llvmBinary + ' not found')
-
-def ensureArgon2Exists():
-    """downloads Argon2 if not downloaded yet"""
-    if not os.path.exists(_argon2Dir):
-        pullTestSuite('ARGON2', _argon2Dir, stripLevels=1)
 
 def suBench(args=None):
     """runs a given benchmark with Sulong"""
@@ -775,16 +697,16 @@ _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
 
-def compileWithClangOpt(inputFile, outputFile='test.bc', args=None, out=None, err=None):
+def compileWithClangOpt(inputFile, outputFile='test.bc', version=None, args=None, out=None, err=None):
     """compiles a program to LLVM IR with Clang using LLVM optimizations that benefit Sulong"""
     _, ext = os.path.splitext(inputFile)
     if ext == '.c':
-        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, inputFile] + _env_flags, out=out, err=err)
+        compileWithClang(['-c', '-emit-llvm', '-o', outputFile, inputFile] + _env_flags, version, out=out, err=err)
     elif ext == '.cpp':
-        compileWithClangPP(['-c', '-emit-llvm', '-o', outputFile, inputFile] + _env_flags, out=out, err=err)
+        compileWithClangPP(['-c', '-emit-llvm', '-o', outputFile, inputFile] + _env_flags, version, out=out, err=err)
     else:
         exit(ext + " is not supported!")
-    opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags(), out=out, err=err)
+    opt(['-o', outputFile, outputFile] + getStandardLLVMOptFlags(), version, out=out, err=err)
 
 def suOptBench(args=None):
     """runs a given benchmark with Sulong after optimizing it with opt"""
@@ -906,7 +828,6 @@ def checkNoHttp(args=None):
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
 checkCases = {
-    'gitlog' : logCheck,
     'mdl' : mdlCheck,
     'ecj' : compileWithEcjStrict,
     'checkstyle' : mx.checkstyle,
@@ -943,9 +864,7 @@ mx.update_commands(_suite, {
     'su-g++' : [dragonEggGPP, ''],
     'su-travis1' : [travis1, ''],
     'su-travis2' : [travis2, ''],
-    'su-travis-argon2' : [travisArgon2, ''],
     'su-ecj-strict' : [compileWithEcjStrict, ''],
-    'su-gitlogcheck' : [logCheck, ''],
     'su-mdlcheck' : [mdlCheck, ''],
     'su-clangformatcheck' : [clangformatcheck, ''],
     'su-httpcheck' : [checkNoHttp, ''],

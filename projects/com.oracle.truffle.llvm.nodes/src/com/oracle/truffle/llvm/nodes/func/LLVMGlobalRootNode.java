@@ -31,8 +31,6 @@ package com.oracle.truffle.llvm.nodes.func;
 
 import java.util.Deque;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -52,7 +50,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignal;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
@@ -65,7 +62,6 @@ public class LLVMGlobalRootNode extends RootNode {
     @CompilationFinal protected final Object[] arguments;
     protected final LLVMContext context;
     // FIXME instead make the option system "PE safe"
-    protected final boolean printNativeStats = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printNativeCallStatistics());
     protected final int executionCount = LLVMOptions.ENGINE.executionCount();
     protected final boolean printExecutionTime = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printExecutionTime());
     protected final FrameSlot stackPointerSlot;
@@ -106,9 +102,6 @@ public class LLVMGlobalRootNode extends RootNode {
         } finally {
             // if not done already, we want at least call a shutdown command
             context.shutdownThreads();
-            if (printNativeStats) {
-                printNativeCallStats(context);
-            }
         }
     }
 
@@ -194,26 +187,6 @@ public class LLVMGlobalRootNode extends RootNode {
         if (lastExitException != null) {
             throw lastExitException;
         }
-    }
-
-    @TruffleBoundary
-    protected static void printNativeCallStats(LLVMContext context) {
-        Map<LLVMFunction, Integer> nativeFunctionCallSites = context.getNativeFunctionLookupStats();
-
-        // Checkstyle: stop
-        if (!nativeFunctionCallSites.isEmpty()) {
-
-            final Consumer<String> printer = LLVMLogger.print(LLVMOptions.DEBUG.printNativeCallStatistics());
-            printer.accept("==========================");
-            printer.accept("native function sites:");
-            printer.accept("==========================");
-            for (LLVMFunction function : nativeFunctionCallSites.keySet()) {
-                String output = String.format("%15s: %3d", function.getName(), nativeFunctionCallSites.get(function));
-                printer.accept(output);
-            }
-            printer.accept("==========================");
-        }
-        // Checkstyle: resume
     }
 
 }

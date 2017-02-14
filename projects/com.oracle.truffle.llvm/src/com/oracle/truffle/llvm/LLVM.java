@@ -172,7 +172,6 @@ public class LLVM {
             }
 
             private void handleParserResult(LLVMContext context, LLVMParserResult result) {
-                context.getFunctionRegistry().register(result.getParsedFunctions());
                 context.registerGlobalVarInit(result.getGlobalVarInits());
                 context.registerGlobalVarDealloc(result.getGlobalVarDeallocs());
                 if (result.getConstructorFunctions() != null) {
@@ -196,7 +195,7 @@ public class LLVM {
             @Override
             public LLVMContext createContext(Env env) {
                 NodeFactoryFacade facade = getNodeFactoryFacade();
-                LLVMContext context = new LLVMContext(facade);
+                LLVMContext context = new LLVMContext(facade, env);
                 if (env != null) {
                     Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
                     if (mainArgs != null) {

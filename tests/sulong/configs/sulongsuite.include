@@ -48,12 +48,7 @@ c/i128/unsigned-right-shift.c
 c/i128/unsigned-right-shift2.c
 c/intrinsics/memmove.c
 c/labeladdress/labeledgoto1.c
-c/signal/signal001.c
-c/signal/signal002.c
-c/signal/signal003.c
-c/stdlib/complex-conjugate.c
 c/stdlib/signal.c
-c/stdlib/stat.c
 c/stdlib/math/sqrt.c
 c/struct/intDouble.c
 c/struct/mixed.c

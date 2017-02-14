@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -51,11 +50,11 @@ public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
     @Child protected Node foreignRead = Message.READ.createNode();
     @Child protected ToLLVMNode toLLVM = ToLLVMNode.createNode(double.class);
 
-    protected double doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr) {
+    protected double doForeignAccess(LLVMTruffleObject addr) {
         try {
             int index = (int) (addr.getOffset() / LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES);
-            Object value = ForeignAccess.sendRead(foreignRead, frame, addr.getObject(), index);
-            return (double) toLLVM.executeWithTarget(frame, value);
+            Object value = ForeignAccess.sendRead(foreignRead, addr.getObject(), index);
+            return (double) toLLVM.executeWithTarget(value);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
@@ -69,13 +68,13 @@ public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public double executeDouble(VirtualFrame frame, LLVMTruffleObject addr) {
-            return doForeignAccess(frame, addr);
+        public double executeDouble(LLVMTruffleObject addr) {
+            return doForeignAccess(addr);
         }
 
         @Specialization
-        public double executeDouble(VirtualFrame frame, TruffleObject addr) {
-            return executeDouble(frame, new LLVMTruffleObject(addr, FloatingPointType.DOUBLE));
+        public double executeDouble(TruffleObject addr) {
+            return executeDouble(new LLVMTruffleObject(addr, FloatingPointType.DOUBLE));
         }
     }
 
@@ -90,13 +89,13 @@ public abstract class LLVMDoubleLoadNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        public double executeDouble(VirtualFrame frame, LLVMTruffleObject addr) {
-            return doForeignAccess(frame, addr);
+        public double executeDouble(LLVMTruffleObject addr) {
+            return doForeignAccess(addr);
         }
 
         @Specialization
-        public double executeDouble(VirtualFrame frame, TruffleObject addr) {
-            return doForeignAccess(frame, new LLVMTruffleObject(addr, FloatingPointType.DOUBLE));
+        public double executeDouble(TruffleObject addr) {
+            return doForeignAccess(new LLVMTruffleObject(addr, FloatingPointType.DOUBLE));
         }
     }
 

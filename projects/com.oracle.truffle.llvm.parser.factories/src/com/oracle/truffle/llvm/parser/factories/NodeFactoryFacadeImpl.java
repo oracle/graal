@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
@@ -59,7 +58,6 @@ import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller.LLVMIntNuller;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller.LLVMLongNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
-import com.oracle.truffle.llvm.nodes.func.LLVMCallNode.LLVMResolvedDirectCallNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI16CallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI32CallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI64CallUnboxNodeGen;
@@ -70,6 +68,8 @@ import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMFreeFactory;
 import com.oracle.truffle.llvm.nodes.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
+import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNode;
+import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressZeroNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaInstruction;
 import com.oracle.truffle.llvm.nodes.others.LLVMStaticInitsBlockNode;
@@ -89,9 +89,7 @@ import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.api.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
@@ -184,7 +182,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createFunctionCall(LLVMParserRuntime runtime, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, LLVMType[] argTypes, LLVMBaseType llvmType) {
+    public LLVMExpressionNode createFunctionCall(LLVMParserRuntime runtime, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, Type[] argTypes, LLVMBaseType llvmType) {
         return LLVMFunctionFactory.createFunctionCall(functionNode, argNodes, argTypes, llvmType);
     }
 
@@ -320,17 +318,17 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
                     LLVMExpressionNode valueToInsert, LLVMBaseType llvmType) {
-        return LLVMAggregateFactory.createInsertValue(resultAggregate, sourceAggregate, size, offset, valueToInsert, llvmType);
+        return LLVMAggregateFactory.createInsertValue(runtime, resultAggregate, sourceAggregate, size, offset, valueToInsert, llvmType);
     }
 
     @Override
     public LLVMExpressionNode createZeroNode(LLVMParserRuntime runtime, LLVMExpressionNode addressNode, int size) {
-        return new LLVMAddressZeroNode(addressNode, size);
+        return new LLVMAddressZeroNode(runtime.getHeapFunctions(), addressNode, size);
     }
 
     @Override
     public LLVMExpressionNode createEmptyStructLiteralNode(LLVMParserRuntime runtime, LLVMExpressionNode alloca, int byteSize) {
-        return new LLVMEmptyStructLiteralNode(alloca, byteSize);
+        return new LLVMEmptyStructLiteralNode(runtime.getHeapFunctions(), alloca, byteSize);
     }
 
     @Override
@@ -371,16 +369,16 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
             String identifier = (String) slot.getIdentifier();
             Type slotType = runtime.getVariableNameTypesMapping().get(identifier);
             if (slot.equals(runtime.getReturnSlot())) {
-                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(runtime, identifier, LLVMTypeHelper.getLLVMType(functionHeader.getReturnType()), slot);
+                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(runtime, identifier, functionHeader.getReturnType().getLLVMType(), slot);
             } else if (slot.equals(runtime.getStackPointerSlot())) {
                 nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(runtime, identifier, new LLVMType(LLVMBaseType.ADDRESS), slot);
             } else {
                 assert slotType != null : identifier;
-                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(runtime, identifier, LLVMTypeHelper.getLLVMType(slotType), slot);
+                nullers[i] = runtime.getNodeFactoryFacade().createFrameNuller(runtime, identifier, slotType.getLLVMType(), slot);
             }
             i++;
         }
-        return new LLVMFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, sourceSection, frameDescriptor, functionHeader, nullers);
+        return new LLVMFunctionStartNode(functionBodyNode, beforeFunction, afterFunction, sourceSection, frameDescriptor, functionHeader.getName(), nullers);
     }
 
     @Override
@@ -389,27 +387,30 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, LLVMType[] argTypes, LLVMBaseType retType) {
+    public LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, LLVMBaseType retType) {
         LLVMBaseType[] argBaseTypes = new LLVMBaseType[argTypes.length];
         for (int i = 0; i < argTypes.length; i++) {
-            argBaseTypes[i] = argTypes[i].getType();
+            argBaseTypes[i] = argTypes[i].getLLVMType().getType();
         }
         Parser asmParser = new Parser(asmExpression, asmFlags, args, argBaseTypes, retType);
         LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
-        CallTarget target = Truffle.getRuntime().createCallTarget(assemblyRoot);
+        LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.create("<asm>", LLVMRuntimeType.ILLEGAL, new LLVMRuntimeType[0], false, -1);
+        asm.setCallTarget(Truffle.getRuntime().createCallTarget(assemblyRoot));
+        LLVMFunctionLiteralNode asmFunction = LLVMFunctionLiteralNodeGen.create(asm);
+        LLVMCallNode callNode = new LLVMCallNode(null, LLVMRuntimeType.ILLEGAL, asmFunction, args, argTypes);
         switch (retType) {
             case VOID:
-                return new LLVMResolvedDirectCallNode(target, args, argTypes);
+                return callNode;
             case I1:
                 return new LLVMI1UnsupportedInlineAssemblerNode();
             case I8:
-                return LLVMI8CallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args, argTypes));
+                return LLVMI8CallUnboxNodeGen.create(callNode);
             case I16:
-                return LLVMI16CallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args, argTypes));
+                return LLVMI16CallUnboxNodeGen.create(callNode);
             case I32:
-                return LLVMI32CallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args, argTypes));
+                return LLVMI32CallUnboxNodeGen.create(callNode);
             case I64:
-                return LLVMI64CallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args, argTypes));
+                return LLVMI64CallUnboxNodeGen.create(callNode);
             case FLOAT:
                 return new LLVMFloatUnsupportedInlineAssemblerNode();
             case DOUBLE:
@@ -421,7 +422,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
             case FUNCTION_ADDRESS:
                 return new LLVMFunctionUnsupportedInlineAssemblerNode();
             case STRUCT:
-                return LLVMStructCallUnboxNodeGen.create(new LLVMResolvedDirectCallNode(target, args, argTypes));
+                return LLVMStructCallUnboxNodeGen.create(callNode);
             default:
                 throw new AssertionError(retType);
         }
@@ -459,9 +460,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         if ((globalVariable.getInitialiser() > 0 || !globalVariable.isExtern()) && !descriptor.isDeclared()) {
             final Type resolvedType = ((PointerType) globalVariable.getType()).getPointeeType();
             final int byteSize = runtime.getByteSize(resolvedType);
-            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(resolvedType, byteSize);
+            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             final LLVMExpressionNode addressLiteralNode = createLiteral(runtime, nativeStorage, LLVMBaseType.ADDRESS);
-            runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
+            runtime.addDestructor(LLVMFreeFactory.create(runtime.getHeapFunctions(), addressLiteralNode));
             descriptor.declare(nativeStorage);
         }
 
@@ -485,9 +486,9 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
         if ((globalConstant.getInitialiser() > 0 || !globalConstant.isExtern()) && !descriptor.isDeclared()) {
             final Type resolvedType = ((PointerType) globalConstant.getType()).getPointeeType();
             final int byteSize = runtime.getByteSize(resolvedType);
-            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(resolvedType, byteSize);
+            final LLVMAddress nativeStorage = LLVMHeap.allocateMemory(byteSize);
             final LLVMExpressionNode addressLiteralNode = createLiteral(runtime, nativeStorage, LLVMBaseType.ADDRESS);
-            runtime.addDestructor(LLVMFreeFactory.create(addressLiteralNode));
+            runtime.addDestructor(LLVMFreeFactory.create(runtime.getHeapFunctions(), addressLiteralNode));
             descriptor.declare(nativeStorage);
         }
 
@@ -539,13 +540,13 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public LLVMFunction createFunctionDescriptor(String name, LLVMRuntimeType returnType, boolean varArgs, LLVMRuntimeType[] paramTypes, int functionIndex) {
+    public LLVMFunctionDescriptor createFunctionDescriptor(String name, LLVMRuntimeType returnType, boolean varArgs, LLVMRuntimeType[] paramTypes, int functionIndex) {
         return LLVMFunctionDescriptor.create(name, returnType, paramTypes, varArgs, functionIndex);
     }
 
     @Override
-    public LLVMFunction createAndRegisterFunctionDescriptor(LLVMParserRuntime runtime, String name, LLVMRuntimeType convertType, boolean varArgs, LLVMRuntimeType[] convertTypes) {
-        return LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()).getFunctionRegistry().createFunctionDescriptor(name, convertType, convertTypes, varArgs);
+    public LLVMFunctionDescriptor createAndRegisterFunctionDescriptor(LLVMParserRuntime runtime, String name, LLVMRuntimeType convertType, boolean varArgs, LLVMRuntimeType[] convertTypes) {
+        return LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()).getFunctionRegistry().lookupFunctionDescriptor(name, convertType, convertTypes, varArgs);
     }
 
 }

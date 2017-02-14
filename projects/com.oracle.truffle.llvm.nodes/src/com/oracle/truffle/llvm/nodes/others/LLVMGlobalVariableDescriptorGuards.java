@@ -29,23 +29,19 @@
  */
 package com.oracle.truffle.llvm.nodes.others;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
 
 public abstract class LLVMGlobalVariableDescriptorGuards {
 
-    @SuppressWarnings("unused")
-    public static boolean needsTransition(VirtualFrame frame, LLVMGlobalVariableDescriptor descriptor) {
+    public static boolean needsTransition(LLVMGlobalVariableDescriptor descriptor) {
         return descriptor.needsTransition();
     }
 
-    @SuppressWarnings("unused")
-    public static boolean isNative(VirtualFrame frame, LLVMGlobalVariableDescriptor descriptor) {
+    public static boolean isNative(LLVMGlobalVariableDescriptor descriptor) {
         return descriptor.isNative();
     }
 
-    @SuppressWarnings("unused")
-    public static boolean isManaged(VirtualFrame frame, LLVMGlobalVariableDescriptor descriptor) {
+    public static boolean isManaged(LLVMGlobalVariableDescriptor descriptor) {
         return descriptor.isManaged();
     }
 

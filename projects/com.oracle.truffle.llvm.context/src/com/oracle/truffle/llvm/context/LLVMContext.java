@@ -34,21 +34,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
-import java.util.Map;
 
-import com.oracle.nfi.api.NativeFunctionHandle;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.context.nativeint.NativeLookup;
 import com.oracle.truffle.llvm.nodes.api.LLVMThread;
 import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.types.LLVMType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class LLVMContext extends ExecutionContext {
 
@@ -64,6 +64,8 @@ public class LLVMContext extends ExecutionContext {
 
     private final NativeLookup nativeLookup;
 
+    private final LLVMHeapFunctions heapFunctions;
+
     private final LLVMStack stack = new LLVMStack();
 
     private Object[] mainArguments;
@@ -73,13 +75,10 @@ public class LLVMContext extends ExecutionContext {
     private boolean parseOnly;
     private boolean haveLoadedDynamicBitcodeLibraries;
 
-    public LLVMContext(NodeFactoryFacade facade) {
-        nativeLookup = new NativeLookup();
-        this.functionRegistry = new LLVMFunctionRegistry(facade);
-    }
-
-    public RootCallTarget getFunction(LLVMFunctionDescriptor function) {
-        return functionRegistry.lookup(function);
+    public LLVMContext(NodeFactoryFacade facade, Env env) {
+        this.nativeLookup = new NativeLookup(env);
+        this.heapFunctions = new LLVMHeapFunctionsImpl(nativeLookup);
+        this.functionRegistry = new LLVMFunctionRegistry(facade, nativeLookup);
     }
 
     public LLVMFunctionRegistry getFunctionRegistry() {
@@ -87,24 +86,8 @@ public class LLVMContext extends ExecutionContext {
         return functionRegistry;
     }
 
-    public NativeFunctionHandle getNativeHandle(LLVMFunctionDescriptor function, LLVMType[] argTypes) {
-        LLVMFunction sameFunction = getFunctionDescriptor(function);
-        return getNativeLookup().getNativeHandle(sameFunction, argTypes);
-    }
-
-    /**
-     * Creates a complete function descriptor from the given one.
-     *
-     * {@link LLVMFunctionRegistry#createFromIndex} creates an incomplete function descriptor, with
-     * illegal types and no function name but a valid index. Not having to look up the whole
-     * function descriptor makes most indirect calls faster. However, since the native interface
-     * needs the return type of the function, we here have to look up the complete function
-     * descriptor.
-     */
-    private LLVMFunction getFunctionDescriptor(LLVMFunctionDescriptor incompleteFunctionDescriptor) {
-        int validFunctionIndex = incompleteFunctionDescriptor.getFunctionIndex();
-        LLVMFunction[] completeFunctionDescriptors = functionRegistry.getFunctionDescriptors();
-        return completeFunctionDescriptors[validFunctionIndex];
+    public LLVMHeapFunctions getHeapFunctions() {
+        return heapFunctions;
     }
 
     public LLVMGlobalVariableRegistry getGlobalVariableRegistry() {
@@ -112,15 +95,11 @@ public class LLVMContext extends ExecutionContext {
     }
 
     public void addLibraryToNativeLookup(String library) {
-        getNativeLookup().addLibraryToNativeLookup(library);
+        nativeLookup.addLibraryToNativeLookup(library);
     }
 
-    public long getNativeHandle(String functionName) {
-        return getNativeLookup().getNativeHandle(functionName);
-    }
-
-    public Map<LLVMFunction, Integer> getNativeFunctionLookupStats() {
-        return getNativeLookup().getNativeFunctionLookupStats();
+    public TruffleObject getNativeFunction(String functionName) {
+        return nativeLookup.getNativeFunction(functionName);
     }
 
     public LLVMStack getStack() {
@@ -224,16 +203,24 @@ public class LLVMContext extends ExecutionContext {
         return parseOnly;
     }
 
-    public NativeLookup getNativeLookup() {
-        return nativeLookup;
-    }
-
     public boolean haveLoadedDynamicBitcodeLibraries() {
         return haveLoadedDynamicBitcodeLibraries;
     }
 
     public void setHaveLoadedDynamicBitcodeLibraries() {
         haveLoadedDynamicBitcodeLibraries = true;
+    }
+
+    public static String getNativeSignature(LLVMRuntimeType retType, Type[] args, int skipArguments) {
+        return NativeLookup.prepareSignature(retType, args, skipArguments);
+    }
+
+    public TruffleObject resolveAsNativeFunction(LLVMFunctionDescriptor descriptor) {
+        return nativeLookup.resolveAsNative(descriptor);
+    }
+
+    public TruffleObject getNativeData(String name) {
+        return nativeLookup.getNativeDataObject(name);
     }
 
 }

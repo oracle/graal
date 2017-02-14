@@ -111,9 +111,10 @@ benchSulong: ${bench} {
     CPPFLAGS: "-I$LIBGMP/include"
     LD_LIBRARY_PATH: "$LIBGMP/lib:$LLVM/lib:$LD_LIBRARY_PATH"
     PATH: "$LLVM/bin:$PATH"
+    SULONG_VERSION: "3.2"
   },
 
-  cmd: [mx, --dynamicimport, "${GRAAL_DYNAMIC_IMPORT}", --jdk, jvmci, benchmark, --ignore-suite-commit-info, sulong, --results-file, "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}", "csuite:*"],
+  cmd: [mx, -v, --dynamicimport, "${GRAAL_DYNAMIC_IMPORT}", --jdk, jvmci, benchmark, --ignore-suite-commit-info, sulong, --results-file, "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}", "csuite:*"],
   vmArgs: [--, --native-vm, sulong, --jvm, server, --jvm-config, "${GRAAL_DYNAMIC_IMPORT}"],
 
   setup: [
@@ -196,7 +197,6 @@ builds = [
   ${gateTest} ${requireGCC} { name: gate-travis1, run: [[mx, su-travis1]] }
   ${gateTest} ${requireGCC} { name: gate-travis2, run: [[mx, su-travis2]] }
   ${gateTest38} { name: gate-sulong-v38, run: [[mx, su-suite, sulong38]] }
-  ${gateTest} { name: gate-travis-argon2, run: [[mx, su-travis-argon2]] }
 
   ${benchSulong} ${requireGCC}    ${graal-core}           {name: sulong-bench-graal-core}
   # TODO: enable once sulong's graal dependency is gone

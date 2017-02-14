@@ -34,14 +34,21 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.FreeNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMFree extends LLVMIntrinsic {
 
+    @Child private FreeNode free;
+
+    protected LLVMFree(LLVMHeapFunctions heapFunctions) {
+        free = heapFunctions.createFreeNode();
+    }
+
     @Specialization
     public Object executeIntrinsic(LLVMAddress address) {
-        LLVMHeap.freeMemory(address);
+        free.execute(address);
         return null;
     }
 

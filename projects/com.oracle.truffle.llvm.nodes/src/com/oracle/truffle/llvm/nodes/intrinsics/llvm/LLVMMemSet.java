@@ -35,7 +35,8 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemSetNode;
 
 @GenerateNodeFactory
 public abstract class LLVMMemSet extends LLVMExpressionNode {
@@ -43,9 +44,17 @@ public abstract class LLVMMemSet extends LLVMExpressionNode {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class),
                     @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMMemSetI64 extends LLVMMemSet {
+
+        @Child private MemSetNode memSet;
+
+        protected LLVMMemSetI64(LLVMHeapFunctions heapFunctions) {
+            memSet = heapFunctions.createMemSetNode();
+        }
+
+        @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
-            LLVMHeap.memSet(address, value, length, align, isVolatile);
+            memSet.execute(address, value, length);
             return null;
         }
     }
@@ -54,9 +63,16 @@ public abstract class LLVMMemSet extends LLVMExpressionNode {
                     @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMMemSetI32 extends LLVMMemSet {
 
+        @Child private MemSetNode memSet;
+
+        protected LLVMMemSetI32(LLVMHeapFunctions heapFunctions) {
+            memSet = heapFunctions.createMemSetNode();
+        }
+
+        @SuppressWarnings("unused")
         @Specialization
         public Object executeVoid(LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
-            LLVMHeap.memSet(address, value, length, align, isVolatile);
+            memSet.execute(address, value, length);
             return null;
         }
     }

@@ -30,16 +30,12 @@
 package com.oracle.truffle.llvm.parser.api;
 
 import java.util.List;
-import java.util.Map;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
 
 public interface LLVMParserResult {
 
     RootCallTarget getMainFunction();
-
-    Map<LLVMFunction, RootCallTarget> getParsedFunctions();
 
     RootCallTarget getGlobalVarInits();
 

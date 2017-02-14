@@ -72,7 +72,6 @@ import com.oracle.truffle.llvm.parser.api.model.symbols.instructions.VoidCallIns
 import com.oracle.truffle.llvm.parser.api.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.api.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
-import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.parser.bc.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.bc.nodes.LLVMSymbolResolver;
 import com.oracle.truffle.llvm.parser.bc.util.LLVMFrameIDs;
@@ -81,7 +80,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
-import com.oracle.truffle.llvm.runtime.types.LLVMType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
@@ -184,23 +183,23 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMBaseType targetLLVMType = targetType.getLLVMBaseType();
         int argumentCount = getArgumentCount(call, targetType);
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
-        final LLVMType[] argTypes = new LLVMType[argumentCount];
+        final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
         if (method.getRuntime().needsStackPointerArgument()) {
             argNodes[argIndex] = factoryFacade.createFrameRead(runtime, LLVMBaseType.ADDRESS, method.getStackSlot());
-            argTypes[argIndex] = new LLVMType(LLVMBaseType.ADDRESS);
+            argTypes[argIndex] = new PointerType(null);
             argIndex++;
         }
         if (targetType instanceof StructureType) {
             final int size = runtime.getByteSize(targetType);
             final int align = runtime.getByteAlignment(targetType);
-            argTypes[argIndex] = new LLVMType(LLVMBaseType.ADDRESS);
+            argTypes[argIndex] = new PointerType(targetType);
             argNodes[argIndex] = factoryFacade.createAlloc(runtime, targetType, size, align, null, null);
             argIndex++;
         }
         for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
             argNodes[argIndex] = symbols.resolve(call.getArgument(i));
-            argTypes[argIndex] = LLVMTypeHelper.getLLVMType(call.getArgument(i).getType());
+            argTypes[argIndex] = call.getArgument(i).getType();
         }
 
         final Symbol target = call.getCallTarget();
@@ -507,17 +506,17 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             argumentCount = explicitArgumentCount;
         }
         final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount];
-        final LLVMType[] argsType = new LLVMType[argumentCount];
+        final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
         if (method.getRuntime().needsStackPointerArgument()) {
             args[argIndex] = factoryFacade.createFrameRead(runtime, LLVMBaseType.ADDRESS, method.getStackSlot());
-            argsType[argIndex] = new LLVMType(LLVMBaseType.ADDRESS);
+            argsType[argIndex] = new PointerType(null);
             argIndex++;
         }
         for (int i = 0; i < explicitArgumentCount; i++) {
             args[argIndex] = symbols.resolve(call.getArgument(i));
-            argsType[argIndex] = LLVMTypeHelper.getLLVMType(call.getArgument(i).getType());
+            argsType[argIndex] = call.getArgument(i).getType();
             argIndex++;
         }
 
@@ -544,7 +543,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         method.addInstruction(node);
     }
 
-    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, LLVMType[] argsType, LLVMBaseType retType) {
+    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, Type[] argsType, LLVMBaseType retType) {
         if (inlineAsmConstant.hasSideEffects()) {
             LLVMLogger.info("Parsing Inline Assembly Constant with Sideeffects!");
         }
