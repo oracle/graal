@@ -32,7 +32,9 @@ import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.amd64.AMD64AddressLowering;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.CompressEncoding;
@@ -41,7 +43,9 @@ import org.graalvm.compiler.hotspot.nodes.CompressionNode;
 import org.graalvm.compiler.hotspot.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
+import org.graalvm.compiler.hotspot.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -100,6 +104,28 @@ public class AMD64HotSpotAddressLowering extends AMD64AddressLowering {
             if (addr.getIndex() == null && addr.getBase() instanceof CompressionNode) {
                 if (improveUncompression(addr, (CompressionNode) addr.getBase())) {
                     return true;
+                }
+            }
+
+            if (addr.getIndex() == null && addr.getBase() instanceof PiNode) {
+                PiNode pi = (PiNode) addr.getBase();
+                if (pi.getOriginalNode() instanceof CompressionNode) {
+                    CompressionNode compression = (CompressionNode) pi.getOriginalNode();
+                    // Strip out the Pi and see if the compression can fold
+                    addr.setBase(compression);
+                    if (improveUncompression(addr, compression)) {
+                        /*
+                         * Move the pi onto the other side of the compression.
+                         */
+                        assert addr.getIndex() == compression.getValue();
+                        Stamp newStamp = NarrowOopStamp.compressed((AbstractObjectStamp) pi.stamp(), compression.getEncoding());
+                        PiNode newPi = compression.graph().unique(new PiNode(addr.getIndex(), newStamp, pi.getGuard() != null ? pi.getGuard().asNode() : null));
+                        addr.setIndex(newPi);
+                        return true;
+                    } else {
+                        // Can't fold the compression so restore the base
+                        addr.setBase(pi);
+                    }
                 }
             }
         }
