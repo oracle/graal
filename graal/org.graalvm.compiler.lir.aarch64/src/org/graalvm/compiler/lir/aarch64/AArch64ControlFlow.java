@@ -30,7 +30,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;

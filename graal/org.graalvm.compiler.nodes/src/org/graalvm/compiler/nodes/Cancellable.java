@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.nodes;
 
-import org.graalvm.compiler.common.CancellationBailoutException;
+import org.graalvm.compiler.core.common.CancellationBailoutException;
 
 /**
  * An interface for supporting co-operative cancellation of tasks. An external entity gives a

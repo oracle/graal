@@ -35,7 +35,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
-import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;

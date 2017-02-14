@@ -24,7 +24,7 @@ package org.graalvm.compiler.phases.common;
 
 import static org.graalvm.compiler.graph.Graph.NodeEvent.NODE_ADDED;
 
-import org.graalvm.compiler.common.RetryableBailoutException;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.spi.Simplifiable;

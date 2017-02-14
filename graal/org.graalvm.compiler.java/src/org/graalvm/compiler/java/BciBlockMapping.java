@@ -92,7 +92,7 @@ import org.graalvm.compiler.bytecode.BytecodeStream;
 import org.graalvm.compiler.bytecode.BytecodeSwitch;
 import org.graalvm.compiler.bytecode.BytecodeTableSwitch;
 import org.graalvm.compiler.bytecode.Bytecodes;
-import org.graalvm.compiler.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.EconomicMap;

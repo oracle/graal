@@ -20,24 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.common;
+package org.graalvm.compiler.core.common;
 
 import jdk.vm.ci.code.BailoutException;
 
-public class RetryableBailoutException extends BailoutException {
+public class PermanentBailoutException extends BailoutException {
 
-    private static final long serialVersionUID = -7145365025679144525L;
+    private static final long serialVersionUID = -2683649650135362549L;
 
-    public RetryableBailoutException(String format, Object... args) {
-        super(false, format, args);
+    public PermanentBailoutException(String format, Object... args) {
+        super(true, format, args);
     }
 
-    public RetryableBailoutException(String reason) {
-        super(false, reason);
+    public PermanentBailoutException(String reason) {
+        super(true, reason);
     }
 
-    public RetryableBailoutException(Throwable cause, String format) {
-        super(cause, format);
+    public PermanentBailoutException(Throwable cause, String format, Object... args) {
+        super(cause, format, args);
     }
-
 }

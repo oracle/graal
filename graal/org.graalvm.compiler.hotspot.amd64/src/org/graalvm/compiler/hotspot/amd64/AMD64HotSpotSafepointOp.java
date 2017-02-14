@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import static org.graalvm.compiler.asm.NumUtil.isInt;
+import static org.graalvm.compiler.core.common.NumUtil.isInt;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static jdk.vm.ci.amd64.AMD64.rax;

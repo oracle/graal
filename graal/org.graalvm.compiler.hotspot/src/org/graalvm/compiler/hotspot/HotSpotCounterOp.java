@@ -28,7 +28,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.Arrays;
 import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;

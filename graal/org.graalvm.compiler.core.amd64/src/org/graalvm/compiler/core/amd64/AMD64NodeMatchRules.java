@@ -36,7 +36,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.QWORD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.SD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.SS;
 
-import org.graalvm.compiler.asm.NumUtil;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RRMOp;

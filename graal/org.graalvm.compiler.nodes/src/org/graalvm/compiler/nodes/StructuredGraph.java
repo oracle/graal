@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.common.CancellationBailoutException;
+import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;

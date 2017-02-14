@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.compiler.common.CancellationBailoutException;
+import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationRequestIdentifier;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.GraalError;
