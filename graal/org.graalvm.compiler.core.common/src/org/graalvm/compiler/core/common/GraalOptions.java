@@ -245,9 +245,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptDevirtualizeInvokesOptimistically = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> OptPushThroughPi = new OptionKey<>(true);
-
     @Option(help = "Allow backend to match complex expressions.", type = OptionType.Debug)
     public static final OptionKey<Boolean> MatchExpressions = new OptionKey<>(true);
 

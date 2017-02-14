@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.common;
+package micro.benchmarks;
 
-import org.graalvm.compiler.debug.Debug;
-import org.graalvm.compiler.debug.DebugCounter;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.PiPushable;
-import org.graalvm.compiler.phases.Phase;
+import java.util.concurrent.ConcurrentSkipListMap;
 
-public class PushThroughPiPhase extends Phase {
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
 
-    public static final DebugCounter PUSHED_NODES = Debug.counter("NodesPushedThroughPi");
+import org.graalvm.compiler.microbenchmarks.graal.GraalBenchmark;
 
-    @Override
-    protected void run(StructuredGraph graph) {
-        for (PiNode pi : graph.getNodes(PiNode.TYPE)) {
-            for (Node n : pi.usages().snapshot()) {
-                if (n instanceof PiPushable) {
-                    PiPushable pip = (PiPushable) n;
-                    if (pip.push(pi)) {
-                        PUSHED_NODES.add(1);
-                    }
-                }
-            }
+/**
+ * Benchmarks cost of ArrayList.
+ */
+public class ConcurrentSkipListBenchmark extends GraalBenchmark {
+
+    private static final int N = 100;
+
+    @State(Scope.Benchmark)
+    public static class ThreadState {
+        ConcurrentSkipListMap<Integer, Integer> list = new ConcurrentSkipListMap<>();
+    }
+
+    @Benchmark
+    @Warmup(iterations = 20)
+    public void addBoxed(ThreadState state) {
+        for (int i = 0; i < N; ++i) {
+            state.list.put(i, i);
         }
     }
 }

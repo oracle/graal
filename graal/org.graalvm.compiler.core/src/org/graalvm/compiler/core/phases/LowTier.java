@@ -38,7 +38,6 @@ import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
-import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -65,8 +64,6 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER));
-
-        appendPhase(new RemoveValueProxyPhase());
 
         appendPhase(new ExpandLogicPhase());
 

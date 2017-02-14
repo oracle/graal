@@ -29,6 +29,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.LoopPeeling;
 import static org.graalvm.compiler.core.common.GraalOptions.LoopUnswitch;
 import static org.graalvm.compiler.core.common.GraalOptions.OptConvertDeoptsToGuards;
 import static org.graalvm.compiler.core.common.GraalOptions.OptLoopTransform;
+import static org.graalvm.compiler.core.common.GraalOptions.OptReadElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialEscapeAnalysis;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
@@ -52,6 +53,7 @@ import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class HighTier extends PhaseSuite<HighTierContext> {
@@ -77,13 +79,12 @@ public class HighTier extends PhaseSuite<HighTierContext> {
             appendPhase(new DeadCodeEliminationPhase(Optional));
         }
 
-        if (ConditionalElimination.getValue(options)) {
-            appendPhase(canonicalizer);
-            appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
-        }
-
         if (OptConvertDeoptsToGuards.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new ConvertDeoptimizeToGuardPhase()));
+        }
+
+        if (ConditionalElimination.getValue(options)) {
+            appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
         LoopPolicies loopPolicies = createLoopPolicies();
@@ -105,6 +106,11 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         if (PartialEscapeAnalysis.getValue(options)) {
             appendPhase(new PartialEscapePhase(true, canonicalizer, options));
         }
+
+        if (OptReadElimination.getValue(options)) {
+            appendPhase(new EarlyReadEliminationPhase(canonicalizer));
+        }
+
         appendPhase(new RemoveValueProxyPhase());
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER));

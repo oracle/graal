@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -143,8 +144,24 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 anchorBlock = b;
             }
 
-            if (b.getEndNode() instanceof IfNode) {
-                IfNode node = (IfNode) b.getEndNode();
+            AbstractBeginNode beginNode = b.getBeginNode();
+            if (beginNode instanceof MergeNode && anchorBlock != b) {
+                MergeNode mergeNode = (MergeNode) beginNode;
+                for (GuardNode guard : mergeNode.guards().snapshot()) {
+                    GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), guard.getSpeculation());
+                    GuardNode newGuard = mergeNode.graph().unique(newlyCreatedGuard);
+                    guard.replaceAndDelete(newGuard);
+                    if (newGuard == newlyCreatedGuard) {
+                        // Register guard such that it will be processed by subsequent
+                        // conditional elimination.
+                        blockToNodes.get(anchorBlock).add(newGuard);
+                    }
+                }
+            }
+
+            FixedNode endNode = b.getEndNode();
+            if (endNode instanceof IfNode) {
+                IfNode node = (IfNode) endNode;
 
                 // Check if we can move guards upwards.
                 AbstractBeginNode trueSuccessor = node.trueSuccessor();
@@ -168,16 +185,15 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                                 continue;
                             }
                             GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation);
-                            GuardNode newGuard = node.graph().unique(
-                                            newlyCreatedGuard);
+                            GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
                             if (otherGuard.isAlive()) {
                                 otherGuard.replaceAndDelete(newGuard);
                             }
                             guard.replaceAndDelete(newGuard);
                             if (newGuard == newlyCreatedGuard) {
-                                // Register guard to it will be processed by subsequent conditional
-                                // elimination.
-                                blockToNodes.get(b).add(newGuard);
+                                // Register guard such that it will be processed by subsequent
+                                // conditional elimination.
+                                blockToNodes.get(anchorBlock).add(newGuard);
                             }
                         }
                     }
@@ -376,7 +392,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 } else {
                     processAbstractBegin((AbstractBeginNode) node);
                 }
-
             } else if (node instanceof FixedGuardNode) {
                 processFixedGuard((FixedGuardNode) node);
             } else if (node instanceof GuardNode) {

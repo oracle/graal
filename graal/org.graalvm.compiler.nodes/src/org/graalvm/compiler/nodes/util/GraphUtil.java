@@ -351,8 +351,8 @@ public class GraphUtil {
         return newWorkList;
     }
 
-    private static boolean checkKill(Node node, boolean mayKillGuards) {
-        node.assertTrue(mayKillGuards || !(node instanceof GuardNode), "must not be a guard node %s", node);
+    private static boolean checkKill(Node node, boolean mayKillGuard) {
+        node.assertTrue(mayKillGuard || !(node instanceof GuardNode), "must not be a guard node %s", node);
         node.assertTrue(node.isAlive(), "must be alive");
         node.assertTrue(node.hasNoUsages(), "cannot kill node %s because of usages: %s", node, node.usages());
         node.assertTrue(node.predecessor() == null, "cannot kill node %s because of predecessor: %s", node, node.predecessor());
@@ -363,8 +363,8 @@ public class GraphUtil {
         killWithUnusedFloatingInputs(node, false);
     }
 
-    public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuards) {
-        assert checkKill(node, mayKillGuards);
+    public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard) {
+        assert checkKill(node, mayKillGuard);
         node.markDeleted();
         outer: for (Node in : node.inputs()) {
             if (in.isAlive()) {

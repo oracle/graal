@@ -864,4 +864,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
         return false;
     }
+
+    @Override
+    protected void afterRegister(Node node) {
+        assert hasValueProxies() || !(node instanceof ValueProxyNode);
+    }
 }

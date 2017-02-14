@@ -976,6 +976,12 @@ public class Graph {
         if (Fingerprint.ENABLED) {
             Fingerprint.submit("%s: %s", NodeEvent.NODE_ADDED, node);
         }
+        afterRegister(node);
+    }
+
+    @SuppressWarnings("unused")
+    protected void afterRegister(Node node) {
+
     }
 
     @SuppressWarnings("unused")
