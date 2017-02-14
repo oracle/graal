@@ -54,11 +54,12 @@ public final class SLLogicalAndNode extends SLShortCircuitNode {
     }
 
     /**
-     * The right value does not need to be evaluated if the left value is already <code>true</code>.
+     * The right value does not need to be evaluated if the left value is already <code>false</code>
+     * .
      */
     @Override
     protected boolean isEvaluateRight(boolean left) {
-        return false;
+        return left;
     }
 
     /**
