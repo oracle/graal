@@ -23,13 +23,16 @@
 package org.graalvm.compiler.truffle;
 
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleFunctionInlining;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInliningMaxCallerSize;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleMaximumRecursiveInlining;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CallTarget;
@@ -55,6 +58,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
         if (!TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
             return Collections.emptyList();
         }
+        visitedNodes = 0;
         int nodeCount = sourceTarget.getNonTrivialNodeCount();
         List<TruffleInliningDecision> exploredCallSites = exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), nodeCount, policy);
         return decideInlining(exploredCallSites, policy, nodeCount, options);
@@ -62,11 +66,19 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
 
     private static List<TruffleInliningDecision> exploreCallSites(List<OptimizedCallTarget> stack, int callStackNodeCount, TruffleInliningPolicy policy) {
         List<TruffleInliningDecision> exploredCallSites = new ArrayList<>();
+        Map<OptimizedCallTarget, TruffleInliningDecision> rejectedDecisionsCache = new HashMap<>();
         OptimizedCallTarget parentTarget = stack.get(stack.size() - 1);
         for (OptimizedDirectCallNode callNode : getCallNodes(parentTarget)) {
             OptimizedCallTarget currentTarget = callNode.getCurrentCallTarget();
             stack.add(currentTarget); // push
-            exploredCallSites.add(exploreCallSite(stack, callStackNodeCount, policy, callNode));
+            TruffleInliningDecision decision = rejectedDecisionsCache.get(currentTarget);
+            if (decision == null) {
+                decision = exploreCallSite(stack, callStackNodeCount, policy, callNode);
+                if (!decision.isInline()) {
+                    rejectedDecisionsCache.put(currentTarget, decision);
+                }
+            }
+            exploredCallSites.add(decision);
             stack.remove(stack.size() - 1); // pop
         }
         return exploredCallSites;
@@ -86,7 +98,10 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
         return callNodes;
     }
 
+    private static int visitedNodes;
+
     private static TruffleInliningDecision exploreCallSite(List<OptimizedCallTarget> callStack, int callStackNodeCount, TruffleInliningPolicy policy, OptimizedDirectCallNode callNode) {
+
         OptimizedCallTarget parentTarget = callStack.get(callStack.size() - 2);
         OptimizedCallTarget currentTarget = callStack.get(callStack.size() - 1);
 
@@ -96,7 +111,10 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
 
         int recursions = countRecursions(callStack);
         int deepNodeCount = nodeCount;
-        if (callStack.size() < 15 && recursions <= TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining)) {
+
+        if (++visitedNodes < (100 * TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize)) &&
+                        callStack.size() < 15 &&
+                        recursions <= TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining)) {
             /*
              * We make a preliminary optimistic inlining decision with best possible characteristics
              * to avoid the exploration of unnecessary paths in the inlining tree.
