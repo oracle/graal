@@ -28,7 +28,6 @@
 
 import os
 import re
-import subprocess
 
 import mx
 
@@ -103,25 +102,6 @@ def repl(args):
     vmArgs, slArgs = mx.extract_VM_args(args, useDoubleDash=True)
     mx.run_java(vmArgs + _path_args() + ["com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient"] + slArgs)
 
-def testrubytruffle(args):
-    """test RubyTruffle against the Truffle API"""
-
-    jruby_dir = 'jruby'
-    jruby_repo = 'https://github.com/jruby/jruby.git'
-    jruby_branch = 'truffle-head'
-    git = mx.GitConfig()
-    if os.path.exists('jruby'):
-        git.run(['git', 'reset', 'HEAD', '--hard'], nonZeroIsFatal=True, cwd=jruby_dir)
-        git.pull('jruby')
-    else:
-        git.clone(jruby_repo, jruby_dir)
-        git.run(['git', 'checkout', jruby_branch], nonZeroIsFatal=True, cwd=jruby_dir)
-    dev_version = _suite.release_version(snapshotSuffix='SNAPSHOT')
-    mx.build([])
-    mx.maven_install([])
-    subprocess.check_call(['./mvnw', '-q', '-Dtruffle.version=' + dev_version], cwd=jruby_dir)
-    subprocess.check_call(['bin/jruby', 'tool/jt.rb', 'test', 'fast'], cwd=jruby_dir)
-
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
     with Task('Jackpot check', tasks) as t:
@@ -140,7 +120,6 @@ mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
     'repl' : [repl, '[REPL Debugger args|@VM options]'],
-    'testrubytruffle' : [testrubytruffle, ''],
     'testgraal' : [testgraal, ''],
 })
 
