@@ -42,6 +42,12 @@ class AsmImmediateOperand implements AsmOperand {
         this.label = false;
     }
 
+    AsmImmediateOperand(String value) {
+        this.val = value;
+        this.ival = 0;
+        this.label = true;
+    }
+
     public String getLabel() {
         if (!isLabel()) {
             CompilerDirectives.transferToInterpreter();

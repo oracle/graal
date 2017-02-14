@@ -47,6 +47,13 @@ public final class LLVMTruffleObject {
         this.type = type;
     }
 
+    public LLVMTruffleObject(TruffleObject object, String name, Type type) {
+        this.object = object;
+        this.offset = 0;
+        this.name = name;
+        this.type = type;
+    }
+
     public LLVMTruffleObject(TruffleObject object, Type type) {
         this.object = object;
         this.offset = 0;
