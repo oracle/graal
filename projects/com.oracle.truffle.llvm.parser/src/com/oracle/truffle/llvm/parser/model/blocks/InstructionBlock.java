@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public final class InstructionBlock implements ValueSymbol {
@@ -72,7 +73,7 @@ public final class InstructionBlock implements ValueSymbol {
 
     private final List<Instruction> instructions = new ArrayList<>();
 
-    private String name = ValueSymbol.UNKNOWN;
+    private String name = LLVMIdentifier.UNKNOWN;
 
     public InstructionBlock(FunctionDefinition function, int index) {
         this.function = function;
@@ -224,7 +225,11 @@ public final class InstructionBlock implements ValueSymbol {
 
     @Override
     public void setName(String name) {
-        this.name = String.format("%%%s", name);
+        this.name = LLVMIdentifier.toBlockName(name);
+    }
+
+    public void setImplicitName(int label) {
+        this.name = LLVMIdentifier.toImplicitBlockName(label);
     }
 
     @Override
