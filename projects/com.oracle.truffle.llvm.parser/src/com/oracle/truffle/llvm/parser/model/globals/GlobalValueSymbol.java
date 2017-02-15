@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.model.globals;
 
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
+import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -50,11 +51,14 @@ public abstract class GlobalValueSymbol implements ValueSymbol {
 
     private final Linkage linkage;
 
-    GlobalValueSymbol(Type type, int initialiser, int align, long linkage) {
+    private final Visibility visibility;
+
+    GlobalValueSymbol(Type type, int initialiser, int align, Linkage linkage, Visibility visibility) {
         this.type = type;
         this.initialiser = initialiser;
         this.align = align;
-        this.linkage = Linkage.decode((int) linkage);
+        this.linkage = linkage;
+        this.visibility = visibility;
     }
 
     public abstract void accept(ModelVisitor visitor);
@@ -92,6 +96,10 @@ public abstract class GlobalValueSymbol implements ValueSymbol {
 
     public Symbol getValue() {
         return value;
+    }
+
+    public Visibility getVisibility() {
+        return visibility;
     }
 
     public void initialise(Symbols symbols) {

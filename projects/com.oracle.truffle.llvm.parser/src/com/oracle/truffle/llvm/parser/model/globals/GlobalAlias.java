@@ -29,13 +29,15 @@
  */
 package com.oracle.truffle.llvm.parser.model.globals;
 
+import com.oracle.truffle.llvm.parser.model.enums.Linkage;
+import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class GlobalAlias extends GlobalValueSymbol {
 
-    public GlobalAlias(Type type, int aliasedValue, long linkage) {
-        super(type, aliasedValue, 0, linkage);
+    public GlobalAlias(Type type, int aliasedValue, Linkage linkage, Visibility visibility) {
+        super(type, aliasedValue, 0, linkage, visibility);
     }
 
     @Override
@@ -46,6 +48,10 @@ public final class GlobalAlias extends GlobalValueSymbol {
     @Override
     public int getAlign() {
         return getValue() instanceof GlobalValueSymbol ? ((GlobalValueSymbol) getValue()).getAlign() : getAlign();
+    }
+
+    public static GlobalAlias create(Type type, int aliasedValue, long linkage, long visibility) {
+        return new GlobalAlias(type, aliasedValue, Linkage.decode(linkage), Visibility.decode(visibility));
     }
 
     @Override
