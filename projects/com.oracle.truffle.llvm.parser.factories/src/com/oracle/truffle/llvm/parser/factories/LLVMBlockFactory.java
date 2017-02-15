@@ -36,13 +36,13 @@ import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
 
-public class LLVMBlockFactory {
+final class LLVMBlockFactory {
 
-    public static LLVMExpressionNode createBasicBlock(LLVMExpressionNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName) {
+    static LLVMExpressionNode createBasicBlock(LLVMExpressionNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName) {
         return new LLVMBasicBlockNode(statementNodes, terminatorNode, blockId, blockName);
     }
 
-    public static LLVMExpressionNode createFunctionBlock(FrameSlot returnSlot, LLVMBasicBlockNode[] bbs, LLVMStackFrameNuller[][] beforeSlotNullerNodes,
+    static LLVMExpressionNode createFunctionBlock(FrameSlot returnSlot, LLVMBasicBlockNode[] bbs, LLVMStackFrameNuller[][] beforeSlotNullerNodes,
                     LLVMStackFrameNuller[][] afterSlotNullerNodes) {
         return new LLVMDispatchBasicBlockNode(bbs, beforeSlotNullerNodes, afterSlotNullerNodes, returnSlot);
     }

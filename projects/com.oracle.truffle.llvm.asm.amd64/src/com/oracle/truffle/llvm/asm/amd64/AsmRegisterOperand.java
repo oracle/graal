@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -37,7 +36,7 @@ import java.util.Set;
 
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
-public class AsmRegisterOperand extends AsmOperand {
+class AsmRegisterOperand implements AsmOperand {
     private String register;
 
     private static final Map<String, String> mapping;
@@ -45,8 +44,8 @@ public class AsmRegisterOperand extends AsmOperand {
     private static final Map<String, Integer> shift;
     private static final Set<String> registers;
 
-    public static final int REG16_HI_SHIFT = 8;
-    public static final int REG64_COUNT = 16;
+    private static final int REG16_HI_SHIFT = 8;
+    private static final int REG64_COUNT = 16;
 
     static {
         mapping = new HashMap<>();
@@ -287,7 +286,7 @@ public class AsmRegisterOperand extends AsmOperand {
         }
     }
 
-    public AsmRegisterOperand(String register) {
+    AsmRegisterOperand(String register) {
         this.register = register.charAt(0) == '%' ? register.substring(1) : register;
     }
 
@@ -307,25 +306,21 @@ public class AsmRegisterOperand extends AsmOperand {
         return getShift(getRegister());
     }
 
-    public static boolean isRegister(String reg) {
+    static boolean isRegister(String reg) {
         return mapping.containsKey(reg);
     }
 
-    public static String getBaseRegister(String reg) {
+    static String getBaseRegister(String reg) {
         return mapping.get(reg);
     }
 
-    public static LLVMBaseType getWidth(String reg) {
+    private static LLVMBaseType getWidth(String reg) {
         return width.get(reg);
     }
 
-    public static int getShift(String reg) {
+    private static int getShift(String reg) {
         Integer sh = shift.get(reg);
         return sh == null ? 0 : sh;
-    }
-
-    public static Set<String> getRegisters() {
-        return Collections.unmodifiableSet(registers);
     }
 
     @Override

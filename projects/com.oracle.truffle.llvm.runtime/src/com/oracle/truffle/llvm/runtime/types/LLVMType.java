@@ -37,7 +37,7 @@ public class LLVMType {
         this(type, null);
     }
 
-    public LLVMType(LLVMBaseType type, LLVMType pointee) {
+    LLVMType(LLVMBaseType type, LLVMType pointee) {
         this.type = type;
         this.pointee = pointee;
     }

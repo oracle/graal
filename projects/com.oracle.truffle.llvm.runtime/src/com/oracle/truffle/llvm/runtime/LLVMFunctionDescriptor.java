@@ -76,6 +76,7 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
 
     private RootCallTarget callTarget;
     private TruffleObject nativeSymbol;
+    private RootCallTarget intrinsic;
 
     private LLVMFunctionDescriptor(String name, LLVMRuntimeType llvmReturnType, LLVMRuntimeType[] llvmParamTypes, boolean varArgs, int functionId) {
         this.functionName = name;
@@ -93,12 +94,19 @@ public final class LLVMFunctionDescriptor extends LLVMFunction implements Compar
     }
 
     public RootCallTarget getCallTarget() {
+        if (callTarget == null && intrinsic != null) {
+            return intrinsic;
+        }
         return callTarget;
     }
 
     public void setCallTarget(RootCallTarget callTarget) {
         assert this.nativeSymbol == null;
         this.callTarget = callTarget;
+    }
+
+    public void setIntrinsicCallTarget(RootCallTarget callTarget) {
+        this.intrinsic = callTarget;
     }
 
     public TruffleObject getNativeSymbol() {

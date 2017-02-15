@@ -29,25 +29,13 @@
  */
 package com.oracle.truffle.llvm.asm.amd64;
 
-public class AsmMemoryOperand extends AsmOperand {
+class AsmMemoryOperand implements AsmOperand {
     private final String displacement;
     private final AsmRegisterOperand base;
     private final AsmRegisterOperand offset;
     private final String scale;
 
-    public AsmMemoryOperand(String displacement) {
-        this(displacement, null, null, null);
-    }
-
-    public AsmMemoryOperand(String displacement, AsmRegisterOperand base) {
-        this(displacement, base, null, null);
-    }
-
-    public AsmMemoryOperand(String displacement, AsmRegisterOperand base, AsmRegisterOperand offset) {
-        this(displacement, base, offset, null);
-    }
-
-    public AsmMemoryOperand(String displacement, AsmRegisterOperand base, AsmRegisterOperand offset, String scale) {
+    AsmMemoryOperand(String displacement, AsmRegisterOperand base, AsmRegisterOperand offset, String scale) {
         this.displacement = displacement;
         this.base = base;
         this.offset = offset;

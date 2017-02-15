@@ -54,10 +54,11 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMTruffleOnlyIntrinsicsFacto
 
 /**
  * This class creates intrinsic functions and is designed to be inherited.
+ *
  */
 public class LLVMRuntimeIntrinsicFactory {
 
-    public static Map<String, NodeFactory<? extends LLVMExpressionNode>> getFunctionSubstitutionFactories() {
+    static Map<String, NodeFactory<? extends LLVMExpressionNode>> getFunctionSubstitutionFactories() {
         return new LLVMRuntimeIntrinsicFactory().getFactories();
     }
 

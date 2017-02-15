@@ -1,4 +1,4 @@
-java8: {name: labsjdk, version: "8u111-jvmci-0.23", platformspecific: true}
+java8: {name: labsjdk, version: "8u121-jvmci-0.24", platformspecific: true}
 eclipse: {name: eclipse, version: "4.5.2", platformspecific: true}
 dragonegg: {name: dragonegg, version: "3.2", platformspecific: true}
 
@@ -90,7 +90,7 @@ bench: {
   }
   upload: [bench-uploader.py, "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}"]
   logs: ["results-*.json"] # there's no variable expansion done on logs
-  timelimit: "5:00:00"
+  timelimit: "6:00:00"
 }
 
 benchSulong: ${bench} {

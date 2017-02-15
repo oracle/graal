@@ -41,7 +41,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.context.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -51,9 +51,9 @@ public abstract class LLVMDispatchNode extends Node {
 
     protected static final int INLINE_CACHE_SIZE = 5;
 
-    protected final LLVMContext context;
-    protected final LLVMRuntimeType retType;
-    protected final Type[] argTypes;
+    private final LLVMContext context;
+    private final LLVMRuntimeType retType;
+    private final Type[] argTypes;
     @CompilationFinal private String signature;
 
     protected LLVMDispatchNode(LLVMContext context, LLVMRuntimeType retType, Type[] argTypes) {

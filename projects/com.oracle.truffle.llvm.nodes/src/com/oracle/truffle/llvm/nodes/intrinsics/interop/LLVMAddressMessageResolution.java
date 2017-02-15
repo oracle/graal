@@ -34,11 +34,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNode.LLVMAddressReadMessageResolutionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNode.LLVMAddressWriteMessageResolutionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressReadMessageResolutionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressWriteMessageResolutionNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 
 @MessageResolution(receiverType = LLVMTruffleAddress.class, language = LLVMLanguage.class)

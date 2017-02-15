@@ -47,12 +47,12 @@ import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShu
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI8VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 
-public final class LLVMVectorFactory {
+final class LLVMVectorFactory {
 
     private LLVMVectorFactory() {
     }
 
-    public static LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, LLVMExpressionNode element,
+    static LLVMExpressionNode createInsertElement(LLVMBaseType resultType, LLVMExpressionNode vector, LLVMExpressionNode element,
                     LLVMExpressionNode index) {
         switch (resultType) {
             case I1_VECTOR:
@@ -74,7 +74,7 @@ public final class LLVMVectorFactory {
         }
     }
 
-    public static LLVMExpressionNode createExtractElement(LLVMBaseType resultType, LLVMExpressionNode vector, LLVMExpressionNode index) {
+    static LLVMExpressionNode createExtractElement(LLVMBaseType resultType, LLVMExpressionNode vector, LLVMExpressionNode index) {
         switch (resultType) {
             case I8:
                 return LLVMI8ExtractElementNodeGen.create(vector, index);
@@ -93,7 +93,7 @@ public final class LLVMVectorFactory {
         }
     }
 
-    public static LLVMExpressionNode createShuffleVector(LLVMBaseType resultType, LLVMExpressionNode vector1, LLVMExpressionNode vector2, LLVMExpressionNode mask) {
+    static LLVMExpressionNode createShuffleVector(LLVMBaseType resultType, LLVMExpressionNode vector1, LLVMExpressionNode vector2, LLVMExpressionNode mask) {
         switch (resultType) {
             case I8_VECTOR:
                 return LLVMShuffleI8VectorNodeGen.create(vector1, vector2, mask);

@@ -56,12 +56,12 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteToNameFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.ToLLVMNode;
 
-public final class LLVMTruffleIntrinsicFactory {
+final class LLVMTruffleIntrinsicFactory {
 
     private LLVMTruffleIntrinsicFactory() {
     }
 
-    public static LLVMExpressionNode create(String functionName, LLVMExpressionNode[] argNodes) {
+    static LLVMExpressionNode create(String functionName, LLVMExpressionNode[] argNodes) {
         Object[] realArgNodes = new Object[argNodes.length - LLVMCallNode.ARG_START_INDEX];
         System.arraycopy(argNodes, LLVMCallNode.ARG_START_INDEX, realArgNodes, 0, realArgNodes.length);
 

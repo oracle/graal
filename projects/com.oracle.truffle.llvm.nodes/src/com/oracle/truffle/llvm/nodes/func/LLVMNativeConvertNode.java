@@ -38,21 +38,21 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.AddressToNativeNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.FunctionToNativeNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.NativeToAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public abstract class LLVMNativeConvertNode extends Node {
+abstract class LLVMNativeConvertNode extends Node {
 
     public abstract Object executeConvert(VirtualFrame frame, Object arg);
 
-    public static LLVMNativeConvertNode createToNative(LLVMContext context, Type argType) {
+    static LLVMNativeConvertNode createToNative(LLVMContext context, Type argType) {
         switch (argType.getLLVMType().getType()) {
             case ADDRESS:
                 return AddressToNativeNodeGen.create();
@@ -63,7 +63,7 @@ public abstract class LLVMNativeConvertNode extends Node {
         }
     }
 
-    public static LLVMNativeConvertNode createFromNative(LLVMRuntimeType retType) {
+    static LLVMNativeConvertNode createFromNative(LLVMRuntimeType retType) {
         switch (retType) {
             case ADDRESS:
                 return NativeToAddressNodeGen.create();
@@ -150,7 +150,7 @@ public abstract class LLVMNativeConvertNode extends Node {
         }
 
         protected LLVMFunctionDescriptor doLookup(LLVMFunctionHandle handle) {
-            return context.getFunctionRegistry().lookup(handle);
+            return context.lookup(handle);
         }
     }
 

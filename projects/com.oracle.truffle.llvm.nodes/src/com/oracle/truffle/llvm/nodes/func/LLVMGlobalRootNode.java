@@ -43,13 +43,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbort;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMSignal;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 
@@ -58,15 +58,15 @@ import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
  */
 public class LLVMGlobalRootNode extends RootNode {
 
-    protected final DirectCallNode main;
-    @CompilationFinal protected final Object[] arguments;
-    protected final LLVMContext context;
+    private final DirectCallNode main;
+    @CompilationFinal private final Object[] arguments;
+    private final LLVMContext context;
     // FIXME instead make the option system "PE safe"
-    protected final int executionCount = LLVMOptions.ENGINE.executionCount();
-    protected final boolean printExecutionTime = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printExecutionTime());
-    protected final FrameSlot stackPointerSlot;
-    protected long startExecutionTime;
-    protected long endExecutionTime;
+    private final int executionCount = LLVMOptions.ENGINE.executionCount();
+    private final boolean printExecutionTime = !LLVMLogger.TARGET_NONE.equals(LLVMOptions.DEBUG.printExecutionTime());
+    private final FrameSlot stackPointerSlot;
+    private long startExecutionTime;
+    private long endExecutionTime;
 
     public LLVMGlobalRootNode(FrameSlot stackSlot, FrameDescriptor descriptor, LLVMContext context, CallTarget main, Object... arguments) {
         super(LLVMLanguage.class, null, descriptor);
@@ -105,7 +105,7 @@ public class LLVMGlobalRootNode extends RootNode {
         }
     }
 
-    protected Object executeIteration(int iteration, Object[] args) {
+    private Object executeIteration(int iteration, Object[] args) {
         Object result;
 
         if (iteration != 0) {
@@ -143,14 +143,14 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @TruffleBoundary
-    protected void printExecutionTime() {
+    private void printExecutionTime() {
         long executionTime = endExecutionTime - startExecutionTime;
         final String message = "execution time: " + executionTime + " ms";
         LLVMLogger.print(LLVMOptions.DEBUG.printExecutionTime()).accept(message);
     }
 
     @TruffleBoundary
-    protected void executeStaticInits() {
+    private void executeStaticInits() {
         List<RootCallTarget> globalVarInits = context.getGlobalVarInits();
         for (RootCallTarget callTarget : globalVarInits) {
             callTarget.call(globalVarInits);
@@ -166,7 +166,7 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @TruffleBoundary
-    protected void executeDestructorFunctions() {
+    private void executeDestructorFunctions() {
         List<RootCallTarget> destructorFunctions = context.getDestructorFunctions();
         for (RootCallTarget callTarget : destructorFunctions) {
             callTarget.call(destructorFunctions);
@@ -174,7 +174,7 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @TruffleBoundary
-    protected void executeAtExitFunctions() {
+    private void executeAtExitFunctions() {
         Deque<RootCallTarget> atExitFunctions = context.getAtExitFunctions();
         LLVMExitException lastExitException = null;
         while (!atExitFunctions.isEmpty()) {

@@ -206,7 +206,7 @@ Tool.CLANG_CPP = ClangCompiler('clangcpp', [ProgrammingLanguage.C_PLUS_PLUS])
 Tool.GCC = GCCCompiler()
 Tool.GFORTRAN = GCCCompiler('gfortran', [ProgrammingLanguage.FORTRAN])
 
-Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
+Tool.BB_VECTORIZE = Opt('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-bb-vectorize'])
 Tool.MEM2REG = Opt('MEM2REG', ['-mem2reg'])
 
 Tool.CPP_OPT = Opt('CPP_OPT', ['-lowerinvoke', '-prune-eh', '-simplifycfg'])
@@ -217,7 +217,7 @@ Tool.CLANG_V38 = ClangV38Compiler('clang_v38')
 Tool.CLANG_C_V38 = ClangV38Compiler('clangc_v38', [ProgrammingLanguage.C])
 Tool.CLANG_CPP_V38 = ClangV38Compiler('clangcpp_v38', [ProgrammingLanguage.C_PLUS_PLUS])
 
-Tool.BB_VECTORIZE_V38 = OptV38('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-scalarrepl', '-bb-vectorize'])
+Tool.BB_VECTORIZE_V38 = OptV38('BB_VECTORIZE', ['-functionattrs', '-instcombine', '-always-inline', '-jump-threading', '-simplifycfg', '-mem2reg', '-bb-vectorize'])
 Tool.MEM2REG_V38 = OptV38('MEM2REG', ['-mem2reg'])
 
 Tool.CPP_OPT_V38 = OptV38('CPP_OPT_v38', ['-lowerinvoke', '-prune-eh', '-simplifycfg'])

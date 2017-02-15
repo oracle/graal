@@ -43,7 +43,7 @@ public class StructureType implements AggregateType, ValueSymbol {
 
     private final boolean isPacked;
 
-    protected final Type[] types;
+    private final Type[] types;
 
     private MetadataReference metadata = MetadataBlock.voidRef;
 

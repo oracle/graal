@@ -38,14 +38,11 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.asm.amd64.Parser;
-import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMStackFrameNuller;
@@ -67,7 +64,6 @@ import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMFreeFactory;
-import com.oracle.truffle.llvm.nodes.literals.LLVMAggregateLiteralNode.LLVMEmptyStructLiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNode;
 import com.oracle.truffle.llvm.nodes.literals.LLVMFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressZeroNode;
@@ -80,19 +76,21 @@ import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.L
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMFloatUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMFunctionUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode.LLVMI1UnsupportedInlineAssemblerNode;
-import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.api.instructions.LLVMArithmeticInstructionType;
-import com.oracle.truffle.llvm.parser.api.instructions.LLVMConversionType;
-import com.oracle.truffle.llvm.parser.api.instructions.LLVMLogicalInstructionType;
-import com.oracle.truffle.llvm.parser.api.model.enums.CompareOperator;
-import com.oracle.truffle.llvm.parser.api.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.api.model.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.api.model.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionType;
+import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.globals.GlobalConstant;
+import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
 import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.NativeResolver;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
@@ -137,11 +135,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMExpressionNode createLogicalOperation(LLVMParserRuntime runtime, LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionType type, LLVMBaseType llvmType) {
         return LLVMLogicalFactory.createLogicalOperation(left, right, type, llvmType);
-    }
-
-    @Override
-    public LLVMExpressionNode createUndefinedValue(LLVMParserRuntime runtime, Type t) {
-        return LLVMLiteralFactory.createUndefinedValue(runtime, t);
     }
 
     @Override
@@ -197,11 +190,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     }
 
     @Override
-    public FrameSlotKind getFrameSlotKind(LLVMParserRuntime runtime, Type type) {
-        return LLVMFrameReadWriteFactory.getFrameSlotKind(type);
-    }
-
-    @Override
     public LLVMExpressionNode createComparison(LLVMParserRuntime runtime, CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
         return LLVMComparisonFactory.toCompareVectorNode(operator, type, lhs, rhs);
     }
@@ -219,11 +207,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMExpressionNode createExtractValue(LLVMParserRuntime runtime, LLVMBaseType type, LLVMExpressionNode targetAddress) {
         return LLVMAggregateFactory.createExtractValue(type, targetAddress);
-    }
-
-    @Override
-    public LLVMExpressionNode createGetElementPtr(LLVMParserRuntime runtime, LLVMBaseType llvmBaseType, LLVMExpressionNode currentAddress, LLVMExpressionNode valueRef, int indexedTypeLength) {
-        return LLVMGetElementPtrFactory.create(llvmBaseType, currentAddress, valueRef, indexedTypeLength, null);
     }
 
     @Override
@@ -324,11 +307,6 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
     @Override
     public LLVMExpressionNode createZeroNode(LLVMParserRuntime runtime, LLVMExpressionNode addressNode, int size) {
         return new LLVMAddressZeroNode(runtime.getHeapFunctions(), addressNode, size);
-    }
-
-    @Override
-    public LLVMExpressionNode createEmptyStructLiteralNode(LLVMParserRuntime runtime, LLVMExpressionNode alloca, int byteSize) {
-        return new LLVMEmptyStructLiteralNode(runtime.getHeapFunctions(), alloca, byteSize);
     }
 
     @Override
@@ -546,7 +524,7 @@ public class NodeFactoryFacadeImpl implements NodeFactoryFacade {
 
     @Override
     public LLVMFunctionDescriptor createAndRegisterFunctionDescriptor(LLVMParserRuntime runtime, String name, LLVMRuntimeType convertType, boolean varArgs, LLVMRuntimeType[] convertTypes) {
-        return LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()).getFunctionRegistry().lookupFunctionDescriptor(name, convertType, convertTypes, varArgs);
+        return runtime.getLLVMFunctionRegistry().lookupFunctionDescriptor(name, convertType, convertTypes, varArgs);
     }
 
 }

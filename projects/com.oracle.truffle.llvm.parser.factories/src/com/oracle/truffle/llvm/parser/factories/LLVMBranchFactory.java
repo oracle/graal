@@ -35,18 +35,18 @@ import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNodeFactory;
 import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
 
-public class LLVMBranchFactory {
+final class LLVMBranchFactory {
 
-    public static LLVMControlFlowNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[] phiWrites) {
+    static LLVMControlFlowNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[] phiWrites) {
         return new LLVMIndirectBranchNode(value, labelTargets, phiWrites);
     }
 
-    public static LLVMControlFlowNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode[] truePhiWriteNodes,
+    static LLVMControlFlowNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode[] truePhiWriteNodes,
                     LLVMExpressionNode[] falsePhiWriteNodes) {
         return LLVMConditionalBranchNodeFactory.LLVMBrConditionalNodeGen.create(trueIndex, falseIndex, truePhiWriteNodes, falsePhiWriteNodes, conditionNode);
     }
 
-    public static LLVMControlFlowNode createUnconditionalBranch(int unconditionalIndex, LLVMExpressionNode[] phiWrites) {
+    static LLVMControlFlowNode createUnconditionalBranch(int unconditionalIndex, LLVMExpressionNode[] phiWrites) {
         return new LLVMBrUnconditionalNode(unconditionalIndex, phiWrites);
     }
 

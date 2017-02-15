@@ -41,7 +41,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.context.LLVMFunctionRegistry;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -77,10 +76,7 @@ public abstract class LLVMDirectLoadNode {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
-    @NodeField(type = LLVMFunctionRegistry.class, name = "functionRegistry")
     public abstract static class LLVMFunctionDirectLoadNode extends LLVMExpressionNode {
-
-        public abstract LLVMFunctionRegistry getFunctionRegistry();
 
         @Specialization
         public LLVMFunctionHandle executeAddress(LLVMAddress addr) {

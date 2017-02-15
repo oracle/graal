@@ -55,16 +55,16 @@ import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtr
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI32ValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI64ValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractI8ValueNodeGen;
-import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMAggregateFactory {
+final class LLVMAggregateFactory {
 
     private LLVMAggregateFactory() {
     }
 
-    public static LLVMExpressionNode createExtractValue(LLVMBaseType type, LLVMExpressionNode targetAddress) {
+    static LLVMExpressionNode createExtractValue(LLVMBaseType type, LLVMExpressionNode targetAddress) {
         switch (type) {
             case I1:
                 return LLVMExtractI1ValueNodeGen.create(targetAddress);
@@ -90,7 +90,7 @@ public final class LLVMAggregateFactory {
         }
     }
 
-    public static LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
+    static LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
                     LLVMExpressionNode valueToInsert, LLVMBaseType llvmType) {
         switch (llvmType) {
             case FLOAT:
@@ -102,7 +102,7 @@ public final class LLVMAggregateFactory {
         }
     }
 
-    public static LLVMExpressionNode createStructConstantNode(LLVMParserRuntime runtime, Type structType, boolean packed, Type[] types, LLVMExpressionNode[] constants) {
+    static LLVMExpressionNode createStructConstantNode(LLVMParserRuntime runtime, Type structType, boolean packed, Type[] types, LLVMExpressionNode[] constants) {
         int[] offsets = new int[types.length];
         LLVMStructWriteNode[] nodes = new LLVMStructWriteNode[types.length];
         int currentOffset = 0;

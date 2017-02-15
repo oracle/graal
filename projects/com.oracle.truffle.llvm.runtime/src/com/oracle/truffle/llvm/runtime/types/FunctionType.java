@@ -38,7 +38,7 @@ public class FunctionType implements Type, ValueSymbol {
 
     private final Type type;
 
-    protected final Type[] args;
+    private final Type[] args;
 
     private final boolean isVarArg;
 

@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
@@ -42,19 +43,17 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.MissingNameException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
-import com.oracle.truffle.llvm.parser.api.LLVMParserResult;
-import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacade;
-import com.oracle.truffle.llvm.parser.api.facade.NodeFactoryFacadeProvider;
-import com.oracle.truffle.llvm.parser.bc.LLVMBitcodeVisitor;
+import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
+import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacadeProvider;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
-import java.nio.file.Paths;
 
 /**
  * This is the main LLVM execution class.
@@ -194,8 +193,7 @@ public class LLVM {
 
             @Override
             public LLVMContext createContext(Env env) {
-                NodeFactoryFacade facade = getNodeFactoryFacade();
-                LLVMContext context = new LLVMContext(facade, env);
+                LLVMContext context = new LLVMContext(env);
                 if (env != null) {
                     Object mainArgs = env.getConfig().get(LLVMLanguage.MAIN_ARGS_KEY);
                     if (mainArgs != null) {
@@ -238,8 +236,8 @@ public class LLVM {
         System.exit(status);
     }
 
-    public static LLVMParserResult parseBitcodeFile(Source source, LLVMContext context) {
-        return LLVMBitcodeVisitor.parse(source, context, getNodeFactoryFacade());
+    private static LLVMParserResult parseBitcodeFile(Source source, LLVMContext context) {
+        return LLVMParserRuntime.parse(source, context, getNodeFactoryFacade());
     }
 
     public static int executeMain(File file, Object... args) {
@@ -249,16 +247,6 @@ public class LLVM {
             fileSource = Source.newBuilder(file).build();
             return evaluateFromSource(fileSource, args);
         } catch (IOException e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    public static int executeMain(String codeString, Object... args) {
-        try {
-            Source fromText = Source.newBuilder(codeString).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).build();
-            LLVMLogger.info("current code string: " + codeString);
-            return evaluateFromSource(fromText, args);
-        } catch (MissingNameException e) {
             throw new AssertionError(e);
         }
     }

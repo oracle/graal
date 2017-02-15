@@ -37,8 +37,6 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.context.LLVMContext;
-import com.oracle.truffle.llvm.context.LLVMLanguage;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16Factory;
@@ -76,13 +74,15 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAStart;
-import com.oracle.truffle.llvm.parser.api.util.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public final class LLVMIntrinsicFactory {
+final class LLVMIntrinsicFactory {
 
     private static final Map<String, NodeFactory<? extends LLVMExpressionNode>> factories = new HashMap<>();
 
@@ -132,11 +132,11 @@ public final class LLVMIntrinsicFactory {
     // The nodes are directly inserted in the current LLVM AST for the moment. To change this later
     // one,
     // reuse the same intrinsic node classes but pass arg read nodes as there arguments.
-    public static LLVMExpressionNode create(FunctionType declaration, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, LLVMParserRuntime runtime) {
+    static LLVMExpressionNode create(FunctionType declaration, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, LLVMParserRuntime runtime) {
         return create(declaration.getName(), argNodes, numberOfExplicitArguments, runtime.getStackPointerSlot());
     }
 
-    public static LLVMExpressionNode create(String functionName, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, FrameSlot stack) {
+    private static LLVMExpressionNode create(String functionName, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments, FrameSlot stack) {
         NodeFactory<? extends LLVMExpressionNode> factory = factories.get(functionName);
         if (factory == null) {
             LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());

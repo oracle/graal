@@ -112,12 +112,12 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI64ToIVarNod
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMI8ToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToVarINodeFactory.LLVMIVarToIVarNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMVectorToVectorNodeFactory.LLVMAnyVectorToI8VectorNodeGen;
-import com.oracle.truffle.llvm.parser.api.instructions.LLVMConversionType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMCastsFactory {
+final class LLVMCastsFactory {
 
     private LLVMCastsFactory() {
     }
@@ -148,22 +148,11 @@ public final class LLVMCastsFactory {
         this.bits = bits;
     }
 
-    public static LLVMExpressionNode cast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType conv) {
+    static LLVMExpressionNode cast(LLVMExpressionNode fromNode, Type targetType, Type fromType, LLVMConversionType conv) {
         if (fromNode == null || targetType == null || fromType == null || conv == null) {
             throw new AssertionError();
         }
         return cast(new LLVMCastsFactory(targetType, fromType, conv), fromType.getLLVMBaseType(), fromNode);
-    }
-
-    public static LLVMExpressionNode cast(LLVMExpressionNode fromNode, LLVMBaseType targetType, LLVMBaseType fromType, LLVMConversionType conv) {
-        return cast(fromNode, targetType, fromType, conv, 0);
-    }
-
-    public static LLVMExpressionNode cast(LLVMExpressionNode fromNode, LLVMBaseType targetType, LLVMBaseType fromType, LLVMConversionType conv, int bits) {
-        if (fromNode == null || targetType == null || fromType == null || conv == null) {
-            throw new AssertionError();
-        }
-        return cast(new LLVMCastsFactory(targetType, conv, bits), fromType, fromNode);
     }
 
     private static LLVMExpressionNode cast(LLVMCastsFactory factory, LLVMBaseType fromType, LLVMExpressionNode fromNode) {

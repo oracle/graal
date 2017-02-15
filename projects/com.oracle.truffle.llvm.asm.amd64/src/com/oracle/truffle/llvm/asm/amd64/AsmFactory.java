@@ -154,8 +154,8 @@ import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI16StructWriteNo
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI32StructWriteNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode.LLVMI64StructWriteNode;
 
-public class AsmFactory {
-    public static final int REG_START_INDEX = 1;
+class AsmFactory {
+    private static final int REG_START_INDEX = 1;
 
     private FrameDescriptor frameDescriptor;
     private List<LLVMExpressionNode> statements;
@@ -168,7 +168,7 @@ public class AsmFactory {
     private LLVMBaseType[] argTypes;
     private LLVMBaseType retType;
 
-    public AsmFactory(LLVMExpressionNode[] args, LLVMBaseType[] argTypes, String asmFlags, LLVMBaseType retType) {
+    AsmFactory(LLVMExpressionNode[] args, LLVMBaseType[] argTypes, String asmFlags, LLVMBaseType retType) {
         this.args = args;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
@@ -340,12 +340,12 @@ public class AsmFactory {
         assert retType == LLVMBaseType.STRUCT ? outIndex == alloca.getOffsets().length : outIndex == 0;
     }
 
-    public LLVMInlineAssemblyRootNode finishInline() {
+    LLVMInlineAssemblyRootNode finishInline() {
         getArguments();
         return new LLVMInlineAssemblyRootNode(null, frameDescriptor, statements.toArray(new LLVMExpressionNode[statements.size()]), arguments, result);
     }
 
-    public void createOperation(String operation) {
+    void createOperation(String operation) {
         switch (operation) {
             case "clc":
             case "cld":
@@ -374,7 +374,7 @@ public class AsmFactory {
         }
     }
 
-    public void createUnaryOperation(String operation, AsmOperand operand) {
+    void createUnaryOperation(String operation, AsmOperand operand) {
         LLVMExpressionNode src;
         LLVMExpressionNode out;
         AsmOperand dst = operand;
@@ -570,7 +570,7 @@ public class AsmFactory {
         statements.add(write);
     }
 
-    public void createBinaryOperation(String operation, AsmOperand a, AsmOperand b) {
+    void createBinaryOperation(String operation, AsmOperand a, AsmOperand b) {
         LLVMExpressionNode srcA;
         LLVMExpressionNode srcB;
         LLVMExpressionNode out;
@@ -778,7 +778,7 @@ public class AsmFactory {
     public void createTernaryOperation(String op, AsmOperand a, AsmOperand b, AsmOperand c) {
     }
 
-    protected void addFrameSlot(String reg, LLVMBaseType type) {
+    void addFrameSlot(String reg, LLVMBaseType type) {
         if (!registers.contains(reg)) {
             registers.add(reg);
             FrameSlotKind kind;

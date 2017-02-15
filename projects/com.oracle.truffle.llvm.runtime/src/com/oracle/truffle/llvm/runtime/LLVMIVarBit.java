@@ -46,7 +46,7 @@ public final class LLVMIVarBit {
 
     private final byte[] arr;
 
-    LLVMIVarBit(int bits, byte[] arr) {
+    private LLVMIVarBit(int bits, byte[] arr) {
         this.bits = bits;
         LLVMPerformance.warn(null, "LLVMIVarBit:constructor");
         // TODO: what about sign extension?
@@ -168,11 +168,11 @@ public final class LLVMIVarBit {
         return bb;
     }
 
-    public boolean mostSignificantBit() {
+    private boolean mostSignificantBit() {
         return getBit(bits % Byte.SIZE);
     }
 
-    public boolean getBit(int pos) {
+    private boolean getBit(int pos) {
         int selectedBytePos = pos / Byte.SIZE;
         byte selectedByte = arr[selectedBytePos];
         int selectedBitPos = pos % Byte.SIZE;
@@ -265,11 +265,11 @@ public final class LLVMIVarBit {
         return 0;
     }
 
-    interface SimpleOp {
+    private interface SimpleOp {
         byte op(byte a, byte b);
     }
 
-    LLVMIVarBit performOp(LLVMIVarBit right, SimpleOp op) {
+    private LLVMIVarBit performOp(LLVMIVarBit right, SimpleOp op) {
         assert bits == right.bits;
         byte[] newArr = new byte[getByteSize()];
         byte[] other = right.getBytes();
@@ -306,7 +306,7 @@ public final class LLVMIVarBit {
         return asIVar(bits, result);
     }
 
-    static LLVMIVarBit asIVar(int bitSize, BigInteger result) {
+    private static LLVMIVarBit asIVar(int bitSize, BigInteger result) {
         int i = Math.max(Byte.BYTES, bitSize / Byte.SIZE);
         byte[] newArr = new byte[i];
         byte[] bigIntArr = result.toByteArray();
@@ -334,12 +334,6 @@ public final class LLVMIVarBit {
     public LLVMIVarBit arithmeticRightShift(LLVMIVarBit right) {
         BigInteger result = bigInt().shiftRight(right.getIntValue());
         return asIVar(result);
-    }
-
-    @TruffleBoundary
-    public static LLVMIVarBit fromString(String stringValue, int bits) {
-        BigInteger constAsBigInteger = new BigInteger(stringValue);
-        return asIVar(bits, constAsBigInteger);
     }
 
 }

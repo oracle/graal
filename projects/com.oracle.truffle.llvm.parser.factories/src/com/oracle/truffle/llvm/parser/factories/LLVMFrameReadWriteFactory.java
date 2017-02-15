@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVM80BitFloatReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
@@ -62,18 +61,17 @@ import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeG
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI8NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteIVarBitNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteVectorNodeGen;
-import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMFrameReadWriteFactory {
+final class LLVMFrameReadWriteFactory {
 
     private LLVMFrameReadWriteFactory() {
     }
 
-    public static LLVMExpressionNode createFrameRead(LLVMBaseType llvmType, FrameSlot frameSlot) {
+    static LLVMExpressionNode createFrameRead(LLVMBaseType llvmType, FrameSlot frameSlot) {
         switch (llvmType) {
             case I1:
                 return LLVMI1ReadNodeGen.create(frameSlot);
@@ -121,7 +119,7 @@ public final class LLVMFrameReadWriteFactory {
         }
     }
 
-    public static LLVMExpressionNode createFrameWrite(LLVMBaseType llvmType, LLVMExpressionNode result, FrameSlot slot) {
+    static LLVMExpressionNode createFrameWrite(LLVMBaseType llvmType, LLVMExpressionNode result, FrameSlot slot) {
         if (LLVMTypeHelper.isVectorType(llvmType)) {
             return LLVMWriteVectorNodeGen.create(result, slot);
         }
@@ -151,48 +149,6 @@ public final class LLVMFrameReadWriteFactory {
             case STRUCT:
             case ARRAY:
                 return LLVMWriteAddressNodeGen.create(result, slot);
-            default:
-                throw new AssertionError(llvmType);
-        }
-    }
-
-    public static FrameSlotKind getFrameSlotKind(Type type) {
-        LLVMBaseType llvmType = type.getLLVMBaseType();
-        return LLVMFrameReadWriteFactory.getFrameSlotKind(llvmType);
-    }
-
-    private static FrameSlotKind getFrameSlotKind(LLVMBaseType llvmType) {
-        switch (llvmType) {
-            case I1:
-                return FrameSlotKind.Boolean;
-            case I8:
-                return FrameSlotKind.Byte;
-            case I16:
-                return FrameSlotKind.Int; // no short type?
-            case I32:
-                return FrameSlotKind.Int;
-            case I64:
-                return FrameSlotKind.Long;
-            case FLOAT:
-                return FrameSlotKind.Float;
-            case DOUBLE:
-                return FrameSlotKind.Double;
-            case I_VAR_BITWIDTH:
-            case X86_FP80:
-            case I1_VECTOR:
-            case I8_VECTOR:
-            case I16_VECTOR:
-            case I32_VECTOR:
-            case I64_VECTOR:
-            case FLOAT_VECTOR:
-            case DOUBLE_VECTOR:
-            case STRUCT:
-            case FUNCTION_ADDRESS:
-            case ADDRESS:
-            case ARRAY:
-                return FrameSlotKind.Object;
-            case VOID:
-                throw new LLVMUnsupportedException(UnsupportedReason.PARSER_ERROR_VOID_SLOT);
             default:
                 throw new AssertionError(llvmType);
         }

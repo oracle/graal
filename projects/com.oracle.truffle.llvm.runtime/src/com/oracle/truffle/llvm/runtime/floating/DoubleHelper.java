@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.floating;
 
-public class DoubleHelper {
+final class DoubleHelper {
 
     static final int DOUBLE_EXPONENT_BIAS = 1023;
 
@@ -41,37 +41,35 @@ public class DoubleHelper {
 
     static final double NEGATIVE_ZERO = -0.0;
 
-    static final int ALL_ONE_EXPONENT = 0x7fff;
+    static final double NaN = Double.NaN;
 
-    public static final double NaN = Double.NaN;
+    static final double NEGATIVE_INFINITY = Double.NEGATIVE_INFINITY;
 
-    public static final double NEGATIVE_INFINITY = Double.NEGATIVE_INFINITY;
+    static final double POSITIVE_INFINITY = Double.POSITIVE_INFINITY;
 
-    public static final double POSITIVE_INFINITY = Double.POSITIVE_INFINITY;
+    static final long FRACTION_MASK = BinaryHelper.getBitMask(DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH);
 
-    public static final long FRACTION_MASK = BinaryHelper.getBitMask(DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH);
-
-    public static boolean isPositiveZero(double val) {
+    static boolean isPositiveZero(double val) {
         return Double.doubleToLongBits(POSITIVE_ZERO) == Double.doubleToLongBits(val);
     }
 
-    public static boolean isNegativeZero(double val) {
+    static boolean isNegativeZero(double val) {
         return Double.doubleToLongBits(NEGATIVE_ZERO) == Double.doubleToLongBits(val);
     }
 
-    public static boolean isPositiveInfinty(double val) {
+    static boolean isPositiveInfinty(double val) {
         return val == Double.POSITIVE_INFINITY;
     }
 
-    public static boolean isNegativeInfinity(double val) {
+    static boolean isNegativeInfinity(double val) {
         return val == Double.NEGATIVE_INFINITY;
     }
 
-    public static boolean isNaN(double val) {
+    static boolean isNaN(double val) {
         return Double.isNaN(val);
     }
 
-    public static int getUnbiasedExponent(double val) {
+    static int getUnbiasedExponent(double val) {
         return Math.getExponent(val);
     }
 }

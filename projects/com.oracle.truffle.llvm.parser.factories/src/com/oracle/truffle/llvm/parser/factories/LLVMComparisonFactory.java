@@ -125,27 +125,19 @@ import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8U
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8UleNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMI8CompareNodeFactory.LLVMI8UltNodeGen;
 import com.oracle.truffle.llvm.nodes.op.compare.LLVMNeqNodeGen;
-import com.oracle.truffle.llvm.parser.api.instructions.LLVMFloatComparisonType;
-import com.oracle.truffle.llvm.parser.api.instructions.LLVMIntegerComparisonType;
-import com.oracle.truffle.llvm.parser.api.model.enums.CompareOperator;
-import com.oracle.truffle.llvm.parser.api.util.LLVMTypeHelper;
+import com.oracle.truffle.llvm.parser.instructions.LLVMFloatComparisonType;
+import com.oracle.truffle.llvm.parser.instructions.LLVMIntegerComparisonType;
+import com.oracle.truffle.llvm.parser.model.enums.CompareOperator;
+import com.oracle.truffle.llvm.parser.util.LLVMTypeHelper;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMComparisonFactory {
+final class LLVMComparisonFactory {
 
     private LLVMComparisonFactory() {
     }
 
-    public static LLVMExpressionNode toCompareNode(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
-        if (LLVMTypeHelper.isVectorType(type.getLLVMBaseType())) {
-            throw new AssertionError("We need a LLVMParserRuntime when creating an vector compare node!");
-        }
-
-        return toCompareVectorNode(operator, type, lhs, rhs);
-    }
-
-    public static LLVMExpressionNode toCompareVectorNode(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
+    static LLVMExpressionNode toCompareVectorNode(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs) {
         final LLVMBaseType llvmtype = type.getLLVMBaseType();
 
         switch (operator) {
@@ -230,7 +222,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    public static LLVMExpressionNode createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode createIntegerComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
         switch (llvmType) {
             case I1:
                 return visitI1Comparison(left, right, condition);
@@ -253,7 +245,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    public static LLVMExpressionNode createVectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
+    private static LLVMExpressionNode createVectorComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMIntegerComparisonType condition) {
         switch (llvmType) {
             case I32_VECTOR:
                 return visitI32VectorComparison(left, right, condition);
@@ -430,7 +422,7 @@ public final class LLVMComparisonFactory {
         }
     }
 
-    public static LLVMExpressionNode createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMFloatComparisonType condition) {
+    private static LLVMExpressionNode createFloatComparison(LLVMExpressionNode left, LLVMExpressionNode right, LLVMBaseType llvmType, LLVMFloatComparisonType condition) {
         if (condition == LLVMFloatComparisonType.FALSE) {
             return new LLVMI1LiteralNode(false);
         } else if (condition == LLVMFloatComparisonType.TRUE) {

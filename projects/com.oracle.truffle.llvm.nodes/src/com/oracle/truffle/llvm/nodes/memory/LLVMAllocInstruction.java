@@ -36,10 +36,10 @@ import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.context.LLVMContext;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameUtil;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.types.LLVMBaseType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -71,10 +71,6 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
 
         public LLVMBaseType getType(int i) {
             return types[i];
-        }
-
-        public int getOffset(int i) {
-            return offsets[i];
         }
 
         public int[] getOffsets() {

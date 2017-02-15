@@ -72,12 +72,8 @@ public final class LLVMAddress {
         return this.increment((long) incr);
     }
 
-    public LLVMAddress increment(long incr) {
+    private LLVMAddress increment(long incr) {
         return new LLVMAddress(val + incr);
-    }
-
-    public LLVMAddress decrement(int decr) {
-        return new LLVMAddress(val - decr);
     }
 
     public LLVMAddress increment(int incr, Type newType) {
