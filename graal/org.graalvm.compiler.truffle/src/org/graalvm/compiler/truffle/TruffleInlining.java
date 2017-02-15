@@ -58,13 +58,13 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
         if (!TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
             return Collections.emptyList();
         }
-        visitedNodes = 0;
+        int[] visitedNodes = {0};
         int nodeCount = sourceTarget.getNonTrivialNodeCount();
-        List<TruffleInliningDecision> exploredCallSites = exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), nodeCount, policy);
+        List<TruffleInliningDecision> exploredCallSites = exploreCallSites(new ArrayList<>(Arrays.asList(sourceTarget)), nodeCount, policy, visitedNodes);
         return decideInlining(exploredCallSites, policy, nodeCount, options);
     }
 
-    private static List<TruffleInliningDecision> exploreCallSites(List<OptimizedCallTarget> stack, int callStackNodeCount, TruffleInliningPolicy policy) {
+    private static List<TruffleInliningDecision> exploreCallSites(List<OptimizedCallTarget> stack, int callStackNodeCount, TruffleInliningPolicy policy, int[] visitedNodes) {
         List<TruffleInliningDecision> exploredCallSites = new ArrayList<>();
         Map<OptimizedCallTarget, TruffleInliningDecision> rejectedDecisionsCache = new HashMap<>();
         OptimizedCallTarget parentTarget = stack.get(stack.size() - 1);
@@ -73,7 +73,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
             stack.add(currentTarget); // push
             TruffleInliningDecision decision = rejectedDecisionsCache.get(currentTarget);
             if (decision == null) {
-                decision = exploreCallSite(stack, callStackNodeCount, policy, callNode);
+                decision = exploreCallSite(stack, callStackNodeCount, policy, callNode, visitedNodes);
                 if (!decision.isInline()) {
                     rejectedDecisionsCache.put(currentTarget, decision);
                 }
@@ -98,9 +98,8 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
         return callNodes;
     }
 
-    private static int visitedNodes;
-
-    private static TruffleInliningDecision exploreCallSite(List<OptimizedCallTarget> callStack, int callStackNodeCount, TruffleInliningPolicy policy, OptimizedDirectCallNode callNode) {
+    private static TruffleInliningDecision exploreCallSite(List<OptimizedCallTarget> callStack, int callStackNodeCount, TruffleInliningPolicy policy, OptimizedDirectCallNode callNode,
+                    int[] visitedNodes) {
 
         OptimizedCallTarget parentTarget = callStack.get(callStack.size() - 2);
         OptimizedCallTarget currentTarget = callStack.get(callStack.size() - 1);
@@ -112,7 +111,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
         int recursions = countRecursions(callStack);
         int deepNodeCount = nodeCount;
 
-        if (++visitedNodes < (100 * TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize)) &&
+        if (++visitedNodes[0] < (100 * TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize)) &&
                         callStack.size() < 15 &&
                         recursions <= TruffleCompilerOptions.getValue(TruffleMaximumRecursiveInlining)) {
             /*
@@ -121,7 +120,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
              */
             final CompilerOptions options = callNode.getRootNode().getCompilerOptions();
             if (policy.isAllowed(new TruffleInliningProfile(callNode, nodeCount, nodeCount, frequency, recursions), callStackNodeCount, options)) {
-                List<TruffleInliningDecision> exploredCallSites = exploreCallSites(callStack, callStackNodeCount + nodeCount, policy);
+                List<TruffleInliningDecision> exploredCallSites = exploreCallSites(callStack, callStackNodeCount + nodeCount, policy, visitedNodes);
                 childCallSites = decideInlining(exploredCallSites, policy, nodeCount, options);
                 for (TruffleInliningDecision childCallSite : childCallSites) {
                     if (childCallSite.isInline()) {
