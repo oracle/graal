@@ -164,14 +164,15 @@ abstract class SymbolInvokerImpl {
             boolean isBoxedResult = ForeignAccess.sendIsBoxed(isBoxed, obj);
             if (isBoxedProfile.profile(isBoxedResult)) {
                 try {
-                    return ForeignAccess.sendUnbox(unbox, obj);
+                    Object newValue = ForeignAccess.sendUnbox(unbox, obj);
+                    return new ConvertedObject(obj, newValue);
                 } catch (UnsupportedMessageException e) {
                     return null;
                 }
             } else {
                 boolean isNullResult = ForeignAccess.sendIsNull(isNull, obj);
                 if (isNullResult) {
-                    return new NullObject(obj);
+                    return new ConvertedObject(obj, null);
                 }
             }
             return obj;
