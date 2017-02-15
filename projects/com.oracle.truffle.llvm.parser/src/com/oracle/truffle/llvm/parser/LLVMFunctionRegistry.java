@@ -93,7 +93,7 @@ public final class LLVMFunctionRegistry {
             }
             functionRoot = facade.createFunctionSubstitutionRootNode(intrinsicNode);
             RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(functionRoot);
-            function.setCallTarget(callTarget);
+            function.setIntrinsicCallTarget(callTarget);
         }
     }
 
