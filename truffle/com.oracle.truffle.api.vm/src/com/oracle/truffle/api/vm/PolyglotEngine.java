@@ -1191,7 +1191,7 @@ public class PolyglotEngine {
             }
             if (representation == String.class) {
                 final Class<? extends TruffleLanguage> clazz = language[0].getClass();
-                Object unwrapped = obj;
+                Object unwrapped = obj instanceof NullObject ? ((NullObject) obj).getOriginal() : obj;
                 while (unwrapped instanceof EngineTruffleObject) {
                     unwrapped = ((EngineTruffleObject) obj).getDelegate();
                 }

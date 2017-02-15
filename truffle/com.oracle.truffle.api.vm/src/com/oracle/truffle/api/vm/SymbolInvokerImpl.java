@@ -171,7 +171,7 @@ abstract class SymbolInvokerImpl {
             } else {
                 boolean isNullResult = ForeignAccess.sendIsNull(isNull, obj);
                 if (isNullResult) {
-                    return null;
+                    return new NullObject(obj);
                 }
             }
             return obj;

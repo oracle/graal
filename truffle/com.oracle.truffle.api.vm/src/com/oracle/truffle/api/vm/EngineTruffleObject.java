@@ -70,7 +70,11 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
             if (obj.getClass() == JFO_CLASS) {
                 return obj;
             }
-            return new EngineTruffleObject(engine, (TruffleObject) obj);
+            if (obj instanceof NullObject) {
+                return null;
+            } else {
+                return new EngineTruffleObject(engine, (TruffleObject) obj);
+            }
         } else {
             return obj;
         }
