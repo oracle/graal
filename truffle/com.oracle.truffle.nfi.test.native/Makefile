@@ -26,7 +26,7 @@
 
 default: ${TARGET}
 
-OBJECTS=bin/array.o bin/numeric.o bin/object.o bin/string.o
+OBJECTS=bin/array.o bin/numeric.o bin/object.o bin/string.o bin/varargs.o
 
 CFLAGS+=-g -fPIC
 LDFLAGS+=-g
@@ -50,7 +50,7 @@ bin/%.d: src/%.c
 	@gcc -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
 
 bin/%.o: src/%.c
-	@echo CXX $@
+	@echo CC $@
 	@gcc -c ${CFLAGS} ${CPPFLAGS} -o $@ $<
 
 -include ${OBJECTS:%.o=%.d}
