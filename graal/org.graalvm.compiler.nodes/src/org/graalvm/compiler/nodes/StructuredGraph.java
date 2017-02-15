@@ -535,7 +535,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     @SuppressWarnings("static-method")
-    public void replaceFixedWithFloating(FixedWithNextNode node, FloatingNode replacement) {
+    public void replaceFixedWithFloating(FixedWithNextNode node, ValueNode replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         GraphUtil.unlinkFixedNode(node);
         node.replaceAtUsagesAndDelete(replacement);

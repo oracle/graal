@@ -146,10 +146,10 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
             result = new NarrowNode(input, fromStamp.getBits(), toStamp.getBits());
         } else if (zeroExtend) {
             // toStamp.getBits() > fromStamp.getBits()
-            result = new ZeroExtendNode(input, toStamp.getBits());
+            result = ZeroExtendNode.create(input, toStamp.getBits());
         } else {
             // toStamp.getBits() > fromStamp.getBits()
-            result = new SignExtendNode(input, toStamp.getBits());
+            result = SignExtendNode.create(input, toStamp.getBits());
         }
 
         IntegerStamp resultStamp = (IntegerStamp) result.stamp();
