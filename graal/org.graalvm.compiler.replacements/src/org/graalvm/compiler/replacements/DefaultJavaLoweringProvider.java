@@ -367,6 +367,16 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
     }
 
+    /**
+     * Create a PiNode on the index proving that the index is positive. On some platforms this is
+     * important to allow the index to be used as an int in the address mode.
+     */
+    public AddressNode createArrayIndexAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index, GuardingNode boundsCheck) {
+        IntegerStamp indexStamp = StampFactory.forInteger(32, 0, Integer.MAX_VALUE - 1);
+        ValueNode positiveIndex = graph.unique(new PiNode(index, indexStamp, boundsCheck != null ? boundsCheck.asNode() : null));
+        return createArrayAddress(graph, array, elementKind, positiveIndex);
+    }
+
     public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index) {
         ValueNode wordIndex;
         if (target.wordSize > 4) {
@@ -393,7 +403,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Stamp loadStamp = loadStamp(loadIndexed.stamp(), elementKind);
 
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
-        AddressNode address = createArrayAddress(graph, array, elementKind, loadIndexed.index());
+        AddressNode address = createArrayIndexAddress(graph, array, elementKind, loadIndexed.index(), boundsCheck);
         ReadNode memoryRead = graph.add(new ReadNode(address, NamedLocationIdentity.getArrayLocation(elementKind), loadStamp, boundsCheck, BarrierType.NONE));
         ValueNode readValue = implicitLoadConvert(graph, elementKind, memoryRead);
 
@@ -409,7 +419,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         array = this.createNullCheckedValue(array, storeIndexed, tool);
 
-        GuardingNode checkedIndex = getBoundsCheck(storeIndexed, array, tool);
+        GuardingNode boundsCheck = getBoundsCheck(storeIndexed, array, tool);
 
         JavaKind elementKind = storeIndexed.elementKind();
 
@@ -436,9 +446,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             }
         }
 
-        AddressNode address = createArrayAddress(graph, array, elementKind, storeIndexed.index());
+        AddressNode address = createArrayIndexAddress(graph, array, elementKind, storeIndexed.index(), boundsCheck);
         WriteNode memoryWrite = graph.add(new WriteNode(address, NamedLocationIdentity.getArrayLocation(elementKind), implicitStoreConvert(graph, elementKind, value),
-                        arrayStoreBarrierType(storeIndexed.elementKind()), checkedIndex, false));
+                        arrayStoreBarrierType(storeIndexed.elementKind()), boundsCheck, false));
         if (condition != null) {
             GuardingNode storeCheckGuard = tool.createGuard(storeIndexed, condition, DeoptimizationReason.ArrayStoreException, DeoptimizationAction.InvalidateReprofile);
             memoryWrite.setStoreCheckGuard(storeCheckGuard);

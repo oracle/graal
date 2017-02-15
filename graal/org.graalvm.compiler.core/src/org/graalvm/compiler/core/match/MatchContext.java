@@ -151,7 +151,7 @@ public class MatchContext {
      * @return Result.OK if the node can be safely consumed.
      */
     public Result consume(Node node) {
-        assert node.getUsageCount() <= 1 : "should have already been checked";
+        assert MatchPattern.isSingleValueUser(node) : "should have already been checked";
 
         // Check NOT_IN_BLOCK first since that usually implies ALREADY_USED
         int index = nodes.indexOf(node);
