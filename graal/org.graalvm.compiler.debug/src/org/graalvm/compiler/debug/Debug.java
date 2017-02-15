@@ -26,7 +26,6 @@ import static java.util.FormattableFlags.LEFT_JUSTIFY;
 import static java.util.FormattableFlags.UPPERCASE;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.INTERCEPT;
 import static org.graalvm.compiler.debug.DelegatingDebugConfig.Feature.LOG_METHOD;
-import static org.graalvm.compiler.options.OptionValues.GLOBAL;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -49,6 +48,7 @@ import org.graalvm.compiler.debug.internal.MemUseTrackerImpl;
 import org.graalvm.compiler.debug.internal.TimerImpl;
 import org.graalvm.compiler.debug.internal.method.MethodMetricsImpl;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.OptionValuesAccess;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -79,6 +79,7 @@ public class Debug {
      * The parameters for configuring the initialization of {@link Debug} class.
      */
     public static class Params {
+        public final OptionValues options = GraalServices.loadSingle(OptionValuesAccess.class, true).getOptions();
         public boolean enable;
         public boolean enableMethodFilter;
         public boolean enableUnscopedTimers;
@@ -94,7 +95,7 @@ public class Debug {
     private static boolean initialize() {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;
-        return assertionsEnabled || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue(GLOBAL);
+        return assertionsEnabled || params.enable || GraalDebugConfig.Options.ForceDebugEnable.getValue(params.options);
     }
 
     private static final boolean ENABLED = initialize();
