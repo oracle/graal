@@ -165,7 +165,7 @@ public abstract class RootNode extends Node {
      * @see #cloneUninitialized()
      * @since 0.24
      */
-    public boolean isCloneUninitializedSupported() {
+    protected boolean isCloneUninitializedSupported() {
         return false;
     }
 
@@ -193,7 +193,7 @@ public abstract class RootNode extends Node {
      * @see #isCloneUninitializedSupported()
      * @since 0.24
      */
-    public RootNode cloneUninitialized() {
+    protected RootNode cloneUninitialized() {
         throw new UnsupportedOperationException();
     }
 

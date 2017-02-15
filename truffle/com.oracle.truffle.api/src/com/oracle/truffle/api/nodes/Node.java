@@ -601,6 +601,16 @@ public abstract class Node implements NodeInterface, Cloneable {
             public boolean isTaggedWith(Node node, Class<?> tag) {
                 return node.isTaggedWith(tag);
             }
+
+            @Override
+            public boolean isCopyUninitializedSupported(RootNode rootNode) {
+                return rootNode.isCloneUninitializedSupported();
+            }
+
+            @Override
+            public RootNode copyUninitialized(RootNode rootNode) {
+                return rootNode.cloneUninitialized();
+            }
         }
     }
 
