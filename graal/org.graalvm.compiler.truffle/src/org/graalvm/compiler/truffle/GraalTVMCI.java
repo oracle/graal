@@ -73,4 +73,14 @@ final class GraalTVMCI extends TVMCI {
     protected boolean getFrameMaterializeCalled(FrameDescriptor descriptor) {
         return super.getFrameMaterializeCalled(descriptor);
     }
+
+    @Override
+    public RootNode cloneUnitialized(RootNode root) {
+        return super.cloneUnitialized(root);
+    }
+
+    @Override
+    public boolean isCloneUninitializedSupported(RootNode root) {
+        return super.isCloneUninitializedSupported(root);
+    }
 }
