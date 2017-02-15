@@ -62,7 +62,8 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
         this.delegate = obj;
     }
 
-    static Object wrap(PolyglotEngine engine, Object obj) {
+    static Object wrap(PolyglotEngine engine, Object value) {
+        Object obj = ConvertedObject.value(value);
         if (obj instanceof TruffleObject) {
             if (obj.getClass() == JO_CLASS) {
                 return obj;

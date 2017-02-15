@@ -343,7 +343,7 @@ public class SLDebugDirectTest {
 
         String val = value.as(String.class);
         assertNotNull(val);
-        assertEquals("Null computed OK", "null", val);
+        assertEquals("SL displays null as NULL", "NULL", val);
     }
 
     private void performWork() {

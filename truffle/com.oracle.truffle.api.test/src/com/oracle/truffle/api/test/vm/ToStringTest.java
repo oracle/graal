@@ -30,6 +30,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 import org.junit.After;
+import static org.junit.Assert.assertNull;
 
 public class ToStringTest {
     private PolyglotEngine engine;
@@ -67,4 +68,22 @@ public class ToStringTest {
         assertEquals("Nicely formated as by L2", "42.0: Double", textual);
     }
 
+    @Test
+    public void toStringForNullLikeValue() throws Exception {
+        engine = PolyglotEngine.newBuilder().build();
+        final Source src0 = Source.newBuilder("0").mimeType("application/x-unbox").name("zero.ux").build();
+        PolyglotEngine.Value fourtyTwo = engine.eval(src0).execute();
+        assertNull("Zero is treated as null", fourtyTwo.get());
+        assertEquals("MyLang.toString is called", "Unboxed: 0", fourtyTwo.as(String.class));
+    }
+
+    @Test
+    public void toStringForUnboxValue() throws Exception {
+        engine = PolyglotEngine.newBuilder().build();
+        final Source src42 = Source.newBuilder("42").mimeType("application/x-unbox").name("fortyTwo.ux").build();
+        PolyglotEngine.Value fourtyTwo = engine.eval(src42).execute();
+        assertEquals("Should always work", Integer.valueOf(42), fourtyTwo.as(Integer.class));
+        assertEquals("Current behavior", Integer.valueOf(42), fourtyTwo.get());
+        assertEquals("MyLang.toString is called", "Unboxed: 42", fourtyTwo.as(String.class));
+    }
 }

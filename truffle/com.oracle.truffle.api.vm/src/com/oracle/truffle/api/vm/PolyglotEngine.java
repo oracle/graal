@@ -1191,14 +1191,14 @@ public class PolyglotEngine {
             }
             if (representation == String.class) {
                 final Class<? extends TruffleLanguage> clazz = language[0].getClass();
-                Object unwrapped = obj;
+                Object unwrapped = obj instanceof ConvertedObject ? ((ConvertedObject) obj).getOriginal() : obj;
                 while (unwrapped instanceof EngineTruffleObject) {
                     unwrapped = ((EngineTruffleObject) obj).getDelegate();
                 }
                 return representation.cast(Access.LANGS.toStringIfVisible(language[0], findEnv(clazz), unwrapped, null));
             }
-            if (representation.isInstance(obj)) {
-                return representation.cast(obj);
+            if (ConvertedObject.isInstance(representation, obj)) {
+                return ConvertedObject.cast(representation, obj);
             }
             return JavaInterop.asJavaObject(representation, (TruffleObject) get(false, true));
         }
