@@ -27,35 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.ir.records;
+package com.oracle.truffle.llvm.parser.records;
 
-public enum ConstantsRecord {
+public enum ModuleRecord {
     UNUSED_0,
-    SETTYPE,
-    NULL,
-    UNDEF,
-    INTEGER,
-    WIDE_INTEGER,
-    FLOAT,
-    AGGREGATE,
-    STRING,
-    CSTRING,
-    CE_BINOP,
-    CE_CAST,
-    CE_GEP,
-    CE_SELECT,
-    CE_EXTRACTELT,
-    CE_INSERTELT,
-    CE_SHUFFLEVEC,
-    CE_CMP,
-    INLINEASM_OLD,
-    CE_SHUFVEC_EX,
-    CE_INBOUNDS_GEP,
-    BLOCKADDRESS,
-    DATA,
-    INLINEASM;
+    VERSION,
+    TARGET_TRIPLE,
+    TARGET_DATALAYOUT,
+    ASM,
+    SECTION_NAME,
+    DEPLIB,
+    GLOBAL_VARIABLE,
+    FUNCTION,
+    ALIAS_OLD,
+    PURGE_VALUES,
+    GC_NAME,
+    COMDAT,
+    VSTOFFSET,
+    ALIAS,
+    METADATA_VALUES,
+    SOURCE_FILENAME,
+    CODE_HASH,
+    CODE_IFUNC;
 
-    public static ConstantsRecord decode(long id) {
+    public static ModuleRecord decode(long id) {
         return values()[(int) id];
     }
 }

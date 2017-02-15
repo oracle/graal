@@ -27,48 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.ir.records;
+package com.oracle.truffle.llvm.parser.records;
 
-public enum MetadataRecord {
+public enum TypesRecord {
     UNUSED_0,
-    STRING,
-    VALUE,
-    NODE,
-    NAME,
-    DISTINCT_NODE,
-    KIND,
-    LOCATION,
-    OLD_NODE,
-    OLD_FN_NODE,
-    NAMED_NODE,
-    ATTACHMENT,
-    GENERIC_DEBUG,
-    SUBRANGE,
-    ENUMERATOR,
-    BASIC_TYPE,
-    FILE,
-    DERIVED_TYPE,
-    COMPOSITE_TYPE,
-    SUBROUTINE_TYPE,
-    COMPILE_UNIT,
-    SUBPROGRAM,
-    LEXICAL_BLOCK,
-    LEXICAL_BLOCK_FILE,
-    NAMESPACE,
-    TEMPLATE_TYPE,
-    TEMPLATE_VALUE,
-    GLOBAL_VAR,
-    LOCAL_VAR,
-    EXPRESSION,
-    OBJC_PROPERTY,
-    IMPORTED_ENTITY,
-    MODULE,
-    MACRO,
-    MACRO_FILE,
-    STRINGS,
-    GLOBAL_DECL_ATTACHMENT;
+    NUMBER_OF_ENTRIES,
+    VOID,
+    FLOAT,
+    DOUBLE,
+    LABEL,
+    OPAQUE,
+    INTEGER,
+    POINTER,
+    FUNCTION_OLD,
+    HALF,
+    ARRAY,
+    VECTOR,
+    X86_FP80,
+    FP128,
+    PPC_FP128,
+    METADATA,
+    X86_MMX,
+    STRUCT_ANON,
+    STRUCT_NAME,
+    STRUCT_NAMED,
+    FUNCTION,
+    TOKEN;
 
-    public static MetadataRecord decode(long id) {
+    public static TypesRecord decode(long id) {
         return values()[(int) id];
     }
 }

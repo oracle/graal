@@ -27,16 +27,48 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.ir.records;
+package com.oracle.truffle.llvm.parser.records;
 
-public enum ValueSymbolTableRecord {
+public enum MetadataRecord {
     UNUSED_0,
-    ENTRY,
-    BASIC_BLOCK_ENTRY,
-    FUNCTION_ENTRY,
-    COMBINED_FNENTRY;
+    STRING,
+    VALUE,
+    NODE,
+    NAME,
+    DISTINCT_NODE,
+    KIND,
+    LOCATION,
+    OLD_NODE,
+    OLD_FN_NODE,
+    NAMED_NODE,
+    ATTACHMENT,
+    GENERIC_DEBUG,
+    SUBRANGE,
+    ENUMERATOR,
+    BASIC_TYPE,
+    FILE,
+    DERIVED_TYPE,
+    COMPOSITE_TYPE,
+    SUBROUTINE_TYPE,
+    COMPILE_UNIT,
+    SUBPROGRAM,
+    LEXICAL_BLOCK,
+    LEXICAL_BLOCK_FILE,
+    NAMESPACE,
+    TEMPLATE_TYPE,
+    TEMPLATE_VALUE,
+    GLOBAL_VAR,
+    LOCAL_VAR,
+    EXPRESSION,
+    OBJC_PROPERTY,
+    IMPORTED_ENTITY,
+    MODULE,
+    MACRO,
+    MACRO_FILE,
+    STRINGS,
+    GLOBAL_DECL_ATTACHMENT;
 
-    public static ValueSymbolTableRecord decode(long id) {
+    public static MetadataRecord decode(long id) {
         return values()[(int) id];
     }
 }

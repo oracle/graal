@@ -80,6 +80,34 @@ public final class LLVMScanner {
         this.offset = 0;
     }
 
+    public static ModelModule parse(IRVersionController version, Source source) {
+        final BitStream bitstream = BitStream.create(source);
+        final ModelModule model = new ModelModule();
+        final LLVMScanner scanner = new LLVMScanner(bitstream, version.createModule(model));
+
+        final StreamInformation bcStreamInfo = StreamInformation.getStreamInformation(bitstream, scanner);
+        scanner.setOffset(bcStreamInfo.getOffset());
+
+        final long actualMagicWord = scanner.read(Integer.SIZE);
+        if (actualMagicWord != MAGIC_WORD) {
+            throw new RuntimeException("Not a valid Bitcode File: " + source);
+        }
+
+        while (scanner.offset < bcStreamInfo.totalStreamSize()) {
+            scanner.scanNext();
+        }
+
+        return model;
+    }
+
+    private static <V> List<V> subList(List<V> original, int from) {
+        final List<V> newList = new ArrayList<>(original.size() - from);
+        for (int i = from; i < original.size(); i++) {
+            newList.add(original.get(i));
+        }
+        return newList;
+    }
+
     long read(int bits) {
         final long value = bitstream.read(offset, bits);
         offset += bits;
@@ -157,7 +185,7 @@ public final class LLVMScanner {
             final boolean isLiteral = read(Primitive.USER_OPERAND_LITERALBIT) == 1;
             if (isLiteral) {
                 final long fixedValue = read(Primitive.USER_OPERAND_LITERAL);
-                operandScanners.add(() -> recordBuffer.addOpWithCheck(fixedValue));
+                operandScanners.add(() -> recordBuffer.addOp(fixedValue));
 
             } else {
 
@@ -168,7 +196,7 @@ public final class LLVMScanner {
                         final int width = (int) read(Primitive.USER_OPERAND_DATA);
                         operandScanners.add(() -> {
                             final long op = read(width);
-                            recordBuffer.addOpWithCheck(op);
+                            recordBuffer.addOp(op);
                         });
                         break;
                     }
@@ -177,7 +205,7 @@ public final class LLVMScanner {
                         final int width = (int) read(Primitive.USER_OPERAND_DATA);
                         operandScanners.add(() -> {
                             final long op = readVBR(width);
-                            recordBuffer.addOpWithCheck(op);
+                            recordBuffer.addOp(op);
                         });
                         break;
                     }
@@ -192,7 +220,7 @@ public final class LLVMScanner {
                     case AbbrevRecordId.CHAR6:
                         operandScanners.add(() -> {
                             final long op = readChar();
-                            recordBuffer.addOpWithCheck(op);
+                            recordBuffer.addOp(op);
                         });
                         break;
 
@@ -204,7 +232,7 @@ public final class LLVMScanner {
                             while (blobLength > 0) {
                                 final long l = blobLength <= maxBlobPartLength ? blobLength : maxBlobPartLength;
                                 final long blobValue = read((int) (Primitive.USER_OPERAND_LITERAL.getBits() * l));
-                                recordBuffer.addOpWithCheck(blobValue);
+                                recordBuffer.addOp(blobValue);
                                 blobLength -= l;
                             }
                             alignInt();
@@ -322,7 +350,7 @@ public final class LLVMScanner {
 
     private void unabbreviatedRecord() {
         final long recordId = read(Primitive.UNABBREVIATED_RECORD_ID);
-        recordBuffer.addOpWithCheck(recordId);
+        recordBuffer.addOp(recordId);
 
         final long opCount = read(Primitive.UNABBREVIATED_RECORD_OPS);
         recordBuffer.ensureFits(opCount);
@@ -330,36 +358,8 @@ public final class LLVMScanner {
         long op;
         for (int i = 0; i < opCount; i++) {
             op = read(Primitive.UNABBREVIATED_RECORD_OPERAND);
-            recordBuffer.addOp(op);
+            recordBuffer.addOpNoCheck(op);
         }
         passRecordToParser();
-    }
-
-    public static ModelModule parse(IRVersionController version, Source source) {
-        final BitStream bitstream = BitStream.create(source);
-        final ModelModule model = new ModelModule();
-        final LLVMScanner scanner = new LLVMScanner(bitstream, version.createModule(model));
-
-        final StreamInformation bcStreamInfo = StreamInformation.getStreamInformation(bitstream, scanner);
-        scanner.setOffset(bcStreamInfo.getOffset());
-
-        final long actualMagicWord = scanner.read(Integer.SIZE);
-        if (actualMagicWord != MAGIC_WORD) {
-            throw new RuntimeException("Not a valid Bitcode File: " + source);
-        }
-
-        while (scanner.offset < bcStreamInfo.totalStreamSize()) {
-            scanner.scanNext();
-        }
-
-        return model;
-    }
-
-    private static <V> List<V> subList(List<V> original, int from) {
-        final List<V> newList = new ArrayList<>(original.size() - from);
-        for (int i = from; i < original.size(); i++) {
-            newList.add(original.get(i));
-        }
-        return newList;
     }
 }

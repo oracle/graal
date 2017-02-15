@@ -33,7 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 
-import com.oracle.truffle.llvm.parser.ir.records.TypesRecord;
+import com.oracle.truffle.llvm.parser.records.TypesRecord;
 import com.oracle.truffle.llvm.parser.model.generators.ModuleGenerator;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
