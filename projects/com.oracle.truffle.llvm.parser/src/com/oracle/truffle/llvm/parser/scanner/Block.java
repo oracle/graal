@@ -27,22 +27,48 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners;
+package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.llvm.parser.records.Records;
-import com.oracle.truffle.llvm.parser.scanner.Block;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
+public enum Block {
 
-public interface ParserListener {
+    ROOT(-1),
 
-    default ParserListener enter(@SuppressWarnings("unused") Block block) {
-        return this;
+    BLOCKINFO(0),
+
+    MODULE(8),
+    PARAMATTR(9),
+    PARAMATTR_GROUP(10),
+    CONSTANTS(11),
+    FUNCTION(12),
+    IDENTIFICATION(13),
+    VALUE_SYMTAB(14),
+    METADATA(15),
+    METADATA_ATTACHMENT(16),
+    TYPE(17),
+    USELIST(18),
+    MODULE_STRTAB(19),
+    FUNCTION_SUMMARY(20),
+    OPERAND_BUNDLE_TAGS(21),
+    METADATA_KIND(22);
+
+    private final int id;
+
+    Block(int id) {
+        this.id = id;
     }
 
-    default void exit() {
+    public static Block lookup(long id) {
+        // TODO set private when removing the old scanner
+        for (Block block : values()) {
+            if (block.id == id) {
+                return block;
+            }
+        }
+        throw new IllegalStateException("Unknown BlockID: " + id);
     }
 
-    void record(long id, long[] args);
-
-    ParserListener DEFAULT = (id, args) -> LLVMLogger.info("Unknown Record: " + Records.describe(id, args));
+    @Override
+    public String toString() {
+        return name().toLowerCase();
+    }
 }

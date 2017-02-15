@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners;
+package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.llvm.parser.records.Records;
-import com.oracle.truffle.llvm.parser.scanner.Block;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
+final class BuiltinIDs {
 
-public interface ParserListener {
+    static final int END_BLOCK = 0;
 
-    default ParserListener enter(@SuppressWarnings("unused") Block block) {
-        return this;
+    static final int ENTER_SUBBLOCK = 1;
+
+    static final int DEFINE_ABBREV = 2;
+
+    static final int UNABBREV_RECORD = 3;
+
+    static final int CUSTOM_ABBREV_OFFSET = 4;
+
+    private BuiltinIDs() {
     }
-
-    default void exit() {
-    }
-
-    void record(long id, long[] args);
-
-    ParserListener DEFAULT = (id, args) -> LLVMLogger.info("Unknown Record: " + Records.describe(id, args));
 }

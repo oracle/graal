@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners;
+package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.llvm.parser.records.Records;
-import com.oracle.truffle.llvm.parser.scanner.Block;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
+enum Primitive {
+    CHAR6(true, 6),
 
-public interface ParserListener {
+    ABBREVIATED_RECORD_OPERANDS(false, 5),
+    SUBBLOCK_ID(false, 8),
+    SUBBLOCK_ID_SIZE(false, 4),
+    UNABBREVIATED_RECORD_ID(false, 6),
+    UNABBREVIATED_RECORD_OPERAND(false, 6),
+    UNABBREVIATED_RECORD_OPS(false, 6),
 
-    default ParserListener enter(@SuppressWarnings("unused") Block block) {
-        return this;
+    USER_OPERAND_ARRAY_LENGTH(false, 6),
+    USER_OPERAND_BLOB_LENGTH(false, 6),
+    USER_OPERAND_DATA(false, 5),
+    USER_OPERAND_LITERAL(false, 8),
+    USER_OPERAND_TYPE(true, 3),
+    USER_OPERAND_LITERALBIT(true, 1);
+
+    private final boolean isFixed;
+
+    private final int bits;
+
+    Primitive(boolean isFixed, int bits) {
+        this.isFixed = isFixed;
+        this.bits = bits;
     }
 
-    default void exit() {
+    public int getBits() {
+        return bits;
     }
 
-    void record(long id, long[] args);
-
-    ParserListener DEFAULT = (id, args) -> LLVMLogger.info("Unknown Record: " + Records.describe(id, args));
+    public boolean isFixed() {
+        return isFixed;
+    }
 }

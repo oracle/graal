@@ -37,11 +37,12 @@ import java.util.Objects;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.records.UserRecordArrayOperand;
 import com.oracle.truffle.llvm.parser.records.UserRecordOperand;
+import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.util.Pair;
 
 public abstract class BlockParser {
 
-    public enum Block {
+    private enum InternalBlock {
         ROOT(-1),
 
         BLOCKINFO(0),
@@ -62,7 +63,7 @@ public abstract class BlockParser {
         OPERAND_BUNDLE_TAGS(21),
         METADATA_KIND(22);
 
-        private static Block lookup(long id) {
+        private static InternalBlock lookup(long id) {
             if (id == 0) {
                 return BLOCKINFO;
             } else if (id >= MODULE.getId() && id <= METADATA_KIND.getId()) {
@@ -74,7 +75,7 @@ public abstract class BlockParser {
         }
 
         private BlockParser getParser(Bitstream stream, ParserListener listener, BlockParser parent, Operation[][] operations, long idsize, long offset, long bid) {
-            if (this == Block.BLOCKINFO) {
+            if (this == InternalBlock.BLOCKINFO) {
                 return new InformationBlockParser(stream, this, listener, parent, operations, idsize, offset, bid);
             } else {
                 return new GeneralBlockParser(stream, this, listener, parent, operations, idsize, offset);
@@ -83,7 +84,7 @@ public abstract class BlockParser {
 
         private final int id;
 
-        Block(int id) {
+        InternalBlock(int id) {
             this.id = id;
         }
 
@@ -207,7 +208,7 @@ public abstract class BlockParser {
 
     final Bitstream stream;
 
-    final Block block;
+    final InternalBlock block;
 
     final ParserListener listener;
 
@@ -219,7 +220,7 @@ public abstract class BlockParser {
 
     final long offset;
 
-    BlockParser(Bitstream stream, Block block, ParserListener listener, BlockParser parent, Operation[][] operations, long idsize, long offset) {
+    BlockParser(Bitstream stream, InternalBlock block, ParserListener listener, BlockParser parent, Operation[][] operations, long idsize, long offset) {
         this.stream = stream;
         this.block = block;
         this.listener = listener;
@@ -230,11 +231,12 @@ public abstract class BlockParser {
     }
 
     public static BlockParser create(Bitstream stream, ParserListener listener) {
-        return new GeneralBlockParser(Objects.requireNonNull(stream), Objects.requireNonNull(Block.ROOT), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2, 0);
+        return new GeneralBlockParser(Objects.requireNonNull(stream), Objects.requireNonNull(InternalBlock.ROOT), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2, 0);
     }
 
     public static BlockParser create(Bitstream stream, ParserListener listener, long offset) {
-        return new GeneralBlockParser(Objects.requireNonNull(stream), Objects.requireNonNull(Block.ROOT), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2, offset);
+        return new GeneralBlockParser(Objects.requireNonNull(stream), Objects.requireNonNull(InternalBlock.ROOT), Objects.requireNonNull(listener), null, new Operation[][]{DEFAULT_OPERATIONS}, 2,
+                        offset);
     }
 
     abstract BlockParser enter(long id, long size, long argIdSize);
@@ -311,18 +313,19 @@ public abstract class BlockParser {
 
     private static final class GeneralBlockParser extends BlockParser {
 
-        GeneralBlockParser(Bitstream stream, Block block, ParserListener listener, BlockParser parent, Operation[][] operations, long idsize, long offset) {
+        GeneralBlockParser(Bitstream stream, InternalBlock block, ParserListener listener, BlockParser parent, Operation[][] operations, long idsize, long offset) {
             super(stream, block, listener, parent, operations, idsize, offset);
         }
 
         @Override
         BlockParser enter(long id, long size, long argIdSize) {
-            Block subblock = Block.lookup(id);
+            InternalBlock subblock = InternalBlock.lookup(id);
+            Block newBlock = Block.lookup(id);
             if (subblock == null) {
                 // Cannot find block so just skip it
                 return toOffset(getOffset() + size * Integer.SIZE);
             } else {
-                return subblock.getParser(stream, listener.enter(subblock), this, operations, argIdSize, getOffset(), 0);
+                return subblock.getParser(stream, listener.enter(newBlock), this, operations, argIdSize, getOffset(), 0);
             }
         }
 
@@ -353,7 +356,7 @@ public abstract class BlockParser {
 
         private final long bid;
 
-        private InformationBlockParser(Bitstream stream, Block block, ParserListener listener, BlockParser parent, Operation[][] operations, long idsize, long offset, long bid) {
+        private InformationBlockParser(Bitstream stream, InternalBlock block, ParserListener listener, BlockParser parent, Operation[][] operations, long idsize, long offset, long bid) {
             super(stream, block, listener, parent, operations, idsize, offset);
             this.bid = bid;
         }
@@ -375,12 +378,13 @@ public abstract class BlockParser {
 
         @Override
         BlockParser enter(long id, long size, long argIdSize) {
-            Block subblock = Block.lookup(id);
+            InternalBlock subblock = InternalBlock.lookup(id);
+            Block newBlock = Block.lookup(id);
             if (subblock == null) {
                 // Cannot find block so just skip it
                 return toOffset(getOffset() + size * Integer.SIZE);
             } else {
-                return subblock.getParser(stream, listener.enter(subblock), this, operations, argIdSize, getOffset(), bid);
+                return subblock.getParser(stream, listener.enter(newBlock), this, operations, argIdSize, getOffset(), bid);
             }
         }
 

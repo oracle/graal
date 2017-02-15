@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,46 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners;
+package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.llvm.parser.records.Records;
-import com.oracle.truffle.llvm.parser.scanner.Block;
-import com.oracle.truffle.llvm.runtime.LLVMLogger;
+import java.util.Arrays;
 
-public interface ParserListener {
+final class RecordBuffer {
 
-    default ParserListener enter(@SuppressWarnings("unused") Block block) {
-        return this;
+    private static final int INITIAL_BUFFER_SIZE = 256;
+
+    private long[] opBuffer = new long[INITIAL_BUFFER_SIZE];
+
+    private int size = 0;
+
+    void addOp(long op) {
+        opBuffer[size++] = op;
     }
 
-    default void exit() {
+    void addOpWithCheck(long op) {
+        ensureFits(1);
+        addOp(op);
     }
 
-    void record(long id, long[] args);
+    void ensureFits(long numOfAdditionalOps) {
+        if (size >= opBuffer.length - numOfAdditionalOps) {
+            opBuffer = Arrays.copyOf(opBuffer, opBuffer.length + ((int) numOfAdditionalOps * 2));
+        }
+    }
 
-    ParserListener DEFAULT = (id, args) -> LLVMLogger.info("Unknown Record: " + Records.describe(id, args));
+    long getId() {
+        if (size <= 0) {
+            throw new IllegalStateException("Record Id not set!");
+        }
+        return opBuffer[0];
+    }
+
+    long[] getOps() {
+        return Arrays.copyOfRange(opBuffer, 1, size);
+    }
+
+    void invalidate() {
+        size = 0;
+    }
+
 }
