@@ -224,6 +224,7 @@ public final class GraphEffectList extends EffectList {
      */
     public void replaceAtUsages(ValueNode node, ValueNode replacement, FixedNode insertBefore) {
         assert node != null && replacement != null : node + " " + replacement;
+        assert node.stamp().isCompatible(replacement.stamp()) : "Replacement node stamp not compatible " + node.stamp() + " vs " + replacement.stamp();
         add("replace at usages", (graph, obsoleteNodes) -> {
             assert node.isAlive();
             ValueNode replacementNode = graph.addOrUniqueWithInputs(replacement);
