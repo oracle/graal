@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import com.oracle.truffle.llvm.parser.ir.records.ValueSymbolTableRecord;
+import com.oracle.truffle.llvm.parser.records.ValueSymbolTableRecord;
 import com.oracle.truffle.llvm.parser.model.generators.SymbolGenerator;
 import com.oracle.truffle.llvm.parser.records.Records;
 

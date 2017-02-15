@@ -41,14 +41,6 @@ final class StreamInformation {
         this.size = size;
     }
 
-    long getOffset() {
-        return offset;
-    }
-
-    long totalStreamSize() {
-        return offset + size;
-    }
-
     static StreamInformation getStreamInformation(BitStream stream, LLVMScanner scanner) {
         long first32bit = scanner.read(Integer.SIZE);
         if (first32bit == WRAPPER_MAGIC_WORD) {
@@ -74,5 +66,13 @@ final class StreamInformation {
         scanner.read(Integer.SIZE);
         // End of Wrapper Prefix
         return new StreamInformation(offset, size);
+    }
+
+    long getOffset() {
+        return offset;
+    }
+
+    long totalStreamSize() {
+        return offset + size;
     }
 }

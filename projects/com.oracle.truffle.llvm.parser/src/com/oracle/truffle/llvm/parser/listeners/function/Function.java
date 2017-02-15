@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser.listeners.function;
 
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.ir.records.FunctionRecord;
+import com.oracle.truffle.llvm.parser.records.FunctionRecord;
 import com.oracle.truffle.llvm.parser.listeners.IRVersionController;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;

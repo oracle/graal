@@ -29,36 +29,33 @@
  */
 package com.oracle.truffle.llvm.parser.records;
 
-import com.oracle.truffle.llvm.parser.BlockParser;
-import com.oracle.truffle.llvm.parser.ParserResult;
-import com.oracle.truffle.llvm.parser.Primitive;
+public enum ConstantsRecord {
+    UNUSED_0,
+    SETTYPE,
+    NULL,
+    UNDEF,
+    INTEGER,
+    WIDE_INTEGER,
+    FLOAT,
+    AGGREGATE,
+    STRING,
+    CSTRING,
+    CE_BINOP,
+    CE_CAST,
+    CE_GEP,
+    CE_SELECT,
+    CE_EXTRACTELT,
+    CE_INSERTELT,
+    CE_SHUFFLEVEC,
+    CE_CMP,
+    INLINEASM_OLD,
+    CE_SHUFVEC_EX,
+    CE_INBOUNDS_GEP,
+    BLOCKADDRESS,
+    DATA,
+    INLINEASM;
 
-public final class UserRecordArrayOperand extends UserRecordOperand {
-
-    private final UserRecordOperand type;
-
-    public UserRecordArrayOperand(UserRecordOperand type) {
-        super();
-        this.type = type;
-    }
-
-    @Override
-    public ParserResult get(BlockParser parser) {
-        ParserResult result = parser.read(Primitive.USER_OPERAND_ARRAY_LENGTH);
-        int length = (int) result.getValue();
-
-        long[] values = new long[length];
-
-        for (int i = 0; i < length; i++) {
-            result = type.get(result.getParser());
-            values[i] = result.getValue();
-        }
-
-        return new ParserResult(result.getParser(), values);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%s[]", type);
+    public static ConstantsRecord decode(long id) {
+        return values()[(int) id];
     }
 }

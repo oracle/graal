@@ -29,27 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.records;
 
-import com.oracle.truffle.llvm.parser.BlockParser;
-import com.oracle.truffle.llvm.parser.ParserResult;
-import com.oracle.truffle.llvm.parser.Primitive;
+public enum ValueSymbolTableRecord {
+    UNUSED_0,
+    ENTRY,
+    BASIC_BLOCK_ENTRY,
+    FUNCTION_ENTRY,
+    COMBINED_FNENTRY;
 
-final class UserRecordBinaryOperand extends UserRecordOperand {
-
-    UserRecordBinaryOperand() {
-        super();
-    }
-
-    @Override
-    public ParserResult get(BlockParser parser) {
-        ParserResult result = parser.read(Primitive.USER_OPERAND_BLOB_LENGTH);
-        long value = result.getValue();
-        BlockParser blobParser = result.getParser().alignInt();
-        result = blobParser.read(Primitive.USER_OPERAND_LITERAL.getBits() * value);
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "blob";
+    public static ValueSymbolTableRecord decode(long id) {
+        return values()[(int) id];
     }
 }

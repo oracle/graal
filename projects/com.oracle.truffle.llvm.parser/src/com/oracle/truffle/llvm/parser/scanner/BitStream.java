@@ -39,6 +39,13 @@ import java.util.Base64;
 
 final class BitStream {
 
+    private static final long BYTE_MASK = 0xffL;
+    private final byte[] bitstream;
+
+    private BitStream(byte[] bitstream) {
+        this.bitstream = bitstream;
+    }
+
     public static BitStream create(Source source) {
         byte[] bytes;
         switch (source.getMimeType()) {
@@ -64,12 +71,14 @@ final class BitStream {
         }
     }
 
-    private static final long BYTE_MASK = 0xffL;
-
-    private final byte[] bitstream;
-
-    private BitStream(byte[] bitstream) {
-        this.bitstream = bitstream;
+    static long widthVBR(long value, long width) {
+        long total = 0;
+        long v = value;
+        do {
+            total += width;
+            v >>>= (width - 1);
+        } while (v != 0);
+        return total;
     }
 
     long read(long offset, long bits) {
@@ -93,16 +102,6 @@ final class BitStream {
 
     public long size() {
         return bitstream.length * Byte.SIZE;
-    }
-
-    static long widthVBR(long value, long width) {
-        long total = 0;
-        long v = value;
-        do {
-            total += width;
-            v >>>= (width - 1);
-        } while (v != 0);
-        return total;
     }
 
     private long read(long offset) {

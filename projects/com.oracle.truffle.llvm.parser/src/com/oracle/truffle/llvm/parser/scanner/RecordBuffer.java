@@ -39,13 +39,13 @@ final class RecordBuffer {
 
     private int size = 0;
 
-    void addOp(long op) {
+    void addOpNoCheck(long op) {
         opBuffer[size++] = op;
     }
 
-    void addOpWithCheck(long op) {
+    void addOp(long op) {
         ensureFits(1);
-        addOp(op);
+        addOpNoCheck(op);
     }
 
     void ensureFits(long numOfAdditionalOps) {
