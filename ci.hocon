@@ -90,7 +90,7 @@ bench: {
   }
   upload: [bench-uploader.py, "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}"]
   logs: ["results-*.json"] # there's no variable expansion done on logs
-  timelimit: "6:00:00"
+  timelimit: "10:00:00"
 }
 
 benchSulong: ${bench} {
