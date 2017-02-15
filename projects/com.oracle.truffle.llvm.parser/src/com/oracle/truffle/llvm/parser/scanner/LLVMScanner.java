@@ -198,11 +198,16 @@ public final class LLVMScanner {
 
                     case AbbrevRecordId.BLOB:
                         operandScanners.add(() -> {
-                            // TODO this does not work for blobs of arbitrary size
-                            final long blobLength = read(Primitive.USER_OPERAND_BLOB_LENGTH);
+                            long blobLength = read(Primitive.USER_OPERAND_BLOB_LENGTH);
                             alignInt();
-                            final long blobValue = read((int) (Primitive.USER_OPERAND_LITERAL.getBits() * blobLength));
-                            recordBuffer.addOpWithCheck(blobValue);
+                            final long maxBlobPartLength = Long.SIZE / Primitive.USER_OPERAND_LITERAL.getBits();
+                            while (blobLength > 0) {
+                                final long l = blobLength <= maxBlobPartLength ? blobLength : maxBlobPartLength;
+                                final long blobValue = read((int) (Primitive.USER_OPERAND_LITERAL.getBits() * l));
+                                recordBuffer.addOpWithCheck(blobValue);
+                                blobLength -= l;
+                            }
+                            alignInt();
                         });
                         break;
 
