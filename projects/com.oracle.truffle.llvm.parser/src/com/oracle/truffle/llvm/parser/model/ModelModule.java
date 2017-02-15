@@ -95,6 +95,9 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     public void accept(ModelVisitor visitor) {
+        if (targetDataLayout != null) {
+            visitor.visit(targetDataLayout);
+        }
         types.forEach(visitor::visit);
         for (GlobalValueSymbol variable : globals) {
             variable.accept(visitor);

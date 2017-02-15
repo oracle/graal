@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 public interface Constant extends Symbol {
 
-    public abstract void accept(ConstantVisitor visitor);
+    void accept(ConstantVisitor visitor);
 
     static Constant createFromData(Type type, long datum) {
         if (type instanceof IntegerType) {
