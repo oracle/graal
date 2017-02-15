@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,54 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.types.metadata;
+package com.oracle.truffle.llvm.runtime.types.visitors;
 
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.BigIntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantPointerType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantType;
 
-public class MetadataConstantType implements Type {
+public interface TypeVisitor {
 
-    private final long value;
+    void visit(BigIntegerConstantType bigIntegerConstantType);
 
-    public MetadataConstantType(long value) {
-        this.value = value;
-    }
+    void visit(FloatingPointType floatingPointType);
 
-    @Override
-    public void accept(TypeVisitor visitor) {
-        visitor.visit(this);
-    }
+    void visit(FunctionType functionType);
 
-    @Override
-    public MetaType getType() {
-        return MetaType.METADATA;
-    }
+    void visit(IntegerConstantType integerConstantType);
 
-    public long getValue() {
-        return value;
-    }
+    void visit(IntegerType integerType);
 
-    @Override
-    public int getBits() {
-        return getType().getBits();
-    }
+    void visit(MetadataConstantType metadataConstantType);
 
-    @Override
-    public int hashCode() {
-        int hash = 13;
-        hash = 47 * hash + (int) (value ^ (value >>> 32));
-        return hash;
-    }
+    void visit(MetadataConstantPointerType metadataConstantPointerType);
 
-    @Override
-    public boolean equals(Object obj) {
-        return obj instanceof MetadataConstantType && value == ((MetadataConstantType) obj).value;
-    }
+    void visit(MetaType metaType);
 
-    @Override
-    public String toString() {
-        return String.format("%s %d", getType(), value);
-    }
+    void visit(PointerType pointerType);
+
+    void visit(ArrayType arrayType);
+
+    void visit(StructureType structureType);
+
+    void visit(VectorType vectorType);
 
 }

@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Objects;
 
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
+
 public final class IntegerConstantType implements Type {
 
     private final IntegerType type;
@@ -40,6 +42,11 @@ public final class IntegerConstantType implements Type {
     public IntegerConstantType(IntegerType type, long value) {
         this.type = type;
         this.value = value;
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override

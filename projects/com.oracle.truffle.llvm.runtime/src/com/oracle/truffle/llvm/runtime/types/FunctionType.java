@@ -33,6 +33,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public class FunctionType implements Type, ValueSymbol {
 
@@ -48,6 +49,11 @@ public class FunctionType implements Type, ValueSymbol {
         this.type = type;
         this.args = args;
         this.isVarArg = isVarArg;
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     public Type[] getArgumentTypes() {

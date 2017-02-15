@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class Types implements ParserListener, Iterable<Type> {
 
@@ -217,6 +218,11 @@ public final class Types implements ParserListener, Iterable<Type> {
             this.idx = idx;
         }
 
+        @Override
+        public void accept(TypeVisitor visitor) {
+            // This is a private type only required for resolving
+        }
+
         public int getIndex() {
             return idx;
         }
@@ -242,6 +248,11 @@ public final class Types implements ParserListener, Iterable<Type> {
 
         UnresolvedNamedType(String name) {
             this.name = name;
+        }
+
+        @Override
+        public void accept(TypeVisitor visitor) {
+            // This is a private type only required for resolving
         }
 
         public String getName() {

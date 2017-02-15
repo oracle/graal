@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock.MetadataReference;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public class StructureType implements AggregateType, ValueSymbol {
 
@@ -50,6 +51,11 @@ public class StructureType implements AggregateType, ValueSymbol {
     public StructureType(boolean isPacked, Type[] types) {
         this.isPacked = isPacked;
         this.types = types;
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override

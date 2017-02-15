@@ -30,12 +30,18 @@
 package com.oracle.truffle.llvm.runtime.types.metadata;
 
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public class MetadataConstantPointerType implements Type {
     private final int symbolIndex;
 
     public MetadataConstantPointerType(int symbolIndex) {
         this.symbolIndex = symbolIndex;
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override
