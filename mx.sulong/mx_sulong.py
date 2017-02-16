@@ -620,8 +620,6 @@ def getLLVMProgramPath(args=None):
 
 def compileWithClang(args=None, version=None, out=None, err=None):
     """runs Clang"""
-    c = findLLVMProgram('clang', version)
-    print c
     return mx.run([findLLVMProgram('clang', version)] + args, out=out, err=err)
 
 def compileWithGCC(args=None):
