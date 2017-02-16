@@ -48,6 +48,7 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -142,7 +143,13 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
         if (alias instanceof VirtualObjectNode) {
             int fieldIndex = ((VirtualInstanceNode) alias).fieldIndex(field());
             if (fieldIndex != -1) {
-                tool.replaceWith(tool.getEntry((VirtualObjectNode) alias, fieldIndex));
+                ValueNode entry = tool.getEntry((VirtualObjectNode) alias, fieldIndex);
+                if (stamp.isCompatible(entry.stamp())) {
+                    tool.replaceWith(entry);
+                } else {
+                    assert stamp().getStackKind() == JavaKind.Int && (entry.stamp().getStackKind() == JavaKind.Long || entry.getStackKind() == JavaKind.Double ||
+                                    entry.getStackKind() == JavaKind.Illegal) : "Can only allow different stack kind two slot marker writes on one stot fields.";
+                }
             }
         }
     }

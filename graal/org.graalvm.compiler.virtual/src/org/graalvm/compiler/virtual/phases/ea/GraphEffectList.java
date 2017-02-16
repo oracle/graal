@@ -35,7 +35,6 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.debug.WeakCounterNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -224,6 +223,7 @@ public final class GraphEffectList extends EffectList {
      */
     public void replaceAtUsages(ValueNode node, ValueNode replacement, FixedNode insertBefore) {
         assert node != null && replacement != null : node + " " + replacement;
+        assert node.stamp().isCompatible(replacement.stamp()) : "Replacement node stamp not compatible " + node.stamp() + " vs " + replacement.stamp();
         add("replace at usages", (graph, obsoleteNodes) -> {
             assert node.isAlive();
             ValueNode replacementNode = graph.addOrUniqueWithInputs(replacement);
@@ -232,14 +232,15 @@ public final class GraphEffectList extends EffectList {
             if (replacementNode instanceof FixedWithNextNode && ((FixedWithNextNode) replacementNode).next() == null) {
                 graph.addBeforeFixed(insertBefore, (FixedWithNextNode) replacementNode);
             }
-            if (replacementNode instanceof ValuePhiNode) {
-                ValuePhiNode valuePhiNode = (ValuePhiNode) replacementNode;
-                if (!node.stamp().equals(valuePhiNode.stamp())) {
-                    // The phi node could have a weaker stamp due to shortcomings of {@link
-                    // ValueNode#inferStamp} in the context of loops. Therefore, we use
-                    // a pi node to make sure the correct type is not lost.
-                    replacementNode = graph.unique(new PiNode(replacementNode, node.stamp()));
-                }
+            /*
+             * Keep the (better) stamp information when replacing a node with another one if the
+             * replacement has a less precise stamp than the original node. This can happen for
+             * example in the context of read nodes and unguarded pi nodes where the pi will be used
+             * to improve the stamp information of the read. Such a read might later be replaced
+             * with a read with a less precise stamp.
+             */
+            if (!node.stamp().equals(replacementNode.stamp())) {
+                replacementNode = graph.unique(new PiNode(replacementNode, node.stamp()));
             }
             node.replaceAtUsages(replacementNode);
             if (node instanceof FixedWithNextNode) {

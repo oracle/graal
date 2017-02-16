@@ -71,6 +71,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         super(c, stamp, guard);
         this.object = object;
         this.piStamp = stamp;
+        assert piStamp.isCompatible(object.stamp()) : "Object stamp not compatible to piStamp";
         inferStamp();
     }
 
@@ -180,6 +181,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     public void setOriginalNode(ValueNode newNode) {
         this.updateUsages(object, newNode);
         this.object = newNode;
+        assert piStamp.isCompatible(object.stamp()) : "New object stamp not compatible to piStamp";
     }
 
     /**
