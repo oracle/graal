@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.records;
+package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.llvm.parser.BlockParser;
-import com.oracle.truffle.llvm.parser.ParserResult;
+@FunctionalInterface
+interface AbbreviatedRecord {
 
-final class UserRecordFixedOperand extends UserRecordOperand {
+    void scan();
 
-    private final long width;
-
-    UserRecordFixedOperand(long width) {
-        super();
-        this.width = width;
-    }
-
-    @Override
-    public ParserResult get(BlockParser parser) {
-        return parser.read(width);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("i%d", width);
-    }
 }

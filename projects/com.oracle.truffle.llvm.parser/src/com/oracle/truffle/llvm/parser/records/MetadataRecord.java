@@ -29,27 +29,46 @@
  */
 package com.oracle.truffle.llvm.parser.records;
 
-import com.oracle.truffle.llvm.parser.BlockParser;
-import com.oracle.truffle.llvm.parser.ParserResult;
-import com.oracle.truffle.llvm.parser.Primitive;
+public enum MetadataRecord {
+    UNUSED_0,
+    STRING,
+    VALUE,
+    NODE,
+    NAME,
+    DISTINCT_NODE,
+    KIND,
+    LOCATION,
+    OLD_NODE,
+    OLD_FN_NODE,
+    NAMED_NODE,
+    ATTACHMENT,
+    GENERIC_DEBUG,
+    SUBRANGE,
+    ENUMERATOR,
+    BASIC_TYPE,
+    FILE,
+    DERIVED_TYPE,
+    COMPOSITE_TYPE,
+    SUBROUTINE_TYPE,
+    COMPILE_UNIT,
+    SUBPROGRAM,
+    LEXICAL_BLOCK,
+    LEXICAL_BLOCK_FILE,
+    NAMESPACE,
+    TEMPLATE_TYPE,
+    TEMPLATE_VALUE,
+    GLOBAL_VAR,
+    LOCAL_VAR,
+    EXPRESSION,
+    OBJC_PROPERTY,
+    IMPORTED_ENTITY,
+    MODULE,
+    MACRO,
+    MACRO_FILE,
+    STRINGS,
+    GLOBAL_DECL_ATTACHMENT;
 
-final class UserRecordBinaryOperand extends UserRecordOperand {
-
-    UserRecordBinaryOperand() {
-        super();
-    }
-
-    @Override
-    public ParserResult get(BlockParser parser) {
-        ParserResult result = parser.read(Primitive.USER_OPERAND_BLOB_LENGTH);
-        long value = result.getValue();
-        BlockParser blobParser = result.getParser().alignInt();
-        result = blobParser.read(Primitive.USER_OPERAND_LITERAL.getBits() * value);
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "blob";
+    public static MetadataRecord decode(long id) {
+        return values()[(int) id];
     }
 }

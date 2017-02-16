@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,16 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.ir.records;
+package com.oracle.truffle.llvm.parser.scanner;
 
-public enum ValueSymbolTableRecord {
-    UNUSED_0,
-    ENTRY,
-    BASIC_BLOCK_ENTRY,
-    FUNCTION_ENTRY,
-    COMBINED_FNENTRY;
+enum Primitive {
+    CHAR6(true, 6),
 
-    public static ValueSymbolTableRecord decode(long id) {
-        return values()[(int) id];
+    ABBREVIATED_RECORD_OPERANDS(false, 5),
+    SUBBLOCK_ID(false, 8),
+    SUBBLOCK_ID_SIZE(false, 4),
+    UNABBREVIATED_RECORD_ID(false, 6),
+    UNABBREVIATED_RECORD_OPERAND(false, 6),
+    UNABBREVIATED_RECORD_OPS(false, 6),
+
+    USER_OPERAND_ARRAY_LENGTH(false, 6),
+    USER_OPERAND_BLOB_LENGTH(false, 6),
+    USER_OPERAND_DATA(false, 5),
+    USER_OPERAND_LITERAL(false, 8),
+    USER_OPERAND_TYPE(true, 3),
+    USER_OPERAND_LITERALBIT(true, 1);
+
+    private final boolean isFixed;
+
+    private final int bits;
+
+    Primitive(boolean isFixed, int bits) {
+        this.isFixed = isFixed;
+        this.bits = bits;
+    }
+
+    public int getBits() {
+        return bits;
+    }
+
+    public boolean isFixed() {
+        return isFixed;
     }
 }

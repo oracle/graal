@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,34 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.ir.records;
+package com.oracle.truffle.llvm.parser.scanner;
 
-public enum TypesRecord {
-    UNUSED_0,
-    NUMBER_OF_ENTRIES,
-    VOID,
-    FLOAT,
-    DOUBLE,
-    LABEL,
-    OPAQUE,
-    INTEGER,
-    POINTER,
-    FUNCTION_OLD,
-    HALF,
-    ARRAY,
-    VECTOR,
-    X86_FP80,
-    FP128,
-    PPC_FP128,
-    METADATA,
-    X86_MMX,
-    STRUCT_ANON,
-    STRUCT_NAME,
-    STRUCT_NAMED,
-    FUNCTION,
-    TOKEN;
+final class BuiltinIDs {
 
-    public static TypesRecord decode(long id) {
-        return values()[(int) id];
+    static final int END_BLOCK = 0;
+
+    static final int ENTER_SUBBLOCK = 1;
+
+    static final int DEFINE_ABBREV = 2;
+
+    static final int UNABBREV_RECORD = 3;
+
+    static final int CUSTOM_ABBREV_OFFSET = 4;
+
+    private BuiltinIDs() {
     }
 }

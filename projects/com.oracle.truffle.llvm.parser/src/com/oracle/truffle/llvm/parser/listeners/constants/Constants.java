@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.parser.listeners.constants;
 import java.math.BigInteger;
 import java.util.List;
 
-import com.oracle.truffle.llvm.parser.ir.records.ConstantsRecord;
+import com.oracle.truffle.llvm.parser.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.model.generators.ConstantGenerator;

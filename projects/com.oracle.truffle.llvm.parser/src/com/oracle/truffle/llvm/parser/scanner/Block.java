@@ -27,48 +27,48 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.ir.records;
+package com.oracle.truffle.llvm.parser.scanner;
 
-public enum MetadataRecord {
-    UNUSED_0,
-    STRING,
-    VALUE,
-    NODE,
-    NAME,
-    DISTINCT_NODE,
-    KIND,
-    LOCATION,
-    OLD_NODE,
-    OLD_FN_NODE,
-    NAMED_NODE,
-    ATTACHMENT,
-    GENERIC_DEBUG,
-    SUBRANGE,
-    ENUMERATOR,
-    BASIC_TYPE,
-    FILE,
-    DERIVED_TYPE,
-    COMPOSITE_TYPE,
-    SUBROUTINE_TYPE,
-    COMPILE_UNIT,
-    SUBPROGRAM,
-    LEXICAL_BLOCK,
-    LEXICAL_BLOCK_FILE,
-    NAMESPACE,
-    TEMPLATE_TYPE,
-    TEMPLATE_VALUE,
-    GLOBAL_VAR,
-    LOCAL_VAR,
-    EXPRESSION,
-    OBJC_PROPERTY,
-    IMPORTED_ENTITY,
-    MODULE,
-    MACRO,
-    MACRO_FILE,
-    STRINGS,
-    GLOBAL_DECL_ATTACHMENT;
+public enum Block {
 
-    public static MetadataRecord decode(long id) {
-        return values()[(int) id];
+    ROOT(-1),
+
+    BLOCKINFO(0),
+
+    MODULE(8),
+    PARAMATTR(9),
+    PARAMATTR_GROUP(10),
+    CONSTANTS(11),
+    FUNCTION(12),
+    IDENTIFICATION(13),
+    VALUE_SYMTAB(14),
+    METADATA(15),
+    METADATA_ATTACHMENT(16),
+    TYPE(17),
+    USELIST(18),
+    MODULE_STRTAB(19),
+    FUNCTION_SUMMARY(20),
+    OPERAND_BUNDLE_TAGS(21),
+    METADATA_KIND(22);
+
+    private final int id;
+
+    Block(int id) {
+        this.id = id;
+    }
+
+    static Block lookup(long id) {
+        // TODO set private when removing the old scanner
+        for (Block block : values()) {
+            if (block.id == id) {
+                return block;
+            }
+        }
+        throw new IllegalStateException("Unknown BlockID: " + id);
+    }
+
+    @Override
+    public String toString() {
+        return name().toLowerCase();
     }
 }

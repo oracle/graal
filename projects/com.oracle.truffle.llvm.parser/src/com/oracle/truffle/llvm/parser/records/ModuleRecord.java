@@ -27,41 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.parser.records;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
+public enum ModuleRecord {
+    UNUSED_0,
+    VERSION,
+    TARGET_TRIPLE,
+    TARGET_DATALAYOUT,
+    ASM,
+    SECTION_NAME,
+    DEPLIB,
+    GLOBAL_VARIABLE,
+    FUNCTION,
+    ALIAS_OLD,
+    PURGE_VALUES,
+    GC_NAME,
+    COMDAT,
+    VSTOFFSET,
+    ALIAS,
+    METADATA_VALUES,
+    SOURCE_FILENAME,
+    CODE_HASH,
+    CODE_IFUNC;
 
-public final class ParserResult {
-
-    private final BlockParser parser;
-
-    private final long[] values;
-
-    public ParserResult(BlockParser parser, long value) {
-        this.parser = parser;
-        values = new long[]{value};
-    }
-
-    public ParserResult(BlockParser parser, long[] values) {
-        this.parser = parser;
-        this.values = values;
-    }
-
-    public BlockParser getParser() {
-        return parser;
-    }
-
-    public long getValue() {
-        return values[0];
-    }
-
-    public long[] getValues() {
-        return values;
-    }
-
-    @Override
-    public String toString() {
-        return Arrays.stream(values).mapToObj(l -> String.format("%05X ", l)).collect(Collectors.joining(" "));
+    public static ModuleRecord decode(long id) {
+        return values()[(int) id];
     }
 }

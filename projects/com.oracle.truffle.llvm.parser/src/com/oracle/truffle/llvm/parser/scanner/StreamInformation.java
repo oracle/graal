@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,27 +27,52 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.records;
+package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.llvm.parser.BlockParser;
-import com.oracle.truffle.llvm.parser.ParserResult;
+final class StreamInformation {
 
-final class UserRecordVariableOperand extends UserRecordOperand {
+    private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;
 
-    private final long width;
+    private final long offset;
+    private final long size;
 
-    UserRecordVariableOperand(long width) {
-        super();
-        this.width = width;
+    private StreamInformation(long offset, long size) {
+        this.offset = offset;
+        this.size = size;
     }
 
-    @Override
-    public ParserResult get(BlockParser parser) {
-        return parser.readVBR(width);
+    static StreamInformation getStreamInformation(BitStream stream, LLVMScanner scanner) {
+        long first32bit = scanner.read(Integer.SIZE);
+        if (first32bit == WRAPPER_MAGIC_WORD) {
+            // offset and size of bitcode stream are specified in bitcode wrapper
+            return parseWrapperFormatPrefix(scanner);
+        } else {
+            return new StreamInformation(0, stream.size());
+        }
     }
 
-    @Override
-    public String toString() {
-        return String.format("vbr%d", width);
+    /*
+     * Bitcode files can have a wrapper prefix: [Magic32, Version32, Offset32, Size32, CPUType32]
+     * see: http://llvm.org/docs/BitCodeFormat.html#bitcode-wrapper-format
+     */
+    private static StreamInformation parseWrapperFormatPrefix(LLVMScanner scanner) {
+        // Version32
+        scanner.read(Integer.SIZE);
+        // Offset32
+        long offset = scanner.read(Integer.SIZE) * Byte.SIZE;
+        // Size32
+        long size = scanner.read(Integer.SIZE) * Byte.SIZE;
+        // CPUType32
+        scanner.read(Integer.SIZE);
+        // End of Wrapper Prefix
+        return new StreamInformation(offset, size);
+    }
+
+    long getOffset() {
+        return offset;
+    }
+
+    long totalStreamSize() {
+        return offset + size;
     }
 }

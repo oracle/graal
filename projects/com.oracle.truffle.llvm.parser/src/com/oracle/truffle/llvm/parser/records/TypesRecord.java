@@ -29,24 +29,32 @@
  */
 package com.oracle.truffle.llvm.parser.records;
 
-import com.oracle.truffle.llvm.parser.BlockParser;
-import com.oracle.truffle.llvm.parser.ParserResult;
+public enum TypesRecord {
+    UNUSED_0,
+    NUMBER_OF_ENTRIES,
+    VOID,
+    FLOAT,
+    DOUBLE,
+    LABEL,
+    OPAQUE,
+    INTEGER,
+    POINTER,
+    FUNCTION_OLD,
+    HALF,
+    ARRAY,
+    VECTOR,
+    X86_FP80,
+    FP128,
+    PPC_FP128,
+    METADATA,
+    X86_MMX,
+    STRUCT_ANON,
+    STRUCT_NAME,
+    STRUCT_NAMED,
+    FUNCTION,
+    TOKEN;
 
-final class UserRecordLiteral extends UserRecordOperand {
-
-    private final long value;
-
-    UserRecordLiteral(long value) {
-        this.value = value;
-    }
-
-    @Override
-    public ParserResult get(BlockParser parser) {
-        return new ParserResult(parser, value);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("#%d", value);
+    public static TypesRecord decode(long id) {
+        return values()[(int) id];
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.records;
+package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.llvm.parser.BlockParser;
-import com.oracle.truffle.llvm.parser.ParserResult;
-import com.oracle.truffle.llvm.parser.Primitive;
+import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 
-public final class UserRecordArrayOperand extends UserRecordOperand {
+import java.util.List;
 
-    private final UserRecordOperand type;
+final class ScannerState {
 
-    public UserRecordArrayOperand(UserRecordOperand type) {
-        super();
-        this.type = type;
+    private final List<List<AbbreviatedRecord>> abbreviatedRecords;
+    private final Block block;
+    private final int idSize;
+    private final ParserListener parser;
+
+    ScannerState(List<List<AbbreviatedRecord>> abbreviatedRecords, Block block, int idSize, ParserListener parser) {
+        this.abbreviatedRecords = abbreviatedRecords;
+        this.block = block;
+        this.idSize = idSize;
+        this.parser = parser;
     }
 
-    @Override
-    public ParserResult get(BlockParser parser) {
-        ParserResult result = parser.read(Primitive.USER_OPERAND_ARRAY_LENGTH);
-        int length = (int) result.getValue();
-
-        long[] values = new long[length];
-
-        for (int i = 0; i < length; i++) {
-            result = type.get(result.getParser());
-            values[i] = result.getValue();
-        }
-
-        return new ParserResult(result.getParser(), values);
+    List<List<AbbreviatedRecord>> getAbbreviatedRecords() {
+        return abbreviatedRecords;
     }
 
-    @Override
-    public String toString() {
-        return String.format("%s[]", type);
+    Block getBlock() {
+        return block;
+    }
+
+    int getIdSize() {
+        return idSize;
+    }
+
+    ParserListener getParser() {
+        return parser;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,35 +27,18 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.ir.records;
+package com.oracle.truffle.llvm.parser.scanner;
 
-public enum ConstantsRecord {
-    UNUSED_0,
-    SETTYPE,
-    NULL,
-    UNDEF,
-    INTEGER,
-    WIDE_INTEGER,
-    FLOAT,
-    AGGREGATE,
-    STRING,
-    CSTRING,
-    CE_BINOP,
-    CE_CAST,
-    CE_GEP,
-    CE_SELECT,
-    CE_EXTRACTELT,
-    CE_INSERTELT,
-    CE_SHUFFLEVEC,
-    CE_CMP,
-    INLINEASM_OLD,
-    CE_SHUFVEC_EX,
-    CE_INBOUNDS_GEP,
-    BLOCKADDRESS,
-    DATA,
-    INLINEASM;
+final class AbbrevRecordId {
 
-    public static ConstantsRecord decode(long id) {
-        return values()[(int) id];
-    }
+    static final int FIXED = 1;
+
+    static final int VBR = 2;
+
+    static final int ARRAY = 3;
+
+    static final int CHAR6 = 4;
+
+    static final int BLOB = 5;
+
 }

@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import com.oracle.truffle.llvm.parser.BlockParser.Block;
 import com.oracle.truffle.llvm.parser.records.Records;
+import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.runtime.LLVMLogger;
 
 public interface ParserListener {

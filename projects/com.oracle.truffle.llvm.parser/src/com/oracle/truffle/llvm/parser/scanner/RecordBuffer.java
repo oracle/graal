@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,17 +27,46 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.records;
+package com.oracle.truffle.llvm.parser.scanner;
 
-enum UserRecordOperandType {
-    UNUSED_0,
-    FIXED,
-    VBR,
-    ARRAY,
-    CHAR6,
-    BLOB;
+import java.util.Arrays;
 
-    static UserRecordOperandType decode(long id) {
-        return values()[(int) id];
+final class RecordBuffer {
+
+    private static final int INITIAL_BUFFER_SIZE = 256;
+
+    private long[] opBuffer = new long[INITIAL_BUFFER_SIZE];
+
+    private int size = 0;
+
+    void addOpNoCheck(long op) {
+        opBuffer[size++] = op;
     }
+
+    void addOp(long op) {
+        ensureFits(1);
+        addOpNoCheck(op);
+    }
+
+    void ensureFits(long numOfAdditionalOps) {
+        if (size >= opBuffer.length - numOfAdditionalOps) {
+            opBuffer = Arrays.copyOf(opBuffer, opBuffer.length + ((int) numOfAdditionalOps * 2));
+        }
+    }
+
+    long getId() {
+        if (size <= 0) {
+            throw new IllegalStateException("Record Id not set!");
+        }
+        return opBuffer[0];
+    }
+
+    long[] getOps() {
+        return Arrays.copyOfRange(opBuffer, 1, size);
+    }
+
+    void invalidate() {
+        size = 0;
+    }
+
 }

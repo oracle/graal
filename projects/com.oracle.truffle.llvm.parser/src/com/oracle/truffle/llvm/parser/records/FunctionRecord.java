@@ -29,22 +29,65 @@
  */
 package com.oracle.truffle.llvm.parser.records;
 
-import com.oracle.truffle.llvm.parser.BlockParser;
-import com.oracle.truffle.llvm.parser.ParserResult;
+public enum FunctionRecord {
+    UNUSED_0,
+    DECLAREBLOCKS,
+    BINOP,
+    CAST,
+    GEP_OLD,
+    SELECT,
+    EXTRACTELT,
+    INSERTELT,
+    SHUFFLEVEC,
+    CMP,
+    RET,
+    BR,
+    SWITCH,
+    INVOKE,
+    UNUSED_14,
+    UNREACHABLE,
+    PHI,
+    UNUSED_17,
+    UNUSED_18,
+    ALLOCA,
+    LOAD,
+    UNUSED_21,
+    UNUSED_22,
+    VAARG,
+    STORE_OLD,
+    UNUSED_25,
+    EXTRACTVAL,
+    INSERTVAL,
+    CMP2,
+    VSELECT,
+    INBOUNDS_GEP_OLD,
+    INDIRECTBR,
+    UNUSED_32,
+    DEBUG_LOC_AGAIN,
+    CALL,
+    DEBUG_LOC,
+    FENCE,
+    CMPXCHG_OLD,
+    ATOMICRMW,
+    RESUME,
+    LANDINGPAD_OLD,
+    LOADATOMIC,
+    STOREATOMIC_OLD,
+    GEP,
+    STORE,
+    STOREATOMIC,
+    CMPXCHG,
+    LANDINGPAD,
+    CLEANUPRET,
+    CATCHRET,
+    CATCHPAD,
+    CLEANUPPAD,
+    CATCHSWITCH,
+    UNUSED_53,
+    UNUSED_54,
+    OPERAND_BUNDLE;
 
-final class UserRecordCharOperand extends UserRecordOperand {
-
-    UserRecordCharOperand() {
-        super();
-    }
-
-    @Override
-    public ParserResult get(BlockParser parser) {
-        return parser.readChar();
-    }
-
-    @Override
-    public String toString() {
-        return "char";
+    public static FunctionRecord decode(long id) {
+        return values()[(int) id];
     }
 }

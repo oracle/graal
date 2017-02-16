@@ -31,13 +31,13 @@ package com.oracle.truffle.llvm.runtime.types.symbols;
 
 public interface ValueSymbol extends Symbol {
 
-    String UNKNOWN = "<anon>";
-
     default int getAlign() {
         return 0;
     }
 
-    String getName();
+    default String getName() {
+        return LLVMIdentifier.UNKNOWN;
+    }
 
     @Override
     default boolean hasName() {

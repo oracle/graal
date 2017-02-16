@@ -30,13 +30,14 @@
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
 
 public abstract class ValueInstruction implements Instruction, ValueSymbol {
 
     private final Type type;
 
-    private String name = ValueSymbol.UNKNOWN;
+    private String name = LLVMIdentifier.UNKNOWN;
 
     ValueInstruction(Type type) {
         this.type = type;
@@ -64,6 +65,6 @@ public abstract class ValueInstruction implements Instruction, ValueSymbol {
 
     @Override
     public void setName(String name) {
-        this.name = "%" + name;
+        this.name = LLVMIdentifier.toLocalIdentifier(name);
     }
 }

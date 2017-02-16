@@ -27,19 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.parser.scanner;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Base64;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+final class BitStream {
 
-public final class Bitstream {
+    private static final long BYTE_MASK = 0xffL;
+    private final byte[] bitstream;
 
-    public static Bitstream create(Source source) {
+    private BitStream(byte[] bitstream) {
+        this.bitstream = bitstream;
+    }
+
+    public static BitStream create(Source source) {
         byte[] bytes;
         switch (source.getMimeType()) {
             case LLVMLanguage.LLVM_BITCODE_MIME_TYPE:
@@ -53,7 +60,7 @@ public final class Bitstream {
             default:
                 throw new UnsupportedOperationException();
         }
-        return new Bitstream(bytes);
+        return new BitStream(bytes);
     }
 
     private static byte[] read(String filename) {
@@ -64,12 +71,14 @@ public final class Bitstream {
         }
     }
 
-    private static final long BYTE_MASK = 0xffL;
-
-    private final byte[] bitstream;
-
-    private Bitstream(byte[] bitstream) {
-        this.bitstream = bitstream;
+    static long widthVBR(long value, long width) {
+        long total = 0;
+        long v = value;
+        do {
+            total += width;
+            v >>>= (width - 1);
+        } while (v != 0);
+        return total;
     }
 
     long read(long offset, long bits) {
@@ -93,16 +102,6 @@ public final class Bitstream {
 
     public long size() {
         return bitstream.length * Byte.SIZE;
-    }
-
-    static long widthVBR(long value, long width) {
-        long total = 0;
-        long v = value;
-        do {
-            total += width;
-            v >>>= (width - 1);
-        } while (v != 0);
-        return total;
     }
 
     private long read(long offset) {
