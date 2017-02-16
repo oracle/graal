@@ -711,7 +711,7 @@ public final class Breakpoint {
             if (!isResolved()) {
                 resolveBreakpoint();
             }
-            return new BreakpointNode(Breakpoint.this, context);
+            return new BreakpointNode(Breakpoint.this, context, session);
         }
 
     }
@@ -720,12 +720,14 @@ public final class Breakpoint {
 
         private final Breakpoint breakpoint;
         private final BranchProfile breakBranch = BranchProfile.create();
+        private final DebuggerSession session;
 
         @Child private ConditionalBreakNode breakCondition;
 
-        BreakpointNode(Breakpoint breakpoint, EventContext context) {
+        BreakpointNode(Breakpoint breakpoint, EventContext context, DebuggerSession session) {
             super(context);
             this.breakpoint = breakpoint;
+            this.session = session;
             if (breakpoint.condition != null) {
                 this.breakCondition = new ConditionalBreakNode(context, breakpoint);
             }
@@ -748,6 +750,9 @@ public final class Breakpoint {
 
         @Override
         protected void onEnter(VirtualFrame frame) {
+            if (!session.isBreakpointsActive()) {
+                return;
+            }
             BreakpointConditionFailure conditionError = null;
             try {
                 if (!shouldBreak(frame)) {
