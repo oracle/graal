@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.phases;
 
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -61,8 +62,8 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions;
  */
 public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
-    public InstrumentTruffleBoundariesPhase(OptionValues options) {
-        super(options);
+    public InstrumentTruffleBoundariesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, long[] accessTable) {
+        super(options, snippetReflection, accessTable);
     }
 
     @Override
@@ -92,7 +93,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
         return new BoundaryPoint(id, startIndex, n.getNodeSourcePosition());
     }
 
-    public static class BoundaryPoint extends Instrumentation.Point {
+    public class BoundaryPoint extends Instrumentation.Point {
         BoundaryPoint(int id, int rawIndex, NodeSourcePosition position) {
             super(id, rawIndex, position);
         }
@@ -109,7 +110,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
         @Override
         public long getHotness() {
-            return ACCESS_TABLE[rawIndex];
+            return accessTable[rawIndex];
         }
 
         @Override
