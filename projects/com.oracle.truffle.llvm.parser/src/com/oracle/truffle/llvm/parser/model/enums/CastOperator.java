@@ -60,7 +60,7 @@ public enum CastOperator {
     }
 
     /**
-     * Useful to get the llvm ir equivalent string of the enum
+     * Useful to get the llvm ir equivalent string of the enum.
      */
     public String getIrString() {
         return irString;
