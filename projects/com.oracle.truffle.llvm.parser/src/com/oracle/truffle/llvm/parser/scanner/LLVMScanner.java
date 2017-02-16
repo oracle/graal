@@ -229,6 +229,7 @@ public final class LLVMScanner {
                             long blobLength = read(Primitive.USER_OPERAND_BLOB_LENGTH);
                             alignInt();
                             final long maxBlobPartLength = Long.SIZE / Primitive.USER_OPERAND_LITERAL.getBits();
+                            recordBuffer.ensureFits(blobLength / maxBlobPartLength);
                             while (blobLength > 0) {
                                 final long l = blobLength <= maxBlobPartLength ? blobLength : maxBlobPartLength;
                                 final long blobValue = read((int) (Primitive.USER_OPERAND_LITERAL.getBits() * l));
@@ -252,6 +253,7 @@ public final class LLVMScanner {
             final AbbreviatedRecord elementScanner = operandScanners.get(operandScanners.size() - 1);
             final AbbreviatedRecord arrayScanner = () -> {
                 final long arrayLength = read(Primitive.USER_OPERAND_ARRAY_LENGTH);
+                recordBuffer.ensureFits(arrayLength);
                 for (int j = 0; j < arrayLength; j++) {
                     elementScanner.scan();
                 }
