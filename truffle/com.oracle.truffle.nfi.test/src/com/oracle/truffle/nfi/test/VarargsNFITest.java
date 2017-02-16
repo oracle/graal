@@ -41,12 +41,12 @@ import org.junit.Test;
 
 public class VarargsNFITest extends NFITest {
 
-    private static class PrintfNode extends Node {
+    private static class FormatNode extends Node {
 
         @Child Node bind = Message.createInvoke(1).createNode();
         @Child Node execute = Message.createExecute(0).createNode();
 
-        private String execute(TruffleObject snprintf, Object... args) {
+        private String execute(TruffleObject formatString, Object... args) {
             assert args[0] == null && args[1] == null;
             byte[] buffer = new byte[128];
             args[0] = JavaInterop.asTruffleObject(buffer);
@@ -54,7 +54,7 @@ public class VarargsNFITest extends NFITest {
 
             int size;
             try {
-                size = (Integer) ForeignAccess.sendExecute(execute, snprintf, args);
+                size = (Integer) ForeignAccess.sendExecute(execute, formatString, args);
             } catch (InteropException e) {
                 throw new AssertionError(e);
             } finally {
@@ -71,37 +71,37 @@ public class VarargsNFITest extends NFITest {
         }
     }
 
-    private static class SimplePrintfRoot extends TestRootNode {
+    private static class SimpleFormatRoot extends TestRootNode {
 
-        private final TruffleObject snprintf;
-        @Child PrintfNode printf = new PrintfNode();
+        private final TruffleObject formatString;
+        @Child FormatNode printf = new FormatNode();
 
-        SimplePrintfRoot(TruffleObject snprintf) {
-            this.snprintf = snprintf;
+        SimpleFormatRoot(TruffleObject formatString) {
+            this.formatString = formatString;
         }
 
         @Override
         public Object executeTest(VirtualFrame frame) {
-            return printf.execute(snprintf, null, null, "Hello, World %2.2f", 42.0);
+            return printf.execute(formatString, null, null, "Hello, World %f", 42.0);
         }
     }
 
     @Test
-    public void testSimplePrintf() {
-        TruffleObject snprintf = lookupAndBind("snprintf", "([sint8], uint64, string, ...double) : sint32");
-        Object ret = run(new SimplePrintfRoot(snprintf));
+    public void testSimpleFormat() {
+        TruffleObject formatString = lookupAndBind("format_string", "([sint8], uint64, string, ...double) : sint32");
+        Object ret = run(new SimpleFormatRoot(formatString));
         Assert.assertEquals("return value", "Hello, World 42.00", ret);
     }
 
-    private static final class PrintfSpec {
+    private static final class FormatSpec {
 
-        final TruffleObject snprintf;
+        final TruffleObject formatString;
         final Object[] args;
 
         final String expectedRet;
 
-        PrintfSpec(String expectedRet, String signature, Object... args) {
-            this.snprintf = lookupAndBind("snprintf", signature);
+        FormatSpec(String expectedRet, String signature, Object... args) {
+            this.formatString = lookupAndBind("format_string", signature);
             this.expectedRet = expectedRet;
 
             this.args = new Object[args.length + 2];
@@ -110,13 +110,13 @@ public class VarargsNFITest extends NFITest {
 
     }
 
-    private static class MultiPrintfRoot extends TestRootNode {
+    private static class MultiFormatRoot extends TestRootNode {
 
-        @Child PrintfNode printf = new PrintfNode();
+        @Child FormatNode printf = new FormatNode();
 
-        @CompilationFinal(dimensions = 1) final PrintfSpec[] specs;
+        @CompilationFinal(dimensions = 1) final FormatSpec[] specs;
 
-        public MultiPrintfRoot(PrintfSpec... specs) {
+        public MultiFormatRoot(FormatSpec... specs) {
             this.specs = specs;
         }
 
@@ -124,7 +124,7 @@ public class VarargsNFITest extends NFITest {
         @ExplodeLoop
         public Object executeTest(VirtualFrame frame) {
             for (int i = 0; i < specs.length; i++) {
-                String ret = printf.execute(specs[i].snprintf, specs[i].args);
+                String ret = printf.execute(specs[i].formatString, specs[i].args);
                 assertEquals(specs[i].expectedRet, ret);
             }
             return null;
@@ -132,47 +132,47 @@ public class VarargsNFITest extends NFITest {
     }
 
     @Test
-    public void testMultiSignaturePrintf() {
-        MultiPrintfRoot root = new MultiPrintfRoot(
-                        new PrintfSpec("15 37 28", "([sint8], uint64, string, ...sint64, sint64, sint64) : sint32", "%i %i %i", 15, 37, 28),
-                        new PrintfSpec("15 37 28.00", "([sint8], uint64, string, ...sint64, sint64, double) : sint32", "%i %i %2.2f", 15, 37, 28),
-                        new PrintfSpec("15 37.00 28", "([sint8], uint64, string, ...sint64, double, sint64) : sint32", "%i %2.2f %i", 15, 37, 28),
-                        new PrintfSpec("15 37.00 28.00", "([sint8], uint64, string, ...sint64, double, double) : sint32", "%i %2.2f %2.2f", 15, 37, 28),
-                        new PrintfSpec("15.00 37 28", "([sint8], uint64, string, ...double, sint64, sint64) : sint32", "%2.2f %i %i", 15, 37, 28),
-                        new PrintfSpec("15.00 37 28.00", "([sint8], uint64, string, ...double, sint64, double) : sint32", "%2.2f %i %2.2f", 15, 37, 28),
-                        new PrintfSpec("15.00 37.00 28", "([sint8], uint64, string, ...double, double, sint64) : sint32", "%2.2f %2.2f %i", 15, 37, 28),
-                        new PrintfSpec("15.00 37.00 28.00", "([sint8], uint64, string, ...double, double, double) : sint32", "%2.2f %2.2f %2.2f", 15, 37, 28));
+    public void testMultiSignatureFormat() {
+        MultiFormatRoot root = new MultiFormatRoot(
+                        new FormatSpec("15 37 28", "([sint8], uint64, string, ...sint64, sint64, sint64) : sint32", "%d %d %d", 15, 37, 28),
+                        new FormatSpec("15 37 28.00", "([sint8], uint64, string, ...sint64, sint64, double) : sint32", "%d %d %f", 15, 37, 28),
+                        new FormatSpec("15 37.00 28", "([sint8], uint64, string, ...sint64, double, sint64) : sint32", "%d %f %d", 15, 37, 28),
+                        new FormatSpec("15 37.00 28.00", "([sint8], uint64, string, ...sint64, double, double) : sint32", "%d %f %f", 15, 37, 28),
+                        new FormatSpec("15.00 37 28", "([sint8], uint64, string, ...double, sint64, sint64) : sint32", "%f %d %d", 15, 37, 28),
+                        new FormatSpec("15.00 37 28.00", "([sint8], uint64, string, ...double, sint64, double) : sint32", "%f %d %f", 15, 37, 28),
+                        new FormatSpec("15.00 37.00 28", "([sint8], uint64, string, ...double, double, sint64) : sint32", "%f %f %d", 15, 37, 28),
+                        new FormatSpec("15.00 37.00 28.00", "([sint8], uint64, string, ...double, double, double) : sint32", "%f %f %f", 15, 37, 28));
         run(root);
     }
 
     @Test
-    public void testMultiTypesPrintf() {
+    public void testMultiTypesFormat() {
         TruffleObject nil = JavaInterop.asTruffleObject(null);
-        MultiPrintfRoot root = new MultiPrintfRoot(
-                        new PrintfSpec("42 8472", "([sint8], uint64, string, ...sint64, sint64) : sint32", "%i %i", 42, 8472),
-                        new PrintfSpec("0 8472", "([sint8], uint64, string, ...pointer, sint64) : sint32", "%i %i", nil, 8472),
-                        new PrintfSpec("42.00 8472", "([sint8], uint64, string, ...double, sint64) : sint32", "%2.2f %i", 42, 8472),
-                        new PrintfSpec("hello 8472", "([sint8], uint64, string, ...string, sint64) : sint32", "%s %i", "hello", 8472),
-                        new PrintfSpec("42 world", "([sint8], uint64, string, ...sint64, string) : sint32", "%i %s", 42, "world"),
-                        new PrintfSpec("0 world", "([sint8], uint64, string, ...pointer, string) : sint32", "%i %s", nil, "world"),
-                        new PrintfSpec("42.00 world", "([sint8], uint64, string, ...double, string) : sint32", "%2.2f %s", 42, "world"),
-                        new PrintfSpec("hello world", "([sint8], uint64, string, ...string, string) : sint32", "%s %s", "hello", "world"));
+        MultiFormatRoot root = new MultiFormatRoot(
+                        new FormatSpec("42 8472", "([sint8], uint64, string, ...sint64, sint64) : sint32", "%d %d", 42, 8472),
+                        new FormatSpec("(nil) 8472", "([sint8], uint64, string, ...pointer, sint64) : sint32", "%p %d", nil, 8472),
+                        new FormatSpec("42.00 8472", "([sint8], uint64, string, ...double, sint64) : sint32", "%f %d", 42, 8472),
+                        new FormatSpec("hello 8472", "([sint8], uint64, string, ...string, sint64) : sint32", "%s %d", "hello", 8472),
+                        new FormatSpec("42 world", "([sint8], uint64, string, ...sint64, string) : sint32", "%d %s", 42, "world"),
+                        new FormatSpec("(nil) world", "([sint8], uint64, string, ...pointer, string) : sint32", "%p %s", nil, "world"),
+                        new FormatSpec("42.00 world", "([sint8], uint64, string, ...double, string) : sint32", "%f %s", 42, "world"),
+                        new FormatSpec("hello world", "([sint8], uint64, string, ...string, string) : sint32", "%s %s", "hello", "world"));
         run(root);
     }
 
     @Test
-    public void testVariableArgCountPrintf() {
+    public void testVariableArgCountFormat() {
         TruffleObject nil = JavaInterop.asTruffleObject(null);
         TruffleObject boxedX = JavaInterop.asTruffleObject("x");
-        MultiPrintfRoot root = new MultiPrintfRoot(
-                        new PrintfSpec("42", "([sint8], uint64, string, ...sint64) : sint32", "%i", 42),
-                        new PrintfSpec("42 x", "([sint8], uint64, string, ...sint64, string) : sint32", "%i %s", 42, "x"),
-                        new PrintfSpec("42 x 0", "([sint8], uint64, string, ...sint64, string, pointer) : sint32", "%i %s %i", 42, "x", nil),
-                        new PrintfSpec("42 x 0 42.00", "([sint8], uint64, string, ...sint64, string, pointer, double) : sint32", "%i %s %i %2.2f", 42, "x", nil, 42),
-                        new PrintfSpec("x", "([sint8], uint64, string, ...string) : sint32", "%s", boxedX),
-                        new PrintfSpec("x 0", "([sint8], uint64, string, ...string, pointer) : sint32", "%s %i", boxedX, nil),
-                        new PrintfSpec("x 0 42.00", "([sint8], uint64, string, ...string, pointer, double) : sint32", "%s %i %2.2f", boxedX, nil, 42),
-                        new PrintfSpec("x 0 42.00 42", "([sint8], uint64, string, ...string, pointer, double, sint64) : sint32", "%s %i %2.2f %i", boxedX, nil, 42, 42));
+        MultiFormatRoot root = new MultiFormatRoot(
+                        new FormatSpec("42", "([sint8], uint64, string, ...sint64) : sint32", "%d", 42),
+                        new FormatSpec("42 x", "([sint8], uint64, string, ...sint64, string) : sint32", "%d %s", 42, "x"),
+                        new FormatSpec("42 x (nil)", "([sint8], uint64, string, ...sint64, string, pointer) : sint32", "%d %s %p", 42, "x", nil),
+                        new FormatSpec("42 x (nil) 42.00", "([sint8], uint64, string, ...sint64, string, pointer, double) : sint32", "%d %s %p %f", 42, "x", nil, 42),
+                        new FormatSpec("x", "([sint8], uint64, string, ...string) : sint32", "%s", boxedX),
+                        new FormatSpec("x (nil)", "([sint8], uint64, string, ...string, pointer) : sint32", "%s %p", boxedX, nil),
+                        new FormatSpec("x (nil) 42.00", "([sint8], uint64, string, ...string, pointer, double) : sint32", "%s %p %f", boxedX, nil, 42),
+                        new FormatSpec("x (nil) 42.00 42", "([sint8], uint64, string, ...string, pointer, double, sint64) : sint32", "%s %p %f %d", boxedX, nil, 42, 42));
         run(root);
     }
 }
