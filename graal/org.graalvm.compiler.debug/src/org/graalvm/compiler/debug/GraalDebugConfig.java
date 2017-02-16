@@ -408,7 +408,6 @@ public class GraalDebugConfig implements DebugConfig {
         }
         Debug.setConfig(Debug.fixedConfig(options, Debug.BASIC_LOG_LEVEL, Debug.BASIC_LOG_LEVEL, false, false, false, false, false, dumpHandlers, verifyHandlers, output));
         Debug.log("Exception occurred in scope: %s", Debug.currentScope());
-        e.printStackTrace();
         Map<Object, Object> firstSeen = new IdentityHashMap<>();
         for (Object o : Debug.context()) {
             // Only dump a context object once.

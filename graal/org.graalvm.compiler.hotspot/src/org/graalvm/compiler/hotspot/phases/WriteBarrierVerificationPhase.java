@@ -150,6 +150,10 @@ public class WriteBarrierVerificationPhase extends Phase {
     }
 
     private static boolean isSafepoint(Node node) {
+        if (node instanceof FixedAccessNode) {
+            // Implicit null checks on reads or writes do not count.
+            return false;
+        }
         /*
          * LoopBegin nodes are also treated as safepoints since a bottom-up analysis is performed
          * and loop safepoints are placed before LoopEnd nodes. Possible elimination of write

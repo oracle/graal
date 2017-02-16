@@ -36,7 +36,7 @@ public class BoxingBenchmark extends GraalBenchmark {
 
     @State(Scope.Benchmark)
     public static class ThreadState {
-        int value;
+        int value = 42;
     }
 
     @Benchmark
