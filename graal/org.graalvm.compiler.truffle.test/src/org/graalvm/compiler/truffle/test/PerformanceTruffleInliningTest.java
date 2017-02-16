@@ -33,7 +33,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
 
     @Test
     public void testThreeTangledRecursions() {
-        // @formatter:off 
+        // @formatter:off
         OptimizedCallTarget target = builder.
                 target("three").
                     calls("three").
@@ -48,13 +48,13 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
                     calls("two").
                     calls("three").
                 buildTarget();
-        // @formatter:on 
+        // @formatter:on
         assertDecidingTakesLessThan(target, 1000);
     }
 
     @Test
     public void testFourTangledRecursions() {
-        // @formatter:off 
+        // @formatter:off
         OptimizedCallTarget target = builder.
                 target("four").
                     calls("four").
@@ -76,7 +76,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
                     calls("three").
                     calls("four").
                 buildTarget();
-        // @formatter:on 
+        // @formatter:on
         assertDecidingTakesLessThan(target, 1000);
     }
 
