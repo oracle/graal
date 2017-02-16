@@ -116,7 +116,8 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 cfg = graph.getLastSchedule().getCFG();
                 cfg.computePostdominators();
                 blockToNodes = graph.getLastSchedule().getBlockToNodesMap();
-                cfg.visitDominatorTree(new MoveGuardsUpwards(blockToNodes), graph.hasValueProxies());
+                cfg.visitDominatorTree(new MoveGuardsUpwards(blockToNodes),
+                                graph.hasValueProxies());
             } else {
                 cfg = ControlFlowGraph.compute(graph, true, true, true, true);
                 blockToNodes = null;
@@ -154,7 +155,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     if (newGuard == newlyCreatedGuard) {
                         // Register guard such that it will be processed by subsequent
                         // conditional elimination.
-                        blockToNodes.get(anchorBlock).add(newGuard);
+                        blockToNodes.get(b).add(newGuard);
                     }
                 }
             }
@@ -193,7 +194,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                             if (newGuard == newlyCreatedGuard) {
                                 // Register guard such that it will be processed by subsequent
                                 // conditional elimination.
-                                blockToNodes.get(anchorBlock).add(newGuard);
+                                blockToNodes.get(b).add(newGuard);
                             }
                         }
                     }

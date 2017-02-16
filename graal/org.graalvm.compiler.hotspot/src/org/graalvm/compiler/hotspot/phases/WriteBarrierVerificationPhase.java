@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
 
 /**
@@ -178,7 +179,7 @@ public class WriteBarrierVerificationPhase extends Phase {
         assert write instanceof WriteNode || write instanceof LogicCompareAndSwapNode || write instanceof LoweredAtomicReadAndWriteNode : "Node must be of type requiring a write barrier " + write;
         if (!barrier.usePrecise()) {
             if (barrier.getAddress() instanceof OffsetAddressNode && write.getAddress() instanceof OffsetAddressNode) {
-                return ((OffsetAddressNode) barrier.getAddress()).getBase() == ((OffsetAddressNode) write.getAddress()).getBase();
+                return GraphUtil.unproxify(((OffsetAddressNode) barrier.getAddress()).getBase()) == GraphUtil.unproxify(((OffsetAddressNode) write.getAddress()).getBase());
             }
         }
         return barrier.getAddress() == write.getAddress();

@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -95,21 +94,8 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         if (synonym != null) {
             return synonym;
         } else {
-            return new InstanceOfNode(checkedStamp, skipPi(object, checkedStamp), profile, anchor);
+            return new InstanceOfNode(checkedStamp, object, profile, anchor);
         }
-    }
-
-    public static ValueNode skipPi(ValueNode node, Stamp checkedStamp) {
-        ValueNode n = node;
-        while (n instanceof PiNode) {
-            PiNode piNode = (PiNode) n;
-            if (checkedStamp.join(piNode.stamp()).equals(checkedStamp)) {
-                n = piNode.getOriginalNode();
-            } else {
-                break;
-            }
-        }
-        return n;
     }
 
     @Override

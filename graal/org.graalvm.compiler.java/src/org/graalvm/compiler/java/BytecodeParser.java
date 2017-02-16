@@ -1486,6 +1486,8 @@ public class BytecodeParser implements GraphBuilderContext {
             return true;
         } else if (graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.CheckAll) {
             return false;
+        } else if (graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.ExplicitOnly) {
+            return false;
         } else if (graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.OmitAll) {
             return true;
         } else {

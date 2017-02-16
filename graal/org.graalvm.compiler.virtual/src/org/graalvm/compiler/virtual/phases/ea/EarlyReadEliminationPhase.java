@@ -48,4 +48,9 @@ public class EarlyReadEliminationPhase extends EffectsPhase<PhaseContext> {
         assert schedule == null;
         return new ReadEliminationClosure(cfg);
     }
+
+    @Override
+    public float codeSizeIncrease() {
+        return 2f;
+    }
 }

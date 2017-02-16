@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -188,6 +189,7 @@ public class ConditionalEliminationTest5 extends ConditionalEliminationTestBase 
         testConditionalElimination("test4Snippet5", "reference4Snippet");
     }
 
+    @Ignore
     @Test
     public void test5() {
         testConditionalElimination("test4Snippet4", "reference4Snippet", false, true);

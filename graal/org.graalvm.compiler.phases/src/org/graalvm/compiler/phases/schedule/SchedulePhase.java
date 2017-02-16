@@ -556,7 +556,7 @@ public final class SchedulePhase extends Phase {
              * Adds a new floating node into the micro block.
              */
             public void add(Node node) {
-                assert !(node instanceof FixedNode);
+                assert !(node instanceof FixedNode) : node;
                 NodeEntry newTail = new NodeEntry(node, null);
                 if (tail == null) {
                     tail = head = newTail;

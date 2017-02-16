@@ -273,6 +273,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (merge.usages().count() != 1 || merge.phis().count() != 1) {
                 return false;
             }
+
+            if (trueSuccessor().anchored().isNotEmpty() || falseSuccessor().anchored().isNotEmpty()) {
+                return false;
+            }
+
             PhiNode phi = merge.phis().first();
             ValueNode falseValue = phi.valueAt(falseEnd);
             ValueNode trueValue = phi.valueAt(trueEnd);

@@ -206,6 +206,11 @@ public class GraphBuilderConfiguration {
          */
         OmitAll,
         /**
+         * This mode omits exception edges at invokes, but not for implicit null checks or bounds
+         * checks.
+         */
+        ExplicitOnly,
+        /**
          * This mode uses profiling information to decide whether to use explicit exception edges.
          */
         Profile
