@@ -66,6 +66,8 @@ abstract class NativeArgumentBuffer {
 
     static final class Array extends NativeArgumentBuffer {
 
+        private static final Class<? extends ByteBuffer> heapByteBuffer = ByteBuffer.wrap(new byte[0]).getClass();
+
         final byte[] prim;
         private final ByteBuffer primBuffer;
 
@@ -77,22 +79,24 @@ abstract class NativeArgumentBuffer {
 
         @Override
         protected ByteBuffer getPrimBuffer() {
-            return primBuffer;
+            return heapByteBuffer.cast(primBuffer);
         }
     }
 
     static final class Direct extends NativeArgumentBuffer {
 
+        private static final Class<? extends ByteBuffer> directByteBuffer = ByteBuffer.allocateDirect(0).getClass();
+
         private final ByteBuffer primBuffer;
 
         Direct(ByteBuffer primBuffer, int objCount) {
             super(objCount);
-            this.primBuffer = primBuffer.slice().order(ByteOrder.nativeOrder());
+            this.primBuffer = directByteBuffer.cast(primBuffer).slice().order(ByteOrder.nativeOrder());
         }
 
         @Override
         protected ByteBuffer getPrimBuffer() {
-            return primBuffer;
+            return directByteBuffer.cast(primBuffer);
         }
     }
 

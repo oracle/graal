@@ -30,9 +30,6 @@
 #include <ffi.h>
 #include "internal.h"
 
-static jclass LibFFIClosure;
-static jmethodID LibFFIClosure_call;
-
 static jmethodID CallTarget_call;
 
 static jfieldID LibFFISignature_argTypes;
@@ -71,10 +68,6 @@ struct closure_data {
 
 
 void initializeClosure(JNIEnv *env) {
-    LibFFIClosure = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/LibFFIClosure"));
-    LibFFIClosure_call = (*env)->GetStaticMethodID(env, LibFFIClosure, "call",
-            "(Lcom/oracle/truffle/api/CallTarget;[Ljava/lang/Object;Ljava/nio/ByteBuffer;)Lcom/oracle/truffle/nfi/LibFFIClosure$RetPatches;");
-
     jclass CallTarget = (*env)->FindClass(env, "com/oracle/truffle/api/CallTarget");
     CallTarget_call = (*env)->GetMethodID(env, CallTarget, "call", "([Ljava/lang/Object;)Ljava/lang/Object;");
 
@@ -102,8 +95,13 @@ void initializeClosure(JNIEnv *env) {
     ClosureNativePointer_releaseClosureRef = (*env)->GetStaticMethodID(env, ClosureNativePointer, "releaseClosureRef", "(J)V");
 }
 
-static jobjectArray create_arg_buffers(JNIEnv *env, struct closure_data *data, ffi_cif *cif, void **args) {
-    jobjectArray argBuffers = (*env)->NewObjectArray(env, cif->nargs, Object, NULL);
+static jobjectArray create_arg_buffers(JNIEnv *env, struct closure_data *data, ffi_cif *cif, void **args, jobject retBuffer) {
+    int length = cif->nargs;
+    if (retBuffer) {
+        length += 1;
+    }
+
+    jobjectArray argBuffers = (*env)->NewObjectArray(env, length, Object, NULL);
     int i;
     for (i = 0; i < cif->nargs; i++) {
         switch (data->argTypes[i]) {
@@ -125,8 +123,12 @@ static jobjectArray create_arg_buffers(JNIEnv *env, struct closure_data *data, f
                 (*env)->SetObjectArrayElement(env, argBuffers, i, *(jobject *) args[i]);
                 break;
         }
-
     }
+
+    if (retBuffer) {
+        (*env)->SetObjectArrayElement(env, argBuffers, length - 1, retBuffer);
+    }
+
     return argBuffers;
 }
 
@@ -151,18 +153,15 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
 
     (*env)->PushLocalFrame(env, 8);
 
-    jobjectArray argBuffers = create_arg_buffers(env, data, cif, args);
-
-    jobject retBuffer = NULL;
-    if (cif->rtype != &ffi_type_void) {
-        int retSize = cif->rtype->size;
-        if (retSize < sizeof(ffi_arg)) {
-            retSize = sizeof(ffi_arg);
-        }
-        retBuffer = (*env)->NewDirectByteBuffer(env, ret, retSize);
+    int retSize = cif->rtype->size;
+    if (retSize < sizeof(ffi_arg)) {
+        retSize = sizeof(ffi_arg);
     }
+    jobject retBuffer = (*env)->NewDirectByteBuffer(env, ret, retSize);
 
-    jobject retPatches = (*env)->CallStaticObjectMethod(env, LibFFIClosure, LibFFIClosure_call, data->callTarget, argBuffers, retBuffer);
+    jobjectArray argBuffers = create_arg_buffers(env, data, cif, args, retBuffer);
+
+    jobject retPatches = (*env)->CallObjectMethod(env, data->callTarget, CallTarget_call, argBuffers);
 
     if (retPatches) {
         int patchCount = (*env)->GetIntField(env, retPatches, RetPatches_count);
@@ -190,7 +189,7 @@ static void invoke_closure_object_ret(ffi_cif *cif, void *ret, void **args, void
 
     (*env)->PushLocalFrame(env, 4);
 
-    jobjectArray argBuffers = create_arg_buffers(env, data, cif, args);
+    jobjectArray argBuffers = create_arg_buffers(env, data, cif, args, NULL);
     jobject retObj = (*env)->CallObjectMethod(env, data->callTarget, CallTarget_call, argBuffers);
 
     serialize_ret_value(env, retObj, ret);
@@ -204,7 +203,7 @@ static void invoke_closure_void_ret(ffi_cif *cif, void *ret, void **args, void *
 
     (*env)->PushLocalFrame(env, 4);
 
-    jobjectArray argBuffers = create_arg_buffers(env, data, cif, args);
+    jobjectArray argBuffers = create_arg_buffers(env, data, cif, args, NULL);
     (*env)->CallObjectMethod(env, data->callTarget, CallTarget_call, argBuffers);
 
     (*env)->PopLocalFrame(env, NULL);
