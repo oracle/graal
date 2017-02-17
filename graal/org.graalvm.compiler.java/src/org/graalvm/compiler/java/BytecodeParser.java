@@ -2093,7 +2093,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (GraphUtil.originalValue(lockedObject) != GraphUtil.originalValue(x)) {
             throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", GraphUtil.originalValue(x), GraphUtil.originalValue(lockedObject)));
         }
-        MonitorExitNode monitorExit = append(new MonitorExitNode(x, monitorId, escapedReturnValue));
+        MonitorExitNode monitorExit = append(new MonitorExitNode(lockedObject, monitorId, escapedReturnValue));
         monitorExit.setStateAfter(createFrameState(bci, monitorExit));
     }
 
