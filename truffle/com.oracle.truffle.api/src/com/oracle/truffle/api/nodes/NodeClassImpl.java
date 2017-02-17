@@ -165,7 +165,7 @@ final class NodeClassImpl extends NodeClass {
     @Override
     public Iterator<Node> makeIterator(Node node) {
         assert clazz.isInstance(node);
-        return new NodeIterator(this, node);
+        return new NodeIterator(this, node, getNodeFields(null).iterator());
     }
 
     @Override
@@ -313,75 +313,4 @@ final class NodeClassImpl extends NodeClass {
         return true;
     }
 
-    private static final class NodeIterator implements Iterator<Node> {
-        private final NodeClassImpl nodeClass;
-        private final NodeFieldAccessor[] fields;
-        private final Node node;
-
-        private int fieldIndex;
-        private Node next;
-        private int childrenIndex;
-        private Object[] children;
-
-        protected NodeIterator(NodeClassImpl nodeClass, Node node) {
-            this.nodeClass = nodeClass;
-            this.fields = nodeClass.fields;
-            this.node = node;
-            advance();
-        }
-
-        private void advance() {
-            if (advanceChildren()) {
-                return;
-            }
-            while (fieldIndex < fields.length) {
-                NodeFieldAccessor field = fields[fieldIndex];
-                fieldIndex++;
-                if (nodeClass.isChildField(field)) {
-                    next = (Node) nodeClass.getFieldObject(field, node);
-                    return;
-                } else if (nodeClass.isChildrenField(field)) {
-                    children = (Object[]) nodeClass.getFieldObject(field, node);
-                    childrenIndex = 0;
-                    if (advanceChildren()) {
-                        return;
-                    }
-                } else if (nodeClass.nodeFieldsOrderedByKind()) {
-                    break;
-                }
-            }
-            next = null;
-        }
-
-        private boolean advanceChildren() {
-            if (children == null) {
-                return false;
-            } else if (childrenIndex < children.length) {
-                next = (Node) children[childrenIndex];
-                childrenIndex++;
-                return true;
-            } else {
-                children = null;
-                childrenIndex = 0;
-                return false;
-            }
-        }
-
-        public boolean hasNext() {
-            return next != null;
-        }
-
-        public Node next() {
-            Node result = next;
-            if (result == null) {
-                throw new NoSuchElementException();
-            }
-            advance();
-            return result;
-        }
-
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
 }

@@ -65,35 +65,49 @@ public abstract class NodeClass {
     /** @since 0.8 or earlier */
     @SuppressWarnings("deprecation")
     @Deprecated
-    public abstract NodeFieldAccessor getNodeClassField();
+    public NodeFieldAccessor getNodeClassField() {
+        return null;
+    }
 
     /** @since 0.8 or earlier */
     @SuppressWarnings("deprecation")
     @Deprecated
-    public abstract NodeFieldAccessor[] getCloneableFields();
+    public NodeFieldAccessor[] getCloneableFields() {
+        return null;
+    }
 
     /** @since 0.8 or earlier */
     @SuppressWarnings("deprecation")
     @Deprecated
-    public abstract NodeFieldAccessor[] getFields();
+    public NodeFieldAccessor[] getFields() {
+        return null;
+    }
 
     /** @since 0.8 or earlier */
     @SuppressWarnings("deprecation")
     @Deprecated
-    public abstract NodeFieldAccessor getParentField();
+    public NodeFieldAccessor getParentField() {
+        return null;
+    }
 
     /** @since 0.8 or earlier */
     @SuppressWarnings("deprecation")
     @Deprecated
-    public abstract NodeFieldAccessor[] getChildFields();
+    public NodeFieldAccessor[] getChildFields() {
+        return null;
+    }
 
     /** @since 0.8 or earlier */
     @SuppressWarnings("deprecation")
     @Deprecated
-    public abstract NodeFieldAccessor[] getChildrenFields();
+    public NodeFieldAccessor[] getChildrenFields() {
+        return null;
+    }
 
     /** @since 0.8 or earlier */
-    public abstract Iterator<Node> makeIterator(Node node);
+    public Iterator<Node> makeIterator(Node node) {
+        return new NodeIterator(this, node, getNodeFields().iterator());
+    }
 
     /**
      * The {@link Class} this <code>NodeClass</code> has been {@link #NodeClass(java.lang.Class)
