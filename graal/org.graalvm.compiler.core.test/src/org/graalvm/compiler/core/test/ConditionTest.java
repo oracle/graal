@@ -35,7 +35,7 @@ import org.junit.Test;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.test.AddExports;
 
-@AddExports("jdk.vm.ci/jdk.vm.ci.meta")
+@AddExports("jdk.internal.vm.ci/jdk.vm.ci.meta")
 public class ConditionTest {
 
     @Test
