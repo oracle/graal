@@ -151,10 +151,11 @@ final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory 
         @Override
         public Object execute(VirtualFrame frame) {
             EngineTruffleObject engineTruffleObject = (EngineTruffleObject) ForeignAccess.getReceiver(frame);
-            final Object[] arguments = frame.getArguments();
+            Object[] oldArguments = frame.getArguments();
+            final Object[] arguments = new Object[oldArguments.length];
             TruffleObject delegate = engineTruffleObject.getDelegate();
-            // hacky to update the receiver like this
             arguments[0] = delegate;
+            System.arraycopy(oldArguments, 1, arguments, 1, oldArguments.length - 1);
             Object res;
             if (engine.executor() == null) {
                 res = messageTarget.call(arguments);
