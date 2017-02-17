@@ -141,7 +141,7 @@ public class JavaInteropTest {
 
     }
 
-    private static CallTarget sendKeys() {
+    static CallTarget sendKeys() {
         final Node keysNode = Message.KEYS.createNode();
 
         class SendKeys extends RootNode {
