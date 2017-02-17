@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.types;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public class PointerType implements Type {
 
@@ -40,6 +41,11 @@ public class PointerType implements Type {
 
     public PointerType(Type type) {
         this.type = type;
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override

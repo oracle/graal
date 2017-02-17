@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public interface Type {
 
@@ -45,6 +46,8 @@ public interface Type {
         }
         return new LLVMType(this.getLLVMBaseType());
     }
+
+    void accept(TypeVisitor visitor);
 
     default LLVMBaseType getLLVMBaseType() {
         throw new AssertionError("Cannot resolve to LLVMBaseType: " + this);

@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class IntegerType implements Type {
 
@@ -55,6 +56,11 @@ public final class IntegerType implements Type {
     public IntegerType(int bits) {
         super();
         this.bits = bits;
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override

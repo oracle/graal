@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,51 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.constants;
+package com.oracle.truffle.llvm.runtime.types.visitors;
 
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.BigIntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.IntegerConstantType;
+import com.oracle.truffle.llvm.runtime.types.IntegerType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantPointerType;
+import com.oracle.truffle.llvm.runtime.types.metadata.MetadataConstantType;
 
-public final class StringConstant extends AbstractConstant {
+public interface TypeVisitor {
 
-    private final String value;
+    void visit(BigIntegerConstantType bigIntegerConstantType);
 
-    private final boolean isCString;
+    void visit(FloatingPointType floatingPointType);
 
-    public StringConstant(Type type, String value, boolean isCString) {
-        super(type);
-        this.value = value;
-        this.isCString = isCString;
-    }
+    void visit(FunctionType functionType);
 
-    @Override
-    public void accept(ConstantVisitor visitor) {
-        visitor.visit(this);
-    }
+    void visit(IntegerConstantType integerConstantType);
 
-    public String getString() {
-        return value;
-    }
+    void visit(IntegerType integerType);
 
-    public boolean isCString() {
-        return isCString;
-    }
+    void visit(MetadataConstantType metadataConstantType);
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
+    void visit(MetadataConstantPointerType metadataConstantPointerType);
 
-        sb.append("c\"");
-        for (int i = 0; i < value.length(); i++) {
-            byte b = (byte) value.charAt(i);
-            if (b < ' ' || b >= '~') {
-                sb.append(String.format("\\%02X", b));
-            } else {
-                sb.append((char) b);
-            }
-        }
-        sb.append("\"");
+    void visit(MetaType metaType);
 
-        return sb.toString();
-    }
+    void visit(PointerType pointerType);
+
+    void visit(ArrayType arrayType);
+
+    void visit(StructureType structureType);
+
+    void visit(VectorType vectorType);
+
 }

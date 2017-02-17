@@ -98,6 +98,7 @@ import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI16VectorArithmeticNode
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI16VectorArithmeticNodeFactory.LLVMI16VectorSubNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI16VectorArithmeticNodeFactory.LLVMI16VectorUDivNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI16VectorArithmeticNodeFactory.LLVMI16VectorURemNodeGen;
+import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI1VectorArithmeticNodeFactory.LLVMI1VectorAddNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI32VectorArithmeticNodeFactory.LLVMI32VectorAddNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI32VectorArithmeticNodeFactory.LLVMI32VectorDivNodeGen;
 import com.oracle.truffle.llvm.nodes.op.arith.vector.LLVMI32VectorArithmeticNodeFactory.LLVMI32VectorMulNodeGen;
@@ -153,6 +154,8 @@ final class LLVMArithmeticFactory {
                 return visitBinaryDoubleInstruction(type, left, right);
             case X86_FP80:
                 return visitBinary80BitFloatInstruction(type, left, right);
+            case I1_VECTOR:
+                return visitBinaryI1VectorInstruction(type, left, right);
             case I8_VECTOR:
                 return visitBinaryI8VectorInstruction(type, left, right);
             case I16_VECTOR:
@@ -186,6 +189,15 @@ final class LLVMArithmeticFactory {
                 return LLVMIVarURemNodeGen.create(left, right);
             case REMAINDER:
                 return LLVMIVarRemNodeGen.create(left, right);
+            default:
+                throw new AssertionError(type);
+        }
+    }
+
+    private static LLVMExpressionNode visitBinaryI1VectorInstruction(LLVMArithmeticInstructionType type, LLVMExpressionNode left, LLVMExpressionNode right) {
+        switch (type) {
+            case ADDITION:
+                return LLVMI1VectorAddNodeGen.create(left, right);
             default:
                 throw new AssertionError(type);
         }

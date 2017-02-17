@@ -34,6 +34,7 @@ import java.util.Objects;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock;
 import com.oracle.truffle.llvm.runtime.types.metadata.MetadataBlock.MetadataReference;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public class ArrayType implements AggregateType {
 
@@ -47,6 +48,11 @@ public class ArrayType implements AggregateType {
         super();
         this.elementType = type;
         this.length = size;
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override

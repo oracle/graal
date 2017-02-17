@@ -75,20 +75,18 @@ class LLVMRootNodeFactory {
     }
 
     private static Object[] createArgs(Source sourceFile, Object[] mainArgs, LLVMRuntimeType[] llvmRuntimeTypes) {
-        int argsCount;
-        if (mainArgs == null) {
-            argsCount = 1;
-        } else {
-            argsCount = mainArgs.length + 1;
-        }
+        int mainArgsCount = mainArgs == null ? 0 : mainArgs.length;
+        int argsCount = mainArgsCount + 1;
         if (llvmRuntimeTypes.length == 0) {
             return new Object[0];
         } else if (llvmRuntimeTypes.length == 1) {
             return new Object[]{argsCount};
         } else {
-            Object[] args = new Object[mainArgs.length + 1];
+            Object[] args = new Object[argsCount];
             args[0] = sourceFile.getPath() == null ? "" : sourceFile.getPath();
-            System.arraycopy(mainArgs, 0, args, 1, mainArgs.length);
+            if (mainArgsCount > 0) {
+                System.arraycopy(mainArgs, 0, args, 1, mainArgsCount);
+            }
             LLVMAddress allocatedArgsStartAddress = getArgsAsStringArray(args);
             // Checkstyle: stop magic number check
             if (llvmRuntimeTypes.length == 2) {

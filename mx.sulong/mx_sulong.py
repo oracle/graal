@@ -150,7 +150,7 @@ def pullLLVMBinaries(args=None):
     osStr = mx.get_os()
     arch = mx.get_arch()
     if osStr == 'windows':
-        print 'windows currently only supported with cygwin!'
+        mx.log_error('windows currently only supported with cygwin!')
         return
     elif osStr == 'linux':
         if arch == 'amd64':
@@ -162,7 +162,7 @@ def pullLLVMBinaries(args=None):
     elif osStr == 'cygwin':
         urls = ['https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/clang+llvm-3.2-x86-mingw32-EXPERIMENTAL.tar.gz']
     else:
-        print osStr, arch, "not supported!"
+        mx.log_error("{0} {1} not supported!".format(osStr, arch))
     localPath = pullsuite(toolDir, urls)
     tar(localPath, toolDir, stripLevels=1)
     os.remove(localPath)
@@ -257,7 +257,7 @@ def pullInstallDragonEgg(args=None):
     os.environ['CC'] = getGCC()
     pullLLVMBinaries()
     os.environ['LLVM_CONFIG'] = findLLVMProgram('llvm-config')
-    print os.environ['LLVM_CONFIG']
+    mx.log(os.environ['LLVM_CONFIG'])
     compileCommand = ['make']
     return mx.run(compileCommand, cwd=_toolDir + 'dragonegg/dragonegg-3.2.src')
 
@@ -368,7 +368,7 @@ def runChecks(args=None):
     error = False
     for checkName in parsedArgs.check:
         if parsedArgs.verbose:
-            print 'executing', checkName
+            mx.log('executing {0}'.format(checkName))
         command = checkCases[checkName]
         optionalRetValue = command(vmArgs)
         if optionalRetValue:
@@ -417,7 +417,7 @@ def getSearchPathOption(lib_args=None):
     osStr = mx.get_os()
     index = {'linux': 0, 'darwin': 1}[mx.get_os()]
     if index is None:
-        print osStr, "not supported!"
+        mx.log_error("{0} not supported!".format(osStr))
 
     for lib_arg in ['-lc', '-lstdc++'] + lib_args:
         if lib_arg in lib_aliases:
@@ -609,14 +609,14 @@ def getGCCProgramPath(args=None):
     if args is None or len(args) != 1:
         exit("please supply one GCC program to be located!")
     else:
-        print findGCCProgram(args[0])
+        mx.log(findGCCProgram(args[0]))
 
 def getLLVMProgramPath(args=None):
     """gets a path with a supported version of the specified LLVM program (e.g. clang)"""
     if args is None or len(args) != 1:
         exit("please supply one LLVM program to be located!")
     else:
-        print findLLVMProgram(args[0])
+        mx.log(findLLVMProgram(args[0]))
 
 def compileWithClang(args=None, version=None, out=None, err=None):
     """runs Clang"""
@@ -761,8 +761,8 @@ def mdlCheck(args=None):
                     try:
                         subprocess.check_output(mdlCheckCommand, stderr=subprocess.STDOUT, shell=True)
                     except subprocess.CalledProcessError as e:
-                        print e # prints command and return value
-                        print e.output # prints process output
+                        mx.log_error(e) # prints command and return value
+                        mx.log_error(e.output) # prints process output
                         error = True
     if error:
         exit(-1)
@@ -792,7 +792,7 @@ def checkCFiles(targetDir):
                 if not checkCFile(path + '/' + f):
                     error = True
     if error:
-        print "found formatting errors!"
+        mx.log_error("found formatting errors!")
         exit(-1)
 
 def checkCFile(targetFile):
@@ -807,8 +807,8 @@ def checkCFile(targetFile):
     if not formattedContent == originalContent:
         # modify the file to the right format
         subprocess.check_output(formatCommand + ['-i'])
-        print '\n'.join(formattedContent)
-        print '\nmodified formatting in', targetFile, 'to the format above'
+        mx.log('\n'.join(formattedContent))
+        mx.log('\nmodified formatting in {0} to the format above'.format(targetFile))
         return False
     return True
 
@@ -818,7 +818,7 @@ def checkNoHttp(args=None):
         line_number = 0
         for line in open(f):
             if "http" + chr(58) + "//" in line:
-                print "http:" + chr(58) + " in line " + str(line_number) + " of " + f + " could be a security issue! please change to https://"
+                mx.log_error("http:" + chr(58) + " in line " + str(line_number) + " of " + str(f) + " could be a security issue! please change to https://")
                 exit(-1)
             line_number += 1
 

@@ -95,6 +95,9 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     public void accept(ModelVisitor visitor) {
+        if (targetDataLayout != null) {
+            visitor.visit(targetDataLayout);
+        }
         types.forEach(visitor::visit);
         for (GlobalValueSymbol variable : globals) {
             variable.accept(visitor);
@@ -104,8 +107,8 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public void createAlias(Type type, int aliasedValue, long linkage) {
-        GlobalAlias alias = new GlobalAlias(type, aliasedValue, linkage);
+    public void createAlias(Type type, int aliasedValue, long linkage, long visibility) {
+        GlobalAlias alias = GlobalAlias.create(type, aliasedValue, linkage, visibility);
 
         symbols.addSymbol(alias);
         globals.add(alias);
@@ -200,12 +203,12 @@ public final class ModelModule implements ModuleGenerator {
     }
 
     @Override
-    public void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage) {
+    public void createGlobal(Type type, boolean isConstant, int initialiser, int align, long linkage, long visibility) {
         final GlobalValueSymbol global;
         if (isConstant) {
-            global = GlobalConstant.create(type, initialiser, align, linkage);
+            global = GlobalConstant.create(type, initialiser, align, linkage, visibility);
         } else {
-            global = GlobalVariable.create(type, initialiser, align, linkage);
+            global = GlobalVariable.create(type, initialiser, align, linkage, visibility);
         }
         symbols.addSymbol(global);
         globals.add(global);
