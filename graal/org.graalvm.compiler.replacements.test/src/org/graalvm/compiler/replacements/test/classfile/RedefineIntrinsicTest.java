@@ -48,17 +48,17 @@ import org.junit.Test;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.replacements.test.ReplacementsTest;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests that intrinsics (and snippets) are isolated from bytecode instrumentation.
  */
-public class RedefineIntrinsicTest extends GraalCompilerTest {
+public class RedefineIntrinsicTest extends ReplacementsTest {
 
     public static class Original {
 
@@ -80,7 +80,7 @@ public class RedefineIntrinsicTest extends GraalCompilerTest {
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
-        BytecodeProvider replacementBytecodeProvider = getReplacements().getReplacementBytecodeProvider();
+        BytecodeProvider replacementBytecodeProvider = getSystemClassLoaderBytecodeProvider();
         Registration r = new Registration(invocationPlugins, Original.class, replacementBytecodeProvider);
         r.registerMethodSubstitution(Intrinsic.class, "getValue");
         return super.editGraphBuilderConfiguration(conf);
