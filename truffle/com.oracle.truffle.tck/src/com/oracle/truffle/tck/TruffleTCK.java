@@ -2218,7 +2218,7 @@ public abstract class TruffleTCK {
         CompoundObject obj = value.as(CompoundObject.class);
         assertNotNull("Compound object for " + value + " found", obj);
         int traverse = RANDOM.nextInt(10);
-        for (int i = 2; i <= traverse; i++) {
+        for (int i = 1; i <= traverse; i++) {
             obj = obj.returnsThis();
             assertNotNull("Remains non-null even after " + i + " iteration", obj);
         }
