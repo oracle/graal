@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.runtime.types;
 import java.math.BigInteger;
 import java.util.Objects;
 
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
+
 public final class BigIntegerConstantType implements Type {
 
     private final IntegerType type;
@@ -41,6 +43,11 @@ public final class BigIntegerConstantType implements Type {
     public BigIntegerConstantType(IntegerType type, BigInteger value) {
         this.type = type;
         this.value = value;
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override
@@ -96,4 +103,5 @@ public final class BigIntegerConstantType implements Type {
         }
         return String.format("%s %s", type, value);
     }
+
 }

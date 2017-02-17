@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.types;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public enum MetaType implements Type {
 
@@ -42,6 +43,11 @@ public enum MetaType implements Type {
     TOKEN,
     METADATA,
     X86_MMX;
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
+    }
 
     @Override
     public String toString() {

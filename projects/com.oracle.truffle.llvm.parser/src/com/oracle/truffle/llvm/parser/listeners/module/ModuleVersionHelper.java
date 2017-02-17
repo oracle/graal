@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.listeners.module;
 
+import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -55,14 +56,18 @@ public abstract class ModuleVersionHelper {
 
         @Override
         public void createGlobalVariable(Module m, long[] args) {
-            int i = 0;
-            Type type = m.types.get(args[i++]);
-            boolean isConstant = (args[i++] & 1) == 1;
-            int initialiser = (int) args[i++];
-            long linkage = args[i++];
-            int align = (int) args[i];
+            Type type = m.types.get(args[0]);
+            boolean isConstant = (args[1] & 1) == 1;
+            int initialiser = (int) args[2];
+            long linkage = args[3];
+            int align = (int) args[4];
 
-            m.generator.createGlobal(type, isConstant, initialiser, align, linkage);
+            long visibility = Visibility.DEFAULT.getEncodedValue();
+            if (args.length >= 7) {
+                visibility = args[6];
+            }
+
+            m.generator.createGlobal(type, isConstant, initialiser, align, linkage, visibility);
             m.symbols.add(type);
         }
 
@@ -84,14 +89,18 @@ public abstract class ModuleVersionHelper {
 
         @Override
         public void createGlobalVariable(Module m, long[] args) {
-            int i = 0;
-            Type type = new PointerType(m.types.get(args[i++]));
-            boolean isConstant = (args[i++] & 1) == 1;
-            int initialiser = (int) args[i++];
-            long linkage = args[i++];
-            int align = (int) args[i];
+            Type type = new PointerType(m.types.get(args[0]));
+            boolean isConstant = (args[1] & 1) == 1;
+            int initialiser = (int) args[2];
+            long linkage = args[3];
+            int align = (int) args[4];
 
-            m.generator.createGlobal(type, isConstant, initialiser, align, linkage);
+            long visibility = Visibility.DEFAULT.getEncodedValue();
+            if (args.length >= 7) {
+                visibility = args[6];
+            }
+
+            m.generator.createGlobal(type, isConstant, initialiser, align, linkage, visibility);
             m.symbols.add(type);
         }
 

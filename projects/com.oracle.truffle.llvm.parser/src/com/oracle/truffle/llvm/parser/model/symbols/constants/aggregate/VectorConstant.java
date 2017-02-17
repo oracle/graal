@@ -29,12 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate;
 
+import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 
 public final class VectorConstant extends AggregateConstant {
 
     VectorConstant(VectorType type, int elemCount) {
         super(type, elemCount);
+    }
+
+    @Override
+    public void accept(ConstantVisitor visitor) {
+        visitor.visit(this);
     }
 
     public int getLength() {

@@ -58,6 +58,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigInteger
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
+import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.runtime.types.FloatingPointType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -84,6 +85,11 @@ public final class FunctionDefinition extends FunctionType implements Constant, 
         super(type.getReturnType(), type.getArgumentTypes(), type.isVarArg());
         this.metadata = metadata;
         namesToTypes = new HashMap<>();
+    }
+
+    @Override
+    public void accept(ConstantVisitor visitor) {
+        visitor.visit(this);
     }
 
     public void accept(FunctionVisitor visitor) {

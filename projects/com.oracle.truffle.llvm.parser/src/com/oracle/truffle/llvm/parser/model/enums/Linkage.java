@@ -46,8 +46,7 @@ public enum Linkage {
     AVAILABLE_EXTERNALLY("available_externally", 12L),
     LINKER_PRIVATE("linker_private", 13L),
     LINKER_PRIVATE_WEAK("linker_private_weak", 14L),
-    LINK_ONCE_ODR_AUTO_HIDE("linkonce_odr_auto_hide", 15L),
-    UNKNOWN("", -1); // TODO: required by LLVM IR Parser, should be removed when no longer needed
+    LINK_ONCE_ODR_AUTO_HIDE("linkonce_odr_auto_hide", 15L);
 
     private final String irString;
 
@@ -63,10 +62,6 @@ public enum Linkage {
     }
 
     public static Linkage decode(long value) {
-        if (value == UNKNOWN.getEncodedValue()) {
-            // TODO remove this together with UNKNOWN
-            return EXTERNAL;
-        }
         for (Linkage linkage : values()) {
             if (linkage.getEncodedValue() == value) {
                 return linkage;
@@ -75,12 +70,8 @@ public enum Linkage {
         return EXTERNAL;
     }
 
-    public String getIrString() {
-        return irString;
-    }
-
     @Override
     public String toString() {
-        return name().toLowerCase();
+        return irString;
     }
 }

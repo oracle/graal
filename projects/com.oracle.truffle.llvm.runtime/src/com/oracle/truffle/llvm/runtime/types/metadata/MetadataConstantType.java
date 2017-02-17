@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.types.metadata;
 
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public class MetadataConstantType implements Type {
 
@@ -38,6 +39,11 @@ public class MetadataConstantType implements Type {
 
     public MetadataConstantType(long value) {
         this.value = value;
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override
