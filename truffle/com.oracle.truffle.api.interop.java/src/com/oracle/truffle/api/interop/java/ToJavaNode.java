@@ -112,14 +112,14 @@ abstract class ToJavaNode extends Node {
     @TruffleBoundary
     private static <T> T asJavaObject(Class<T> clazz, TypeAndClass<?> type, TruffleObject foreignObject) {
         Object obj;
+        if (foreignObject == null) {
+            return null;
+        }
         if (clazz.isInstance(foreignObject)) {
             obj = foreignObject;
         } else {
             if (!clazz.isInterface()) {
                 throw new IllegalArgumentException();
-            }
-            if (foreignObject == null) {
-                return null;
             }
             if (clazz == List.class && Boolean.TRUE.equals(binaryMessage(Message.HAS_SIZE, foreignObject))) {
                 TypeAndClass<?> elementType = type.getParameterType(0);
