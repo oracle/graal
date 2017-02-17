@@ -677,8 +677,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             assert guard != null;
             if (newStamp != null) {
                 ValueNode value = maybeProxiedValue;
-                ValueNode proxiedValue = value;
+                ValueNode proxiedValue = null;
                 if (value instanceof ValueProxy) {
+                    proxiedValue = value;
                     value = GraphUtil.unproxify(value);
                 }
                 counterStampsRegistered.increment();
