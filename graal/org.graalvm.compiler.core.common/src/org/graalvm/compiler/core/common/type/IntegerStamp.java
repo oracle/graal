@@ -427,6 +427,13 @@ public final class IntegerStamp extends PrimitiveStamp {
         return null;
     }
 
+    public static boolean addCanOverflow(IntegerStamp a, IntegerStamp b) {
+        assert a.getBits() == b.getBits();
+        return addOverflowsPositively(a.upperBound(), b.upperBound(), a.getBits()) ||
+                        addOverflowsNegatively(a.lowerBound(), b.lowerBound(), a.getBits());
+
+    }
+
     public static boolean addOverflowsPositively(long x, long y, int bits) {
         long result = x + y;
         if (bits == 64) {
@@ -486,6 +493,58 @@ public final class IntegerStamp extends PrimitiveStamp {
                 return result < CodeUtil.minValue(bits);
             }
         }
+    }
+
+    public static boolean multiplicationCanOverflow(IntegerStamp a, IntegerStamp b) {
+        // see IntegerStamp#foldStamp for details
+        assert a.getBits() == b.getBits();
+        if (a.upMask() == 0) {
+            return false;
+        } else if (b.upMask() == 0) {
+            return false;
+        }
+        if (a.isUnrestricted()) {
+            return true;
+        }
+        if (b.isUnrestricted()) {
+            return true;
+        }
+        int bits = a.getBits();
+        // Checkstyle: stop
+        long minN_a = a.lowerBound();
+        long maxN_a = Math.min(0, a.upperBound());
+        long minP_a = Math.max(0, a.lowerBound());
+        long maxP_a = a.upperBound();
+
+        long minN_b = b.lowerBound();
+        long maxN_b = Math.min(0, b.upperBound());
+        long minP_b = Math.max(0, b.lowerBound());
+        long maxP_b = b.upperBound();
+        // Checkstyle: resume
+
+        boolean mayOverflow = false;
+        if (a.canBePositive()) {
+            if (b.canBePositive()) {
+                mayOverflow |= IntegerStamp.multiplicationOverflows(maxP_a, maxP_b, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(minP_a, minP_b, bits);
+            }
+            if (b.canBeNegative()) {
+                mayOverflow |= IntegerStamp.multiplicationOverflows(minP_a, maxN_b, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(maxP_a, minN_b, bits);
+
+            }
+        }
+        if (a.canBeNegative()) {
+            if (b.canBePositive()) {
+                mayOverflow |= IntegerStamp.multiplicationOverflows(maxN_a, minP_b, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(minN_a, maxP_b, bits);
+            }
+            if (b.canBeNegative()) {
+                mayOverflow |= IntegerStamp.multiplicationOverflows(minN_a, minN_b, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(maxN_a, maxN_b, bits);
+            }
+        }
+        return mayOverflow;
     }
 
     public static boolean subtractionCanOverflow(IntegerStamp x, IntegerStamp y) {

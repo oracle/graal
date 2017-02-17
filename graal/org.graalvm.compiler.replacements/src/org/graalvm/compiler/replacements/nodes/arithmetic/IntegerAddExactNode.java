@@ -118,24 +118,8 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        ValueNode result = findSynonym(forX, forY);
-        if (result == null) {
-            return this;
-        } else {
-            return result;
-        }
-    }
-
-    private static boolean canOverflow(IntegerStamp a, IntegerStamp b) {
-        assert a.getBits() == b.getBits();
-        return addOverflowsPositively(a.upperBound(), b.upperBound(), a.getBits()) ||
-                        addOverflowsNegatively(a.lowerBound(), b.lowerBound(), a.getBits());
-
-    }
-
-    private static ValueNode findSynonym(ValueNode forX, ValueNode forY) {
         if (forX.isConstant() && !forY.isConstant()) {
-            return new IntegerAddExactNode(forY, forX);
+            return new IntegerAddExactNode(forY, forX).canonical(tool);
         }
         if (forX.isConstant()) {
             ConstantNode constantNode = canonicalXconstant(forX, forY);
@@ -148,10 +132,10 @@ public final class IntegerAddExactNode extends AddNode implements IntegerExactAr
                 return forX;
             }
         }
-        if (!canOverflow((IntegerStamp) forX.stamp(), (IntegerStamp) forY.stamp())) {
-            return AddNode.create(forX, forY);
+        if (!IntegerStamp.addCanOverflow((IntegerStamp) forX.stamp(), (IntegerStamp) forY.stamp())) {
+            return new AddNode(forX, forY).canonical(tool);
         }
-        return null;
+        return this;
     }
 
     private static ConstantNode canonicalXconstant(ValueNode forX, ValueNode forY) {
