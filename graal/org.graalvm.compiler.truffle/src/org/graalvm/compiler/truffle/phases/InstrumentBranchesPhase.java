@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle.phases;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.IfNode;
@@ -61,8 +62,8 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public class InstrumentBranchesPhase extends InstrumentPhase {
 
-    public InstrumentBranchesPhase(OptionValues options) {
-        super(options);
+    public InstrumentBranchesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, long[] accessTable) {
+        super(options, snippetReflection, accessTable);
     }
 
     @Override
@@ -110,7 +111,7 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
         }
     }
 
-    public static class IfPoint extends InstrumentPhase.Instrumentation.Point {
+    public class IfPoint extends InstrumentPhase.Instrumentation.Point {
         IfPoint(int id, int rawIndex, NodeSourcePosition position) {
             super(id, rawIndex, position);
         }
@@ -126,11 +127,11 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
         }
 
         public long ifVisits() {
-            return ACCESS_TABLE[rawIndex];
+            return accessTable[rawIndex];
         }
 
         public long elseVisits() {
-            return ACCESS_TABLE[rawIndex + 1];
+            return accessTable[rawIndex + 1];
         }
 
         public BranchState getBranchState() {

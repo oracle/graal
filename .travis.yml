@@ -15,15 +15,15 @@ dist: trusty
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.23"
-    - JVMCI_BASE_JDK8="jdk1.8.0_111"
-    - JDK9_EA_BUILD="152"
+    - JVMCI_VERSION="jvmci-0.25"
+    - JVMCI_BASE_JDK8="jdk1.8.0_121"
+    - JDK9_EA_BUILD="0x7fffffff"
   matrix:
     - JDK="jdk8" GATE="style,fullbuild"
     - JDK="jdk8" GATE="build,test"
     - JDK="jdk8" GATE="build,bootstraplite"
-    - JDK="jdk9" GATE="build,test"
-    - JDK="jdk9" GATE="build,bootstraplite"
+#    - JDK="jdk9" GATE="build,test"
+#    - JDK="jdk9" GATE="build,bootstraplite"
 install:
   - |
       export MX_PATH=${TRAVIS_BUILD_DIR}/../mx

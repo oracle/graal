@@ -22,16 +22,11 @@
  */
 package org.graalvm.compiler.truffle.phases;
 
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentationTableSize;
-
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaUtil;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -52,11 +47,13 @@ import org.graalvm.compiler.truffle.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaUtil;
-import jdk.vm.ci.meta.ResolvedJavaField;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
     private static final String[] OMITTED_STACK_PATTERNS = new String[]{
@@ -67,18 +64,19 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
                     OptimizedDirectCallNode.class.getName() + ".call"
     };
     public static Instrumentation instrumentation = new Instrumentation();
-    private static final String ACCESS_TABLE_FIELD_NAME = "ACCESS_TABLE";
-    private static final int ACCESS_TABLE_SIZE = TruffleInstrumentationTableSize.getValue(TruffleCompilerOptions.getOptions());
-    public static final long[] ACCESS_TABLE = new long[ACCESS_TABLE_SIZE];
     protected final MethodFilter[] methodFilter;
+    protected final SnippetReflectionProvider snippetReflection;
+    protected final long[] accessTable;
 
-    public InstrumentPhase(OptionValues options) {
+    public InstrumentPhase(OptionValues options, SnippetReflectionProvider snippetReflection, long[] accessTable) {
         String filterValue = instrumentationFilter(options);
         if (filterValue != null) {
             methodFilter = MethodFilter.parse(filterValue);
         } else {
             methodFilter = new MethodFilter[0];
         }
+        this.snippetReflection = snippetReflection;
+        this.accessTable = accessTable;
     }
 
     protected String instrumentationFilter(OptionValues options) {
@@ -107,7 +105,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        JavaConstant tableConstant = lookupTableConstant(context);
+        JavaConstant tableConstant = snippetReflection.forObject(accessTable);
         try {
             instrumentGraph(graph, context, tableConstant);
         } catch (Exception e) {
@@ -127,19 +125,6 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
         Instrumentation.Point point = instrumentation.getOrCreatePoint(methodFilter, n, this);
         assert point == null || point.slotCount() == instrumentationPointSlotCount() : "Slot count mismatch between instrumentation point and expected value.";
         return point;
-    }
-
-    protected JavaConstant lookupTableConstant(HighTierContext context) {
-        ResolvedJavaField[] fields = context.getMetaAccess().lookupJavaType(InstrumentPhase.class).getStaticFields();
-        ResolvedJavaField tableField = null;
-        for (ResolvedJavaField field : fields) {
-            if (field.getName().equals(ACCESS_TABLE_FIELD_NAME)) {
-                tableField = field;
-                break;
-            }
-        }
-        JavaConstant tableConstant = context.getConstantReflection().readFieldValue(tableField, null);
-        return tableConstant;
     }
 
     public static class Instrumentation {
@@ -329,7 +314,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
             int slotCount = phase.instrumentationPointSlotCount();
             if (existing != null) {
                 return existing;
-            } else if (tableStartIndex + slotCount < ACCESS_TABLE.length) {
+            } else if (tableStartIndex + slotCount < phase.accessTable.length) {
                 int id = tableIdCount++;
                 int startIndex = tableStartIndex;
                 tableStartIndex += slotCount;
@@ -337,7 +322,7 @@ public abstract class InstrumentPhase extends BasePhase<HighTierContext> {
                 pointMap.put(key, p);
                 return p;
             } else {
-                if (tableStartIndex < ACCESS_TABLE.length) {
+                if (tableStartIndex < phase.accessTable.length) {
                     TTY.println("Maximum number of instrumentation counters exceeded.");
                     tableStartIndex += slotCount;
                 }

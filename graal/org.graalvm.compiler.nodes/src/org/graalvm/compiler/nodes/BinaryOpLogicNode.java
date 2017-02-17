@@ -76,7 +76,7 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
     @SuppressWarnings("deprecation")
     public LogicNode maybeCommuteInputs() {
         assert this instanceof BinaryCommutative;
-        if (!y.isConstant() && x.getId() > y.getId()) {
+        if (!y.isConstant() && (x.isConstant() || x.getId() > y.getId())) {
             ValueNode tmp = x;
             x = y;
             y = tmp;

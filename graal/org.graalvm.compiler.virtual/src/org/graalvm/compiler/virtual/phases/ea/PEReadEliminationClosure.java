@@ -61,9 +61,9 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheEntry;
-import org.graalvm.util.Equivalence;
 import org.graalvm.util.EconomicMap;
 import org.graalvm.util.EconomicSet;
+import org.graalvm.util.Equivalence;
 import org.graalvm.util.MapCursor;
 import org.graalvm.util.Pair;
 
@@ -149,9 +149,20 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
         ValueNode unproxiedObject = GraphUtil.unproxify(object);
         ValueNode cachedValue = state.getReadCache(unproxiedObject, identity, index, this);
         if (cachedValue != null) {
-            effects.replaceAtUsages(load, cachedValue, load);
-            addScalarAlias(load, cachedValue);
-            return true;
+            if (!load.stamp().isCompatible(cachedValue.stamp())) {
+                /*
+                 * Can either be the first field of a two slot write to a one slot field which would
+                 * have a non compatible stamp or the second load which will see Illegal.
+                 */
+                assert load.stamp().getStackKind() == JavaKind.Int && (cachedValue.stamp().getStackKind() == JavaKind.Long || cachedValue.getStackKind() == JavaKind.Double ||
+                                cachedValue.getStackKind() == JavaKind.Illegal) : "Can only allow different stack kind two slot marker writes on one slot fields.";
+                return false;
+            } else {
+                // perform the read elimination
+                effects.replaceAtUsages(load, cachedValue, load);
+                addScalarAlias(load, cachedValue);
+                return true;
+            }
         } else {
             state.addReadCache(unproxiedObject, identity, index, load, this);
             return false;

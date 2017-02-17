@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Pointer;
 import org.graalvm.compiler.word.Word;
@@ -45,6 +46,7 @@ import org.junit.Test;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -57,7 +59,11 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
     private final ReplacementsImpl installer;
 
     public ObjectAccessTest() {
-        installer = (ReplacementsImpl) getReplacements();
+        ReplacementsImpl d = (ReplacementsImpl) getReplacements();
+        MetaAccessProvider metaAccess = d.providers.getMetaAccess();
+        ClassfileBytecodeProvider bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, d.snippetReflection, ClassLoader.getSystemClassLoader());
+        installer = new ReplacementsImpl(d.providers, d.snippetReflection, bytecodeProvider, d.target);
+        installer.setGraphBuilderPlugins(d.getGraphBuilderPlugins());
     }
 
     @Override

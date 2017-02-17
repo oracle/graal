@@ -242,7 +242,7 @@ def ctw(args, extraVMarguments=None):
     run_vm(vmargs + _remove_empty_entries(extraVMarguments))
 
 
-def verify_jvmci_ci_versions():
+def verify_jvmci_ci_versions(args):
     """
     Checks that the jvmci versions used in various ci files agree.
 
@@ -387,7 +387,7 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
 def jvmci_ci_version_gate_runner(tasks):
     # Check that travis and ci.hocon use the same JVMCI version
     with Task('JVMCI_CI_VersionSyncCheck', tasks, tags=[mx_gate.Tags.style]) as t:
-        if t: verify_jvmci_ci_versions()
+        if t: verify_jvmci_ci_versions([])
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
 

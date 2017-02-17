@@ -705,7 +705,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         assert vtableEntryOffset > 0;
         // We use LocationNode.ANY_LOCATION for the reads that access the vtable
         // entry as HotSpot does not guarantee that this is a final value.
-        Stamp methodStamp = MethodPointerStamp.method();
+        Stamp methodStamp = MethodPointerStamp.methodNonNull();
         AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
         ReadNode metaspaceMethod = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE));
         return metaspaceMethod;

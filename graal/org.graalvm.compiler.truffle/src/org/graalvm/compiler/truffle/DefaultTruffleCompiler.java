@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle;
 
+import com.oracle.truffle.api.Truffle;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -52,7 +53,7 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
 
     @Override
     protected PartialEvaluator createPartialEvaluator() {
-        return new PartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch);
+        return new PartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch, ((GraalTruffleRuntime) Truffle.getRuntime()).getInstrumentationTable());
     }
 
     @Override
