@@ -614,21 +614,28 @@ public abstract class ToLLVMNode extends Node {
     }
 
     public Object slowConvert(Object value, Class<?> requestedType) {
-        Object attr;
-        if (value instanceof TruffleObject) {
-            if (!Boolean.TRUE.equals(ForeignAccess.sendIsBoxed(isBoxed, (TruffleObject) value))) {
-                return null;
+        if (isPrimitiveType(requestedType)) {
+            Object attr;
+            if (value instanceof TruffleObject) {
+                if (!Boolean.TRUE.equals(ForeignAccess.sendIsBoxed(isBoxed, (TruffleObject) value))) {
+                    return null;
+                }
+                try {
+                    attr = ForeignAccess.sendUnbox(unbox, (TruffleObject) value);
+                } catch (InteropException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnsupportedTypeException.raise(new Object[]{value});
+                }
+            } else {
+                attr = value;
             }
-            try {
-                attr = ForeignAccess.sendUnbox(unbox, (TruffleObject) value);
-            } catch (InteropException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.raise(new Object[]{value});
-            }
+            return convertPrimitive(requestedType, attr);
+        } else if (requestedType == TruffleObject.class) {
+            return value;
         } else {
-            attr = value;
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException("Requested class: " + requestedType + " - but got value: " + value);
         }
-        return convertPrimitive(requestedType, attr);
     }
 
     @TruffleBoundary

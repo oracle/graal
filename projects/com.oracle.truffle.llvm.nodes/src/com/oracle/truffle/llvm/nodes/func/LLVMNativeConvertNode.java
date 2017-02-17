@@ -37,6 +37,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.AddressToNativeNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMNativeConvertNodeFactory.FunctionToNativeNodeGen;
@@ -77,6 +78,19 @@ abstract class LLVMNativeConvertNode extends Node {
         @Specialization
         long addressToNative(LLVMAddress address) {
             return address.getVal();
+        }
+
+        @Child private Node unbox = Message.UNBOX.createNode();
+
+        @Specialization
+        long addressToNative(TruffleObject address) {
+            try {
+                return (long) ForeignAccess.sendUnbox(unbox, address);
+            } catch (UnsupportedMessageException | ClassCastException e) {
+                CompilerDirectives.transferToInterpreter();
+                UnsupportedTypeException.raise(new Object[]{address});
+                return 0;
+            }
         }
     }
 

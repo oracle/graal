@@ -33,11 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 @MessageResolution(receiverType = LLVMFunction.class, language = LLVMLanguage.class)
@@ -68,12 +68,12 @@ public class LLVMFunctionMessageResolution {
         @Child private Node findContextNode;
         @Child private LLVMForeignCallNode executeNode;
 
-        @Child private LLVMToNullNode toNull = LLVMToNullNodeGen.create();
-
-        @ExplodeLoop
         protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object, Object[] arguments) {
-            Object result = getHelperNode().executeCall(frame, object, arguments);
-            return toNull.executeConvert(result, object.getReturnType());
+            return getHelperNode().executeCall(frame, object, arguments);
+        }
+
+        protected Object access(VirtualFrame frame, LLVMFunctionHandle object, Object[] arguments) {
+            return getHelperNode().executeCall(frame, object, arguments);
         }
 
         private LLVMForeignCallNode getHelperNode() {
