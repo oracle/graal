@@ -152,7 +152,7 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findPublicFieldsNames(Class<?> c, boolean onlyInstance) throws SecurityException {
+    static String[] findPublicMemberNames(Class<?> c, boolean onlyInstance) throws SecurityException {
         Class<?> clazz = c;
         while ((clazz.getModifiers() & Modifier.PUBLIC) == 0) {
             clazz = clazz.getSuperclass();
@@ -164,6 +164,16 @@ final class JavaInteropReflect {
                 continue;
             }
             names.add(field.getName());
+        }
+        final Method[] methods = clazz.getMethods();
+        for (Method method : methods) {
+            if (method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+            if (((method.getModifiers() & Modifier.STATIC) == 0) != onlyInstance) {
+                continue;
+            }
+            names.add(method.getName());
         }
         return names.toArray(new String[0]);
     }
