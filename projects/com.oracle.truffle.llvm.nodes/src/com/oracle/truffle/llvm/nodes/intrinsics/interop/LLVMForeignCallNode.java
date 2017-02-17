@@ -42,23 +42,28 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMRuntimeType;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionHandle;
 import com.oracle.truffle.llvm.runtime.LLVMPerformance;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 
 @NodeChildren({@NodeChild("receiver"), @NodeChild("arguments")})
-public abstract class LLVMForeignCallNode extends LLVMExpressionNode {
+abstract class LLVMForeignCallNode extends LLVMExpressionNode {
 
     private final LLVMStack stack;
+    private final LLVMContext context;
     @Child private ToLLVMNode slowConvertNode;
+    @Child private LLVMToNullNode toNull = LLVMToNullNodeGen.create();
 
     protected LLVMForeignCallNode(LLVMContext context) {
         this.stack = context.getStack();
+        this.context = context;
         this.slowConvertNode = ToLLVMNode.createNode(null);
     }
 
-    public abstract Object executeCall(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments);
+    public abstract Object executeCall(VirtualFrame frame, LLVMFunction function, Object[] arguments);
 
     @SuppressWarnings("unused")
     @Specialization(guards = "function.getFunctionIndex() == functionIndex")
@@ -67,7 +72,8 @@ public abstract class LLVMForeignCallNode extends LLVMExpressionNode {
                     @Cached("create(getCallTarget(function))") DirectCallNode callNode,
                     @Cached("createToLLVMNodes(function)") ToLLVMNode[] toLLVMNodes, @Cached("arguments.length") int cachedLength) {
         assert function.getReturnType() != LLVMRuntimeType.STRUCT;
-        return callNode.call(packArguments(arguments, toLLVMNodes, cachedLength));
+        Object result = callNode.call(packArguments(arguments, toLLVMNodes, cachedLength));
+        return toNull.executeConvert(result, function.getReturnType());
     }
 
     @Specialization
@@ -75,19 +81,50 @@ public abstract class LLVMForeignCallNode extends LLVMExpressionNode {
                     @Cached("create()") IndirectCallNode callNode, @Cached("arguments.length") int cachedLength) {
         assert function.getReturnType() != LLVMRuntimeType.STRUCT;
         LLVMPerformance.warn(this);
-        return callNode.call(getCallTarget(function), packArguments(function, arguments, cachedLength));
+        Object result = callNode.call(getCallTarget(function), packArguments(function, arguments, cachedLength));
+        return toNull.executeConvert(result, function.getReturnType());
     }
 
-    @ExplodeLoop
+    @SuppressWarnings("unused")
+    @Specialization(guards = "function.getFunctionIndex() == functionIndex")
+    public Object callDirect(LLVMFunctionHandle function, Object[] arguments,
+                    @Cached("function.getFunctionIndex()") int functionIndex,
+                    @Cached("lookupFunction(function)") LLVMFunctionDescriptor descriptor,
+                    @Cached("create(getCallTarget(descriptor))") DirectCallNode callNode,
+                    @Cached("createToLLVMNodes(descriptor)") ToLLVMNode[] toLLVMNodes, @Cached("arguments.length") int cachedLength) {
+        assert descriptor.getReturnType() != LLVMRuntimeType.STRUCT;
+        Object result = callNode.call(packArguments(arguments, toLLVMNodes, cachedLength));
+        return toNull.executeConvert(result, descriptor.getReturnType());
+    }
+
+    @Specialization
+    public Object callIndirect(LLVMFunctionHandle function, Object[] arguments,
+                    @Cached("create()") IndirectCallNode callNode, @Cached("arguments.length") int cachedLength) {
+        LLVMPerformance.warn(this);
+        LLVMFunctionDescriptor descriptor = lookupFunction(function);
+        assert descriptor.getReturnType() != LLVMRuntimeType.STRUCT;
+        Object result = callNode.call(getCallTarget(descriptor), packArguments(descriptor, arguments, cachedLength));
+        return toNull.executeConvert(result, descriptor.getReturnType());
+    }
+
+    protected LLVMFunctionDescriptor lookupFunction(LLVMFunctionHandle function) {
+        return context.lookup(function);
+    }
+
+    // no explodeLoop - length not constant
     private Object[] packArguments(LLVMFunctionDescriptor function, Object[] arguments, int cachedLength) {
         if (arguments.length != cachedLength) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException();
         }
-        final Object[] packedArguments = new Object[1 + cachedLength];
+        int actualArgumentsLength = Math.max(cachedLength, function.getParameterTypes().length);
+        final Object[] packedArguments = new Object[1 + actualArgumentsLength];
         packedArguments[0] = stack.getUpperBounds();
-        for (int i = 0; i < cachedLength; i++) {
+        for (int i = 0; i < function.getParameterTypes().length; i++) {
             packedArguments[i + 1] = slowConvertNode.slowConvert(arguments[i], ToLLVMNode.convert(function.getParameterTypes()[i]));
+        }
+        for (int i = function.getParameterTypes().length; i < cachedLength; i++) {
+            packedArguments[i + 1] = arguments[i];
         }
         return packedArguments;
     }
@@ -102,7 +139,8 @@ public abstract class LLVMForeignCallNode extends LLVMExpressionNode {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException();
         }
-        final Object[] packedArguments = new Object[1 + cachedLength];
+        int actualArgumentsLength = Math.max(cachedLength, toLLVMNodes.length);
+        final Object[] packedArguments = new Object[1 + actualArgumentsLength];
         packedArguments[0] = stack.getUpperBounds();
         for (int i = 0; i < toLLVMNodes.length; i++) {
             packedArguments[i + 1] = toLLVMNodes[i].executeWithTarget(arguments[i]);
