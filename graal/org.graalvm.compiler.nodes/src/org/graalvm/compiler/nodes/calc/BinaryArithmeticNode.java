@@ -274,7 +274,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     @SuppressWarnings("deprecation")
     public BinaryNode maybeCommuteInputs() {
         assert this instanceof BinaryCommutative;
-        if (!y.isConstant() && x.getId() > y.getId()) {
+        if (!y.isConstant() && (x.isConstant() || x.getId() > y.getId())) {
             ValueNode tmp = x;
             x = y;
             y = tmp;
