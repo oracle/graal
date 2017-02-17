@@ -223,6 +223,8 @@ abstract class PolyglotRootNode extends RootNode {
         private final Language language;
         private final Source source;
 
+        private static final Object NULL_VALUE = JavaInterop.asTruffleValue(null);
+
         private EvalRootNode(PolyglotEngine engine, Language language, Source source) {
             super(engine);
             this.source = source;
@@ -242,7 +244,7 @@ abstract class PolyglotRootNode extends RootNode {
             // TODO null is not valid value, wrap it using java interop
             // we should make this a strong check.
             if (result == null) {
-                result = JavaInterop.asTruffleValue(null);
+                result = NULL_VALUE;
             }
             return result;
         }
