@@ -281,6 +281,16 @@ public abstract class REPLHandler {
         }
     };
 
+    public static final REPLHandler RUN_HANDLER = new REPLHandler(com.oracle.truffle.tools.debug.shell.REPLMessage.RUN) {
+
+        @Override
+        com.oracle.truffle.tools.debug.shell.REPLMessage[] receive(com.oracle.truffle.tools.debug.shell.REPLMessage request, REPLServer replServer) {
+            replServer.run();
+            com.oracle.truffle.tools.debug.shell.REPLMessage reply = createReply();
+            return finishReplySucceeded(reply, "run completed");
+        }
+    };
+
     public static final REPLHandler CALL_HANDLER = new REPLHandler(com.oracle.truffle.tools.debug.shell.REPLMessage.CALL) {
 
         @Override

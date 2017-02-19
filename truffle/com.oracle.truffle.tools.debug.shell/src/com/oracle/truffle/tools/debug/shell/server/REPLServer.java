@@ -50,6 +50,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.tools.debug.shell.client.SimpleREPLClient;
@@ -104,10 +105,14 @@ public final class REPLServer {
     private final Map<Integer, BreakpointInfo> breakpoints = new WeakHashMap<>();
 
     public REPLServer(SimpleREPLClient client) {
-        this.replClient = client;
-        this.engine = PolyglotEngine.newBuilder().onEvent(onHalted).onEvent(onExec).build();
-        this.engine.getInstruments().get(REPL_SERVER_INSTRUMENT).setEnabled(true);
+        this(client, PolyglotEngine.newBuilder());
+    }
 
+    public REPLServer(SimpleREPLClient client, Builder builder) {
+        this.replClient = client;
+        this.engine = builder.onEvent(onHalted).onEvent(onExec).build();
+        assert this.engine.getInstruments().get(REPL_SERVER_INSTRUMENT) != null : "No " + REPL_SERVER_INSTRUMENT + " instrument found";
+        this.engine.getInstruments().get(REPL_SERVER_INSTRUMENT).setEnabled(true);
         this.db = Debugger.find(this.engine);
         engineLanguages.addAll(engine.getLanguages().values());
 
@@ -171,6 +176,7 @@ public final class REPLServer {
         add(REPLHandler.INFO_HANDLER);
         add(REPLHandler.KILL_HANDLER);
         add(REPLHandler.LOAD_HANDLER);
+        add(REPLHandler.RUN_HANDLER);
         add(REPLHandler.SET_BREAK_CONDITION_HANDLER);
         add(REPLHandler.SET_LANGUAGE_HANDLER);
         add(REPLHandler.STEP_INTO_HANDLER);
@@ -188,6 +194,17 @@ public final class REPLServer {
 
     public LocationPrinter getLocationPrinter() {
         return locationPrinter;
+    }
+
+    void run() {
+        try {
+            Source source = Source.fromNamedText("", "START");
+            source = source.withMimeType(getLanguages().iterator().next().getMimeTypes().iterator().next());
+            engine.eval(source);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
     }
 
     void haltedAt(SuspendedEvent event) {

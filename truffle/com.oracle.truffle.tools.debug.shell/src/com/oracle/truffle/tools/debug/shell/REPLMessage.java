@@ -158,6 +158,8 @@ public final class REPLMessage {
     public static final String QUIT = "quit";
     /** @since 0.8 or earlier */
     public static final String REPEAT = "repeat";
+    /** @since 0.12 */
+    public static final String RUN = "run";
     /** @since 0.8 or earlier */
     public static final String SET = "set";
     /** @since 0.8 or earlier */
