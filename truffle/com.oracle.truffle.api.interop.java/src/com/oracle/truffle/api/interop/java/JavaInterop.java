@@ -474,4 +474,5 @@ public final class JavaInterop {
         return type.getMethods().length == 1;
     }
 
+    static final JavaInteropAccessor ACCESSOR = new JavaInteropAccessor();
 }

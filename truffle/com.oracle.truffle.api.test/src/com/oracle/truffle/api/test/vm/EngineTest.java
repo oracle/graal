@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -361,7 +360,6 @@ public class EngineTest {
     }
 
     @Test
-    @Ignore("to be enabled as soon as caching is fully supported")
     public void testCachingFailing() {
         CachingLanguageChannel channel = new CachingLanguageChannel();
         PolyglotEngine vm = register(createBuilder().config(CachingLanguage.MIME_TYPE, "channel", channel).build());
@@ -372,7 +370,6 @@ public class EngineTest {
         int cachedTargetsSize = -1;
         int interopTargetsSize = -1;
 
-        // from now on we should not create any new targets
         for (int i = 0; i < 10; i++) {
             Value value1 = vm.eval(source1);
             Value value2 = vm.eval(source2);
@@ -400,10 +397,12 @@ public class EngineTest {
             value1.as(List.class);
 
             if (i == 0) {
+                // warmup
                 cachedTargetsSize = channel.parseTargets.size();
                 interopTargetsSize = channel.interopTargets.size();
                 assertNotEquals(0, cachedTargetsSize);
                 assertNotEquals(0, interopTargetsSize);
+                channel.frozen = true;
             } else {
                 // we need to have stable call targets after the first run.
                 assertEquals(cachedTargetsSize, channel.parseTargets.size());
@@ -417,6 +416,7 @@ public class EngineTest {
         final List<CallTarget> parseTargets = new ArrayList<>();
         final List<CallTarget> interopTargets = new ArrayList<>();
 
+        boolean frozen;
     }
 
     private static class CachingTruffleObject implements TruffleObject {
@@ -455,6 +455,9 @@ public class EngineTest {
                     };
                     CallTarget target = Truffle.getRuntime().createCallTarget(root);
                     channel.interopTargets.add(target);
+                    if (channel.frozen) {
+                        throw new IllegalStateException("No new calltargets");
+                    }
                     return target;
                 }
             });
@@ -489,6 +492,9 @@ public class EngineTest {
             };
             CallTarget target = Truffle.getRuntime().createCallTarget(root);
             channel.parseTargets.add(target);
+            if (channel.frozen) {
+                throw new IllegalStateException("No new calltargets");
+            }
             return target;
         }
 

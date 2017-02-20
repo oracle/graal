@@ -70,6 +70,12 @@ public abstract class Accessor {
         public abstract void dump(Node newNode, Node newChild, CharSequence reason);
     }
 
+    public abstract static class JavaInteropSupport {
+        public abstract Node createToJavaNode();
+
+        public abstract Object toJava(Node toJavaNode, Class<?> type, Object value);
+    }
+
     public abstract static class EngineSupport {
         public static final int EXECUTION_EVENT = 1;
         public static final int SUSPENDED_EVENT = 2;
@@ -158,6 +164,7 @@ public abstract class Accessor {
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
     private static Accessor.DebugSupport DEBUG;
     private static Accessor.DumpSupport DUMP;
+    private static Accessor.JavaInteropSupport JAVAINTEROP;
     private static Accessor.Frames FRAMES;
     @SuppressWarnings("unused") private static Accessor SOURCE;
 
@@ -190,6 +197,7 @@ public abstract class Accessor {
 
         conditionallyInitDebugger();
         conditionallyInitEngine();
+        conditionallyInitJavaInterop();
         if (TruffleOptions.TraceASTJSON) {
             try {
                 Class.forName("com.oracle.truffle.api.utilities.JSONHelper", true, Accessor.class.getClassLoader());
@@ -216,6 +224,19 @@ public abstract class Accessor {
     private static void conditionallyInitEngine() throws IllegalStateException {
         try {
             Class.forName("com.oracle.truffle.api.vm.PolyglotEngine", true, Accessor.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            boolean assertOn = false;
+            assert assertOn = true;
+            if (!assertOn) {
+                throw new IllegalStateException(ex);
+            }
+        }
+    }
+
+    @SuppressWarnings("all")
+    private static void conditionallyInitJavaInterop() throws IllegalStateException {
+        try {
+            Class.forName("com.oracle.truffle.api.interop.java.JavaInterop", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             boolean assertOn = false;
             assert assertOn = true;
@@ -258,6 +279,8 @@ public abstract class Accessor {
             SOURCE = this;
         } else if (this.getClass().getSimpleName().endsWith("DumpAccessor")) {
             DUMP = this.dumpSupport();
+        } else if (this.getClass().getSimpleName().endsWith("JavaInteropAccessor")) {
+            JAVAINTEROP = this.javaInteropSupport();
         } else {
             if (SPI != null) {
                 throw new IllegalStateException();
@@ -288,6 +311,10 @@ public abstract class Accessor {
 
     protected InstrumentSupport instrumentSupport() {
         return INSTRUMENTHANDLER;
+    }
+
+    protected JavaInteropSupport javaInteropSupport() {
+        return JAVAINTEROP;
     }
 
     static InstrumentSupport instrumentAccess() {

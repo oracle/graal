@@ -1606,6 +1606,7 @@ public class PolyglotEngine {
         static final Accessor.LanguageSupport LANGS = SPIAccessor.langs();
         static final Accessor.InstrumentSupport INSTRUMENT = SPIAccessor.instrumentAccess();
         static final Accessor.DebugSupport DEBUG = SPIAccessor.debugAccess();
+        static final Accessor.JavaInteropSupport JAVA_INTEROP = SPIAccessor.javaInteropAccess();
 
         static Collection<ClassLoader> loaders() {
             return SPI.allLoaders();
@@ -1623,6 +1624,10 @@ public class PolyglotEngine {
 
         static DebugSupport debugAccess() {
             return SPI.debugSupport();
+        }
+
+        static JavaInteropSupport javaInteropAccess() {
+            return SPI.javaInteropSupport();
         }
 
         Collection<ClassLoader> allLoaders() {
