@@ -145,12 +145,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private final GraalTVMCI tvmci = new GraalTVMCI();
 
     /**
-     * The instrumentation table is used by the Truffle instrumentation to count executions. The
+     * The instrumentation object is used by the Truffle instrumentation to count executions. The
      * value is lazily initialized the first time it is requested because it depends on the Truffle
      * options, and tests that need the instrumentation table need to override these options after
      * the TruffleRuntime object is created.
      */
-    private volatile long[] instrumentationTable;
+    private volatile InstrumentPhase.Instrumentation instrumentation;
 
     /**
      * Utility method that casts the singleton {@link TruffleRuntime}.
@@ -481,7 +481,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         getCompilationNotify().notifyShutdown(this);
         OptionValues options = TruffleCompilerOptions.getOptions();
         if (getValue(TruffleInstrumentBranches) || getValue(TruffleInstrumentBoundaries)) {
-            InstrumentPhase.instrumentation.dumpAccessTable(options);
+            instrumentation.dumpAccessTable(options);
         }
     }
 
@@ -624,16 +624,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return callMethods;
     }
 
-    public long[] getInstrumentationTable() {
-        if (instrumentationTable == null) {
+    public InstrumentPhase.Instrumentation getInstrumentation() {
+        if (instrumentation == null) {
             synchronized (this) {
-                if (instrumentationTable == null) {
+                if (instrumentation == null) {
                     OptionValues options = TruffleCompilerOptions.getOptions();
-                    instrumentationTable = new long[TruffleCompilerOptions.TruffleInstrumentationTableSize.getValue(options)];
+                    long[] accessTable = new long[TruffleCompilerOptions.TruffleInstrumentationTableSize.getValue(options)];
+                    instrumentation = new InstrumentPhase.Instrumentation(accessTable);
                 }
             }
         }
-        return instrumentationTable;
+        return instrumentation;
     }
 
     // cached field access to make it fast in the interpreter

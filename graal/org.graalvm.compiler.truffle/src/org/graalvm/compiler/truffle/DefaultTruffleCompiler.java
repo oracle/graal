@@ -53,7 +53,7 @@ public final class DefaultTruffleCompiler extends TruffleCompiler {
 
     @Override
     protected PartialEvaluator createPartialEvaluator() {
-        return new PartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch, ((GraalTruffleRuntime) Truffle.getRuntime()).getInstrumentationTable());
+        return new PartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch, ((GraalTruffleRuntime) Truffle.getRuntime()).getInstrumentation());
     }
 
     @Override
