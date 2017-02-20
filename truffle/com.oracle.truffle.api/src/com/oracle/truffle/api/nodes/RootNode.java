@@ -158,7 +158,8 @@ public abstract class RootNode extends Node {
      * before it is executed for the first time to ensure it is able to create new uninitialized
      * copies when needed. By returning <code>true</code> and therefore supporting uninitialized
      * copies an optimizing runtime does not need to keep a reference to an uninitialized copy on
-     * its own and might therefore be able to save memory.
+     * its own and might therefore be able to save memory. The returned boolean needs to be
+     * immutable for a {@link RootNode} instance.
      *
      * @return <code>true</code> if calls to {@link #cloneUninitialized() uninitialized copies} are
      *         supported.
