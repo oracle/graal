@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import static com.oracle.truffle.api.interop.java.test.JavaInteropTest.sendKeys;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class OverloadedTest {
     public final class Data {
@@ -69,7 +70,12 @@ public class OverloadedTest {
     @Test
     public void readAndWriteField() {
         data.x = 11;
-        assertEquals(11, JavaInteropTest.message(Message.READ, obj, "x"));
+        final Object raw = JavaInteropTest.message(Message.READ, obj, "x");
+        assertTrue("It is truffle object: " + raw, raw instanceof TruffleObject);
+        final TruffleObject wrap = (TruffleObject) raw;
+        assertTrue("Can be unboxed", (boolean) JavaInteropTest.message(Message.IS_BOXED, wrap));
+        final Object value = JavaInteropTest.message(Message.UNBOX, wrap);
+        assertEquals(11, value);
 
         JavaInteropTest.message(Message.WRITE, obj, "x", 10);
         assertEquals(10, data.x);

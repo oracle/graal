@@ -74,9 +74,6 @@ final class JavaInteropReflect {
             }
             throw (NoSuchFieldError) new NoSuchFieldError(ex.getMessage()).initCause(ex);
         }
-        if (ToJavaNode.isPrimitive(val)) {
-            return val;
-        }
         return JavaInterop.asTruffleObject(val);
     }
 
