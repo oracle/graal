@@ -6,6 +6,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated the send methods in [ForeignAccess](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/interop/ForeignAccess.html) and added a a new version that does not require a frame parameter. ([Jackpot](https://bitbucket.org/jlahoda/jackpot30/wiki/Home) rule for automatic migration available)
 * Made [@NodeChild](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/NodeChild.html) and [@NodeField](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/dsl/NodeField.html) annotations repeatable
 * Added Truffle Native Function Interface.
+* Abstract deprecated methods in [NodeClass](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/nodes/NodeClass.html) have default implementation
 
 ## Version 0.23
 1-Feb-2017
