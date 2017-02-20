@@ -55,8 +55,6 @@ public class Graph {
         public static final OptionKey<Boolean> VerifyGraalGraphEdges = new OptionKey<>(false);
         @Option(help = "Graal graph compression is performed when percent of live nodes falls below this value", type = OptionType.Debug)//
         public static final OptionKey<Integer> GraphCompressionThreshold = new OptionKey<>(70);
-        @Option(help = "Use Unsafe to clone graph nodes thus avoiding copying fields that will be re-initialized anyway", type = OptionType.Debug)//
-        public static final OptionKey<Boolean> CloneNodesWithUnsafe = new OptionKey<>(true);
     }
 
     public final String name;
