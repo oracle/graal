@@ -61,9 +61,9 @@ public abstract class Accessor {
 
         public abstract boolean isTaggedWith(Node node, Class<?> tag);
 
-        public abstract boolean isCopyUninitializedSupported(RootNode rootNode);
+        public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
-        public abstract RootNode copyUninitialized(RootNode rootNode);
+        public abstract RootNode cloneUninitialized(RootNode rootNode);
 
     }
 
