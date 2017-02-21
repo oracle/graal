@@ -9,7 +9,7 @@ java8Debug : {name : labsjdk, version : "8u121-jvmci-0.25-fastdebug", platformsp
 
 mx : {
   packages : {
-    mx : "3a3afe479cd9df0ec4a0948bdf0b594f3fffe5ba"
+    mx : "625248d328895c2a1af6f17edb610ff742b0897e"
   }
 }
 
