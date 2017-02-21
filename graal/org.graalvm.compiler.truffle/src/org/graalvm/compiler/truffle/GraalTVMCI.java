@@ -75,8 +75,8 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
-    public RootNode cloneUnitialized(RootNode root) {
-        return super.cloneUnitialized(root);
+    public RootNode cloneUninitialized(RootNode root) {
+        return super.cloneUninitialized(root);
     }
 
     @Override
