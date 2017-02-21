@@ -16,6 +16,7 @@ common : {
     "pip:astroid" : "==1.1.0"
     "pip:pylint" : "==1.1.0"
     maven : ">=3.3.9"
+    ruby: ">=2.1.0"
   }
 
   downloads : {
