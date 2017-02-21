@@ -23,7 +23,7 @@
 package org.graalvm.compiler.nodes.extended;
 
 import static org.graalvm.compiler.nodeinfo.InputType.State;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_3;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.LocationIdentity;
@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Store of a value at a location specified as an offset relative to an object. No null check is
  * performed before the store.
  */
-@NodeInfo(cycles = CYCLES_3, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, MemoryCheckpoint.Single {
 
     public static final NodeClass<RawStoreNode> TYPE = NodeClass.create(RawStoreNode.class);

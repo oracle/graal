@@ -57,6 +57,7 @@ import org.graalvm.compiler.debug.DebugConfigScope;
 import org.graalvm.compiler.debug.DebugEnvironment;
 import org.graalvm.compiler.debug.DelegatingDebugConfig;
 import org.graalvm.compiler.debug.GraalDebugConfig;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -123,11 +124,11 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     public static class InvariantsTool {
 
         protected boolean shouldProcess(String classpathEntry) {
-        if (classpathEntry.endsWith(".jar")) {
-            String name = new File(classpathEntry).getName();
-            return name.contains("jvmci") || name.contains("graal") || name.contains("jdk.internal.vm.compiler");
-        }
-        return false;
+            if (classpathEntry.endsWith(".jar")) {
+                String name = new File(classpathEntry).getName();
+                return name.contains("jvmci") || name.contains("graal") || name.contains("jdk.internal.vm.compiler");
+            }
+            return false;
         }
 
         protected String getClassPath() {
