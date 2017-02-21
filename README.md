@@ -95,11 +95,11 @@ To create a JVMCI enabled JDK8 on other platforms (e.g., Windows):
 ```
 hg clone http://hg.openjdk.java.net/graal/graal-jvmci-8
 cd graal-jvmci-8
-mx --java-home /path/to/jdk8u111 build
-export JAVA_HOME=$(mx --java-home /path/to/jdk8u111 jdkhome)
+mx --java-home /path/to/jdk8 build
+export JAVA_HOME=$(mx --java-home /path/to/jdk8 jdkhome)
 ```
 
-You need to use exactly version `8u111` as the bootstrap JDK in the `mx --java-home ... build` command.
+You need to use the same JDK the [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) downloads are based on as the argument to `--java-home` in the above commands.
 The build step above should work on all [supported JDK 8 build platforms](https://wiki.openjdk.java.net/display/Build/Supported+Build+Platforms).
 It should also work on other platforms (such as Oracle Linux, CentOS and Fedora as described [here](http://mail.openjdk.java.net/pipermail/graal-dev/2015-December/004050.html)).
 If you run into build problems, send a message to the [Graal mailing list](http://mail.openjdk.java.net/mailman/listinfo/graal-dev).
