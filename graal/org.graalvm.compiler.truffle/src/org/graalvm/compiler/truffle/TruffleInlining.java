@@ -76,7 +76,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
             TruffleInliningDecision decision = rejectedDecisionsCache.get(currentTarget);
             if (decision == null) {
                 decision = exploreCallSite(stack, callStackNodeCount, policy, callNode, visitedNodes, rejectedDecisionsCache);
-                if (!decision.isInline()) {
+                if (!policy.isAllowed(decision.getProfile(), callStackNodeCount, callNode.getRootNode().getCompilerOptions())) {
                     rejectedDecisionsCache.put(currentTarget, decision);
                     toRemoveFromCache.add(currentTarget);
                 }
