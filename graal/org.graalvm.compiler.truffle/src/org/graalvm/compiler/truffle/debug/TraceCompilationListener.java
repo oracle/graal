@@ -25,9 +25,9 @@ package org.graalvm.compiler.truffle.debug;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleCompilation;
 import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TraceTruffleCompilationDetails;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -43,7 +43,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class TraceCompilationListener extends AbstractDebugCompilationListener {
 
-    private final Map<OptimizedCallTarget, LocalCompilation> compilationMap = new HashMap<>();
+    private final Map<OptimizedCallTarget, LocalCompilation> compilationMap = new ConcurrentHashMap<>();
 
     private TraceCompilationListener() {
     }
@@ -77,10 +77,8 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
         if (!TraceCompilationFailureListener.isPermanentBailout(t)) {
             notifyCompilationDequeued(target, null, "Non permanent bailout: " + t.toString());
         }
+        compilationMap.remove(target);
 
-        synchronized (this) {
-            compilationMap.remove(target);
-        }
     }
 
     @Override
@@ -91,9 +89,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
         LocalCompilation compilation = new LocalCompilation();
         compilation.timeCompilationStarted = System.nanoTime();
 
-        synchronized (this) {
-            compilationMap.put(target, compilation);
-        }
+        compilationMap.put(target, compilation);
     }
 
     @Override
@@ -146,9 +142,7 @@ public final class TraceCompilationListener extends AbstractDebugCompilationList
         log(0, "opt done", target.toString(), properties);
         super.notifyCompilationSuccess(target, inliningDecision, graph, result);
 
-        synchronized (this) {
-            compilationMap.remove(target);
-        }
+        compilationMap.remove(target);
     }
 
     private static String formatSourceSection(SourceSection sourceSection) {
