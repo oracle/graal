@@ -22,26 +22,30 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.TruffleLanguage.Registration")
 public final class LanguageRegistrationProcessor extends AbstractProcessor {
@@ -107,7 +111,19 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                     emitError("Registered language class must subclass TruffleLanguage", e);
                     continue;
                 }
-                boolean found = false;
+                boolean foundConstructor = false;
+                for (ExecutableElement constructor : ElementFilter.constructorsIn(e.getEnclosedElements())) {
+                    if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
+                        continue;
+                    }
+                    if (!constructor.getParameters().isEmpty()) {
+                        continue;
+                    }
+                    foundConstructor = true;
+                    break;
+                }
+
+                Element singletonElement = null;
                 for (Element mem : e.getEnclosedElements()) {
                     if (!mem.getModifiers().contains(Modifier.PUBLIC)) {
                         continue;
@@ -122,14 +138,19 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                         continue;
                     }
                     if (processingEnv.getTypeUtils().isAssignable(mem.asType(), truffleLang)) {
-                        found = true;
+                        singletonElement = mem;
                         break;
                     }
                 }
-                if (!found) {
-                    emitError("Language class must have public static final singleton field called INSTANCE", e);
-                    continue;
+
+                if (singletonElement != null) {
+                    emitWarning("Using a singleton field is deprecated. Please provide a public no-argument constructor instead.", singletonElement);
+                } else {
+                    if (!foundConstructor) {
+                        emitError("A TruffleLanguage subclass must have a public no argument constructor.", e);
+                    }
                 }
+
                 assertNoErrorExpected(e);
                 registrations.add((TypeElement) e);
             }
@@ -147,6 +168,13 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, msg, e);
+    }
+
+    void emitWarning(String msg, Element e) {
+        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+            return;
+        }
+        processingEnv.getMessager().printMessage(Kind.WARNING, msg, e);
     }
 
 }

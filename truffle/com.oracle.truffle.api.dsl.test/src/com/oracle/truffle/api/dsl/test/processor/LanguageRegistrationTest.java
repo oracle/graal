@@ -48,6 +48,7 @@ public class LanguageRegistrationTest {
     @ExpectError("Language class must have public static final singleton field called INSTANCE")
     @TruffleLanguage.Registration(name = "myLangNoCnstr", version = "0", mimeType = "text/x-my")
     public static final class MyLangWrongConstr extends TruffleLanguage<Object> {
+
         private MyLangWrongConstr() {
             super();
         }
@@ -79,7 +80,7 @@ public class LanguageRegistrationTest {
 
     }
 
-    @ExpectError("Language class must have public static final singleton field called INSTANCE")
+// @ExpectError("Language class must have public static final singleton field called INSTANCE")
     @TruffleLanguage.Registration(name = "myLangNoField", version = "0", mimeType = "text/x-my")
     public static final class MyLangNoField extends TruffleLanguage<Object> {
         public MyLangNoField() {
@@ -119,6 +120,7 @@ public class LanguageRegistrationTest {
             super();
         }
 
+        @ExpectError("Using a singleton field is deprecated. Please provide a public no-argument constructor instead.") //
         public static final MyLangGood INSTANCE = new MyLangGood();
 
         @Override

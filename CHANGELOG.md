@@ -3,10 +3,10 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 0.25
-
 * Added [Instrumenter.attachOutConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachOutConsumer-T-) and [Instrumenter.attachErrConsumer](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachErrConsumer-T-) to receive output from executions run in the associated PolyglotEngine.
 * [JavaInterop.asTruffleObject](http://graalvm.github.io/truffle/javadoc/com/oracle/truffle/api/interop/java/JavaInterop.html#asTruffleObject-java.lang.Object-) lists methods as keys
 * Deprecated `TypedObject` interface
+* [TruffleLanguage](http://lafo.ssw.uni-linz.ac.at/javadoc/truffle/latest/com/oracle/truffle/api/TruffleLanguage.html) now requires a public default constructor instead of a singleton field named INSTANCE.
 
 ## Version 0.24
 1-Mar-2017

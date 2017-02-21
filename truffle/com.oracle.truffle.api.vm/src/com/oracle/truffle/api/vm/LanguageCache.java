@@ -53,13 +53,14 @@ final class LanguageCache {
 
     private static Map<String, LanguageCache> cache;
     static final Collection<ClassLoader> AOT_LOADERS = TruffleOptions.AOT ? Access.loaders() : null;
-    private final TruffleLanguage<?> language;
     private final String className;
     private final Set<String> mimeTypes;
     private final String name;
     private final String version;
     private final boolean interactive;
     private final ClassLoader loader;
+    private final TruffleLanguage<?> singletonLanguage;
+    private volatile Class<? extends TruffleLanguage<?>> languageClass;
 
     static {
         CACHE = TruffleOptions.AOT ? initializeLanguages(loader()) : null;
@@ -76,16 +77,10 @@ final class LanguageCache {
      * @return A map of initialized languages.
      */
     private static Map<String, LanguageCache> initializeLanguages(final ClassLoader loader) {
-        Map<String, LanguageCache> map;
-
-        map = createLanguages(loader);
-        for (LanguageCache info : map.values()) {
-            info.createLanguage();
-        }
-        return map;
+        return createLanguages(loader);
     }
 
-    private LanguageCache(String prefix, Properties info, TruffleLanguage<?> language, ClassLoader loader) {
+    private LanguageCache(String prefix, Properties info, ClassLoader loader) {
         this.loader = loader;
         this.className = info.getProperty(prefix + "className");
         this.name = info.getProperty(prefix + "name");
@@ -100,7 +95,27 @@ final class LanguageCache {
         }
         this.mimeTypes = Collections.unmodifiableSet(ts);
         this.interactive = Boolean.valueOf(info.getProperty(prefix + "interactive"));
-        this.language = language;
+
+        if (PRELOAD) {
+            this.languageClass = loadLanguageClass();
+            TruffleLanguage<?> eagerLanguage = null;
+            try {
+                // we need to test we can instantiate the class ahead of time.
+                // such that we can decide to potentially use the singleton if necessary
+                loadLanguage();
+            } catch (Exception e) {
+                eagerLanguage = readSingleton(languageClass);
+                if (eagerLanguage == null) {
+                    // no way to construct the language
+                    throw e;
+                }
+            }
+            this.singletonLanguage = eagerLanguage;
+        } else {
+            this.languageClass = null;
+            this.singletonLanguage = null;
+        }
+
     }
 
     private static ClassLoader loader() {
@@ -165,12 +180,7 @@ final class LanguageCache {
                 if (name == null) {
                     break;
                 }
-                TruffleLanguage<?> lang = null;
-                if (PRELOAD) {
-                    String className = p.getProperty(prefix + "className");
-                    lang = loadLanguage(name, className, loader);
-                }
-                LanguageCache l = new LanguageCache(prefix, p, lang, loader);
+                LanguageCache l = new LanguageCache(prefix, p, loader);
                 for (String mimeType : l.getMimeTypes()) {
                     map.put(mimeType, l);
                 }
@@ -199,23 +209,52 @@ final class LanguageCache {
     }
 
     TruffleLanguage<?> loadLanguage() {
-        if (PRELOAD) {
-            return language;
-        }
-        return loadLanguage(name, className, loader);
-    }
-
-    private static TruffleLanguage<?> loadLanguage(String name, String className, ClassLoader loader) {
         try {
-            Class<?> langClazz = Class.forName(className, true, loader);
-            return (TruffleLanguage<?>) langClazz.getField("INSTANCE").get(null);
-        } catch (Exception ex) {
-            throw new IllegalStateException("Cannot initialize " + name + " language with implementation " + className, ex);
+            if (PRELOAD) {
+                if (singletonLanguage == null) {
+                    return languageClass.newInstance();
+                } else {
+                    return singletonLanguage;
+                }
+            } else {
+                Class<? extends TruffleLanguage<?>> clazz = loadLanguageClass();
+                try {
+                    return clazz.newInstance();
+                } catch (Exception e) {
+                    TruffleLanguage<?> singleton = readSingleton(clazz);
+                    if (singleton == null) {
+                        throw e;
+                    }
+                    return singleton;
+                }
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot create instance of " + name + " language implementation. Public default constructor expected in " + className + ".", e);
         }
     }
 
-    private TruffleLanguage<?> createLanguage() {
-        return loadLanguage(name, className, loader);
+    @SuppressWarnings("unchecked")
+    private Class<? extends TruffleLanguage<?>> loadLanguageClass() {
+        if (languageClass == null) {
+            synchronized (this) {
+                if (languageClass == null) {
+                    try {
+                        languageClass = (Class<? extends TruffleLanguage<?>>) Class.forName(className, true, loader);
+                    } catch (Exception e) {
+                        throw new IllegalStateException("Cannot load language " + name + ". Language implementation class " + className + " failed to load.", e);
+                    }
+                }
+            }
+        }
+        return languageClass;
+    }
+
+    private static TruffleLanguage<?> readSingleton(Class<?> languageClass) {
+        try {
+            return (TruffleLanguage<?>) languageClass.getField("INSTANCE").get(null);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
 }
