@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.util.EconomicMap;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaMethod;
@@ -106,25 +107,25 @@ public class GraalDebugConfig implements DebugConfig {
         @Option(help = "Base filename when dumping C1Visualizer output to files.", type = OptionType.Debug)
         public static final OptionKey<String> PrintCFGFileName = new OptionKey<>("compilations");
 
-        @Option(help = "Output probabilities for fixed nodes during binary graph dumping", type = OptionType.Debug)
+        @Option(help = "Output probabilities for fixed nodes during binary graph dumping.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintGraphProbabilities = new OptionKey<>(false);
         @Option(help = "Enable dumping to the IdealGraphVisualizer.", type = OptionType.Debug)
-        public static final OptionKey<Boolean> PrintIdealGraph = new OptionKey<>(true);
-        @Option(help = "Dump IdealGraphVisualizer output in binary format", type = OptionType.Debug)
+        public static final OptionKey<Boolean> PrintGraph = new OptionKey<>(true);
+        @Option(help = "Dump graphs in binary format instead of XML format.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintBinaryGraphs = new OptionKey<>(true);
-        @Option(help = "Print Ideal graphs as opposed to sending them over the network.", type = OptionType.Debug)
-        public static final OptionKey<Boolean> PrintIdealGraphFile = new OptionKey<>(false);
-        @Option(help = "Base filename when dumping Ideal graphs to files.", type = OptionType.Debug)
-        public static final OptionKey<String> PrintIdealGraphFileName = new OptionKey<>("runtime-graphs");
+        @Option(help = "Print graphs to files instead of sending them over the network.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<>(false);
+        @Option(help = "Base filename when dumping graphs to files.", type = OptionType.Debug)
+        public static final OptionKey<String> PrintGraphFileName = new OptionKey<>("runtime-graphs");
 
-        @Option(help = "", type = OptionType.Debug)
-        public static final OptionKey<String> PrintIdealGraphAddress = new OptionKey<>("127.0.0.1");
-        @Option(help = "", type = OptionType.Debug)
-        public static final OptionKey<Integer> PrintIdealGraphPort = new OptionKey<>(4444);
-        @Option(help = "", type = OptionType.Debug)
+        @Option(help = "Host part of the address to which graphs are dumped.", type = OptionType.Debug)
+        public static final OptionKey<String> PrintGraphHost = new OptionKey<>("127.0.0.1");
+        @Option(help = "Port part of the address to which graphs are dumped in XML format (ignored if PrintBinaryGraphs=true).", type = OptionType.Debug)
+        public static final OptionKey<Integer> PrintXmlGraphPort = new OptionKey<>(4444);
+        @Option(help = "Port part of the address to which graphs are dumped in binary format (ignored if PrintBinaryGraphs=false).", type = OptionType.Debug)
         public static final OptionKey<Integer> PrintBinaryGraphPort = new OptionKey<>(4445);
-        @Option(help = "", type = OptionType.Debug)
-        public static final OptionKey<Boolean> PrintIdealGraphSchedule = new OptionKey<>(false);
+        @Option(help = "Schedule graphs as they are dumped.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> PrintGraphWithSchedule = new OptionKey<>(false);
         @Option(help = "Enable dumping Truffle ASTs to the IdealGraphVisualizer.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintTruffleTrees = new OptionKey<>(true);
 
@@ -163,7 +164,37 @@ public class GraalDebugConfig implements DebugConfig {
         public static final OptionKey<Boolean> ClearMetricsAfterBootstrap = new OptionKey<>(false);
         @Option(help = "Do not compile anything on bootstrap but just initialize the compiler.", type = OptionType.Debug)
         public static final OptionKey<Boolean> BootstrapInitializeOnly = new OptionKey<>(false);
+
+        // These
+        @Option(help = "Deprecated - use PrintGraphHost instead.", type = OptionType.Debug)
+        static final OptionKey<String> PrintIdealGraphAddress = new DeprecatedOptionKey<>(PrintGraphHost);
+        @Option(help = "Deprecated - use PrintGraphWithSchedule instead.", type = OptionType.Debug)
+        static final OptionKey<Boolean> PrintIdealGraphSchedule = new DeprecatedOptionKey<>(PrintGraphWithSchedule);
+        @Option(help = "Deprecated - use PrintGraph instead.", type = OptionType.Debug)
+        static final OptionKey<Boolean> PrintIdealGraph = new DeprecatedOptionKey<>(PrintGraph);
+        @Option(help = "Deprecated - use PrintGraphFile instead.", type = OptionType.Debug)
+        static final OptionKey<Boolean> PrintIdealGraphFile = new DeprecatedOptionKey<>(PrintGraphFile);
+        @Option(help = "Deprecated - use PrintGraphFileName instead.", type = OptionType.Debug)
+        static final OptionKey<String> PrintIdealGraphFileName = new DeprecatedOptionKey<>(PrintGraphFileName);
+        @Option(help = "Deprecated - use PrintXmlGraphPort instead.", type = OptionType.Debug)
+        static final OptionKey<Integer> PrintIdealGraphPort = new DeprecatedOptionKey<>(PrintXmlGraphPort);
         // @formatter:on
+    }
+
+    static class DeprecatedOptionKey<T> extends OptionKey<T> {
+        private final OptionKey<T> replacement;
+
+        DeprecatedOptionKey(OptionKey<T> replacement) {
+            super(replacement.getDefaultValue());
+            this.replacement = replacement;
+        }
+
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
+            // Ideally we'd use TTY here but it may not yet be initialized.
+            System.err.printf("Warning: the %s option is deprecated - use %s instead%n", getName(), replacement.getName());
+            replacement.update(values, newValue);
+        }
     }
 
     public static boolean isNotEmpty(OptionKey<String> option, OptionValues options) {
@@ -221,10 +252,6 @@ public class GraalDebugConfig implements DebugConfig {
             this.methodFilter = org.graalvm.compiler.debug.MethodFilter.parse(methodFilter);
         }
 
-        // Report the filters that have been configured so the user can verify it's what they expect
-        if (logFilter != null || countFilter != null || timerFilter != null || dumpFilter != null || methodFilter != null) {
-            // TTY.println(Thread.currentThread().getName() + ": " + toString());
-        }
         this.dumpHandlers = dumpHandlers;
         this.verifyHandlers = verifyHandlers;
         this.output = output;

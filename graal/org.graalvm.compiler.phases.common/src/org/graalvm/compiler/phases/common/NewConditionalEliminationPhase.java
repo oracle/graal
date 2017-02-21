@@ -154,7 +154,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         protected void processConditionAnchor(ConditionAnchorNode node) {
             tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
-                    rewirePiNodes(node, guardedValueStamp, newInput);
+                    rewirePiNodes(node, guard, guardedValueStamp, newInput);
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
@@ -167,38 +167,59 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             });
         }
 
-        private static void rewirePiNodes(GuardingNode node, Stamp guardedValueStamp, ValueProxy newInput) {
+        private static void rewirePiNodes(GuardingNode toBeReplaced, GuardingNode replacement, Stamp guardedValueStamp, ValueNode newInput) {
             ValueNode unproxified = GraphUtil.unproxify(newInput);
-            for (Node usage : node.asNode().usages().snapshot()) {
+            for (Node usage : toBeReplaced.asNode().usages().snapshot()) {
                 if (usage instanceof PiNode) {
                     PiNode piNode = (PiNode) usage;
 
                     if (piNode.getOriginalNode() != newInput && GraphUtil.unproxify(piNode.getOriginalNode()) == unproxified) {
-                        piNode.setOriginalNode((ValueNode) newInput.asNode());
+                        piNode.setOriginalNode(newInput);
                     }
 
-                    if (piNode.getOriginalNode() == newInput) {
+                    if (usesGuardedValue(replacement, GraphUtil.unproxify((ValueNode) piNode))) {
                         Stamp piStamp = piNode.piStamp();
-                        Stamp newStamp = piStamp.join(guardedValueStamp);
+                        if (guardedValueStamp != null) {
+                            Stamp newStamp = piStamp.join(guardedValueStamp);
 
-                        /*
-                         * Use an improved stamp in the PiNode. It's possible when joining class and
-                         * interfaces for the stamp to become worse so keep the original stamp in
-                         * that case. It's just not clear which answer would be most useful to
-                         * users.
-                         */
-                        if (!newStamp.isEmpty() && !newStamp.equals(piStamp) && !newStamp.join(piStamp).equals(piStamp)) {
-                            usage.replaceAtUsagesAndDelete(piNode.graph().unique(new PiNode(piNode.getOriginalNode(), newStamp, piNode.getGuard().asNode())));
+                            /*
+                             * Use an improved stamp in the PiNode. It's possible when joining class
+                             * and interfaces for the stamp to become worse so keep the original
+                             * stamp in that case. It's just not clear which answer would be most
+                             * useful to users.
+                             */
+                            if (!newStamp.isEmpty() && !newStamp.equals(piStamp) && !newStamp.join(piStamp).equals(piStamp)) {
+                                usage.replaceAtUsagesAndDelete(piNode.graph().unique(new PiNode(piNode.getOriginalNode(), newStamp, piNode.getGuard().asNode())));
+                            }
                         }
                     }
                 }
             }
         }
 
+        private static boolean usesGuardedValue(GuardingNode node, ValueNode guardedValue) {
+            LogicNode condition = null;
+            if (node instanceof FixedGuardNode) {
+                condition = ((FixedGuardNode) node).getCondition();
+            } else if (node instanceof AbstractBeginNode && ((Node) node).predecessor() instanceof IfNode) {
+                condition = ((IfNode) ((Node) node).predecessor()).condition();
+            } else if (node instanceof GuardNode) {
+                condition = ((GuardNode) node).getCondition();
+            }
+            if (condition instanceof UnaryOpLogicNode) {
+                UnaryOpLogicNode unary = (UnaryOpLogicNode) condition;
+                return unary.getValue() == guardedValue;
+            } else if (condition instanceof BinaryOpLogicNode) {
+                BinaryOpLogicNode binary = (BinaryOpLogicNode) condition;
+                return binary.getX() == guardedValue || binary.getY() == guardedValue;
+            }
+            return false;
+        }
+
         protected void processGuard(GuardNode node) {
             if (!tryProveGuardCondition(node, node.getCondition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
-                    rewirePiNodes(node, guardedValueStamp, newInput);
+                    rewirePiNodes(node, guard, guardedValueStamp, newInput);
                     node.replaceAndDelete(guard.asNode());
                 } else {
                     DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.getAction(), node.getReason(), node.getSpeculation()));
@@ -216,7 +237,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         protected void processFixedGuard(FixedGuardNode node) {
             if (!tryProveGuardCondition(node, node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 if (result != node.isNegated()) {
-                    rewirePiNodes(node, guardedValueStamp, newInput);
+                    rewirePiNodes(node, guard, guardedValueStamp, newInput);
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
@@ -236,7 +257,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
         protected void processIf(IfNode node) {
             tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
-                rewirePiNodes(survivingSuccessor, guardedValueStamp, newInput);
+                rewirePiNodes(survivingSuccessor, guard, guardedValueStamp, newInput);
                 survivingSuccessor.replaceAtUsages(InputType.Guard, guard.asNode());
                 survivingSuccessor.replaceAtPredecessor(null);
                 node.replaceAtPredecessor(survivingSuccessor);
@@ -449,6 +470,8 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     ValueNode y = binaryOpLogicNode.getY();
                     if (binaryOpLogicNode.getX() == original) {
                         result = binaryOpLogicNode.tryFold(newStamp, binaryOpLogicNode.getY().stamp());
+                    } else if (binaryOpLogicNode.getY() == original) {
+                        result = binaryOpLogicNode.tryFold(binaryOpLogicNode.getX().stamp(), newStamp);
                     } else if (binaryOpLogicNode instanceof IntegerEqualsNode && y.isConstant() && x instanceof AndNode) {
                         AndNode and = (AndNode) x;
                         if (and.getY() == y && and.getX() == original) {
@@ -504,7 +527,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             return map.get(value);
         }
 
-        protected boolean rewireGuards(GuardingNode guard, boolean result, ValueProxy proxifiedInput, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
+        protected boolean rewireGuards(GuardingNode guard, boolean result, ValueNode proxifiedInput, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
             counterStampsFound.increment();
             return rewireGuardFunction.rewire(guard, result, guardedValueStamp, proxifiedInput);
         }
@@ -517,7 +540,8 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             InfoElement infoElement = getInfoElements(node);
             if (infoElement != null) {
                 assert infoElement.getStamp() == StampFactory.tautology() || infoElement.getStamp() == StampFactory.contradiction();
-                return rewireGuards(infoElement.getGuard(), infoElement.getStamp() == StampFactory.tautology(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
+                // No proxified input and stamp required.
+                return rewireGuards(infoElement.getGuard(), infoElement.getStamp() == StampFactory.tautology(), null, null, rewireGuardFunction);
             }
             if (node instanceof UnaryOpLogicNode) {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) node;
@@ -646,8 +670,18 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                         return rewireGuards(guard, true, newInput, guardedValueStamp, rewireGuardFunction);
                     } else {
                         return tryProveCondition(shortCircuitOrNode.getY(), (innerGuard, innerResult, innerGuardedValueStamp, innerNewInput) -> {
-                            if (innerGuard == guard && newInput == innerNewInput) {
-                                return rewireGuards(guard, innerResult ^ shortCircuitOrNode.isYNegated(), newInput, innerGuardedValueStamp, rewireGuardFunction);
+                            ValueNode proxifiedInput = newInput;
+                            if (proxifiedInput == null) {
+                                proxifiedInput = innerNewInput;
+                            } else if (innerNewInput != null) {
+                                if (innerNewInput != newInput) {
+                                    // Cannot canonicalize due to different proxied inputs.
+                                    return false;
+                                }
+                            }
+                            // Can only canonicalize if the guards are equal.
+                            if (innerGuard == guard) {
+                                return rewireGuards(guard, innerResult ^ shortCircuitOrNode.isYNegated(), proxifiedInput, guardedValueStamp, rewireGuardFunction);
                             }
                             return false;
                         });
@@ -663,9 +697,9 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             assert guard != null;
             if (newStamp != null) {
                 ValueNode value = maybeProxiedValue;
-                ValueProxy proxiedValue = null;
+                ValueNode proxiedValue = null;
                 if (value instanceof ValueProxy) {
-                    proxiedValue = (ValueProxy) value;
+                    proxiedValue = value;
                     value = GraphUtil.unproxify(value);
                 }
                 counterStampsRegistered.increment();
@@ -801,7 +835,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
          * @param newInput new input to pi nodes depending on the new guard
          * @return whether the transformation could be applied
          */
-        boolean rewire(GuardingNode guard, boolean result, Stamp guardedValueStamp, ValueProxy newInput);
+        boolean rewire(GuardingNode guard, boolean result, Stamp guardedValueStamp, ValueNode newInput);
     }
 
     protected static class PendingTest {
@@ -817,10 +851,10 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     protected static final class InfoElement {
         private final Stamp stamp;
         private final GuardingNode guard;
-        private final ValueProxy proxifiedInput;
+        private final ValueNode proxifiedInput;
         private final InfoElement parent;
 
-        public InfoElement(Stamp stamp, GuardingNode guard, ValueProxy proxifiedInput, InfoElement parent) {
+        public InfoElement(Stamp stamp, GuardingNode guard, ValueNode proxifiedInput, InfoElement parent) {
             this.stamp = stamp;
             this.guard = guard;
             this.proxifiedInput = proxifiedInput;
@@ -839,7 +873,7 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
             return guard;
         }
 
-        public ValueProxy getProxifiedInput() {
+        public ValueNode getProxifiedInput() {
             return proxifiedInput;
         }
 

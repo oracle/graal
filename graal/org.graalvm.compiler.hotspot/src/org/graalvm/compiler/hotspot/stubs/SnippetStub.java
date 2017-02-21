@@ -32,6 +32,7 @@ import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.Debug;
 import org.graalvm.compiler.debug.Debug.Scope;
 import org.graalvm.compiler.debug.GraalError;
@@ -123,7 +124,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
             }
 
             try {
-                IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, providers.getReplacements().getReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
+                IntrinsicContext initialIntrinsicContext = new IntrinsicContext(method, method, getReplacementsBytecodeProvider(), INLINE_AFTER_PARSING);
                 GraphBuilderPhase.Instance instance = new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(),
                                 providers.getConstantReflection(), providers.getConstantFieldProvider(),
                                 config, OptimisticOptimizations.NONE,
@@ -153,6 +154,10 @@ public abstract class SnippetStub extends Stub implements Snippets {
         }
 
         return graph;
+    }
+
+    protected BytecodeProvider getReplacementsBytecodeProvider() {
+        return providers.getReplacements().getReplacementBytecodeProvider();
     }
 
     protected boolean checkConstArg(int index, String expectedName) {

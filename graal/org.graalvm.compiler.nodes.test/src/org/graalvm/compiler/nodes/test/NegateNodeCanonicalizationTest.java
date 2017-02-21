@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * This class tests that the canonicalization for constant negate nodes cover all cases.
  */
-@AddExports("jdk.vm.ci/jdk.vm.ci.meta")
+@AddExports("jdk.internal.vm.ci/jdk.vm.ci.meta")
 public class NegateNodeCanonicalizationTest {
 
     private StructuredGraph graph;

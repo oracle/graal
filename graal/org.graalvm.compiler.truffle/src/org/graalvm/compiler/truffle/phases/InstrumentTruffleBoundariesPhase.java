@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.phases;
 
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -61,15 +62,15 @@ import org.graalvm.compiler.truffle.TruffleCompilerOptions;
  */
 public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
-    public InstrumentTruffleBoundariesPhase(OptionValues options) {
-        super(options);
+    public InstrumentTruffleBoundariesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+        super(options, snippetReflection, instrumentation);
     }
 
     @Override
     protected void instrumentGraph(StructuredGraph graph, HighTierContext context, JavaConstant tableConstant) {
         for (Node n : graph.getNodes()) {
             if (n instanceof Invoke && ((Invoke) n).callTarget().targetMethod().isAnnotationPresent(TruffleCallBoundary.class)) {
-                Instrumentation.Point p = getOrCreatePoint(n);
+                Point p = getOrCreatePoint(n);
                 if (p != null) {
                     insertCounter(graph, context, tableConstant, (FixedWithNextNode) n.predecessor(), p.slotIndex(0));
                 }
@@ -88,11 +89,11 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected Instrumentation.Point createPoint(int id, int startIndex, Node n) {
+    protected Point createPoint(int id, int startIndex, Node n) {
         return new BoundaryPoint(id, startIndex, n.getNodeSourcePosition());
     }
 
-    public static class BoundaryPoint extends Instrumentation.Point {
+    public class BoundaryPoint extends Point {
         BoundaryPoint(int id, int rawIndex, NodeSourcePosition position) {
             super(id, rawIndex, position);
         }
@@ -109,7 +110,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
         @Override
         public long getHotness() {
-            return ACCESS_TABLE[rawIndex];
+            return getInstrumentation().getAccessTable()[rawIndex];
         }
 
         @Override

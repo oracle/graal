@@ -153,8 +153,9 @@ import jdk.vm.ci.services.Services;
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
-@AddExports({"jdk.vm.ci/jdk.vm.ci.meta",
-                "jdk.vm.ci/jdk.vm.ci.code",
+@AddExports({"jdk.internal.vm.ci/jdk.vm.ci.meta",
+                "jdk.internal.vm.ci/jdk.vm.ci.code",
+                "jdk.internal.vm.ci/jdk.vm.ci.services",
                 "java.base/jdk.internal.org.objectweb.asm",
                 "java.base/jdk.internal.org.objectweb.asm.tree"})
 public abstract class GraalCompilerTest extends GraalTest {

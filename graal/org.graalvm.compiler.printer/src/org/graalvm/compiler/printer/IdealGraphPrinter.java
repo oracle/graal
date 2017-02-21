@@ -122,7 +122,7 @@ public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPr
             StructuredGraph structuredGraph = (StructuredGraph) graph;
             schedule = structuredGraph.getLastSchedule();
             if (schedule == null && tryToSchedule) {
-                if (Options.PrintIdealGraphSchedule.getValue(DebugScope.getConfig().getOptions())) {
+                if (Options.PrintGraphWithSchedule.getValue(DebugScope.getConfig().getOptions())) {
                     try {
                         SchedulePhase schedulePhase = new SchedulePhase(graph.getOptions());
                         schedulePhase.apply(structuredGraph);

@@ -52,7 +52,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
     @Override
     public void dump(Object object, final String message) {
-        if (object instanceof TruffleTreeDump && Options.PrintIdealGraph.getValue(GLOBAL) && TruffleCompilerOptions.getValue(Options.PrintTruffleTrees)) {
+        if (object instanceof TruffleTreeDump && Options.PrintGraph.getValue(GLOBAL) && TruffleCompilerOptions.getValue(Options.PrintTruffleTrees)) {
             dumpRootCallTarget(message, ((TruffleTreeDump) object).callTarget);
         }
     }

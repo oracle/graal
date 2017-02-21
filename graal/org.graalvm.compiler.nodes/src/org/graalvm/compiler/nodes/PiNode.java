@@ -35,8 +35,7 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.extended.UnsafeLoadNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
@@ -72,6 +71,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         super(c, stamp, guard);
         this.object = object;
         this.piStamp = stamp;
+        assert piStamp.isCompatible(object.stamp()) : "Object stamp not compatible to piStamp";
         inferStamp();
     }
 
@@ -148,14 +148,10 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         if (g == null) {
 
             // Try to merge the pi node with a load node.
-            if (o instanceof LoadFieldNode) {
-                LoadFieldNode loadFieldNode = (LoadFieldNode) o;
-                loadFieldNode.setStamp(loadFieldNode.stamp().improveWith(this.piStamp));
-                return loadFieldNode;
-            } else if (o instanceof UnsafeLoadNode) {
-                UnsafeLoadNode unsafeLoadNode = (UnsafeLoadNode) o;
-                unsafeLoadNode.setStamp(unsafeLoadNode.stamp().improveWith(this.piStamp));
-                return unsafeLoadNode;
+            if (o instanceof ReadNode) {
+                ReadNode readNode = (ReadNode) o;
+                readNode.setStamp(readNode.stamp().improveWith(this.piStamp));
+                return readNode;
             }
         } else {
             for (Node n : g.asNode().usages()) {
@@ -185,6 +181,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     public void setOriginalNode(ValueNode newNode) {
         this.updateUsages(object, newNode);
         this.object = newNode;
+        assert piStamp.isCompatible(object.stamp()) : "New object stamp not compatible to piStamp";
     }
 
     /**

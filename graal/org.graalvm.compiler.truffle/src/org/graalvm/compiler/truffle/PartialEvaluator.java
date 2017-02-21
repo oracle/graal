@@ -94,6 +94,7 @@ import org.graalvm.compiler.truffle.nodes.AssumptionValidAssumption;
 import org.graalvm.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.phases.InstrumentBranchesPhase;
+import org.graalvm.compiler.truffle.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.phases.InstrumentTruffleBoundariesPhase;
 import org.graalvm.compiler.truffle.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
@@ -121,6 +122,7 @@ public class PartialEvaluator {
 
     protected final Providers providers;
     protected final Architecture architecture;
+    protected final InstrumentPhase.Instrumentation instrumentation;
     private final CanonicalizerPhase canonicalizer;
     private final SnippetReflectionProvider snippetReflection;
     private final ResolvedJavaMethod callDirectMethod;
@@ -130,7 +132,8 @@ public class PartialEvaluator {
     private final GraphBuilderConfiguration configForParsing;
     private final InvocationPlugins decodingInvocationPlugins;
 
-    public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
+    public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
+                    InstrumentPhase.Instrumentation instrumentation) {
         this.providers = providers;
         this.architecture = architecture;
         this.canonicalizer = new CanonicalizerPhase();
@@ -138,6 +141,7 @@ public class PartialEvaluator {
         this.callDirectMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallDirectMethod());
         this.callInlinedMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.getCallInlinedMethod());
         this.callSiteProxyMethod = providers.getMetaAccess().lookupJavaMethod(GraalFrameInstance.CALL_NODE_METHOD);
+        this.instrumentation = instrumentation;
 
         try {
             callRootMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("callRoot", Object[].class));
@@ -484,8 +488,12 @@ public class PartialEvaluator {
     }
 
     protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {
-        new InstrumentBranchesPhase(graph.getOptions()).apply(graph, tierContext);
-        new InstrumentTruffleBoundariesPhase(graph.getOptions()).apply(graph, tierContext);
+        if (TruffleCompilerOptions.TruffleInstrumentBranches.getValue(graph.getOptions())) {
+            new InstrumentBranchesPhase(graph.getOptions(), snippetReflection, instrumentation).apply(graph, tierContext);
+        }
+        if (TruffleCompilerOptions.TruffleInstrumentBoundaries.getValue(graph.getOptions())) {
+            new InstrumentTruffleBoundariesPhase(graph.getOptions(), snippetReflection, instrumentation).apply(graph, tierContext);
+        }
     }
 
     @SuppressWarnings("try")

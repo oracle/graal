@@ -187,7 +187,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             if (scheduleResult == null) {
 
                 // Also provide a schedule when an error occurs
-                if (Options.PrintIdealGraphSchedule.getValue(graph.getOptions()) || Debug.contextLookup(Throwable.class) != null) {
+                if (Options.PrintGraphWithSchedule.getValue(graph.getOptions()) || Debug.contextLookup(Throwable.class) != null) {
                     try {
                         SchedulePhase schedule = new SchedulePhase(graph.getOptions());
                         schedule.apply(structuredGraph);

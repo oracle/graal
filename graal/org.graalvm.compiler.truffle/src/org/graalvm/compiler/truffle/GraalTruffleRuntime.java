@@ -22,38 +22,35 @@
  */
 package org.graalvm.compiler.truffle;
 
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationRepeats;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilerThreads;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleProfilingEnabled;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.getValue;
-import static org.graalvm.compiler.truffle.TruffleCompilerOptions.overrideOptions;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceConfigurationError;
-import java.util.ServiceLoader;
-import java.util.WeakHashMap;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
-
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerOptions;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.object.LayoutFactory;
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.code.stack.InspectedFrame;
+import jdk.vm.ci.code.stack.InspectedFrameVisitor;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilerThreadFactory;
@@ -78,37 +75,37 @@ import org.graalvm.compiler.truffle.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.phases.InstrumentPhase;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerOptions;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.TVMCI;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RepeatingNode;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.LayoutFactory;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
+import java.util.WeakHashMap;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.stack.InspectedFrame;
-import jdk.vm.ci.code.stack.InspectedFrameVisitor;
-import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilationRepeats;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompileOnly;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleCompilerThreads;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleEnableInfopoints;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBoundaries;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleProfilingEnabled;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.getValue;
+import static org.graalvm.compiler.truffle.TruffleCompilerOptions.overrideOptions;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
@@ -148,6 +145,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     private final GraalTVMCI tvmci = new GraalTVMCI();
 
     /**
+     * The instrumentation object is used by the Truffle instrumentation to count executions. The
+     * value is lazily initialized the first time it is requested because it depends on the Truffle
+     * options, and tests that need the instrumentation table need to override these options after
+     * the TruffleRuntime object is created.
+     */
+    private volatile InstrumentPhase.Instrumentation instrumentation;
+
+    /**
      * Utility method that casts the singleton {@link TruffleRuntime}.
      */
     public static GraalTruffleRuntime getRuntime() {
@@ -156,6 +161,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntime) {
         this.graalRuntime = graalRuntime;
+
     }
 
     protected GraalTVMCI getTvmci() {
@@ -280,7 +286,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     @Override
     public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
-        if (useFrameWithoutBoxing()) {
+        if (useFrameWithoutBoxing) {
             return new FrameWithoutBoxing(frameDescriptor, arguments);
         } else {
             return new FrameWithBoxing(frameDescriptor, arguments);
@@ -475,7 +481,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         getCompilationNotify().notifyShutdown(this);
         OptionValues options = TruffleCompilerOptions.getOptions();
         if (getValue(TruffleInstrumentBranches) || getValue(TruffleInstrumentBoundaries)) {
-            InstrumentPhase.instrumentation.dumpAccessTable(options);
+            instrumentation.dumpAccessTable(options);
         }
     }
 
@@ -618,6 +624,19 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         return callMethods;
     }
 
+    public InstrumentPhase.Instrumentation getInstrumentation() {
+        if (instrumentation == null) {
+            synchronized (this) {
+                if (instrumentation == null) {
+                    OptionValues options = TruffleCompilerOptions.getOptions();
+                    long[] accessTable = new long[TruffleCompilerOptions.TruffleInstrumentationTableSize.getValue(options)];
+                    instrumentation = new InstrumentPhase.Instrumentation(accessTable);
+                }
+            }
+        }
+        return instrumentation;
+    }
+
     // cached field access to make it fast in the interpreter
     private static final boolean PROFILING_ENABLED = TruffleCompilerOptions.getValue(TruffleProfilingEnabled);
 
@@ -748,11 +767,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
 
     /**
      * The flag is checked from within a Truffle compilation and we need to constant fold the
-     * decision. A @link{CompilationFinal} field is the easiest way to achieve that.
+     * decision. In addition, we want only one of {@link FrameWithoutBoxing} and
+     * {@link FrameWithBoxing} seen as reachable in AOT mode, so we need to be able to constant fold
+     * the decision as early as possible.
      */
-    @CompilationFinal public boolean useFrameWithoutBoxing = TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing);
-
-    public boolean useFrameWithoutBoxing() {
-        return useFrameWithoutBoxing;
-    }
+    public static final boolean useFrameWithoutBoxing = TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing);
 }

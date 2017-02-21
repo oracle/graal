@@ -31,6 +31,8 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
@@ -107,7 +109,16 @@ public final class GraphEffectList extends EffectList {
      * @param node The floating node to be added.
      */
     public void addFloatingNode(ValueNode node, @SuppressWarnings("unused") String cause) {
-        add("add floating node", graph -> graph.addWithoutUnique(node));
+        add("add floating node", graph -> {
+            if (node instanceof ProxyNode) {
+                ProxyNode proxyNode = (ProxyNode) node;
+                ValueNode value = proxyNode.value();
+                if (!value.isAlive()) {
+                    graph.addWithoutUnique(value);
+                }
+            }
+            graph.addWithoutUnique(node);
+        });
     }
 
     /**
@@ -212,6 +223,7 @@ public final class GraphEffectList extends EffectList {
      */
     public void replaceAtUsages(ValueNode node, ValueNode replacement, FixedNode insertBefore) {
         assert node != null && replacement != null : node + " " + replacement;
+        assert node.stamp().isCompatible(replacement.stamp()) : "Replacement node stamp not compatible " + node.stamp() + " vs " + replacement.stamp();
         add("replace at usages", (graph, obsoleteNodes) -> {
             assert node.isAlive();
             ValueNode replacementNode = graph.addOrUniqueWithInputs(replacement);
@@ -219,6 +231,16 @@ public final class GraphEffectList extends EffectList {
             assert insertBefore != null;
             if (replacementNode instanceof FixedWithNextNode && ((FixedWithNextNode) replacementNode).next() == null) {
                 graph.addBeforeFixed(insertBefore, (FixedWithNextNode) replacementNode);
+            }
+            /*
+             * Keep the (better) stamp information when replacing a node with another one if the
+             * replacement has a less precise stamp than the original node. This can happen for
+             * example in the context of read nodes and unguarded pi nodes where the pi will be used
+             * to improve the stamp information of the read. Such a read might later be replaced
+             * with a read with a less precise stamp.
+             */
+            if (!node.stamp().equals(replacementNode.stamp())) {
+                replacementNode = graph.unique(new PiNode(replacementNode, node.stamp()));
             }
             node.replaceAtUsages(replacementNode);
             if (node instanceof FixedWithNextNode) {

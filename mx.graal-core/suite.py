@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.69.3",
+  "mxversion" : "5.71.0",
   "name" : "graal-core",
 
   "imports" : {
@@ -8,7 +8,7 @@ suite = {
         "name" : "truffle",
         # IMPORTANT: When updating the Truffle import, notify Truffle language developers
         # (by mail to graal-dev@openjdk.java.net) of the pending change.
-        "version" : "4417deabe3c5e0b8b5bb593b4db7419d48f2fe03",
+        "version" : "dac90f4370b8387b7dbb2c6f07f1e46382fba97b",
         "urls" : [
           {"url" : "https://github.com/graalvm/truffle.git", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -106,7 +106,7 @@ suite = {
       "subDir" : "graal",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.7",
+      "javaCompliance" : "1.8=",
     },
 
     "com.oracle.nfi.test" : {
@@ -880,7 +880,7 @@ suite = {
         "org.graalvm.compiler.core.test"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "1.8=",
       "workingSets" : "Graal,Test",
     },
 
@@ -1447,7 +1447,7 @@ suite = {
 
     "GRAAL" : {
       # This distribution defines a module.
-      "moduleName" : "jdk.vm.compiler",
+      "moduleName" : "jdk.internal.vm.compiler",
       "addExports" : [
         # All other internal packages are exported dynamically -
         # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator

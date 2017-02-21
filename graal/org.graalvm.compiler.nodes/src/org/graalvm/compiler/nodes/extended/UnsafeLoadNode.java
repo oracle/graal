@@ -26,10 +26,13 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.LocationIdentity;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -76,6 +79,26 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
                     ValueNode entry = tool.getEntry(virtual, entryIndex);
                     JavaKind entryKind = virtual.entryKind(entryIndex);
                     if (entry.getStackKind() == getStackKind() || entryKind == accessKind()) {
+
+                        if (!(entry.stamp().isCompatible(stamp()))) {
+                            if (entry.stamp() instanceof PrimitiveStamp && stamp instanceof PrimitiveStamp) {
+                                PrimitiveStamp p1 = (PrimitiveStamp) stamp;
+                                PrimitiveStamp p2 = (PrimitiveStamp) entry.stamp();
+                                int width1 = p1.getBits();
+                                int width2 = p2.getBits();
+                                if (width1 == width2) {
+                                    Node replacement = new ReinterpretNode(p2, entry);
+                                    tool.replaceWith((ValueNode) replacement);
+                                    return;
+                                } else {
+                                    // different bit width
+                                    return;
+                                }
+                            } else {
+                                // cannot reinterpret for arbitrary objects
+                                return;
+                            }
+                        }
                         tool.replaceWith(entry);
                     }
                 }

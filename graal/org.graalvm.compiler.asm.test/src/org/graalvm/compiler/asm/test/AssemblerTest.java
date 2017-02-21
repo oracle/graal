@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
-@AddExports("jdk.vm.ci/jdk.vm.ci.runtime")
+@AddExports("jdk.internal.vm.ci/jdk.vm.ci.runtime")
 public abstract class AssemblerTest extends GraalTest {
 
     private final MetaAccessProvider metaAccess;

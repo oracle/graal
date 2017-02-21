@@ -133,6 +133,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     }
 
     private final Integer intRequiredOnAMD64 = osArch.equals("amd64") ? null : 0;
+    private final Long longRequiredOnAMD64 = osArch.equals("amd64") ? null : 0L;
     private final Integer intNotPresentInJDK8 = isJDK8 ? 0 : null;
     private final Long longNotPresentInJDK8 = isJDK8 ? 0L : null;
 
@@ -242,7 +243,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
         return (int) (Math.log(objectAlignment) / Math.log(2));
     }
 
-    public final int narrowKlassSize = getTypeSize("narrowKlass");
+    public final int narrowKlassSize = getFieldValue("CompilerToVM::Data::sizeof_narrowKlass", Integer.class, "int");
     public final long narrowKlassBase = getFieldValue("CompilerToVM::Data::Universe_narrow_klass_base", Long.class, "address");
     public final int narrowKlassShift = getFieldValue("CompilerToVM::Data::Universe_narrow_klass_shift", Integer.class, "int");
     public final int logKlassAlignment = getConstant("LogKlassAlignmentInBytes", Integer.class);
@@ -288,7 +289,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
         return (layoutHelperArrayTagTypeValue & ~layoutHelperArrayTagObjectValue) << layoutHelperArrayTagShift;
     }
 
-    public final int vtableEntrySize = getTypeSize("vtableEntry");
+    public final int vtableEntrySize = getFieldValue("CompilerToVM::Data::sizeof_vtableEntry", Integer.class, "int");
     public final int vtableEntryMethodOffset = getFieldOffset("vtableEntry::_method", Integer.class, "Method*");
 
     public final int instanceKlassInitStateOffset = getFieldOffset("InstanceKlass::_init_state", Integer.class, "u1");
@@ -300,7 +301,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int instanceKlassStateLinked = getConstant("InstanceKlass::linked", Integer.class);
     public final int instanceKlassStateFullyInitialized = getConstant("InstanceKlass::fully_initialized", Integer.class);
 
-    public final int arrayOopDescSize = getTypeSize("arrayOopDesc");
+    public final int arrayOopDescSize = getFieldValue("CompilerToVM::Data::sizeof_arrayOopDesc", Integer.class, "int");
 
     /**
      * The offset of the array length word in an array object's header.
@@ -501,7 +502,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int compilationLevelFullOptimization = getConstant("CompLevel_full_optimization",
                     Integer.class);
 
-    public final int constantPoolSize = getTypeSize("ConstantPool");
+    public final int constantPoolSize = getFieldValue("CompilerToVM::Data::sizeof_ConstantPool", Integer.class, "int");
     public final int constantPoolLengthOffset = getFieldOffset("ConstantPool::_length",
                     Integer.class, "int");
 
@@ -558,7 +559,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
 
-    public final int basicLockSize = getTypeSize("BasicLock");
+    public final int basicLockSize = getFieldValue("CompilerToVM::Data::sizeof_BasicLock", Integer.class, "int");
     public final int basicLockDisplacedHeaderOffset = getFieldOffset("BasicLock::_displaced_header", Integer.class, "markOop");
 
     public final int threadAllocatedBytesOffset = getFieldOffset("Thread::_allocated_bytes", Integer.class, "jlong");
@@ -642,17 +643,17 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final long sha256ImplCompressMB = getFieldValue("StubRoutines::_sha256_implCompressMB", Long.class, "address", 0L);
     public final long sha512ImplCompress = getFieldValue("StubRoutines::_sha512_implCompress", Long.class, "address", 0L);
     public final long sha512ImplCompressMB = getFieldValue("StubRoutines::_sha512_implCompressMB", Long.class, "address", 0L);
-    public final long multiplyToLen = getFieldValue("StubRoutines::_multiplyToLen", Long.class, "address", 0L);
+    public final long multiplyToLen = getFieldValue("StubRoutines::_multiplyToLen", Long.class, "address", longRequiredOnAMD64);
 
     public final long counterModeAESCrypt = getFieldValue("StubRoutines::_counterMode_AESCrypt", Long.class, "address", 0L);
     public final long ghashProcessBlocks = getFieldValue("StubRoutines::_ghash_processBlocks", Long.class, "address", 0L);
     public final long crc32cTableTddr = getFieldValue("StubRoutines::_crc32c_table_addr", Long.class, "address", 0L);
     public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address", 0L);
     public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address", 0L);
-    public final long squareToLen = getFieldValue("StubRoutines::_squareToLen", Long.class, "address", 0L);
-    public final long mulAdd = getFieldValue("StubRoutines::_mulAdd", Long.class, "address", 0L);
-    public final long montgomeryMultiply = getFieldValue("StubRoutines::_montgomeryMultiply", Long.class, "address", 0L);
-    public final long montgomerySquare = getFieldValue("StubRoutines::_montgomerySquare", Long.class, "address", 0L);
+    public final long squareToLen = getFieldValue("StubRoutines::_squareToLen", Long.class, "address", longRequiredOnAMD64);
+    public final long mulAdd = getFieldValue("StubRoutines::_mulAdd", Long.class, "address", longRequiredOnAMD64);
+    public final long montgomeryMultiply = getFieldValue("StubRoutines::_montgomeryMultiply", Long.class, "address", longRequiredOnAMD64);
+    public final long montgomerySquare = getFieldValue("StubRoutines::_montgomerySquare", Long.class, "address", longRequiredOnAMD64);
     public final long vectorizedMismatch = getFieldValue("StubRoutines::_vectorizedMismatch", Long.class, "address", 0L);
 
     public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address", longNotPresentInJDK8);
