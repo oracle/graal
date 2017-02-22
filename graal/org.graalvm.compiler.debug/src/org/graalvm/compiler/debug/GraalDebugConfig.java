@@ -56,12 +56,7 @@ public class GraalDebugConfig implements DebugConfig {
                        "An empty value enables all counters unconditionally.", type = OptionType.Debug)
         public static final OptionKey<String> Count = new OptionKey<>(null);
         @Option(help = "Pattern for scope(s) in which verification is enabled (see DebugFilter and Debug.verify).", type = OptionType.Debug)
-        public static final OptionKey<String> Verify = new OptionKey<String>() {
-            @Override
-            protected String defaultValue() {
-                return assertionsEnabled() ? "" : null;
-            }
-        };
+        public static final OptionKey<String> Verify = new OptionKey<>(assertionsEnabled() ? "" : null);
         @Option(help = "Pattern for scope(s) in which memory use tracking is enabled (see DebugFilter and Debug.counter). " +
                        "An empty value enables all memory use trackers unconditionally.", type = OptionType.Debug)
         public static final OptionKey<String> TrackMemUse = new OptionKey<>(null);
