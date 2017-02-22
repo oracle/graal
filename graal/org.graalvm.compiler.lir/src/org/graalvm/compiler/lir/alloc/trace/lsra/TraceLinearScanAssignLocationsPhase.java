@@ -245,7 +245,6 @@ final class TraceLinearScanAssignLocationsPhase extends TraceLinearScanAllocatio
                 if (isStackSlotValue(move.getInput()) && isStackSlotValue(move.getResult())) {
                     // rewrite stack to stack moves
                     instructions.set(j, spillMoveFactory.createStackMove(move.getResult(), move.getInput()));
-                    return true;
                 }
             }
             return false;
