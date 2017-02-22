@@ -30,6 +30,9 @@ import org.graalvm.util.EconomicMap;
  * A key for an option. The value for an option is obtained from an {@link OptionValues} object.
  */
 public class OptionKey<T> {
+
+    int reads;
+
     private final T defaultValue;
 
     private OptionDescriptor descriptor;
@@ -136,5 +139,9 @@ public class OptionKey<T> {
      * @param newValue
      */
     protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
+    }
+
+    public int getReads() {
+        return reads;
     }
 }
