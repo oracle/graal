@@ -108,7 +108,6 @@ public class OptionValues {
 
     @SuppressWarnings("unchecked")
     <T> T get(OptionKey<T> key) {
-        key.reads++;
         Object value = values.get(key);
         if (value == null) {
             return key.getDefaultValue();

@@ -28,15 +28,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -153,29 +149,6 @@ public class HotSpotGraalOptionValues implements OptionValuesAccess {
             }
 
             OptionsParser.parseOptions(optionSettings, values, loader);
-
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                @Override
-                public void run() {
-                    SortedSet<OptionKey<?>> sortedOptions = new TreeSet<>(new Comparator<OptionKey<?>>() {
-
-                        @Override
-                        public int compare(OptionKey<?> o1, OptionKey<?> o2) {
-                            return o1.getReads() - o2.getReads();
-                        }
-
-                    });
-                    for (OptionDescriptors opts : loader) {
-                        for (OptionDescriptor desc : opts) {
-                            sortedOptions.add(desc.getOptionKey());
-                        }
-                    }
-                    for (OptionKey<?> k : sortedOptions) {
-                        System.out.printf("%d\t%s%n", k.getReads(), k);
-                    }
-                }
-            });
-
             return new OptionValues(values);
         }
     }

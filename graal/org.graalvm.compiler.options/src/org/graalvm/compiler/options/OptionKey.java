@@ -31,8 +31,6 @@ import org.graalvm.util.EconomicMap;
  */
 public class OptionKey<T> {
 
-    int reads;
-
     private final T defaultValue;
 
     private OptionDescriptor descriptor;
@@ -139,9 +137,5 @@ public class OptionKey<T> {
      * @param newValue
      */
     protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
-    }
-
-    public int getReads() {
-        return reads;
     }
 }
