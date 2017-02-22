@@ -104,6 +104,41 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
+     * Test that calling CompilerDirectives.transferToInterpreter does not invalidate the target.
+     */
+    @Test
+    public void testTransferToInterpreter() {
+        OSRLoopFactory factory = CONFIGURED;
+
+        class TransferToInterpreterTestRepeatingNode extends TestRepeatingNode {
+            @Override
+            public boolean executeRepeating(VirtualFrame frame) {
+                try {
+                    if (CompilerDirectives.inCompiledCode()) {
+                        CompilerDirectives.transferToInterpreter();
+                    }
+                    int counter = frame.getInt(param1);
+                    frame.setInt(param1, counter - 1);
+                    return counter != 0;
+                } catch (FrameSlotTypeException e) {
+                    return false;
+                }
+            }
+        }
+
+        TestRootNode rootNode = new TestRootNode(factory, new TransferToInterpreterTestRepeatingNode());
+        CallTarget target = runtime.createCallTarget(rootNode);
+        target.call(OSR_THRESHOLD + 1);
+        try {
+            // Invalidation is asynchronous.
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Assert.assertNotNull(rootNode.getOSRTarget());
+    }
+
+    /*
      * Test OSR is not triggered just below the osr threshold.
      */
     @Theory
