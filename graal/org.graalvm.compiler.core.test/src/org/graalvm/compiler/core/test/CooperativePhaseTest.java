@@ -42,9 +42,10 @@ public class CooperativePhaseTest extends GraalCompilerTest {
 
         @Override
         protected void run(StructuredGraph graph) {
+            CompilationAlarm compilationAlarm = CompilationAlarm.current();
             while (true) {
                 sleep(200);
-                if (CompilationAlarm.hasExpired(graph.getOptions())) {
+                if (compilationAlarm.hasExpired()) {
                     return;
                 }
             }
@@ -56,9 +57,10 @@ public class CooperativePhaseTest extends GraalCompilerTest {
 
         @Override
         protected void run(StructuredGraph graph) {
+            CompilationAlarm compilationAlarm = CompilationAlarm.current();
             while (true) {
                 sleep(200);
-                if (CompilationAlarm.hasExpired(graph.getOptions())) {
+                if (compilationAlarm.hasExpired()) {
                     throw new RetryableBailoutException("Expiring...");
                 }
             }
@@ -70,9 +72,10 @@ public class CooperativePhaseTest extends GraalCompilerTest {
 
         @Override
         protected void run(StructuredGraph graph) {
+            CompilationAlarm compilationAlarm = CompilationAlarm.current();
             for (int i = 0; i < 10; i++) {
                 sleep(200);
-                if (CompilationAlarm.hasExpired(graph.getOptions())) {
+                if (compilationAlarm.hasExpired()) {
                     throw new RuntimeException("Phase must not exit in the timeout path");
                 }
             }
@@ -83,7 +86,8 @@ public class CooperativePhaseTest extends GraalCompilerTest {
 
         @Override
         protected void run(StructuredGraph graph) {
-            if (CompilationAlarm.hasExpired(graph.getOptions())) {
+            CompilationAlarm compilationAlarm = CompilationAlarm.current();
+            if (compilationAlarm.hasExpired()) {
                 throw new RuntimeException("Phase must not exit in the timeout path");
             }
         }
