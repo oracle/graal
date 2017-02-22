@@ -418,8 +418,8 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
          * Intra-trace edges, i.e., edge where both, the source and the target block are in the same
          * trace, are either
          * <ul>
-         * <li><em>immediate forward edges</em>, i.e., an edge from <code>i</code>th block of the
-         * trace to the <code>(i+1)</code>th block, or
+         * <li><em>immediate forward edges</em>, i.e., an edge from {@code i}th block of the trace
+         * to the {@code (i+1)}th block, or
          * <li>a <em>loop back-edge</em> from the last block of the trace to the loop header.
          * </ul>
          * This property is guaranteed due to splitting of <em>critical edge</em>.
@@ -486,7 +486,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
         }
 
         /**
-         * @return <code>true</code> if the block requires data-flow resolution.
+         * @return {@code true} if the block requires data-flow resolution.
          */
         @SuppressWarnings("try")
         private boolean allocateBlock(AbstractBlockBase<?> block) {
