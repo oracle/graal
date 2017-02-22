@@ -167,16 +167,6 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
         return slot;
     }
 
-    private final PhiValueVisitor resolveLoopBackEdgeVisitor = (Value in, Value out) -> {
-        resolveBackEdge(in, out);
-    };
-
-    private void resolveBackEdge(Value in, Value out) {
-        if (!isIllegal(in) && !TraceGlobalMoveResolver.isMoveToSelf(out, in)) {
-            TraceGlobalMoveResolutionPhase.addMapping(moveResolver, out, in);
-        }
-    }
-
     @Override
     protected void run(@SuppressWarnings("hiding") TargetDescription target, @SuppressWarnings("hiding") LIRGenerationResult lirGenRes, Trace trace, TraceAllocationContext context) {
         allocate(trace);
@@ -456,7 +446,7 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
             for (int i = 0; i < label.getPhiSize(); i++) {
                 Value incomingValue = label.getIncomingValue(i);
                 Value outgoingValue = blockEnd.getOutgoingValue(i);
-                resolveLoopBackEdgeVisitor.visit(incomingValue, outgoingValue);
+                resolveValuePair(incomingValue, outgoingValue);
             }
             resolveTraceEdge(blockEnd, label);
             moveResolver.resolveAndAppendMoves();
@@ -478,7 +468,13 @@ public final class BottomUpAllocator extends TraceAllocationPhase<TraceAllocatio
             for (int i = label.getPhiSize(); i < label.getIncomingSize(); i++) {
                 Value incomingValue = label.getIncomingValue(i);
                 Value outgoingValue = blockEnd.getOutgoingValue(i);
-                resolveLoopBackEdgeVisitor.visit(incomingValue, outgoingValue);
+                resolveValuePair(incomingValue, outgoingValue);
+            }
+        }
+
+        private void resolveValuePair(Value incomingValue, Value outgoingValue) {
+            if (!isIllegal(incomingValue) && !TraceGlobalMoveResolver.isMoveToSelf(outgoingValue, incomingValue)) {
+                TraceGlobalMoveResolutionPhase.addMapping(moveResolver, outgoingValue, incomingValue);
             }
         }
 
