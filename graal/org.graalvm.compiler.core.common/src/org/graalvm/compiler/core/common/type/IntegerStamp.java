@@ -510,38 +510,36 @@ public final class IntegerStamp extends PrimitiveStamp {
             return true;
         }
         int bits = a.getBits();
-        // Checkstyle: stop
-        long minN_a = a.lowerBound();
-        long maxN_a = Math.min(0, a.upperBound());
-        long minP_a = Math.max(0, a.lowerBound());
-        long maxP_a = a.upperBound();
+        long minNegA = a.lowerBound();
+        long maxNegA = Math.min(0, a.upperBound());
+        long minPosA = Math.max(0, a.lowerBound());
+        long maxPosA = a.upperBound();
 
-        long minN_b = b.lowerBound();
-        long maxN_b = Math.min(0, b.upperBound());
-        long minP_b = Math.max(0, b.lowerBound());
-        long maxP_b = b.upperBound();
-        // Checkstyle: resume
+        long minNegB = b.lowerBound();
+        long maxNegB = Math.min(0, b.upperBound());
+        long minPosB = Math.max(0, b.lowerBound());
+        long maxPosB = b.upperBound();
 
         boolean mayOverflow = false;
         if (a.canBePositive()) {
             if (b.canBePositive()) {
-                mayOverflow |= IntegerStamp.multiplicationOverflows(maxP_a, maxP_b, bits);
-                mayOverflow |= IntegerStamp.multiplicationOverflows(minP_a, minP_b, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(maxPosA, maxPosB, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(minPosA, minPosB, bits);
             }
             if (b.canBeNegative()) {
-                mayOverflow |= IntegerStamp.multiplicationOverflows(minP_a, maxN_b, bits);
-                mayOverflow |= IntegerStamp.multiplicationOverflows(maxP_a, minN_b, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(minPosA, maxNegB, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(maxPosA, minNegB, bits);
 
             }
         }
         if (a.canBeNegative()) {
             if (b.canBePositive()) {
-                mayOverflow |= IntegerStamp.multiplicationOverflows(maxN_a, minP_b, bits);
-                mayOverflow |= IntegerStamp.multiplicationOverflows(minN_a, maxP_b, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(maxNegA, minPosB, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(minNegA, maxPosB, bits);
             }
             if (b.canBeNegative()) {
-                mayOverflow |= IntegerStamp.multiplicationOverflows(minN_a, minN_b, bits);
-                mayOverflow |= IntegerStamp.multiplicationOverflows(maxN_a, maxN_b, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(minNegA, minNegB, bits);
+                mayOverflow |= IntegerStamp.multiplicationOverflows(maxNegA, maxNegB, bits);
             }
         }
         return mayOverflow;
@@ -549,13 +547,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     public static boolean subtractionCanOverflow(IntegerStamp x, IntegerStamp y) {
         assert x.getBits() == y.getBits();
-        // Checkstyle: stop
-        long x_l = x.lowerBound();
-        long x_h = x.upperBound();
-        long y_l = y.lowerBound();
-        long y_h = y.upperBound();
-        // Checkstyle: resume
-        return subtractionOverflows(x_l, y_h, x.getBits()) || subtractionOverflows(x_h, y_l, x.getBits());
+        return subtractionOverflows(x.lowerBound(), y.upperBound(), x.getBits()) || subtractionOverflows(x.upperBound(), y.lowerBound(), x.getBits());
     }
 
     public static boolean subtractionOverflows(long x, long y, int bits) {
@@ -735,7 +727,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                  * upper bound after multiplication.
                                  *
                                  * For example if we consider two stamps a & b that both contain
-                                 * negative and positive values, the product of minN_a * minN_b
+                                 * negative and positive values, the product of minNegA * minNegB
                                  * (both the smallest negative value for each stamp) can only be the
                                  * highest positive number. The other candidates can be computed in
                                  * a similar fashion. Some of them can never be a new minimum or
@@ -744,87 +736,86 @@ public final class IntegerStamp extends PrimitiveStamp {
                                  *
                                  * @formatter:off
                                  *
-                                 *          [x..........0..........y]
-                                 *          -------------------------
-                                 *          [minN   maxN minP   maxP]
-                                 *               where maxN = min(0,y) && minP = max(0,x)
+                                 *          [x................0................y]
+                                 *          -------------------------------------
+                                 *          [minNeg     maxNeg minPos     maxPos]
+                                 *
+                                 *          where maxNeg = min(0,y) && minPos = max(0,x)
                                  *
                                  *
-                                 *                |minN_a  maxN_a    minP_a  maxP_a
-                                 *         _______|________________________________
-                                 *         minN_b |MAX      /     :   /      MIN
-                                 *         maxN_b | /      MIN    :  MAX      /
-                                 *                |---------------+----------------
-                                 *         minP_b | /      MAX    :  MIN      /
-                                 *         maxP_b |MIN      /     :   /      MAX
+                                 *                 |minNegA  maxNegA    minPosA  maxPosA
+                                 *         _______ |____________________________________
+                                 *         minNegB | MAX        /     :     /      MIN
+                                 *         maxNegB |  /        MIN    :    MAX      /
+                                 *                 |------------------+-----------------
+                                 *         minPosB |  /        MAX    :    MIN      /
+                                 *         maxPosB | MIN        /     :     /      MAX
                                  *
                                  * @formatter:on
                                  */
                                 // We materialize all factors here. If they are needed, the signs of
                                 // the stamp will ensure the correct value is used.
-                                // Checkstyle: stop
-                                long minN_a = a.lowerBound();
-                                long maxN_a = Math.min(0, a.upperBound());
-                                long minP_a = Math.max(0, a.lowerBound());
-                                long maxP_a = a.upperBound();
+                                long minNegA = a.lowerBound();
+                                long maxNegA = Math.min(0, a.upperBound());
+                                long minPosA = Math.max(0, a.lowerBound());
+                                long maxPosA = a.upperBound();
 
-                                long minN_b = b.lowerBound();
-                                long maxN_b = Math.min(0, b.upperBound());
-                                long minP_b = Math.max(0, b.lowerBound());
-                                long maxP_b = b.upperBound();
-                                // Checkstyle: resume
+                                long minNegB = b.lowerBound();
+                                long maxNegB = Math.min(0, b.upperBound());
+                                long minPosB = Math.max(0, b.lowerBound());
+                                long maxPosB = b.upperBound();
 
                                 // multiplication has shift semantics
                                 long newUpMask = ~CodeUtil.mask(Long.numberOfTrailingZeros(a.upMask) + Long.numberOfTrailingZeros(b.upMask)) & CodeUtil.mask(bits);
 
                                 if (a.canBePositive()) {
                                     if (b.canBePositive()) {
-                                        if (multiplicationOverflows(maxP_a, maxP_b, bits)) {
+                                        if (multiplicationOverflows(maxPosA, maxPosB, bits)) {
                                             return a.unrestricted();
                                         }
-                                        long maxCandidate = maxP_a * maxP_b;
-                                        if (multiplicationOverflows(minP_a, minP_b, bits)) {
+                                        long maxCandidate = maxPosA * maxPosB;
+                                        if (multiplicationOverflows(minPosA, minPosB, bits)) {
                                             return a.unrestricted();
                                         }
-                                        long minCandidate = minP_a * minP_b;
+                                        long minCandidate = minPosA * minPosB;
                                         newLowerBound = Math.min(newLowerBound, minCandidate);
                                         newUpperBound = Math.max(newUpperBound, maxCandidate);
                                     }
                                     if (b.canBeNegative()) {
-                                        if (multiplicationOverflows(minP_a, maxN_b, bits)) {
+                                        if (multiplicationOverflows(minPosA, maxNegB, bits)) {
                                             return a.unrestricted();
                                         }
-                                        long maxCandidate = minP_a * maxN_b;
-                                        if (multiplicationOverflows(maxP_a, minN_b, bits)) {
+                                        long maxCandidate = minPosA * maxNegB;
+                                        if (multiplicationOverflows(maxPosA, minNegB, bits)) {
                                             return a.unrestricted();
                                         }
-                                        long minCandidate = maxP_a * minN_b;
+                                        long minCandidate = maxPosA * minNegB;
                                         newLowerBound = Math.min(newLowerBound, minCandidate);
                                         newUpperBound = Math.max(newUpperBound, maxCandidate);
                                     }
                                 }
                                 if (a.canBeNegative()) {
                                     if (b.canBePositive()) {
-                                        if (multiplicationOverflows(maxN_a, minP_b, bits)) {
+                                        if (multiplicationOverflows(maxNegA, minPosB, bits)) {
                                             return a.unrestricted();
                                         }
-                                        long maxCandidate = maxN_a * minP_b;
-                                        if (multiplicationOverflows(minN_a, maxP_b, bits)) {
+                                        long maxCandidate = maxNegA * minPosB;
+                                        if (multiplicationOverflows(minNegA, maxPosB, bits)) {
                                             return a.unrestricted();
                                         }
-                                        long minCandidate = minN_a * maxP_b;
+                                        long minCandidate = minNegA * maxPosB;
                                         newLowerBound = Math.min(newLowerBound, minCandidate);
                                         newUpperBound = Math.max(newUpperBound, maxCandidate);
                                     }
                                     if (b.canBeNegative()) {
-                                        if (multiplicationOverflows(minN_a, minN_b, bits)) {
+                                        if (multiplicationOverflows(minNegA, minNegB, bits)) {
                                             return a.unrestricted();
                                         }
-                                        long maxCandidate = minN_a * minN_b;
-                                        if (multiplicationOverflows(maxN_a, maxN_b, bits)) {
+                                        long maxCandidate = minNegA * minNegB;
+                                        if (multiplicationOverflows(maxNegA, maxNegB, bits)) {
                                             return a.unrestricted();
                                         }
-                                        long minCandidate = maxN_a * maxN_b;
+                                        long minCandidate = maxNegA * maxNegB;
                                         newLowerBound = Math.min(newLowerBound, minCandidate);
                                         newUpperBound = Math.max(newUpperBound, maxCandidate);
                                     }
