@@ -37,12 +37,22 @@ public class TruffleInliningProfile {
     private int queryIndex = -1;
     private double score;
 
+    private boolean cached;
+
     public TruffleInliningProfile(OptimizedDirectCallNode callNode, int nodeCount, int deepNodeCount, double frequency, int recursions) {
         this.callNode = callNode;
         this.nodeCount = nodeCount;
         this.deepNodeCount = deepNodeCount;
         this.frequency = frequency;
         this.recursions = recursions;
+    }
+
+    public boolean isCached() {
+        return cached;
+    }
+
+    public void setCached(boolean cached) {
+        this.cached = cached;
     }
 
     public int getRecursions() {

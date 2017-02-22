@@ -75,11 +75,20 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision> {
             stack.add(currentTarget); // push
             TruffleInliningDecision decision = rejectedDecisionsCache.get(currentTarget);
             if (decision == null) {
+                // Cache miss
                 decision = exploreCallSite(stack, callStackNodeCount, policy, callNode, visitedNodes, rejectedDecisionsCache);
                 if (!policy.isAllowed(decision.getProfile(), callStackNodeCount, callNode.getRootNode().getCompilerOptions())) {
                     rejectedDecisionsCache.put(currentTarget, decision);
                     toRemoveFromCache.add(currentTarget);
                 }
+            } else {
+                // Cache hit!
+                TruffleInliningProfile cachedProfile = decision.getProfile();
+                TruffleInliningProfile newProfile = new TruffleInliningProfile(callNode, cachedProfile.getNodeCount(), cachedProfile.getDeepNodeCount(), cachedProfile.getFrequency(),
+                                cachedProfile.getRecursions());
+                newProfile.setCached(true);
+                TruffleInliningDecision newDecision = new TruffleInliningDecision(decision.getTarget(), newProfile, decision.getCallSites());
+                decision = newDecision;
             }
             exploredCallSites.add(decision);
             stack.remove(stack.size() - 1); // pop
