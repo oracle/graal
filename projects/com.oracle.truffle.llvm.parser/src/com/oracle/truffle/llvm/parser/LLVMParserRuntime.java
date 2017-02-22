@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.parser.model.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolResolver;
@@ -70,7 +71,7 @@ import com.oracle.truffle.llvm.parser.util.LLVMParserAsserts;
 import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -417,11 +418,16 @@ public final class LLVMParserRuntime {
         public void visitValueInstruction(ValueInstruction valueInstruction) {
             nameToTypeMapping.put(valueInstruction.getName(), valueInstruction.getType());
         }
+
+        @Override
+        public void visit(VoidInvokeInstruction call) {
+        }
     };
 
     private void initFunction(LLVMBitcodeFunctionVisitor visitor) {
         this.functionVisitor = visitor;
         nameToTypeMapping.clear();
+        nameToTypeMapping.put(LLVMFrameIDs.FUNCTION_EXCEPTION_VALUE_FRAME_SLOT_ID, new PointerType(null));
         if (visitor != null) {
             for (int i = 0; i < visitor.getFunction().getBlockCount(); i++) {
                 visitor.getFunction().getBlock(i).accept(nameToTypeMappingVisitor);
@@ -495,8 +501,8 @@ public final class LLVMParserRuntime {
         return Collections.unmodifiableMap(nameToTypeMapping);
     }
 
-    public LLVMHeapFunctions getHeapFunctions() {
-        return context.getHeapFunctions();
+    public LLVMNativeFunctions getNativeFunctions() {
+        return context.getNativeFunctions();
     }
 
     public NodeFactoryFacade getNodeFactoryFacade() {

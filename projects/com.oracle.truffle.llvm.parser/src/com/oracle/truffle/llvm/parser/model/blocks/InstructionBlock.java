@@ -48,8 +48,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchI
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.ResumeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReturnInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
@@ -59,6 +62,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstru
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
@@ -123,6 +127,24 @@ public final class InstructionBlock implements ValueSymbol {
         } else {
             addInstruction(CallInstruction.fromSymbols(function.getSymbols(), type, target, arguments, visibility, linkage));
         }
+    }
+
+    public void createInvoke(Type type, int target, int[] arguments, long visibility, long linkage, int regularSuccessorBlock, int unwindSuccessorBlock) {
+        if (type instanceof VoidType) {
+            addInstruction(VoidInvokeInstruction.fromSymbols(function.getSymbols(), target, arguments, visibility, linkage, function.getBlock(regularSuccessorBlock),
+                            function.getBlock(unwindSuccessorBlock)));
+        } else {
+            addInstruction(InvokeInstruction.fromSymbols(function.getSymbols(), type, target, arguments, visibility, linkage, function.getBlock(regularSuccessorBlock),
+                            function.getBlock(unwindSuccessorBlock)));
+        }
+    }
+
+    public void createLandingpad(Type type, boolean isCleanup, long[] clauseTypes, long[] clauseTODO) {
+        addInstruction(LandingpadInstruction.generate(function.getSymbols(), type, isCleanup, clauseTypes, clauseTODO));
+    }
+
+    public void createResume(@SuppressWarnings("unused") Type type) {
+        addInstruction(ResumeInstruction.generate());
     }
 
     public void createCast(Type type, int opcode, int value) {

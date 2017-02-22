@@ -75,6 +75,8 @@ public final class NativeLookup {
                 TruffleObject lib = loadLibrary(env, library);
                 handles.add(lib);
             } catch (UnsatisfiedLinkError e) {
+                LLVMLogger.unconditionalInfo(library + " not found!\n" + e.getMessage());
+                e.printStackTrace(System.err);
             }
         }
         return handles;

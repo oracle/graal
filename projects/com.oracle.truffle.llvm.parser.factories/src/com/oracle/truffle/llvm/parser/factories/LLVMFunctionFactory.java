@@ -65,6 +65,8 @@ import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMI8CallUnb
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMStructCallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMVarBitCallUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallUnboxNodeFactory.LLVMVectorCallUnboxNodeGen;
+import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMLandingpadNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.facade.NodeFactoryFacade;
@@ -102,7 +104,7 @@ final class LLVMFunctionFactory {
             return LLVMAddressRetNodeGen.create(retValue, retSlot);
         } else if (type instanceof StructureType) {
             int size = runtime.getByteSize(type);
-            return LLVMStructRetNodeGen.create(runtime.getHeapFunctions(), retValue, retSlot, size);
+            return LLVMStructRetNodeGen.create(runtime.getNativeFunctions(), retValue, retSlot, size);
         } else if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
@@ -144,7 +146,15 @@ final class LLVMFunctionFactory {
         LLVMCallNode unresolvedCallNode = new LLVMCallNode(LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
                         functionType, functionNode, argNodes);
         return createUnresolvedNodeWrapping(functionType.getReturnType(), unresolvedCallNode);
+    }
 
+    static LLVMControlFlowNode createFunctionInvoke(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, FrameSlot returnvalueSlot,
+                    FrameSlot exceptionValueSlot,
+                    int normalIndex, int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes) {
+        LLVMInvokeNode unresolvedInvokeNode = new LLVMInvokeNode.LLVMFunctionInvokeNode(LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0()),
+                        type, functionNode, argNodes, returnvalueSlot, exceptionValueSlot, normalIndex, unwindIndex, normalPhiWriteNodes,
+                        unwindPhiWriteNodes);
+        return unresolvedInvokeNode;
     }
 
     private static LLVMExpressionNode createUnresolvedNodeWrapping(Type llvmType, LLVMExpressionNode unresolvedCallNode) {
@@ -185,6 +195,12 @@ final class LLVMFunctionFactory {
         throw new AssertionError(llvmType);
     }
 
+    static LLVMControlFlowNode createFunctionInvokeSubstitution(LLVMExpressionNode substitution, FunctionType type, FrameSlot returnvalueSlot,
+                    FrameSlot exceptionValueSlot, int normalSuccessor, int unwindSuccessor, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes) {
+        return new LLVMInvokeNode.LLVMSubstitutionInvokeNode(type, substitution, returnvalueSlot, exceptionValueSlot, normalSuccessor, unwindSuccessor,
+                        normalPhiWriteNodes, unwindPhiWriteNodes);
+    }
+
     static RootNode createGlobalRootNodeWrapping(RootCallTarget mainCallTarget, Type returnType) {
         if (returnType instanceof VoidType) {
             return new LLVMMainFunctionReturnValueRootNode.LLVMMainFunctionReturnVoidRootNode(mainCallTarget);
@@ -215,6 +231,12 @@ final class LLVMFunctionFactory {
 
     static RootNode createFunctionSubstitutionRootNode(LLVMExpressionNode intrinsicNode) {
         return LLVMIntrinsicExpressionNodeGen.create(intrinsicNode);
+    }
+
+    public static LLVMExpressionNode createLandingpad(LLVMParserRuntime runtime, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot,
+                    boolean cleanup, LLVMLandingpadNode.LandingpadEntryNode[] entires) {
+        return new LLVMLandingpadNode(runtime.getContext(), allocateLandingPadValue, exceptionSlot, cleanup, entires);
+
     }
 
 }

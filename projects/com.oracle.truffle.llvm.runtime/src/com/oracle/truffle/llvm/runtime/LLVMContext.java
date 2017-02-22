@@ -34,15 +34,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExecutionContext;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.options.LLVMOptions;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -60,7 +62,7 @@ public class LLVMContext extends ExecutionContext {
 
     private final NativeLookup nativeLookup;
 
-    private final LLVMHeapFunctions heapFunctions;
+    private final LLVMNativeFunctions nativeFunctions;
 
     private final LLVMStack stack = new LLVMStack();
 
@@ -75,14 +77,43 @@ public class LLVMContext extends ExecutionContext {
     private final List<LLVMFunctionDescriptor> functionDescriptors = new ArrayList<>();
     private final HashMap<String, LLVMFunctionDescriptor> functionIndex;
 
+    private final LinkedList<LLVMAddress> caughtExceptionStack = new LinkedList<>();
+    private final LinkedList<DestructorStackElement> destructorStack = new LinkedList<>();
+
+    public static final class DestructorStackElement {
+        private final LLVMFunctionDescriptor destructor;
+        private final LLVMAddress thiz;
+
+        public DestructorStackElement(LLVMFunctionDescriptor destructor, LLVMAddress thiz) {
+            this.destructor = destructor;
+            this.thiz = thiz;
+        }
+
+        public LLVMFunctionDescriptor getDestructor() {
+            return destructor;
+        }
+
+        public LLVMAddress getThiz() {
+            return thiz;
+        }
+    }
+
     public LLVMContext(Env env) {
         this.nativeLookup = LLVMOptions.ENGINE.disableNativeInterface() ? null : new NativeLookup(env);
         this.functionIndex = new HashMap<>();
-        this.heapFunctions = new LLVMHeapFunctionsImpl(nativeLookup);
+        this.nativeFunctions = new LLVMNativeFunctionsImpl(nativeLookup);
     }
 
-    public LLVMHeapFunctions getHeapFunctions() {
-        return heapFunctions;
+    public LLVMNativeFunctions getNativeFunctions() {
+        return nativeFunctions;
+    }
+
+    public LinkedList<LLVMAddress> getCaughtExceptionStack() {
+        return caughtExceptionStack;
+    }
+
+    public LinkedList<DestructorStackElement> getDestructorStack() {
+        return destructorStack;
     }
 
     public LLVMGlobalVariableRegistry getGlobalVariableRegistry() {
@@ -242,6 +273,14 @@ public class LLVMContext extends ExecutionContext {
         }
         return function;
 
+    }
+
+    public LLVMFunctionDescriptor getDescriptorForName(String name) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (functionIndex.containsKey(name)) {
+            return functionDescriptors.get(functionIndex.get(name).getFunctionIndex());
+        }
+        throw new IllegalStateException();
     }
 
     public NativeLookup getNativeLookup() {

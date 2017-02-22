@@ -34,8 +34,10 @@ import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNodeFactory.LLVMCompoundStructWriteNodeGen;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNodeFactory.LLVMEmptyStructWriteNodeGen;
 import com.oracle.truffle.llvm.nodes.base.LLVMStructWriteNodeFactory.LLVMPrimitiveStructWriteNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertAddressValueNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertDoubleValueNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertFloatValueNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNode.LLVMInsertI32ValueNode;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNode;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtract80BitFloatValueNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMExtractValueNodeFactory.LLVMExtractAddressValueNodeGen;
@@ -88,14 +90,22 @@ final class LLVMAggregateFactory {
     }
 
     static LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
-                    LLVMExpressionNode valueToInsert, PrimitiveType llvmType) {
-        switch (llvmType.getPrimitiveKind()) {
-            case FLOAT:
-                return new LLVMInsertFloatValueNode(runtime.getHeapFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
-            case DOUBLE:
-                return new LLVMInsertDoubleValueNode(runtime.getHeapFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
-            default:
-                throw new AssertionError(llvmType);
+                    LLVMExpressionNode valueToInsert, Type llvmType) {
+        if (llvmType instanceof PrimitiveType) {
+            switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
+                case FLOAT:
+                    return new LLVMInsertFloatValueNode(runtime.getNativeFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                case DOUBLE:
+                    return new LLVMInsertDoubleValueNode(runtime.getNativeFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                case I32:
+                    return new LLVMInsertI32ValueNode(runtime.getNativeFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
+                default:
+                    throw new AssertionError(llvmType);
+            }
+        } else if (llvmType instanceof PointerType) {
+            return new LLVMInsertAddressValueNode(runtime.getNativeFunctions(), sourceAggregate, resultAggregate, size, offset, valueToInsert);
+        } else {
+            throw new AssertionError(llvmType);
         }
     }
 
@@ -125,7 +135,7 @@ final class LLVMAggregateFactory {
             if (byteSize == 0) {
                 return LLVMEmptyStructWriteNodeGen.create();
             } else {
-                return LLVMCompoundStructWriteNodeGen.create(runtime.getHeapFunctions(), byteSize);
+                return LLVMCompoundStructWriteNodeGen.create(runtime.getNativeFunctions(), byteSize);
             }
         } else {
             return LLVMPrimitiveStructWriteNodeGen.create();

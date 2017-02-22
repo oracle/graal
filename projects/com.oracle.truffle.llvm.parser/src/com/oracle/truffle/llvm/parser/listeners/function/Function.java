@@ -106,6 +106,12 @@ public abstract class Function implements ParserListener {
 
     protected abstract void createCall(long[] args);
 
+    protected abstract void createInvoke(long[] args);
+
+    protected abstract void createLandingpad(long[] args);
+
+    protected abstract void createResume(long[] args);
+
     protected abstract void createLoad(long[] args);
 
     protected abstract void createSwitch(long[] args);
@@ -237,6 +243,18 @@ public abstract class Function implements ParserListener {
 
             case CALL:
                 createCall(args);
+                break;
+
+            case INVOKE:
+                createInvoke(args);
+                break;
+
+            case LANDINGPAD:
+                createLandingpad(args);
+                break;
+
+            case RESUME:
+                createResume(args);
                 break;
 
             case GEP:
@@ -599,7 +617,7 @@ public abstract class Function implements ParserListener {
         return (int) index;
     }
 
-    private int getIndexV1(long index) {
+    protected int getIndexV1(long index) {
         return symbols.size() - (int) index;
     }
 }

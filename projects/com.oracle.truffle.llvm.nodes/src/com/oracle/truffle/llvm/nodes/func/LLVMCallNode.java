@@ -67,7 +67,6 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         for (int i = 0; i < argumentNodes.length; i++) {
             argValues[i] = argumentNodes[i].executeGeneric(frame);
         }
-
         return dispatchNode.executeDispatch(frame, function, argValues);
     }
 

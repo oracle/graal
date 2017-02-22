@@ -35,7 +35,7 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 public abstract class VoidInstruction extends Instruction {
 
     @Override
-    public Type getType() {
+    public final Type getType() {
         return VoidType.INSTANCE;
     }
 }

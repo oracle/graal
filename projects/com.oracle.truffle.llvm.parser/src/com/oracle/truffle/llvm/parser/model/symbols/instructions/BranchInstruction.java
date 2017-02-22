@@ -34,10 +34,8 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 
-public final class BranchInstruction extends TerminatingInstruction {
+public final class BranchInstruction extends VoidInstruction implements TerminatingInstruction {
 
     private final InstructionBlock successor;
 
@@ -64,7 +62,7 @@ public final class BranchInstruction extends TerminatingInstruction {
     }
 
     @Override
-    public Type getType() {
-        return VoidType.INSTANCE;
+    public boolean hasName() {
+        return false;
     }
 }

@@ -35,11 +35,9 @@ import java.util.List;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class ReturnInstruction extends TerminatingInstruction {
+public final class ReturnInstruction extends VoidInstruction implements TerminatingInstruction {
 
     private Symbol value;
 
@@ -53,11 +51,6 @@ public final class ReturnInstruction extends TerminatingInstruction {
 
     public Symbol getValue() {
         return value;
-    }
-
-    @Override
-    public Type getType() {
-        return VoidType.INSTANCE;
     }
 
     @Override
@@ -80,5 +73,10 @@ public final class ReturnInstruction extends TerminatingInstruction {
 
     public static ReturnInstruction generate() {
         return new ReturnInstruction();
+    }
+
+    @Override
+    public boolean hasName() {
+        return false;
     }
 }

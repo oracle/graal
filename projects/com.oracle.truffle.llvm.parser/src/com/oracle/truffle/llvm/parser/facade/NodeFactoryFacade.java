@@ -84,7 +84,12 @@ public interface NodeFactoryFacade {
 
     LLVMExpressionNode createVectorLiteralNode(LLVMParserRuntime runtime, List<LLVMExpressionNode> listValues, Type type);
 
-    LLVMExpressionNode tryCreateFunctionSubstitution(LLVMParserRuntime runtime, String name, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments);
+    LLVMExpressionNode tryCreateFunctionCallSubstitution(LLVMParserRuntime runtime, String name, LLVMExpressionNode[] argNodes, int numberOfExplicitArguments,
+                    FrameSlot exceptionValueSlot);
+
+    LLVMControlFlowNode tryCreateFunctionInvokeSubstitution(LLVMParserRuntime runtime, String name, FunctionType type, int numberOfExplicitArguments, LLVMExpressionNode[] argNodes,
+                    FrameSlot returnValueSlot, FrameSlot exceptionValueSlot, int normalIndex,
+                    int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes, LLVMExpressionNode[] unwindPhiWriteNodes);
 
     LLVMControlFlowNode createRetVoid(LLVMParserRuntime runtime);
 
@@ -102,6 +107,11 @@ public interface NodeFactoryFacade {
     LLVMExpressionNode createFunctionArgNode(int argIndex, Class<? extends Node> clazz);
 
     LLVMExpressionNode createFunctionCall(LLVMParserRuntime runtime, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type);
+
+    LLVMControlFlowNode createFunctionInvoke(LLVMParserRuntime runtime, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type,
+                    FrameSlot returnValueSlot, FrameSlot exceptionValueSlot, int normalIndex,
+                    int unwindIndex, LLVMExpressionNode[] normalPhiWriteNodes,
+                    LLVMExpressionNode[] unwindPhiWriteNodes);
 
     LLVMExpressionNode createFrameRead(LLVMParserRuntime runtime, Type llvmType, FrameSlot frameSlot);
 
@@ -166,7 +176,7 @@ public interface NodeFactoryFacade {
     LLVMExpressionNode createAlloc(LLVMParserRuntime runtime, Type type, int byteSize, int alignment, Type numElementsType, LLVMExpressionNode numElements);
 
     LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
-                    PrimitiveType llvmType);
+                    Type llvmType);
 
     LLVMExpressionNode createZeroNode(LLVMParserRuntime runtime, LLVMExpressionNode addressNode, int size);
 
@@ -292,5 +302,10 @@ public interface NodeFactoryFacade {
     LLVMFunctionDescriptor createFunctionDescriptor(String name, FunctionType type, int functionIndex);
 
     LLVMFunctionDescriptor createAndRegisterFunctionDescriptor(LLVMParserRuntime runtime, String name, FunctionType functionType);
+
+    LLVMExpressionNode createLandingPad(LLVMParserRuntime runtime, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup, long[] clauseKinds,
+                    LLVMExpressionNode[] entries);
+
+    LLVMControlFlowNode createResumeInstruction(LLVMParserRuntime runtime, FrameSlot exceptionSlot);
 
 }

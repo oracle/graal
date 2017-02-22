@@ -27,24 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory;
+package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMGlobalVariableDescriptor;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.api.LLVMControlFlowNode;
+import com.oracle.truffle.llvm.runtime.LLVMException;
 
-public abstract class LLVMForceLLVMAddressNode extends Node {
+public final class LLVMResumeNode extends LLVMControlFlowNode {
 
-    public abstract LLVMAddress executeWithTarget(Object object);
+    private final FrameSlot exceptionSlot;
 
-    @Specialization
-    public LLVMAddress doAddressCase(LLVMAddress a) {
-        return a;
+    public LLVMResumeNode(FrameSlot exceptionSlot) {
+        this.exceptionSlot = exceptionSlot;
     }
 
-    @Specialization
-    public LLVMAddress doAddressCase(LLVMGlobalVariableDescriptor a) {
-        return a.getNativeAddress();
+    @Override
+    public int executeGetSuccessorIndex(VirtualFrame frame) {
+        try {
+            LLVMException thrownException = (LLVMException) frame.getObject(exceptionSlot);
+            throw thrownException;
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(e);
+        }
     }
 }

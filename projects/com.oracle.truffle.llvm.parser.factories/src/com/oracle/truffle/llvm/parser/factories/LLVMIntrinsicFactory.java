@@ -39,6 +39,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMTypeIdForExceptionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16Factory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI32Factory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI64Factory;
@@ -79,7 +80,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
 
 final class LLVMIntrinsicFactory {
 
@@ -149,11 +150,11 @@ final class LLVMIntrinsicFactory {
             } else if (functionName.equals("@llvm.frameaddress")) {
                 return LLVMFrameAddressNodeGen.create(argNodes[1], stack);
             } else if (functionName.startsWith("@llvm.va_start")) {
-                return new LLVMX86_64BitVAStart(context.getHeapFunctions(), numberOfExplicitArguments, argNodes[1]);
+                return new LLVMX86_64BitVAStart(context.getNativeFunctions(), numberOfExplicitArguments, argNodes[1]);
             } else if (functionName.startsWith("@llvm.va_end")) {
-                return new LLVMX86_64BitVAEnd(context.getHeapFunctions(), argNodes[1]);
+                return new LLVMX86_64BitVAEnd(context.getNativeFunctions(), argNodes[1]);
             } else if (functionName.startsWith("@llvm.va_copy")) {
-                return LLVMX86_64BitVACopyNodeGen.create(context.getHeapFunctions(), argNodes[1], argNodes[2], numberOfExplicitArguments);
+                return LLVMX86_64BitVACopyNodeGen.create(context.getNativeFunctions(), argNodes[1], argNodes[2], numberOfExplicitArguments);
             } else if (functionName.equals("@llvm.eh.sjlj.longjmp") || functionName.equals("@llvm.eh.sjlj.setjmp")) {
                 throw new LLVMUnsupportedException(UnsupportedReason.SET_JMP_LONG_JMP);
             } else if (functionName.startsWith("@llvm.objectsize.i64")) {
@@ -187,16 +188,18 @@ final class LLVMIntrinsicFactory {
                     }
 
                 };
+            } else if (functionName.startsWith("@llvm.eh.typeid.for")) {
+                return new LLVMTypeIdForExceptionNode(argNodes[1]);
             } else {
                 throw new IllegalStateException("llvm intrinsic " + functionName + " not yet supported!");
             }
         } else {
             Object[] realArgs;
             List<Class<?>> firstNodeFactory = factory.getNodeSignatures().get(0);
-            if (firstNodeFactory.size() > 0 && firstNodeFactory.get(0) == LLVMHeapFunctions.class) {
+            if (firstNodeFactory.size() > 0 && firstNodeFactory.get(0) == LLVMNativeFunctions.class) {
                 LLVMContext context = LLVMLanguage.INSTANCE.findContext0(LLVMLanguage.INSTANCE.createFindContextNode0());
                 realArgs = new Object[argNodes.length - LLVMCallNode.ARG_START_INDEX + 1];
-                realArgs[0] = context.getHeapFunctions();
+                realArgs[0] = context.getNativeFunctions();
                 System.arraycopy(argNodes, LLVMCallNode.ARG_START_INDEX, realArgs, 1, realArgs.length - 1);
             } else {
                 realArgs = new Object[argNodes.length - LLVMCallNode.ARG_START_INDEX];

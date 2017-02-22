@@ -55,8 +55,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPoint
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertValueInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.ResumeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReturnInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
@@ -65,6 +68,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstructi
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
@@ -161,6 +165,10 @@ public final class LLVMPhiManager implements ModelVisitor {
         }
 
         @Override
+        public void visit(InvokeInstruction ci) {
+        }
+
+        @Override
         public void visit(CastInstruction ci) {
         }
 
@@ -218,6 +226,10 @@ public final class LLVMPhiManager implements ModelVisitor {
         }
 
         @Override
+        public void visit(ResumeInstruction resume) {
+        }
+
+        @Override
         public void visit(SelectInstruction si) {
         }
 
@@ -243,6 +255,14 @@ public final class LLVMPhiManager implements ModelVisitor {
 
         @Override
         public void visit(VoidCallInstruction vci) {
+        }
+
+        @Override
+        public void visit(VoidInvokeInstruction vci) {
+        }
+
+        @Override
+        public void visit(LandingpadInstruction landingpadInstruction) {
         }
     }
 

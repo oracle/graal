@@ -91,6 +91,7 @@ public final class StackAllocation {
             if (!(functionDefinition.getType().getReturnType() instanceof VoidType)) {
                 frame.addFrameSlot(LLVMFrameIDs.FUNCTION_RETURN_VALUE_FRAME_SLOT_ID);
             }
+            frame.addFrameSlot(LLVMFrameIDs.FUNCTION_EXCEPTION_VALUE_FRAME_SLOT_ID, FrameSlotKind.Object);
             frame.addFrameSlot(LLVMFrameIDs.STACK_ADDRESS_FRAME_SLOT_ID, FrameSlotKind.Object);
 
             for (FunctionParameter parameter : functionDefinition.getParameters()) {

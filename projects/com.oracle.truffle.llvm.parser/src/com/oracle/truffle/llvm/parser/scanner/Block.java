@@ -58,7 +58,6 @@ public enum Block {
     }
 
     static Block lookup(long id) {
-        // TODO set private when removing the old scanner
         for (Block block : values()) {
             if (block.id == id) {
                 return block;

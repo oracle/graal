@@ -57,8 +57,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchI
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.InvokeInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.LandingpadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.LoadInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.ResumeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReturnInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
@@ -69,6 +72,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.AbstractTerminatingInstructionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
@@ -169,6 +173,14 @@ public final class LLVMLifetimeAnalysis {
                 }
 
                 @Override
+                public void visit(InvokeInstruction call) {
+                    for (int i = 0; i < call.getArgumentCount(); i++) {
+                        resolve(call.getArgument(i));
+                    }
+                    resolve(call.getCallTarget());
+                }
+
+                @Override
                 public void visit(CallInstruction call) {
                     for (int i = 0; i < call.getArgumentCount(); i++) {
                         resolve(call.getArgument(i));
@@ -179,6 +191,13 @@ public final class LLVMLifetimeAnalysis {
                 @Override
                 public void visit(CastInstruction cast) {
                     resolve(cast.getValue());
+                }
+
+                @Override
+                public void visit(LandingpadInstruction landingpadInstruction) {
+                    if (landingpadInstruction.getValue() != null) {
+                        resolve(landingpadInstruction.getValue());
+                    }
                 }
 
                 @Override
@@ -249,6 +268,13 @@ public final class LLVMLifetimeAnalysis {
                 }
 
                 @Override
+                public void visit(ResumeInstruction resume) {
+                    if (resume.getValue() != null) {
+                        resolve(resume.getValue());
+                    }
+                }
+
+                @Override
                 public void visit(SelectInstruction select) {
                     resolve(select.getCondition());
                     resolve(select.getTrueValue());
@@ -286,6 +312,14 @@ public final class LLVMLifetimeAnalysis {
 
                 @Override
                 public void visit(VoidCallInstruction call) {
+                    for (int i = 0; i < call.getArgumentCount(); i++) {
+                        resolve(call.getArgument(i));
+                    }
+                    resolve(call.getCallTarget());
+                }
+
+                @Override
+                public void visit(VoidInvokeInstruction call) {
                     for (int i = 0; i < call.getArgumentCount(); i++) {
                         resolve(call.getArgument(i));
                     }
@@ -351,8 +385,9 @@ public final class LLVMLifetimeAnalysis {
             final InstructionVisitor initSuccessorsVisitor = new AbstractTerminatingInstructionVisitor() {
                 @Override
                 public void visitTerminatingInstruction(TerminatingInstruction instruction) {
-                    successorBlocks.put(instruction, instruction.getSuccessors());
+                    successorBlocks.put((Instruction) instruction, instruction.getSuccessors());
                 }
+
             };
             functionDefinition.accept(block -> block.accept(initSuccessorsVisitor));
         }
@@ -430,7 +465,7 @@ public final class LLVMLifetimeAnalysis {
                         final Instruction inst = block.getInstruction(i);
 
                         // update out
-                        if (inst.isTerminating()) {
+                        if (inst instanceof TerminatingInstruction) {
                             // non sequential successor
                             // out[n] = in[n+1, n+2, ...]
                             assert i == block.getInstructionCount() - 1;
@@ -481,7 +516,7 @@ public final class LLVMLifetimeAnalysis {
                     final Set<FrameSlot> outSlots = out.getOrDefault(inst, new HashSet<>(0));
                     final Set<FrameSlot> instructionKills = new HashSet<>(inSlots);
                     instructionKills.removeAll(outSlots);
-                    if (inst.isTerminating()) {
+                    if (inst instanceof TerminatingInstruction) {
                         for (final InstructionBlock bas : successorBlocks.getOrDefault(inst, Collections.emptyList())) {
                             final Instruction firstInst = getFirstNonPhiInstruction(bas);
                             Set<FrameSlot> deadAtBegin = new HashSet<>(out.getOrDefault(inst, new HashSet<>(0)));

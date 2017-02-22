@@ -36,11 +36,9 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-public final class IndirectBranchInstruction extends TerminatingInstruction {
+public final class IndirectBranchInstruction extends VoidInstruction implements TerminatingInstruction {
 
     private Symbol address;
 
@@ -68,11 +66,6 @@ public final class IndirectBranchInstruction extends TerminatingInstruction {
     }
 
     @Override
-    public Type getType() {
-        return VoidType.INSTANCE;
-    }
-
-    @Override
     public List<InstructionBlock> getSuccessors() {
         return Arrays.stream(successors).collect(Collectors.toList());
     }
@@ -92,5 +85,10 @@ public final class IndirectBranchInstruction extends TerminatingInstruction {
         final IndirectBranchInstruction inst = new IndirectBranchInstruction(blocks);
         inst.address = function.getSymbols().getSymbol(address, inst);
         return inst;
+    }
+
+    @Override
+    public boolean hasName() {
+        return false;
     }
 }

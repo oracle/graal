@@ -59,10 +59,10 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleNull;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHeap;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions;
-import com.oracle.truffle.llvm.runtime.memory.LLVMHeapFunctions.MemCopyNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions;
+import com.oracle.truffle.llvm.runtime.memory.LLVMNativeFunctions.MemCopyNode;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")})
 public abstract class LLVMStoreNode extends LLVMExpressionNode {
@@ -480,7 +480,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         public abstract int getStructSize();
 
-        protected LLVMStructStoreNode(LLVMHeapFunctions heapFunctions) {
+        protected LLVMStructStoreNode(LLVMNativeFunctions heapFunctions) {
             memCopy = heapFunctions.createMemCopyNode();
         }
 
@@ -794,16 +794,15 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
     public abstract static class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
 
         @Children private final LLVMExpressionNode[] values;
-        @Children private final LLVMForceLLVMAddressNode[] forceConvert;
         private final int stride;
 
         public LLVMAddressArrayLiteralNode(LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
-            this.forceConvert = new LLVMForceLLVMAddressNode[values.length];
-            for (int i = 0; i < values.length; i++) {
-                this.forceConvert[i] = LLVMForceLLVMAddressNodeGen.create();
-            }
+        }
+
+        public LLVMExpressionNode[] getValues() {
+            return values;
         }
 
         @Specialization
@@ -816,7 +815,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
         protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
             LLVMAddress currentAddress = addr;
             for (int i = 0; i < values.length; i++) {
-                LLVMAddress currentValue = forceConvert[i].executeWithTarget(values[i].executeGeneric(frame));
+                LLVMAddress currentValue = values[i].enforceLLVMAddress(frame);
                 LLVMMemory.putAddress(currentAddress, currentValue);
                 currentAddress = currentAddress.increment(stride);
             }
@@ -868,7 +867,7 @@ public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
         @Child private MemCopyNode memCopy;
 
-        public LLVMAddressArrayCopyNode(LLVMHeapFunctions heapFunctions, LLVMExpressionNode[] values, int stride) {
+        public LLVMAddressArrayCopyNode(LLVMNativeFunctions heapFunctions, LLVMExpressionNode[] values, int stride) {
             this.values = values;
             this.stride = stride;
             this.memCopy = heapFunctions.createMemCopyNode();
