@@ -35,9 +35,9 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.contract.PhaseSizeContract;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -137,6 +137,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
     @SuppressWarnings("try")
     protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
+        graph.checkCancellation();
         try (DebugCloseable a = timer.start(); Scope s = Debug.scope(getClass(), this); DebugCloseable c = memUseTracker.start()) {
             int sizeBefore = 0;
             Mark before = null;

@@ -30,6 +30,7 @@ import java.util.Map;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.TruffleCompilerOptions;
 
 import jdk.vm.ci.code.BailoutException;
 
@@ -44,7 +45,9 @@ public final class TraceCompilationFailureListener extends AbstractDebugCompilat
 
     @Override
     public void notifyCompilationFailed(OptimizedCallTarget target, StructuredGraph graph, Throwable t) {
-        if (isPermanentBailout(t) || PrintBailout.getValue(graph.getOptions())) {
+        // if we failed compilation via cancellation graph might be null (depending on time of
+        // cancellation)
+        if (isPermanentBailout(t) || PrintBailout.getValue(graph == null ? TruffleCompilerOptions.getOptions() : graph.getOptions())) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("Reason", t.toString());
             log(0, "opt fail", target.toString(), properties);

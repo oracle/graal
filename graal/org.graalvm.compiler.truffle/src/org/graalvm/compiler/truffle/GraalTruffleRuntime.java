@@ -485,25 +485,25 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
         }
     }
 
-    protected void doCompile(OptimizedCallTarget optimizedCallTarget) {
+    protected void doCompile(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
         int repeats = TruffleCompilerOptions.getValue(TruffleCompilationRepeats);
         if (repeats <= 1) {
             /* Normal compilation. */
-            doCompile0(optimizedCallTarget);
+            doCompile0(optimizedCallTarget, task);
 
         } else {
             /* Repeated compilation for compilation time benchmarking. */
             for (int i = 0; i < repeats; i++) {
-                doCompile0(optimizedCallTarget);
+                doCompile0(optimizedCallTarget, task);
             }
             System.exit(0);
         }
     }
 
     @SuppressWarnings("try")
-    private void doCompile0(OptimizedCallTarget optimizedCallTarget) {
+    private void doCompile0(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task) {
         try (Scope s = Debug.scope("Truffle", new TruffleDebugJavaMethod(optimizedCallTarget))) {
-            getTruffleCompiler().compileMethod(optimizedCallTarget, this);
+            getTruffleCompiler().compileMethod(optimizedCallTarget, this, task);
         } catch (Throwable e) {
             optimizedCallTarget.notifyCompilationFailed(e);
         } finally {
@@ -523,21 +523,25 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     protected abstract BackgroundCompileQueue getCompileQueue();
 
     @SuppressWarnings("try")
-    public Future<?> submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
+    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
         BackgroundCompileQueue l = getCompileQueue();
         final WeakReference<OptimizedCallTarget> weakCallTarget = new WeakReference<>(optimizedCallTarget);
         final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
-        return l.compileQueue.submit(new Runnable() {
+        CancellableCompileTask cancellable = new CancellableCompileTask();
+        cancellable.setFuture(l.compileQueue.submit(new Runnable() {
             @Override
             public void run() {
                 OptimizedCallTarget callTarget = weakCallTarget.get();
                 if (callTarget != null) {
                     try (TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
-                        doCompile(callTarget);
+                        doCompile(callTarget, cancellable);
                     }
                 }
             }
-        });
+        }));
+        // task and future must never diverge from each other
+        assert cancellable.future != null;
+        return cancellable;
     }
 
     public void finishCompilation(OptimizedCallTarget optimizedCallTarget, Future<?> future, boolean mayBeAsynchronous) {
@@ -550,37 +554,60 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
                 if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown) && !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
                     throw new RuntimeException(e.getCause());
                 } else {
-                    // silently ignored
+                    // silenlty ignored
                 }
-            } catch (InterruptedException | CancellationException e) {
-                // silently ignored
+            } catch (InterruptedException e) {
+                /*
+                 * Compilation cancellation happens cooperatively. A compiler thread (which is a VM
+                 * thread) must never throw an interrupted exception.
+                 */
+                GraalError.shouldNotReachHere(e);
+            } catch (CancellationException e) {
+                /*
+                 * Silently ignored as future might have undergone a "soft" cancel(false).
+                 */
             }
         }
     }
 
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        Future<?> codeTask = optimizedCallTarget.getCompilationTask();
-        if (codeTask != null && isCompiling(optimizedCallTarget)) {
-            optimizedCallTarget.resetCompilationTask();
-            boolean result = codeTask.cancel(true);
-            if (result) {
+        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
+        if (task != null) {
+            Future<?> compilationFuture = task.getFuture();
+            if (compilationFuture != null && isCompiling(optimizedCallTarget)) {
                 optimizedCallTarget.resetCompilationTask();
-                getCompilationNotify().notifyCompilationDequeued(optimizedCallTarget, source, reason);
+                /*
+                 * Cancellation of an installed task: There are two dimensions here: First we set
+                 * the cancel bit in the task, this allows the compiler to, cooperatively, stop
+                 * compilation and throw a non permanent bailout and then we cancel the future which
+                 * might have already stopped at that point in time.
+                 */
+                task.cancel();
+                // Either the task finished already, or it was cancelled.
+                boolean result = !task.isRunning();
+                if (result) {
+                    optimizedCallTarget.resetCompilationTask();
+                    getCompilationNotify().notifyCompilationDequeued(optimizedCallTarget, source, reason);
+                }
+                return result;
             }
-            return result;
         }
         return false;
     }
 
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
-        Future<?> codeTask = optimizedCallTarget.getCompilationTask();
-        if (codeTask != null && isCompiling(optimizedCallTarget)) {
-            try {
-                codeTask.get(timeout, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                // ignore interrupted
+        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
+        if (task != null) {
+            Future<?> compilationFuture = task.getFuture();
+            if (compilationFuture != null && isCompiling(optimizedCallTarget)) {
+                try {
+                    compilationFuture.get(timeout, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    // ignore interrupted
+                }
             }
         }
+
     }
 
     @Deprecated
@@ -598,13 +625,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
-        Future<?> codeTask = optimizedCallTarget.getCompilationTask();
-        if (codeTask != null) {
-            if (codeTask.isCancelled() || codeTask.isDone()) {
-                optimizedCallTarget.resetCompilationTask();
-                return false;
+        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
+        if (task != null) {
+            Future<?> compilationFuture = task.getFuture();
+            if (compilationFuture != null) {
+                if (compilationFuture.isCancelled() || compilationFuture.isDone()) {
+                    optimizedCallTarget.resetCompilationTask();
+                    return false;
+                }
+                return true;
             }
-            return true;
         }
         return false;
     }
