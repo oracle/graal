@@ -112,4 +112,22 @@ public abstract class TVMCI {
     protected boolean getFrameMaterializeCalled(FrameDescriptor descriptor) {
         return Accessor.framesAccess().getMaterializeCalled(descriptor);
     }
+
+    /**
+     * Accessor for non-public API in {@link RootNode}.
+     *
+     * @since 0.24
+     */
+    protected boolean isCloneUninitializedSupported(RootNode root) {
+        return Accessor.nodesAccess().isCloneUninitializedSupported(root);
+    }
+
+    /**
+     * Accessor for non-public API in {@link RootNode}.
+     *
+     * @since 0.24
+     */
+    protected RootNode cloneUninitialized(RootNode root) {
+        return Accessor.nodesAccess().cloneUninitialized(root);
+    }
 }

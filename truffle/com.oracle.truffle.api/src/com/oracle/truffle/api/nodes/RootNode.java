@@ -24,9 +24,9 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.CallTarget;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExecutionContext;
@@ -149,6 +149,53 @@ public abstract class RootNode extends Node {
      */
     public boolean isCloningAllowed() {
         return false;
+    }
+
+    /**
+     * Returns <code>true</code> if {@link #cloneUninitialized()} can be used to create
+     * uninitialized copies of an already initialized / executed root node. By default, or if this
+     * method returns <code>false</code>, an optimizing Truffle runtime might need to copy the AST
+     * before it is executed for the first time to ensure it is able to create new uninitialized
+     * copies when needed. By returning <code>true</code> and therefore supporting uninitialized
+     * copies an optimizing runtime does not need to keep a reference to an uninitialized copy on
+     * its own and might therefore be able to save memory. The returned boolean needs to be
+     * immutable for a {@link RootNode} instance.
+     *
+     * @return <code>true</code> if calls to {@link #cloneUninitialized() uninitialized copies} are
+     *         supported.
+     * @see #cloneUninitialized()
+     * @since 0.24
+     */
+    protected boolean isCloneUninitializedSupported() {
+        return false;
+    }
+
+    /**
+     * Creates an uninitialized copy of an already initialized/executed root node if it is
+     * {@link #isCloneUninitializedSupported() supported}. Throws an
+     * {@link UnsupportedOperationException} exception by default. By default, or if
+     * {@link #isCloneUninitializedSupported()} returns <code>false</code>, an optimizing Truffle
+     * runtime might need to copy the root node before it is executed for the first time to ensure
+     * it is able to create new uninitialized copies when needed. By supporting uninitialized copies
+     * an optimizing runtime does not need to keep a reference to an uninitialized copy on its own
+     * and might therefore be able to save memory.
+     *
+     * <p>
+     * Two common strategies to implement {@link #cloneUninitialized()} are:
+     * <ul>
+     * <li><b>Reparsing:</b> Support it by keeping a reference to the original source code including
+     * the lexical scope and create the uninitialized copy of the root node by reparsing the source.
+     * <li><b>Resetting:</b> Support it by traversing the {@link Node} tree and derive an
+     * uninitialized copy from each initialized node.
+     * </ul>
+     *
+     * @return an uninitialized copy of this root node if supported.
+     * @throws UnsupportedOperationException if not supported
+     * @see #isCloneUninitializedSupported()
+     * @since 0.24
+     */
+    protected RootNode cloneUninitialized() {
+        throw new UnsupportedOperationException();
     }
 
     /**
