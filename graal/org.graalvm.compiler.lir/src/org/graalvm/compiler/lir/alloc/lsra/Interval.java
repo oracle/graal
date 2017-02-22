@@ -42,8 +42,6 @@ import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -1033,12 +1031,12 @@ public final class Interval {
         return prev;
     }
 
-    public void addUsePos(int pos, RegisterPriority registerPriority, OptionValues options) {
+    public void addUsePos(int pos, RegisterPriority registerPriority, boolean detailedAsserts) {
         assert covers(pos, LIRInstruction.OperandMode.USE) : String.format("use position %d not covered by live range of interval %s", pos, this);
 
         // do not add use positions for precolored intervals because they are never used
         if (registerPriority != RegisterPriority.None && isVariable(operand)) {
-            if (DetailedAsserts.getValue(options)) {
+            if (detailedAsserts) {
                 for (int i = 0; i < usePosList.size(); i++) {
                     assert pos <= usePosList.usePos(i) : "already added a use-position with lower position";
                     if (i > 0) {
