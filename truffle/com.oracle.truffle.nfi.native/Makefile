@@ -69,7 +69,7 @@ bin/%.d: src/%.c src_gen/native.h libffi-build/include/ffi.h
 
 bin/%.o: src/%.c
 	@echo CC $@
-	@gcc -c ${CFLAGS} ${CPPFLAGS} -o $@ $<
+	@gcc -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} -o $@ $<
 
 ${LIBFFI_LIB}: libffi-build/Makefile
 	@echo MAKE libffi
