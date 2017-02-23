@@ -124,6 +124,11 @@ public final class SchedulePhase extends Phase {
         }
     }
 
+    public static void run(StructuredGraph graph, SchedulingStrategy strategy, ControlFlowGraph cfg) {
+        Instance inst = new Instance(cfg);
+        inst.run(graph, strategy, false);
+    }
+
     public static class Instance {
 
         /**
@@ -133,10 +138,21 @@ public final class SchedulePhase extends Phase {
         protected BlockMap<List<Node>> blockToNodesMap;
         protected NodeMap<Block> nodeToBlockMap;
 
+        public Instance() {
+            this(null);
+        }
+
+        public Instance(ControlFlowGraph cfg) {
+            this.cfg = cfg;
+        }
+
         @SuppressWarnings("try")
         public void run(StructuredGraph graph, SchedulingStrategy selectedStrategy, boolean immutableGraph) {
             // assert GraphOrder.assertNonCyclicGraph(graph);
-            cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+
+            if (this.cfg == null) {
+                this.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+            }
 
             NodeMap<Block> currentNodeMap = graph.createNodeMap();
             NodeBitMap visited = graph.createNodeBitMap();

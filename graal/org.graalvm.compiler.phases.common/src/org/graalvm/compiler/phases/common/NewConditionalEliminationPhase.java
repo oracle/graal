@@ -102,19 +102,12 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, PhaseContext context) {
         try (Debug.Scope s = Debug.scope("DominatorConditionalElimination")) {
-            BlockMap<List<Node>> blockToNodes;
-            ControlFlowGraph cfg;
+            BlockMap<List<Node>> blockToNodes = null;
+            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
             if (fullSchedule) {
-                SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST);
-                schedule.apply(graph);
-                cfg = graph.getLastSchedule().getCFG();
-                cfg.computePostdominators();
+                cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.hasValueProxies());
+                SchedulePhase.run(graph, SchedulePhase.SchedulingStrategy.EARLIEST, cfg);
                 blockToNodes = graph.getLastSchedule().getBlockToNodesMap();
-                cfg.visitDominatorTree(new MoveGuardsUpwards(blockToNodes),
-                                graph.hasValueProxies());
-            } else {
-                cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-                blockToNodes = null;
             }
 
             Instance visitor = new Instance(graph, blockToNodes, context);
@@ -125,11 +118,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
     public static class MoveGuardsUpwards implements ControlFlowGraph.RecursiveVisitor<Block> {
 
         Block anchorBlock;
-        private BlockMap<List<Node>> blockToNodes;
-
-        public MoveGuardsUpwards(BlockMap<List<Node>> blockToNodes) {
-            this.blockToNodes = blockToNodes;
-        }
 
         @Override
         public Block enter(Block b) {
@@ -146,11 +134,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), guard.getSpeculation());
                     GuardNode newGuard = mergeNode.graph().unique(newlyCreatedGuard);
                     guard.replaceAndDelete(newGuard);
-                    if (newGuard == newlyCreatedGuard) {
-                        // Register guard such that it will be processed by subsequent
-                        // conditional elimination.
-                        blockToNodes.get(b).add(newGuard);
-                    }
                 }
             }
 
@@ -185,11 +168,6 @@ public class NewConditionalEliminationPhase extends BasePhase<PhaseContext> {
                                 otherGuard.replaceAndDelete(newGuard);
                             }
                             guard.replaceAndDelete(newGuard);
-                            if (newGuard == newlyCreatedGuard) {
-                                // Register guard such that it will be processed by subsequent
-                                // conditional elimination.
-                                blockToNodes.get(b).add(newGuard);
-                            }
                         }
                     }
                 }
