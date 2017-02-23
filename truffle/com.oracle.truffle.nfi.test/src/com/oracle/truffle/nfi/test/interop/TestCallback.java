@@ -22,49 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
+package com.oracle.truffle.nfi.test.interop;
 
-int string_arg(const char *str) {
-    return atof(str);
-}
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-const char *string_ret_const() {
-    return "Hello, World!";
-}
+public class TestCallback implements TruffleObject {
 
-struct dynamic_string {
-    int magic;
-    char str[16];
-};
+    public interface Function {
 
-char *string_ret_dynamic(int nr) {
-    struct dynamic_string *alloc = malloc(sizeof(*alloc));
-    alloc->magic = nr;
-    snprintf(alloc->str, sizeof(alloc->str), "%d", nr);
-    return alloc->str;
-}
-
-// wrapper around "free" that has a return value that can be verified
-int free_dynamic_string(char *str) {
-    struct dynamic_string *dynamic = NULL;
-    intptr_t offset = dynamic->str - (char *) dynamic;
-    dynamic = (struct dynamic_string *) (str - offset);
-    int magic = dynamic->magic;
-    free(dynamic);
-    return magic;
-}
-
-int string_callback(int (*str_arg)(const char *), char *(*str_ret)()) {
-    int ret;
-    char *str = str_ret();
-    if (strcmp(str, "Hello, Native!") == 0) {
-        ret = str_arg("Hello, Truffle!");
-    } else {
-        ret = 0;
+        @TruffleBoundary
+        Object call(Object... args);
     }
-    free(str);
-    return ret;
+
+    private final int arity;
+    private final Function function;
+
+    public TestCallback(int arity, Function function) {
+        this.arity = arity;
+        this.function = function;
+    }
+
+    Object call(Object... args) {
+        if (args.length == arity) {
+            Object ret = function.call(args);
+            return ret;
+        } else {
+            throw ArityException.raise(arity, args.length);
+        }
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return TestCallbackMessageResolutionForeign.createAccess();
+    }
 }

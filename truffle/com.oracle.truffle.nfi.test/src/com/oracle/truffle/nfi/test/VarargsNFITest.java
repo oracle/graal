@@ -34,6 +34,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
+import com.oracle.truffle.nfi.test.interop.NullObject;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import org.junit.Assert;
@@ -147,7 +149,7 @@ public class VarargsNFITest extends NFITest {
 
     @Test
     public void testMultiTypesFormat() {
-        TruffleObject nil = JavaInterop.asTruffleObject(null);
+        TruffleObject nil = new NullObject();
         MultiFormatRoot root = new MultiFormatRoot(
                         new FormatSpec("42 8472", "([sint8], uint64, string, ...sint64, sint64) : sint32", "%d %d", 42, 8472),
                         new FormatSpec("(nil) 8472", "([sint8], uint64, string, ...pointer, sint64) : sint32", "%p %d", nil, 8472),
@@ -162,8 +164,8 @@ public class VarargsNFITest extends NFITest {
 
     @Test
     public void testVariableArgCountFormat() {
-        TruffleObject nil = JavaInterop.asTruffleObject(null);
-        TruffleObject boxedX = JavaInterop.asTruffleObject("x");
+        TruffleObject nil = new NullObject();
+        TruffleObject boxedX = new BoxedPrimitive("x");
         MultiFormatRoot root = new MultiFormatRoot(
                         new FormatSpec("42", "([sint8], uint64, string, ...sint64) : sint32", "%d", 42),
                         new FormatSpec("42 x", "([sint8], uint64, string, ...sint64, string) : sint32", "%d %s", 42, "x"),

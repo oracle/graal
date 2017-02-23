@@ -32,9 +32,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.function.ToIntFunction;
+import com.oracle.truffle.nfi.test.interop.TestCallback;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import org.junit.Assert;
@@ -126,11 +124,11 @@ public class StringNFITest extends NFITest {
 
     @Test
     public void testStringCallback() {
-        TruffleObject strArgCallback = JavaInterop.asTruffleFunction(ToIntFunction.class, (str) -> {
-            Assert.assertEquals("string argument", "Hello, Truffle!", str);
+        TruffleObject strArgCallback = new TestCallback(1, (args) -> {
+            Assert.assertEquals("string argument", "Hello, Truffle!", args[0]);
             return 42;
         });
-        TruffleObject strRetCallback = JavaInterop.asTruffleFunction(Supplier.class, () -> {
+        TruffleObject strRetCallback = new TestCallback(0, (args) -> {
             return "Hello, Native!";
         });
 
@@ -139,19 +137,5 @@ public class StringNFITest extends NFITest {
 
         Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);
-    }
-
-    @Test
-    public void testNullString() {
-        TruffleObject nullCallback = JavaInterop.asTruffleFunction(Function.class, (str) -> {
-            Assert.assertNull("callback argument", str);
-            return null;
-        });
-
-        TruffleObject testFunction = lookupAndBind("null_string_test", "((string):string, string) : string");
-        Object ret = sendExecute(testFunction, nullCallback, JavaInterop.asTruffleObject(null));
-
-        Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
-        Assert.assertTrue("return value is null", JavaInterop.isNull((TruffleObject) ret));
     }
 }

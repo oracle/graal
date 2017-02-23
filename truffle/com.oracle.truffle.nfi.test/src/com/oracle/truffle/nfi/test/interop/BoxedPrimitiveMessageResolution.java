@@ -22,49 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
+package com.oracle.truffle.nfi.test.interop;
 
-int string_arg(const char *str) {
-    return atof(str);
-}
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.NFILanguage;
 
-const char *string_ret_const() {
-    return "Hello, World!";
-}
+@MessageResolution(language = NFILanguage.class, receiverType = BoxedPrimitive.class)
+class BoxedPrimitiveMessageResolution {
 
-struct dynamic_string {
-    int magic;
-    char str[16];
-};
+    @Resolve(message = "UNBOX")
+    abstract static class UnboxNode extends Node {
 
-char *string_ret_dynamic(int nr) {
-    struct dynamic_string *alloc = malloc(sizeof(*alloc));
-    alloc->magic = nr;
-    snprintf(alloc->str, sizeof(alloc->str), "%d", nr);
-    return alloc->str;
-}
-
-// wrapper around "free" that has a return value that can be verified
-int free_dynamic_string(char *str) {
-    struct dynamic_string *dynamic = NULL;
-    intptr_t offset = dynamic->str - (char *) dynamic;
-    dynamic = (struct dynamic_string *) (str - offset);
-    int magic = dynamic->magic;
-    free(dynamic);
-    return magic;
-}
-
-int string_callback(int (*str_arg)(const char *), char *(*str_ret)()) {
-    int ret;
-    char *str = str_ret();
-    if (strcmp(str, "Hello, Native!") == 0) {
-        ret = str_arg("Hello, Truffle!");
-    } else {
-        ret = 0;
+        Object access(BoxedPrimitive boxed) {
+            return boxed.primitive;
+        }
     }
-    free(str);
-    return ret;
+
+    @CanResolve
+    abstract static class CanResolveBoxedPrimitive extends Node {
+
+        boolean test(TruffleObject object) {
+            return object instanceof BoxedPrimitive;
+        }
+    }
 }

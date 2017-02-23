@@ -32,6 +32,8 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
+import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -68,37 +70,56 @@ public class NumericNFITest extends NFITest {
 
     @Parameter(0) public NativeSimpleType type;
 
-    public void checkExpectedRet(long expected, Object arg) {
+    private void checkExpectedRet(long expected, Object arg) {
+        checkExpected("return", expected, arg);
+    }
+
+    private void checkExpectedArg(long expected, Object arg) {
+        checkExpected("argument", expected, arg);
+    }
+
+    static long unboxNumber(Object arg) {
+        Object value = arg;
+        while (value instanceof TruffleObject) {
+            TruffleObject obj = (TruffleObject) value;
+            Assert.assertTrue("isBoxed", JavaInterop.isBoxed(obj));
+            value = JavaInterop.unbox(obj);
+        }
+        Assert.assertThat(value, is(instanceOf(Number.class)));
+        return ((Number) value).longValue();
+    }
+
+    private void checkExpected(String thing, long expected, Object arg) {
         Object value = arg;
         switch (type) {
             case UINT8:
             case SINT8:
-                Assert.assertThat("return type", value, is(instanceOf(Byte.class)));
+                Assert.assertThat(thing + " type", value, is(instanceOf(Byte.class)));
                 break;
             case UINT16:
             case SINT16:
-                Assert.assertThat("return type", value, is(instanceOf(Short.class)));
+                Assert.assertThat(thing + " type", value, is(instanceOf(Short.class)));
                 break;
             case UINT32:
             case SINT32:
-                Assert.assertThat("return type", value, is(instanceOf(Integer.class)));
+                Assert.assertThat(thing + " type", value, is(instanceOf(Integer.class)));
                 break;
             case UINT64:
             case SINT64:
-                Assert.assertThat("return type", value, is(instanceOf(Long.class)));
+                Assert.assertThat(thing + " type", value, is(instanceOf(Long.class)));
                 break;
             case FLOAT:
-                Assert.assertThat("return type", value, is(instanceOf(Float.class)));
+                Assert.assertThat(thing + " type", value, is(instanceOf(Float.class)));
                 break;
             case DOUBLE:
-                Assert.assertThat("return type", value, is(instanceOf(Double.class)));
+                Assert.assertThat(thing + " type", value, is(instanceOf(Double.class)));
                 break;
             case POINTER:
-                Assert.assertThat("return type", value, is(instanceOf(TruffleObject.class)));
+                Assert.assertThat(thing + " type", value, is(instanceOf(TruffleObject.class)));
                 TruffleObject obj = (TruffleObject) value;
-                Assert.assertTrue("isBoxed", JavaInterop.isBoxed(obj));
+                Assert.assertTrue(thing + " is boxed", JavaInterop.isBoxed(obj));
                 value = JavaInterop.unbox(obj);
-                Assert.assertThat("unboxed pointer", value, is(instanceOf(Long.class)));
+                Assert.assertThat("unboxed " + thing, value, is(instanceOf(Long.class)));
                 break;
             default:
                 Assert.fail();
@@ -122,7 +143,7 @@ public class NumericNFITest extends NFITest {
     @Test
     public void testBoxed() {
         TruffleObject increment = lookupAndBind("increment_" + type, String.format("(%s):%s", type, type));
-        Object ret = sendExecute(increment, JavaInterop.asTruffleObject(42));
+        Object ret = sendExecute(increment, new BoxedPrimitive(42));
         checkExpectedRet(43, ret);
     }
 
@@ -132,7 +153,10 @@ public class NumericNFITest extends NFITest {
      */
     @Test
     public void testCallback() {
-        TruffleObject callback = JavaInterop.asTruffleFunction(LongFunction.class, (arg) -> arg + 5);
+        TruffleObject callback = new TestCallback(1, (args) -> {
+            checkExpectedArg(42 + 1, args[0]);
+            return unboxNumber(args[0]) + 5;
+        });
         TruffleObject function = lookupAndBind("callback_" + type, String.format("((%s):%s, %s) : %s", type, type, type, type));
         Object ret = sendExecute(function, callback, 42);
         checkExpectedRet((42 + 6) * 2, ret);
@@ -166,12 +190,6 @@ public class NumericNFITest extends NFITest {
         checkExpectedRet(43, ret);
     }
 
-    @FunctionalInterface
-    private interface WrapFunction {
-
-        TruffleObject wrap(LongFunction<?> fn);
-    }
-
     /**
      * Test callback functions as argument and return type of other callback functions.
      */
@@ -181,9 +199,14 @@ public class NumericNFITest extends NFITest {
         String wrapPointer = String.format("(%s):%s", fnPointer, fnPointer);
         TruffleObject pingPong = lookupAndBind("pingpong_" + type, String.format("(%s, %s) : %s", wrapPointer, type, type));
 
-        TruffleObject wrap = JavaInterop.asTruffleFunction(WrapFunction.class, (fn) -> {
-            LongFunction<?> ret = (arg) -> fn.apply(arg * 3);
-            return JavaInterop.asTruffleFunction(LongFunction.class, ret);
+        TruffleObject wrap = new TestCallback(1, (args) -> {
+            Assert.assertThat("argument", args[0], is(instanceOf(TruffleObject.class)));
+            LongFunction<?> fn = JavaInterop.asJavaFunction(LongFunction.class, (TruffleObject) args[0]);
+            TruffleObject wrapped = new TestCallback(1, (innerArgs) -> {
+                checkExpectedArg(6, innerArgs[0]);
+                return fn.apply(unboxNumber(innerArgs[0]) * 3);
+            });
+            return wrapped;
         });
 
         Object ret = sendExecute(pingPong, wrap, 5);

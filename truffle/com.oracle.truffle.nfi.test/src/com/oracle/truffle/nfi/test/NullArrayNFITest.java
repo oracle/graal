@@ -26,6 +26,7 @@ package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.nfi.test.interop.NullObject;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -62,7 +63,7 @@ public class NullArrayNFITest extends NFITest {
     @Test
     public void testNullArray() {
         TruffleObject function = lookupAndBind("null_array_" + nativeType, String.format("([%s]):string", nativeType));
-        Object ret = sendExecute(function, JavaInterop.asTruffleObject(null));
+        Object ret = sendExecute(function, new NullObject());
         Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
 
         TruffleObject obj = (TruffleObject) ret;

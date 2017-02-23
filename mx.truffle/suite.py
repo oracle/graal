@@ -520,6 +520,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaProperties" : {
         "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>"
       },
