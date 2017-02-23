@@ -677,12 +677,10 @@ public final class Breakpoint {
             if (key instanceof URI) {
                 final URI sourceUri = (URI) key;
                 f.sourceIs(new SourcePredicate() {
+                    @Override
                     public boolean test(Source s) {
                         URI uri = s.getURI();
-                        if (uri == null) {
-                            return false;
-                        }
-                        return uri.equals(sourceUri);
+                        return sourceUri.equals(uri);
                     }
 
                     @Override
