@@ -76,6 +76,8 @@ public class BC_instanceof extends JTTTest {
         runTest("test", 4);
     }
 
+    // Checkstyle: stop
+    // Need to stop checkstyle due to empty if constructs.
     public static boolean testEmpty(Object obj) {
         if (obj instanceof TestClass) {
         }
@@ -84,6 +86,7 @@ public class BC_instanceof extends JTTTest {
         }
         return true;
     }
+    // Checkstyle: resume
 
     @Test
     public void run5() throws Throwable {
